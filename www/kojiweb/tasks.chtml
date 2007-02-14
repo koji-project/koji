@@ -1,0 +1,206 @@
+#import koji
+#from kojiweb import util
+
+#def printChildren($taskID, $childMap)
+  #set $iter = 0
+  #set $children = $childMap[$str($taskID)]
+  #if $children
+  <ul>
+    #for $child in $children
+    #set $iter += 1
+    #if $iter < $len($children)
+    <li class="sibling">
+    #else
+    <li>
+    #end if
+      #set $childState = $util.taskState($child.state)
+      <span class="treeBranch">
+        <span class="treeLabel">
+          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
+        </span>
+      </span>
+    $printChildren($child.id, $childMap)
+    </li>
+    #end for
+  </ul>
+  #end if
+#end def
+
+#def headerPrefix($state)
+  #if $state == 'active'
+Active
+  #elif $state == 'toplevel'
+Top-level
+  #elif $state == 'all'
+All
+  #else
+#echo $state.capitalize()
+  #end if
+#end def
+
+#include "includes/header.chtml"
+
+  <h4>$headerPrefix($state) #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
+
+  <table class="data-list">
+    <tr>
+      <td colspan="6">
+        <form action="tasks">
+        <strong>State</strong>:
+        #if $state == 'active'
+        <strong>active</strong>
+        #else
+        <a href="tasks?${util.passthrough($self, 'owner', 'method', 'hostID', 'order')[1:]}">active</a>
+        #end if
+        |
+        #if $state == 'toplevel'
+        <strong>toplevel</strong>
+        #else
+        <a href="tasks?state=toplevel$util.passthrough($self, 'owner', 'method', 'hostID', 'order')">toplevel</a>
+        #end if
+        |
+        #if $state == 'all'
+        <strong>all</strong>
+        #else
+        <a href="tasks?state=all$util.passthrough($self, 'owner', 'method', 'hostID', 'order')">all</a>
+        #end if
+        |
+        <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough($self, 'owner', 'hostID', 'method', 'order')';">
+          <option value="active">(select)</option>
+          <option value="free" #if $state == 'free' then 'selected="selected"' else ''#>free</option>
+          <option value="open" #if $state == 'open' then 'selected="selected"' else ''#>open</option>
+          <option value="closed" #if $state == 'closed' then 'selected="selected"' else ''#>closed</option>
+          <option value="failed" #if $state == 'failed' then 'selected="selected"' else ''#>failed</option>
+          <option value="canceled" #if $state == 'canceled' then 'selected="selected"' else ''#>canceled</option>
+          <option value="assigned" #if $state == 'assigned' then 'selected="selected"' else ''#>assigned</option> 
+        </select>
+        <br/>
+        <strong>Owner</strong>:
+        #if $ownerObj
+          <a href="tasks?${util.passthrough($self, 'state', 'method', 'hostID', 'order')[1:]}">everyone</a>
+          #if $loggedInUser
+            #if $ownerObj.id == $loggedInUser.id
+            | <strong>me</strong>
+            #else
+            | <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
+            #end if
+          #end if
+        #else
+          <strong>everyone</strong>
+          #if $loggedInUser
+          | <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
+          #end if
+        #end if
+        |
+        <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough($self, 'hostID', 'state', 'method', 'order')';">
+          <option value="">(select)</option>
+          #for $user in $users
+          <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$user.name</option>
+          #end for
+        </select>
+        <br/>
+        <strong>Method</strong>:
+        <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough($self, 'owner', 'hostID', 'state', 'order')';">
+          <option value="all" #if $method == 'all' then 'selected="selected"' else ''#>all</option>
+          <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
+          <option value="buildSRPMFromCVS" #if $method == 'buildSRPMFromCVS' then 'selected="selected"' else ''#>buildSRPMFromCVS</option>
+          <option value="buildArch" #if $method == 'buildArch' then 'selected="selected"' else ''#>buildArch</option>
+          <option value="buildNotification" #if $method == 'buildNotification' then 'selected="selected"' else ''#>buildNotification</option>
+          <option value="tagBuild" #if $method == 'tagBuild' then 'selected="selected"' else ''#>tagBuild</option>
+          <option value="tagNotification" #if $method == 'tagNotification' then 'selected="selected"' else ''#>tagNotification</option>
+          <option value="runroot" #if $method == 'runroot' then 'selected="selected"' else ''#>runroot</option>
+          <option value="newRepo" #if $method == 'newRepo' then 'selected="selected"' else ''#>newRepo</option>
+          <option value="prepRepo" #if $method == 'prepRepo' then 'selected="selected"' else ''#>prepRepo</option>
+          <option value="createrepo" #if $method == 'createrepo' then 'selected="selected"' else ''#>createrepo</option>
+          <option value="dependantTask" #if $method == 'dependantTask' then 'selected="selected"' else ''#>dependantTask</option>
+          <option value="chainbuild" #if $method == 'chainbuild' then 'selected="selected"' else ''#>chainbuild</option>
+          <option value="waitrepo" #if $method == 'waitrepo' then 'selected="selected"' else ''#>waitrepo</option>
+        </select>
+        </form>
+      </td>
+    </tr>
+    <tr>
+      <td class="paginate" colspan="6">
+        #if $len($taskPages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')';">
+            #for $pageNum in $taskPages
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $taskStart > 0
+        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalTasks != 0
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
+        #end if
+        #if $taskStart + $taskCount < $totalTasks
+        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="tasks?order=$util.toggleOrder($self, 'id')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">ID</a> $util.sortImage($self, 'id')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'method')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Type</a> $util.sortImage($self, 'method')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'owner')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Owner</a> $util.sortImage($self, 'owner')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'arch')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Arch</a> $util.sortImage($self, 'arch')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'completion_time')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Finished</a> $util.sortImage($self, 'completion_time')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'state')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">State</a> $util.sortImage($self, 'state')</th>
+    </tr>
+    #if $len($tasks) > 0
+      #for $task in $tasks
+        <tr class="$util.rowToggle($self)">
+          #set $taskState = $util.taskState($task.state)
+          <td>$task.id</td>
+          <td#if $treeDisplay then ' class="tree"' else ''#>
+            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$koji.taskLabel($task)</a>
+            #if $treeDisplay
+            $printChildren($task.id, $task.descendents)
+            #end if
+          </td>
+          <td>
+            #if $task.owner_type == $koji.USERTYPES['HOST']
+            <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+            #else
+            <a href="userinfo?userID=$task.owner">$task.owner_name</a>
+            #end if
+          </td>
+          <td>$task.arch</td>
+          <td>$util.formatTime($task.completion_time)</td>
+          <td class="task$state">$util.imageTag($taskState)</td>
+        </tr>
+      #end for
+    #else
+      <tr class="row-odd">
+        <td colspan="6">No tasks</td>
+      </tr>
+    #end if
+    <tr>
+      <td class="paginate" colspan="6">
+        #if $len($taskPages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')';">
+            #for $pageNum in $taskPages
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $taskStart > 0
+        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalTasks != 0
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
+        #end if
+        #if $taskStart + $taskCount < $totalTasks
+        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"

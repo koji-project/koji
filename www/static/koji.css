@@ -1,0 +1,408 @@
+/* 
+  Koji styling
+  Copyright (c) 2007 Red Hat, Inc.
+
+  Authors:
+    Mike Bonnet <mikeb@redhat.com>
+*/
+
+html {
+    min-width: 800px;
+}
+
+body {
+    margin: 0px;
+    padding: 0px;
+    font-size: small;
+    font-family: "Lucida Grande", "Luxi Sans", "Bitstream Vera Sans", helvetica, verdana, arial, sans-serif;
+    color: #333;
+    background: #fff url(images/bkgrnd_greydots.png) repeat;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#wrap {
+    min-width: 750px;
+    margin: 0 25px 10px 25px;
+    padding: 0;
+    text-align: left;
+    background: #fff;
+}
+
+#innerwrap {
+    margin: 0 15px;
+    padding: 8px 0;
+}
+
+#header {
+    width: 100%;
+    height: 40px;
+    clear: left;
+}
+
+#rhLogo {
+    float: right;
+    margin-right: 15px;
+    margin-top: 6px;
+}
+
+#kojiLogo {
+    float: left;
+}
+
+div#content {
+    margin: 0px 20px 0px 20px;
+    float: left;
+}
+
+p#footer {
+    padding-top: 40px;
+    margin-left: 15px;
+    line-height: 1.5em;
+    color: #999;
+    font-size: xx-small;
+    clear: both;
+}
+
+p#footer a {
+    text-decoration: none;
+}
+
+.hide {
+    display: none;
+}
+
+#mainNav {
+    width: 100%;
+    background-color: #009;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-family: verdana, helvetica, arial, sans-serif;
+    height: 2.1em;
+}
+
+#mainNav ul {
+    padding: 0px;
+    margin: 0px;
+    list-style-type: none;
+}
+
+#mainNav ul li {
+    background-color: #006;
+    color: #fff;
+    display: block;
+    float: left;
+    padding: 0px;
+    margin: 0px;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #009;
+}
+
+#mainNav ul li a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.4em 1.5em;
+    font-size: 0.77em;
+    height: 1.5em;
+}
+
+#mainNav ul li:hover {
+    border-color: #ddd;
+}
+
+body#summary #mainNav li#summary a,
+body#tasks #mainNav li#tasks a,
+body#tags #mainNav li#tags a,
+body#builds #mainNav li#builds a,
+body#packages #mainNav li#packages a,
+body#users #mainNav li#users a,
+body#hosts #mainNav li#hosts a,
+body#buildtargets #mainNav li#buildtargets a,
+body#reports #mainNav li#reports a,
+body#search #mainNav li#search a {
+    background-color: #eee;
+    color: #000;
+}
+
+h4 {
+    color: #fff;
+    background-color: #006;
+    padding: 0.3em;
+    margin: 5px 0px 5px 0px;
+}
+
+h4 a {
+    color: #fff;
+}
+
+table {
+    border-spacing: 0px;
+}
+
+th {
+    font-weight: bold;
+    vertical-align: text-top;
+}
+
+th, td {
+    padding: 5px;
+}
+
+td.building {
+    color: #cc0;
+}
+
+td.complete {
+    color: #0c0;
+}
+
+td.deleted,
+td.failed,
+td.canceled {
+    color: #c00;
+}
+
+td.false {
+    color: #c00;
+}
+
+td.true {
+    color: #0c0;
+}
+
+img.sort {
+    vertical-align: baseline;
+}
+
+td.paginate {
+    text-align: center;
+}
+
+form.pageJump {
+    float: right;
+    margin-left: 20px;
+}
+
+form.pageJump select {
+    font-size: smaller;
+}
+
+div.dataHeader {
+    font-weight: bold;
+}
+
+div.pageHeader {
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 1.5em;
+}
+
+table.nested {
+    float: left;
+}
+
+td.container {
+    padding: 4px 0px;
+    width: 100%;
+}
+
+table.nested th,
+table.nested td {
+    padding: 2px 4px;
+}
+
+div.toggle {
+    padding: 6px;
+}
+
+td.tree {
+    background-color: #fff;
+}
+
+.tree span.root {
+    font-weight: bold;
+    background-color: #fff;
+}
+
+.tree ul {
+    padding-left: 2em;
+    list-style: none;
+    margin-top: 0em;
+    margin-bottom: 0em;
+}
+
+.tree span.treeBranch {
+    border-bottom: 1px solid #000;
+    border-left: 1px solid #000;
+    font-size: 1.2em;
+}
+
+.tree li.sibling > span.treeBranch {
+    border-left-width: 0em;
+}
+
+.tree li.sibling {
+    border-left: 1px solid #000;
+}
+
+.tree a {
+    text-decoration: none;
+}
+
+.tree span.treeLabel {
+    position: relative;
+    top: 0.6em;
+    margin-left: 1.2em;
+    padding-left: 0.2em;
+    background-color: #fff;
+    font-size: 0.83em;
+}
+
+.hidden {
+    display: none;
+}
+
+.tree span.treeToggle {
+    font-weight: bold;
+}
+
+.tree span.treeLink {
+    font-size: smaller;
+}
+
+.adminLink {
+    color: #000;
+}
+
+img.stateimg {
+    margin-top: -6px;
+    margin-bottom: -6px;
+}
+
+.charlist {
+    text-align: center;
+}
+
+img.graphrow {
+    background-color: #00f;
+    vertical-align: bottom;
+}
+
+table.data-list {
+    width: 100%;
+}
+
+table.data-list td {
+    vertical-align: text-top;
+}
+
+tr.list-header {
+    background-color: #fff;
+}
+
+tr.list-header th {
+    background-color: #ddd;
+}
+
+tr.list-header th:first-child {
+    -moz-border-radius-topleft: 15px;
+}
+
+tr.list-header th:last-child {
+    -moz-border-radius-topright: 15px;
+}
+
+tr.row-odd {
+    background-color: #fff;
+}
+
+tr.row-odd td {
+    border-bottom: 1px solid #eee;
+}
+
+tr.row-even {
+    background-color: #eee;
+}
+
+tr.row-even td {
+    border-bottom: 1px solid #fff;
+}
+
+tr.row-odd td:first-child,
+tr.row-even td:first-child {
+    border-left: 1px solid #eee;
+}
+
+tr.row-odd td:last-child,
+tr.row-even td:last-child {
+    border-right: 1px solid #eee;
+}
+
+tr.row-even td.tree {
+    background-color: #eee;
+}
+
+tr.row-even td.tree span.treeLabel {
+    background-color: #eee;
+}
+
+.taskfree {
+    color: #30c;
+}
+
+.taskopen {
+    color: #f60;
+}
+
+.taskclosed {
+    color: #0c0;
+}
+
+.taskcanceled {
+    color: #c90;
+}
+
+.taskassigned {
+    color: #c0f;
+}
+
+.taskfailed {
+    color: #c00;
+}
+
+a.help {
+    text-decoration: underline;
+}
+
+abbr {
+    cursor: help;
+}
+
+.changelog {
+    font-size: medium;
+}
+
+#headerHelp {
+    float: right;
+    margin: 15px 10px 0 0;
+}
+
+.filterlist {
+    font-size: smaller;
+}
+
+span#loginInfo {
+    float: right;
+    font-weight: bold;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    margin-bottom: 4px;
+}

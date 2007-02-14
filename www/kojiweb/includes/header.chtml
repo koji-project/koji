@@ -1,0 +1,71 @@
+#import koji
+#import random
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+#def greeting()
+#set $greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
+                  'bonjour',
+                  'hallo',
+                  'ciao',
+                  'hola',
+                  'olá',
+                  'dobrý den',
+                  'zdravstvuite',
+                  'góðan daginn',
+                  'hej',
+                  'grüezi',
+                  'céad míle fáilte',
+                  'hylô',
+                  '你好',
+                  'こんにちは',
+                  'नमस्कार',
+                  '안녕하세요')
+#echo $random.choice($greetings)##slurp
+#end def
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>$title | Koji</title>
+    <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="/koji-static/koji.css"/>
+    <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="/koji-static/debug.css"/>
+    <link rel="alternate" type="application/rss+xml" title="Koji: recent builds" href="/koji/recentbuilds"/>
+  </head>
+  <body id="$pageID">
+
+    <div id="wrap">
+      <div id="innerwrap">
+
+        <!-- HEADER -->
+        <div id="header">
+          <img src="/koji-static/images/koji.png" alt="Koji Logo" width="49" height="40" id="kojiLogo"/>
+        </div><!-- end header -->
+
+        <!-- MAIN NAVIGATION -->
+        <div id="mainNav">
+          <h4 class="hide">Main Site Links:</h4>
+          <ul>
+            <li id="summary"><a href="index">Summary</a></li>
+            <li id="packages"><a href="packages">Packages</a></li>
+            <li id="builds"><a href="builds">Builds</a></li>
+            <li id="tasks"><a href="tasks">Tasks</a></li>
+            <li id="tags"><a href="tags">Tags</a></li>
+            <li id="buildtargets"><a href="buildtargets">Build Targets</a></li>
+            <li id="users"><a href="users">Users</a></li>
+            <li id="hosts"><a href="hosts">Hosts</a></li>
+            <li id="reports"><a href="reports">Reports</a></li>
+            <li id="search"><a href="search">Search</a></li>
+          </ul>
+        </div><!-- end mainNav -->
+
+        <span id="loginInfo">
+          $koji.formatTimeLong($currentDate) |
+          #if $currentUser
+          $greeting(), <a href="userinfo?userID=$currentUser.id">$currentUser.name</a> | <a href="logout">logout</a>
+          #else
+          <a href="login">login</a>
+          #end if
+        </span>
+
+        <div id="content">

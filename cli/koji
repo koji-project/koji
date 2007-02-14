@@ -1,0 +1,3102 @@
+#!/usr/bin/python
+
+# command line interface for the Koji build system
+# Copyright (c) 2005-2007 Red Hat
+#
+#    Koji is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; 
+#    version 2.1 of the License.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this software; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Authors:
+#       Dennis Gregorovic <dgregor@redhat.com>
+#       Mike McLean <mikem@redhat.com>
+import sys
+try:
+    import krbV
+except ImportError:
+    pass
+import ConfigParser
+import base64
+import koji
+import fnmatch
+import md5
+import os
+import re
+import pprint
+import random
+import socket
+import string
+import time
+import urllib
+import xmlrpclib
+import optparse
+#for import-comps handler
+from rhpl.comps import Comps
+
+# fix OptionParser for python 2.3 (optparse verion 1.4.1+)
+# code taken from optparse version 1.5a2
+OptionParser = optparse.OptionParser
+if optparse.__version__ == "1.4.1+":
+    def _op_error(self, msg):
+        self.print_usage(sys.stderr)
+        msg = "%s: error: %s\n" % (self._get_prog_name(), msg)
+        if msg:
+            sys.stderr.write(msg)
+        sys.exit(2)
+    OptionParser.error = _op_error
+
+def _(args):
+    """Stub function for translation"""
+    return args
+
+def arg_filter(str):
+    try:
+        return int(str)
+    except ValueError:
+        pass
+    try:
+        return float(str)
+    except ValueError:
+        pass
+    #handle lists?
+    return str
+
+def get_options():
+    """process options from command line and config file"""
+
+    usage = _("%prog [global-options] command [command-options-and-arguments]")
+    parser = OptionParser(usage=usage)
+    parser.disable_interspersed_args()
+    parser.add_option("-c", "--config", dest="configFile",
+                      help=_("use alternate configuration file"), metavar="FILE",
+                      default="/etc/koji.conf")
+    parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
+    parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
+    parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))
+    parser.add_option("--user", help=_("specify user"))
+    parser.add_option("--password", help=_("specify password"))
+    parser.add_option("--noauth", action="store_true", default=False,
+                      help=_("do not authenticate"))
+    parser.add_option("--force-auth", action="store_true", default=False,
+                      help=_("authenticate even for read-only operations"))
+    parser.add_option("-d", "--debug", action="store_true", default=False,
+                      help=_("show debug output"))
+    parser.add_option("--debug-xmlrpc", action="store_true", default=False,
+                      help=_("show xmlrpc debug output"))
+    parser.add_option("--skip-main", action="store_true", default=False,
+                      help=_("don't actually run main"))
+    parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
+    parser.add_option("--topdir", help=_("specify topdir"))
+    parser.add_option("--web-url", help=_("url of the Koji web interface"))
+    parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
+    (options, args) = parser.parse_args()
+
+    if options.help_commands:
+        list_commands()
+        sys.exit(0)
+    if not args:
+        list_commands()
+        sys.exit(0)
+
+    aliases = {
+        'cancel-task' : 'cancel',
+        'cxl' : 'cancel',
+        'list-commands' : 'help',
+    }
+    cmd = args[0]
+    cmd = aliases.get(cmd, cmd)
+    cmd = cmd.replace('-', '_')
+    if globals().has_key('anon_handle_' + cmd):
+        if not options.force_auth:
+            options.noauth = True
+        cmd = 'anon_handle_' + cmd
+    elif globals().has_key('handle_' + cmd):
+        cmd = 'handle_' + cmd
+    else:
+        list_commands()
+        parser.error('Unknown command: %s' % cmd)
+        assert False
+    # load local config
+    defaults = {
+        'server' : 'http://localhost/kojihub',
+        'web_url' : 'http://localhost/koji',
+        'topdir' : '/mnt/koji',
+        }
+    if os.access(options.configFile, os.F_OK):
+        f = open(options.configFile)
+        config = ConfigParser.ConfigParser()
+        config.readfp(f)
+        f.close()
+        #XXX - really need a more robust config file setup, but this will have
+        #      to do for now
+        if config.has_section('koji'):
+            for name, value in config.items('koji'):
+                #note the defaults dictionary also serves to indicate which
+                #options *can* be set via the config file. Such options should
+                #not have a default value set in the option parser.
+                if defaults.has_key(name):
+                    defaults[name] = value
+    for name, value in defaults.iteritems():
+        if getattr(options, name) is None:
+            setattr(options, name, value)
+
+    return options, cmd, args[1:]
+
+def ensure_connection(session):
+    try:
+        ret = session.getAPIVersion()
+    except xmlrpclib.ProtocolError:
+        error(_("Error: Unable to connect to server"))
+    if ret != koji.API_VERSION:
+        warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+
+def print_task_headers():
+    """Print the column headers"""
+    print "ID    Pri  Owner        State    Arch       Name"
+
+def print_task(task,depth=0):
+    """Print a task"""
+    task = task.copy()
+    task['state'] = koji.TASK_STATES.get(task['state'],'BADSTATE')
+    fmt1 = "%(id)-5s %(priority)-4s %(owner)-12s %(state)-8s %(arch)-10s "
+    fmt2 = "%(method)s"
+    if depth:
+        indent = "  "*(depth-1) + " +"
+    else:
+        indent = ''
+    if task.get('host'):
+        fmt3 = ' [%(host)s]'
+    else:
+        fmt3 = ''
+    if task.get('build_id'):
+        fmt4 = ' %(build_name)s-%(build_version)s-%(build_release)s'
+    else:
+        fmt4 = ''
+    print ''.join([fmt1 % task, indent, fmt2 % task, fmt3 % task, fmt4 % task])
+
+def print_task_recurse(task,depth=0):
+    """Print a task and its children"""
+    print_task(task,depth)
+    for child in task.get('children',()):
+        print_task_recurse(child,depth+1)
+
+
+class TaskWatcher(object):
+
+    def __init__(self,task_id,session,level=0):
+        self.id = task_id
+        self.session = session
+        self.info = None
+        self.level = level
+
+    #XXX - a bunch of this stuff needs to adapt to different tasks
+
+    def str(self):
+        if self.info:
+            label = koji.taskLabel(self.info)
+            return "%s%d %s" % ('  ' * self.level, self.id, label)
+        else:
+            return "%s%d" % ('  ' * self.level, self.id)
+
+    def __str__(self):
+        return self.str()
+
+    def get_failure(self):
+        """Print infomation about task completion"""
+        if self.info['state'] != koji.TASK_STATES['FAILED']:
+            return ''
+        error = None
+        try:
+            result = self.session.getTaskResult(self.id)
+        except (xmlrpclib.Fault,koji.GenericError),e:
+            error = e
+        if error is None:
+            # print "%s: complete" % self.str()
+            # We already reported this task as complete in update()
+            return ''
+        else:
+            return '%s: %s' % (error.__class__.__name__, str(error).strip())
+
+    def update(self):
+        """Update info and log if needed.  Returns True on state change."""
+        if self.is_done():
+            # Already done, nothing else to report
+            return False
+        last = self.info
+        self.info = self.session.getTaskInfo(self.id, request=True)
+        if self.info is None:
+            print "No such task id: %i" % self.id
+            sys.exit(1)
+        state = self.info['state']
+        if last:
+            #compare and note status changes
+            laststate = last['state']
+            if laststate != state:
+                print "%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info))
+                return True
+            return False
+        else:
+            # First time we're seeing this task, so just show the current state
+            print "%s: %s" % (self.str(), self.display_state(self.info))
+            return False
+
+    def is_done(self):
+        if self.info is None:
+            return False
+        state = koji.TASK_STATES[self.info['state']]
+        return (state in ['CLOSED','CANCELED','FAILED'])
+
+    def is_success(self):
+        if self.info is None:
+            return False
+        state = koji.TASK_STATES[self.info['state']]
+        return (state == 'CLOSED')
+
+    def display_state(self, info):
+        if info['state'] == koji.TASK_STATES['OPEN']:
+            if info['host_id']:
+                host = self.session.getHost(info['host_id'])
+                return 'open (%s)' % host['name']
+            else:
+                return 'open'
+        elif info['state'] == koji.TASK_STATES['FAILED']:
+            return 'FAILED: %s' % self.get_failure()
+        else:
+            return koji.TASK_STATES[info['state']].lower()
+
+def display_tasklist_status(tasks):
+    free = 0
+    open = 0
+    failed = 0
+    done = 0
+    for task_id in tasks.keys():
+        status = tasks[task_id].info['state']
+        if status == koji.TASK_STATES['FAILED']:
+            failed += 1
+        elif status == koji.TASK_STATES['CLOSED'] or status == koji.TASK_STATES['CANCELED']:
+            done += 1
+        elif status == koji.TASK_STATES['OPEN'] or status == koji.TASK_STATES['ASSIGNED']:
+            open += 1
+        elif status == koji.TASK_STATES['FREE']:
+            free += 1
+    print "  %d free  %d open  %d done  %d failed" % (free, open, done, failed)
+
+def watch_tasks(session,tasklist):
+    if not tasklist:
+        return
+    print "Watching tasks (this may be safely interrupted)..."
+    rv = 0
+    try:
+        tasks = {}
+        for task_id in tasklist:
+            tasks[task_id] = TaskWatcher(task_id,session)
+        while True:
+            all_done = True
+            for task_id,task in tasks.items():
+                changed = task.update()
+                if not task.is_done():
+                    all_done = False
+                elif changed:
+                    # task is done and state just changed
+                    display_tasklist_status(tasks)
+                    if not task.is_success():
+                        rv = 1
+                for child in session.getTaskChildren(task_id):
+                    child_id = child['id']
+                    if not child_id in tasks.keys():
+                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1)
+                        tasks[child_id].update()
+                        # If we found new children, go through the list again,
+                        # in case they have children also
+                        all_done = False
+            if all_done:
+                break
+
+            time.sleep(1)
+    except (KeyboardInterrupt):
+        if tasks:
+            print \
+"""Tasks still running. You can continue to watch with the 'koji watch-task' command.
+Running Tasks:
+%s""" % '\n'.join(['%s: %s' % (t.str(), t.display_state(t.info)) for t in tasks.values() if not t.is_done()])
+        rv = 1
+    return rv
+
+def watch_logs(session, tasklist, options):
+    print "Watching logs (this may be safely interrupted)..."
+    def _isDone(session, taskId):
+        info = session.getTaskInfo(taskId)
+        if info is None:
+            print "No such task id: %i" % taskId
+            sys.exit(1)
+        state = koji.TASK_STATES[info['state']]
+        return (state in ['CLOSED','CANCELED','FAILED'])
+
+    try:
+        offsets = {}
+        for task_id in tasklist:
+            offsets[task_id] = {}
+
+        lastlog = None
+        while True:
+            for task_id in tasklist[:]:
+                if _isDone(session, task_id):
+                    tasklist.remove(task_id)
+
+                output = session.listTaskOutput(task_id)
+
+                if options.log:
+                    logs = [filename for filename in output if filename == options.log]
+                else:
+                    logs = [filename for filename in output if filename.endswith('.log')]
+
+                taskoffsets = offsets[task_id]
+                for log in logs:
+                    contents = 'placeholder'
+                    while contents:
+                        if not taskoffsets.has_key(log):
+                            taskoffsets[log] = 0
+                        
+                        contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
+                        taskoffsets[log] += len(contents)
+                        if contents:
+                            currlog = "%d:%s:" % (task_id, log)
+                            if currlog != lastlog:
+                                if lastlog:
+                                    sys.stdout.write("\n")
+                                sys.stdout.write("==> %s <==\n" % currlog)
+                                lastlog = currlog
+                            sys.stdout.write(contents)
+
+            if not tasklist:
+                break
+
+            time.sleep(1)
+    except (KeyboardInterrupt):
+        pass
+
+def handle_add_host(options, session, args):
+    "[admin] Add a host"
+    usage = _("usage: %prog add-host [options] hostname arch [arch2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a hostname and at least one arch"))
+        assert False
+    host = args[0]
+    activate_session(session)
+    id = session.getHost(host)
+    if id:
+        print "%s is already in the database, skipping" % host
+    else:
+        id = session.addHost(host, args[1:])
+        if id:
+            print "%s added: id %d" % (host, id)
+
+def handle_add_host_to_channel(options, session, args):
+    "[admin] Add a host to a channel"
+    usage = _("usage: %prog add-host-to-channel [options] hostname channel")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a hostname and a channel"))
+        assert False
+    host = args[0]
+    activate_session(session)
+    id = session.getHost(host)
+    if not id:
+        print "%s is not a host" % host
+        return 1
+    session.addHostToChannel(host, args[1])
+
+def handle_remove_host_from_channel(options, session, args):
+    "[admin] Remove a host from a channel"
+    usage = _("usage: %prog remove-host-from-channel [options] hostname channel")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a hostname and a channel"))
+        assert False
+    host = args[0]
+    activate_session(session)
+    id = session.getHost(host)
+    if not id:
+        print "%s is not a host" % host
+        return 1
+    session.removeHostFromChannel(host, args[1])
+
+def handle_add_pkg(options, session, args):
+    "[admin] Add a package to the listing for tag"
+    usage = _("usage: %prog add-pkg [options] tag package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action='store_true', help=_("Override blocks if necessary"))
+    parser.add_option("--owner", help=_("Specify owner"))
+    parser.add_option("--extra-arches", help=_("Specify extra arches"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a tag and at least one package"))
+        assert False
+    activate_session(session)
+    tag = args[0]
+    opts = {}
+    opts['force'] = options.force
+    opts['block'] = False
+    if options.extra_arches:
+        opts['extra_arches'] = ' '.join(options.extra_arches.replace(',',' ').split())
+    for package in args[1:]:
+        #really should implement multicall...
+        session.packageListAdd(tag,package,options.owner,**opts)
+
+def handle_block_pkg(options, session, args):
+    "[admin] Block a package in the listing for tag"
+    usage = _("usage: %prog block-pkg [options] tag package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a tag and at least one package"))
+        assert False
+    activate_session(session)
+    tag = args[0]
+    for package in args[1:]:
+        #really should implement multicall...
+        session.packageListBlock(tag,package)
+
+def _unique_path(prefix):
+    """Create a unique path fragment by appending a path component
+    to prefix.  The path component will consist of a string of letter and numbers
+    that is unlikely to be a duplicate, but is not guaranteed to be unique."""
+    # Use time() in the dirname to provide a little more information when
+    # browsing the filesystem.
+    # For some reason repr(time.time()) includes 4 or 5
+    # more digits of precision than str(time.time())
+    return '%s/%r.%s' % (prefix, time.time(),
+                      ''.join([random.choice(string.ascii_letters) for i in range(8)]))
+
+def _format_size(size):
+    if (size / 1073741824 >= 1):
+        return "%0.2f Gb" % (size / 1073741824.0)
+    if (size / 1048576 >= 1):
+        return "%0.2f Mb" % (size / 1048576.0)
+    if (size / 1024 >=1):
+        return "%0.2f Kb" % (size / 1024.0)
+    return "%0.2f B" % (size)
+
+def _format_secs(t):
+    h = t / 3600
+    t = t % 3600
+    m = t / 60
+    s = t % 60
+    return "%02d:%02d:%02d" % (h, m, s)
+
+def _progress_callback(uploaded, total, piece, time, total_time):
+    percent_done = float(uploaded)/float(total)
+    percent_done_str = "%02d%%" % (percent_done * 100)
+    data_done = _format_size(uploaded)
+    elapsed = _format_secs(total_time)
+
+    speed = "- B/sec"
+    if (time):
+        if (uploaded != total):
+            speed = _format_size(float(piece)/float(time)) + "/sec"
+        else:
+            speed = _format_size(float(total)/float(total_time)) + "/sec"
+
+    # write formated string and flush
+    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('='*(int(percent_done*36)), percent_done_str, elapsed, data_done, speed))
+    sys.stdout.flush()
+
+def _running_in_bg():
+    if (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0)):
+        return True
+    return False
+
+def handle_build(options, session, args):
+    "Build a package from source"
+    usage = _("usage: %prog build [options] target URL")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform a scratch build"))
+    parser.add_option("--nowait", action="store_true",
+                      help=_("Don't wait on build"))
+    parser.add_option("--arch-override", help=_("Override build arches"))
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress of the upload"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Exactly two arguments (a build target and a CVS URL or srpm file) are required"))
+        assert False
+    if options.arch_override and not options.scratch:
+            parser.error(_("--arch_override is only allowed for --scratch builds"))
+    activate_session(session)
+    target = args[0]
+    build_target = session.getBuildTarget(target)
+    if not build_target:
+        parser.error(_("Unknown build target: %s" % target))
+    dest_tag = session.getTag(build_target['dest_tag'])
+    if not dest_tag:
+        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+    if dest_tag['locked'] and not options.scratch:
+        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    source = args[1]
+    opts = {}
+    if options.arch_override:
+        opts['arch_override'] = ' '.join(options.arch_override.replace(',',' ').split())
+    for key in ('skip_tag','scratch'):
+        opts[key] = getattr(options,key)
+    priority = None
+    if options.background:
+        #relative to koji.PRIO_DEFAULT
+        priority = 5
+    if not source.startswith('cvs://'):
+        #treat source as an srpm and upload it
+        print "Uploading srpm: %s" % source
+        serverdir = _unique_path('cli-build')
+        if _running_in_bg() or options.noprogress:
+            callback = None
+        else:
+            callback = _progress_callback
+        session.uploadWrapper(source, serverdir, callback=callback)
+        print
+        source = "%s/%s" % (serverdir, os.path.basename(source))
+    task_id = session.build(source, target, opts, priority=priority)
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.web_url, task_id)
+    if _running_in_bg() or options.nowait:
+        return
+    else:
+        return watch_tasks(session,[task_id])
+
+def handle_chain_build(options, session, args):
+    # XXX - replace handle_build with this, once chain-building has gotten testing
+    "Build one or more packages from source"
+    usage = _("usage: %prog chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform a scratch build"))
+    parser.add_option("--nowait", action="store_true",
+                      help=_("Don't wait on build"))
+    parser.add_option("--arch-override", help=_("Override build arches"))
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress of the upload"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("At least two arguments (a build target and a CVS URL or srpm file) are required"))
+        assert False
+    if options.arch_override and not options.scratch:
+            parser.error(_("--arch_override is only allowed for --scratch builds"))
+    activate_session(session)
+    target = args[0]
+    build_target = session.getBuildTarget(target)
+    if not build_target:
+        parser.error(_("Unknown build target: %s" % target))
+    dest_tag = session.getTag(build_target['dest_tag'])
+    if not dest_tag:
+        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+    if dest_tag['locked']:
+        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+
+    sources = args[1:]
+    if options.scratch and ':' in sources:
+        parser.error(_("chain-builds do not support --scratch"))
+    srpms = {}
+    src_list = []
+    build_level = []
+    #src_lists is a list of lists of sources to build.
+    #  each list is block of builds ("build level") which must all be completed
+    #  before the next block begins. Blocks are separated on the command line with ':'
+    for src in sources:
+        if src == ':':
+            if build_level:
+                src_list.append(build_level)
+                build_level = []
+        elif not src.startswith('cvs://'):
+            serverpath = "%s/%s" % (_unique_path('cli-build'), os.path.basename(src))
+            srpms[src] = serverpath
+            build_level.append(serverpath)
+        else:
+            build_level.append(src)
+    if build_level:
+        src_list.append(build_level)
+
+    opts = {}
+    if options.arch_override:
+        opts['arch_override'] = ' '.join(options.arch_override.replace(',',' ').split())
+    for key in ('skip_tag','scratch'):
+        opts[key] = getattr(options,key)
+    priority = None
+    if options.background:
+        #relative to koji.PRIO_DEFAULT
+        priority = 5
+    
+    if srpms:
+        print "Uploading SRPMs:"
+        if _running_in_bg() or options.noprogress:
+            callback = None
+        else:
+            callback = _progress_callback
+        for source, dest in srpms.items():
+            print os.path.basename(source)
+            #uploadWrapper wants the destination dir
+            dest = os.path.dirname(dest)
+            session.uploadWrapper(source, dest, callback=callback)
+            print
+
+    task_ids = []
+    if len(src_list) == 1:
+        # single or multi-package build
+        for src in src_list[0]:
+            task_ids.append(session.build(src, target, opts, priority=priority))
+    else:
+        # chain build
+        task_ids = [session.chainBuild(src_list, target, opts, priority=priority)]
+
+    print "Created tasks: %s" % ' '.join([str(d) for d in task_ids])
+    print "Task info:"
+    for task_id in task_ids:
+        print "  %s/taskinfo?taskID=%s" % (options.web_url, task_id)
+    if _running_in_bg() or options.nowait:
+        return
+    else:
+        watch_tasks(session,task_ids)
+
+def handle_resubmit(options, session, args):
+    """Retry a canceled or failed task, using the same parameter as the original task."""
+    usage = _("usage: %prog resubmit [options] taskID")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
+    parser.add_option("--nowatch", action="store_true", dest="nowait",
+            help=_("An alias for --nowait"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a task ID"))
+        assert False
+    activate_session(session)
+    taskID = args[0]
+    newID = session.resubmitTask(int(taskID))
+    print "Resubmitted task %s as new task %s" % (taskID, newID)
+    if _running_in_bg() or options.nowait:
+        return
+    else:
+        watch_tasks(session,[newID])
+
+def handle_call(options, session, args):
+    "[admin] Execute an arbitrary XML-RPC call"
+    usage = _("usage: %prog call [options] name [arg...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify the name of the XML-RPC method"))
+        assert False
+    activate_session(session)
+    name = args[0]
+    non_kw = []
+    kw = {}
+    for arg in args[1:]:
+        if arg.isdigit():
+            non_kw.append(int(arg))
+        elif arg.find('=') != -1:
+            key, value = arg.split('=', 1)
+            kw[key] = value
+        else:
+            non_kw.append(arg)
+    pprint.pprint(getattr(session, name).__call__(*non_kw, **kw))
+
+def anon_handle_mock_config(options, session, args):
+    "Create a mock config"
+    usage = _("usage: %prog mock-config [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", help=_("Specify the arch"))
+    parser.add_option("--tag", help=_("Create a mock config for a tag"))
+    parser.add_option("--task", help=_("Duplicate the mock config of a previous task"))
+    parser.add_option("--buildroot", help=_("Duplicate the mock config for the specified buildroot id"))
+    parser.add_option("--mockdir", default="/var/lib/mock", metavar="DIR",
+                      help=_("Specify mockdir"))
+    parser.add_option("--topdir", metavar="DIR",
+                      help=_("Specify topdir"))
+    parser.add_option("--distribution", default="Koji Testing",
+                      help=_("Change the distribution macro"))
+    parser.add_option("-o", metavar="FILE", dest="ofile", help=_("Output to a file"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Please specify and name for your buildroot"))
+        assert False
+    activate_session(session)
+    name = args[0]
+    arch = None
+    opts = {}
+    for k in ('topdir', 'distribution', 'mockdir'):
+        if hasattr(options, k):
+            opts[k] = getattr(options, k)
+    if options.buildroot:
+        try:
+            br_id = int(options.buildroot)
+        except ValueError:
+            parser.error(_("Buildroot id must be an integer"))
+        brootinfo = session.getBuildroot(br_id)
+        opts['repoid'] = brootinfo['repo_id']
+        opts['tag_name'] = brootinfo['tag_name']
+        arch = brootinfo['arch']
+    elif options.task:
+        try:
+            task_id = int(options.task)
+        except ValueError:
+            parser.error(_("Task id must be an integer"))
+        broots = session.listBuildroots(taskID=task_id)
+        if not broots:
+            print _("No buildroots for task %s (or no such task)") % options.task
+            sys.exit(1)
+        if len(broots) > 1:
+            print _("Multiple buildroots found: %s" % [br['id'] for br in broots])
+        brootinfo = broots[0]
+        opts['repoid'] = brootinfo['repo_id']
+        opts['tag_name'] = brootinfo['tag_name']
+        arch = brootinfo['arch']
+    elif options.tag:
+        if not options.arch:
+            print _("Please specify an arch")
+            sys.exit(1)
+        tag = session.getTag(options.tag)
+        if not tag:
+            parser.error(_("Invalid tag: %s" % options.tag))
+        arch = options.arch
+        config = session.getBuildConfig(tag['id'])
+        if not config:
+            print _("Could not get config info for tag: %(name)s") % tag
+            sys.exit(1)
+        opts['tag_name'] = tag['name']
+        repo = session.getRepo(config['id'])
+        if not repo:
+            print _("Could not get a repo for tag: %(name)s") % tag
+            sys.exit(1)
+        opts['repoid'] = repo['id']
+    else:
+        parser.error(_("Please specify one of: --tag, --task, --buildroot"))
+        assert False
+    output = koji.genMockConfig(name, arch, **opts)
+    if options.ofile:
+        fo = file(options.ofile, 'w')
+        fo.write(output)
+        fo.close()
+    else:
+        print output
+
+def handle_disable_host(options, session, args):
+    "[admin] Mark a host as disabled"
+    usage = _("usage: %prog disable-host [options] hostname")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Exactly one argument (a hostname) is required"))
+        assert False
+    activate_session(session)
+    try:
+        session.disableHost(args[0])
+    except koji.GenericError, e:
+        print "Could not enable host", e
+
+def handle_enable_host(options, session, args):
+    "[admin] Mark a host as enabled"
+    usage = _("usage: %prog enable-host [options] hostname")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Exactly one argument (a hostname) is required"))
+        assert False
+    activate_session(session)
+    try:
+        session.enableHost(args[0])
+    except koji.GenericError, e:
+        print "Could not enable host", e
+
+def handle_import(options, session, args):
+    "[admin] Import local RPMs to the database"
+    usage = _("usage: %prog import [options] package [package...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink the rpm"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("At least one package must be specified"))
+        assert False
+    activate_session(session)
+    for path in args:
+        data = koji.get_header_fields(path, ('name','version','release','arch','sigmd5','sourcepackage','sourcerpm'))
+        rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
+        if data['sourcepackage']:
+            rinfo['arch'] = 'src'
+        prev = session.getRPM(rinfo)
+        if prev:
+            if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
+                print _("RPM already imported: %s") % path
+            else:
+                print _("WARNING: md5sum mismatch for %s") % path
+            print _("Skipping import")
+            continue
+        serverdir = _unique_path('cli-import')
+        if options.link:
+            old_umask = os.umask(002)
+            dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, os.path.basename(path))
+            koji.ensuredir(os.path.dirname(dst))
+            os.chown(os.path.dirname(dst), 48, 48)  #XXX - hack
+            print "Linking rpm to: %s" % dst
+            os.link(path, dst)
+            os.umask(old_umask)
+        else:
+            print _("uploading %s...") % path,
+            sys.stdout.flush()
+            session.uploadWrapper(path, serverdir)
+            print _("done")
+            sys.stdout.flush()
+        print _("importing %s...") % path,
+        sys.stdout.flush()
+        try:
+            session.importRPM(serverdir, os.path.basename(path))
+        except koji.GenericError, e:
+            print _("\nError importing: %s" % str(e).splitlines()[-1])
+            sys.stdout.flush()
+        else:
+            print _("done")
+        sys.stdout.flush()
+
+def handle_import_comps(options, session, args):
+    "Import group/package information from a comps file"
+    usage = _("usage: %prog import-comps [options] <file> <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action="store_true", help=_("force import"))
+    (local_options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    comps = Comps(args[0])
+    tag = args[1]
+    force = local_options.force
+    #add all the groups first (so that group reqs do not break)
+    for name,group in comps.groups.items():
+        print "Group: %s (%s)" % (group.id,name)
+        session.groupListAdd(tag,group.id,force=force,display_name=name,
+                        is_default=bool(group.default),
+                        uservisible=bool(group.user_visible),
+                        description=group.description,
+                        langonly=group.langonly,
+                        biarchonly=bool(group.biarchonly))
+        #for k in ('id','biarchonly','langonly','user_visible','default','description'):
+        #    print "  %s: %s" %(k,getattr(group,k))
+    for name,group in comps.groups.items():
+        print "Group: %s (%s)" % (group.id,name)
+        for pkg in group.pkgs.values():
+            pkg = pkg.copy()
+            pkg_name = pkg['package']
+            if group.pkgConditionals.has_key(pkg_name):
+                pkg['requires'] = group.pkgConditionals[pkg_name]
+            pkg['basearchonly'] = bool(pkg['baseonly'])
+            del pkg['package']
+            del pkg['baseonly']
+            print "  Package: %s: %r" % (pkg_name, pkg)
+            session.groupPackageListAdd(tag,group.id,pkg_name,force=force, **pkg)
+        for type,req in group.groups.values():
+            print "  Req: %s (%s)" % (req,type)
+            session.groupReqListAdd(tag,group.id,req,force=force,type=type)
+        for type,req in group.metapkgs.values():
+            print "  Metapkg: %s (%s)" %(req,type)
+            session.groupReqListAdd(tag,group.id,req,force=force,type=type,is_metapkg=True)
+
+def handle_import_sig(options, session, args):
+    "[admin] Import signatures into the database"
+    usage = _("usage: %prog import-sig [options] package [package...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--with-unsigned", action="store_true",
+                      help=_("Also import unsigned sig headers"))
+    parser.add_option("--test", action="store_true",
+                      help=_("Test mode -- don't actually import"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("At least one package must be specified"))
+        assert False
+    for path in args:
+        if not os.path.exists(path):
+            parser.error(_("No such file: %s") % path)
+    activate_session(session)
+    for path in args:
+        data = koji.get_header_fields(path, ('name','version','release','arch','siggpg','sourcepackage'))
+        if data['sourcepackage']:
+            data['arch'] = 'src'
+        sigkey = data['siggpg']
+        if not sigkey:
+            sigkey = ""
+            if not options.with_unsigned:
+                print _("Skipping unsigned package: %s" % path)
+                continue
+        else:
+            sigkey = koji.hex_string(sigkey[13:17])
+        del data['siggpg']
+        rinfo = session.getRPM(data)
+        if not rinfo:
+            print "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data
+            continue
+        sighdr = koji.rip_rpm_sighdr(path)
+        previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
+        assert len(previous) <= 1
+        if previous:
+            sighash = md5.new(sighdr).hexdigest()
+            if previous[0]['sighash'] == sighash:
+                print _("Signature already imported: %s") % path
+                continue
+            else:
+                print _("Warning: signature mismatch: %s") % path
+                continue
+        print _("Importing signature [key %s] from %s...") % (sigkey, path)
+        if not options.test:
+            session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
+
+def handle_write_signed_rpm(options, session, args):
+    "[admin] Write signed RPMs to disk"
+    usage = _("usage: %prog write-signed-rpm [options] <signature-key> n-v-r [n-v-r...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--all", action="store_true", help=_("Write out all RPMs signed with this key"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("A signature key must be specified"))
+        assert False
+    if len(args) < 2 and not options.all:
+        parser.error(_("At least one RPM must be specified"))
+        assert False
+    key = args.pop(0)
+    activate_session(session)
+    if options.all:
+        rpms = session.queryRPMSigs(sigkey=key)
+        count = 1
+        for rpm in rpms:
+            print "%d/%d" % (count, len(rpms))
+            count += 1
+            session.writeSignedRPM(rpm['rpm_id'], key)
+    else:
+        for nvr in args:
+            build = session.getBuild(nvr)
+            rpms = session.listRPMs(buildID=build['id'])
+            for rpm in rpms:
+                session.writeSignedRPM(rpm['id'], key)
+
+def handle_list_permissions(options, session, args):
+    "[admin] List user permissions"
+    usage = _("usage: %prog list-permissions [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--user", help=_("Only list permissions for this user"))
+    (options, args) = parser.parse_args(args)
+    if len(args) > 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    if not options.user:
+        parser.error(_("A user must be specified"))
+        assert False
+    activate_session(session)
+    user = session.getUser(options.user)
+    if not user:
+        raise koji.GenericError("%s can not be found" % options.user)
+    perms = session.getUserPerms(user['id'])
+    print perms
+
+def handle_list_signed(options, session, args):
+    "[admin] List signed copies of rpms"
+    usage = _("usage: %prog list-signed [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--debug", action="store_true")
+    parser.add_option("--key", help=_("Only list RPMs signed with this key"))
+    parser.add_option("--build", help=_("Only list RPMs from this build"))
+    parser.add_option("--rpm", help=_("Only list signed copies for this RPM"))
+    parser.add_option("--tag", help=_("Only list RPMs within this tag"))
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+    qopts = {}
+    build_idx = {}
+    rpm_idx = {}
+    if options.key:
+        qopts['sigkey'] = options.key
+    if options.rpm:
+        rinfo = session.getRPM(options.rpm)
+        rpm_idx[rinfo['id']] = rinfo
+        if rinfo is None:
+            parser.error(_("No such RPM: %s") % options.rpm)
+        qopts['rpm_id'] = rinfo['id']
+    if options.build:
+        binfo = session.getBuild(options.build)
+        build_idx[binfo['id']] = binfo
+        if binfo is None:
+            parser.error(_("No such build: %s") % options.rpm)
+        sigs = []
+        rpms = session.listRPMs(buildID=binfo['id'])
+        for rinfo in rpms:
+            rpm_idx[rinfo['id']] = rinfo
+            sigs += session.queryRPMSigs(rpm_id=rinfo['id'], **qopts)
+    else:
+        sigs = session.queryRPMSigs(**qopts)
+    if options.tag:
+        print "getting tag listing"
+        rpms, builds = session.listTaggedRPMS(options.tag, inherit=False, latest=False)
+        print "got tag listing"
+        tagged = {}
+        for binfo in builds:
+            build_idx.setdefault(binfo['id'], binfo)
+        for rinfo in rpms:
+            rpm_idx.setdefault(rinfo['id'], rinfo)
+            tagged[rinfo['id']] = 1
+    #Now figure out which sig entries actually have live copies
+    for sig in sigs:
+        rpm_id = sig['rpm_id']
+        sigkey = sig['sigkey']
+        if options.tag:
+            if tagged.get(rpm_id) is None:
+                continue
+        rinfo = rpm_idx.get(rpm_id)
+        if not rinfo:
+            rinfo = session.getRPM(rpm_id)
+            rpm_idx[rinfo['id']] = rinfo
+        binfo = build_idx.get(rinfo['build_id'])
+        if not binfo:
+            binfo = session.getBuild(rinfo['build_id'])
+            build_idx[binfo['id']] = binfo
+        binfo['name'] = binfo['package_name']
+        builddir = koji.pathinfo.build(binfo)
+        signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rinfo, sigkey))
+        if not os.path.exists(signedpath):
+            if options.debug:
+                print "No copy: %s" % signedpath
+            continue
+        print signedpath
+
+def handle_import_in_place(options, session, args):
+    "[admin] Import RPMs that are already in place"
+    usage = _("usage: %prog import-in-place [options] package [package...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("At least one package must be specified"))
+        assert False
+    activate_session(session)
+    for nvr in args:
+        data = koji.parse_NVR(nvr)
+        print _("importing %s...") % nvr,
+        try:
+            session.importBuildInPlace(data)
+        except koji.GenericError, e:
+            print _("\nError importing: %s" % str(e).splitlines()[-1])
+            sys.stdout.flush()
+        else:
+            print _("done")
+        sys.stdout.flush()
+
+def handle_grant_permission(options, session, args):
+    "[admin] Grant a permission to a user"
+    usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--list", action="store_true", help=_("List possible permissions"))
+    (options, args) = parser.parse_args(args)
+    if not options.list and len(args) < 2:
+        parser.error(_("Please specify a permission and at least one user"))
+        assert False
+    activate_session(session)
+    perms = dict([(p['name'], p['id']) for p in session.getAllPerms()])
+    if options.list:
+        for p in perms.keys():
+            print p
+        return
+    perm_id = perms.get(args[0], None)
+    if perm_id is None:
+        print "No such permission: %s" % args[0]
+        sys.exit(1)
+    names = args[1:]
+    users = []
+    for n in names:
+        user = session.getUser(n)
+        if user is None:
+            print "No such user: %s" % n
+            sys.exit(1)
+        users.append(user)
+    for user in users:
+        session.grantPermission(user['id'], perm_id)
+
+def anon_handle_latest_pkg(options, session, args):
+    "Print the latest packages for a tag"
+    usage = _("usage: %prog latest-pkg [options] tag package [package...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
+    parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
+    (options, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("A tag name must be specified"))
+        assert False
+    activate_session(session)
+    if options.all:
+        if len(args) > 1:
+            parser.error(_("A package name may not be combined with --all"))
+            assert False
+        # Set None as the package argument
+        args.append(None)
+    else:
+        if len(args) < 2:
+            parser.error(_("A tag name and package name must be specified"))
+            assert False
+    pathinfo = koji.PathInfo()
+
+    for pkg in args[1:]:
+        if options.arch:
+            rpms, builds = session.getLatestRPMS(args[0], package=pkg, arch=options.arch)
+            builds_hash = dict([(x['build_id'], x) for x in builds])
+            data = rpms
+            if options.paths:
+                for x in data:
+                    z = x.copy()
+                    x['name'] = builds_hash[x['build_id']]['package_name']
+                    x['path'] = os.path.join(pathinfo.build(x), pathinfo.rpm(z))
+                fmt = "%(path)s"
+            else:
+                fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
+        else:
+            data = session.getLatestBuilds(args[0], package=pkg)
+            if options.paths:
+                for x in data:
+                    x['name'] = x['package_name']
+                    x['path'] = pathinfo.build(x)
+                fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
+            else:
+                fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
+            if not options.quiet:
+                print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
+                print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+                options.quiet = True
+        
+        output = [ fmt % x for x in data]
+        output.sort()
+        for line in output:
+            print line
+
+def anon_handle_list_api(options, session, args):
+    "Print the list of XML-RPC APIs"
+    usage = _("usage: %prog list-api [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+    tmplist = [(x['name'], x) for x in session._listapi()]
+    tmplist.sort()
+    funcs = [x[1] for x in tmplist]
+    for x in funcs:
+        if x['args']:
+            expanded = []
+            for arg in x['args']:
+                if type(arg) is str:
+                    expanded.append(arg)
+                else:
+                    expanded.append('%s=%s' % (arg[0], arg[1]))
+            args = ", ".join(expanded)
+        else:
+            args = ""
+        print '%s(%s)' % (x['name'], args)
+        if x['doc']:
+            print "  description: %s" % x['doc']
+
+def anon_handle_list_tagged(options, session, args):
+    "List the builds or rpms in a tag"
+    usage = _("usage: %prog list-tagged [options] tag [package]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", help=_("List rpms for this arch"))
+    parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
+    parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
+    parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
+    parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
+    (options, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("A tag name must be specified"))
+        assert False
+    elif len(args) > 2:
+        parser.error(_("Only one package name may be specified"))
+        assert False
+    activate_session(session)
+    pathinfo = koji.PathInfo()
+    package = None
+    if len(args) > 1:
+        package = args[1]
+    tag = args[0]
+    opts = {}
+    for key in ('latest','inherit'):
+        opts[key] = getattr(options, key)
+    if package:
+        opts['package'] = package
+    if options.arch:
+        options.rpms = True
+        opts['arch'] = options.arch
+    if options.sigs:
+        opts['rpmsigs'] = True
+        options.rpms = True
+
+    if options.rpms:
+        rpms, builds = session.listTaggedRPMS(tag, **opts)
+        data = rpms
+        if options.paths:
+            build_idx = dict([(b['id'],b) for b in builds])
+            for rinfo in data:
+                build = build_idx[rinfo['build_id']]
+                build['name'] = build['package_name']
+                builddir = pathinfo.build(build)
+                if options.sigs:
+                    sigkey = rinfo['sigkey']
+                    signedpath = os.path.join(builddir, pathinfo.signed(rinfo, sigkey))
+                    if os.path.exists(signedpath):
+                        rinfo['path'] = signedpath
+                else:
+                    rinfo['path'] = os.path.join(builddir, pathinfo.rpm(rinfo))
+            fmt = "%(path)s"
+            data = [x for x in data if x.has_key('path')]
+        else:
+            fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
+            if options.sigs:
+                fmt = "%(sigkey)s " + fmt
+    else:
+        data = session.listTagged(tag, **opts)
+        if options.paths:
+            for x in data:
+                x['name'] = x['package_name']
+                x['path'] = pathinfo.build(x)
+            fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
+        else:
+            fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
+        if not options.quiet:
+            print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
+            print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+
+    output = [ fmt % x for x in data]
+    output.sort()
+    for line in output:
+        print line
+
+def anon_handle_list_buildroot(options, session, args):
+    "List the rpms used in or built in a buildroot"
+    usage = _("usage: %prog list-buildroot [options] buildroot-id")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
+    parser.add_option("--built", action="store_true", help=_("Show the built rpms"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    package = None
+    buildrootID = int(args[0])
+    opts = {}
+    if options.built:
+        opts['buildrootID'] = buildrootID
+    else:
+        opts['componentBuildrootID'] = buildrootID
+    data = session.listRPMs(**opts)
+
+    fmt = "%(nvr)s"
+    output = [ fmt % x for x in data]
+    output.sort()
+    for line in output:
+        print line
+
+def anon_handle_list_untagged(options, session, args):
+    "List untagged builds"
+    usage = _("usage: %prog list-tagged [options] [package]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
+    parser.add_option("--show-references", action="store_true", help=_("Show build references"))
+    (options, args) = parser.parse_args(args)
+    if len(args) > 1:
+        parser.error(_("Only one package name may be specified"))
+        assert False
+    activate_session(session)
+    package = None
+    if len(args) > 0:
+        package = args[0]
+    opts = {}
+    if package:
+        opts['name'] = package
+    pathinfo = koji.PathInfo()
+
+    data = session.untaggedBuilds(**opts)
+    if options.show_references:
+        print "(Showing build references)"
+        refs = {}
+        refs2 = {} #reverse map
+        for x in session.buildMap():
+            refs.setdefault(x['used'], {}).setdefault(x['built'], 1)
+            refs2.setdefault(x['built'], {}).setdefault(x['used'], 1)
+        has_ref = {}
+        #XXX - need to ignore refs to unreferenced builds
+        for x in data:
+            builds = refs.get(x['id'])
+            if builds:
+                x['refs'] = "%s" % builds
+            else:
+                x['refs'] = ''
+        #data = [x for x in data if not refs.has_key(x['id'])]
+    if options.paths:
+        for x in data:
+            x['path'] = pathinfo.build(x)
+        fmt = "%(path)s"
+    else:
+        fmt = "%(name)s-%(version)s-%(release)s"
+    if options.show_references:
+        fmt = fmt + "  %(refs)s"
+
+    output = [ fmt % x for x in data]
+    output.sort()
+    for line in output:
+        print line
+
+def print_group_list_req_group(group):
+    print "  @%(name)s  [%(tag_name)s]" % group
+
+def print_group_list_req_package(pkg):
+    print "  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg
+
+def anon_handle_list_groups(options, session, args):
+    "Print the group listings"
+    usage = _("usage: %prog list-groups [options] <tag> [group]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1 or len(args) > 2:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    opts = {}
+    activate_session(session)
+    tags = dict([(x['id'], x['name']) for x in session.listTags()])
+    tmp_list = [(x['name'], x) for x in session.getTagGroups(args[0], **opts)]
+    tmp_list.sort()
+    groups = [x[1] for x in tmp_list]
+    for group in groups:
+        if len(args) > 1 and group['name'] != args[1]:
+            continue
+        print "%s  [%s]" % (group['name'], tags.get(group['tag_id'], group['tag_id']))
+        groups = [(x['name'], x) for x in group['grouplist']]
+        groups.sort()
+        for x in [x[1] for x in groups]:
+            x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
+            print_group_list_req_group(x)
+        pkgs = [(x['package'], x) for x in group['packagelist']]
+        pkgs.sort()
+        for x in [x[1] for x in pkgs]:
+            x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
+            print_group_list_req_package(x)
+        #print "%(name)-28s %(enabled)-7s %(ready)-5s %(task_load)-4s %(capacity)-8s %(arches)s" % host
+
+def handle_add_group_pkg(options, session, args):
+    "[admin] Add a package to a group's package listing"
+    usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("This command takes three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    pkg = args[2]
+    activate_session(session)
+    session.groupPackageListAdd(tag, group, pkg)
+
+def handle_block_group_pkg(options, session, args):
+    "[admin] Block a package from a group's package listing"
+    usage = _("usage: %prog block-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 3:
+        parser.error(_("This command takes at least three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    activate_session(session)
+    for pkg in args[2:]:
+        session.groupPackageListBlock(tag, group, pkg)
+
+def handle_unblock_group_pkg(options, session, args):
+    "[admin] Unblock a package from a group's package listing"
+    usage = _("usage: %prog unblock-group-pkg [options] <tag> <group> <pkg>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("This command takes three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    pkg = args[2]
+    activate_session(session)
+    session.groupPackageListUnblock(tag, group, pkg)
+
+def handle_add_group_req(options, session, args):
+    "[admin] Add a group to a group's required list"
+    usage = _("usage: %prog add-group-req [options] <tag> <target group> <required group>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("This command takes three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    req = args[2]
+    activate_session(session)
+    session.groupReqListAdd(tag, group, req)
+
+def handle_block_group_req(options, session, args):
+    "[admin] Block a group's requirement listing"
+    usage = _("usage: %prog block-group-req [options] <tag> <group> <blocked req>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("This command takes three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    req = args[2]
+    activate_session(session)
+    session.groupReqListBlock(tag, group, req)
+
+def handle_unblock_group_req(options, session, args):
+    "[admin] Unblock a group's requirement listing"
+    usage = _("usage: %prog unblock-group-req [options] <tag> <group> <requirement>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("This command takes three arguments"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    req = args[2]
+    activate_session(session)
+    session.groupReqListUnblock(tag, group, req)
+
+def anon_handle_list_hosts(options, session, args):
+    "Print the host listing"
+    usage = _("usage: %prog list-hosts [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", action="append", default=[], help=_("Specify an architecture"))
+    parser.add_option("--channel", help=_("Specify a channel"))
+    parser.add_option("--ready", action="store_true", help=_("Limit to ready hosts"))
+    parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
+    parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
+    parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    (options, args) = parser.parse_args(args)
+    opts = {}
+    activate_session(session)
+    if options.arch:
+        opts['arches'] = options.arch
+    if options.channel:
+        channel = session.getChannel(options.channel)
+        if not channel:
+            parser.error(_('Unknown channel: %s' % options.channel))
+            assert False
+        opts['channelID'] = channel['id']
+    if options.ready is not None:
+        opts['ready'] = options.ready
+    if options.enabled is not None:
+        opts['enabled'] = options.enabled
+    tmp_list = [(x['name'], x) for x in session.listHosts(**opts)]
+    tmp_list.sort()
+    hosts = [x[1] for x in tmp_list]
+
+    def yesno(x):
+        if x: return 'Y'
+        else: return 'N'
+
+    # pull in the last update using multicall to speed it up a bit
+    session.multicall = True
+    for host in hosts:
+        session.getLastHostUpdate(host['id'])
+    updateList = session.multiCall()
+    
+    for host, [update] in zip(hosts, updateList):
+        if update is None:
+            host['update'] = '-'
+        else:
+            host['update'] = update.split('.')[0]
+        host['enabled'] = yesno(host['enabled'])
+        host['ready'] = yesno(host['ready'])
+        host['arches'] = ','.join(host['arches'].split())
+
+    if not options.quiet:
+        print "Hostname                     Enb Rdy Load/Cap Arches           Last Update"
+    for host in hosts:
+        print "%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host
+
+def anon_handle_list_pkgs(options, session, args):
+    "Print the package listing for tag or for owner"
+    usage = _("usage: %prog list-pkgs [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--owner", help=_("Specify owner"))
+    parser.add_option("--tag", help=_("Specify tag"))
+    parser.add_option("--package", help=_("Specify package"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
+    parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+    opts = {}
+    if options.owner:
+        user = session.getUser(options.owner)
+        if user is None:
+            parser.error(_("Invalid user"))
+            assert False
+        opts['userID'] = user['id']
+    if options.tag:
+        tag = session.getTag(options.tag)
+        if tag is None:
+            parser.error(_("Invalid tag"))
+            assert False
+        opts['tagID'] = tag['id']
+    if options.package:
+        opts['pkgID'] = options.package
+    opts['inherited'] = not options.noinherit
+    opts['with_dups'] = True
+    data = session.listPackages(**opts)
+    if not data:
+        print "(no matching packages)"
+        return 1
+    if not options.quiet:
+        if data[0][0].has_key('tag_id'):
+            print "%-23s %-23s %-16s %-16s" % ('Package','Tag','Extra Arches','Owner')
+            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*16)
+        else:
+            print "Package"
+            print '-'*23
+    for pkg in data:
+        if options.tag:
+            pkg = [pkg[0]]
+        for tagged_pkg in pkg:
+            if not options.show_blocked and tagged_pkg.get('blocked',False):
+                continue
+            if tagged_pkg.has_key('tag_id'):
+                if tagged_pkg['extra_arches'] is None:
+                    tagged_pkg['extra_arches'] = ""
+                fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-16s"
+                if tagged_pkg.get('blocked',False):
+                    fmt += " [BLOCKED]"
+            else:
+                fmt = "%(package_name)s"
+            print fmt % tagged_pkg
+
+def anon_handle_rpminfo(options, session, args):
+    "Print basic information about an RPM"
+    usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify an RPM"))
+        assert False
+    activate_session(session)
+    for rpm in args:
+        info = session.getRPM(rpm)
+        if info is None:
+            print "No such rpm: %s\n" % rpm
+            continue
+        if info['epoch'] is None:
+            info['epoch'] = ""
+        else:
+            info['epoch'] = str(info['epoch']) + ":"
+        buildinfo = session.getBuild(info['build_id'])
+        buildinfo['name'] = buildinfo['package_name']
+        buildinfo['arch'] = 'src'
+        if buildinfo['epoch'] is None:
+            buildinfo['epoch'] = ""
+        else:
+            buildinfo['epoch'] = str(buildinfo['epoch']) + ":"
+        print "RPM: %(epoch)s%(name)s-%(version)s-%(release)s.%(arch)s [%(id)d]" %info
+        print "RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info))
+        print "SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo
+        print "SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo))
+        print "Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime']))
+        print "Payload: %(payloadhash)s" %info
+        print "Size: %(size)s" %info
+        print "Build ID: %(build_id)s" %info
+
+def anon_handle_buildinfo(options, session, args):
+    "Print basic information about a build"
+    usage = _("usage: %prog buildinfo [options] <n-v-r> [<n-v-r> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a build"))
+        assert False
+    activate_session(session)
+    for build in args:
+        if build.isdigit():
+            build = int(build)
+        info = session.getBuild(build)
+        if info is None:
+            print "No such build: %s\n" % build
+            continue
+        if info['epoch'] is None:
+            info['epoch'] = ""
+        else:
+            info['epoch'] = str(info['epoch']) + ":"
+        info['name'] = info['package_name']
+        info['arch'] = 'src'
+        info['state'] = koji.BUILD_STATES[info['state']]
+        rpms = session.listRPMs(buildID=info['id'])
+        print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
+        print "State: %(state)s" % info
+        print "Built by: %(owner_name)s" % info
+        print "Task: %(task_id)s" % info
+        print "Finished: %s" % koji.formatTimeLong(info['completion_time'])
+        print "RPMs:"
+        for rpm in rpms:
+            print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+        print "Changelog:"
+        for entry in session.getChangelogEntries(info['id']):
+            print "* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])
+            print entry['text']
+
+def handle_add_target(options, session, args):
+    "[admin] Create a new build target"
+    usage = _("usage: %prog add-target name build-tag <dest-tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a target name, a build tag, and destination tag"))
+        assert False
+    elif len(args) > 3:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    name = args[0]
+    build_tag = args[1]
+    if len(args) > 2:
+        dest_tag = args[3]
+    else:
+        #most targets have the same name as their destination
+        dest_tag = name
+    activate_session(session)
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+    session.createBuildTarget(name, build_tag, dest_tag)
+
+def handle_edit_target(options, session, args):
+    "[admin] Set the name, build_tag, and/or dest_tag of an existing build target to new values"
+    usage = _("usage: %prog edit-target [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--rename", help=_("Specify new name for target"))
+    parser.add_option("--build-tag", help=_("Specify a different build tag"))
+    parser.add_option("--dest-tag", help=_("Specify a different destination tag"))
+
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Please specify a build target"))
+        assert False
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    targetInfo = session.getBuildTarget(args[0])
+    if targetInfo == None:
+        raise koji.GenericError("No build target with the name or id '%s'" % args[0])
+
+    targetInfo['orig_name'] = targetInfo['name']
+
+    if options.rename:
+        targetInfo['name'] = options.rename
+    if options.build_tag:
+        targetInfo['build_tag_name'] = options.build_tag
+    if options.dest_tag:
+        targetInfo['dest_tag_name'] = options.dest_tag
+
+    session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'], targetInfo['build_tag_name'], targetInfo['dest_tag_name'])
+
+def handle_remove_target(options, session, args):
+    "[admin] Remove a build target"
+    usage = _("usage: %prog remove-target [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Please specify a build target to remove"))
+        assert False
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    session.deleteBuildTarget(args[0])
+
+def anon_handle_list_targets(options, session, args):
+    "List the build targets"
+    usage = _("usage: %prog list-targets [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--name", help=_("Specify the build target name"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+
+    fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
+    if not options.quiet:
+        print "%-30s %-30s %-30s" % ('Name','Buildroot','Destination')
+        print "-" * 93
+    tmp_list = [(x['name'], x) for x in session.getBuildTargets(options.name)]
+    tmp_list.sort()
+    targets = [x[1] for x in tmp_list]
+    for target in targets:
+        print fmt % target
+    #pprint.pprint(session.getBuildTargets())
+
+def _printInheritance(tags, sibdepths=None, reverse=False):
+    if len(tags) == 0:
+        return
+    if sibdepths == None:
+        sibdepths = []
+    currtag = tags[0]
+    tags = tags[1:]
+    if reverse:
+        siblings = len([tag for tag in tags if tag['parent_id'] == currtag['parent_id']])
+    else:
+        siblings = len([tag for tag in tags if tag['child_id'] == currtag['child_id']])
+
+    outdepth = 0
+    for depth in sibdepths:
+        if depth < currtag['currdepth']:
+            outspacing = depth - outdepth
+            sys.stdout.write(' ' * (outspacing * 3 - 1))
+            sys.stdout.write(u'\u2502'.encode('UTF-8'))
+            outdepth = depth
+
+    sys.stdout.write(' ' * ((currtag['currdepth'] - outdepth) * 3 - 1))
+    if siblings:
+        sys.stdout.write(u'\u251c'.encode('UTF-8'))
+    else:
+        sys.stdout.write(u'\u2514'.encode('UTF-8'))
+    sys.stdout.write(u'\u2500'.encode('UTF-8'))
+    if reverse:
+        sys.stdout.write('%(name)s (%(tag_id)i)\n' % currtag)
+    else:
+        sys.stdout.write('%(name)s (%(parent_id)i)\n' % currtag)
+
+    if siblings:
+        if len(sibdepths) == 0 or sibdepths[-1] != currtag['currdepth']:
+            sibdepths.append(currtag['currdepth'])
+    else:
+        if len(sibdepths) > 0 and sibdepths[-1] == currtag['currdepth']:
+            sibdepths.pop()
+
+    _printInheritance(tags, sibdepths, reverse)
+
+def anon_handle_list_tag_inheritance(options, session, args):
+    "Print the inheritance information for a tag"
+    usage = _("usage: %prog list-tag-inheritance [options] <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--reverse", action="store_true", help=_("Process tag's children instead of its parents"))
+    parser.add_option("--stop", help=_("Stop processing inheritance at this tag"))
+    parser.add_option("--jump", help=_("Jump from one tag to another when processing inheritance"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("This command takes exctly one argument: a tag name or ID"))
+        assert False
+    activate_session(session)
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Unknown tag: %s" % args[0]))
+
+    opts = {}
+    opts['reverse'] = options.reverse or False
+    opts['stop'] = {}
+    opts['jump'] = {}
+
+    if options.jump:
+        match = re.match(r'^(.*)/(.*)$', options.jump)
+        if match:
+            tag1 = session.getTagID(match.group(1))
+            if not tag1:
+                parser.error(_("Unknown tag: %s" % match.group(1)))
+            tag2 = session.getTagID(match.group(2))
+            if not tag2:
+                parser.error(_("Unknown tag: %s" % match.group(2)))
+            opts['jump'][str(tag1)] = tag2
+
+    if options.stop:
+        tag1 = session.getTagID(options.stop)
+        if not tag1:
+            parser.error(_("Unknown tag: %s" % options.stop))
+        opts['stop'] = {str(tag1): 1}
+
+    sys.stdout.write('%s (%i)\n' % (tag['name'], tag['id']))
+    _printInheritance(session.getFullInheritance(tag['id'], None, opts['reverse'], opts['stop'], opts['jump']), None, opts['reverse'])
+
+def anon_handle_list_tags(options, session, args):
+    "Print the list of tags"
+    usage = _("usage: %prog list-tags [options] [pattern]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--show-id", action="store_true", help=_("Show tag ids"))
+    parser.add_option("--verbose", action="store_true", help=_("Show more information"))
+    parser.add_option("--unlocked", action="store_true", help=_("Only show unlocked tags"))
+    parser.add_option("--build", help=_("Show tags associated with a build"))
+    parser.add_option("--package", help=_("Show tags associated with a package"))
+    (options, args) = parser.parse_args(args)
+    #if len(args) != 0:
+    #    parser.error(_("This command takes no arguments"))
+    #    assert False
+    activate_session(session)
+
+    pkginfo = {}
+    buildinfo = {}
+
+    if options.package:
+        pkginfo = session.getPackage(options.package)
+        if not pkginfo:
+            parser.error(_("Invalid package %s" % options.package))
+            assert False
+
+    if options.build:
+        buildinfo = session.getBuild(options.build)
+        if not buildinfo:
+            parser.error(_("Invalid build %s" % options.build))
+            assert False
+
+    tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
+    tags.sort(lambda a,b: cmp(a['name'],b['name']))
+    #if options.verbose:
+    #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
+    if options.show_id:
+        fmt = "%(name)s [%(id)i]"
+    else:
+        fmt = "%(name)s"
+    for tag in tags:
+        if args:
+            for pattern in args:
+                if fnmatch.fnmatch(tag['name'], pattern):
+                    break
+            else:
+                continue
+        if options.unlocked:
+            if tag['locked'] or tag['perm']:
+                continue
+        if not options.verbose:
+            print fmt % tag
+        else:
+            print fmt % tag,
+            if tag['locked']:
+                print ' [LOCKED]',
+            if tag['perm']:
+                print ' [%(perm)s perm required]' % tag,
+            print ''
+
+def anon_handle_list_tag_history(options, session, args):
+    "Print a history of tag operations"
+    usage = _("usage: %prog list-tag-history [options] [pattern]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--debug", action="store_true")
+    parser.add_option("--build", help=_("Only show data for a specific build"))
+    parser.add_option("--package", help=_("Only show data for a specific package"))
+    parser.add_option("--tag", help=_("Only show data for a specific tag"))
+    parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    kwargs = {}
+    limited = False
+    if options.package:
+        kwargs['package'] = options.package
+        limited = True
+    if options.tag:
+        kwargs['tag'] = options.tag
+        limited = True
+    if options.build:
+        kwargs['build'] = options.build
+        limited = True
+    if not limited and not options.all:
+        parser.error(_("Please specify an option to limit the query"))
+
+    activate_session(session)
+
+    hist = session.tagHistory(**kwargs)
+    timeline = []
+    for x in hist:
+        event_id = x['revoke_event']
+        if event_id is not None:
+            timeline.append((event_id, x))
+        event_id = x['create_event']
+        timeline.append((event_id, x))
+    timeline.sort()
+    def _histline(event_id, x):
+        if event_id == x['revoke_event']:
+            ts = x['revoke_ts']
+            fmt = "Untagged %(name)s-%(version)s-%(release)s from %(tag_name)s"
+        elif event_id == x['create_event']:
+            ts = x['create_ts']
+            fmt = "Tagged %(name)s-%(version)s-%(release)s with %(tag_name)s"
+            if x['active']:
+                fmt += " [still active]"
+        else:
+            raise koji.GenericError, "unknown event: (%r, %r)" % (event_id, x)
+        time_str = time.asctime(time.localtime(ts))
+        return "%s: %s" % (time_str, fmt % x)
+    for event_id, x in timeline:
+        if options.debug:
+            print "%r" % x
+        print _histline(event_id, x)
+
+def _parseTaskParams(session, method, task_id):
+    """Parse the return of getTaskRequest()"""
+    params = session.getTaskRequest(task_id)
+
+    lines = []
+
+    if method == 'buildFromCVS':
+        lines.append("CVS URL: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+    elif method == 'buildSRPMFromCVS':
+        lines.append("CVS URL: %s" % params[0])
+    elif method == 'multiArchBuild':
+        lines.append("SRPM: %s/work/%s" % (options.topdir, params[0]))
+        lines.append("Build Target: %s" % params[1])
+        lines.append("Options:")
+        for key in params[2].keys():
+            if not key == '__starstar':
+                lines.append("  %s: %s" % (key, params[2][key]))
+    elif method == 'buildArch':
+        lines.append("SRPM: %s/work/%s" % (options.topdir, params[0]))
+        lines.append("Build Tag: %s" % session.getTag(params[1])['name'])
+        lines.append("Build Arch: %s" % params[2])
+        lines.append("SRPM Kept: %r" % params[3])
+        if len(params) > 4:
+            for key in params[4].keys():
+                if not key == '__starstar':
+                    lines.append("%s: %s" % (key, params[4][key]))
+    elif method == 'tagBuild':
+        build = session.getBuild(params[1])
+        lines.append("Destination Tag: %s" % session.getTag(params[0])['name'])
+        lines.append("Build: %s" % koji.buildLabel(build))
+    elif method == 'buildNotification':
+        build = params[1]
+        buildTarget = params[2]
+        lines.append("Recipients: %s" % (", ".join(params[0])))
+        lines.append("Build: %s" % koji.buildLabel(build))
+        lines.append("Build Target: %s" % buildTarget['name'])
+        lines.append("Web URL: %s" % params[3])
+    elif method == 'build':
+        lines.append("Source: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+        for key in params[2].keys():
+            if not key == '__starstar':
+                lines.append("%s: %s" % (key, params[2][key]))
+    elif method == 'runroot':
+        lines.append("Tag: %s" % params[0])
+        lines.append("Arch: %s" % params[1])
+        lines.append("Command: %s" % (' '.join(params[2])))
+        if len(params) > 3:
+            for key in params[3].keys():
+                if not key == '__starstar':
+                    lines.append("%s: %s" % (key, params[3][key]))
+    elif method == 'newRepo':
+        tag = session.getTag(params[0])
+        lines.append("Tag: %s" % tag['name'])
+    elif method == 'prepRepo':
+        lines.append("Tag: %s" % params[0]['name'])
+    elif method == 'createrepo':
+        lines.append("Repo ID: %i" % params[0])
+        lines.append("Arch: %s" % params[1])
+        oldrepo = params[2]
+        if oldrepo:
+            lines.append("Old Repo ID: %i" % oldrepo['id'])
+            lines.append("Old Repo Creation: %s" % koji.formatTimeLong(oldrepo['creation_time']))
+    elif method == 'tagNotification':
+        destTag = session.getTag(params[2])
+        srcTag = None
+        if params[3]:
+            srcTag = session.getTag(params[3])
+        build = session.getBuild(params[4])
+        user = session.getUser(params[5])
+
+        lines.append("Recipients: %s" % ", ".join(params[0]))
+        lines.append("Successful?: %s" % (params[1] and 'yes' or 'no'))
+        lines.append("Tagged Into: %s" % destTag['name'])
+        if srcTag:
+            lines.append("Moved From: %s" % srcTag['name'])
+        lines.append("Build: %s" % koji.buildLabel(build))
+        lines.append("Tagged By: %s" % user['name'])
+        lines.append("Ignore Success?: %s" % (params[6] and 'yes' or 'no'))
+        if params[7]:
+            lines.append("Failure Message: %s" % params[7])
+    elif method == 'dependantTask':
+        lines.append("Dependant Tasks: %s" % ", ".join([str(depID) for depID in params[0]]))
+        lines.append("Subtasks:")
+        for subtask in params[1]:
+            lines.append("  Method: %s" % subtask[0])
+            lines.append("  Parameters: %s" % ", ".join([str(subparam) for subparam in subtask[1]]))
+            if len(subtask) > 2 and subtask[2]:
+                lines.append("  Options:")
+                subopts = subtask[2]
+                for key in subopts:
+                    if not key == '__starstar':
+                        lines.append("    %s: %s" % (key, subopts[key]))
+            lines.append("")
+    
+    return lines
+
+def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
+    """Recursive function to print information about a task
+       and its children."""
+
+    BUILDDIR = '/var/lib/mock'
+    indent = " "*2*level
+
+    info = session.getTaskInfo(task_id)
+    if info['host_id']:
+        host_info = session.getHost(info['host_id'])
+    else:
+        host_info = None
+    buildroot_infos = session.listBuildroots(taskID=task_id)
+    build_info = session.listBuilds(taskID=task_id)
+
+    files = session.listTaskOutput(task_id)
+    logs = [filename for filename in files if filename.endswith('.log')]
+    output = [filename for filename in files if not filename.endswith('.log')]
+    files_dir = '%s/tasks/%i' % (koji.pathinfo.work(), task_id)
+
+    owner = session.getUser(info['owner'])['name']
+
+    print "%sTask: %d" % (indent, task_id)
+    print "%sType: %s" % (indent, info['method'])
+    if verbose:
+        print "%sRequest Parameters:" % indent
+        for line in _parseTaskParams(session, info['method'], task_id):
+            print "%s  %s" % (indent, line)
+    print "%sOwner: %s" % (indent, owner)
+    print "%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower())
+    if host_info:
+        print "%sHost: %s" % (indent, host_info['name'])
+    if build_info:
+        print "%sBuild: %s (%d)" % (indent, build_info[0]['nvr'], build_info[0]['build_id'])
+    if buildroot_infos:
+        print "%sBuildroots:" % indent
+        for root in buildroot_infos:
+            print "%s  %s/%s-%d-%d/" % (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id'])
+    if logs:
+        print "%sLog Files:" % indent
+        for log in logs:
+            print "%s  %s/%s" % (indent, files_dir, log)
+    if output:
+        print "%sOutput:" % indent
+        for filename in output:
+            print "%s %s/%s" % (indent, files_dir, filename)
+
+    # white space
+    sys.stdout.write("\n")
+
+    if recurse:
+        level += 1
+        children = session.getTaskChildren(task_id)
+        for child in children:
+            _printTaskInfo(session, child['id'], level, verbose=verbose)
+
+def anon_handle_taskinfo(options, session, args):
+    """Show information about a task"""
+    usage = _("usage: %prog taskinfo [options] task_id")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--recurse", action="store_true", help=_("Show children of this task as well"))
+    parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("This command takes exctly one argument: a task ID"))
+        assert False
+
+    activate_session(session)
+
+    task_id = int(args[0])
+
+    _printTaskInfo(session, task_id, 0, options.recurse, options.verbose)
+
+def anon_handle_taginfo(options, session, args):
+    "Print basic information about a tag"
+    usage = _("usage: %prog taginfo [options] <tag> [<tag> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a tag"))
+        assert False
+    activate_session(session)
+    perms = dict([(p['id'], p['name']) for p in session.getAllPerms()])
+    for tag in args:
+        info = session.getTag(tag)
+        if info is None:
+            print "No such tag: %s\n" % tag
+            continue
+        print "Tag: %(name)s [%(id)d]" %info
+        print "Arches: %(arches)s" %info
+        if info.get('locked'):
+            print 'LOCKED'
+        if info.get('perm_id') is not None:
+            perm_id = info['perm_id']
+            print "Required permission: %r" % perms.get(perm_id, perm_id)
+        dest_targets = session.getBuildTargets(destTagID=info['id'])
+        build_targets = session.getBuildTargets(buildTagID=info['id'])
+        repos = {}
+        for target in dest_targets + build_targets:
+            if not repos.has_key(target['build_tag']):
+                repo = session.getRepo(target['build_tag'])
+                if repo is None:
+                    repos[target['build_tag']] = "no active repo"
+                else:
+                    repos[target['build_tag']] = "repo#%(id)i: %(creation_time)s" % repo
+        if dest_targets:
+            print "Targets that build into this tag:"
+            for target in dest_targets:
+                print "  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']])
+        if build_targets:
+            print "This tag is a buildroot for one or more targets"
+            print "Current repo: %s" % repos[target['build_tag']]
+            print "Targets that build from this tag:"
+            for target in build_targets:
+                print "  %s" % target['name']
+        print "Inheritance:"
+        for parent in session.getInheritanceData(tag):
+            flags = ''
+            for code,expr in (
+                    ('M',parent['maxdepth'] is not None),
+                    ('F',parent['pkg_filter']),
+                    ('I',parent['intransitive']),
+                    ('N',parent['noconfig']),):
+                if expr:
+                    flags += code
+                else:
+                    flags += '.'
+            parent['flags'] = flags
+            print "  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent
+            if parent['maxdepth']:
+                print "    maxdepth: %(maxdepth)s" % parent
+            if parent['pkg_filter']:
+                print "    packge filter: %(filter)s" % parent
+            print
+
+def handle_add_tag(options, session, args):
+    "[admin] Add a new tag to the database"
+    usage = _("usage: %prog add-tag [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--parent", help=_("Specify parent"))
+    parser.add_option("--arches", help=_("Specify arches"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Please specify a name for the tag"))
+        assert False
+    activate_session(session)
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+    opts = {}
+    if options.parent:
+        opts['parent'] = options.parent
+    if options.arches:
+        opts['arches'] = ' '.join(options.arches.replace(',',' ').split())
+    session.createTag(args[0],**opts)
+
+def handle_edit_tag(options, session, args):
+    "[admin] Alter tag information"
+    usage = _("usage: %prog edit-tag [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arches", help=_("Specify arches"))
+    parser.add_option("--perm", help=_("Specify permission requirement"))
+    parser.add_option("--no-perm", action="store_true", help=_("Remove permission requirement"))
+    parser.add_option("--lock", action="store_true", help=_("Lock the tag"))
+    parser.add_option("--unlock", action="store_true", help=_("Unlock the tag"))
+    parser.add_option("--rename", help=_("Rename the tag"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Please specify a name for the tag"))
+        assert False
+    activate_session(session)
+    tag = args[0]
+    opts = {}
+    if options.arches:
+        opts['arches'] = ' '.join(options.arches.replace(',',' ').split())
+    if options.no_perm:
+        opts['perm_id'] = None
+    elif options.perm:
+        opts['perm'] = options.perm
+    if options.unlock:
+        opts['locked'] = False
+    if options.lock:
+        opts['locked'] = True
+    if options.rename:
+        opts['name'] = options.rename
+    #XXX change callname
+    session.editTag2(tag,**opts)
+
+def handle_lock_tag(options, session, args):
+    "[admin] Lock a tag"
+    usage = _("usage: %prog lock-tag [options] <tag> [<tag> ...] ")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--perm", help=_("Specify permission requirement"))
+    parser.add_option("--glob", action="store_true", help=_("Treat args as glob patterns"))
+    parser.add_option("--master", action="store_true", help=_("Lock the master lock"))
+    parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a tag"))
+        assert False
+    activate_session(session)
+    pdata = session.getAllPerms()
+    perms = dict([(p['id'], p['name']) for p in pdata])
+    perm_ids = dict([(p['name'], p['id']) for p in pdata])
+    perm = options.perm
+    if perm is None:
+        perm = 'admin'
+    perm_id = perm_ids[perm]
+    if options.glob:
+        selected = []
+        for tag in session.listTags():
+            for pattern in args:
+                if fnmatch.fnmatch(tag['name'], pattern):
+                    selected.append(tag)
+                    break
+        if not selected:
+            print _("No tags matched")
+    else:
+        selected = [session.getTag(name) for name in args]
+    for tag in selected:
+        if options.master:
+            #set the master lock
+            if tag['locked']:
+                print _("Tag %s: master lock already set") % tag['name']
+                continue
+            elif options.test:
+                print _("Would have set master lock for: %s") % tag['name']
+                continue
+            session.editTag2(tag['id'], locked=True)
+        else:
+            if tag['perm_id'] == perm_id:
+                print _("Tag %s: %s permission already required") % (tag['name'], perm)
+                continue
+            elif options.test:
+                print _("Would have set permission requirement %s for tag %s") % (perm, tag['name'])
+                continue
+            session.editTag2(tag['id'], perm=perm_id)
+
+def handle_unlock_tag(options, session, args):
+    "[admin] Unlock a tag"
+    usage = _("usage: %prog unlock-tag [options] <tag> [<tag> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--glob", action="store_true", help=_("Treat args as glob patterns"))
+    parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a tag"))
+        assert False
+    activate_session(session)
+    if options.glob:
+        selected = []
+        for tag in session.listTags():
+            for pattern in args:
+                if fnmatch.fnmatch(tag['name'], pattern):
+                    selected.append(tag)
+                    break
+        if not selected:
+            print _("No tags matched")
+    else:
+        selected = []
+        for name in args:
+            tag = session.getTag(name)
+            if tag is None:
+                parser.error(_("No such tag: %s") % name)
+                assert False
+            selected.append(tag)
+        selected = [session.getTag(name) for name in args]
+    for tag in selected:
+        opts = {}
+        if tag['locked']:
+            opts['locked'] = False
+        if tag['perm_id']:
+            opts['perm'] = None
+        if not opts:
+            print "Tag %(name)s: not locked" % tag
+            continue
+        if options.test:
+            print "Tag %s: skipping changes: %r" % (tag['name'], opts)
+        else:
+            session.editTag2(tag['id'], locked=False, perm_id=None)
+
+def handle_add_tag_inheritance(options, session, args):
+    """[admin] Add to a tag's inheritance"""
+    usage = _("usage: %prog add-tag-inheritance [options] tag parent-tag")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--priority", help=_("Specify priority"))
+    parser.add_option("--maxdepth", help=_("Specify max depth"))
+    parser.add_option("--intransitive", action="store_true", help=_("Set intransitive"))
+    parser.add_option("--noconfig", action="store_true", help=_("Set to packages only"))
+    parser.add_option("--pkg-filter", help=_("Specify the package filter"))
+    parser.add_option("--force", help=_("Force adding a parent to a tag that already has that parent tag"))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 2:
+        parser.error(_("This command takes exctly two argument: a tag name or ID and that tag's new parent name or ID"))
+        assert False
+
+    activate_session(session)
+
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Invalid tag: %s" % args[0]))
+
+    parent = session.getTag(args[1])
+    if not parent:
+        parser.error(_("Invalid tag: %s" % args[1]))
+
+    inheritanceData = session.getInheritanceData(tag['id'])
+    priority = options.priority and int(options.priority) or 0
+    sameParents = [datum for datum in inheritanceData if datum['parent_id'] == parent['id']]
+    samePriority = [datum for datum in inheritanceData if datum['priority'] == priority]
+
+    if sameParents and not options.force:
+        print _("Error: You are attempting to add %s as %s's parent even though it already is %s's parent."
+                    % (parent['name'], tag['name'], tag['name']))
+        print _("Please use --force if this is what you really want to do.")
+        return
+    if samePriority:
+        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name'])
+        return
+
+    new_data = {}
+    new_data['parent_id'] = parent['id']
+    new_data['priority'] = options.priority or 0
+    if options.maxdepth and options.maxdepth.isdigit():
+        new_data['maxdepth'] = int(options.maxdepth)
+    else:
+        new_data['maxdepth'] = None
+    new_data['intransitive'] = options.intransitive or False
+    new_data['noconfig'] = options.noconfig or False
+    new_data['pkg_filter'] = options.pkg_filter or ''
+
+    inheritanceData.append(new_data)
+    session.setInheritanceData(tag['id'], inheritanceData)
+
+
+def handle_edit_tag_inheritance(options, session, args):
+    """[admin] Edit tag inheritance"""
+    usage = _("usage: %prog edit-tag-inheritance [options] tag <parent> <priority>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--priority", help=_("Specify a new priority"))
+    parser.add_option("--maxdepth", help=_("Specify max depth"))
+    parser.add_option("--intransitive", action="store_true", help=_("Set intransitive"))
+    parser.add_option("--noconfig", action="store_true", help=_("Set to packages only"))
+    parser.add_option("--pkg-filter", help=_("Specify the package filter"))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) < 1:
+        parser.error(_("This command takes at lease one argument: a tag name or ID"))
+        assert False
+
+    if len(args) > 3:
+        parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
+        assert False
+
+    activate_session(session)
+
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Invalid tag: %s" % args[0]))
+
+    parent = None
+    priority = None
+    if len(args) > 1:
+        parent = session.getTag(args[1])
+        if not parent:
+            parser.error(_("Invalid tag: %s" % args[1]))
+        if len(args) > 2:
+            priority = args[2]
+
+    data = session.getInheritanceData(tag['id'])
+    if parent and data:
+        data = [datum for datum in data if datum['parent_id'] == parent['id']]
+    if priority and data:
+        data = [datum for datum in data if datum['priority'] == priority]
+
+    if len(data) == 0:
+        print _("No inheritance link found to remove.  Please check your arguments")
+        return
+    elif len(data) > 1:
+        print _("Multiple matches for tag.")
+        if not parent:
+            print _("Please specify a parent on the command line.")
+            return
+        if not priority:
+            print _("Please specify a priority on the command line.")
+            return
+        print _("Error: Key constrainsts may be broken.  Exiting.")
+        return
+    
+    # len(data) == 1
+    data = data[0]
+
+    inheritanceData = session.getInheritanceData(tag['id'])
+    samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
+    if samePriority:
+        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name'])
+        return
+
+    new_data = data.copy()
+    if options.priority is not None  and options.priority.isdigit():
+        new_data['priority'] = int(options.priority)
+    if options.maxdepth is not None and options.maxdepth.isdigit():
+        new_data['maxdepth'] = int(options.maxdepth)
+    if options.intransitive:
+        new_data['intransitive'] = options.intransitive
+    if options.noconfig:
+        new_data['noconfig'] = options.noconfig
+    if options.pkg_filter:
+        new_data['pkg_filter'] = options.pkg_filter
+
+    # find the data we want to edit and replace it
+    index = inheritanceData.index(data)
+    inheritanceData[index] = new_data
+    session.setInheritanceData(tag['id'], inheritanceData)
+
+def handle_remove_tag_inheritance(options, session, args):
+    """[admin] Remove a tag inheritance link"""
+    usage = _("usage: %prog remove-tag-inheritance tag <parent> <priority>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    if len(args) < 1:
+        parser.error(_("This command takes at lease one argument: a tag name or ID"))
+        assert False
+
+    if len(args) > 3:
+        parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
+        assert False
+
+    activate_session(session)
+
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Invalid tag: %s" % args[0]))
+
+    parent = None
+    priority = None
+    if len(args) > 1:
+        parent = session.getTag(args[1])
+        if not parent:
+            parser.error(_("Invalid tag: %s" % args[1]))
+        if len(args) > 2:
+            priority = args[2]
+
+    data = session.getInheritanceData(tag['id'])
+    if parent and data:
+        data = [datum for datum in data if datum['parent_id'] == parent['id']]
+    if priority and data:
+        data = [datum for datum in data if datum['priority'] == priority]
+
+    if len(data) == 0:
+        print _("No inheritance link found to remove.  Please check your arguments")
+        return
+    elif len(data) > 1:
+        print _("Multiple matches for tag.")
+        if not parent:
+            print _("Please specify a parent on the command line.")
+            return
+        if not priority:
+            print _("Please specify a priority on the command line.")
+            return
+        print _("Error: Key constrainsts may be broken.  Exiting.")
+        return
+
+    # len(data) == 1
+    data = data[0]
+
+    inheritanceData = session.getInheritanceData(tag['id'])
+
+    new_data = data.copy()
+    new_data['delete link'] = True
+
+    # find the data we want to edit and replace it
+    index = inheritanceData.index(data)
+    inheritanceData[index] = new_data
+    session.setInheritanceData(tag['id'], inheritanceData)
+
+def anon_handle_show_groups(options, session, args):
+    "Show groups data for a tag"
+    usage = _("usage: %prog show-groups [options] <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--comps", action="store_true", help=_("Print in comps format"))
+    parser.add_option("--spec", action="store_true", help=_("Print build spec"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    tag = args[0]
+    groups = session.getTagGroups(tag)
+    if options.comps:
+        print koji.generate_comps(groups)
+    elif options.spec:
+        print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
+    else:
+        pprint.pprint(groups)
+
+def handle_free_task(options, session, args):
+    "[admin] Free a task"
+    usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+    tlist = []
+    for task_id in args:
+        try:
+            tlist.append(int(task_id))
+        except ValueError:
+            parser.error(_("task-id must be an integer"))
+            assert False
+    for task_id in tlist:
+        session.freeTask(task_id)
+
+def handle_cancel(options, session, args):
+    "Cancel tasks and/or builds"
+    usage = _("usage: %prog cancel [options] <task-id|build> [<task-id|build> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--justone", action="store_true", help=_("Do not cancel subtasks"))
+    parser.add_option("--full", action="store_true", help=_("Full cancellation (admin only)"))
+    parser.add_option("--force", action="store_true", help=_("Allow subtasks with --full"))
+    (options, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("You must specify at least one task id or build"))
+        assert False
+    activate_session(session)
+    tlist = []
+    blist = []
+    for arg in args:
+        try:
+            tlist.append(int(arg))
+        except ValueError:
+            try:
+                koji.parse_NVR(arg)
+                blist.append(arg)
+            except koji.GenericError:
+                parser.error(_("please specify only task ids (integer) or builds (n-v-r)"))
+                assert False
+    if tlist:
+        opts = {}
+        remote_fn = session.cancelTask
+        if options.justone:
+            opts['recurse'] = False
+        elif options.full:
+            remote_fn = session.cancelTaskFull
+            if options.force:
+                opts['strict'] = False
+        for task_id in tlist:
+            remote_fn(task_id, **opts)
+    for build in blist:
+        session.cancelBuild(build)
+
+def handle_list_tasks(options, session, args):
+    "Print the list of tasks"
+    usage = _("usage: %prog list-tasks [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+    if options.mine:
+        id = session.getLoggedInUser()['id']
+    else:
+        id = None
+    tasklist = session.taskReport(owner=id)
+    #tasks are pre-sorted
+    tasks = dict([(x['id'], x) for x in tasklist])
+    #thread the tasks
+    if not tasklist:
+        print "(no tasks)"
+        return
+    for t in tasklist:
+        if t['parent'] is not None:
+            parent = tasks.get(t['parent'])
+            if parent:
+                parent.setdefault('children',[])
+                parent['children'].append(t)
+                t['sub'] = True
+    seen = {}
+    if not options.quiet:
+        print_task_headers()
+    for t in tasklist:
+        if t.get('sub'):
+            # this subtask will appear under another task
+            continue
+        print_task_recurse(t)
+
+def handle_set_pkg_arches(options, session, args):
+    "[admin] Set the list of extra arches for a package"
+    usage = _("usage: %prog set-pkg-arches [options] arches tag package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action='store_true', help=_("Force operation"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 3:
+        parser.error(_("Please specify an archlist, a tag, and at least one package"))
+        assert False
+    activate_session(session)
+    arches = ' '.join(args[0].replace(',',' ').split())
+    tag = args[1]
+    for package in args[2:]:
+        #really should implement multicall...
+        session.packageListSetArches(tag,package,arches,force=options.force)
+
+def handle_set_pkg_owner(options, session, args):
+    "[admin] Set the owner for a package"
+    usage = _("usage: %prog set-pkg-owner [options] owner tag package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action='store_true', help=_("Force operation"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 3:
+        parser.error(_("Please specify an owner, a tag, and at least one package"))
+        assert False
+    activate_session(session)
+    owner = args[0]
+    tag = args[1]
+    for package in args[2:]:
+        #really should implement multicall...
+        session.packageListSetOwner(tag,package,owner,force=options.force)
+
+def handle_set_pkg_owner_global(options, session, args):
+    "[admin] Set the owner for a package globally"
+    usage = _("usage: %prog set-pkg-owner-global [options] owner package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--verbose", action='store_true', help=_("List changes"))
+    parser.add_option("--test", action='store_true', help=_("Test mode"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify an owner and at least one package"))
+        assert False
+    activate_session(session)
+    owner = args[0]
+    user = session.getUser(owner)
+    if not user:
+        print "No such user: %s" % owner
+        sys.exit(1)
+    for package in args[1:]:
+        entries = session.listPackages(pkgID=package, with_dups=True)
+        if not entries:
+            print "No data for package %s" % package
+            continue
+        elif len(entries) > 1:
+            # since we specified exactly one package, the list should
+            # only have one entry
+            raise koji.GenericError, "Unexpected return format"
+        entries = entries[0]
+        for entry in entries:
+            if user['id'] == entry['owner_id']:
+                if options.verbose:
+                    print "Preserving owner=%s for package %s in tag %s" \
+                            % (user['name'], package,  entry['tag_name'] )
+            else:
+                if options.test:
+                    print "Would have changed owner for %s in tag %s: %s -> %s" \
+                            % (package, entry['tag_name'], entry['owner_name'], user['name'])
+                    continue
+                if options.verbose:
+                    print "Changing owner for %s in tag %s: %s -> %s" \
+                            % (package, entry['tag_name'], entry['owner_name'], user['name'])
+                session.packageListSetOwner(entry['tag_id'], package, user['id'])
+
+def anon_handle_watch_task(options, session, args):
+    "Track progress of particular tasks"
+    usage = _("usage: %prog watch-task [options] <task id> [<task id>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+    tasks = []
+    for task in args:
+        try:
+            tasks.append(int(task))
+        except ValueError:
+            parser.error(_("task id must be an integer"))
+    if not tasks:
+        parser.error(_("at least one task id must be specified"))
+
+    watch_tasks(session,tasks)
+
+def anon_handle_watch_logs(options, session, args):
+    "Watch logs in realtime"
+    usage = _("usage: %prog watch-logs [options] <task id> [<task id>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--log", help=_("Watch only a specific log"))
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+
+    tasks = []
+    for task in args:
+        try:
+            tasks.append(int(task))
+        except ValueError:
+            parser.error(_("task id must be an integer"))
+    if not tasks:
+        parser.error(_("at least one task id must be specified"))
+
+    watch_logs(session, tasks, options)
+
+def handle_runroot(options, session, args):
+    "[admin] Run a command in a buildroot"
+    usage = _("usage: %prog runroot [options] target arch command")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.disable_interspersed_args()
+    parser.add_option("--package", action="append", default=[], help=_("make sure this package is in the chroot"))
+    parser.add_option("--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
+    parser.add_option("--keep", action="store_true", default=False,
+            help=_("Preserve the chroot after running (for debugging)"))
+    parser.add_option("--skip-setarch", action="store_true", default=False,
+            help=_("Do not use setarch"))
+    parser.add_option("--use-shell", action="store_true", default=False,
+            help=_("Run command through a shell, otherwise uses exec"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 3:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    target = args[0]
+    arch = args[1]
+    if options.use_shell:
+        # everything must be correctly quoted
+        command = ' '.join(args[2:])
+    else:
+        command = args[2:]
+    task_id = session.runroot(target, arch, command, keep=options.keep,
+                              packages=options.package, mounts=options.mount,
+                              skip_setarch=options.skip_setarch)
+    try:
+        while True:
+            #wait for the task to finish
+            if session.taskFinished(task_id):
+                break
+            time.sleep(2)
+    except KeyboardInterrupt:
+        # this is probably the right thing to do here
+        print "User interrupt: canceling runroot task"
+        session.cancelTask(task_id)
+        return
+    output = None
+    try:
+        output = session.downloadTaskOutput(task_id, "runroot.log")
+    except koji.GenericError:
+        pass
+    if output:
+        sys.stdout.write(output)
+    return
+
+def handle_make_task(options, session, args):
+    "[admin] Create an arbitrary task"
+    usage = _("usage: %prog make-task [options] <arg1> [<arg2>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--channel", help=_("set channel"))
+    parser.add_option("--priority", help=_("set priority"))
+    parser.add_option("--watch", action="store_true", help=_("watch the task"))
+    parser.add_option("--arch", help=_("set arch"))
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+
+    taskopts = {}
+    method = args[0]
+    taskargs = map(arg_filter,args[1:])
+    for key in ('channel','priority','arch'):
+        value = getattr(options,key,None)
+        if value is not None:
+            taskopts[key] = value
+    task_id = session.makeTask(method=args[0],
+                               arglist=map(arg_filter,args[1:]),
+                               opts=taskopts)
+    print "Created task id %d" % task_id
+    if options.watch:
+        watch_tasks(session,[task_id])
+
+def handle_tag_pkg(options, session, args):
+    "Apply a tag to one or more packages"
+    usage = _("usage: %prog tag-pkg [options] <tag> <pkg> [<pkg>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action="store_true", help=_("force operation"))
+    parser.add_option("--nowait", action="store_true", help=_("Do not wait on task"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
+        assert False
+    activate_session(session)
+    tasks = []
+    for pkg in args[1:]:
+        task_id = session.tagBuild(args[0], pkg, force=options.force)
+        #XXX - wait on task
+        tasks.append(task_id)
+        print "Created task %s" % task_id
+    if _running_in_bg() or options.nowait:
+        return
+    else:
+        watch_tasks(session,tasks)
+
+def handle_move_pkg(options, session, args):
+    "'Move' one or more packages between tags"
+    usage = _("usage: %prog move-pkg [options] <tag1> <tag2> <pkg> [<pkg>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action="store_true", help=_("force operation"))
+    parser.add_option("--nowait", action="store_true", help=_("do not wait on tasks"))
+    parser.add_option("--all", action="store_true", help=_("move all instances of a package, <pkg>'s are package names"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 3:
+        if options.all:
+            parser.error(_("This command, with --all, takes at least three arguments: two tags and one or more package names"))
+        else:
+            parser.error(_("This command takes at least three arguments: two tags and one or more package n-v-r's"))
+        assert False
+    activate_session(session)
+    tasks = []
+    builds = []
+    
+    if options.all:
+        for arg in args[2:]:
+            pkg = session.getPackage(arg)
+            if not pkg:
+                print _("Invalid package name %s, skipping." % arg)
+                continue
+            tasklist = session.moveAllBuilds(args[0], args[1], arg, options.force)
+            tasks.extend(tasklist)
+    else:
+        for arg in args[2:]:
+            build = session.getBuild(arg)
+            if not build:
+                print _("Invalid build %s, skipping." % arg)
+                continue    
+            if not build in builds:
+                builds.append(build)
+    
+        for build in builds:
+            task_id = session.moveBuild(args[0], args[1], build['id'], options.force)
+            tasks.append(task_id)
+            print "Created task %s, moving %s" % (task_id, koji.buildLabel(build))
+    if _running_in_bg() or options.nowait:
+        return
+    else:
+        watch_tasks(session,tasks)
+
+def handle_untag_pkg(options, session, args):
+    "Remove a tag from one or more packages"
+    usage = _("usage: %prog untag-pkg [options] <tag> <pkg> [<pkg>...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
+    parser.add_option("--force", action="store_true", help=_("force operation"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
+        assert False
+    activate_session(session)
+    if options.all:
+        pkgs = []
+        for pkg in args[1:]:
+            pkgs.extend([x['nvr'] for x in session.listTagged(args[0], package=pkg)])
+    else:
+        pkgs = args[1:]
+    for pkg in pkgs:
+        print pkg
+        #XXX trap errors
+        session.untagBuild(args[0], pkg, force=options.force)
+
+def handle_unblock_pkg(options, session, args):
+    "[admin] Unblock a package in the listing for tag"
+    usage = _("usage: %prog unblock-pkg [options] tag package [package2 ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a tag and at least one package"))
+        assert False
+    activate_session(session)
+    tag = args[0]
+    for package in args[1:]:
+        #really should implement multicall...
+        session.packageListUnblock(tag,package)
+
+def handle_help(options, session, args):
+    "List available commands"
+    usage = _("usage: %prog help [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--admin", action="store_true", help=_("show admin commands"))
+    (options, args) = parser.parse_args(args)
+    list_commands(show_admin=options.admin)
+
+
+def list_commands(show_admin=False):
+    handlers = []
+    for name,value in globals().items():
+        if name.startswith('handle_'):
+            alias = name.replace('handle_','')
+            alias = alias.replace('_','-')
+            handlers.append((alias,value))
+        elif name.startswith('anon_handle_'):
+            alias = name.replace('anon_handle_','')
+            alias = alias.replace('_','-')
+            handlers.append((alias,value))
+    handlers.sort()
+    print _("Available commands:")
+    for alias,handler in handlers:
+        desc = handler.__doc__
+        if desc.startswith('[admin] '):
+            if not show_admin:
+                continue
+            desc = desc[8:]
+        print "        %-20s %s" % (alias, desc)
+    print _('(Type "koji --help" for help about global options')
+    print _(' or "koji <command> --help" for help about a particular command\'s options.)')
+
+def error(msg=None, code=1):
+    if msg:
+        sys.stderr.write(msg + "\n")
+        sys.stderr.flush()
+    sys.exit(code)
+
+def warn(msg):
+    sys.stderr.write(msg + "\n")
+    sys.stderr.flush()
+
+def activate_session(session):
+    """Test and login the session is applicable"""
+    global options
+    if options.noauth:
+        #skip authentication
+        pass
+    elif options.user:
+        #authenticate using user/password
+        session.login()
+    elif sys.modules.has_key('krbV'):
+        try:
+            if options.keytab and options.principal:
+                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
+            else:
+                session.krb_login(proxyuser=options.runas)
+        except krbV.Krb5Error, e:
+            error(_("Kerberos authentication failed: '%s' (%s)") % (e.message, e.err_code))
+        except socket.error, e:
+            warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
+    if not options.noauth and not session.logged_in:
+        error(_("Error: unable to log in"))
+    ensure_connection(session)
+    if options.debug:
+        print "successfully connected to hub"
+
+if __name__ == "__main__":
+
+    options, command, args = get_options()
+
+    session_opts = {}
+    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
+        session_opts[k] = getattr(options,k)
+    session = koji.ClientSession(options.server,session_opts)
+    rv = 0
+    try:
+        rv = locals()[command].__call__(options, session, args)
+        if not rv:
+            rv = 0
+    except KeyboardInterrupt:
+        pass
+    except SystemExit:
+        rv = 1
+    except:
+        if options.debug:
+            raise
+        else:
+            exctype, value = sys.exc_info()[:2]
+            rv = 1
+            print "%s: %s" % (exctype, value)
+    try:
+        session.logout()
+    except:
+        pass
+    sys.exit(rv)

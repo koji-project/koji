@@ -1,0 +1,136 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Information for tag $tag.name</h4>
+
+  <table>
+    #if $child and 'admin' in $perms
+    <tr>
+      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add">Add $tag.name as parent of $child.name</a></th>
+    </tr>
+    #end if
+    <tr>
+      <th>Name</th><td>$tag.name</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>$tag.id</td>
+    </tr>
+    <tr>
+      <th>Arches</th><td>$tag.arches</td>
+    </tr>
+    <tr>
+      <th>Locked</th><td class="$str(not $tag.locked).lower()">#if $tag.locked then 'yes' else 'no'#</td>
+    </tr>
+    <tr>
+      <th>Permission</th><td>#if $tag.perm_id then $allPerms[$tag.perm_id] else 'none'#</td>
+    </tr>
+    <tr>
+      <th>Inheritance</th>
+      <td class="tree">
+        <span class="root">$tag.name</span>
+        #set $numParents = $len($inheritance)
+        #set $iter = 0
+        #set $maxDepth = 0
+        #set $TRUNC_DEPTH = 7
+        <ul>
+          #for $parent in $inheritance
+          #set $iter += 1
+          #set $nextDepth = ($iter < $numParents and $inheritance[$iter].currdepth or 1)
+          #set $depth = $parent.currdepth
+          #if $depth > $maxDepth
+          #set $maxDepth = $depth
+          #end if
+          #if $depth == $TRUNC_DEPTH and not $all
+          <li><span class="treeBranch"><span class="treeToggle treeLabel">...</span></span></li>
+          <li class="hidden">
+          #else if $len($tagsByChild[$parent.child_id]) > 1
+          <li class="sibling">
+          #else
+          <li>
+          #end if
+          #silent $tagsByChild[$parent.child_id].pop()
+            <span class="treeBranch">
+              <span class="treeLabel">
+                <a href="taginfo?tagID=$parent.parent_id">$parent.name</a>
+                #if $depth == 1 and 'admin' in $perms
+                <span class="treeLink">(<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=edit">edit</a>) (<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=remove">remove</a>)</span>
+                #end if
+              </span>
+            </span>
+           #if $nextDepth > $depth
+          <ul>
+          #else
+          </li>
+          #end if
+          #while $nextDepth < $depth
+          </ul>
+          </li>
+          #set $depth -= 1
+          #end while
+          #end for
+        </ul>
+      </td>
+    </tr>
+    #if $maxDepth >= $TRUNC_DEPTH
+    <tr>
+      <td colspan="2">
+        #if $all
+        <a href="taginfo?tagID=$tag.id$util.passthrough($self, 'inherited')">Show abbreviated tree</a>
+        #else
+        <a href="taginfo?tagID=$tag.id$util.passthrough($self, 'inherited')&all=1">Show full tree</a>
+        #end if
+      </td>
+    </tr>
+    #end if
+    #if 'admin' in $perms
+    <tr>
+      <td colspan="2"><a href="tags?childID=$tag.id">Add parent</a></td>
+    </tr>
+    #end if
+    <tr>
+      <th>Repo&nbsp;created</th><td>#if $repo then $util.formatTimeRSS($repo.creation_time) else ''#</td>
+    </tr>
+    <tr>
+      <th>Packages</th>
+      <td><a href="packages?tagID=$tag.id">$numPackages</a></td>
+    </tr>
+    <tr>
+      <th>Builds</th>
+      <td><a href="builds?tagID=$tag.id">$numBuilds</a></td>
+    </tr>
+    <tr>
+      <th>Targets building from this tag</th>
+      <td>
+        #if $len($srcTargets)
+        #for $target in $srcTargets
+        <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
+        #end for
+        #else
+        No build targets
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Targets building to this tag</th>
+      <td>
+        #if $len($destTargets)
+        #for $target in $destTargets
+        <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
+        #end for
+        #else
+        No build targets
+        #end if
+      </td>
+    </tr>
+    #if 'admin' in $perms
+    <tr>
+      <td colspan="2"><a href="tagedit?tagID=$tag.id">Edit tag</a></td>
+    </tr>
+    <tr>
+      <td colspan="2"><a href="tagdelete?tagID=$tag.id">Delete tag</a></td>
+    </tr>
+    #end if
+  </table>
+
+#include "includes/footer.chtml"

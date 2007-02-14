@@ -1,0 +1,28 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Information for channel $channel.name</h4>
+
+  <table>
+    <tr>
+      <th>Name</th><td>$channel.name</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>$channel.id</td>
+    </tr>
+    <tr>
+      <th>Hosts</th>
+      <td>
+        #if $len($hosts) > 0
+        #for $host in $hosts
+        <a href="hostinfo?hostID=$host.id">$host.name</a><br/>
+        #end for
+        #else
+        No hosts
+        #end if
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"

@@ -1,0 +1,103 @@
+#import koji
+#import koji.util
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Information for build $koji.buildLabel($build)</h4>
+
+  <table>
+    <tr>
+      <th>ID</th><td>$build.id</td>
+    </tr>
+    <tr>
+      <th>Package Name</th><td><a href="packageinfo?packageID=$build.package_id">$build.package_name</a></td>
+    </tr>
+    <tr>
+      <th>Version</th><td>$build.version</td>
+    </tr>
+    <tr>
+      <th>Release</th><td>$build.release</td>
+    </tr>
+    <tr>
+      <th>Epoch</th><td>$build.epoch</td>
+    </tr>
+    <tr>
+      <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+    </tr>
+    <tr>
+      <th>Started</th><td>$util.formatTimeLong($build.creation_time)</td>
+    </tr>
+    #if $build.state == $koji.BUILD_STATES.BUILDING
+    #if $estCompletion
+    <tr>
+      <th>Est. Completion</th><td>$util.formatTimeLong($estCompletion)</td>
+    </tr>
+    #end if
+    #else
+    <tr>
+      <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
+    </tr>
+    #end if
+    <tr>
+      #set $stateName = $util.stateName($build.state)
+      <th>State</th>
+      <td class="$stateName">$stateName
+      #if $build.state == $koji.BUILD_STATES.BUILDING
+      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
+      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id">cancel</a>)</span>
+      #end if
+      #end if
+      </td>
+    </tr>
+    #if $task
+    <tr>
+      <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
+    </tr>
+    #end if
+    <tr>
+      <th>Tags</th>
+      <td class="container">
+        #if $len($tags) > 0
+        <table class="nested">
+          #for $tag in $tags
+          <tr>
+            <td><a href="taginfo?tagID=$tag.id">$tag.name</a></td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No tags
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>RPMs</th>
+      <td class="container">
+        #if $len($rpms) > 0
+        <table class="nested">
+          #for $rpm in $rpms
+          <tr>
+            #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
+            <td>$rpmfile&nbsp;(<a href="rpminfo?rpmID=$rpm.id">info</a>)&nbsp;(<a href="$downloadBase/$rpm.name/$rpm.version/$rpm.release/$rpm.arch/$rpmfile">download</a>)</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No RPMs
+        #end if
+      </td>
+    </tr>
+    #if $changelog
+    <tr>
+      <th>Changelog</th>
+      <td class="changelog">
+<pre>
+#echo $util.escapeHTML($koji.util.formatChangelog($changelog))
+</pre>
+      </td>
+    </tr>
+    #end if
+  </table>
+
+#include "includes/footer.chtml"

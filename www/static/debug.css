@@ -1,0 +1,9 @@
+/* for debugging purposes */
+
+@import url(koji.css);
+
+* {
+    border: 1px solid black !IMPORTANT;
+    margin: 1px !IMPORTANT;
+    padding: 1px !IMPORTANT;
+}

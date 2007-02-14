@@ -1,0 +1,321 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Koji HOWTO</title>
+  </head>
+  <body>
+    <h1>Introduction</h1>
+
+    Koji is a system for building and tracking RPMs. It was designed with the following
+    features in mind:
+
+    <p>
+    <b>Security</b>
+    <ul>
+      <li>New buildroot for each build</li>
+      <li>nfs is used (mostly) read-only</li>
+    </ul>
+
+    <b>Leverage other software</b>
+    <ul>
+      <li>Uses Yum and Mock open-source components</li>
+      <li>XML-RPC APIs for easy integration with other tools</li>
+    </ul>
+
+    <b>Flexibility</b>
+    <ul>
+      <li>rich data model</li>
+      <li>active code base</li>
+    </ul>
+
+    <b>Usability</b>
+    <ul>
+      <li>Web interface with Kerberos authentication</li>
+      <li>Thin, portable client</li>
+      <li>Users can create local buildroots</li>
+    </ul>
+
+    <b>Reproducibility</b>
+    <ul>
+      <li>Buildroot contents are tracked in the database</li>
+      <li>Versioned data</li>
+    </ul>
+
+
+    <p> This HOWTO document covers the basic tasks that a developer needs to be
+    able to accomplish with Koji.
+    </p>
+
+    <h1>Getting started</h1>
+
+    <h2>The web interface</h2>
+    <p>The primary interface for viewing Koji data is a web application. Most of the interface
+    is read-only, but if you are logged in (see below) and have sufficient privileges there
+    are some actions that can be performed though the web. For example:
+    <ul>
+    <li>Cancel a build</li>
+    <li>Resubmit a failed task</li>
+    </ul>
+    Those with admin privileges will find additional actions, such as:
+    <ul>
+    <li>Create/Edit/Delete a tag</li>
+    <li>Create/Edit/Delete a target</li>
+    <li>Enable/Disable a build host</li>
+    </ul>
+
+    <p>The web site utilizes Kerberos authentication. In order to log in you will
+    need a valid Kerberos ticket and your web browser will need to be configured to send the
+    Kerberos information to the server.
+
+    <p>In Firefox or Mozilla, you will need to use the about:config page to set a few parameters.
+    Use the search term 'negotiate' to filter the list. Change
+    network.negotiate-auth.trusted-uris to the domain you want to authenticate against,
+    e.g .example.com. You can leave network.negotiate-auth.delegation-uris blank, as it
+    enables Kerberos ticket passing, which is not required. If you do not see those two
+    config options listed, your version of Firefox or Mozilla may be too old to support
+    Negotiate authentication, and you should consider upgrading.
+
+    <p>In order to obtain a Kerberos ticket, use the kinit command.
+
+
+    <h2>Installing the Koji cli</h2>
+    <p>There is a single point of entry for most operations.  The command is
+    called 'koji' and is included in the main koji package.
+
+    <p>Repos/webpage TBD
+
+    <p>
+    The koji tool authenticates to the central server using Kerberos, so you will need
+    to have a valid Kerberos ticket to use many features. However, many of the read-only
+    commands will work without authentication.
+
+    <h2>Building a package</h2>
+    <p>Builds are initiated with the command line tool.
+    To build a package, the syntax is:</p>
+    <pre>$ koji build &lt;build target&gt; &lt;cvs URL&gt;</pre>
+
+    <p>For example:</p>
+    <pre>$ koji build dist-fc7-scratch 'cvs://cvs.example.com/cvs/dist?rpms/kernel/FC-7#kernel-2_6_20-1_2925_fc7'</pre>
+    <p>
+    The <code>koji build</code> command creates a build task in Koji. By default
+    the tool will wait
+    and print status updates until the build completes. You can override this with
+    the <code>--nowait</code> option. To view other options to the build command use the
+    <code>--help</code> option.
+    </p>
+
+    <pre>$ koji build --help
+</pre>
+
+    <h2>Build Options</h2>
+    <p>
+    There are a few options to the build command. Here are some more detailed explanations
+    of them:
+    </p>
+
+    <dl>
+    <dt>--skip-tag</dt>
+    <dd>Normally the package is tagged after the build completes. This option causes
+    the tagging step to be skipped. The package will be in the system, but untagged
+    (you can later tag it with the tag-pkg command)</dd>
+    <dt>--scratch</dt>
+    <dd>This makes the build into a scratch build. The build will not be
+    imported into the db, it will just be built. The rpms will land under
+    &lt;topdir&gt;/scratch.  Scratch builds are not tracked and can never
+    be tagged, but can be convenient for testing. Scratch builds are
+    typically removed from the filesystem after one week.
+    </dd>
+    <dt>--nowait</dt>
+    <dd>As stated above, this prevents the cli from waiting on the build task.</dd>
+    <dt>--arch-override</dt>
+    <dd>This option allows you to override the base set of arches to build for.
+    This option is really only for testing during the beta period, but it may
+    be retained for scratch builds in the future.</dd>
+    </dl>
+
+    <h2>Build Failures</h2>
+    <p>If your package fails to build, you will see something like this.</p>
+    <pre>
+      420066 buildArch (kernel-2.6.18-1.2739.10.9.el5.jjf.215394.2.src.rpm,
+      ia64): open (build-1.example.com) -> FAILED: BuildrootError:
+      error building package (arch ia64), mock exited with status 10
+    </pre>
+
+    <p>You can figure out why the build failed by looking at the log files. If
+    there is a build.log, start there.  Otherwise, look at init.log</p>
+
+    <pre>
+      $ ls -1 &lt;topdir&gt;/work/tasks/420066/*
+      &lt;topdir&gt;/work/tasks/420066/build.log
+      &lt;topdir&gt;/work/tasks/420066/init.log
+      &lt;topdir&gt;/work/tasks/420066/mockconfig.log
+      &lt;topdir&gt;/work/tasks/420066/root.log
+    </pre>
+
+    <h2>Filing Bugs</h2>
+
+    <p>bug tracking TBD
+
+    <h1>Koji Architecture</h1>
+
+    <h2>Terminology</h2>
+
+    In Koji, it is sometimes necessary to distinguish between the a package in general,
+    a specific build of a package, and the various rpm files created by a build. When
+    precision is needed, these terms should be interpreted as follows:
+
+    <dl>
+    <dt>Package</dt>
+    <dd>The name of a source rpm. This refers to the package in general and not
+    any particular build or subpackage. For example: kernel, glibc, etc.</dd>
+    <dt>Build</dt>
+    <dd>A particular build of a package. This refers to the entire build: all arches
+    and subpackages. For example: kernel-2.6.9-34.EL, glibc-2.3.4-2.19.</dd>
+    <dt>RPM</dt>
+    <dd>A particular rpm. A specific arch and subpackage of a build.
+    For example: kernel-2.6.9-34.EL.x86_64, kernel-devel-2.6.9-34.EL.s390,
+    glibc-2.3.4-2.19.i686, glibc-common-2.3.4-2.19.ia64</dd>
+    </dl>
+
+
+    <h2>Koji Components</h2>
+
+    Koji is comprised of several components:
+
+    <ul>
+    <li><em>koji-hub</em> is the center of all Koji operations.  It is an XML-RPC server
+    running under mod_python in Apache.  koji-hub is passive in that it only
+    receives XML-RPC calls and relies upon the build daemons and other
+    components to initiate communication.  koji-hub is the only component that
+    has direct access to the database and is one of the two components that have
+    write access to the file system.</li>
+
+    <li><em>kojid</em> is the build daemon that runs on each of the build machines.  Its
+    primary responsibility is polling for incoming build requests and handling
+    them accordingly.  Koji also has support for tasks other than building.
+    Creating install images is one example.  kojid is responsible for handling
+    these tasks as well.
+
+    <p>kojid uses mock for building.  It also creates a fresh buildroot for
+    every build.  kojid is written in Python and communicates with koji-hub via
+    XML-RPC.</p></li>
+
+    <li><em>koji-web</em> is a set of scripts that run in mod_python and use the Cheetah
+    templating engine to provide an web interface to Koji.  koji-web exposes a
+    lot of information and also provides a means for certain operations, such as
+    cancelling builds.</li>
+
+    <li><em>koji</em> is a CLI written in Python that provides many hooks into
+    Koji.  It allows the user to query much of the data as well as perform
+    actions such as build initiation.</li>
+
+    <li><em>kojirepod</em> is a daemon that keeps the build root repodata
+    updated.</li>
+
+    </ul>
+
+    <h2>Package Organization</h2>
+    <p><i>Tags and Targets</i></p>
+    <p>Koji organizes packages using tags. In Koji a tag is roughly analogous to
+    a beehive collection instance, but differ in a number of ways:</p>
+    <ul>
+        <li>Tags are tracked in the database but not on disk</li>
+        <li>Tags support multiple inheritance</li>
+        <li>Each tag has its own list of valid packages (inheritable)</li>
+        <li>Package ownership can be set per-tag (inheritable)</li>
+        <li>Tag inheritance is more configurable</li>
+        <li>When you build you specify a <i>target</i> rather than a tag</li>
+    </ul>
+    <p>
+    A build target specifies where a package should be built and how it
+    should be tagged afterwards. This allows target names to remain fixed
+    as tags change through releases. You can get a full list of build targets
+    with the following command:</p>
+    <pre>$ koji list-targets
+</pre>
+    You can see just a single target with the <code>--name</code> option:
+    <pre>$ koji list-targets --name dist-fc7
+Name                           Buildroot                      Destination
+---------------------------------------------------------------------------------------------
+dist-fc7                       dist-fc7-build                 dist-fc7
+</pre>
+    This tells you a build for target dist-fc7 will use a buildroot with packages
+    from the tag dist-fc7-build and tag the resulting packages as dist-fc7.
+    <p>
+    You can get a list of tags with the following command:</p>
+    <pre>$ koji list-tags
+</pre>
+    <p><i>Package lists</i></p>
+    <p>
+    As mentioned above, each tag has its own list of packages that may be placed
+    in the tag. To see that list for a tag, use the <code>list-pkgs</code> command:</p>
+    <pre>$ koji list-pkgs --tag dist-fc7
+Package                 Tag                     Extra Arches     Owner
+----------------------- ----------------------- ---------------- ----------------
+ElectricFence           dist-fc6                                 pmachata
+GConf2                  dist-fc6                                 rstrode
+lucene                  dist-fc6                                 dbhole
+lvm2                    dist-fc6                                 lvm-team
+ImageMagick             dist-fc6                                 nmurray
+m17n-db                 dist-fc6                                 majain
+m17n-lib                dist-fc6                                 majain
+MAKEDEV                 dist-fc6                                 clumens
+...
+</pre>
+    The first column is the name of the package, the second tells you which tag
+    the package entry has been inherited from, and the third tells you the owner
+    of the package.
+    <p><i>Latest Builds</i></p>
+    <p>
+    To see the latest builds for a tag, use the <code>latest-pkg</code> command:</p>
+    <pre>$ koji latest-pkg --all dist-fc7
+Build                                     Tag                   Built by
+----------------------------------------  --------------------  ----------------
+ConsoleKit-0.1.0-5.fc7                    dist-fc7              davidz
+ElectricFence-2.2.2-20.2.2                dist-fc6              jkeating
+GConf2-2.16.0-6.fc7                       dist-fc7              mclasen
+ImageMagick-6.2.8.0-3.fc6.1               dist-fc6-updates      nmurray
+MAKEDEV-3.23-1.2                          dist-fc6              nalin
+MySQL-python-1.2.1_p2-2                   dist-fc7              katzj
+NetworkManager-0.6.5-0.3.cvs20061025.fc7  dist-fc7              caillon
+ORBit2-2.14.6-1.fc7                       dist-fc7              mclasen
+</pre>
+    The output gives you not only the latest builds, but which tag they have
+    been inherited from and who built them (note: for builds imported from beehive
+    the "built by" field may be misleading)
+
+
+    <h2>Exploring Koji</h2>
+
+    <p>We've tried to make Koji self-documenting wherever possible. The command
+    line tool will print a list of valid commands and each command supports
+    <code>--help</code>. For example:</p>
+
+    <pre>
+$ koji help
+Koji commands are:
+        build                Build a package from source
+        cancel-task          Cancel a task
+        help                 List available commands
+        latest-build         Print the latest rpms for a tag
+        latest-pkg           Print the latest builds for a tag
+...
+$ koji build --help
+usage: koji build [options] tag URL
+(Specify the --help global option for a list of other help options)
+
+options:
+  -h, --help            show this help message and exit
+  --skip-tag            Do not attempt to tag package
+  --scratch             Perform a scratch build
+  --nowait              Don't wait on build
+...
+</pre>
+
+    <h1>Getting Involved</h1>
+
+    If you would like to be more involved with the Koji project...
+
+    <p>Project data TBD
+
+  </body>
+</html>

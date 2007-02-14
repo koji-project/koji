@@ -1,0 +1,2429 @@
+#!/usr/bin/python
+
+# Koji build daemon
+# Copyright (c) 2005-2007 Red Hat
+#
+#    Koji is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; 
+#    version 2.1 of the License.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this software; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Authors:
+#       Mike McLean <mikem@redhat.com>
+
+try:
+    import krbV
+except ImportError:
+    pass
+import base64
+import koji
+import koji.util
+import commands
+import errno
+import glob
+import logging
+import logging.handlers
+import md5
+import os
+import pprint
+import pwd
+import grp
+import re
+import rpm
+import signal
+import smtplib
+import socket
+import sys
+import time
+import datetime
+import traceback
+import urlparse
+import xmlrpclib
+from ConfigParser import ConfigParser
+from fnmatch import fnmatch
+from optparse import OptionParser
+from xmlrpclib import Fault
+
+class ServerExit(Exception):
+    """Raised to shutdown the server"""
+    pass
+
+def main():
+    global session
+    global options
+    logger = logging.getLogger("koji.build")
+    logger.info('Starting up')
+    tm = TaskManager()
+    def shutdown(*args):
+        raise SystemExit
+    signal.signal(signal.SIGTERM,shutdown)
+    while 1:
+        try:
+            tm.updateBuildroots()
+            tm.updateTasks()
+            tm.getNextTask()
+        except (SystemExit,ServerExit,KeyboardInterrupt):
+            logger.warn("Exiting")
+            break
+        except koji.AuthExpired:
+            logger.error('Session expired')
+            break
+        except koji.RetryError:
+            raise
+        except:
+            # XXX - this is a little extreme
+            # log the exception and continue
+            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+        try:
+            time.sleep(options.sleeptime)
+        except (SystemExit,KeyboardInterrupt):
+            logger.warn("Exiting")
+            break
+    logger.warn("Shutting down, please wait...")
+    tm.shutdown()
+    session.logout()
+    sys.exit(0)
+
+def log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None):
+    """Run command with output redirected.  If chroot is not None, chroot to the directory specified
+    before running the command."""
+    pid = os.fork()
+    if not pid:
+        session._forget()
+        try:
+            if chroot:
+                os.chroot(chroot)
+            if cwd:
+                os.chdir(cwd)
+            flags = os.O_CREAT | os.O_WRONLY
+            if append:
+                flags |= os.O_APPEND
+            fd = os.open(outfile, flags)
+            os.dup2(fd, 1)
+            if logerror:
+                os.dup2(fd, 2)
+            os.execvp(path, args)
+        except:
+            msg = ''.join(traceback.format_exception(*sys.exc_info()))
+            if fd:
+                try:
+                    os.write(fd, msg)
+                    os.close(fd)
+                except:
+                    pass
+            print msg
+            os._exit(1)
+    else:
+        if chroot:
+            outfile = os.path.normpath(chroot + outfile)
+        outfd = None
+        remotename = os.path.basename(outfile)
+        while True:
+            status = os.waitpid(pid, os.WNOHANG)
+            time.sleep(1)
+
+            if not outfd:
+                try:
+                    outfd = file(outfile, 'r')
+                except IOError:
+                    # will happen if the forked process has not created the logfile yet
+                    continue
+                except:
+                    print 'Error reading log file: %s' % outfile
+                    print ''.join(traceback.format_exception(*sys.exc_info()))
+
+            incrementalUpload(remotename, outfd, uploadpath)
+
+            if status[0] != 0:
+                if outfd:
+                    outfd.close()
+                return status[1]
+
+def safe_rmtree(path, unmount=False, strict=True):
+    logger = logging.getLogger("koji.build")
+    #safe remove: with -xdev the find cmd will not cross filesystems
+    #             (though it will cross bind mounts from the same filesystem)
+    if not os.path.exists(path):
+        logger.debug("No such path: %s" % path)
+        return
+    if unmount:
+        umount_all(path)
+    #first rm -f non-directories
+    logger.debug('Scrubbing files in %s' % path)
+    rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % path)
+    msg = 'file removal failed (code %r) for %s' % (rv,path)
+    if rv != 0:
+        logger.warn(msg)
+        if strict:
+            raise koji.GenericError, msg
+        else:
+            return rv
+    #them rmdir directories
+    #with -depth, we start at the bottom and work up
+    logger.debug('Scrubbing directories in %s' % path)
+    rv = os.system("find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % path)
+    msg = 'dir removal failed (code %r) for %s' % (rv,path)
+    if rv != 0:
+        logger.warn(msg)
+        if strict:
+            raise koji.GenericError, msg
+    return rv
+
+def umount_all(topdir):
+    "Unmount every mount under topdir"
+    logger = logging.getLogger("koji.build")
+    for path in scan_mounts(topdir):
+        logger.debug('Unmounting %s' % path)
+        cmd = ['umount', '-l', path]
+        rv = os.spawnvp(os.P_WAIT,cmd[0],cmd)
+        if rv != 0:
+            raise koji.GenericError, 'umount failed (exit code %r) for %s' % (rv,path)
+    #check mounts again
+    remain = scan_mounts(topdir)
+    if remain:
+        raise koji.GenericError, "Unmounting incomplete: %r" % remain
+
+def scan_mounts(topdir):
+    """Search path for mountpoints"""
+    mplist = []
+    topdir = os.path.normpath(topdir)
+    fo = file('/proc/mounts','r')
+    for line in fo.readlines():
+        path = line.split()[1]
+        if path.startswith(topdir):
+            mplist.append(path)
+    fo.close()
+    #reverse sort so deeper dirs come first
+    mplist.sort()
+    mplist.reverse()
+    return mplist
+
+def incrementalUpload(fname, fd, path, retries=5, logger=None):
+    if not fd:
+        return
+
+    offset = fd.tell()
+    contents = fd.read()
+    size = len(contents)
+    if size == 0:
+        return
+
+    data = base64.encodestring(contents)
+    digest = md5.new(contents).hexdigest()
+    del contents
+
+    tries = 0
+    while True:
+        if session.uploadFile(path, fname, size, digest, offset, data):
+            return
+        if tries <= retries:
+            tries += 1
+            time.sleep(10)
+            continue
+        else:
+            if logger:
+                logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
+            else:
+                sys.stderr.write("Error uploading file %s to %s at offset %d" % (fname, path, offset))
+                sys.stderr.write("\n")
+            return
+
+def _parseStatus(rv, prefix):
+    if isinstance(prefix, list) or isinstance(prefix, tuple):
+        prefix = ' '.join(prefix)
+    if os.WIFSIGNALED(rv):
+        return '%s was killed by signal %i' % (prefix, os.WTERMSIG(rv))
+    elif os.WIFEXITED(rv):
+        return '%s exited with status %i' % (prefix, os.WEXITSTATUS(rv))
+    else:
+        return '%s terminated for unknown reasons' % prefix
+
+def _isSuccess(rv):
+    """Return True if rv indicates successful completion
+    (exited with status 0), False otherwise."""
+    if os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 0:
+        return True
+    else:
+        return False
+
+class BuildRoot(object):
+
+    def __init__(self,*args,**kwargs):
+        self.logger = logging.getLogger("koji.build.buildroot")
+        if len(args) + len(kwargs) == 1:
+            # manage an existing mock buildroot
+            self._load(*args,**kwargs)
+        else:
+            self._new(*args,**kwargs)
+
+    def _load(self, data):
+        #manage an existing buildroot
+        if isinstance(data, dict):
+            #assume data already pulled from db
+            self.id = data['id']
+        else:
+            self.id = data
+            data = session.getBuildroot(self.id)
+        self.task_id = data['task_id']
+        self.tag_id = data['tag_id']
+        self.tag_name = data['tag_name']
+        self.repoid = data['repo_id']
+        self.br_arch = data['arch']
+        self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
+        self.config = session.getBuildConfig(self.tag_id)
+
+    def _new(self, tag, arch, task_id, distribution=None):
+        """Create a brand new repo"""
+        self.task_id = task_id
+        self.distribution = distribution
+        if not self.distribution:
+            # Provide a default if the srpm did not contain a 'distribution' header,
+            # e.g. if it was built by hand
+            self.distribution = 'Unknown'
+        self.config = session.getBuildConfig(tag)
+        if not self.config:
+            raise koji.BuildrootError("Could not get config info for tag: %s" % tag)
+        self.tag_id = self.config['id']
+        self.tag_name = self.config['name']
+        while 1:
+            repo_info = session.getRepo(self.tag_id)
+            if repo_info and repo_info['state'] == koji.REPO_READY:
+                break
+            self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
+            time.sleep(5)
+        self.repoid = repo_info['id']
+        self.br_arch = koji.canonArch(arch)
+        self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
+        id = session.host.newBuildRoot(self.repoid, self.br_arch, task_id=task_id)
+        if id is None:
+            raise koji.BuildrootError, "failed to get a buildroot id"
+        self.id = id
+        self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
+        self._writeMockConfig()
+
+    def _writeMockConfig(self):
+        global options
+        # mock config
+        configdir = '/etc/mock/koji'
+        configfile = "%s/%s.cfg" % (configdir,self.name)
+        self.mockcfg = "koji/%s" % self.name
+
+        opts = {}
+        for k in ('repoid', 'tag_name', 'distribution'):
+            if hasattr(self, k):
+                opts[k] = getattr(self, k)
+        for k in ('mockdir', 'topdir'):
+            if hasattr(options, k):
+                opts[k] = getattr(options, k)
+        opts['buildroot_id'] = self.id
+        output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
+
+        #write config
+        fo = file(configfile,'w')
+        fo.write(output)
+        fo.close()
+
+    def mock(self, args, skip_setarch=False):
+        """Run mock"""
+        global options
+        mockpath = getattr(options,"mockpath","mock")
+        cmd = [mockpath, "-r", self.mockcfg]
+        if not skip_setarch:
+            cmd[:0] = ['setarch', self.br_arch]
+        if options.debug_mock:
+            cmd.append('--debug')
+        cmd.extend(args)
+        self.logger.info(' '.join(cmd))
+        pid = os.fork()
+        if pid:
+            path = self.getUploadPath()
+            logs = {}
+
+            while True:
+                status = os.waitpid(pid,os.WNOHANG)
+                time.sleep(1)
+
+                try:
+                    results = os.listdir(self.resultdir())
+                except OSError:
+                    # will happen when mock hasn't created the resultdir yet
+                    results = []
+
+                for fname in results:
+                    if fname.endswith('.log') and not logs.has_key(fname):
+                        logs[fname] = None
+
+                for (fname, fd) in logs.items():
+                    if not fd:
+                        try:
+                            fd = file(os.path.join(self.resultdir(), fname),'r')
+                            logs[fname] = fd
+                        except:
+                            self.logger.error("Error reading mock log: %s", fname)
+                            self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+                            continue
+
+                    incrementalUpload(fname, fd, path, self.logger)
+
+                if status[0] != 0:
+                    for (fname, fd) in logs.items():
+                        if fd:
+                            fd.close()
+                    return status[1]
+
+        else:
+            #in no case should exceptions propagate past here
+            try:
+                session._forget()
+                if os.getuid() == 0 and hasattr(options,"mockuser"):
+                    self.logger.info('Running mock as %s' % options.mockuser)
+                    try:
+                        uid,gid = pwd.getpwnam(options.mockuser)[2:4]
+                    except KeyError:
+                        #perhaps a uid was specified
+                        try:
+                            uid,gid = pwd.getpwuid(int(options.mockuser))[2:4]
+                        except (TypeError,ValueError,KeyError):
+                            uid = None
+                    os.setgroups([grp.getgrnam('mock')[2]])
+                    if uid is not None:
+                        os.setregid(gid,gid)
+                        os.setreuid(uid,uid)
+                os.execvp(cmd[0],cmd)
+            except:
+                #diediedie
+                print "Failed to exec mock"
+                print ''.join(traceback.format_exception(*sys.exc_info()))
+                os._exit(1)
+
+    def getUploadPath(self):
+        """Get the path that should be used when uploading files to
+        the hub."""
+        return 'tasks/%i' % self.task_id
+
+    def uploadDir(self, dirpath, suffix=None):
+        """Upload the contents of the given directory to the
+        task output directory on the hub.  If suffix is provided,
+        append '.' + suffix to the filenames, so that successive uploads
+        of the same directory won't overwrite each other, if the files have
+        the same name but different contents."""
+        if not os.path.isdir(dirpath):
+            return
+        uploadpath = self.getUploadPath()
+        for filename in os.listdir(dirpath):
+            filepath = os.path.join(dirpath, filename)
+            if os.stat(filepath).st_size > 0:
+                if suffix:
+                    filename = '%s.%s' % (filename, suffix)
+                session.uploadWrapper(filepath, uploadpath, filename)
+
+    def init(self):
+        rv = self.mock(['init'])
+
+        if rv:
+            self.expire()
+            raise koji.BuildrootError, "could not init mock buildroot, %s" % self._mockResult(rv)
+        session.host.setBuildRootList(self.id,self.getPackageList())
+
+    def _mockResult(self, rv):
+        return _parseStatus(rv, 'mock')
+    
+    def build(self,srpm,arch=None):
+        # run build
+        session.host.setBuildRootState(self.id,'BUILDING')
+        args = ['--no-clean']
+        if arch:
+            args.extend(['--arch', arch])
+        args.extend(['rebuild', srpm])
+        rv = self.mock(args)
+
+        session.host.updateBuildRootList(self.id,self.getPackageList())
+        if rv:
+            self.expire()
+            raise koji.BuildrootError, "error building package (arch %s), %s" % (arch, self._mockResult(rv))
+
+    def getPackageList(self):
+        """Return a list of packages from the buildroot
+
+        Each member of the list is a dictionary containing the following fields:
+            - name
+            - version
+            - release
+            - epoch
+        """
+        fields = ('name','version','release','epoch','arch')
+        rpm.addMacro("_dbpath", "%s/var/lib/rpm" % self.rootdir())
+        ret = []
+        try:
+            ts = rpm.TransactionSet()
+            for h in ts.dbMatch():
+                pkg = koji.get_header_fields(h,fields)
+                #skip our fake packages
+                if pkg['name'] == 'buildsys-build':
+                    #XXX config
+                    continue
+                ret.append(pkg)
+        finally:
+            rpm.delMacro("_dbpath")
+        return ret
+
+    def scrub(self):
+        "Non-mock implementation of clean"
+        rootdir = self.rootdir()
+        umount_all(rootdir)
+        safe_rmtree(rootdir)
+
+    def clean(self):
+        """Remove the buildroot and associated mock config"""
+        #self.mock(['clean'])
+        raise koji.GenericError, "dangerous and deprecated. use scrub()"
+
+    def resultdir(self):
+        global options
+        return "%s/%s/result" % (options.mockdir, self.name)
+
+    def rootdir(self):
+        global options
+        return "%s/%s/root" % (options.mockdir, self.name)
+
+    def expire(self):
+        session.host.setBuildRootState(self.id,'EXPIRED')
+
+
+class TaskManager(object):
+
+    def __init__(self):
+        self.tasks = {}
+        self.pids = {}
+        self.subsessions = {}
+        self.findHandlers()
+        self.status = ''
+        self.ready = False
+        self.host_id = session.host.getID()
+        self.logger = logging.getLogger("koji.build.TaskManager")
+
+    def findHandlers(self):
+        """Find and index task handlers"""
+        handlers = {}
+        for v in globals().values():
+            if type(v) == type(BaseTaskHandler) and issubclass(v,BaseTaskHandler):
+                for method in v.Methods:
+                    handlers[method] = v
+        self.handlers = handlers
+
+    def shutdown(self):
+        """Attempt to shut down cleanly"""
+        for task_id in self.pids.keys():
+            self.cleanupTask(task_id)
+        session.host.freeTasks(self.tasks.keys())
+        session.host.updateHost(task_load=0.0,ready=False)
+
+    def updateBuildroots(self):
+        """Handle buildroot cleanup/maintenance
+
+        - examine current buildroots on system
+        - compare with db
+        - clean up as needed
+            - /var/lib/mock
+            - /etc/mock/koji
+        """
+        local_br = self._scanLocalBuildroots()
+        #query buildroots in db that are not expired
+        states = [ koji.BR_STATES[x] for x in ('INIT','WAITING','BUILDING') ]
+        db_br = session.listBuildroots(hostID=self.host_id,state=tuple(states))
+        # index by id
+        db_br = dict([(row['id'],row) for row in db_br])
+        st_expired = koji.BR_STATES['EXPIRED']
+        for id, br in db_br.items():
+            task_id = br['task_id']
+            if task_id is None:
+                # not associated with a task
+                # this makes no sense now, but may in the future
+                self.logger.warn("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
+                session.host.setBuildRootState(id,st_expired)
+            elif not self.tasks.has_key(task_id):
+                #task not running - expire the buildroot
+                #TODO - consider recycling hooks here (with strong sanity checks)
+                self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id,self.tasks.keys()))
+                session.host.setBuildRootState(id,st_expired)
+                continue
+        # get info on local_only buildroots (most likely expired)
+        local_only = [id for id in local_br.iterkeys() if not db_br.has_key(id)]
+        if local_only:
+            missed_br = session.listBuildroots(buildrootID=tuple(local_only))
+            #get all the task info in one call
+            tasks = []
+            for br in missed_br:
+                task_id = br['task_id']
+                if task_id:
+                    tasks.append(task_id)
+            #index
+            missed_br = dict([(row['id'],row) for row in missed_br])
+            tasks = dict([(row['id'],row) for row in session.getTaskInfo(tasks)])
+            for id in local_only:
+                # Cleaning options
+                #   - wait til later
+                #   - "soft" clean (leaving empty root/ dir)
+                #   - full removal
+                data = local_br[id]
+                br = missed_br.get(id)
+                if not br:
+                    self.logger.warn("%(name)s: not in db" % data)
+                    continue
+                desc = "%(id)i/%(tag_name)s/%(arch)s" % br
+                if not br['retire_ts']:
+                    self.logger.warn("%s: no retire timestamp" % desc)
+                    continue
+                age = time.time() - br['retire_ts']
+                self.logger.debug("Expired/stray buildroot: %s" % desc)
+                if br and br['task_id']:
+                    task = tasks.get(br['task_id'])
+                    if not task:
+                        self.logger.warn("%s: invalid task %s" % (desc, br['task_id']))
+                        continue
+                    if (task['state'] == koji.TASK_STATES['FAILED'] and age < 3600 * 4):
+                        #XXX - this could be smarter
+                        # keep buildroots for failed tasks around for a little while
+                        self.logger.debug("Keeping failed buildroot: %s" % desc)
+                        continue
+                topdir = data['dir']
+                rootdir = None
+                if topdir:
+                    rootdir = "%s/root" % topdir
+                    try:
+                        st = os.lstat(rootdir)
+                    except OSError, e:
+                        if e.errno == errno.ENOENT:
+                            rootdir = None
+                        else:
+                            self.logger.warn("%s: %s" % (desc, e))
+                            continue
+                    age = min(age, time.time() - st.st_mtime)
+                #note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
+                #If rpmlib is installing in this chroot, removing it entirely
+                #can lead to a world of hurt.
+                #We remove the rootdir contents but leave the rootdir unless it
+                #is really old
+                if age > 3600*24:
+                    #dir untouched for a day
+                    self.logger.info("Removing buildroot: %s" % desc)
+                    if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
+                        continue
+                    #also remove the config
+                    try:
+                        os.unlink(data['cfg'])
+                    except OSError, e:
+                        self.logger.warn("%s: can't remove config: %s" % (desc, e))
+                elif age > 120:
+                    if rootdir:
+                        try:
+                            flist = os.listdir(rootdir)
+                        except OSError, e:
+                            self.logger.warn("%s: can't list rootdir: %s" % (desc, e))
+                            continue
+                        if flist:
+                            self.logger.info("%s: clearing rootdir" % desc)
+                        for fn in flist:
+                            safe_rmtree("%s/%s" % (rootdir,fn), unmount=True, strict=False)
+                else:
+                    self.logger.debug("Recent buildroot: %s: %i seconds" % (desc,age))
+        self.logger.debug("Local buildroots: %d" % len(local_br))
+        self.logger.debug("Active buildroots: %d" % len(db_br))
+        self.logger.debug("Expired/stray buildroots: %d" % len(local_only))
+
+    def _scanLocalBuildroots(self):
+        #XXX
+        configdir = '/etc/mock/koji'
+        buildroots = {}
+        for f in os.listdir(configdir):
+            if not f.endswith('.cfg'):
+                continue
+            fn = "%s/%s" % (configdir,f)
+            if not os.path.isfile(fn):
+                continue
+            fo = file(fn,'r')
+            id = None
+            name = None
+            for n in xrange(10):
+                # data should be in first few lines
+                line = fo.readline()
+                if line.startswith('# Koji buildroot id:'):
+                    try:
+                        id = int(line.split(':')[1])
+                    except ValueError,IndexError:
+                        continue
+                if line.startswith('# Koji buildroot name:'):
+                    try:
+                        name = line.split(':')[1].strip()
+                    except ValueError,IndexError:
+                        continue
+            if id is None or name is None:
+                continue
+            # see if there's a dir for the buildroot
+            vardir = "/var/lib/mock/%s" % name
+            #XXX
+            buildroots[id] = {}
+            buildroots[id]['name'] = name
+            buildroots[id]['cfg'] = fn
+            buildroots[id]['dir'] = None
+            if os.path.isdir(vardir):
+                buildroots[id]['dir'] = vardir
+        return buildroots
+
+    def updateTasks(self):
+        """Read and process task statuses from server
+
+        The processing we do is:
+            1) clean up after tasks that are not longer active:
+                * kill off processes
+                * retire buildroots
+                * remove buildroots
+                    - with some possible exceptions
+            2) wake waiting tasks if appropriate
+        """
+        tasks = {}
+        stale = []
+        task_load = 0.0
+        if self.pids:
+            self.logger.info("pids: %r" % self.pids)
+        for task in session.host.getHostTasks():
+            self.logger.info("open task: %r" % task)
+            # the tasks returned are those that are open and locked
+            # by this host.
+            id = task['id']
+            if not self.pids.has_key(id):
+                #We don't have a process for this
+                #Expected to happen after a restart, otherwise this is an error
+                stale.append(id)
+                continue
+            tasks[id] = task
+            if task.get('alert',False):
+                #wake up the process
+                self.logger.info("Waking up task: %r" % task)
+                os.kill(self.pids[id],signal.SIGUSR2)
+            if not task['waiting']:
+                task_load += task['weight']
+        self.logger.debug("Task Load: %s" % task_load)
+        self.task_load = task_load
+        self.tasks = tasks
+        self.logger.debug("Current tasks: %r" % self.tasks)
+        if len(stale) > 0:
+            #A stale task is one which is opened to us, but we know nothing
+            #about). This will happen after a daemon restart, for example.
+            self.logger.info("freeing stale tasks: %r" % stale)
+            session.host.freeTasks(stale)
+        w_opts = os.WNOHANG
+        for id, pid in self.pids.items():
+            if self._waitTask(id, pid):
+                # the subprocess handles most everything, we just need to clear things out
+                if self.cleanupTask(id):
+                    del self.pids[id]
+                if self.tasks.has_key(id):
+                    del self.tasks[id]
+        for id, pid in self.pids.items():
+            if not tasks.has_key(id):
+                # expected to happen when:
+                #  - we are in the narrow gap between the time the task
+                #    records its result and the time the process actually
+                #    exits.
+                #  - task is canceled
+                #  - task is forcibly reassigned/unassigned
+                tinfo = session.getTaskInfo(id)
+                if tinfo is None:
+                    raise koji.GenericError, "Invalid task %r (pid %r)" % (id,pid)
+                elif tinfo['state'] == koji.TASK_STATES['CANCELED']:
+                    self.logger.info("Killing canceled task %r (pid %r)" % (id,pid))
+                    if self.cleanupTask(id):
+                        del self.pids[id]
+                elif tinfo['host_id'] != self.host_id:
+                    self.logger.info("Killing reassigned task %r (pid %r)" % (id,pid))
+                    if self.cleanupTask(id):
+                        del self.pids[id]
+                else:
+                    self.logger.info("Lingering task %r (pid %r)" % (id,pid))
+
+    def getNextTask(self):
+        self.ready = self.readyForTask()
+        session.host.updateHost(self.task_load,self.ready)
+        if not self.ready:
+            self.logger.info("Not ready for task")
+            return
+        hosts, tasks = session.host.getLoadData()
+        self.logger.debug("Load Data:")
+        self.logger.debug("  hosts: %r" % hosts)
+        self.logger.debug("  tasks: %r" % tasks)
+        #now we organize this data into channel-arch bins
+        bin_hosts = {}  #hosts indexed by bin
+        bins = {}       #bins for this host
+        our_avail = None
+        for host in hosts:
+            host['bins'] = []
+            if host['id'] == self.host_id:
+                #note: task_load reported by server might differ from what we
+                #sent due to precision variation
+                our_avail = host['capacity'] - host['task_load']
+            for chan in host['channels']:
+                for arch in host['arches'].split() + ['noarch']:
+                    bin = "%s:%s" % (chan,arch)
+                    bin_hosts.setdefault(bin,[]).append(host)
+                    if host['id'] == self.host_id:
+                        bins[bin] = 1
+        self.logger.debug("bins: %r" % bins)
+        if our_avail is None:
+            self.logger.info("Server did not report this host. Are we disabled?")
+            return
+        elif not bins:
+            self.logger.info("No bins for this host. Missing channel/arch config?")
+            return
+        #sort available capacities for each of our bins
+        avail = {}
+        for bin in bins.iterkeys():
+            avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
+            avail[bin].sort()
+            avail[bin].reverse()
+        for task in tasks:
+            # note: tasks are in priority order
+            self.logger.debug("task: %r" % task)
+            if task['state'] == koji.TASK_STATES['ASSIGNED']:
+                self.logger.debug("task is assigned")
+                if self.host_id == task['host_id']:
+                    #assigned to us, we can take it regardless
+                    if self.takeTask(task[id]):
+                        return
+            elif task['state'] == koji.TASK_STATES['FREE']:
+                bin = "%(channel_id)s:%(arch)s" % task
+                self.logger.debug("task is free, bin=%r" % bin)
+                if not bins.has_key(bin):
+                    continue
+                #see where our available capacity is compared to other hosts for this bin
+                #(note: the hosts in this bin are exactly those that could
+                #accept this task)
+                bin_avail = avail.get(bin, [0])
+                self.logger.debug("available capacities for bin: %r" % bin_avail)
+                median = bin_avail[(len(bin_avail)-1)/2]
+                self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
+                if our_avail < median:
+                    self.logger.debug("Skipping - available capacity in lower half")
+                    #decline for now and give the upper half a chance
+                    return
+                #otherwise, we attempt to open the task
+                if self.takeTask(task['id']):
+                    return
+            else:
+                #should not happen
+                raise Exception, "Invalid task state reported by server"
+        return
+
+    def _waitTask(self, task_id, pid=None):
+        """Wait (nohang) on the task, return true if finished"""
+        if pid is None:
+            pid = self.pids.get(task_id)
+            if not pid:
+                raise koji.GenericError, "No pid for task %i" % task_id
+        prefix = "Task %i (pid %i)" % (task_id, pid)
+        try:
+            (childpid, status) = os.waitpid(pid, os.WNOHANG)
+        except OSError, e:
+            #check errno
+            if e.errno != errno.ECHILD:
+                #should not happen
+                raise
+            #otherwise assume the process is gone
+            self.logger.info("%s: %s" % (prefix, e))
+            return False
+        if childpid != 0:
+            self.logger.info(_parseStatus(status, prefix))
+            return True
+        return False
+
+    def _killGroup(self, task_id, sig=signal.SIGTERM, timeout=5):
+        """Kill process group with signal, keep trying within timeout
+
+        Returns True if successful, False if not
+        """
+        pid = self.pids.get(task_id)
+        if not pid:
+            raise koji.GenericError, "No pid for task %i" % task_id
+        pgrps = self._childPGIDs(pid)
+        success = True
+        for pgrp in pgrps[::-1]:
+            # iterate in reverse order so processes whose children are killed might have
+            # a chance to cleanup before they're killed
+            success &= self._doKillGroup(task_id, pgrp, sig, timeout)
+        return success
+
+    def _doKillGroup(self, task_id, pgrp, sig=signal.SIGTERM, timeout=5):
+        """Kill the process group with the given process group ID.  Return True if the
+        group is successfully killed in the given timeout, False otherwise."""
+        incr = 1.0
+        t = 0.0
+        while t < timeout:
+            try:
+                pid, rv = os.waitpid(-pgrp, os.WNOHANG)
+                while pid != 0:
+                    self.logger.info(_parseStatus(rv, 'process %i' % pid))
+                    pid, rv = os.waitpid(-pgrp, os.WNOHANG)
+            except OSError, e:
+                # means there are no processes in that process group
+                self.logger.debug("Task %i (pgrp %i): %s" % (task_id, pgrp, e))
+                if t == 0.0:
+                    self.logger.info("Task %i (pgrp %i) exited" % (task_id, pgrp))
+                else:
+                    self.logger.info("Killed task %i (pgrp %i)" % (task_id, pgrp))
+                return True
+            else:
+                self.logger.info("Task %i (pgrp %i) exists" % (task_id, pgrp))
+            
+            try:
+                os.killpg(pgrp, sig)
+            except OSError, e:
+                # shouldn't happen
+                self.logger.warn("Task %i (pgrp %i): %s" % (task_id, pgrp, e))
+                continue
+            else:
+                self.logger.info("Sent signal %i to task %i (pgrp %i)" % (sig, task_id, pgrp))
+            
+            time.sleep(incr)
+            t += incr
+        self.logger.warn("Failed to kill task %i (pgrp %i)" % (task_id, pgrp))
+        return False
+
+    def _childPGIDs(self, pid):
+        """Recursively get the children of the process with the given ID.
+        Return a list containing the process group IDs of the children
+        in depth-first order, without duplicates."""
+        statsByPPID = {}
+        pgids = []
+        for procdir in os.listdir('/proc'):
+            if not procdir.isdigit():
+                continue
+            try:
+                procfile = file('/proc/%s/stat' % procdir)
+                procstats = [not field.isdigit() and field or int(field) for field in procfile.read().split()]
+                procfile.close()
+                if not statsByPPID.has_key(procstats[3]):
+                    statsByPPID[procstats[3]] = []
+                statsByPPID[procstats[3]].append(procstats)
+                if procstats[0] == pid:
+                    # put the pgid of the top-level process into the list
+                    pgids.append(procstats[4])
+            except:
+                # We expect IOErrors, because files in /proc may disappear between the listdir() and read().
+                # Nothing we can do about it, just move on.
+                continue
+
+        if not pgids:
+            # assume the pid and pgid of the forked task are the same
+            pgids.append(pid)
+        pids = [pid]
+        while pids:
+            for ppid in pids[:]:
+                for procstats in statsByPPID.get(ppid, []):
+                    # get the /proc entries with ppid as their parent, and append their pgid to the list,
+                    # then recheck for their children
+                    # pid is the 0th field, ppid is the 3rd field, pgid is the 4th field
+                    if procstats[4] not in pgids:
+                        pgids.append(procstats[4])
+                    pids.append(procstats[0])
+                pids.remove(ppid)
+
+        return pgids
+
+    def cleanupTask(self, task_id):
+        """Clean up after task
+
+        - kill children
+        - expire session
+        """
+        # clean up stray children of tasks
+        ch_killed = self._killGroup(task_id)
+        if not ch_killed:
+            ch_killed = self._killGroup(task_id, signal.SIGKILL, timeout=2)
+        #expire the task's subsession
+        session_id = self.subsessions.get(task_id)
+        if session_id:
+            self.logger.info("Expiring subsession %i (task %i)" % (session_id, task_id))
+            try:
+                session.logoutChild(session_id)
+                del self.subsessions[task_id]
+            except:
+                #not much we can do about it
+                pass
+        return ch_killed
+
+    def checkSpace(self):
+        """See if we have enough space to accept another job"""
+        global options
+        br_path = options.mockdir
+        if not os.path.exists(br_path):
+            self.logger.error("No such directory: %s" % br_path)
+            raise IOError, "No such directory: %s" % br_path
+        cmd = "df -P %s" % br_path
+        fd = os.popen(cmd)
+        output = fd.readlines()
+        fd.close()
+        df_fields = ['filesystem','total','used','available','capacity','mountpoint']
+        data = dict(zip(df_fields,output[1].split()))
+        availableMB = int(data['available']) / 1024
+        self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
+        if availableMB < options.minspace:
+            self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, options.minspace)
+            self.logger.warn(self.status)
+            return False
+        return True
+
+    def readyForTask(self):
+        """Determine if the system is ready to accept a new task.
+
+        This function measures the system load and tries to determine
+        if there is room to accept a new task."""
+        #       key resources to track:
+        #               disk_space
+        #                       df -P path
+        #                       df -iP path ?
+        #               memory (meminfo/vmstat)
+        #                       vmstat fields 3-6 (also 7-8 for swap)
+        #                       http://www.redhat.com/advice/tips/meminfo.html
+        #               cpu cycles (vmstat?)
+        #                       vmstat fields 13-16 (and others?)
+        #       others?:
+        #               io (iostat/vmstat)
+        #               network (netstat?)
+        global options
+        hostdata = session.host.getHost()
+        self.logger.debug('hostdata: %r' % hostdata)
+        if not hostdata['enabled']:
+            self.status = "Host is disabled"
+            self.logger.info(self.status)
+            return False
+        if self.task_load > hostdata['capacity']:
+            self.status = "Over capacity"
+            self.logger.info("Task load (%.1f) exceeds capacity (%.1f)" % (self.task_load, hostdata['capacity']))
+            return False
+        if len(self.tasks) >= options.maxjobs:
+            # This serves as a backup to the capacity check and prevents
+            # a tremendous number of low weight jobs from piling up
+            self.status = "Full queue"
+            self.logger.info(self.status)
+            return False
+        if not self.checkSpace():
+            # checkSpace() does its own logging
+            return False
+        #XXX - add more checks
+        return True
+
+    def takeTask(self,task_id):
+        """Attempt to open the specified task
+
+        Returns True if successful, False otherwise
+        """
+        self.logger.info("Attempting to take task %s" %task_id)
+        data = session.host.openTask(task_id)
+        if data is None:
+            self.logger.warn("Could not open")
+            return False
+        if not data.has_key('request') or data['request'] is None:
+            self.logger.warn("Task '%s' has no request" % task_id)
+            return False
+        id = data['id']
+        request = data['request']
+        self.tasks[id] = data
+        params, method = xmlrpclib.loads(base64.decodestring(request))
+        if self.handlers.has_key(method):
+            handlerClass = self.handlers[method]
+        elif self.handlers.has_key('default'):
+            handlerClass = self.handlers['default']
+        else:
+            raise koji.GenericError, "No handler found for method '%s'" % method
+        handler = handlerClass(id,method,params)
+        # set weight
+        session.host.setTaskWeight(task_id,handler.weight())
+        if handler.Foreground:
+            self.logger.info("running task in foreground")
+            handler.setManager(self)
+            self.runTask(handler)
+        else:
+            pid, session_id = self.forkTask(handler)
+            self.pids[id] = pid
+            self.subsessions[id] = session_id
+        return True
+
+    def forkTask(self,handler):
+        global session
+        #get the subsession before we fork
+        newhub = session.subsession()
+        session_id = newhub.sinfo['session-id']
+        pid = os.fork()
+        if pid:
+            newhub._forget()
+            return pid, session_id
+        #in no circumstance should we return after the fork
+        #nor should any exceptions propagate past here
+        try:
+            session._forget()
+            #set process group
+            os.setpgrp()
+            #use the subsession
+            session = newhub
+            #set a do-nothing handler for sigusr2
+            signal.signal(signal.SIGUSR2,lambda *args: None)
+            self.runTask(handler)
+        finally:
+            #diediedie
+            try:
+                session.logout()
+            finally:
+                os._exit(0)
+
+    def runTask(self,handler):
+        fail = False
+        try:
+            response = (handler.run(),)
+            # note that we wrap response in a singleton tuple
+            response = xmlrpclib.dumps(response, methodresponse=1, allow_none=1)
+            self.logger.info("RESPONSE: %r" % response)
+        except Fault, fault:
+            fail = True
+            response = xmlrpclib.dumps(fault)
+            tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
+            self.logger.warn("FAULT:\n%s" % tb)
+        except (SystemExit,ServerExit,KeyboardInterrupt):
+            #we do not trap these
+            raise
+        except:
+            fail = True
+            # report exception back to server
+            e_class, e = sys.exc_info()[:2]
+            faultCode = getattr(e_class,'faultCode',1)
+            if issubclass(e_class, koji.GenericError):
+                #just pass it through
+                tb = str(e)
+                self.logger.warn(tb)
+            else:
+                tb = ''.join(traceback.format_exception(*sys.exc_info()))
+                self.logger.warn("TRACEBACK: %s" % tb)
+            response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
+        data_out = base64.encodestring(response)
+        if fail:
+            session.host.failTask(handler.id, data_out)
+        else:
+            session.host.closeTask(handler.id, data_out)
+
+
+class BaseTaskHandler(object):
+    """The base class for task handlers
+
+    Each task handler is a class, a new instance of which is created
+    to handle each task.
+    """
+
+    # list of methods the class can handle
+    Methods = []
+
+    # Options:
+    Foreground = False
+
+    def __init__(self, id, method, params, workdir=None):
+        global options
+        self.id = id   #task id
+        if method not in self.Methods:
+            raise koji.GenericError, 'method "%s" is not supported' % method
+        self.method = method
+        # handle named parameters
+        self.params,self.opts = koji.decode_args(*params)
+        if workdir is None:
+            workdir = "%s/tasks/%s" % (options.workdir, id)
+        self.workdir = workdir
+        self.logger = logging.getLogger("koji.build.BaseTaskHandler")
+
+    def setManager(self,manager):
+        """Set the manager attribute
+
+        This is only used for foreground tasks to give them access
+        to their task manager.
+        """
+        if not self.Foreground:
+            return
+        self.manager = manager
+
+    def handler(self):
+        """(abstract) the handler for the task."""
+        raise NotImplementedError
+
+    def run(self):
+        """Execute the task"""
+        self.createWorkdir()
+        try:
+            return self.handler(*self.params,**self.opts)
+        finally:
+            self.removeWorkdir()
+
+    _taskWeight = 1.0
+
+    def weight(self):
+        """Return the weight of the task.
+
+        This is run by the taskmanager before the task is run to determine
+        the weight of the task. The weight is an abstract measure of the
+        total load the task places on the system while running.
+
+        A task may set _taskWeight for a constant weight different from 1, or
+        override this function for more complicated situations.
+
+        Note that task weight is partially ignored while the task is sleeping.
+        """
+        return getattr(self,'_taskWeight',1.0)
+
+    def createWorkdir(self):
+        if self.workdir is None:
+            return
+        self.removeWorkdir()
+        os.makedirs(self.workdir)
+
+    def removeWorkdir(self):
+        if self.workdir is None:
+            return
+        safe_rmtree(self.workdir, unmount=False, strict=True)
+        #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
+
+    def wait(self, subtasks=None, all=False, failany=False):
+        """Wait on subtasks
+
+        subtasks is a list of integers (or an integer). If more than one subtask
+        is specified, then the default behavior is to return when any of those
+        tasks complete. However, if all is set to True, then it waits for all of
+        them to complete.  If all and failany are both set to True, then each
+        finished task will be checked for failure, and a failure will cause all
+        of the unfinished tasks to be cancelled.
+
+        special values:
+            subtasks = None     specify all subtasks
+
+        Implementation notes:
+            The build daemon forks all tasks as separate processes. This function
+            uses signal.pause to sleep. The main process watches subtasks in
+            the database and will send the subprocess corresponding to the
+            subtask a SIGUSR2 to wake it up when subtasks complete.
+        """
+        if isinstance(subtasks,int):
+            # allow single integer w/o enclosing list
+            subtasks = [subtasks]
+        session.host.taskSetWait(self.id,subtasks)
+        self.logger.debug("Waiting on %r" % subtasks)
+        while True:
+            finished, unfinished = session.host.taskWait(self.id)
+            if len(unfinished) == 0:
+                #all done
+                break
+            elif len(finished) > 0:
+                if all:
+                    if failany:
+                        failed = False
+                        for task in finished:
+                            try:
+                                result = session.getTaskResult(task)
+                            except (koji.GenericError, Fault):
+                                self.logger.info("task %s failed or was canceled" % task)
+                                failed = True
+                                break
+                        if failed:
+                            self.logger.info("at least one task failed or was canceled, cancelling unfinished tasks")
+                            session.cancelTaskChildren(self.id)
+                            # reraise the original error now, rather than waiting for
+                            # an error in taskWaitResults()
+                            raise
+                else:
+                    # at least one done
+                    break
+            # signal handler set by TaskManager.forkTask
+            self.logger.debug("Pausing...")
+            signal.pause()
+            # main process will wake us up with SIGUSR2
+            self.logger.debug("...waking up")
+        self.logger.debug("Finished waiting")
+        return dict(session.host.taskWaitResults(self.id,subtasks))
+
+    def getUploadDir(self):
+        return 'tasks/%i' % self.id
+
+    def uploadFile(self, filename, remoteName=None):
+        """Upload the file with the given name to the task output directory
+        on the hub."""
+        # Only upload files with content
+        if os.path.isfile(filename) and os.stat(filename).st_size > 0:
+            session.uploadWrapper(filename, self.getUploadDir(), remoteName)
+
+class FakeTask(BaseTaskHandler):
+    Methods = ['someMethod']
+    Foreground = True
+    def handler(self, *args):
+        self.logger.info("This is a fake task.  Args: " + str(args))
+        return 42
+
+
+class SleepTask(BaseTaskHandler):
+    Methods = ['sleep']
+    _taskWeight = 0.25
+    def handler(self, n):
+        self.logger.info("Sleeping for %s seconds" % n)
+        time.sleep(n)
+        self.logger.info("Finished sleeping")
+
+class ForkTask(BaseTaskHandler):
+    Methods = ['fork']
+    def handler(self, n=5, m=37):
+        for i in xrange(n):
+            os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep',str(m)])
+
+class WaitTestTask(BaseTaskHandler):
+    Methods = ['waittest']
+    _taskWeight = 0.1
+    def handler(self,count,seconds=10):
+        tasks = []
+        for i in xrange(count):
+            task_id = session.host.subtask(method='sleep',
+                                          arglist=[seconds],
+                                          label=str(i),
+                                          parent=self.id)
+            tasks.append(task_id)
+        results = self.wait(all=True)
+        self.logger.info(pprint.pformat(results))
+
+
+class SubtaskTask(BaseTaskHandler):
+    Methods = ['subtask']
+    _taskWeight = 0.1
+    def handler(self,n=4):
+        if n > 0:
+            task_id = session.host.subtask(method='subtask',
+                                          arglist=[n-1],
+                                          label='foo',
+                                          parent=self.id)
+            self.wait(task_id)
+        else:
+            task_id = session.host.subtask(method='sleep',
+                                          arglist=[15],
+                                          label='bar',
+                                          parent=self.id)
+            self.wait(task_id)
+
+
+class DefaultTask(BaseTaskHandler):
+    """Used when no matching method is found"""
+    Methods = ['default']
+    _taskWeight = 0.1
+    def __init__(self, id, method, params, workdir=None):
+        self.id = id   #task id
+        self.method = method
+        self.params = params
+        self.workdir = None
+        self.opts = {}
+    def handler(self,*args,**opts):
+        raise koji.GenericError, "Invalid method: %s" % self.method
+
+
+class ShutdownTask(BaseTaskHandler):
+    Methods = ['shutdown']
+    _taskWeight = 0.0
+    Foreground = True
+    def handler(self):
+        #note: this is a foreground task
+        raise ServerExit
+
+
+class DependantTask(BaseTaskHandler):
+
+    Methods = ['dependantTask']
+    #mostly just waiting on other tasks
+    _taskWeight = 0.2
+
+    def handler(self, wait_list, task_list):
+        for task in wait_list:
+            if not isinstance(task, int) or not session.getTaskInfo(task):
+                self.logger.debug("invalid task id %s, removing from wait_list" % task)
+                wait_list.remove(task)
+
+        # note, tasks in wait_list are not children of this task so we can't
+        # just use self.wait()
+        while wait_list:
+            for task in wait_list[:]:
+                if session.taskFinished(task):
+                    info = session.getTaskInfo(task)
+                    if info and koji.TASK_STATES[info['state']] in ['CANCELED','FAILED']:
+                        raise koji.GenericError, "Dependency %s failed to complete." % info['id']
+                    wait_list.remove(task)
+            # let the system rest before polling again
+            time.sleep(1)
+
+        subtasks = []
+        for task in task_list:
+            # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows for things like 'priority=15'
+            task_id = session.host.subtask(method=task[0], arglist=task[1], parent=self.id, **((len(task)>2 and task[2]) or {}))
+            if task_id:
+                subtasks.append(task_id)
+        if subtasks:
+            self.wait(subtasks, all=True)
+
+class ChainBuildTask(BaseTaskHandler):
+
+    Methods = ['chainbuild']
+    #mostly just waiting on other tasks
+    _taskWeight = 0.1
+
+    def handler(self, srcs, target, opts=None):
+        if opts.get('scratch'):
+            raise koji.BuildError, "--scratch is not allowed with chain-builds"
+        for build_level in srcs:
+            subtasks = []
+            for src in build_level:
+                task_id = session.host.subtask(method='build',
+                                               arglist=[src,target,opts],
+                                               parent=self.id)
+                subtasks.append(task_id)
+            if not subtasks:
+                continue
+            self.wait(subtasks, all=True, failany=True)
+            if srcs[-1] == build_level:
+                continue
+            nvrs = []
+            for subtask in subtasks:
+                builds = session.listBuilds(taskID=subtask)
+                if builds:
+                    nvrs.append(builds[0]['nvr'])
+            task_id = session.host.subtask(method='waitrepo',
+                                           arglist=[target, None, nvrs],
+                                           parent=self.id)
+            self.wait(task_id, all=True, failany=True)
+
+class BuildTask(BaseTaskHandler):
+
+    Methods = ['build']
+    #we mostly just wait on other tasks
+    _taskWeight = 0.2
+
+    def handler(self, src, target, opts=None):
+        """Handler for the master build task"""
+        if opts is None:
+            opts = {}
+        self.opts = opts
+        if opts.get('arch_override') and not opts.get('scratch'):
+            raise koji.BuildError, "arch_override is only allowed for scratch builds"
+        target_info = session.getBuildTarget(target)
+        if not target_info:
+            raise koji.GenericError, 'unknown build target: %s' % target
+        dest_tag = target_info['dest_tag']
+        build_tag = target_info['build_tag']
+        srpm = self.getSRPM(src)
+        h = self.readSRPMHeader(srpm)
+        data = koji.get_header_fields(h,['name','version','release','epoch'])
+        data['task_id'] = self.id
+        extra_arches = None
+        self.logger.info("Reading package config for %(name)s" % data)
+        pkg_cfg = session.getPackageConfig(dest_tag,data['name'])
+        self.logger.debug("%r" % pkg_cfg)
+        if pkg_cfg is not None:
+            extra_arches = pkg_cfg.get('extra_arches')
+        if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
+            dest_cfg = session.getPackageConfig(dest_tag,data['name'])
+            # Make sure package is on the list for this tag
+            if dest_cfg is None:
+                raise koji.BuildError, "package %s not in list for tag %s" \
+                        % (data['name'], target_info['dest_tag_name'])
+            elif dest_cfg['blocked']:
+                raise koji.BuildError, "package %s is blocked for tag %s" \
+                        % (data['name'], target_info['dest_tag_name'])
+            # TODO - more pre tests
+        archlist = self.getArchList(build_tag, h, extra=extra_arches)
+        #let the system know about the build we're attempting
+        if not self.opts.get('scratch'):
+            #scratch builds do not get imported
+            build_id = session.host.initBuild(data)
+            session.host.importChangelog(build_id, srpm)
+        #(initBuild raises an exception if there is a conflict)
+        try:
+            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist)
+            if opts.get('scratch'):
+                #scratch builds do not get imported
+                session.host.moveBuildToScratch(self.id,srpm,rpms,logs=logs)
+            else:
+                session.host.completeBuild(self.id,build_id,srpm,rpms,brmap,logs=logs)
+        except (SystemExit,ServerExit,KeyboardInterrupt):
+            #we do not trap these
+            raise
+        except:
+            if not self.opts.get('scratch'):
+                #scratch builds do not get imported
+                session.host.failBuild(self.id, build_id)
+            # reraise the exception
+            raise
+        if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
+            self.tagBuild(build_id,dest_tag)
+
+    def getSRPM(self, src):
+        """Get srpm from src"""
+        if isinstance(src,str):
+            if src.startswith('cvs://'):
+                return self.getSRPMFromCVS(src)
+            else:
+                #assume this is a path under uploads
+                return src
+        else:
+            raise koji.BuildError, 'Invalid source specification: %s' % src
+            #XXX - other methods?
+
+    def getSRPMFromCVS(self, url):
+        #TODO - allow different ways to get the srpm
+        task_id = session.host.subtask(method='buildSRPMFromCVS',
+                                       arglist=[url],
+                                       label='srpm',
+                                       parent=self.id)
+        # wait for subtask to finish
+        result = self.wait(task_id)[task_id]
+        srpm = result['srpm']
+        return srpm
+
+    def readSRPMHeader(self, srpm):
+        #srpm arg should be a path relative to <BASEDIR>/work
+        global options
+        self.logger.debug("Reading SRPM")
+        fn = "%s/work/%s" % (options.topdir, srpm)
+        if not os.path.exists(fn):
+            raise koji.BuildError, "file missing: %s" % fn
+        h = koji.get_rpm_header(fn)
+        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+            raise koji.BuildError, "%s is not a source package" % fn
+        return h
+
+    def getArchList(self, build_tag, h, extra=None):
+        # get list of arches to build for
+        buildconfig = session.getBuildConfig(build_tag)
+        arches = buildconfig['arches']
+        tag_archlist = arches.split()
+        self.logger.debug('arches: %s' % arches)
+        if arches is None:
+            #XXX - need to handle this better
+            raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
+        if extra:
+            self.logger.debug('Got extra arches: %s' % extra)
+            arches = "%s %s" % (arches,extra)
+        override = self.opts.get('arch_override')
+        if self.opts.get('scratch') and override:
+            #only honor override for scratch builds
+            self.logger.debug('arch override: %s' % override)
+            arches = override
+        archlist = arches.split()
+        self.logger.debug('base archlist: %r' % archlist)
+        # - adjust arch list based on srpm macros
+        buildarchs = h[rpm.RPMTAG_BUILDARCHS]
+        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
+        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+        if buildarchs:
+            archlist = [ a for a in archlist if a in buildarchs ]
+            self.logger.debug('archlist after buildarchs: %r' % archlist)
+        if exclusivearch:
+            archlist = [ a for a in archlist if a in exclusivearch ]
+            self.logger.debug('archlist after exclusivearch: %r' % archlist)
+        if excludearch:
+            archlist = [ a for a in archlist if a not in excludearch ]
+            self.logger.debug('archlist after excludearch: %r' % archlist)
+        #noarch is funny
+        if 'noarch' not in excludearch and \
+                ( 'noarch' in buildarchs or 'noarch' in exclusivearch ):
+            archlist.append('noarch')
+        archdict = {}
+        for a in archlist:
+            if a == 'noarch' or koji.canonArch(a) in tag_archlist:
+                archdict[a] = 1
+        if not archdict:
+            raise koji.BuildError, "No matching arches were found"
+        return archdict.keys()
+
+    def runBuilds(self, srpm, build_tag, archlist):
+        self.logger.debug("Spawning jobs for arches: %r" % (archlist))
+        subtasks = {}
+        keep_srpm = True
+        for arch in archlist:
+            subtasks[arch] = session.host.subtask(method='buildArch',
+                                                  arglist=[srpm,build_tag,arch,keep_srpm],
+                                                  label=arch,
+                                                  parent=self.id,
+                                                  arch=koji.canonArch(arch))
+            keep_srpm = False
+
+        self.logger.debug("Got subtasks: %r" % (subtasks))
+        self.logger.debug("Waiting on subtasks...")
+
+        # wait for subtasks to finish
+        results = self.wait(subtasks.values(), all=True, failany=True)
+
+        # finalize import
+        # merge data into needed args for completeBuild call
+        rpms = []
+        brmap = {}
+        logs = {}
+        built_srpm = None
+        for (arch, task_id) in subtasks.iteritems():
+            result = results[task_id]
+            self.logger.debug("DEBUG: %r : %r " % (arch,result,))
+            brootid = result['brootid']
+            for fn in result['rpms']:
+                rpms.append(fn)
+                brmap[fn] = brootid
+            for fn in result['logs']:
+                logs.setdefault(arch,[]).append(fn)
+            if len(result['srpms']) == 1:
+                if built_srpm:
+                    raise koji.BuildError, "multiple builds returned a srpm.  task %i" % self.id
+                else:
+                    built_srpm = result['srpms'][0]
+                    brmap[result['srpms'][0]] = brootid
+        if built_srpm:
+            srpm = built_srpm
+        else:
+            raise koji.BuildError("could not find a built srpm")
+
+        return srpm,rpms,brmap,logs
+
+    def tagBuild(self,build_id,dest_tag):
+        #XXX - need options to skip tagging and to force tagging
+        #create the tagBuild subtask
+        #this will handle the "post tests"
+        task_id = session.host.subtask(method='tagBuild',
+                                       arglist=[dest_tag,build_id,False,None,True],
+                                       label='tag',
+                                       parent=self.id,
+                                       arch='noarch')
+        self.wait(task_id)
+
+class BuildArchTask(BaseTaskHandler):
+
+    Methods = ['buildArch']
+
+    def weight(self):
+        # XXX - this one needs to figure the weight from the package to be
+        # built
+        return 1.5
+
+    def srpm_sanity_checks(self, filename):
+        header = koji.get_rpm_header(filename)
+
+        if not header[rpm.RPMTAG_PACKAGER]:
+            raise koji.BuildError, "The build system failed to set the packager tag"
+        if not header[rpm.RPMTAG_VENDOR]:
+            raise koji.BuildError, "The build system failed to set the vendor tag"
+        if not header[rpm.RPMTAG_DISTRIBUTION]:
+            raise koji.BuildError, "The build system failed to set the distribution tag"
+
+    def handler(self, pkg, root, arch, keep_srpm, opts={}):
+        """Build a package in a buildroot for one arch"""
+        global options
+        
+        ret = {}
+
+        #noarch is funny
+        if arch == "noarch":
+            #use any arch this host can handle
+            host = session.host.getHost()
+            if host['arches'] is None:
+                raise koji.BuildError, "No arch list for this host"
+            br_arch = host['arches'].split()[0]
+        else:
+            br_arch = arch
+
+        # starting srpm should already have been uploaded by parent
+        self.logger.debug("Reading SRPM")
+        fn = "%s/work/%s" % (options.topdir, pkg)
+        if not os.path.exists(fn):
+            raise koji.BuildError, "SRPM file missing: %s" % fn
+        # peel E:N-V-R from package
+        h = koji.get_rpm_header(fn)
+        name = h[rpm.RPMTAG_NAME]
+        ver = h[rpm.RPMTAG_VERSION]
+        rel = h[rpm.RPMTAG_RELEASE]
+        epoch = h[rpm.RPMTAG_EPOCH]
+        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+            raise koji.BuildError, "not a source package"
+        # Disable checking for distribution in the initial SRPM because it
+        # might have been built outside of the build system
+        # if not h[rpm.RPMTAG_DISTRIBUTION]:
+        #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
+
+        broot = BuildRoot(root, br_arch, self.id, distribution=h[rpm.RPMTAG_DISTRIBUTION])
+
+        self.logger.debug("Initializing buildroot")
+        broot.init()
+
+        # run build
+        self.logger.debug("Running build")
+        broot.build(fn,arch)
+
+        # extract results
+        resultdir = broot.resultdir()
+        rpm_files = []
+        srpm_files = []
+        log_files = []
+        unexpected = []
+        for f in os.listdir(resultdir):
+            # files here should have one of two extensions: .log and .rpm
+            if f[-4:] == ".log":
+                log_files.append(f)
+            elif f[-8:] == ".src.rpm":
+                srpm_files.append(f)
+            elif f[-4:] == ".rpm":
+                rpm_files.append(f)
+            else:
+                unexpected.append(f)
+        self.logger.debug("rpms: %r" % rpm_files)
+        self.logger.debug("srpms: %r" % srpm_files)
+        self.logger.debug("logs: %r" % log_files)
+        self.logger.debug("unexpected: %r" % unexpected)
+
+        # upload files to storage server
+        uploadpath = broot.getUploadPath()
+        for f in rpm_files:
+            self.uploadFile("%s/%s" % (resultdir,f))
+        self.logger.debug("keep srpm %i %s %s" % (self.id, keep_srpm, opts))
+        if keep_srpm:
+            if len(srpm_files) == 0:
+                raise koji.BuildError, "no srpm files found for task %i" % self.id
+            if len(srpm_files) > 1:
+                raise koji.BuildError, "mulitple srpm files found for task %i: %s" % (self.id, srpm_files)
+
+            # Run sanity checks.  Any failures will throw a BuildError
+            self.srpm_sanity_checks("%s/%s" % (resultdir,srpm_files[0]))
+
+            self.logger.debug("uploading %s/%s to %s" % (resultdir,srpm_files[0], uploadpath))
+            self.uploadFile("%s/%s" % (resultdir,srpm_files[0]))
+        ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+        if keep_srpm:
+            ret['srpms'] = [ "%s/%s" % (uploadpath,f) for f in srpm_files ]
+        else:
+            ret['srpms'] = []
+        ret['logs'] = [ "%s/%s" % (uploadpath,f) for f in log_files ]
+
+        ret['brootid'] = broot.id
+
+        broot.expire()
+        #Let TaskManager clean up
+        #broot.scrub()
+
+        return ret
+
+
+class TagBuildTask(BaseTaskHandler):
+
+    Methods = ['tagBuild']
+    #XXX - set weight?
+
+    def handler(self, tag_id, build_id, force=False, fromtag=None, ignore_success=False):
+        task = session.getTaskInfo(self.id)
+        user_id = task['owner']
+        try:
+            build = session.getBuild(build_id, strict=True)
+            tag = session.getTag(tag_id, strict=True)
+
+            #several basic sanity checks have already been run (and will be run
+            #again when we make the final call). Our job is to perform the more
+            #computationally expensive 'post' tests.
+
+            #XXX - add more post tests
+            session.host.tagBuild(self.id,tag_id,build_id,force=force,fromtag=fromtag)
+            session.host.tagNotification(True, tag_id, fromtag, build_id, user_id, ignore_success)
+        except Exception, e:
+            exctype, value = sys.exc_info()[:2]
+            session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
+            raise e
+            
+class BuildSRPMFromCVSTask(BaseTaskHandler):
+
+    Methods = ['buildSRPMFromCVS']
+    _taskWeight = 0.75
+
+    def spec_sanity_checks(self, filename):
+        spec = open(filename).read()
+        for tag in ("Packager", "Distribution", "Vendor"):
+            if re.match("%s:" % tag, spec, re.M):
+                raise koji.BuildError, "%s is not allowed to be set in spec file" % tag
+        for tag in ("packager", "distribution", "vendor"):
+            if re.match("%%define\s+%s\s+" % tag, spec, re.M):
+                raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
+
+    def handler(self,url):
+        if not url.startswith('cvs://'):
+            raise koji.BuildError("invalid cvs URL: %s" % url)
+
+        # Hack it because it refuses to parse it properly otherwise
+        scheme, netloc, path, params, query, fragment = urlparse.urlparse('http'+url[3:])
+        if not (netloc and path and fragment and query):
+            raise koji.BuildError("invalid cvs URL: %s" % url)
+
+        # Steps:
+        # 1. CVS checkout into tempdir
+        # 2. create sources hardlinks
+        # 3. Run 'make srpm'
+
+        cvsdir = self.workdir + '/cvs'
+        self.logger.debug(cvsdir)
+        koji.ensuredir(cvsdir)
+        logfile = self.workdir + "/srpm.log"
+        uploadpath = self.getUploadDir()
+
+        #perform checkouts
+        cmd = ['cvs', '-d', ':pserver:anonymous@%s:%s' % (netloc, path),
+                         'checkout', '-r', fragment, query]
+        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1):
+            output = "(none)"
+            try:
+                output = open(logfile).read()
+            except IOError:
+                pass
+            raise koji.BuildError, "Error with checkout ':pserver:anonymous@%s:%s': %s" % (netloc, path, output)
+        cmd = ['cvs', '-d', ':pserver:anonymous@%s:%s' % (netloc, path),
+                        'checkout', 'common']
+        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
+            raise koji.BuildError, "Error with checkout :pserver:anonymous@%s:%s" % (netloc, path)
+        os.symlink('%s/common' % cvsdir, '%s/%s/../common' % (cvsdir, query))
+
+        spec_files = glob.glob("%s/%s/*.spec" % (cvsdir, query))
+        if len(spec_files) == 0:
+            raise koji.BuildError("No spec file found")
+        elif len(spec_files) > 1:
+            raise koji.BuildError("Multiple spec files found: %s" % spec_files)
+        spec_file = spec_files[0]
+
+        # Run spec file sanity checks.  Any failures will throw a BuildError
+        self.spec_sanity_checks(spec_file)
+
+        #build srpm
+        cmd = ['make', "RPM_DEFINES=--define '__beehive_build 1'",
+            'BEEHIVE_SRPM_BUILD=1',
+            '-C', '%s/%s' % (cvsdir, query), 'beehive-srpm']
+        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
+            raise koji.BuildError, "Error building SRPM"
+        srpm = '%s/%s/src.rpm' % (cvsdir, query)
+
+        #give srpm a proper name
+        h = koji.get_rpm_header(srpm)
+        name = h[rpm.RPMTAG_NAME]
+        version = h[rpm.RPMTAG_VERSION]
+        release = h[rpm.RPMTAG_RELEASE]
+        basename = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
+
+        #upload srpm and return
+        self.uploadFile(srpm, remoteName=basename)
+        return {
+            'srpm' : "%s/%s" % (uploadpath, basename),
+            'log' : "%s/srpm.log" % uploadpath,
+        }
+
+class TagNotificationTask(BaseTaskHandler):
+    Methods = ['tagNotification']
+
+    _taskWeight = 0.1
+
+    message_templ = \
+"""From: %(from_addr)s\r
+Subject: %(nvr)s %(result)s %(operation)s by %(user_name)s\r
+To: %(to_addrs)s\r
+X-Koji-Package: %(pkg_name)s\r
+X-Koji-NVR: %(nvr)s\r
+X-Koji-User: %(user_name)s\r
+X-Koji-Status: %(status)s\r
+%(tag_headers)s\r
+\r
+Package: %(pkg_name)s\r
+NVR: %(nvr)s\r
+User: %(user_name)s\r
+Status: %(status)s\r
+%(operation_details)s\r
+%(nvr)s %(result)s %(operation)s by %(user_name)s\r
+%(failure_info)s\r
+"""
+
+    def handler(self, recipients, is_successful, tag_info, from_info, build_info, user_info, ignore_success=None, failure_msg=''):
+        if len(recipients) == 0:
+            self.logger.debug('task %i: no recipients, not sending notifications', self.id)
+            return
+
+        if ignore_success and is_successful:
+            self.logger.debug('task %i: tag operation successful and ignore success is true, not sending notifications', self.id)
+            return
+
+        build = session.getBuild(build_info)
+        user = session.getUser(user_info)
+        pkg_name = build['package_name']
+        nvr = '%(package_name)s-%(version)s-%(release)s' % build
+        user_name = user['name']
+
+        from_addr = options.from_addr
+        to_addrs = ', '.join(recipients)
+
+        operation = '%(action)s'
+        operation_details = 'Tag Operation: %(action)s\r\n'
+        tag_headers = ''
+        if from_info:
+            from_tag = session.getTag(from_info)
+            from_tag_name = from_tag['name']
+            operation += ' from %s' % from_tag_name
+            operation_details += 'From Tag: %s\r\n' % from_tag_name
+            tag_headers += 'X-Koji-Tag: %s\r\n' % from_tag_name
+            action = 'untagged'
+        if tag_info:
+            tag = session.getTag(tag_info)
+            tag_name = tag['name']
+            operation += ' into %s' % tag_name
+            operation_details += 'Into Tag: %s\r\n' % tag_name
+            tag_headers += 'X-Koji-Tag: %s\r\n' % tag_name
+            action = 'tagged'
+        if tag_info and from_info:
+            action = 'moved'
+        operation = operation % locals()
+        operation_details = operation_details % locals()
+
+        if is_successful:
+            result = 'successfully'
+            status = 'complete'
+            failure_info = ''
+        else:
+            result = 'unsuccessfully'
+            status = 'failed'
+            failure_info = "Operation failed with the error:\r\n    %s\r\n" % failure_msg
+
+        message = self.message_templ % locals()
+
+        server = smtplib.SMTP(options.smtphost)
+        #server.set_debuglevel(True)
+        server.sendmail(from_addr, recipients, message)
+        server.quit()
+
+        return 'sent notification of tag operation %i to: %s' % (self.id, to_addrs)
+
+class BuildNotificationTask(BaseTaskHandler):
+    Methods = ['buildNotification']
+
+    _taskWeight = 0.1
+
+    # XXX externalize these templates somewhere
+    subject_templ = """Package: %(build_nevr)s Tag: %(dest_tag)s Status: %(status)s Built by: %(build_owner)s"""
+    message_templ = \
+"""From: %(from_addr)s\r
+Subject: %(subject)s\r
+To: %(to_addrs)s\r
+X-Koji-Tag: %(dest_tag)s\r
+X-Koji-Package: %(build_pkg_name)s\r
+X-Koji-Builder: %(build_owner)s\r
+X-Koji-Status: %(status)s\r
+\r
+Package: %(build_nevr)s\r
+Tag: %(dest_tag)s\r
+Status: %(status)s%(cancel_info)s\r
+Built by: %(build_owner)s\r
+ID: %(build_id)i\r
+Started: %(creation_time)s\r
+Finished: %(completion_time)s\r
+%(changelog)s\r
+%(failure)s\r
+%(output)s\r
+Task Info: %(weburl)s/taskinfo?taskID=%(task_id)i\r
+Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
+"""
+
+    def _getTaskData(self, task_id, data={}):
+        taskinfo = session.getTaskInfo(task_id)
+        
+        if not taskinfo:
+            # invalid task_id
+            return data
+        
+        if taskinfo['host_id']:
+            hostinfo = session.getHost(taskinfo['host_id'])
+        else:
+            hostinfo = None
+        
+        result = None
+        try:
+            result = session.getTaskResult(task_id)
+        except:
+            excClass, result = sys.exc_info()[:2]
+            if hasattr(result, 'faultString'):
+                result = result.faultString
+            else:
+                result = '%s: %s' % (excClass.__name__, result)
+            result = result.strip()
+            # clear the exception, since we're just using
+            # it for display purposes
+            sys.exc_clear()
+        if not result:
+            result = 'Unknown'
+        
+        files = session.listTaskOutput(task_id)
+        logs = [filename for filename in files if filename.endswith('.log')]
+        rpms = [filename for filename in files if filename.endswith('.rpm') and not filename.endswith('.src.rpm')]
+        srpms = [filename for filename in files if filename.endswith('.src.rpm')]
+        misc = [filename for filename in files if filename not in logs + rpms + srpms]
+        
+        logs.sort()
+        rpms.sort()
+        misc.sort()
+        
+        data[task_id] = {}
+        data[task_id]['id'] = taskinfo['id']
+        data[task_id]['method'] = taskinfo['method']
+        data[task_id]['arch'] = taskinfo['arch']
+        data[task_id]['host'] = hostinfo and hostinfo['name'] or None
+        data[task_id]['state'] = koji.TASK_STATES[taskinfo['state']].lower()
+        data[task_id]['result'] = result
+        data[task_id]['request'] = session.getTaskRequest(task_id)
+        data[task_id]['logs'] = logs
+        data[task_id]['rpms'] = rpms
+        data[task_id]['srpms'] = srpms
+        data[task_id]['misc'] = misc
+        
+        children = session.getTaskChildren(task_id)
+        for child in children:
+            data = self._getTaskData(child['id'], data)
+        return data
+
+    def handler(self, recipients, build, target, weburl):
+        if len(recipients) == 0:
+            self.logger.debug('task %i: no recipients, not sending notifications', self.id)
+            return
+
+        build_pkg_name = build['package_name']
+        build_pkg_evr = '%s%s-%s' % ((build['epoch'] and str(build['epoch']) + ':' or ''), build['version'], build['release'])
+        build_nevr = '%s-%s' % (build_pkg_name, build_pkg_evr)
+        build_id = build['id']
+        build_owner = build['owner_name']
+        # target comes from session.py:_get_build_target() 
+        dest_tag = target['dest_tag_name']
+        status = koji.BUILD_STATES[build['state']].lower()
+        creation_time = koji.formatTimeLong(build['creation_time'])
+        completion_time = koji.formatTimeLong(build['completion_time'])
+        task_id = build['task_id']
+
+        task_data = self._getTaskData(task_id)
+
+        cancel_info = ''
+        failure_info = ''
+        if build['state'] == koji.BUILD_STATES['CANCELED']:
+            # The owner of the buildNotification task is the one
+            # who canceled the task, it turns out.
+            this_task = session.getTaskInfo(self.id)
+            if this_task['owner']:
+                canceler = session.getUser(this_task['owner'])
+                cancel_info = "\r\nCanceled by: %s" % canceler['name']
+        elif build['state'] == koji.BUILD_STATES['FAILED']:
+            failure_data = task_data[task_id]['result']
+            failed_hosts = ['%s (%s)' % (task['host'], task['arch']) for task in task_data.values() if task['host'] and task['state'] == 'failed']
+            failure_info = "\r\n%s (%d) failed on %s:\r\n  %s" % (build_nevr, build_id, 
+                                                                  ', '.join(failed_hosts),
+                                                                  failure_data)
+
+        failure = failure_info or cancel_info or ''
+
+        tasks = {'failed' : [task for task in task_data.values() if task['state'] == 'failed'],
+                 'canceled' : [task for task in task_data.values() if task['state'] == 'canceled'],
+                 'closed' : [task for task in task_data.values() if task['state'] == 'closed']}
+        
+        srpms = []
+        for taskinfo in task_data.values():
+            for srpmfile in taskinfo['srpms']:
+                srpms.append(srpmfile)
+        srpms = self.uniq(srpms)
+        srpms.sort()
+        
+        if srpms:
+            output = "SRPMS:\r\n"
+            for srpm in srpms:
+                output += "  %s" % srpm
+            output += "\r\n\r\n"
+        else:
+            output = ''
+        
+        # list states here to make them go in the correct order
+        for task_state in ['failed', 'canceled', 'closed']:
+            if tasks[task_state]:
+                output += "%s tasks:\r\n" % task_state.capitalize()
+                output += "%s-------\r\n\r\n" % ("-" * len(task_state))
+                for task in tasks[task_state]:
+                    output += "Task %s" % task['id']
+                    if task['host']:
+                        output += " on %s\r\n" % task['host']
+                    else:
+                        output += "\r\n"
+                    output += "Task Type: %s\r\n" % koji.taskLabel(task)
+                    for filetype in ['logs', 'rpms', 'misc']:
+                        if task[filetype]:
+                            output += "%s:\r\n" % filetype
+                            for file in task[filetype]:
+                                output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
+                    output += "\r\n"
+                output += "\r\n"
+
+        changelog = koji.util.formatChangelog(session.getChangelogEntries(build_id, queryOpts={'limit': 3})).replace("\n","\r\n")
+        if changelog:
+            changelog = "Changelog:\r\n%s" % changelog
+
+        from_addr = self.from_addr
+        to_addrs = ', '.join(recipients)
+        subject = self.subject_templ % locals()
+        message = self.message_templ % locals()
+
+        server = smtplib.SMTP(options.smtphost)
+        # server.set_debuglevel(True)
+        server.sendmail(from_addr, recipients, message)
+        server.quit()
+
+        return 'sent notification of build %i to: %s' % (build_id, to_addrs)
+
+    def uniq(self, items):
+        """Remove duplicates from the list of items, and sort the list."""
+        m = dict(zip(items, [1] * len(items)))
+        l = m.keys()
+        l.sort()
+        return l
+
+
+class NewRepoTask(BaseTaskHandler):
+    Methods = ['newRepo']
+    _taskWeight = 0.1
+
+    def handler(self, tag):
+        self.uploadpath = self.getUploadDir()
+        tinfo = session.getTag(tag, strict=True)
+        preptask = session.host.subtask(method='prepRepo',
+                                        arglist=[tinfo],
+                                        label='prep',
+                                        parent=self.id,
+                                        arch='noarch')
+        repo_id, event_id = self.wait(preptask)[preptask]
+        path = koji.pathinfo.repo(repo_id, tinfo['name'])
+        if not os.path.isdir(path):
+            raise koji.GenericError, "Repo directory missing: %s" % repodir
+        arches = []
+        for fn in os.listdir(path):
+            if fn != 'groups' and os.path.isdir("%s/%s/RPMS" % (path, fn)):
+                arches.append(fn)
+        #see if we can find a previous repo to update from
+        oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
+        subtasks = {}
+        for arch in arches:
+            subtasks[arch] = session.host.subtask(method='createrepo',
+                                                  arglist=[repo_id, arch, oldrepo],
+                                                  label=arch,
+                                                  parent=self.id,
+                                                  arch='noarch')
+        # wait for subtasks to finish
+        results = self.wait(subtasks.values(), all=True, failany=True)
+        data = {}
+        for (arch, task_id) in subtasks.iteritems():
+            data[arch] = results[task_id]
+            self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
+        session.host.repoDone(repo_id, data)
+        return repo_id, event_id
+
+
+class PrepRepoTask(BaseTaskHandler):
+    Methods = ['prepRepo']
+    _taskWeight = 0.2
+
+    def handler(self, tinfo):
+        repo_id, event_id = session.host.repoInit(tinfo['id'])
+        path = koji.pathinfo.repo(repo_id, tinfo['name'])
+        if not os.path.isdir(path):
+            raise koji.GenericError, "Repo directory missing: %s" % repodir
+        #create and upload meta rpm
+        spec = "%s/groups/groups.spec" % path
+        #the repoInit call should have created groups.spec
+        if not os.path.exists(spec):
+            raise koji.GenericError, "groups.spec missing"
+        #build command
+        cmd = ['rpmbuild']
+        for macro in ('_sourcedir', '_builddir', '_srcrpmdir', '_rpmdir'):
+            cmd.extend(['--define', "%s %s" % (macro,self.workdir)])
+        cmd.extend(['-bb', spec])
+        logfile = "%s/groups_rpm.log" % self.workdir
+        uploadpath = self.getUploadDir()
+        status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
+        if not _isSuccess(status):
+            raise koji.GenericError, "failed to build groups rpm: %s" \
+                    % _parseStatus(status, pkgcmd)
+        #upload file and return path
+        fn = 'buildsys-build-1-1.noarch.rpm'
+        pkg = "%s/noarch/%s" % (self.workdir, fn)
+        session.uploadWrapper(pkg, uploadpath, fn)
+        self.logger.debug("Adding %s to repo %s" % (fn, repo_id))
+        session.host.repoAddRPM(repo_id, "%s/%s" % (uploadpath, fn))
+        return repo_id, event_id
+
+
+class CreaterepoTask(BaseTaskHandler):
+
+    Methods = ['createrepo']
+    #XXX - set weight?
+    _taskWeight = 0.5
+
+    def handler(self, repo_id, arch, oldrepo):
+        #arch is the arch of the repo, not the task
+        rinfo = session.repoInfo(repo_id)
+        if rinfo['state'] != koji.REPO_INIT:
+            raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
+        pathinfo = koji.PathInfo(options.topdir)
+        repodir = pathinfo.repo(repo_id, rinfo['tag_name'])
+        repodir = "%s/%s" % (repodir, arch)
+        if not os.path.isdir(repodir):
+            raise koji.GenericError, "Repo directory missing: %s" % repodir
+        #set up our output dir
+        outdir = "%s/repo" % self.workdir
+        datadir = "%s/repodata" % outdir
+        koji.ensuredir(outdir)
+        cmd = ['/usr/bin/createrepo', '-vp', '--outputdir', outdir]
+        if os.path.exists("%s/comps.xml" % repodir):
+            cmd.extend(['-g', 'comps.xml'])
+        #attempt to recycle repodata from last repo
+        if oldrepo:
+            oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+            olddatadir = "%s/%s/repodata" % (oldpath, arch)
+            if not os.path.isdir(olddatadir):
+                self.logger.warn("old repodata is missing: %s" % olddatadir)
+            else:
+                koji.ensuredir(datadir)
+                os.system('cp -a %s/* %s' % (olddatadir, datadir))
+                cmd.append('--update')
+        # note: we can't easily use a cachedir because we do not have write
+        # permission. The good news is that with --update we won't need to
+        # be scanning many rpms.
+        cmd.append(repodir)
+
+        logfile = "%s/createrepo.log" % self.workdir
+        uploadpath = self.getUploadDir()
+        #log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None):
+        status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
+        if not _isSuccess(status):
+            raise koji.GenericError, "failed to create repo: %s" \
+                    % _parseStatus(status, pkgcmd)
+
+        files = []
+        for f in os.listdir(datadir):
+            if f.endswith('.xml') or f.endswith('.xml.gz'):
+                files.append(f)
+                session.uploadWrapper("%s/%s" % (datadir, f), uploadpath, f)
+
+        return [uploadpath, files]
+        
+class WaitrepoTask(BaseTaskHandler):
+
+    Methods = ['waitrepo']
+    #mostly just waiting
+    _taskWeight = 0.2
+
+    PAUSE = 60
+    # time in seconds before we fail this task
+    TIMEOUT = 3600
+    
+    def checkForNVR(self, tag, nvrs, repo_creation_event):
+        if not isinstance(nvrs, list):
+            nvrs = [nvrs]
+        nvr_list = [build['nvr'] for build in session.listTagged(tag, event=repo_creation_event, inherit=True)]
+        if not nvr_list:
+            return False
+        for nvr in nvrs:
+            if not nvr in nvr_list:
+                return False
+        return True
+    
+    def handler(self, build_target_info, newer_then=None, nvr=None):
+        start = time.time()
+        build_target = session.getBuildTarget(build_target_info)
+        repo = None
+        last_repo = None
+        if not newer_then and not nvr:
+            newer_then = datetime.datetime.now().isoformat(' ')
+        if not build_target:
+            raise koji.GenericError("Error: Invalid BuildTarget: %s" % build_target_info)
+
+        while True:
+            repo = session.getRepo(build_target['build_tag_name'])
+            if repo and repo != last_repo:
+                if (nvr or newer_then) and (not nvr or self.checkForNVR(build_target['dest_tag'], nvr, repo['create_event'])) and (not newer_then or repo['creation_time'] > newer_then):
+                    break
+            if self.TIMEOUT and ((time.time() - start) > self.TIMEOUT):
+                raise koji.GenericError("Error: Waited %d seconds and still no repo meeting conditions, timing out" % self.TIMEOUT)
+            last_repo = repo
+            time.sleep(self.PAUSE)
+        return "Successfully waited %s seconds for a '%s' repo (%s)" % ((time.time() - start), build_target['build_tag_name'], repo['id'])
+
+def get_options():
+    """process options from command line and config file"""
+    global options
+    # parse command line args
+    parser = OptionParser()
+    parser.add_option("-c", "--config", dest="configFile",
+                      help="use alternate configuration file", metavar="FILE",
+                      default="/etc/kojid.conf")
+    parser.add_option("--user", help="specify user")
+    parser.add_option("--password", help="specify password")
+    parser.add_option("-f", "--fg", dest="daemon",
+                      action="store_false", default=True,
+                      help="run in foreground")
+    parser.add_option("--force-lock", action="store_true", default=False,
+                      help="force lock for exclusive session")
+    parser.add_option("-v", "--verbose", action="store_true", default=False,
+                      help="show verbose output")
+    parser.add_option("-d", "--debug", action="store_true", default=False,
+                      help="show debug output")
+    parser.add_option("--debug-task", action="store_true", default=False,
+                      help="enable debug output for tasks")
+    parser.add_option("--debug-xmlrpc", action="store_true", default=False,
+                      help="show xmlrpc debug output")
+    parser.add_option("--debug-mock", action="store_true", default=False,
+                      help="show mock debug output")
+    parser.add_option("--skip-main", action="store_true", default=False,
+                      help="don't actually run main")
+    parser.add_option("--maxjobs", type='int', help="Specify maxjobs")
+    parser.add_option("--minspace", type='int', help="Specify minspace")
+    parser.add_option("--sleeptime", type='int', help="Specify the polling interval")
+    parser.add_option("--admin-emails", help="Address(es) to send error notices to")
+    parser.add_option("--topdir", help="Specify topdir")
+    parser.add_option("--workdir", help="Specify workdir")
+    parser.add_option("--mockdir", help="Specify mockdir")
+    parser.add_option("--mockuser", help="User to run mock as")
+    parser.add_option("-s", "--server", help="url of XMLRPC server")
+    (options, args) = parser.parse_args()
+
+    if args:
+        parser.error("incorrect number of arguments")
+        #not reached
+        assert False
+
+    # load local config
+    config = ConfigParser()
+    config.read(options.configFile)
+    for x in config.sections():
+        if x != 'kojid':
+            quit('invalid section found in config file: %s' % x)
+    defaults = {'sleeptime': 15,
+                'maxjobs': 5,
+                'minspace': 8192,
+                'admin_emails': None,
+                'topdir': '/mnt/koji',
+                'workdir': '/tmp/koji',
+                'mockdir': '/var/lib/mock',
+                'mockuser': 'kojibuilder',
+                'smtphost': 'mail@example.com',
+                'from_addr': 'Koji Build System <buildsys@example.com>',
+                'krb_principal': None,
+                'host_principal_format': 'compile/%s@EXAMPLE.COM',
+                'keytab': '/etc/kojid.keytab',
+                'server': None,
+                'user': None,
+                'password': None}
+    if config.has_section('kojid'):
+        for name, value in config.items('kojid'):
+            if name in ['sleeptime', 'maxjobs', 'minspace']:
+                try:
+                    defaults[name] = int(value)
+                except ValueError:
+                    quit("value for %s option must be a valid integer" % name)
+            elif name in defaults.keys():
+                defaults[name] = value
+            else:
+                quit("unknown config option: %s" % name)
+    for name, value in defaults.items():
+        if getattr(options, name) is None:
+            setattr(options, name, value)
+
+    #make sure workdir exists
+    if not os.path.exists(options.workdir):
+        koji.ensuredir(options.workdir)
+
+    if not options.server:
+        parser.error("--server argument required")
+
+def quit(msg=None, code=1):
+    if msg:
+        logging.getLogger("koji.build").error(msg)
+        sys.stderr.write('%s\n' % msg)
+        sys.stderr.flush()
+    sys.exit(code)
+
+if __name__ == "__main__":
+    global options
+    
+    koji.add_file_logger("koji", "/var/log/kojid.log")
+    koji.add_sys_logger("koji")
+    #note we're setting logging params for all of koji*
+    get_options()
+    if options.debug:
+        logging.getLogger("koji").setLevel(logging.DEBUG)
+    elif options.verbose:
+        logging.getLogger("koji").setLevel(logging.INFO)
+    else:
+        logging.getLogger("koji").setLevel(logging.WARN)
+    if options.debug_task:
+        logging.getLogger("koji.build.BaseTaskHandler").setLevel(logging.DEBUG)
+    if options.admin_emails:
+        koji.add_mail_logger("koji", options.admin_emails)
+
+    #build session options
+    session_opts = {}
+    for k in ('user','password','debug_xmlrpc', 'debug'):
+        session_opts[k] = getattr(options,k)
+    #start a session and login
+    session = koji.ClientSession(options.server, session_opts)
+    if options.user:
+        try:
+            #authenticate using user/password
+            session.login()
+        except koji.AuthError:
+            quit("Error: Unable to log in. Bad credentials?")
+        except xmlrpclib.ProtocolError:
+            quit("Error: Unable to connect to server %s" % (options.server))
+    elif sys.modules.has_key('krbV'):
+        krb_principal = options.krb_principal
+        if krb_principal is None:
+            krb_principal = options.host_principal_format % socket.getfqdn()
+        try:
+            session.krb_login(principal=krb_principal,
+                              keytab=options.keytab)
+        except krbV.Krb5Error, e:
+            quit("Kerberos authentication failed: '%s' (%s)" % (e.message, e.err_code))
+        except socket.error, e:
+            quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
+    else:
+        quit("No username/password supplied and Kerberos missing or not configured")
+    #make session exclusive
+    try:
+        session.exclusiveSession(force=options.force_lock)
+    except koji.AuthLockError:
+        quit("Error: Unable to get lock. Trying using --force-lock")
+    if not session.logged_in:
+        quit("Error: Unknown login error")
+    #make sure it works
+    try:
+        ret = session.echo("OK")
+    except xmlrpclib.ProtocolError:
+        quit("Error: Unable to connect to server %s" % (options.server))
+    if ret != ["OK"]:
+        quit("Error: incorrect server response: %r" % (ret))
+
+    # run main
+    if options.daemon:
+        #detach
+        koji.daemonize()
+        main()
+        # not reached
+        assert False
+    elif not options.skip_main:
+        koji.add_stderr_logger("koji")
+        main()

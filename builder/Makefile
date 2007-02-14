@@ -1,0 +1,28 @@
+
+BINFILES = kojid
+PYFILES = $(wildcard *.py)
+
+_default:
+	@echo "nothing to make.  try make install"
+
+clean:
+	rm -f *.o *.so *.pyc *~
+
+install:
+	@if [ "$(DESTDIR)" = "" ]; then \
+		echo " "; \
+		echo "ERROR: A destdir is required"; \
+		exit 1; \
+	fi
+
+	mkdir -p $(DESTDIR)/usr/sbin
+	install -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+
+	mkdir -p $(DESTDIR)/etc/mock/koji
+	mkdir -p $(DESTDIR)/etc/rc.d/init.d
+	install -m 755 kojid.init $(DESTDIR)/etc/rc.d/init.d/kojid
+
+	mkdir -p $(DESTDIR)/etc/sysconfig
+	install -m 644 kojid.sysconfig $(DESTDIR)/etc/sysconfig/kojid
+
+	install -m 644 kojid.conf $(DESTDIR)/etc/kojid.conf

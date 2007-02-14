@@ -1,0 +1,17 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Reports</h4>
+
+  <ul>
+    <li><a href="packagesbyuser">Number of packages owned by each user</a></li>
+    <li><a href="buildsbyuser">Number of builds submitted by each user</a></li>
+    <li><a href="rpmsbyhost">RPMs built by each host</a></li>
+    <li><a href="tasksbyuser">Tasks submitted by each user</a></li>
+    <li><a href="tasksbyhost">Tasks completed by each host</a></li>
+    <li><a href="buildsbystatus">Succeeded/failed/canceled builds</a></li>
+    <li><a href="buildsbytarget">Number of builds in each target</a></li>
+  </ul>
+
+#include "includes/footer.chtml"

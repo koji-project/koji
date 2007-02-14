@@ -1,0 +1,39 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Search</h4>
+
+  <form action="search">
+    <table>
+      <tr>
+        <th>Search</th>
+        <td><input type="text" name="terms"/></td>
+        <td>
+          <select name="type">
+            <option value="package">Packages</option>
+            <option value="build">Builds</option>
+            <option value="tag">Tags</option>
+            <option value="target">Build Targets</option>
+            <option value="user">Users</option>
+            <option value="host">Hosts</option>
+            <option value="rpm">RPMs</option>
+            <option value="file">Files</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>&nbsp;</th>
+        <td colspan="2">
+          <input type="radio" name="match" value="glob" checked="checked"/><abbr title="? will match any single character, * will match any sequence of zero or more characters">glob</abbr>
+          <input type="radio" name="match" value="regexp"/><abbr title="full POSIX regular expressions">regexp</abbr>
+        </td>
+      </tr>
+      <tr>
+        <th>&nbsp;</th>
+        <td colspan="2"><input type="submit" value="Search"/></td>
+      </tr>
+    </table>
+  </form>
+
+#include "includes/footer.chtml"

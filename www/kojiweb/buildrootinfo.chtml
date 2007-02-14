@@ -1,0 +1,50 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Information for buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+
+  <table>
+    <tr>
+      <th>Host</th><td><a href="hostinfo?hostID=$buildroot.host_id">$buildroot.host_name</a></td>
+    </tr>
+    <tr>
+      <th>Arch</th><td>$buildroot.arch</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>$buildroot.id</td>
+    </tr>
+    <tr>
+      <th>State</th><td>$util.imageTag($util.brStateName($buildroot.state))</td>
+    </tr>
+    <tr>
+      #set $clean = $buildroot.dirtyness and 'yes' or 'no'
+      <th>Clean?</th><td class="$clean">$util.imageTag($clean)</td>
+    </tr>
+    <tr>
+      <th>Created</th><td>$util.formatTimeLong($buildroot.create_event_time)</td>
+    </tr>
+    <tr>
+      <th>Retired</th><td>$util.formatTimeLong($buildroot.retire_event_time)</td>
+    </tr>
+    <tr>
+      <th>Repo ID</th><td>$buildroot.repo_id</td>
+    </tr>
+    <tr>
+      <th>Repo Tag</th><td><a href="taginfo?tagID=$buildroot.tag_id">$buildroot.tag_name</a></td>
+    </tr>
+    <tr>
+      <th>Repo State</th><td>$util.imageTag($util.repoStateName($buildroot.repo_state))</td>
+    </tr>
+    <tr>
+      <th>Repo Created</th><td>$util.formatTimeLong($buildroot.repo_create_event_time)</td>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"

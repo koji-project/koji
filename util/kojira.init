@@ -1,0 +1,81 @@
+#! /bin/sh
+#
+# kojira       Start/Stop kojira
+#
+# chkconfig: 345 99 99
+# description: koji repo administrator
+# processname: kojira
+
+# This is an interactive program, we need the current locale
+
+# Source function library.
+. /etc/init.d/functions
+
+# Check that we're a priviledged user
+[ `id -u` = 0 ] || exit 0
+
+[ -f /etc/sysconfig/kojira ] && . /etc/sysconfig/kojira
+
+prog="kojira"
+
+# Check that networking is up.
+if [ "$NETWORKING" = "no" ]
+then
+    exit 0
+fi
+
+[ -f /usr/sbin/kojira ] || exit 0
+
+RETVAL=0
+
+start() {
+    echo -n $"Starting $prog: "
+    cd /
+    ARGS=""
+    [ "$FORCE_LOCK" == "Y" ] && ARGS="$ARGS --force-lock"
+    [ "$KOJIRA_DEBUG" == "Y" ] && ARGS="$ARGS --debug"
+    [ "$KOJIRA_VERBOSE" == "Y" ] && ARGS="$ARGS --verbose"
+    daemon /usr/sbin/kojira $ARGS
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/kojira
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc kojira
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/kojira
+    return $RETVAL
+}
+
+restart() {
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status $prog
+        ;;
+  restart|reload)
+        restart
+        ;;
+  condrestart)
+        [ -f /var/lock/subsys/kojira ] && restart || :
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status|restart|reload|condrestart}"
+        exit 1
+esac
+
+exit $?

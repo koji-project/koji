@@ -1,0 +1,18 @@
+SERVERDIR = /images
+FILES = $(wildcard *.gif *.png)
+
+_default:
+	@echo "nothing to make.  try make install"
+
+clean:
+	rm -f *.o *.so *.pyc *~
+
+install:
+	@if [ "$(DESTDIR)" = "" ]; then \
+		echo " "; \
+		echo "ERROR: A destdir is required"; \
+		exit 1; \
+	fi
+
+	mkdir -p $(DESTDIR)/$(SERVERDIR)
+	install -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)

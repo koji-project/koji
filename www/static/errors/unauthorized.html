@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Authentication Failed | Koji</title>
+    <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="/koji-static/koji.css"/>
+    <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="/koji-static/debug.css"/>
+    <link rel="alternate" type="application/rss+xml" title="Koji: recent builds" href="/koji/recentbuilds"/>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  </head>
+  <body>
+
+    <div id="wrap">
+      <div id="innerwrap">
+
+        <!-- HEADER -->
+        <div id="header">
+          <img src="/koji-static/images/koji.png" alt="Koji Logo" width="49" height="40" id="kojiLogo"/>
+        </div><!-- end header -->
+
+        <div id="content">
+          <h2>Kerberos Authentication Failed</h2>
+          The Koji Web UI was unable to verify your Kerberos credentials.  Please make sure that you have valid
+          Kerberos tickets (obtainable via <strong>kinit</strong>), and that you have 
+          configured your browser correctly.
+        </div>
+
+        <p id="footer">
+          Copyright &copy; 2007 Red Hat, Inc.
+        </p>
+
+      </div>
+    </div>
+    
+  </body>
+</html>

@@ -1,0 +1,110 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Packages#if $prefix then ' starting with "%s"' % $prefix else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''##if $user then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''#</h4>
+
+  <table class="data-list">
+    #if $tag
+    <tr>
+      <td colspan="5">
+        #if $inherited
+        <a href="packages?inherited=0$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix')">Hide inherited packages</a>
+        #else
+        <a href="packages?${util.passthrough($self, 'userID', 'tagID', 'order', 'prefix')[1:]}">Show inherited packages</a>
+        #end if
+      </td>
+    </tr>
+    #end if
+    <tr>
+      <td class="charlist" colspan="#if $tag or $user then '5' else '2'#">
+        #for $char in $chars
+        #if $prefix == $char
+        <strong>$char</strong>
+        #else
+        <a href="packages?prefix=$char$util.passthrough($self, 'userID', 'tagID', 'order', 'inherited')">$char</a>
+        #end if
+        | 
+        #end for
+        #if $prefix
+        <a href="packages?${util.passthrough($self, 'userID', 'tagID', 'order', 'inherited')[1:]}">all</a>
+        #else
+        <strong>all</strong>
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
+        #if $len($packagePages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')';">
+            #for $pageNum in $packagePages
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $packageStart > 0
+        <a href="packages?start=#echo $packageStart - $packageRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalPackages != 0
+        <strong>Packages #echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
+        #end if
+        #if $packageStart + $packageCount < $totalPackages
+        <a href="packages?start=#echo $packageStart + $packageRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="packages?order=$util.toggleOrder($self, 'package_id')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited')">ID</a> $util.sortImage($self, 'package_id')</th>
+      <th><a href="packages?order=$util.toggleOrder($self, 'package_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited')">Name</a> $util.sortImage($self, 'package_name')</th>
+      #if $tag or $user
+        <th><a href="packages?order=$util.toggleOrder($self, 'tag_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited')">Tag</a> $util.sortImage($self, 'tag_name')</th>
+        <th><a href="packages?order=$util.toggleOrder($self, 'owner_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited')">Owner</a> $util.sortImage($self, 'owner_name')</th>
+        <th><a href="packages?order=$util.toggleOrder($self, 'blocked')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited')">Included?</a> $util.sortImage($self, 'blocked')</th>
+      #end if
+    </tr>
+    #if $len($packages) > 0
+      #for $package in $packages
+        <tr class="$util.rowToggle($self)">
+          <td>$package.package_id</td>
+          <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
+          #if $tag or $user
+          <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
+          <td><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
+          <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
+          #end if
+        </tr>
+      #end for
+    #else
+      <tr class="row-odd">
+        <td colspan="#if $tag or $user then '5' else '2'#">No packages</td>
+      </tr>
+    #end if
+    <tr>
+      <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
+        #if $len($packagePages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')';">
+            #for $pageNum in $packagePages
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $packageStart > 0
+        <a href="packages?start=#echo $packageStart - $packageRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalPackages != 0
+        <strong>Packages #echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
+        #end if
+        #if $packageStart + $packageCount < $totalPackages
+        <a href="packages?start=#echo $packageStart + $packageRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"
