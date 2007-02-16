@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define testbuild 1
+%define testbuild 0
 %define debug_package %{nil}
 
 %define baserelease 5
@@ -15,8 +15,8 @@ Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
 Group: Applications/System
-Source: koji-%{PACKAGE_VERSION}.tar.bz2
-BuildRoot: %(mktemp -d %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
 BuildRequires: python
@@ -31,7 +31,7 @@ Group: Applications/Internet
 Requires: httpd
 Requires: mod_python
 Requires: postgresql-python
-Requires: koji = %{version}-%{release}
+Requires: %{name} = %{version}-%{release}
 
 %description hub
 koji-hub is the XMLRPC interface to the koji database
@@ -39,7 +39,7 @@ koji-hub is the XMLRPC interface to the koji database
 %package builder
 Summary: Koji RPM builder daemon
 Group: Applications/System
-Requires: koji = %{version}-%{release}
+Requires: %{name} = %{version}-%{release}
 Requires: mock >= 0.5-3
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
@@ -59,7 +59,7 @@ tasks that come through the Koji system.
 Summary: Koji Utilities
 Group: Applications/Internet
 Requires: postgresql-python
-Requires: koji = %{version}-%{release}
+Requires: %{name} = %{version}-%{release}
 Requires: rpm-build
 Requires: createrepo >= 0.4.4-3
 
@@ -74,7 +74,7 @@ Requires: mod_python
 Requires: mod_auth_kerb
 Requires: postgresql-python
 Requires: python-cheetah
-Requires: koji = %{version}-%{release}
+Requires: %{name} = %{version}-%{release}
 Requires: python-krbV >= 1.0.13
 
 %description web
@@ -95,7 +95,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %{_bindir}/*
-%{python_sitelib}/koji
+%{python_sitelib}/%{name}
 %config(noreplace) %{_sysconfdir}/koji.conf
 %doc docs
 
