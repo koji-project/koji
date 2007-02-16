@@ -64,7 +64,7 @@ subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
 
 tarball: clean
-	@git archive --format=tar --prefix=$(NAME)-$(VERSION) HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
+	@git archive --format=tar --prefix=$(NAME)-$(VERSION)/ HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
 
 srpm: tarball
 	$(RPM_WITH_DIRS) $(DIST_DEFINES) -ts $(NAME)-$(VERSION).tar.bz2
