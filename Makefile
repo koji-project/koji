@@ -47,15 +47,9 @@ RPM_WITH_DIRS = $(RPM) --define "_sourcedir $(SOURCEDIR)" \
 		    --define "_rpmdir $(RPMDIR)"
 endif
 
-# CVS-safe version/release -- a package name like 4Suite screws things
-# up, so we have to remove the leaving digits from the name
-TAG_NAME    := $(shell echo $(NAME)    | sed -e s/\\\./_/g -e s/^[0-9]\\\+//g)
-TAG_VERSION := $(shell echo $(VERSION) | sed s/\\\./_/g)
-TAG_RELEASE := $(shell echo $(RELEASE) | sed s/\\\./_/g)
-
 # tag to export, defaulting to current tag in the spec file
 ifndef TAG
-TAG=$(TAG_NAME)-$(TAG_VERSION)-$(TAG_RELEASE)
+TAG=$(NAME)-$(VERSION)-$(RELEASE)
 endif
 
 _default:
@@ -63,36 +57,30 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~ koji*.bz2 koji*.src.rpm
-	rm -rf koji-$(VERSION)
+	rm -rf $(NAME)-$(VERSION)
 	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
 
 tarball: clean
-	@rm -rf .koji-$(VERSION)
-	@mkdir .koji-$(VERSION)
-	@cp -rl $(SUBDIRS) Makefile *.spec .koji-$(VERSION)
-	@mv .koji-$(VERSION) koji-$(VERSION)
-	tar --bzip2 --exclude '*.tar.bz2' --exclude '*.rpm' --exclude '.#*' --exclude '.cvsignore' --exclude CVS \
-	     -cpf koji-$(VERSION).tar.bz2 koji-$(VERSION)
-	@rm -rf koji-$(VERSION)
+	@git archive --format=tar --prefix=$(NAME)-$(VERSION) HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
 
 srpm: tarball
-	$(RPM_WITH_DIRS) $(DIST_DEFINES) -ts koji-$(VERSION).tar.bz2
+	$(RPM_WITH_DIRS) $(DIST_DEFINES) -ts $(NAME)-$(VERSION).tar.bz2
 
 rpm: tarball
-	$(RPM_WITH_DIRS) $(DIST_DEFINES) -tb koji-$(VERSION).tar.bz2
+	$(RPM_WITH_DIRS) $(DIST_DEFINES) -tb $(NAME)-$(VERSION).tar.bz2
 
-tag::    $(SPECFILE)
-	cvs tag $(TAG_OPTS) -c $(TAG)
+tag::
+	git tag $(TAG)
 	@echo "Tagged with: $(TAG)"
 	@echo
 
 # If and only if "make build" fails, use "make force-tag" to 
 # re-tag the version.
-force-tag: $(SPECFILE)
-	@$(MAKE) tag TAG_OPTS="-F $(TAG_OPTS)"
+#force-tag: $(SPECFILE)
+#	@$(MAKE) tag TAG_OPTS="-F $(TAG_OPTS)"
 
 DESTDIR ?= /
 install:
