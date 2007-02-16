@@ -2647,20 +2647,22 @@ def get_changelog_entries(buildID, author=None, before=None, after=None, queryOp
               (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
     - after: only return changelogs from after the given date
              (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
-    - opts: query options used by the QueryProcessor
+    - queryOpts: query options used by the QueryProcessor
 
-    If "order" is not specified in opts, results will be returned in reverse chronological
+    If "order" is not specified in queryOpts, results will be returned in reverse chronological
     order.
 
     Results will be returned as a list of maps with 'date', 'author', and 'text' keys.
     If there are no results, an empty list will be returned.
     """
-    fields = ('date', 'author', 'text')
+    fields = ('id', 'date', 'author', 'text')
 
     if not queryOpts:
         queryOpts = {}
     if not queryOpts.has_key('order'):
-        queryOpts['order'] = '-date'
+        # newest entries will be inserted first, because of
+        # the way entries are sorted in the spec file
+        queryOpts['order'] = 'id'
 
     clauses = ['changelogs.build_id = %(buildID)i']
     if author:
