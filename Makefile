@@ -56,9 +56,7 @@ _default:
 	@echo "read the makefile"
 
 clean:
-	rm -f *.o *.so *.pyc *~ koji*.bz2 koji*.src.rpm
-	rm -rf $(NAME)-$(VERSION)
-	for d in $(SUBDIRS); do make -s -C $$d clean; done
+	@git clean -d -q -x
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
