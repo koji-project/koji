@@ -15,6 +15,7 @@ Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
 Group: Applications/System
+URL: http://hosted.fedoraproject.org/projects/koji
 Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
@@ -107,8 +108,8 @@ rm -rf $RPM_BUILD_ROOT
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
-%config %{_initrddir}/kojira
-%config %{_sysconfdir}/sysconfig/kojira
+%{_initrddir}/kojira
+%config(noreplace) %{_sysconfdir}/sysconfig/kojira
 %config(noreplace) %{_sysconfdir}/kojira.conf
 
 %files web
@@ -119,8 +120,8 @@ rm -rf $RPM_BUILD_ROOT
 %files builder
 %defattr(-,root,root)
 %{_sbindir}/kojid
-%config %{_initrddir}/kojid
-%config %{_sysconfdir}/sysconfig/kojid
+%{_initrddir}/kojid
+%config(noreplace) %{_sysconfdir}/sysconfig/kojid
 %config(noreplace) %{_sysconfdir}/kojid.conf
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
