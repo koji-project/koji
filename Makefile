@@ -65,10 +65,10 @@ tarball: clean
 	@git archive --format=tar --prefix=$(NAME)-$(VERSION)/ HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
 
 srpm: tarball
-	$(RPM_WITH_DIRS) $(DIST_DEFINES) -ts $(NAME)-$(VERSION).tar.bz2
+	$(RPM_WITH_DIRS) $(DIST_DEFINES) -bs $(SPECFILE)
 
 rpm: tarball
-	$(RPM_WITH_DIRS) $(DIST_DEFINES) -tb $(NAME)-$(VERSION).tar.bz2
+	$(RPM_WITH_DIRS) $(DIST_DEFINES) -bb $(SPECFILE)
 
 tag::
 	git tag $(TAG)
