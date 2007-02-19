@@ -1,9 +1,8 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 %define testbuild 0
-%define debug_package %{nil}
 
-%define baserelease 5
+%define baserelease 6
 %if %{testbuild}
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
@@ -148,5 +147,8 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Feb 19 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-6
+- Clean up spec for package review
+
 * Sun Feb 04 2007 Mike McLean <mikem@redhat.com> - 0.9.5-1
 - project renamed to koji
