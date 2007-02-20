@@ -16,6 +16,6 @@ install:
 	fi
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
-	install -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
+	install -p -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
 
 	cp -r jsolait $(DESTDIR)/$(SERVERDIR)

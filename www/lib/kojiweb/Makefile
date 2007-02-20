@@ -25,6 +25,6 @@ install:
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
 	for p in $(PYFILES) ; do \
-		install -m 644 $$p $(DESTDIR)/$(SERVERDIR)/$$p; \
+		install -p -m 644 $$p $(DESTDIR)/$(SERVERDIR)/$$p; \
 	done
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)"

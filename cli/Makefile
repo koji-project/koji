@@ -14,5 +14,5 @@ install:
 	fi
 
 	mkdir -p $(DESTDIR)/usr/bin
-	install -m 755 $(FILES) $(DESTDIR)/usr/bin
-	install -m 644 koji.conf $(DESTDIR)/etc/koji.conf
+	install -p -m 755 $(FILES) $(DESTDIR)/usr/bin
+	install -p -m 644 koji.conf $(DESTDIR)/etc/koji.conf

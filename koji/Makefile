@@ -16,7 +16,7 @@ clean:
 install:
 	mkdir -p $(DESTDIR)/$(PKGDIR)
 	for p in $(PYFILES) ; do \
-		install -m 644 $$p $(DESTDIR)/$(PKGDIR)/$$p; \
+		install -p -m 644 $$p $(DESTDIR)/$(PKGDIR)/$$p; \
 	done
 	for p in $(PYSCRIPTS) ; do \
 		chmod 0755 $(DESTDIR)/$(PKGDIR)/$$p; \

@@ -18,7 +18,7 @@ install:
 	fi
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
-	install -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
+	install -p -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
 
 	for d in $(SUBDIRS); do make DESTDIR=$(DESTDIR)/$(SERVERDIR) \
 		-C $$d install; [ $$? = 0 ] || exit 1; done

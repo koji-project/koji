@@ -16,13 +16,13 @@ install:
 	fi
 
 	mkdir -p $(DESTDIR)/usr/sbin
-	install -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
 
 	mkdir -p $(DESTDIR)/etc/mock/koji
 	mkdir -p $(DESTDIR)/etc/rc.d/init.d
-	install -m 755 kojid.init $(DESTDIR)/etc/rc.d/init.d/kojid
+	install -p -m 755 kojid.init $(DESTDIR)/etc/rc.d/init.d/kojid
 
 	mkdir -p $(DESTDIR)/etc/sysconfig
-	install -m 644 kojid.sysconfig $(DESTDIR)/etc/sysconfig/kojid
+	install -p -m 644 kojid.sysconfig $(DESTDIR)/etc/sysconfig/kojid
 
-	install -m 644 kojid.conf $(DESTDIR)/etc/kojid.conf
+	install -p -m 644 kojid.conf $(DESTDIR)/etc/kojid.conf
