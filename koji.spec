@@ -2,7 +2,7 @@
 
 %define testbuild 0
 
-%define baserelease 7
+%define baserelease 8
 %if %{testbuild}
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
@@ -18,7 +18,7 @@ URL: http://hosted.fedoraproject.org/projects/koji
 Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-Requires: python-krbV >= 1.0.13
+Requires: python-krbV >= 1.0.13, rpm-python
 BuildRequires: python
 
 %description
@@ -97,7 +97,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/*
 %{python_sitelib}/%{name}
 %config(noreplace) %{_sysconfdir}/koji.conf
-%doc docs
+%doc docs Authors COPYING LGPL
 
 %files hub
 %defattr(-,root,root)
@@ -147,8 +147,13 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Feb 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-8
+- Add Authors COPYING LGPL to the docs of the main package
+
 * Tue Feb 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-7
 - Move web files from /var/www to /usr/share
+- Use -p in install calls
+- Add rpm-python to requires for koji
 
 * Mon Feb 19 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-6
 - Clean up spec for package review
