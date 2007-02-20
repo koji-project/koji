@@ -1,6 +1,6 @@
 SUBDIRS = images errors js
 
-SERVERDIR = /var/www/koji-web/static
+SERVERDIR = /usr/share/koji-web/static
 FILES = $(wildcard *.css)
 
 _default:

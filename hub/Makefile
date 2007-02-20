@@ -6,7 +6,7 @@ PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print sys.prefix')
 PYLIBDIR = $(PYSYSDIR)/lib/python$(PYVER)
 PKGDIR = $(PYLIBDIR)/site-packages/$(PACKAGE)
 
-SERVERDIR = /var/www/koji-hub
+SERVERDIR = /usr/share/koji-hub
 PYFILES = $(wildcard *.py)
 
 _default:

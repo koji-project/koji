@@ -2,7 +2,7 @@
 
 %define testbuild 0
 
-%define baserelease 6
+%define baserelease 7
 %if %{testbuild}
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
@@ -101,7 +101,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files hub
 %defattr(-,root,root)
-%{_var}/www/koji-hub
+%{_datadir}/koji-hub
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 
 %files utils
@@ -113,7 +113,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files web
 %defattr(-,root,root)
-%{_var}/www/koji-web
+%{_datadir}/koji-web
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
 
 %files builder
@@ -147,6 +147,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Feb 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-7
+- Move web files from /var/www to /usr/share
+
 * Mon Feb 19 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-6
 - Clean up spec for package review
 

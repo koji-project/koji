@@ -1,6 +1,6 @@
 SUBDIRS = kojiweb
 
-SERVERDIR = /var/www/koji-web/lib
+SERVERDIR = /usr/share/koji-web/lib
 
 _default:
 	@echo "nothing to make.  try make install"

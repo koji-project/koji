@@ -14,7 +14,7 @@ install:
 		exit 1; \
 	fi
 
-	mkdir -p $(DESTDIR)/var/www/koji-web
+	mkdir -p $(DESTDIR)/usr/share/koji-web
 
 	for d in $(SUBDIRS); do make DESTDIR=$(DESTDIR) \
 		-C $$d install; [ $$? = 0 ] || exit 1; done

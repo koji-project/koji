@@ -1,6 +1,6 @@
 SUBDIRS = includes
 
-SERVERDIR = /var/www/koji-web/scripts
+SERVERDIR = /usr/share/koji-web/scripts
 FILES = $(wildcard *.py *.chtml)
 
 _default:
