@@ -79,7 +79,7 @@
           #for $rpm in $rpms
           <tr>
             #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-            <td>$rpmfile&nbsp;(<a href="rpminfo?rpmID=$rpm.id">info</a>)&nbsp;(<a href="$downloadBase/$rpm.name/$rpm.version/$rpm.release/$rpm.arch/$rpmfile">download</a>)</td>
+            <td>$rpmfile&nbsp;(<a href="rpminfo?rpmID=$rpm.id">info</a>)&nbsp;(<a href="$downloadBase/$build.package_name/$build.version/$build.release/$rpm.arch/$rpmfile">download</a>)</td>
           </tr>
           #end for
         </table>
