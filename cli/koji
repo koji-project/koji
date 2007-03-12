@@ -1606,6 +1606,10 @@ def anon_handle_list_pkgs(options, session, args):
         opts['tagID'] = tag['id']
     if options.package:
         opts['pkgID'] = options.package
+    allpkgs = False
+    if not opts:
+        # no limiting clauses were specified
+        allpkgs = True
     opts['inherited'] = not options.noinherit
     opts['with_dups'] = True
     data = session.listPackages(**opts)
@@ -1613,15 +1617,18 @@ def anon_handle_list_pkgs(options, session, args):
         print "(no matching packages)"
         return 1
     if not options.quiet:
-        if data[0][0].has_key('tag_id'):
-            print "%-23s %-23s %-16s %-16s" % ('Package','Tag','Extra Arches','Owner')
-            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*16)
-        else:
+        if allpkgs:
             print "Package"
             print '-'*23
+        else:
+            print "%-23s %-23s %-16s %-16s" % ('Package','Tag','Extra Arches','Owner')
+            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*16)
     for pkg in data:
         if options.tag:
             pkg = [pkg[0]]
+        if allpkgs:
+            print pkg['package_name']
+            continue
         for tagged_pkg in pkg:
             if not options.show_blocked and tagged_pkg.get('blocked',False):
                 continue
