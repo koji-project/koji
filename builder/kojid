@@ -321,7 +321,7 @@ class BuildRoot(object):
         for k in ('repoid', 'tag_name', 'distribution'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir'):
+        for k in ('mockdir', 'topdir', 'packager', 'vendor', 'mockhost'):
             if hasattr(options, k):
                 opts[k] = getattr(options, k)
         opts['buildroot_id'] = self.id
@@ -2320,6 +2320,9 @@ def get_options():
                 'workdir': '/tmp/koji',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',
+                'packager': 'koji',
+                'vendor': 'koji',
+                'mockhost': None,
                 'smtphost': 'mail@example.com',
                 'from_addr': 'Koji Build System <buildsys@example.com>',
                 'krb_principal': None,

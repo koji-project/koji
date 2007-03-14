@@ -919,6 +919,10 @@ baseurl=%(url)s
     macros = {
         '_topdir' : '%s/build' % config_opts['chroothome'],
         '_rpmfilename' : '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
+        'vendor' : opts['vendor'],
+        'packager' : opts['packager'],
+        '_host_cpu' : arch,
+        '_host': '%s-%s' % (arch, opts['mockhost']),
         #TODO - track some of these in the db instead?
     }
     if opts.has_key('distribution'):
