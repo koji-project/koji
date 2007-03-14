@@ -541,11 +541,11 @@ def handle_build(options, session, args):
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
-    (options, args) = parser.parse_args(args)
+    (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Exactly two arguments (a build target and a CVS URL or srpm file) are required"))
         assert False
-    if options.arch_override and not options.scratch:
+    if build_opts.arch_override and not build_opts.scratch:
             parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
     target = args[0]
@@ -555,23 +555,23 @@ def handle_build(options, session, args):
     dest_tag = session.getTag(build_target['dest_tag'])
     if not dest_tag:
         parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
-    if dest_tag['locked'] and not options.scratch:
+    if dest_tag['locked'] and not build_opts.scratch:
         parser.error(_("Destination tag %s is locked" % dest_tag['name']))
     source = args[1]
     opts = {}
-    if options.arch_override:
-        opts['arch_override'] = ' '.join(options.arch_override.replace(',',' ').split())
+    if build_opts.arch_override:
+        opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
     for key in ('skip_tag','scratch'):
-        opts[key] = getattr(options,key)
+        opts[key] = getattr(build_opts,key)
     priority = None
-    if options.background:
+    if build_opts.background:
         #relative to koji.PRIO_DEFAULT
         priority = 5
     if not source.startswith('cvs://'):
         #treat source as an srpm and upload it
         print "Uploading srpm: %s" % source
         serverdir = _unique_path('cli-build')
-        if _running_in_bg() or options.noprogress:
+        if _running_in_bg() or build_opts.noprogress:
             callback = None
         else:
             callback = _progress_callback
@@ -581,7 +581,7 @@ def handle_build(options, session, args):
     task_id = session.build(source, target, opts, priority=priority)
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.web_url, task_id)
-    if _running_in_bg() or options.nowait:
+    if _running_in_bg() or build_opts.nowait:
         return
     else:
         return watch_tasks(session,[task_id])
