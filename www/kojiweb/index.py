@@ -75,7 +75,7 @@ def _genHTML(req, fileName):
     else:
         req._values['currentUser'] = None
         
-    return str(Cheetah.Template.Template(file=fileName, searchList=[req._values]))
+    return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter='EncodeUnicode').respond()
 
 def _getServer(req):
     serverURL = req.get_options()['KojiHubURL']    

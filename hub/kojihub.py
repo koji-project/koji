@@ -2911,6 +2911,7 @@ def import_rpm(fn,buildinfo=None,brootid=None):
     for (filename,filesize,filemd5,fileflags) in \
             zip(hdr[rpm.RPMTAG_FILENAMES],hdr[rpm.RPMTAG_FILESIZES],
                 hdr[rpm.RPMTAG_FILEMD5S],hdr[rpm.RPMTAG_FILEFLAGS]):
+        filename = koji.fixEncoding(filename)
         q = """INSERT INTO rpmfiles (rpm_id,filename,filesize,filemd5,fileflags)
         VALUES (%(rpminfo_id)d,%(filename)s,%(filesize)d,%(filemd5)s,%(fileflags)d)
         """
@@ -2947,13 +2948,8 @@ def import_changelog(buildinfo, rpmfile, replace=False):
     for cltime, clauthor, cltext in zip(cltimelist, hdr['CHANGELOGNAME'],
                                         hdr['CHANGELOGTEXT']):
         cltime = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-        # XXX FIXME!
-        # Use koji.fixEncoding() instead of koji._forceAscii()
-        # once the database is in UTF-8
-        # clauthor = koji.fixEncoding(clauthor)
-        # cltext = koji.fixEncoding(cltext)
-        clauthor = koji._forceAscii(clauthor)
-        cltext = koji._forceAscii(cltext)
+        clauthor = koji.fixEncoding(clauthor)
+        cltext = koji.fixEncoding(cltext)
         q = """INSERT INTO changelogs (build_id, date, author, text) VALUES
         (%(build_id)d, %(cltime)s, %(clauthor)s, %(cltext)s)
         """

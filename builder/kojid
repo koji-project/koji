@@ -2343,7 +2343,7 @@ def get_options():
             else:
                 quit("unknown config option: %s" % name)
     for name, value in defaults.items():
-        if getattr(options, name) is None:
+        if getattr(options, name, None) is None:
             setattr(options, name, value)
 
     #make sure workdir exists
