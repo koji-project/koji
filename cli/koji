@@ -1020,14 +1020,14 @@ def handle_list_permissions(options, session, args):
     if len(args) > 0:
         parser.error(_("This command takes no arguments"))
         assert False
-    if not options.user:
-        parser.error(_("A user must be specified"))
-        assert False
     activate_session(session)
-    user = session.getUser(options.user)
-    if not user:
-        raise koji.GenericError("%s can not be found" % options.user)
-    perms = session.getUserPerms(user['id'])
+    if options.user:
+        user = session.getUser(options.user)
+        if not user:
+            raise koji.GenericError("%s can not be found" % options.user)
+        perms = session.getUserPerms(user['id'])
+    else:
+        perms = [p['name'] for p in session.getAllPerms()]
     print perms
 
 def handle_list_signed(options, session, args):
