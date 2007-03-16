@@ -356,7 +356,7 @@ def get_options():
     parser = OptionParser("usage: %prog [opts]")
     parser.add_option("-c", "--config", dest="configFile",
                       help="use alternate configuration file", metavar="FILE",
-                      default="/etc/kojira.conf")
+                      default="/etc/kojira/kojira.conf")
     parser.add_option("--user", help="specify user")
     parser.add_option("--password", help="specify password")
     parser.add_option("--principal", help="Kerberos principal")
@@ -400,10 +400,13 @@ def get_options():
                 'prune_batch_size': 4,
                 'max_repo_tasks' : 10,
                 'deleted_repo_lifetime': 7*24*3600,
+                'cert': '/etc/kojira/client.crt',
+                'ca': '/etc/kojira/clientca.crt',
+                'serverca': '/etc/kojira/serverca.crt'
                 }
     if config.has_section(section):
         int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks')
-        str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab')
+        str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab', 'cert', 'ca', 'serverca')
         bool_opts = ('with_src','verbose','debug')
         for name in config.options(section):
             if name in int_opts:
@@ -458,10 +461,10 @@ if  __name__ == "__main__":
     else:
         logger.setLevel(logging.WARNING)
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
+    for k in ('cert', 'ca', 'serverca', 'user', 'password', 'debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)
-    if options.user:
+    if os.path.isfile(options.cert) or options.user:
         #authenticate using user/password
         session.login()
     elif sys.modules.has_key('krbV') and options.principal and options.keytab:

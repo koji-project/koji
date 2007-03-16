@@ -109,7 +109,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojira
 %{_initrddir}/kojira
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
-%config(noreplace) %{_sysconfdir}/kojira.conf
+%config(noreplace) %{_sysconfdir}/kojira/kojira.conf
 
 %files web
 %defattr(-,root,root)

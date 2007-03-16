@@ -21,4 +21,5 @@ install:
 	mkdir -p $(DESTDIR)/etc/sysconfig
 	install -p -m 644 kojira.sysconfig $(DESTDIR)/etc/sysconfig/kojira
 
-	install -p -m 644 kojira.conf $(DESTDIR)/etc/kojira.conf
+	mkdir -p $(DESTDIR)/etc/kojira
+	install -p -m 644 kojira.conf $(DESTDIR)/etc/kojira/kojira.conf
