@@ -1078,7 +1078,7 @@ class ClientSession(object):
 
     def login(self,opts=None):
         if self.opts.get('cert') and \
-               os.path.isfile(os.path.expanduser(self.opts['cert'])):
+               os.path.isfile(self.opts['cert']):
             return self.ssl_login(self.opts['cert'],
                                   self.opts['ca'],
                                   self.opts['serverca'])
@@ -1183,9 +1183,9 @@ class ClientSession(object):
             raise AuthError, '%s is not a SSL server URL, and you have configured SSL authentication' % self.baseurl
         
         certs = {}
-        certs['key_and_cert'] = os.path.expanduser(cert)
-        certs['ca_cert'] = os.path.expanduser(ca)
-        certs['peer_ca_cert'] = os.path.expanduser(serverca)
+        certs['key_and_cert'] = cert
+        certs['ca_cert'] = ca
+        certs['peer_ca_cert'] = serverca
         # only use a timeout during login
         self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60)
         sinfo = self.callMethod('sslLogin')
