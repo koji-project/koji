@@ -1079,9 +1079,9 @@ class ClientSession(object):
     def login(self,opts=None):
         if self.opts.get('cert') and \
                os.path.isfile(os.path.expanduser(self.opts['cert'])):
-            return self.ssl_login(os.path.expanduser(self.opts['cert']),
-                                  os.path.expanduser(self.opts['ca']),
-                                  os.path.expanduser(self.opts['serverca']))
+            return self.ssl_login(self.opts['cert'],
+                                  self.opts['ca'],
+                                  self.opts['serverca'])
         elif self.opts.get('user') and self.opts.get('password'):
             sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
             if not sinfo:
