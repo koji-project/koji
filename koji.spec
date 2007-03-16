@@ -121,7 +121,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojid
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
-%config(noreplace) %{_sysconfdir}/kojid.conf
+%config(noreplace) %{_sysconfdir}/kojid/kojid.conf
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder

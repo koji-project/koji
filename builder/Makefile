@@ -25,4 +25,5 @@ install:
 	mkdir -p $(DESTDIR)/etc/sysconfig
 	install -p -m 644 kojid.sysconfig $(DESTDIR)/etc/sysconfig/kojid
 
-	install -p -m 644 kojid.conf $(DESTDIR)/etc/kojid.conf
+	mkdir -p $(DESTDIR)/etc/kojid
+	install -p -m 644 kojid.conf $(DESTDIR)/etc/kojid/kojid.conf
