@@ -274,6 +274,7 @@ def handler(req, profiling=False):
             h.register_module(hostFunctions,"host")
             h.register_function(koji.auth.login)
             h.register_function(koji.auth.krbLogin)
+            h.register_function(koji.auth.sslLogin)
             h.register_function(koji.auth.logout)
             h.register_function(koji.auth.subsession)
             h.register_function(koji.auth.logoutChild)

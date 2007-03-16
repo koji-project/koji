@@ -276,7 +276,10 @@ class Session(object):
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
         if not user_id:
-            user_id = self.createUserFromKerberos(login_principal)
+            if context.opts.get('LoginCreatesUser', '').lower() in ('yes', 'on', 'true', '1'):
+                user_id = self.createUserFromKerberos(login_principal)
+            else:
+                raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
 
         hostip = context.req.connection.remote_ip
         if hostip == '127.0.0.1':
@@ -316,6 +319,44 @@ class Session(object):
         remote_port = 0
 
         return (local_ip, local_port, remote_ip, remote_port)
+
+    def sslLogin(self):
+        if self.logged_in:
+            raise koji.AuthError, "Already logged in"
+
+        # populate standard CGI variables
+        context.req.add_common_vars()
+        env = context.req.subprocess_env
+    
+        if not (env.has_key('HTTPS') and
+                env['HTTPS'] == 'on'):
+            raise koji.AuthError, 'cannot call sslLogin() via a non-https connection'
+
+        subject = context.req.user        
+        if not subject:
+            raise koji.AuthError, 'could not determine the subject of the client certificate'
+
+        # assume that the certificate subject is their Koji username
+        cursor = context.cnx.cursor()
+        query = """SELECT id, status FROM users
+        WHERE name = %(subject)s"""
+        cursor.execute(query, locals())
+        result = cursor.fetchone()
+        if result:
+            user_id, status = result
+        else:
+            if context.opts.get('LoginCreatesUser', '').lower() in ('yes', 'on', 'true', '1'):
+                user_id = self.createUser(subject, koji.USERTYPES['NORMAL'], '')
+                status = None
+            else:
+                raise koji.AuthError, 'Unknown user: %s' % subject
+            
+        hostip = context.req.connection.remote_ip
+        if hostip == '127.0.0.1':
+            hostip = socket.gethostbyname(socket.gethostname())
+
+        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_SSL)
+        return sinfo
 
     def makeExclusive(self,force=False):
         """Make this session exclusive"""
@@ -488,6 +529,23 @@ class Session(object):
         else:
             return None
 
+    def createUser(self, name, usertype, krb_principal):
+        """
+        Create a new user, using the provided values.
+        Return the user_id of the newly-created user.
+        """
+        cursor = context.cnx.cursor()
+        select = """SELECT nextval('users_id_seq')"""
+        cursor.execute(select, locals())
+        user_id = cursor.fetchone()[0]
+
+        insert = """INSERT INTO users (id, name, usertype, krb_principal)
+        VALUES (%(user_id)i, %(name)s, %(usertype)i, %(krb_principal)s)"""
+        cursor.execute(insert, locals())
+        context.cnx.commit()
+
+        return user_id
+
     def createUserFromKerberos(self, krb_principal):
         """Create a new user, based on the Kerberos principal.  Their
         username will be everything before the "@" in the principal.
@@ -498,17 +556,7 @@ class Session(object):
         user_name = krb_principal[:atidx]
         user_type = koji.USERTYPES['NORMAL']
 
-        c = context.cnx.cursor()
-        select = """SELECT nextval('users_id_seq')"""
-        c.execute(select, locals())
-        user_id = c.fetchone()[0]
-
-        insert = """INSERT INTO users (id, name, password, usertype, krb_principal)
-        VALUES (%(user_id)i, %(user_name)s, null, %(user_type)i, %(krb_principal)s)"""
-        c.execute(insert, locals())
-        context.cnx.commit()
-
-        return user_id
+        return self.createUser(user_name, user_type, krb_principal)
 
 def get_user_groups(user_id):
     """Get user groups
@@ -548,6 +596,9 @@ def login(*args,**opts):
 
 def krbLogin(*args, **opts):
     return context.session.krbLogin(*args, **opts)
+
+def sslLogin(*args, **opts):
+    return context.session.sslLogin(*args, **opts)
 
 def logout():
     return context.session.logout()

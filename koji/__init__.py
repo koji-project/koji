@@ -47,6 +47,7 @@ import urllib
 import urlparse
 import xmlrpclib
 from xmlrpclib import loads, Fault
+import ssl.XMLRPCServerProxy
 
 def _(args):
     """Stub function for translation"""
@@ -147,6 +148,7 @@ USER_STATUS = Enum((
 # normal == username/password
 AUTHTYPE_NORMAL = 0
 AUTHTYPE_KERB = 1
+AUTHTYPE_SSL = 2
 
 #dependency types
 DEP_REQUIRE = 0
@@ -1049,6 +1051,7 @@ class ClientSession(object):
         if opts == None:
             opts = {}
         self.opts = opts
+        self.proxyClass = xmlrpclib.ServerProxy
         self.proxyOpts = {'allow_none':1}
         if opts.get('debug_xmlrpc',False):
             self.proxyOpts['verbose']=1
@@ -1071,14 +1074,22 @@ class ClientSession(object):
             self.callnum = 0
             url = "%s?%s" %(self.baseurl,urllib.urlencode(sinfo))
         self.sinfo = sinfo
-        self.proxy = xmlrpclib.ServerProxy(url,**self.proxyOpts)
+        self.proxy = self.proxyClass(url,**self.proxyOpts)
 
     def login(self,opts=None):
-        sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
-        if not sinfo:
-            return False
-        self.setSession(sinfo)
-        return True
+        if self.opts.get('cert') and \
+               os.path.isfile(os.path.expanduser(self.opts['cert'])):
+            return self.ssl_login(os.path.expanduser(self.opts['cert']),
+                                  os.path.expanduser(self.opts['ca']),
+                                  os.path.expanduser(self.opts['serverca']))
+        elif self.opts.get('user') and self.opts.get('password'):
+            sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
+            if not sinfo:
+                return False
+            self.setSession(sinfo)
+            return True
+        else:
+            raise AuthError, 'no credentials provided'
 
     def subsession(self):
         "Create a subsession"
@@ -1108,7 +1119,7 @@ class ClientSession(object):
                 ccache.init(cprinc)
                 ccache.init_creds_keytab(principal=cprinc, keytab=keytab)
             else:
-                raise GenericError, 'cannot specify a principal without a keytab'
+                raise AuthError, 'cannot specify a principal without a keytab'
         else:
             # We're trying to log ourself in.  Connect using existing credentials.
             cprinc = ccache.principal()
@@ -1167,6 +1178,24 @@ class ClientSession(object):
 
         return 'host/%s@%s' % (servername, domain)
 
+    def ssl_login(self, cert, ca, serverca):
+        if not self.baseurl.startswith('https:'):
+            raise AuthError, '%s is not a SSL server URL, and you have configured SSL authentication' % self.baseurl
+        
+        certs = {}
+        certs['key_and_cert'] = os.path.expanduser(cert)
+        certs['ca_cert'] = os.path.expanduser(ca)
+        certs['peer_ca_cert'] = os.path.expanduser(serverca)
+        # only use a timeout during login
+        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60)
+        sinfo = self.callMethod('sslLogin')
+        if not sinfo:
+            return False
+        self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
+        self.proxyOpts['certs'] = certs
+        self.setSession(sinfo)
+        return True
+        
     def logout(self):
         if not self.logged_in:
             return
@@ -1213,7 +1242,7 @@ class ClientSession(object):
                 sinfo['callnum'] = self.callnum
                 self.callnum += 1
                 url = "%s?%s" %(self.baseurl,urllib.urlencode(sinfo))
-                proxy = xmlrpclib.ServerProxy(url,**self.proxyOpts)
+                proxy = self.proxyClass(url,**self.proxyOpts)
             else:
                 proxy = self.proxy
             tries = 0

@@ -79,7 +79,7 @@ def get_options():
     parser.disable_interspersed_args()
     parser.add_option("-c", "--config", dest="configFile",
                       help=_("use alternate configuration file"), metavar="FILE",
-                      default="/etc/koji.conf")
+                      default="~/.koji/config")
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
     parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))
@@ -131,23 +131,27 @@ def get_options():
         'server' : 'http://localhost/kojihub',
         'web_url' : 'http://localhost/koji',
         'topdir' : '/mnt/koji',
+        'cert': '~/.koji/client.crt',
+        'ca': '~/.koji/clientca.crt',
+        'serverca': '~/.koji/serverca.crt'
         }
-    if os.access(options.configFile, os.F_OK):
-        f = open(options.configFile)
-        config = ConfigParser.ConfigParser()
-        config.readfp(f)
-        f.close()
-        #XXX - really need a more robust config file setup, but this will have
-        #      to do for now
-        if config.has_section('koji'):
-            for name, value in config.items('koji'):
-                #note the defaults dictionary also serves to indicate which
-                #options *can* be set via the config file. Such options should
-                #not have a default value set in the option parser.
-                if defaults.has_key(name):
-                    defaults[name] = value
+    # grab settings from /etc/koji.conf first, and allow them to be
+    # overridden by user config
+    for configFile in ('/etc/koji.conf', options.configFile):
+        if os.access(configFile, os.F_OK):
+            f = open(configFile)
+            config = ConfigParser.ConfigParser()
+            config.readfp(f)
+            f.close()
+            if config.has_section('koji'):
+                for name, value in config.items('koji'):
+                    #note the defaults dictionary also serves to indicate which
+                    #options *can* be set via the config file. Such options should
+                    #not have a default value set in the option parser.
+                    if defaults.has_key(name):
+                        defaults[name] = value
     for name, value in defaults.iteritems():
-        if getattr(options, name) is None:
+        if getattr(options, name, None) is None:
             setattr(options, name, value)
 
     return options, cmd, args[1:]
@@ -3060,8 +3064,8 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
-    elif options.user:
-        #authenticate using user/password
+    elif os.path.isfile(os.path.expanduser(options.cert)) or options.user:
+        # authenticate using SSL client cert or user/password
         session.login()
     elif sys.modules.has_key('krbV'):
         try:
@@ -3084,7 +3088,7 @@ if __name__ == "__main__":
     options, command, args = get_options()
 
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
+    for k in ('cert', 'ca', 'serverca', 'user', 'password', 'debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)
     rv = 0
