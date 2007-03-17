@@ -2109,7 +2109,7 @@ class NewRepoTask(BaseTaskHandler):
         repo_id, event_id = self.wait(preptask)[preptask]
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
-            raise koji.GenericError, "Repo directory missing: %s" % repodir
+            raise koji.GenericError, "Repo directory missing: %s" % path
         arches = []
         for fn in os.listdir(path):
             if fn != 'groups' and os.path.isdir("%s/%s/RPMS" % (path, fn)):
@@ -2141,7 +2141,7 @@ class PrepRepoTask(BaseTaskHandler):
         repo_id, event_id = session.host.repoInit(tinfo['id'])
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
-            raise koji.GenericError, "Repo directory missing: %s" % repodir
+            raise koji.GenericError, "Repo directory missing: %s" % path
         #create and upload meta rpm
         spec = "%s/groups/groups.spec" % path
         #the repoInit call should have created groups.spec
@@ -2157,7 +2157,7 @@ class PrepRepoTask(BaseTaskHandler):
         status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
         if not _isSuccess(status):
             raise koji.GenericError, "failed to build groups rpm: %s" \
-                    % _parseStatus(status, pkgcmd)
+                    % _parseStatus(status, ' '.join(cmd))
         #upload file and return path
         fn = 'buildsys-build-1-1.noarch.rpm'
         pkg = "%s/noarch/%s" % (self.workdir, fn)
@@ -2191,15 +2191,17 @@ class CreaterepoTask(BaseTaskHandler):
         if os.path.exists("%s/comps.xml" % repodir):
             cmd.extend(['-g', 'comps.xml'])
         #attempt to recycle repodata from last repo
-        if oldrepo:
-            oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
-            olddatadir = "%s/%s/repodata" % (oldpath, arch)
-            if not os.path.isdir(olddatadir):
-                self.logger.warn("old repodata is missing: %s" % olddatadir)
-            else:
-                koji.ensuredir(datadir)
-                os.system('cp -a %s/* %s' % (olddatadir, datadir))
-                cmd.append('--update')
+        # XXX re-enable this if statement when --update support appears in
+        # upstream createrepo
+        # if oldrepo:
+        #     oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+        #     olddatadir = "%s/%s/repodata" % (oldpath, arch)
+        #     if not os.path.isdir(olddatadir):
+        #         self.logger.warn("old repodata is missing: %s" % olddatadir)
+        #     else:
+        #         koji.ensuredir(datadir)
+        #         os.system('cp -a %s/* %s' % (olddatadir, datadir))
+        #         cmd.append('--update')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -2211,7 +2213,7 @@ class CreaterepoTask(BaseTaskHandler):
         status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
         if not _isSuccess(status):
             raise koji.GenericError, "failed to create repo: %s" \
-                    % _parseStatus(status, pkgcmd)
+                    % _parseStatus(status, ' '.join(cmd))
 
         files = []
         for f in os.listdir(datadir):
