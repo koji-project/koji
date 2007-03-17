@@ -46,13 +46,30 @@ def _krbLogin(req, session, principal):
     return session.krb_login(principal=wprinc, keytab=keytab,
                              ccache=ccache, proxyuser=principal)
 
+def _sslLogin(req, session, username):
+    options = req.get_options()
+    client_cert = options['WebCert']
+    client_ca = options['ClientCA']
+    server_ca = options['KojiHubCA']
+
+    return session.ssl_login(client_cert, client_ca, server_ca,
+                             proxyuser=username)
+
 def _assertLogin(req):
-    if not (hasattr(req, 'currentPrincipal') and
+    session = req._session
+    options = req.get_options()
+    if not (hasattr(req, 'currentLogin') and
             hasattr(req, 'currentUser')):
         raise StandardError, '_getServer() must be called before _assertLogin()'
-    elif req.currentPrincipal and req.currentUser:
-        if not _krbLogin(req, req._session, req.currentPrincipal):
-            raise koji.AuthError, 'could not login using principal: %s' % req.currentPrincipal
+    elif req.currentLogin and req.currentUser:
+        if options.get('WebCert'):
+            if not _sslLogin(req, session, req.currentLogin):
+                raise koji.AuthError, 'could not login %s via SSL' % req.currentLogin
+        elif options.get('WebPrincipal'):
+            if not _krbLogin(req, req._session, req.currentLogin):
+                raise koji.AuthError, 'could not login using principal: %s' % req.currentLogin
+        else:
+            raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
     else:
         mod_python.util.redirect(req, 'login')
         assert False
@@ -81,12 +98,12 @@ def _getServer(req):
     serverURL = req.get_options()['KojiHubURL']    
     session = koji.ClientSession(serverURL)
     
-    req.currentPrincipal = _getUserCookie(req)
-    if req.currentPrincipal:        
-        req.currentUser = session.getUser(req.currentPrincipal)
+    req.currentLogin = _getUserCookie(req)
+    if req.currentLogin:
+        req.currentUser = session.getUser(req.currentLogin)
         if not req.currentUser:
-            raise koji.AuthError, 'could not get user for principal: %s' % req.currentPrincipal
-        _setUserCookie(req, req.currentPrincipal)
+            raise koji.AuthError, 'could not get user for principal: %s' % req.currentLogin
+        _setUserCookie(req, req.currentLogin)
     else:
         req.currentUser = None
     
@@ -103,16 +120,43 @@ def _redirectBack(req, page):
 
 def login(req, page=None):
     session = _getServer(req)
+    options = req.get_options()
 
-    principal = req.user
-    if not principal:
-        raise koji.AuthError, 'configuration error: an external module should have performed authentication before presenting this page'
+    # try SSL first, fall back to Kerberos
+    if options.get('WebCert'):
+        req.add_common_vars()
+        env = req.subprocess_env
+        if not env.get('HTTPS') == 'on':
+            https_url = options['KojiWebURL'].replace('http://', 'https://') + '/login'
+            if req.args:
+                https_url += '?' + req.args
+            mod_python.util.redirect(req, https_url)
+            return
 
-    # login via Kerberos to verify credentials and create the user if it doesn't exist
-    if not _krbLogin(req, session, principal):
-        raise koji.AuthError, 'could not login using principal: %s' % principal
+        if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
+            raise koji.AuthError, 'could not verify client: %s' % env.get('SSL_CLIENT_VERIFY')
 
-    _setUserCookie(req, principal)
+        # use the subject's common name as their username
+        username = env.get('SSL_CLIENT_S_DN_CN')
+        if not username:
+            raise koji.AuthError, 'unable to get user information from client certificate'
+        
+        if not _sslLogin(req, session, username):
+            raise koji.AuthError, 'could not login %s using SSL certificates' % username
+        
+    elif options.get('WebPrincipal'):
+        principal = req.user
+        if not principal:
+            raise koji.AuthError, 'configuration error: mod_auth_kerb should have performed authentication before presenting this page'
+
+        if not _krbLogin(req, session, principal):
+            raise koji.AuthError, 'could not login using principal: %s' % principal
+        
+        username = principal
+    else:
+        raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
+
+    _setUserCookie(req, username)
 
     _redirectBack(req, page)
 

@@ -109,11 +109,13 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojira
 %{_initrddir}/kojira
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
+%{_sysconfdir}/kojira
 %config(noreplace) %{_sysconfdir}/kojira/kojira.conf
 
 %files web
 %defattr(-,root,root)
 %{_datadir}/koji-web
+%{_sysconfdir}/kojiweb
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
 
 %files builder
@@ -121,6 +123,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojid
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
+%{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 

@@ -276,7 +276,7 @@ class Session(object):
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
         if not user_id:
-            if context.opts.get('LoginCreatesUser', '').lower() in ('yes', 'on', 'true', '1'):
+            if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
                 user_id = self.createUserFromKerberos(login_principal)
             else:
                 raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
@@ -320,7 +320,7 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self):
+    def sslLogin(self, proxyuser=None):
         if self.logged_in:
             raise koji.AuthError, "Already logged in"
 
@@ -328,28 +328,40 @@ class Session(object):
         context.req.add_common_vars()
         env = context.req.subprocess_env
     
-        if not (env.has_key('HTTPS') and
-                env['HTTPS'] == 'on'):
+        if env.get('HTTPS') != 'on':
             raise koji.AuthError, 'cannot call sslLogin() via a non-https connection'
 
-        subject = context.req.user        
-        if not subject:
-            raise koji.AuthError, 'could not determine the subject of the client certificate'
+        if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
+            raise koji.AuthError, 'could not verify client: %s' % env.get('SSL_CLIENT_VERIFY')
 
-        # assume that the certificate subject is their Koji username
+        client_name = env.get('SSL_CLIENT_S_DN_CN')
+        if not client_name:
+            raise koji.AuthError, 'unable to get user information from client certificate'
+
+        if proxyuser:
+            client_dn = env.get('SSL_CLIENT_S_DN')
+            proxy_dns = [dn.strip() for dn in context.opts['ProxyDNs'].split('|')]
+            if client_dn in proxy_dns:
+                # the SSL-authenticated user authorized to login other users
+                username = proxyuser
+            else:
+                raise koji.AuthError, '%s is not authorized to login other users' % client_dn
+        else:
+            username = client_name
+        
         cursor = context.cnx.cursor()
         query = """SELECT id, status FROM users
-        WHERE name = %(subject)s"""
+        WHERE name = %(username)s"""
         cursor.execute(query, locals())
         result = cursor.fetchone()
         if result:
             user_id, status = result
         else:
-            if context.opts.get('LoginCreatesUser', '').lower() in ('yes', 'on', 'true', '1'):
-                user_id = self.createUser(subject, koji.USERTYPES['NORMAL'], '')
+            if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
+                user_id = self.createUser(username, koji.USERTYPES['NORMAL'], '')
                 status = None
             else:
-                raise koji.AuthError, 'Unknown user: %s' % subject
+                raise koji.AuthError, 'Unknown user: %s' % username
             
         hostip = context.req.connection.remote_ip
         if hostip == '127.0.0.1':

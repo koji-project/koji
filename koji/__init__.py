@@ -1178,17 +1178,17 @@ class ClientSession(object):
 
         return 'host/%s@%s' % (servername, domain)
 
-    def ssl_login(self, cert, ca, serverca):
+    def ssl_login(self, cert, ca, serverca, proxyuser=None):
         if not self.baseurl.startswith('https:'):
-            raise AuthError, '%s is not a SSL server URL, and you have configured SSL authentication' % self.baseurl
+            self.baseurl = self.baseurl.replace('http:', 'https:')
         
         certs = {}
         certs['key_and_cert'] = cert
         certs['ca_cert'] = ca
         certs['peer_ca_cert'] = serverca
         # only use a timeout during login
-        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60)
-        sinfo = self.callMethod('sslLogin')
+        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60, **self.proxyOpts)
+        sinfo = self.callMethod('sslLogin', proxyuser)
         if not sinfo:
             return False
         self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy

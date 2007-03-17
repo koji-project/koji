@@ -14,3 +14,5 @@ install:
 
 	mkdir -p $(DESTDIR)/etc/httpd/conf.d
 	install -p -m 644 kojiweb.conf $(DESTDIR)/etc/httpd/conf.d/kojiweb.conf
+
+	mkdir -p $(DESTDIR)/etc/kojiweb
