@@ -1077,19 +1077,11 @@ class ClientSession(object):
         self.proxy = self.proxyClass(url,**self.proxyOpts)
 
     def login(self,opts=None):
-        if self.opts.get('cert') and \
-               os.path.isfile(self.opts['cert']):
-            return self.ssl_login(self.opts['cert'],
-                                  self.opts['ca'],
-                                  self.opts['serverca'])
-        elif self.opts.get('user') and self.opts.get('password'):
-            sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
-            if not sinfo:
-                return False
-            self.setSession(sinfo)
-            return True
-        else:
-            raise AuthError, 'no credentials provided'
+        sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
+        if not sinfo:
+            return False
+        self.setSession(sinfo)
+        return True
 
     def subsession(self):
         "Create a subsession"
@@ -1186,14 +1178,17 @@ class ClientSession(object):
         certs['key_and_cert'] = cert
         certs['ca_cert'] = ca
         certs['peer_ca_cert'] = serverca
+
         # only use a timeout during login
         self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60, **self.proxyOpts)
         sinfo = self.callMethod('sslLogin', proxyuser)
         if not sinfo:
-            return False
+            raise AuthError, 'unable to obtain a session'
+
         self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
         self.proxyOpts['certs'] = certs
         self.setSession(sinfo)
+
         return True
         
     def logout(self):

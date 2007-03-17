@@ -3069,8 +3069,11 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.cert) or options.user:
-        # authenticate using SSL client cert or user/password
+    elif os.path.isfile(options.cert):
+        # authenticate using SSL client cert
+        session.ssl_login(options.cert, options.ca, options.serverca, proxyuser=options.runas)
+    elif options.user:
+        # authenticate using user/password
         session.login()
     elif sys.modules.has_key('krbV'):
         try:

@@ -2387,9 +2387,18 @@ if __name__ == "__main__":
         session_opts[k] = getattr(options,k)
     #start a session and login
     session = koji.ClientSession(options.server, session_opts)
-    if os.path.isfile(options.cert) or options.user:
+    if os.path.isfile(options.cert):
         try:
-            # authenticate using SSL client cert or user/password
+            # authenticate using SSL client certificates
+            session.ssl_login(options.cert, options.ca,
+                              options.serverca)
+        except koji.AuthError, e:
+            quit("Error: Unable to log in: %s" % e)
+        except xmlrpclib.ProtocolError:
+            quit("Error: Unable to connect to server %s" % (options.server))        
+    elif options.user:
+        try:
+            # authenticate using user/password
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")

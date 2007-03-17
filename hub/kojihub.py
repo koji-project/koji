@@ -93,7 +93,7 @@ class Task(object):
 
     def assertHost(self,host_id):
         if not self.verifyHost(host_id):
-            raise koji.NotAllowed, "host %d does not own task %d" % (host_id,self.id)
+            raise koji.ActionNotAllowed, "host %d does not own task %d" % (host_id,self.id)
 
     def getOwner(self):
         """Return the owner (user_id) for this task"""
@@ -117,7 +117,7 @@ class Task(object):
 
     def assertOwner(self,user_id=None):
         if not self.verifyOwner(user_id):
-            raise koji.NotAllowed, "user %d does not own task %d" % (user_id,self.id)
+            raise koji.ActionNotAllowed, "user %d does not own task %d" % (user_id,self.id)
 
     def lock(self,host_id,newstate='OPEN',force=False):
         """Attempt to associate the task for host, either to assign or open
@@ -1066,7 +1066,7 @@ def check_tag_access(tag_id,user_id=None):
 def assert_tag_access(tag_id,user_id=None,force=False):
     access, override, reason = check_tag_access(tag_id,user_id)
     if not access and not (override and force):
-        raise koji.NotAllowed, reason
+        raise koji.ActionNotAllowed, reason
 
 def _tag_build(tag,build,user_id=None,force=False):
     """Tag a build
@@ -3805,7 +3805,7 @@ class RootExports(object):
         if priority:
             if priority < 0:
                 if not context.session.hasPerm('admin'):
-                    raise koji.NotAllowed, 'only admins may create high-priority tasks'
+                    raise koji.ActionNotAllowed, 'only admins may create high-priority tasks'
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         if channel:
             taskOpts['channel'] = channel
@@ -3828,7 +3828,7 @@ class RootExports(object):
         if priority:
             if priority < 0:
                 if not context.session.hasPerm('admin'):
-                    raise koji.NotAllowed, 'only admins may create high-priority tasks'
+                    raise koji.ActionNotAllowed, 'only admins may create high-priority tasks'
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         if channel:
             taskOpts['channel'] = channel
@@ -4255,7 +4255,7 @@ class RootExports(object):
             return False
         if build['owner_id'] != context.session.user_id:
             if not context.session.hasPerm('admin'):
-                raise koji.NotAllowed, 'Cannot cancel build, not owner'
+                raise koji.ActionNotAllowed, 'Cannot cancel build, not owner'
         return cancel_build(build['id'])
 
     def assignTask(self,task_id,host,force=False):
@@ -4279,7 +4279,7 @@ class RootExports(object):
         task = Task(task_id)
         if not task.verifyOwner() and not task.verifyHost():
             if not context.session.hasPerm('admin'):
-                raise koji.NotAllowed, 'Cannot cancel task, not owner'
+                raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         #non-admins can also use cancelBuild
         task.cancel(recurse=recurse)
 
@@ -4294,7 +4294,7 @@ class RootExports(object):
         task = Task(task_id)
         if not task.verifyOwner() and not task.verifyHost():
             if not context.session.hasPerm('admin'):
-                raise koji.NotAllowed, 'Cannot cancel task, not owner'
+                raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
 
     def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None):
@@ -5434,7 +5434,7 @@ class BuildRoot(object):
 
     def assertTask(self,task_id):
         if not self.verifyTask(task_id):
-            raise koji.NotAllowed, 'Task %s does not have lock on buildroot %s' \
+            raise koji.ActionNotAllowed, 'Task %s does not have lock on buildroot %s' \
                                         %(task_id,self.id)
 
     def verifyHost(self,host_id):
@@ -5444,7 +5444,7 @@ class BuildRoot(object):
 
     def assertHost(self,host_id):
         if not self.verifyHost(host_id):
-            raise koji.NotAllowed, "Host %s not owner of buildroot %s" \
+            raise koji.ActionNotAllowed, "Host %s not owner of buildroot %s" \
                                         % (host_id,self.id)
 
     def setState(self,state):

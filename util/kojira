@@ -464,8 +464,11 @@ if  __name__ == "__main__":
     for k in ('cert', 'ca', 'serverca', 'user', 'password', 'debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)
-    if os.path.isfile(options.cert) or options.user:
-        #authenticate using user/password
+    if os.path.isfile(options.cert):
+        # authenticate using SSL client certificates
+        session.ssl_login(options.cert, options.ca, options.serverca)
+    elif options.user:
+        # authenticate using user/password
         session.login()
     elif sys.modules.has_key('krbV') and options.principal and options.keytab:
         session.krb_login(options.principal, options.keytab)

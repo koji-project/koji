@@ -358,7 +358,7 @@ class Session(object):
             user_id, status = result
         else:
             if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
-                user_id = self.createUser(username, koji.USERTYPES['NORMAL'], '')
+                user_id = self.createUser(username, koji.USERTYPES['NORMAL'], None)
                 status = None
             else:
                 raise koji.AuthError, 'Unknown user: %s' % username
@@ -493,7 +493,7 @@ class Session(object):
 
     def assertPerm(self, name):
         if not self.hasPerm(name) and not self.hasPerm('admin'):
-            raise koji.NotAllowed, "%s permission required" % name
+            raise koji.ActionNotAllowed, "%s permission required" % name
 
     def hasGroup(self, group_id):
         if not self.logged_in:
@@ -508,7 +508,7 @@ class Session(object):
 
     def assertUser(self, user_id):
         if not self.isUser(user_id) and not self.hasPerm('admin'):
-            raise koji.NotAllowed, "not owner"
+            raise koji.ActionNotAllowed, "not owner"
 
     def _getHostId(self):
         '''Using session data, find host id (if there is one)'''

@@ -35,8 +35,7 @@ def CreateSSLContext(certs):
     peer_ca_cert = certs['peer_ca_cert']
     for f in key_and_cert, ca_cert, peer_ca_cert:
         if f and not os.access(f, os.R_OK):
-            print "%s does not exist or is not readable." % f
-            os._exit(1)
+            raise StandardError, "%s does not exist or is not readable" % f
 
     ctx = SSL.Context(SSL.SSLv3_METHOD)   # SSLv3 only
     ctx.use_certificate_file(key_and_cert)
