@@ -3620,6 +3620,19 @@ def get_group_members(group):
     WHERE active = TRUE AND group_id = %%(group_id)i""" % ','.join(fields)
     return _multiRow(q, locals(), fields)
 
+def set_user_status(user, status):
+    if not koji.USER_STATUS.get(status):
+        raise koji.GenericError, 'invalid status: %s' % status
+    if user['status'] == status:
+        # nothing to do
+        return
+    update = """UPDATE users SET status = %(status)i WHERE id = %(user_id)i"""
+    user_id = user['id']
+    rows = _dml(update, locals())
+    # sanity check
+    if rows == 0:
+        raise koji.GenericError, 'invalid user ID: %i' % user_id
+
 class QueryProcessor(object):
     """
     Build a query from its components.
@@ -4723,6 +4736,22 @@ class RootExports(object):
         c.execute(insert, locals())
         return userID
 
+    def enableUser(self, username):
+        """Enable logins by the specified user"""
+        context.session.assertPerm('admin')
+        user = get_user(username)
+        if not user:
+            raise koji.GenericError, 'unknown user: %s' % username
+        set_user_status(user, koji.USER_STATUS['NORMAL'])
+    
+    def disableUser(self, username):
+        """Disable logins by the specified user"""
+        context.session.assertPerm('admin')
+        user = get_user(username)
+        if not user:
+            raise koji.GenericError, 'unknown user: %s' % username
+        set_user_status(user, koji.USER_STATUS['BLOCKED'])
+    
     #group management calls
     newGroup = staticmethod(new_group)
     addGroupMember = staticmethod(add_group_member)

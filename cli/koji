@@ -1045,20 +1045,48 @@ def handle_add_user(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--principal", help=_("The Kerberos principal for this user"))
-    parser.add_option("--blocked", help=_("Prohibit logins by this user"), action="store_true")
+    parser.add_option("--disabled", help=_("Prohibit logins by this user"), action="store_true")
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify the username of the user to add"))
     elif len(args) > 1:
         parser.error(_("This command only accepts one argument (username)"))
     username = args[0]
-    if options.blocked:
+    if options.disabled:
         status = koji.USER_STATUS['BLOCKED']
     else:
         status = koji.USER_STATUS['NORMAL']
     activate_session(session)
     user_id = session.addUser(username, status=status, krb_principal=options.principal)
     print "Added user %s (%i)" % (username, user_id)
+
+def handle_enable_user(options, session, args):
+    "[admin] Enable logins by a user"
+    usage = _("usage: %prog enable-user username")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("You must specify the username of the user to enable"))
+    elif len(args) > 1:
+        parser.error(_("This command only accepts one argument (username)"))
+    username = args[0]
+    activate_session(session)
+    session.enableUser(username)
+
+def handle_disable_user(options, session, args):
+    "[admin] Disable logins by a user"
+    usage = _("usage: %prog disable-user username")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("You must specify the username of the user to enable"))
+    elif len(args) > 1:
+        parser.error(_("This command only accepts one argument (username)"))
+    username = args[0]
+    activate_session(session)
+    session.disableUser(username)
 
 def handle_list_signed(options, session, args):
     "[admin] List signed copies of rpms"
