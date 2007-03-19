@@ -98,12 +98,13 @@ class ModXMLRPCRequestHandler(object):
             tb_type = context.opts.get('KojiTraceback',None)
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             if issubclass(e_class, koji.GenericError):
-                if not context.opts.get('KojiDebug',False):
-                    faultString = str(e)
-                elif tb_type == "extended":
-                    faultString = koji.format_exc_plus()
+                if context.opts.get('KojiDebug','off').lower() in ('yes', 'on', 'true', '1'):
+                    if tb_type == "extended":
+                        faultString = koji.format_exc_plus()
+                    else:
+                        faultString = tb_str
                 else:
-                    faultString = tb_str
+                    faultString = str(e)
             else:
                 if tb_type == "normal":
                     faultString = tb_str
@@ -135,14 +136,15 @@ class ModXMLRPCRequestHandler(object):
                 #might be ok, depending on method
                 if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
                     raise
-            if context.opts.get('LockOut',False) and method not in ('login', 'krbLogin', 'logout'):
+            if context.opts.get('LockOut',False) in ('yes', 'on', 'true', '1') and \
+                   method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
                 if not context.session.hasPerm('admin'):
                     raise koji.GenericError, "Server disabled for maintenance"
         # handle named parameters
         params,opts = koji.decode_args(*params)
         sys.stderr.write("Handling method %s for session %s (#%s)\n" \
                          % (method, context.session.id, context.session.callnum))
-        if method != 'uploadFile' and context.opts.get('KojiDebug',False):
+        if method != 'uploadFile' and context.opts.get('KojiDebug',False) in ('yes', 'on', 'true', '1'):
             sys.stderr.write("Params: %s\n" % pprint.pformat(params))
             sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
         start = time.time()

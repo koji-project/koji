@@ -249,8 +249,8 @@ class Session(object):
             raise koji.AuthError, "Already logged in"
 
         ctx = krbV.default_context()
-        srvprinc = krbV.Principal(name=context.req.get_options()['AuthPrincipal'], context=ctx)
-        srvkt = krbV.Keytab(name=context.req.get_options()['AuthKeytab'], context=ctx)
+        srvprinc = krbV.Principal(name=context.opts['AuthPrincipal'], context=ctx)
+        srvkt = krbV.Keytab(name=context.opts['AuthKeytab'], context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
         ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
@@ -266,7 +266,7 @@ class Session(object):
 
         # Successfully authenticated via Kerberos, now log in
         if proxyuser:
-            proxyprincs = [princ.strip() for princ in context.req.get_options()['ProxyPrincipals'].split(',')]
+            proxyprincs = [princ.strip() for princ in context.opts['ProxyPrincipals'].split(',')]
             if cprinc.name in proxyprincs:
                 login_principal = proxyuser
             else:
