@@ -122,8 +122,8 @@ class Session(object):
         c.execute(q,session_data)
         user_data = dict(zip(fields,c.fetchone()))
 
-        if user_data['status'] == koji.USER_STATUS['BLOCKED']:
-            raise koji.AuthError, 'User not allowed'
+        if user_data['status'] != koji.USER_STATUS['NORMAL']:
+            raise koji.AuthError, 'logins by %s are not allowed' % user_data['name']
         #check for exclusive sessions
         if session_data['exclusive']:
             #we are the exclusive session for this user
@@ -209,6 +209,19 @@ class Session(object):
             raise koji.AuthLockError, self.lockerror
         return True
 
+    def checkLoginAllowed(self, user_id):
+        """Verify that the user is allowed to login"""
+        cursor = context.cnx.cursor()
+        query = """SELECT name, usertype, status FROM users WHERE id = %(user_id)i"""
+        cursor.execute(query, locals())
+        result = cursor.fetchone()
+        if not result:
+            raise koji.AuthError, 'invalid user_id: %s' % user_id
+        name, usertype, status = result
+        
+        if status != koji.USER_STATUS['NORMAL']:
+            raise koji.AuthError, 'logins by %s are not allowed' % name
+
     def login(self,user,password,opts=None):
         """create a login session"""
         if opts is None:
@@ -225,13 +238,15 @@ class Session(object):
 
         # check passwd
         c = context.cnx.cursor()
-        q = """SELECT id,status,usertype FROM users
+        q = """SELECT id FROM users
         WHERE name = %(user)s AND password = %(password)s"""
         c.execute(q,locals())
         r = c.fetchone()
         if not r:
             raise koji.AuthError, 'invalid username or password'
-        (user_id,status,usertype) = r
+        user_id = r[0]
+
+        self.checkLoginAllowed(user_id)
 
         #create session and return
         sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_NORMAL)
@@ -280,6 +295,8 @@ class Session(object):
                 user_id = self.createUserFromKerberos(login_principal)
             else:
                 raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
+
+        self.checkLoginAllowed(user_id)
 
         hostip = context.req.connection.remote_ip
         if hostip == '127.0.0.1':
@@ -350,18 +367,19 @@ class Session(object):
             username = client_name
         
         cursor = context.cnx.cursor()
-        query = """SELECT id, status FROM users
+        query = """SELECT id FROM users
         WHERE name = %(username)s"""
         cursor.execute(query, locals())
         result = cursor.fetchone()
         if result:
-            user_id, status = result
+            user_id = result[0]
         else:
             if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
-                user_id = self.createUser(username, koji.USERTYPES['NORMAL'], None)
-                status = None
+                user_id = self.createUser(username)
             else:
                 raise koji.AuthError, 'Unknown user: %s' % username
+
+        self.checkLoginAllowed(user_id)
             
         hostip = context.req.connection.remote_ip
         if hostip == '127.0.0.1':
@@ -541,18 +559,33 @@ class Session(object):
         else:
             return None
 
-    def createUser(self, name, usertype, krb_principal):
+    def createUser(self, name, usertype=None, status=None, krb_principal=None):
         """
         Create a new user, using the provided values.
         Return the user_id of the newly-created user.
         """
+        self.assertPerm('admin')
+        
+        if not name:
+            raise koji.GenericError, 'a user must have a non-empty name'
+        
+        if usertype == None:
+            usertype = koji.USERTYPES['NORMAL']
+        elif not koji.USERTYPES.get(usertype):
+            raise koji.GenericError, 'invalid user type: %s' % usertype
+
+        if status == None:
+            status = koji.USER_STATUS['NORMAL']
+        elif not koji.USER_STATUS.get(status):
+            raise koji.GenericError, 'invalid status: %s' % status
+        
         cursor = context.cnx.cursor()
         select = """SELECT nextval('users_id_seq')"""
         cursor.execute(select, locals())
         user_id = cursor.fetchone()[0]
 
-        insert = """INSERT INTO users (id, name, usertype, krb_principal)
-        VALUES (%(user_id)i, %(name)s, %(usertype)i, %(krb_principal)s)"""
+        insert = """INSERT INTO users (id, name, usertype, status, krb_principal)
+        VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i, %(krb_principal)s)"""
         cursor.execute(insert, locals())
         context.cnx.commit()
 
@@ -566,9 +599,8 @@ class Session(object):
         if atidx == -1:
             raise koji.AuthError, 'invalid Kerberos principal: %s' % krb_principal
         user_name = krb_principal[:atidx]
-        user_type = koji.USERTYPES['NORMAL']
 
-        return self.createUser(user_name, user_type, krb_principal)
+        return self.createUser(user_name, krb_principal=krb_principal)
 
 def get_user_groups(user_id):
     """Get user groups

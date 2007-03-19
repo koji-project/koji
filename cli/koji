@@ -1045,19 +1045,19 @@ def handle_add_user(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--principal", help=_("The Kerberos principal for this user"))
-    parser.add_option("--disabled", help=_("Prohibit logins by this user"), action="store_true")
+    parser.add_option("--disable", help=_("Prohibit logins by this user"), action="store_true")
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify the username of the user to add"))
     elif len(args) > 1:
         parser.error(_("This command only accepts one argument (username)"))
     username = args[0]
-    if options.disabled:
+    if options.disable:
         status = koji.USER_STATUS['BLOCKED']
     else:
         status = koji.USER_STATUS['NORMAL']
     activate_session(session)
-    user_id = session.addUser(username, status=status, krb_principal=options.principal)
+    user_id = session.createUser(username, status=status, krb_principal=options.principal)
     print "Added user %s (%i)" % (username, user_id)
 
 def handle_enable_user(options, session, args):

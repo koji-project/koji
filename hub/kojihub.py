@@ -3558,15 +3558,9 @@ def get_build_notifications(user_id):
 
 def new_group(name):
     """Add a user group to the database"""
-    context.session.assertPerm('admin')
     if get_user(name):
         raise koji.GenericError, 'user/group already exists: %s' % name
-    group_id = _singleValue("SELECT nextval('users_id_seq')", strict=True)
-    usertype = koji.USERTYPES['GROUP']
-    insert = """INSERT INTO users (id, name, password, usertype)
-    VALUES (%(group_id)i, %(name)s, NULL, %(usertype)i)"""
-    _dml(insert, locals())
-    return group_id
+    return context.session.createUser(name, usertype=koji.USERTYPES['GROUP'])
 
 def add_group_member(group,user):
     """Add user to group"""
@@ -3621,6 +3615,7 @@ def get_group_members(group):
     return _multiRow(q, locals(), fields)
 
 def set_user_status(user, status):
+    context.session.assertPerm('admin')
     if not koji.USER_STATUS.get(status):
         raise koji.GenericError, 'invalid status: %s' % status
     if user['status'] == status:
@@ -4717,28 +4712,17 @@ class RootExports(object):
         VALUES (%(user_id)i, %(perm_id)i)"""
         _dml(insert, locals())
 
-    def addUser(self, username, password=None, status=None, krb_principal=None):
+    def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
-
-        context.session.assertPerm('admin')
         if get_user(username):
             raise koji.GenericError, 'user already exists: %s' % username
         if krb_principal and get_user(krb_principal):
             raise koji.GenericError, 'user with this Kerberos principal already exists: %s' % krb_principal
-        c = context.cnx.cursor()
-        userID = koji.get_sequence_value(c, 'users_id_seq')
-        userType = koji.USERTYPES['NORMAL']
-        if status == None:
-            status = koji.USER_STATUS['NORMAL']
-        insert = """INSERT INTO users (id, name, password, usertype, status, krb_principal)
-        VALUES (%(userID)i, %(username)s, %(password)s, %(userType)i, %(status)i, %(krb_principal)s)"""
-        context.commit_pending = True
-        c.execute(insert, locals())
-        return userID
+        
+        return context.session.createUser(username, status=status, krb_principal=krb_principal)
 
     def enableUser(self, username):
         """Enable logins by the specified user"""
-        context.session.assertPerm('admin')
         user = get_user(username)
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
@@ -4746,7 +4730,6 @@ class RootExports(object):
     
     def disableUser(self, username):
         """Disable logins by the specified user"""
-        context.session.assertPerm('admin')
         user = get_user(username)
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
@@ -5035,21 +5018,17 @@ class RootExports(object):
 
     def addHost(self, hostname, arches, krb_principal=None):
         """Add a host to the database"""
-
         context.session.assertPerm('admin')
         if get_host(hostname):
             raise koji.GenericError, 'host already exists: %s' % hostname
         q = """SELECT id FROM channels WHERE name = 'default'"""
         default_channel = _singleValue(q)
-        #users entry
-        userID = _singleValue("SELECT nextval('users_id_seq')", strict=True)
-        userType = koji.USERTYPES['HOST']
         if krb_principal is None:
             fmt = context.opts.get('HostPrincipalFormat','compile/%s@EXAMPLE.COM')
             krb_principal = fmt % hostname
-        insert = """INSERT INTO users (id, name, password, usertype, krb_principal)
-        VALUES (%(userID)i, %(hostname)s, null, %(userType)i, %(krb_principal)s)"""
-        _dml(insert, locals())
+        #users entry
+        userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
+                                            krb_principal=krb_principal)
         #host entry
         hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
         arches = " ".join(arches)
@@ -5061,7 +5040,6 @@ class RootExports(object):
         VALUES (%(hostID)i, %(default_channel)i)"""
         _dml(insert, locals())
         return hostID
-
 
     def enableHost(self, hostname):
         """Mark a host as enabled"""

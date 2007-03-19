@@ -85,8 +85,8 @@ CREATE TABLE users (
 	id SERIAL NOT NULL PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255),
-	status INTEGER,
-	usertype INTEGER,
+	status INTEGER NOT NULL,
+	usertype INTEGER NOT NULL,
 	krb_principal VARCHAR(255) UNIQUE
 ) WITHOUT OIDS;
 
@@ -598,7 +598,7 @@ rpminfo, rpmdeps,
 rpmfiles TO PUBLIC;
 
 -- example code to add initial admins
--- insert into users (name, usertype, krb_principal) values ('admin', 0, 'admin@EXAMPLE.COM');
+-- insert into users (name, usertype, status, krb_principal) values ('admin', 0, 0, 'admin@EXAMPLE.COM');
 -- insert into user_perms (user_id, perm_id)
 --       select users.id, permissions.id from users, permissions
 --       where users.name in ('admin')
