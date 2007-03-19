@@ -4710,11 +4710,15 @@ class RootExports(object):
         context.session.assertPerm('admin')
         if get_user(username):
             raise koji.GenericError, 'user already exists: %s' % username
+        if krb_principal and get_user(krb_principal):
+            raise koji.GenericError, 'user with this Kerberos principal already exists: %s' % krb_principal
         c = context.cnx.cursor()
         userID = koji.get_sequence_value(c, 'users_id_seq')
         userType = koji.USERTYPES['NORMAL']
-        insert = """INSERT INTO users (id, name, password, usertype, krb_principal)
-        VALUES (%(userID)i, %(username)s, %(password)s, %(userType)i, %(krb_principal)s)"""
+        if status == None:
+            status = koji.USER_STATUS['NORMAL']
+        insert = """INSERT INTO users (id, name, password, usertype, status, krb_principal)
+        VALUES (%(userID)i, %(username)s, %(password)s, %(userType)i, %(status)i, %(krb_principal)s)"""
         context.commit_pending = True
         c.execute(insert, locals())
         return userID

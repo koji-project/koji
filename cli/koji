@@ -1039,6 +1039,27 @@ def handle_list_permissions(options, session, args):
         perms = [p['name'] for p in session.getAllPerms()]
     print perms
 
+def handle_add_user(options, session, args):
+    "[admin] Add a user"
+    usage = _("usage: %prog add-user username [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--principal", help=_("The Kerberos principal for this user"))
+    parser.add_option("--blocked", help=_("Prohibit logins by this user"), action="store_true")
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("You must specify the username of the user to add"))
+    elif len(args) > 1:
+        parser.error(_("This command only accepts one argument (username)"))
+    username = args[0]
+    if options.blocked:
+        status = koji.USER_STATUS['BLOCKED']
+    else:
+        status = koji.USER_STATUS['NORMAL']
+    activate_session(session)
+    user_id = session.addUser(username, status=status, krb_principal=options.principal)
+    print "Added user %s (%i)" % (username, user_id)
+
 def handle_list_signed(options, session, args):
     "[admin] List signed copies of rpms"
     usage = _("usage: %prog list-signed [options]")
