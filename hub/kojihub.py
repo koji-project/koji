@@ -3542,7 +3542,7 @@ def build_notification(task_id, build_id):
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         raise koji.GenericError, 'never send notifications for incomplete builds'
 
-    web_url = context.opts.get('KojiWebURL')
+    web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
     recipients = get_notification_recipients(build['package_id'], target['dest_tag'], build['state'])
     if len(recipients) > 0:

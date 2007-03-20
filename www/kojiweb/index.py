@@ -95,7 +95,7 @@ def _genHTML(req, fileName):
     return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter='EncodeUnicode').respond()
 
 def _getServer(req):
-    serverURL = req.get_options()['KojiHubURL']    
+    serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
     session = koji.ClientSession(serverURL)
     
     req.currentLogin = _getUserCookie(req)
@@ -827,7 +827,7 @@ def buildinfo(req, buildID):
         else:
             values['estCompletion'] = None
 
-    values['downloadBase'] = req.get_options()['KojiPackagesURL']
+    values['downloadBase'] = req.get_options().get('KojiPackagesURL', 'http://localhost/packages')
 
     return _genHTML(req, 'buildinfo.chtml')
 
@@ -1528,7 +1528,7 @@ def recentbuilds(req, user=None, tag=None, userID=None, tagID=None):
     values['tag'] = tagObj
     values['user'] = userObj
     values['builds'] = builds
-    values['weburl'] = req.get_options()['KojiWebURL']
+    values['weburl'] = req.get_options().get('KojiWebURL', 'http://localhost/koji')
 
     req.content_type = 'text/xml'
     return _genHTML(req, 'recentbuilds.chtml')

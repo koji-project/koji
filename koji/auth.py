@@ -263,9 +263,12 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError, "Already logged in"
 
+        if not (context.opts.get('AuthPrincipal') and context.opts.get('AuthKeytab')):
+            raise koji.AuthError, 'not configured for Kerberos authentication'
+
         ctx = krbV.default_context()
-        srvprinc = krbV.Principal(name=context.opts['AuthPrincipal'], context=ctx)
-        srvkt = krbV.Keytab(name=context.opts['AuthKeytab'], context=ctx)
+        srvprinc = krbV.Principal(name=context.opts.get('AuthPrincipal'), context=ctx)
+        srvkt = krbV.Keytab(name=context.opts.get('AuthKeytab'), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
         ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
@@ -281,7 +284,7 @@ class Session(object):
 
         # Successfully authenticated via Kerberos, now log in
         if proxyuser:
-            proxyprincs = [princ.strip() for princ in context.opts['ProxyPrincipals'].split(',')]
+            proxyprincs = [princ.strip() for princ in context.opts.get('ProxyPrincipals', '').split(',')]
             if cprinc.name in proxyprincs:
                 login_principal = proxyuser
             else:
@@ -291,7 +294,7 @@ class Session(object):
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
         if not user_id:
-            if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
+            if context.opts.get('LoginCreatesUser', 'yes').lower() in ('yes', 'on', 'true', '1'):
                 user_id = self.createUserFromKerberos(login_principal)
             else:
                 raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
@@ -357,7 +360,7 @@ class Session(object):
 
         if proxyuser:
             client_dn = env.get('SSL_CLIENT_S_DN')
-            proxy_dns = [dn.strip() for dn in context.opts['ProxyDNs'].split('|')]
+            proxy_dns = [dn.strip() for dn in context.opts.get('ProxyDNs', '').split('|')]
             if client_dn in proxy_dns:
                 # the SSL-authenticated user authorized to login other users
                 username = proxyuser
@@ -374,7 +377,7 @@ class Session(object):
         if result:
             user_id = result[0]
         else:
-            if context.opts['LoginCreatesUser'].lower() in ('yes', 'on', 'true', '1'):
+            if context.opts.get('LoginCreatesUser', 'yes').lower() in ('yes', 'on', 'true', '1'):
                 user_id = self.createUser(username)
             else:
                 raise koji.AuthError, 'Unknown user: %s' % username
