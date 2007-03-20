@@ -71,7 +71,12 @@ rpm: tarball
 	$(RPM_WITH_DIRS) $(DIST_DEFINES) -bb $(SPECFILE)
 
 tag::
-	git tag $(TAG)
+	git tag -a $(TAG)
+	@echo "Tagged with: $(TAG)"
+	@echo
+
+force-tag::
+	git tag -f -a $(TAG)
 	@echo "Tagged with: $(TAG)"
 	@echo
 
