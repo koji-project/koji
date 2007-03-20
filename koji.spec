@@ -3,7 +3,7 @@
 %define baserelease 1
 %define foo %(test -n %{?testbuild} && echo 1 || echo 0)
 %if %{foo}
-%define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S).%(echo %{?foobar}..%{testbuild}..%{baserelease})
+%define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S).%(echo %{?foobar}..%{?testbuild}..%{?baserelease})
 %else
 %define release %{baserelease}
 %endif
