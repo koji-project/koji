@@ -2,7 +2,7 @@
 
 %define baserelease 1
 #define testbuild=1 to have a timestamp appended to release
-%if %{?testbuild} == 1
+%if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
