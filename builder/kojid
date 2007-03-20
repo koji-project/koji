@@ -39,6 +39,7 @@ import pwd
 import grp
 import re
 import rpm
+import shutil
 import signal
 import smtplib
 import socket
@@ -46,6 +47,7 @@ import sys
 import time
 import datetime
 import traceback
+import urllib2
 import urlparse
 import xmlrpclib
 from ConfigParser import ConfigParser
@@ -321,7 +323,7 @@ class BuildRoot(object):
         for k in ('repoid', 'tag_name', 'distribution'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir', 'packager', 'vendor', 'mockhost'):
+        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'mockhost'):
             if hasattr(options, k):
                 opts[k] = getattr(options, k)
         opts['buildroot_id'] = self.id
@@ -1263,6 +1265,23 @@ class BaseTaskHandler(object):
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             session.uploadWrapper(filename, self.getUploadDir(), remoteName)
 
+    def localPath(self, relpath):
+        """Return a local path to a remote file.
+
+        If the file is on an nfs mount, use that, otherwise download a copy"""
+        if options.topurl:
+            url = "%s/%s" % (options.topurl, relpath)
+            fsrc = urllib2.urlopen(url)
+            fn = "%s/local/%s" % (self.workdir, relpath)
+            os.makedirs(os.path.dirname(fn))
+            fdst = file(fn, 'w')
+            shutil.copyfileobj(fsrc, fdst)
+            fsrc.close()
+            fdst.close()
+        else:
+            fn = "%s/%s" % (options.topdir, relpath)
+        return fn
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
@@ -1496,10 +1515,10 @@ class BuildTask(BaseTaskHandler):
         #srpm arg should be a path relative to <BASEDIR>/work
         global options
         self.logger.debug("Reading SRPM")
-        fn = "%s/work/%s" % (options.topdir, srpm)
-        if not os.path.exists(fn):
-            raise koji.BuildError, "file missing: %s" % fn
-        h = koji.get_rpm_header(fn)
+        relpath = "work/%s" % srpm
+        opts = dict([(k, getattr(options, k)) for k in 'topurl','topdir'])
+        fo = koji.openRemoteFile(relpath, **opts)
+        h = koji.get_rpm_header(fo)
         if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
             raise koji.BuildError, "%s is not a source package" % fn
         return h
@@ -1642,7 +1661,7 @@ class BuildArchTask(BaseTaskHandler):
 
         # starting srpm should already have been uploaded by parent
         self.logger.debug("Reading SRPM")
-        fn = "%s/work/%s" % (options.topdir, pkg)
+        fn = self.localPath("work/%s" % pkg)
         if not os.path.exists(fn):
             raise koji.BuildError, "SRPM file missing: %s" % fn
         # peel E:N-V-R from package
@@ -2297,6 +2316,7 @@ def get_options():
     parser.add_option("--sleeptime", type='int', help="Specify the polling interval")
     parser.add_option("--admin-emails", help="Address(es) to send error notices to")
     parser.add_option("--topdir", help="Specify topdir")
+    parser.add_option("--topurl", help="Specify topurl")
     parser.add_option("--workdir", help="Specify workdir")
     parser.add_option("--mockdir", help="Specify mockdir")
     parser.add_option("--mockuser", help="User to run mock as")
@@ -2319,6 +2339,7 @@ def get_options():
                 'minspace': 8192,
                 'admin_emails': None,
                 'topdir': '/mnt/koji',
+                'topurl': None,
                 'workdir': '/tmp/koji',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',

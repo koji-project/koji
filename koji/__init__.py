@@ -44,6 +44,7 @@ import tempfile
 import time
 import traceback
 import urllib
+import urllib2
 import urlparse
 import xmlrpclib
 from xmlrpclib import loads, Fault
@@ -624,13 +625,17 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     dst_fo.close()
     return dst
 
-def get_rpm_header(filename):
+def get_rpm_header(f):
     """Return the rpm header."""
     ts = rpm.TransactionSet()
     ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
-    fo = file(filename, "r")
+    if isinstance(f, (string, unicode)):
+        fo = file(filename, "r")
+    else:
+        fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
-    fo.close()
+    if fo is not f:
+        fo.close()
     return hdr
 
 def get_header_field(hdr,name):
@@ -873,9 +878,16 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if not url:
         if not (repoid and tag_name):
             raise GenericError, "please provide a url or repo/tag"
-        pathinfo = PathInfo(topdir=opts.get('topdir'))
-        repodir = pathinfo.repo(repoid,tag_name)
-        url = "file://%s/%s" % (repodir,arch)
+        topurl = opts.get('topurl')
+        if topurl:
+            #XXX - PathInfo isn't quite right for this, but it will do for now
+            pathinfo = PathInfo(topdir=topurl)
+            repodir = pathinfo.repo(repoid,tag_name)
+            url = "%s/%s" % (repodir,arch)
+        else:
+            pathinfo = PathInfo(topdir=opts.get('topdir'))
+            repodir = pathinfo.repo(repoid,tag_name)
+            url = "file://%s/%s" % (repodir,arch)
     if managed:
         buildroot_id = opts.get('buildroot_id')
 
@@ -983,6 +995,21 @@ def format_exc_plus():
             except:
                 rv += "<ERROR WHILE PRINTING VALUE>\n"
     return rv
+
+def openRemoteFile(relpath, topurl=None, topdir=None):
+    """Open a file on the main server
+
+    This is done either via a mounted filesystem (nfs) or http, depending
+    on options"""
+    if topurl:
+        url = "%s/%s" % (options.topurl, relpath)
+        fo = urllib2.urlopen(url)
+    elif topdir:
+        fn = "%s/%s" % (options.topdir, relpath)
+        fo = open(url)
+    else:
+        raise koji.GenericError, "No access method for remote file: %s" % relpath
+    return fo
 
 
 class PathInfo(object):
