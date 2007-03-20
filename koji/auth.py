@@ -354,9 +354,10 @@ class Session(object):
         if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
             raise koji.AuthError, 'could not verify client: %s' % env.get('SSL_CLIENT_VERIFY')
 
-        client_name = env.get('SSL_CLIENT_S_DN_CN')
+        name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
+        client_name = env.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
         if not client_name:
-            raise koji.AuthError, 'unable to get user information from client certificate'
+            raise koji.AuthError, 'unable to get user information (%s) from client certificate' % name_dn_component
 
         if proxyuser:
             client_dn = env.get('SSL_CLIENT_S_DN')
