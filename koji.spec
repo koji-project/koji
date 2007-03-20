@@ -18,7 +18,9 @@ URL: http://hosted.fedoraproject.org/projects/koji
 Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-Requires: python-krbV >= 1.0.13, rpm-python
+Requires: python-krbV >= 1.0.13
+Requires: rpm-python
+Requires: pyOpenSSL
 BuildRequires: python
 
 %description
