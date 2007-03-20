@@ -2,14 +2,14 @@
 
 %define testbuild 0
 
-%define baserelease 8
+%define baserelease 1
 %if %{testbuild}
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 0.9.5
+Version: 0.9.6
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -49,7 +49,7 @@ Requires(pre): /usr/sbin/useradd
 Requires: cvs
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.4-3
+Requires: createrepo >= 0.4.4
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes
@@ -61,7 +61,7 @@ Group: Applications/Internet
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
 Requires: rpm-build
-Requires: createrepo >= 0.4.4-3
+Requires: createrepo >= 0.4.4
 
 %description utils
 Utilities for the Koji system
@@ -150,6 +150,11 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.6-1
+- 0.9.6 release, mostly ssl auth stuff
+- use named directories for config stuff
+- remove -3 requires on creatrepo, don't need that specific anymore
+
 * Tue Feb 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.5-8
 - Add Authors COPYING LGPL to the docs of the main package
 
