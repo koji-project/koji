@@ -9,7 +9,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 0.9.6
+Version: 0.9.7
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -150,6 +150,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.7-1
+- Package up the needed ssl files
+
 * Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.6-1
 - 0.9.6 release, mostly ssl auth stuff
 - use named directories for config stuff
