@@ -9,7 +9,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 0.9.6
+Version: 0.9.7
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -18,7 +18,9 @@ URL: http://hosted.fedoraproject.org/projects/koji
 Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-Requires: python-krbV >= 1.0.13, rpm-python
+Requires: python-krbV >= 1.0.13
+Requires: rpm-python
+Requires: pyOpenSSL
 BuildRequires: python
 
 %description
@@ -150,6 +152,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.7-1
+- Package up the needed ssl files
+
 * Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.6-1
 - 0.9.6 release, mostly ssl auth stuff
 - use named directories for config stuff
