@@ -1,9 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define testbuild 0
-
 %define baserelease 1
-%if %{testbuild}
+%if %(test -n %{?testbuild} && echo 1 || echo 0)
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
