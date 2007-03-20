@@ -1,3 +1,5 @@
+SUBDIRS = ssl
+
 PYTHON=python
 PACKAGE = $(shell basename `pwd`)
 PYFILES = $(wildcard *.py)
@@ -12,6 +14,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
+	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 install:
 	mkdir -p $(DESTDIR)/$(PKGDIR)
@@ -22,3 +25,6 @@ install:
 		chmod 0755 $(DESTDIR)/$(PKGDIR)/$$p; \
 	done
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(PKGDIR)', 1, '$(PYDIR)', 1)"
+
+	for d in $(SUBDIRS); do make DESTDIR=$(DESTDIR)/$(PKGDIR)/$$d \
+		-C $$d install; [ $$? = 0 ] || exit 1; done
