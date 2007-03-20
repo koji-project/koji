@@ -1,9 +1,9 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 %define baserelease 1
-%define foo %(test -z %{?testbuild} && echo 0 || echo 1)
-%if %{foo}
-%define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S).%(echo %{?foobar}..%{?testbuild}..%{?baserelease})
+#define testbuild=1 to have a timestamp appended to release
+%if %{?testbuild} == 1
+%define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
 %endif
