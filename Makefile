@@ -75,6 +75,11 @@ tag::
 	@echo "Tagged with: $(TAG)"
 	@echo
 
+force-tag::
+	git tag -f -a $(TAG)
+	@echo "Tagged with: $(TAG)"
+	@echo
+
 # If and only if "make build" fails, use "make force-tag" to 
 # re-tag the version.
 #force-tag: $(SPECFILE)
