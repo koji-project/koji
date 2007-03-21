@@ -997,7 +997,7 @@ def format_exc_plus():
     return rv
 
 def openRemoteFile(relpath, topurl=None, topdir=None):
-    """Open a file on the main server
+    """Open a file on the main server (read-only)
 
     This is done either via a mounted filesystem (nfs) or http, depending
     on options"""
@@ -1006,7 +1006,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
         fo = urllib2.urlopen(url)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
-        fo = open(url)
+        fo = open(fn)
     else:
         raise koji.GenericError, "No access method for remote file: %s" % relpath
     return fo
