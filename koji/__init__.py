@@ -629,7 +629,7 @@ def get_rpm_header(f):
     """Return the rpm header."""
     ts = rpm.TransactionSet()
     ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
-    if isinstance(f, (string, unicode)):
+    if isinstance(f, (str, unicode)):
         fo = file(filename, "r")
     else:
         fo = f
