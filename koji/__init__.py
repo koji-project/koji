@@ -1002,10 +1002,10 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
     This is done either via a mounted filesystem (nfs) or http, depending
     on options"""
     if topurl:
-        url = "%s/%s" % (options.topurl, relpath)
+        url = "%s/%s" % (topurl, relpath)
         fo = urllib2.urlopen(url)
     elif topdir:
-        fn = "%s/%s" % (options.topdir, relpath)
+        fn = "%s/%s" % (topdir, relpath)
         fo = open(url)
     else:
         raise koji.GenericError, "No access method for remote file: %s" % relpath
