@@ -1270,6 +1270,7 @@ class BaseTaskHandler(object):
 
         If the file is on an nfs mount, use that, otherwise download a copy"""
         if options.topurl:
+            self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (options.topurl, relpath)
             fsrc = urllib2.urlopen(url)
             fn = "%s/local/%s" % (self.workdir, relpath)
