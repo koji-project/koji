@@ -1382,6 +1382,10 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
                     changed = True
             else:
                 opts[field] = old
+        if block:
+            #from condition above, either previous is not blocked or force is on,
+            #either way, we should add the entry
+            changed = True
         if not changed:
             #no point in adding it again with the same data
             return
