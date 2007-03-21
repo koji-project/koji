@@ -630,7 +630,7 @@ def get_rpm_header(f):
     ts = rpm.TransactionSet()
     ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, (str, unicode)):
-        fo = file(filename, "r")
+        fo = file(f, "r")
     else:
         fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
