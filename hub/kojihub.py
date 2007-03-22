@@ -3562,6 +3562,7 @@ def get_build_notifications(user_id):
 
 def new_group(name):
     """Add a user group to the database"""
+    context.session.assertPerm('admin')
     if get_user(name):
         raise koji.GenericError, 'user/group already exists: %s' % name
     return context.session.createUser(name, usertype=koji.USERTYPES['GROUP'])
@@ -4718,6 +4719,7 @@ class RootExports(object):
 
     def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
+        context.session.assertPerm('admin')
         if get_user(username):
             raise koji.GenericError, 'user already exists: %s' % username
         if krb_principal and get_user(krb_principal):

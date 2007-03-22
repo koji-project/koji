@@ -568,8 +568,6 @@ class Session(object):
         Create a new user, using the provided values.
         Return the user_id of the newly-created user.
         """
-        self.assertPerm('admin')
-        
         if not name:
             raise koji.GenericError, 'a user must have a non-empty name'
         
