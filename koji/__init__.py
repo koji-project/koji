@@ -1333,7 +1333,7 @@ class ClientSession(object):
         """upload a file in chunks using the uploadFile call"""
         # XXX - stick in a config or something
         start=time.time()
-        blocksize=204800
+        blocksize=65536
         retries=3
         if name is None:
             name = os.path.basename(localfile)
