@@ -461,7 +461,7 @@ if  __name__ == "__main__":
     else:
         logger.setLevel(logging.WARNING)
     session_opts = {}
-    for k in ('cert', 'ca', 'serverca', 'user', 'password', 'debug_xmlrpc', 'debug'):
+    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)
     if os.path.isfile(options.cert):

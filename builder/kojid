@@ -2407,7 +2407,7 @@ if __name__ == "__main__":
 
     #build session options
     session_opts = {}
-    for k in ('cert', 'ca', 'serverca', 'user','password','debug_xmlrpc', 'debug'):
+    for k in ('user','password','debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     #start a session and login
     session = koji.ClientSession(options.server, session_opts)

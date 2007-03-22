@@ -1077,11 +1077,17 @@ class ClientSession(object):
         assert baseurl, "baseurl argument must not be empty"
         if opts == None:
             opts = {}
+        else:
+            opts = opts.copy()
         self.opts = opts
-        self.proxyClass = xmlrpclib.ServerProxy
         self.proxyOpts = {'allow_none':1}
-        if opts.get('debug_xmlrpc',False):
+        if self.opts.get('debug_xmlrpc', False):
             self.proxyOpts['verbose']=1
+        if self.opts.get('certs', False):
+            self.proxyOpts['certs'] = self.opts['certs']
+            self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
+        else:
+            self.proxyClass = xmlrpclib.ServerProxy
         self.baseurl = baseurl
         self.setSession(sinfo)
         self.multicall = False
@@ -1095,6 +1101,14 @@ class ClientSession(object):
         if sinfo is None:
             self.logged_in = False
             self.callnum = None
+            # undo state changes made by ssl_login()
+            if self.baseurl.startswith('https:'):
+                self.baseurl = self.baseurl.replace('https:', 'http:')
+            if self.opts.get('certs', False):
+                del self.opts['certs']
+            if self.proxyOpts.get('certs', False):
+                del self.proxyOpts['certs']
+            self.proxyClass = xmlrpclib.ServerProxy
             url = self.baseurl
         else:
             self.logged_in = True
@@ -1213,6 +1227,7 @@ class ClientSession(object):
             raise AuthError, 'unable to obtain a session'
 
         self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
+        self.opts['certs'] = certs
         self.proxyOpts['certs'] = certs
         self.setSession(sinfo)
 
@@ -1281,7 +1296,7 @@ class ClientSession(object):
                     if not self.logged_in:
                         raise
                     elif debug:
-                        self.logger.debug("Try #%d for call %d failed: %r" % (tries,self.callnum,e))
+                        self.logger.debug("Try #%d for call %d (%s) failed: %s" % (tries, self.callnum, name, e))
                 time.sleep(interval)
             raise RetryError, "reached maximum number of retries, last call failed with: %s" % sys.exc_info()[1]
 
