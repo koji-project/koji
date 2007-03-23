@@ -97,7 +97,7 @@ def get_options():
                       help=_("don't actually run main"))
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
     parser.add_option("--topdir", help=_("specify topdir"))
-    parser.add_option("--web-url", help=_("url of the Koji web interface"))
+    parser.add_option("--weburl", help=_("url of the Koji web interface"))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -129,7 +129,7 @@ def get_options():
     # load local config
     defaults = {
         'server' : 'http://localhost/kojihub',
-        'web_url' : 'http://localhost/koji',
+        'weburl' : 'http://localhost/koji',
         'topdir' : '/mnt/koji',
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
@@ -589,7 +589,7 @@ def handle_build(options, session, args):
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
     print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.web_url, task_id)
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or build_opts.nowait:
         return
     else:
@@ -687,7 +687,7 @@ def handle_chain_build(options, session, args):
     print "Created tasks: %s" % ' '.join([str(d) for d in task_ids])
     print "Task info:"
     for task_id in task_ids:
-        print "  %s/taskinfo?taskID=%s" % (options.web_url, task_id)
+        print "  %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or options.nowait:
         return
     else:
