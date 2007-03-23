@@ -1025,7 +1025,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     for tagid in taglist:
         for rpminfo in _multiRow(q, locals(), [pair[1] for pair in fields]):
             #note: we're checking against the build list because
-            # it has been filtered by the package list for the tag
+            # it has been filtered by the package list. The tag
             # tools should endeavor to keep tag_listing sane w.r.t.
             # the package list, but if there is disagreement the package
             # list should take priority
