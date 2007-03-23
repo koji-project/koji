@@ -1797,6 +1797,7 @@ class BuildSRPMFromCVSTask(BaseTaskHandler):
         koji.ensuredir(cvsdir)
         logfile = self.workdir + "/srpm.log"
         uploadpath = self.getUploadDir()
+        sourcedir = '%s/%s' % (cvsdir, query)
 
         #perform checkouts
         cmd = ['cvs', '-d', ':pserver:anonymous@%s:%s' % (netloc, path),
@@ -1812,9 +1813,9 @@ class BuildSRPMFromCVSTask(BaseTaskHandler):
                         'checkout', 'common']
         if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
             raise koji.BuildError, "Error with checkout :pserver:anonymous@%s:%s" % (netloc, path)
-        os.symlink('%s/common' % cvsdir, '%s/%s/../common' % (cvsdir, query))
+        os.symlink('%s/common' % cvsdir, '%s/../common' % sourcedir)
 
-        spec_files = glob.glob("%s/%s/*.spec" % (cvsdir, query))
+        spec_files = glob.glob("%s/*.spec" % sourcedir)
         if len(spec_files) == 0:
             raise koji.BuildError("No spec file found")
         elif len(spec_files) > 1:
@@ -1825,24 +1826,31 @@ class BuildSRPMFromCVSTask(BaseTaskHandler):
         self.spec_sanity_checks(spec_file)
 
         #build srpm
-        cmd = ['make', "RPM_DEFINES=--define '__beehive_build 1'",
-            'BEEHIVE_SRPM_BUILD=1',
-            '-C', '%s/%s' % (cvsdir, query), 'beehive-srpm']
+        cmd = ['make', '-C', '%s' % sourcedir, 'srpm']
         if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
             raise koji.BuildError, "Error building SRPM"
-        srpm = '%s/%s/src.rpm' % (cvsdir, query)
 
-        #give srpm a proper name
+        srpms = glob.glob('%s/*.src.rpm' % sourcedir)
+        if len(srpms) == 0:
+            raise koji.BuildError, "No srpms found in %s" % sourcedir
+        elif len(srpms) > 1:
+            raise koji.BuildError, "Multiple srpms found in %s: %s" % (sourcedir, ", ".join(srpms))
+        else:
+            srpm = srpms[0]
+        
+        # check srpm name
         h = koji.get_rpm_header(srpm)
         name = h[rpm.RPMTAG_NAME]
         version = h[rpm.RPMTAG_VERSION]
         release = h[rpm.RPMTAG_RELEASE]
-        basename = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
+        srpm_name = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
+        if srpm_name != os.path.basename(srpm):
+            raise koji.BuildError, 'srpm name mismatch: %s != %s' % (srpm_name, os.path.basename(srpm))
 
         #upload srpm and return
-        self.uploadFile(srpm, remoteName=basename)
+        self.uploadFile(srpm)
         return {
-            'srpm' : "%s/%s" % (uploadpath, basename),
+            'srpm' : "%s/%s" % (uploadpath, srpm_name),
             'log' : "%s/srpm.log" % uploadpath,
         }
 
