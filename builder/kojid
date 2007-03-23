@@ -347,7 +347,8 @@ class BuildRoot(object):
         self.logger.info(' '.join(cmd))
         pid = os.fork()
         if pid:
-            path = self.getUploadPath()
+            resultdir = self.resultdir()
+            uploadpath = self.getUploadPath()
             logs = {}
 
             while True:
@@ -355,29 +356,35 @@ class BuildRoot(object):
                 time.sleep(1)
 
                 try:
-                    results = os.listdir(self.resultdir())
+                    results = os.listdir(resultdir)
                 except OSError:
                     # will happen when mock hasn't created the resultdir yet
-                    results = []
+                    continue
 
                 for fname in results:
                     if fname.endswith('.log') and not logs.has_key(fname):
-                        logs[fname] = None
+                        logs[fname] = (None, None)
 
-                for (fname, fd) in logs.items():
-                    if not fd:
-                        try:
-                            fd = file(os.path.join(self.resultdir(), fname),'r')
-                            logs[fname] = fd
-                        except:
-                            self.logger.error("Error reading mock log: %s", fname)
-                            self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
-                            continue
+                for (fname, (fd, inode)) in logs.items():
+                    try:
+                        fpath = os.path.join(resultdir, fname)
+                        stat_info = os.stat(fpath)
+                        if stat_info.st_ino != inode:
+                            # either a file we haven't opened before, or mock replaced a file we had open with
+                            # a new file and is writing to it, but our fd is pointing to the old file
+                            if fd:
+                                fd.close()
+                            fd = file(fpath, 'r')
+                            logs[fname] = (fd, stat_info.st_ino)
+                    except:
+                        self.logger.error("Error reading mock log: %s", fpath)
+                        self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+                        continue
 
-                    incrementalUpload(fname, fd, path, self.logger)
+                    incrementalUpload(fname, fd, uploadpath, self.logger)
 
                 if status[0] != 0:
-                    for (fname, fd) in logs.items():
+                    for (fname, (fd, inode)) in logs.items():
                         if fd:
                             fd.close()
                     return status[1]
