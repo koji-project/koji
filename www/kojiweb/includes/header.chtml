@@ -28,6 +28,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>$title | Koji</title>
+    <link rel="shortcut icon" href="/koji-static/images/koji.ico"/>
     <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="/koji-static/koji.css"/>
     <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="/koji-static/debug.css"/>
     <link rel="alternate" type="application/rss+xml" title="Koji: recent builds" href="/koji/recentbuilds"/>
