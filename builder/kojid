@@ -2354,7 +2354,7 @@ def get_options():
                 'mockuser': 'kojibuilder',
                 'packager': 'koji',
                 'vendor': 'koji',
-                'mockhost': None,
+                'mockhost': 'linux-gnu',
                 'smtphost': 'mail@example.com',
                 'from_addr': 'Koji Build System <buildsys@example.com>',
                 'krb_principal': None,
