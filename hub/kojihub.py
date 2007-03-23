@@ -4832,7 +4832,7 @@ class RootExports(object):
     def debugFunction(self, name, *args, **kwargs):
         # This is potentially dangerous, so it must be explicitly enabled
         allowed = context.opts.get('EnableFunctionDebug','no')
-        if not allowed:
+        if allowed != 'yes':
             raise koji.ActionNotAllowed, 'This call is not enabled'
         context.session.assertPerm('admin')
         func = globals().get(name)
