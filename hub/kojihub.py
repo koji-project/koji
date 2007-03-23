@@ -1025,7 +1025,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     for tagid in taglist:
         for rpminfo in _multiRow(q, locals(), [pair[1] for pair in fields]):
             #note: we're checking against the build list because
-            # it has been filtered by the package list for the tag
+            # it has been filtered by the package list. The tag
             # tools should endeavor to keep tag_listing sane w.r.t.
             # the package list, but if there is disagreement the package
             # list should take priority
@@ -4828,6 +4828,18 @@ class RootExports(object):
         """mark repo as broken"""
         context.session.assertPerm('repo')
         repo_problem(repo_id)
+
+    def debugFunction(self, name, *args, **kwargs):
+        # This is potentially dangerous, so it must be explicitly enabled
+        allowed = context.opts.get('EnableFunctionDebug','no')
+        if allowed != 'yes':
+            raise koji.ActionNotAllowed, 'This call is not enabled'
+        context.session.assertPerm('admin')
+        func = globals().get(name)
+        if callable(func):
+            return func(*args, **kwargs)
+        else:
+            raise koji.GenericError, 'Unable to find function: %s' % name
 
     tagChangedSinceEvent = staticmethod(tag_changed_since_event)
     createBuildTarget = staticmethod(create_build_target)
