@@ -137,7 +137,7 @@ def get_options():
         }
     # grab settings from /etc/koji.conf first, and allow them to be
     # overridden by user config
-    for configFile in ('/etc/koji.conf', options.configFile):
+    for configFile in ('/etc/koji.conf', os.path.expanduser(options.configFile)):
         if os.access(configFile, os.F_OK):
             f = open(configFile)
             config = ConfigParser.ConfigParser()
@@ -601,23 +601,16 @@ def handle_chain_build(options, session, args):
     usage = _("usage: %prog chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--skip-tag", action="store_true",
-                      help=_("Do not attempt to tag package"))
-    parser.add_option("--scratch", action="store_true",
-                      help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
-    parser.add_option("--arch-override", help=_("Override build arches"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
-    (options, args) = parser.parse_args(args)
+    (build_opts, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("At least two arguments (a build target and a CVS URL or srpm file) are required"))
         assert False
-    if options.arch_override and not options.scratch:
-            parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
     target = args[0]
     build_target = session.getBuildTarget(target)
@@ -630,8 +623,7 @@ def handle_chain_build(options, session, args):
         parser.error(_("Destination tag %s is locked" % dest_tag['name']))
 
     sources = args[1:]
-    if options.scratch and ':' in sources:
-        parser.error(_("chain-builds do not support --scratch"))
+    
     srpms = {}
     src_list = []
     build_level = []
@@ -652,19 +644,17 @@ def handle_chain_build(options, session, args):
     if build_level:
         src_list.append(build_level)
 
-    opts = {}
-    if options.arch_override:
-        opts['arch_override'] = ' '.join(options.arch_override.replace(',',' ').split())
-    for key in ('skip_tag','scratch'):
-        opts[key] = getattr(options,key)
+    if len(src_list) < 2:
+        parser.error(_('you must specify at least one dependency between builds with : (colon)\nif there are no dependencies, use the build command instead'))
+
     priority = None
-    if options.background:
+    if build_opts.background:
         #relative to koji.PRIO_DEFAULT
         priority = 5
     
     if srpms:
         print "Uploading SRPMs:"
-        if _running_in_bg() or options.noprogress:
+        if _running_in_bg() or build_opts.noprogress:
             callback = None
         else:
             callback = _progress_callback
@@ -675,23 +665,14 @@ def handle_chain_build(options, session, args):
             session.uploadWrapper(source, dest, callback=callback)
             print
 
-    task_ids = []
-    if len(src_list) == 1:
-        # single or multi-package build
-        for src in src_list[0]:
-            task_ids.append(session.build(src, target, opts, priority=priority))
-    else:
-        # chain build
-        task_ids = [session.chainBuild(src_list, target, opts, priority=priority)]
+    task_id = session.chainBuild(src_list, target, priority=priority)
 
-    print "Created tasks: %s" % ' '.join([str(d) for d in task_ids])
-    print "Task info:"
-    for task_id in task_ids:
-        print "  %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if _running_in_bg() or options.nowait:
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if _running_in_bg() or build_opts.nowait:
         return
     else:
-        watch_tasks(session,task_ids)
+        return watch_tasks(session,[task_id])
 
 def handle_resubmit(options, session, args):
     """Retry a canceled or failed task, using the same parameter as the original task."""

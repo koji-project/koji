@@ -3810,6 +3810,8 @@ class RootExports(object):
         channel: the channel to allocate the task to
         Returns the task id
         """
+        if not opts:
+            opts = {}
         taskOpts = {}
         if priority:
             if priority < 0:
@@ -3833,6 +3835,8 @@ class RootExports(object):
         channel: the channel to allocate the task to
         Returns a list of all the dependent task ids
         """
+        if not opts:
+            opts = {}
         taskOpts = {}
         if priority:
             if priority < 0:
