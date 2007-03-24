@@ -1,5 +1,6 @@
 #import koji
 #from kojiweb import util
+#import urllib
 
 #def printValue($key, $value, $sep=', ')
   #if $key == 'brootid'
@@ -276,7 +277,7 @@ $result.faultString.strip()
       <th>Output</th>
       <td>
         #for $filename in $output
-        <a href="getfile?taskID=$task.id&name=$filename">$filename</a><br/>
+        <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
             $task.method in ('buildSRPMFromCVS', 'buildArch', 'runroot')
