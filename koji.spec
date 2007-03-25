@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 1
+%define baserelease 2
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -151,6 +151,13 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Sun Mar 25 2007 Mike Bonnet <mikeb@redhat.com> - 0.9.7-2
+- enable http access to packages in kojid
+- add Requires: pyOpenSSL
+- building srpms from CVS now works with the Extras CVS structure
+- fixes to the chain-build command
+- bug fixes in the XML-RPC and web interfaces
+
 * Tue Mar 20 2007 Jesse Keating <jkeating@redhat.com> - 0.9.7-1
 - Package up the needed ssl files
 
