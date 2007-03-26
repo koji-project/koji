@@ -99,7 +99,6 @@ CREATE TABLE permissions (
 INSERT INTO permissions (name) VALUES ('admin');
 INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
-INSERT INTO permissions (name) VALUES ('runroot');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
@@ -169,7 +168,7 @@ CREATE TABLE channels (
 
 -- create default channel
 INSERT INTO channels (name) VALUES ('default');
-INSERT INTO channels (name) VALUES ('runroot');
+INSERT INTO channels (name) VALUES ('createrepo');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also

@@ -108,7 +108,6 @@ All
           <option value="buildNotification" #if $method == 'buildNotification' then 'selected="selected"' else ''#>buildNotification</option>
           <option value="tagBuild" #if $method == 'tagBuild' then 'selected="selected"' else ''#>tagBuild</option>
           <option value="tagNotification" #if $method == 'tagNotification' then 'selected="selected"' else ''#>tagNotification</option>
-          <option value="runroot" #if $method == 'runroot' then 'selected="selected"' else ''#>runroot</option>
           <option value="newRepo" #if $method == 'newRepo' then 'selected="selected"' else ''#>newRepo</option>
           <option value="prepRepo" #if $method == 'prepRepo' then 'selected="selected"' else ''#>prepRepo</option>
           <option value="createrepo" #if $method == 'createrepo' then 'selected="selected"' else ''#>createrepo</option>

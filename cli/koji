@@ -2098,14 +2098,6 @@ def _parseTaskParams(session, method, task_id):
         for key in params[2].keys():
             if not key == '__starstar':
                 lines.append("%s: %s" % (key, params[2][key]))
-    elif method == 'runroot':
-        lines.append("Tag: %s" % params[0])
-        lines.append("Arch: %s" % params[1])
-        lines.append("Command: %s" % (' '.join(params[2])))
-        if len(params) > 3:
-            for key in params[3].keys():
-                if not key == '__starstar':
-                    lines.append("%s: %s" % (key, params[3][key]))
     elif method == 'newRepo':
         tag = session.getTag(params[0])
         lines.append("Tag: %s" % tag['name'])
@@ -2868,55 +2860,6 @@ def anon_handle_watch_logs(options, session, args):
         parser.error(_("at least one task id must be specified"))
 
     watch_logs(session, tasks, options)
-
-def handle_runroot(options, session, args):
-    "[admin] Run a command in a buildroot"
-    usage = _("usage: %prog runroot [options] target arch command")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
-    parser.disable_interspersed_args()
-    parser.add_option("--package", action="append", default=[], help=_("make sure this package is in the chroot"))
-    parser.add_option("--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
-    parser.add_option("--keep", action="store_true", default=False,
-            help=_("Preserve the chroot after running (for debugging)"))
-    parser.add_option("--skip-setarch", action="store_true", default=False,
-            help=_("Do not use setarch"))
-    parser.add_option("--use-shell", action="store_true", default=False,
-            help=_("Run command through a shell, otherwise uses exec"))
-    (options, args) = parser.parse_args(args)
-    if len(args) < 3:
-        parser.error(_("Incorrect number of arguments"))
-        assert False
-    activate_session(session)
-    target = args[0]
-    arch = args[1]
-    if options.use_shell:
-        # everything must be correctly quoted
-        command = ' '.join(args[2:])
-    else:
-        command = args[2:]
-    task_id = session.runroot(target, arch, command, keep=options.keep,
-                              packages=options.package, mounts=options.mount,
-                              skip_setarch=options.skip_setarch)
-    try:
-        while True:
-            #wait for the task to finish
-            if session.taskFinished(task_id):
-                break
-            time.sleep(2)
-    except KeyboardInterrupt:
-        # this is probably the right thing to do here
-        print "User interrupt: canceling runroot task"
-        session.cancelTask(task_id)
-        return
-    output = None
-    try:
-        output = session.downloadTaskOutput(task_id, "runroot.log")
-    except koji.GenericError:
-        pass
-    if output:
-        sys.stdout.write(output)
-    return
 
 def handle_make_task(options, session, args):
     "[admin] Create an arbitrary task"

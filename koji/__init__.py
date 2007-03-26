@@ -1526,19 +1526,6 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method == 'runroot':
-        if taskInfo.has_key('request'):
-            tag, arch, command = taskInfo['request'][:3]
-            if isinstance(command, str):
-                cmdlist = command.split()
-            else:
-                cmdlist = command
-            cmdlist = [param for param in cmdlist if '=' not in param]
-            if cmdlist:
-                cmd = os.path.basename(cmdlist[0])
-            else:
-                cmd = '(none)'
-            extra = '%s, %s, %s' % (tag, cmd, arch)
     elif method == 'newRepo':
         pass
     elif method == 'prepRepo':

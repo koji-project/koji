@@ -406,13 +406,12 @@ def make_task(method,arglist,**opts):
         opts['label'] = None
         opts['parent'] = None
     #XXX - temporary workaround
-    if method in ('buildArch', 'runroot') and opts['arch'] == 'noarch':
+    if method == 'buildArch' and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
-        if method == 'buildArch':
-            tag = get_tag(arglist[1])
-        else:
-            tag = get_tag(arglist[0])
+        tag = get_tag(arglist[1])
         fullarches = ('i386', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'x86_64')
+        if not tag['arches']:
+            raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
         tagarches = tag['arches'].split()
         for a in fullarches:
             if a not in tagarches:
@@ -3847,17 +3846,6 @@ class RootExports(object):
             taskOpts['channel'] = channel
 
         return make_task('chainbuild',[srcs,target,opts],**taskOpts)
-
-    def runroot(self, target, arch, command, **opts):
-        """Create a runroot task
-
-        Returns the task id
-        """
-        context.session.assertPerm('runroot')
-        taskopts = {'priority':15,
-                    'arch': arch,
-                    'channel': 'runroot'}
-        return mktask(taskopts,'runroot', target, arch, command, **opts)
 
     def hello(self,*args):
         return "Hello World"
