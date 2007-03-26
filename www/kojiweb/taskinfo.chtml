@@ -274,6 +274,7 @@ $result.faultString.strip()
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
             $task.method in ('buildSRPMFromCVS', 'buildArch', 'createrepo')
+        <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
       </td>
