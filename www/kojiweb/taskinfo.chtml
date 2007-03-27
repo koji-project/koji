@@ -1,5 +1,7 @@
 #import koji
 #from kojiweb import util
+#import urllib
+#import cgi
 
 #def printValue($key, $value, $sep=', ')
   #if $key == 'brootid'
@@ -104,13 +106,6 @@
         <strong>Source:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
-        #elif $task.method == 'runroot'
-        <strong>Tag:</strong> <a href="taginfo?tagID=$params[0]">$params[0]</a><br/>
-        <strong>Arch:</strong> $params[1]<br/>
-        <strong>Command:</strong>&nbsp;$printValue('', $params[2], ' ')<br/>
-        #if $len($params) > 3
-        $printOpts($params[3])
-        #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>
         #elif $task.method == 'prepRepo'
@@ -260,10 +255,10 @@
         #if $excClass
           #if $hasattr($result, 'faultString')
           <pre>
-$result.faultString.strip()
+$cgi.escape($result.faultString.strip())
           </pre>
           #else
-          ${excClass.__name__}: $result
+          ${excClass.__name__}: $cgi.escape($str($result))
           #end if
         #elif $isinstance($result, dict)
         $printMap($result)
@@ -276,10 +271,11 @@ $result.faultString.strip()
       <th>Output</th>
       <td>
         #for $filename in $output
-        <a href="getfile?taskID=$task.id&name=$filename">$filename</a><br/>
+        <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromCVS', 'buildArch', 'runroot')
+            $task.method in ('buildSRPMFromCVS', 'buildArch', 'createrepo')
+        <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
       </td>

@@ -57,8 +57,8 @@ a:hover {
 }
 
 div#content {
-    margin: 0px 20px 0px 20px;
-    float: left;
+    margin: 0 20px;
+    clear: both;
 }
 
 p#footer {
@@ -81,7 +81,6 @@ p#footer a {
 #mainNav {
     width: 100%;
     background-color: #009;
-    margin-bottom: 5px;
     font-weight: bold;
     font-family: verdana, helvetica, arial, sans-serif;
     height: 2.1em;
@@ -136,7 +135,7 @@ h4 {
     color: #fff;
     background-color: #006;
     padding: 0.3em;
-    margin: 5px 0px 5px 0px;
+    margin: 0px;
 }
 
 h4 a {
@@ -402,7 +401,5 @@ abbr {
 span#loginInfo {
     float: right;
     font-weight: bold;
-    margin-left: 0.5em;
-    margin-right: 0.5em;
-    margin-bottom: 4px;
+    margin: 5px;
 }
