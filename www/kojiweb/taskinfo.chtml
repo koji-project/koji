@@ -1,6 +1,7 @@
 #import koji
 #from kojiweb import util
 #import urllib
+#import cgi
 
 #def printValue($key, $value, $sep=', ')
   #if $key == 'brootid'
@@ -254,10 +255,10 @@
         #if $excClass
           #if $hasattr($result, 'faultString')
           <pre>
-$result.faultString.strip()
+$cgi.escape($result.faultString.strip())
           </pre>
           #else
-          ${excClass.__name__}: $result
+          ${excClass.__name__}: $cgi.escape($str($result))
           #end if
         #elif $isinstance($result, dict)
         $printMap($result)
