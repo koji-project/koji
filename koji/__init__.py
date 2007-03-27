@@ -885,7 +885,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
             repodir = pathinfo.repo(repoid,tag_name)
             url = "%s/%s" % (repodir,arch)
         else:
-            pathinfo = PathInfo(topdir=opts.get('topdir'))
+            pathinfo = PathInfo(topdir=opts.get('topdir', '/mnt/koji'))
             repodir = pathinfo.repo(repoid,tag_name)
             url = "file://%s/%s" % (repodir,arch)
     if managed:
@@ -933,14 +933,14 @@ baseurl=%(url)s
     macros = {
         '_topdir' : '%s/build' % config_opts['chroothome'],
         '_rpmfilename' : '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
-        'vendor' : opts['vendor'],
-        'packager' : opts['packager'],
+        'vendor' : opts.get('vendor', 'Koji'),
+        'packager' : opts.get('packager', 'Koji'),
         '_host_cpu' : arch,
-        '_host': '%s-%s' % (arch, opts['mockhost']),
+        '_host': '%s-%s' % (arch, opts.get('mockhost', 'koji-linux-gnu')),
         #TODO - track some of these in the db instead?
     }
     if opts.has_key('distribution'):
-        macros['distribution'] = opts['distribution']
+        macros['distribution'] = opts.get('distribution')
     config_opts['macros'] = '\n'.join(["%%%s %s" % (k, v) for k,v in macros.iteritems()])
 
     parts = ["""#!/usr/bin/python -tt
