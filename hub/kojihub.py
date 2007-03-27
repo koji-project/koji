@@ -5022,8 +5022,9 @@ class RootExports(object):
         q = """SELECT id FROM channels WHERE name = 'default'"""
         default_channel = _singleValue(q)
         if krb_principal is None:
-            fmt = context.opts.get('HostPrincipalFormat','compile/%s@EXAMPLE.COM')
-            krb_principal = fmt % hostname
+            fmt = context.opts.get('HostPrincipalFormat')
+            if fmt:
+                krb_principal = fmt % hostname
         #users entry
         userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
                                             krb_principal=krb_principal)
