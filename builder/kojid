@@ -212,32 +212,33 @@ def scan_mounts(topdir):
 def incrementalUpload(fname, fd, path, retries=5, logger=None):
     if not fd:
         return
-
-    offset = fd.tell()
-    contents = fd.read()
-    size = len(contents)
-    if size == 0:
-        return
-
-    data = base64.encodestring(contents)
-    digest = md5.new(contents).hexdigest()
-    del contents
-
-    tries = 0
+    
     while True:
-        if session.uploadFile(path, fname, size, digest, offset, data):
-            return
-        if tries <= retries:
-            tries += 1
-            time.sleep(10)
-            continue
-        else:
-            if logger:
-                logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
+        offset = fd.tell()
+        contents = fd.read(65536)
+        size = len(contents)
+        if size == 0:
+            break
+        
+        data = base64.encodestring(contents)
+        digest = md5.new(contents).hexdigest()
+        del contents
+        
+        tries = 0
+        while True:
+            if session.uploadFile(path, fname, size, digest, offset, data):
+                break
+            
+            if tries <= retries:
+                tries += 1
+                time.sleep(10)
+                continue
             else:
-                sys.stderr.write("Error uploading file %s to %s at offset %d" % (fname, path, offset))
-                sys.stderr.write("\n")
-            return
+                if logger:
+                    logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
+                else:
+                    sys.stderr.write("Error uploading file %s to %s at offset %d\n" % (fname, path, offset))
+                break
 
 def _parseStatus(rv, prefix):
     if isinstance(prefix, list) or isinstance(prefix, tuple):
@@ -352,8 +353,8 @@ class BuildRoot(object):
             logs = {}
 
             while True:
-                status = os.waitpid(pid,os.WNOHANG)
                 time.sleep(1)
+                status = os.waitpid(pid, os.WNOHANG)
 
                 try:
                     results = os.listdir(resultdir)
@@ -363,19 +364,22 @@ class BuildRoot(object):
 
                 for fname in results:
                     if fname.endswith('.log') and not logs.has_key(fname):
-                        logs[fname] = (None, None)
+                        logs[fname] = (None, None, 0)
 
-                for (fname, (fd, inode)) in logs.items():
+                for (fname, (fd, inode, size)) in logs.items():
                     try:
                         fpath = os.path.join(resultdir, fname)
                         stat_info = os.stat(fpath)
-                        if stat_info.st_ino != inode:
+                        if not fd or stat_info.st_ino != inode or stat_info.st_size < size:
                             # either a file we haven't opened before, or mock replaced a file we had open with
-                            # a new file and is writing to it, but our fd is pointing to the old file
+                            # a new file and is writing to it, or truncated the file we're reading,
+                            # but our fd is pointing to the previous location in the old file
                             if fd:
+                                self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
+                                                 (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
                             fd = file(fpath, 'r')
-                            logs[fname] = (fd, stat_info.st_ino)
+                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
@@ -384,7 +388,7 @@ class BuildRoot(object):
                     incrementalUpload(fname, fd, uploadpath, self.logger)
 
                 if status[0] != 0:
-                    for (fname, (fd, inode)) in logs.items():
+                    for (fname, (fd, inode, size)) in logs.items():
                         if fd:
                             fd.close()
                     return status[1]
@@ -2359,9 +2363,9 @@ def get_options():
                 'workdir': '/tmp/koji',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',
-                'packager': 'koji',
-                'vendor': 'koji',
-                'mockhost': 'linux-gnu',
+                'packager': 'Koji',
+                'vendor': 'Koji',
+                'mockhost': 'koji-linux-gnu',
                 'smtphost': 'mail@example.com',
                 'from_addr': 'Koji Build System <buildsys@example.com>',
                 'krb_principal': None,

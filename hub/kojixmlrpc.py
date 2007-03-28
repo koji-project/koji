@@ -136,23 +136,29 @@ class ModXMLRPCRequestHandler(object):
                 #might be ok, depending on method
                 if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
                     raise
-            if context.opts.get('LockOut',False) in ('yes', 'on', 'true', '1') and \
+            if context.opts.get('LockOut', 'no').lower() in ('yes', 'on', 'true', '1') and \
                    method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
                 if not context.session.hasPerm('admin'):
                     raise koji.GenericError, "Server disabled for maintenance"
         # handle named parameters
         params,opts = koji.decode_args(*params)
-        sys.stderr.write("Handling method %s for session %s (#%s)\n" \
-                         % (method, context.session.id, context.session.callnum))
-        if method != 'uploadFile' and context.opts.get('KojiDebug',False) in ('yes', 'on', 'true', '1'):
-            sys.stderr.write("Params: %s\n" % pprint.pformat(params))
-            sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
-        start = time.time()
+        
+        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+            sys.stderr.write("Handling method %s for session %s (#%s)\n" \
+                             % (method, context.session.id, context.session.callnum))
+            if method != 'uploadFile':
+                sys.stderr.write("Params: %s\n" % pprint.pformat(params))
+                sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
+            start = time.time()
+            
         ret = func(*params,**opts)
-        sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
-                         % (method, context.session.id, context.session.callnum,
-                            time.time()-start))
-        sys.stderr.flush()
+
+        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+            sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
+                             % (method, context.session.id, context.session.callnum,
+                                time.time()-start))
+            sys.stderr.flush()
+        
         return ret
 
     def multiCall(self, calls):
