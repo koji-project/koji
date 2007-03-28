@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 3
+%define baserelease 4
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -151,6 +151,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Wed Mar 28 2007 Mike Bonnet <mikeb@redhat.com> - 0.9.7-4
+- set SSL connection timeout to 12 hours
+
 * Wed Mar 28 2007 Mike Bonnet <mikeb@redhat.com> - 0.9.7-3
 - avoid SSL renegotiation
 - improve log file handling in kojid
