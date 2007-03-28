@@ -1081,13 +1081,15 @@ class ClientSession(object):
             opts = opts.copy()
         self.opts = opts
         self.proxyOpts = {'allow_none':1}
-        if self.opts.get('debug_xmlrpc', False):
-            self.proxyOpts['verbose']=1
-        if self.opts.get('certs', False):
+        if self.opts.get('debug_xmlrpc'):
+            self.proxyOpts['verbose'] = 1
+        if self.opts.get('certs'):
             self.proxyOpts['certs'] = self.opts['certs']
             self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
         else:
             self.proxyClass = xmlrpclib.ServerProxy
+        if self.opts.get('timeout'):
+            self.proxyOpts['timeout'] = self.opts['timeout']
         self.baseurl = baseurl
         self.setSession(sinfo)
         self.multicall = False
@@ -1104,10 +1106,10 @@ class ClientSession(object):
             # undo state changes made by ssl_login()
             if self.baseurl.startswith('https:'):
                 self.baseurl = self.baseurl.replace('https:', 'http:')
-            if self.opts.get('certs', False):
-                del self.opts['certs']
-            if self.proxyOpts.get('certs', False):
-                del self.proxyOpts['certs']
+            self.opts.pop('certs', None)
+            self.proxyOpts.pop('certs', None)
+            self.opts.pop('timeout', None)
+            self.proxyOpts.pop('timeout', None)
             self.proxyClass = xmlrpclib.ServerProxy
             url = self.baseurl
         else:
@@ -1220,15 +1222,17 @@ class ClientSession(object):
         certs['ca_cert'] = ca
         certs['peer_ca_cert'] = serverca
 
-        # only use a timeout during login
+        # 60 second timeout during login
         self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60, **self.proxyOpts)
         sinfo = self.callMethod('sslLogin', proxyuser)
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
 
         self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
-        self.opts['certs'] = certs
-        self.proxyOpts['certs'] = certs
+        self.opts['certs'] = self.proxyOpts['certs'] = certs
+        # 12 hour connection timeout.  Some Koji operations can take a long time to return,
+        # but after 12 hours we can assume something is seriously wrong.
+        self.opts['timeout'] = self.proxyOpts['timeout'] = 60 * 60 * 12
         self.setSession(sinfo)
 
         return True
