@@ -409,7 +409,8 @@ def make_task(method,arglist,**opts):
     if method == 'buildArch' and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
         tag = get_tag(arglist[1])
-        fullarches = ('i386', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'sparc', 'sparc64', 'x86_64')
+        #get all known arches for the system
+        fullarches = get_all_arches()
         if not tag['arches']:
             raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
         tagarches = tag['arches'].split()
@@ -1622,6 +1623,16 @@ def get_ready_hosts():
         c.execute(q,host)
         host['channels'] = [row[0] for row in c.fetchall()]
     return hosts
+
+def get_all_arches():
+    """Return a list of all (canonical) arches available from hosts"""
+    ret = {}
+    for (arches,) in _fetchMulti('SELECT arches FROM host', {}):
+        for arch in arches.split():
+            #in a perfect world, this list would only include canonical
+            #arches, but not all admins will undertand that.
+            ret[koji.canonArch(arch)] = 1
+    return ret.keys()
 
 def get_active_tasks():
     """Return data on tasks that are yet to be run"""
@@ -5098,6 +5109,8 @@ class RootExports(object):
         LIMIT 1
         """
         return _singleValue(query, locals(), strict=False)
+
+    getAllArches = staticmethod(get_all_arches)
 
     getChannel = staticmethod(get_channel)
     listChannels=staticmethod(list_channels)
