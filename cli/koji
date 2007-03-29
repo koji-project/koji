@@ -584,7 +584,7 @@ def handle_build(options, session, args):
             callback = None
         else:
             callback = _progress_callback
-        session.uploadWrapper(source, serverdir, callback=callback)
+        session.uploadWrapper(source, serverdir, callback=callback, blocksize=65536)
         print
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
@@ -662,7 +662,7 @@ def handle_chain_build(options, session, args):
             print os.path.basename(source)
             #uploadWrapper wants the destination dir
             dest = os.path.dirname(dest)
-            session.uploadWrapper(source, dest, callback=callback)
+            session.uploadWrapper(source, dest, callback=callback, blocksize=65536)
             print
 
     task_id = session.chainBuild(src_list, target, priority=priority)
@@ -877,7 +877,7 @@ def handle_import(options, session, args):
         else:
             print _("uploading %s...") % path,
             sys.stdout.flush()
-            session.uploadWrapper(path, serverdir)
+            session.uploadWrapper(path, serverdir, blocksize=65536)
             print _("done")
             sys.stdout.flush()
         print _("importing %s...") % path,

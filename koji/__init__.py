@@ -1337,11 +1337,10 @@ class ClientSession(object):
         #    raise AttributeError, "no attribute %r" % name
         return VirtualMethod(self._callMethod,name)
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=262144):
         """upload a file in chunks using the uploadFile call"""
         # XXX - stick in a config or something
         start=time.time()
-        blocksize=65536
         retries=3
         if name is None:
             name = os.path.basename(localfile)
