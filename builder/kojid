@@ -338,10 +338,15 @@ class BuildRoot(object):
     def mock(self, args, skip_setarch=False):
         """Run mock"""
         global options
-        mockpath = getattr(options,"mockpath","mock")
+        mockpath = getattr(options,"mockpath","/usr/bin/mock")
         cmd = [mockpath, "-r", self.mockcfg]
         if not skip_setarch:
-            cmd[:0] = ['setarch', self.br_arch]
+            if self.br_arch.startswith('sparc64'):
+                cmd[:0] = ['sparc64']
+            elif self.br_arch.startswith('sparc'):
+                cmd[:0] = ['sparc32']
+            else:
+                cmd[:0] = ['setarch', self.br_arch]
         if options.debug_mock:
             cmd.append('--debug')
         cmd.extend(args)

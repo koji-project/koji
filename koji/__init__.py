@@ -703,6 +703,10 @@ def canonArch(arch):
         return 'i386'
     elif fnmatch(arch,'ppc64*'):
         return 'ppc64'
+    elif fnmatch(arch,'sparc64*'):
+        return 'sparc64'
+    elif fnmatch(arch,'sparc*'):
+        return 'sparc'
     elif arch == 'ia32e':
         return 'x86_64'
     else:

@@ -409,7 +409,7 @@ def make_task(method,arglist,**opts):
     if method == 'buildArch' and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
         tag = get_tag(arglist[1])
-        fullarches = ('i386', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'x86_64')
+        fullarches = ('i386', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'sparc', 'sparc64', 'x86_64')
         if not tag['arches']:
             raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
         tagarches = tag['arches'].split()
@@ -4178,7 +4178,7 @@ class RootExports(object):
         c = context.cnx.cursor()
         q = """
         INSERT INTO tag_config(tag_id,arches,perm_id,locked)
-        SELECT id,'i386 ia64 ppc ppc64 s390 s390x x86_64',NULL,False
+        SELECT id,'i386 ia64 ppc ppc64 s390 s390x sparc sparc64 x86_64',NULL,False
         FROM tag LEFT OUTER JOIN tag_config ON tag.id = tag_config.tag_id
         WHERE revoke_event IS NULL AND active IS NULL;
         """
