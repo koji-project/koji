@@ -116,9 +116,11 @@ class ModXMLRPCRequestHandler(object):
             sys.stderr.write('\n')
             response = dumps(Fault(faultCode, faultString))
 
-        sys.stderr.write("Returning %d bytes after %f seconds\n" %
-                            (len(response),time.time() - start))
-        sys.stderr.flush()
+        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+            sys.stderr.write("Returning %d bytes after %f seconds\n" %
+                             (len(response),time.time() - start))
+            sys.stderr.flush()
+        
         return response
 
     def _dispatch(self,method,params):
