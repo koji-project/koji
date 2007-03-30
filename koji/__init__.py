@@ -1306,7 +1306,7 @@ class ClientSession(object):
                     elif debug:
                         self.logger.debug("Try #%d for call %d (%s) failed: %s" % (tries, self.callnum, name, e))
                 time.sleep(interval)
-            raise RetryError, "reached maximum number of retries, last call failed with: %s" % sys.exc_info()[1]
+            raise RetryError, "reached maximum number of retries, last call failed with: %s" % ''.join(traceback.format_exception_only(*sys.exc_info()[:2]))
 
     def multiCall(self):
         """Execute a multicall (multiple function calls passed to the server
