@@ -1288,7 +1288,8 @@ def rpmsbyhost(req, start=None, order=None, hostArch=None, rpmArch=None):
             maxRPMs = numRPMs
     
     values['hostArch'] = hostArch
-    hostArchList = ['ix86', 'x86_64', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'sparc', 'sparc64']
+    hostArchList = server.getAllArches()
+    hostArchList.sort()
     values['hostArchList'] = hostArchList
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
@@ -1357,7 +1358,8 @@ def tasksbyhost(req, start=None, order='-tasks', hostArch=None):
             maxTasks = numTasks
     
     values['hostArch'] = hostArch
-    hostArchList = ['ix86', 'x86_64', 'ia64', 'ppc', 'ppc64', 's390', 's390x', 'sparc', 'sparc64']
+    hostArchList = server.getAllArches()
+    hostArchList.sort()
     values['hostArchList'] = hostArchList
     
     values['order'] = order

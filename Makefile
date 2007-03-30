@@ -66,6 +66,15 @@ git-clean:
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
 
+test-tarball:
+	@rm -rf .koji-$(VERSION)
+	@mkdir .koji-$(VERSION)
+	@cp -al [A-Za-z]* .koji-$(VERSION)
+	@mv .koji-$(VERSION) koji-$(VERSION)
+	tar --bzip2 --exclude '*.tar.bz2' --exclude '*.rpm' --exclude '.#*' \
+	    -cpf koji-$(VERSION).tar.bz2 koji-$(VERSION)
+	@rm -rf koji-$(VERSION)
+
 tarball: clean
 	@git archive --format=tar --prefix=$(NAME)-$(VERSION)/ HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
 
