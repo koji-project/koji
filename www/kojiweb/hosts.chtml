@@ -30,7 +30,7 @@
     <tr class="list-header">
       <th><a href="hosts?order=$util.toggleOrder($self, 'id')">ID</a> $util.sortImage($self, 'id')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'name')">Name</a> $util.sortImage($self, 'name')</th>
-      <th>Arches</th>
+      <th><a href="hosts?order=$util.toggleOrder($self, 'arches')">Arches</a> $util.sortImage($self, 'arches')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'enabled')">Enabled?</a> $util.sortImage($self, 'enabled')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'ready')">Ready?</a> $util.sortImage($self, 'ready')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'last_update')">Last Update</a> $util.sortImage($self, 'last_update')</th>
