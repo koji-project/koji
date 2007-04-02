@@ -1056,7 +1056,7 @@ class TaskManager(object):
         id = data['id']
         request = data['request']
         self.tasks[id] = data
-        params, method = xmlrpclib.loads(base64.decodestring(request))
+        params, method = xmlrpclib.loads(request)
         if self.handlers.has_key(method):
             handlerClass = self.handlers[method]
         elif self.handlers.has_key('default'):
@@ -1131,11 +1131,11 @@ class TaskManager(object):
                 tb = ''.join(traceback.format_exception(*sys.exc_info()))
                 self.logger.warn("TRACEBACK: %s" % tb)
             response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
-        data_out = base64.encodestring(response)
+
         if fail:
-            session.host.failTask(handler.id, data_out)
+            session.host.failTask(handler.id, response)
         else:
-            session.host.closeTask(handler.id, data_out)
+            session.host.closeTask(handler.id, response)
 
 
 class BaseTaskHandler(object):

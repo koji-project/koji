@@ -196,7 +196,7 @@ CREATE TABLE host_channels (
 -- just package builds.
 -- tasks may spawn subtasks (hence the parent field)
 -- top-level tasks have NULL parent
--- the request and result fields are base64-encoded xmlrpc data.
+-- the request and result fields are xmlrpc data.
 --   this means each task is effectively an xmlrpc call, using this table as
 --   the medium.
 -- the host_id field indicates which host is running the task. This field
