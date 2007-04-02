@@ -318,8 +318,8 @@ class Task(object):
     def getRequest(self):
         id = self.id
         query = """SELECT request FROM task WHERE id = %(id)i"""
-        encoded_request = _singleValue(query, locals())
-        params, method = xmlrpclib.loads(base64.decodestring(encoded_request))
+        xml_request = _singleValue(query, locals())
+        params, method = xmlrpclib.loads(xml_request)
         return params
 
     def getResult(self):
@@ -327,7 +327,7 @@ class Task(object):
         r = _fetchSingle(query, vars(self))
         if not r:
             raise koji.GenericError, "No such task"
-        state, encoded_result = r
+        state, xml_result = r
         if koji.TASK_STATES[state] == 'CANCELED':
             raise koji.GenericError, "Task %i is canceled" % self.id
         elif koji.TASK_STATES[state] not in ['CLOSED','FAILED']:
@@ -339,7 +339,7 @@ class Task(object):
         # If you try to return a fault as a value, it gets reduced to
         # a mere struct.
         # f = Fault(1,"hello"); print dumps((f,))
-        result,method = xmlrpclib.loads(base64.decodestring(encoded_result))
+        result, method = xmlrpclib.loads(xml_result)
         return result[0]
 
     def getInfo(self, strict=True, request=False):
@@ -361,7 +361,7 @@ class Task(object):
         results = _multiRow(query, vars(self), [f[1] for f in fields])
         if request:
             for task in results:
-                task['request'] = xmlrpclib.loads(base64.decodestring(task['request']))[0]
+                task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
 def make_task(method,arglist,**opts):
@@ -420,8 +420,8 @@ def make_task(method,arglist,**opts):
                 break
 
     # encode xmlrpc request
-    opts['request'] = base64.encodestring(
-                xmlrpclib.dumps(tuple(arglist),methodname=method,allow_none=1))
+    opts['request'] = xmlrpclib.dumps(tuple(arglist), methodname=method,
+                                      allow_none=1)
     opts['state'] = koji.TASK_STATES['FREE']
     opts['method'] = method
     # stick it in the database
@@ -4970,7 +4970,7 @@ class RootExports(object):
                 for f in ('request','result'):
                     if task[f]:
                         try:
-                            data,method = xmlrpclib.loads(base64.decodestring(task[f]))
+                            data, method = xmlrpclib.loads(task[f])
                         except xmlrpclib.Fault, fault:
                             data = fault
                         task[f] = data
