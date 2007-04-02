@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 4
+%define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 0.9.7
+Version: 1.0
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -151,6 +151,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Apr 02 2007 Jesse Keating <jkeating@redhat.com> 1.0-1
+- Release 1.0!
+
 * Wed Mar 28 2007 Mike Bonnet <mikeb@redhat.com> - 0.9.7-4
 - set SSL connection timeout to 12 hours
 
