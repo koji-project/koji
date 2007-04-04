@@ -301,6 +301,7 @@ class RepoManager(object):
             self.logger.info("Created newRepo task %s for tag %s" % (task_id, tag_id))
             self.tasks[tag_id] = task_id
         #some cleanup
+        n_deletes = 0
         for tag_id, repolist in tag_repos.items():
             if not tags.has_key(tag_id):
                 #repos for these tags are no longer required
@@ -308,9 +309,12 @@ class RepoManager(object):
                     if repo.ready():
                         repo.expire()
             for repo in repolist:
+                if n_deletes >= options.delete_batch_size:
+                    break
                 if repo.expired():
                     #try to delete
-                    repo.tryDelete()
+                    if repo.tryDelete():
+                        n_deletes += 1
 
 
 def main():
@@ -398,6 +402,7 @@ def get_options():
                 'principal': None,
                 'keytab': None,
                 'prune_batch_size': 4,
+                'delete_batch_size': 3,
                 'max_repo_tasks' : 10,
                 'deleted_repo_lifetime': 7*24*3600,
                 'cert': '/etc/kojira/client.crt',
@@ -405,7 +410,8 @@ def get_options():
                 'serverca': '/etc/kojira/serverca.crt'
                 }
     if config.has_section(section):
-        int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks')
+        int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks',
+                    'delete_batch_size')
         str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab', 'cert', 'ca', 'serverca')
         bool_opts = ('with_src','verbose','debug')
         for name in config.options(section):
