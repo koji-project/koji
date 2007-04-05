@@ -4679,10 +4679,19 @@ class RootExports(object):
                 userID = get_user(userID,strict=True)['id']
             if pkgID is not None:
                 pkgID = get_package_id(pkgID,strict=True)
-            results = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
-                                      inherit=inherited, with_dups=with_dups).values()
+            result_list = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
+                                          inherit=inherited, with_dups=with_dups).values()
+            if with_dups:
+                # when with_dups=True, readPackageList returns a list of list of dicts
+                # convert it to a list of dicts for consistency
+                results = []
+                for result in result_list:
+                    results.extend(result)
+            else:
+                results = result_list
 
         if prefix:
+            prefix = prefix.lower()
             results = [package for package in results if package['package_name'].lower().startswith(prefix)]
 
         return results

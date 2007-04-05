@@ -1676,23 +1676,20 @@ def anon_handle_list_pkgs(options, session, args):
             print "%-23s %-23s %-16s %-16s" % ('Package','Tag','Extra Arches','Owner')
             print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*16)
     for pkg in data:
-        if options.tag:
-            pkg = [pkg[0]]
         if allpkgs:
             print pkg['package_name']
-            continue
-        for tagged_pkg in pkg:
-            if not options.show_blocked and tagged_pkg.get('blocked',False):
+        else:
+            if not options.show_blocked and pkg.get('blocked',False):
                 continue
-            if tagged_pkg.has_key('tag_id'):
-                if tagged_pkg['extra_arches'] is None:
-                    tagged_pkg['extra_arches'] = ""
+            if pkg.has_key('tag_id'):
+                if pkg['extra_arches'] is None:
+                    pkg['extra_arches'] = ""
                 fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-16s"
-                if tagged_pkg.get('blocked',False):
+                if pkg.get('blocked',False):
                     fmt += " [BLOCKED]"
             else:
                 fmt = "%(package_name)s"
-            print fmt % tagged_pkg
+            print fmt % pkg
 
 def anon_handle_rpminfo(options, session, args):
     "Print basic information about an RPM"
@@ -2816,11 +2813,6 @@ def handle_set_pkg_owner_global(options, session, args):
         if not entries:
             print "No data for package %s" % package
             continue
-        elif len(entries) > 1:
-            # since we specified exactly one package, the list should
-            # only have one entry
-            raise koji.GenericError, "Unexpected return format"
-        entries = entries[0]
         for entry in entries:
             if user['id'] == entry['owner_id']:
                 if options.verbose:

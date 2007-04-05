@@ -181,7 +181,7 @@ def index(req, packageOrder='package_name', packageStart=None, buildOrder='-comp
                                         start=taskStart, dataName='tasks', prefix='task', order=taskOrder, pageSize=10)
 
     if user:
-        packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id']},
+        packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                                 start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
         
         notifs = server.getBuildNotifications(user['id'])
@@ -896,7 +896,7 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
     values['user'] = user
     values['userID'] = user['id']
     
-    packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id']},
+    packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                             start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
     
     builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
@@ -1315,7 +1315,7 @@ def packagesbyuser(req, start=None, order=None):
 
     server.multicall = True
     for user in users:
-        server.count('listPackages', userID=user['id'])
+        server.count('listPackages', userID=user['id'], with_dups=True)
     packageCounts = server.multiCall()
 
     for user, [numPackages] in zip(users, packageCounts):
