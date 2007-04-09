@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.0
+Version: 1.1
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -151,6 +151,11 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Apr 09 2007 Jesse Keating <jkeating@redhat.com> 1.1-1
+- make the output listPackages() consistent regardless of with_dups
+- prevent large batches of repo deletes from holding up regens
+- allow sorting the host list by arches
+
 * Mon Apr 02 2007 Jesse Keating <jkeating@redhat.com> 1.0-1
 - Release 1.0!
 
