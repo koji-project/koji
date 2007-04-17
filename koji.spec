@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 1
+%define baserelease 2
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -50,7 +50,7 @@ Requires(pre): /usr/sbin/useradd
 Requires: cvs
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.4
+Requires: createrepo >= 0.4.8-2
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes
@@ -62,7 +62,7 @@ Group: Applications/Internet
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
 Requires: rpm-build
-Requires: createrepo >= 0.4.4
+Requires: createrepo >= 0.4.8-2
 
 %description utils
 Utilities for the Koji system
@@ -151,6 +151,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Apr 17 2007 Mike Bonnet <mikeb@redhat.com> - 1.1-2
+- re-enable use of the --update flag to createrepo
+
 * Mon Apr 09 2007 Jesse Keating <jkeating@redhat.com> 1.1-1
 - make the output listPackages() consistent regardless of with_dups
 - prevent large batches of repo deletes from holding up regens
