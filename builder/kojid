@@ -816,7 +816,7 @@ class TaskManager(object):
                 self.logger.debug("task is assigned")
                 if self.host_id == task['host_id']:
                     #assigned to us, we can take it regardless
-                    if self.takeTask(task[id]):
+                    if self.takeTask(task['id']):
                         return
             elif task['state'] == koji.TASK_STATES['FREE']:
                 bin = "%(channel_id)s:%(arch)s" % task
