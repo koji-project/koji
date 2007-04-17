@@ -2235,17 +2235,15 @@ class CreaterepoTask(BaseTaskHandler):
         if os.path.exists("%s/comps.xml" % repodir):
             cmd.extend(['-g', 'comps.xml'])
         #attempt to recycle repodata from last repo
-        # XXX re-enable this if statement when --update support appears in
-        # upstream createrepo
-        # if oldrepo:
-        #     oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
-        #     olddatadir = "%s/%s/repodata" % (oldpath, arch)
-        #     if not os.path.isdir(olddatadir):
-        #         self.logger.warn("old repodata is missing: %s" % olddatadir)
-        #     else:
-        #         koji.ensuredir(datadir)
-        #         os.system('cp -a %s/* %s' % (olddatadir, datadir))
-        #         cmd.append('--update')
+        if oldrepo:
+            oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+            olddatadir = "%s/%s/repodata" % (oldpath, arch)
+            if not os.path.isdir(olddatadir):
+                self.logger.warn("old repodata is missing: %s" % olddatadir)
+            else:
+                koji.ensuredir(datadir)
+                os.system('cp -a %s/* %s' % (olddatadir, datadir))
+                cmd.append('--update')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
