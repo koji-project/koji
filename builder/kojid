@@ -2118,7 +2118,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         if changelog:
             changelog = "Changelog:\r\n%s" % changelog
 
-        from_addr = self.from_addr
+        from_addr = options.from_addr
         to_addrs = ', '.join(recipients)
         subject = self.subject_templ % locals()
         message = self.message_templ % locals()
