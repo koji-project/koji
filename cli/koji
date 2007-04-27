@@ -1731,6 +1731,7 @@ def anon_handle_buildinfo(options, session, args):
     usage = _("usage: %prog buildinfo [options] <n-v-r> [<n-v-r> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--changelog", action="store_true", help=_("Show the changelog for the build"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a build"))
@@ -1759,10 +1760,11 @@ def anon_handle_buildinfo(options, session, args):
         print "RPMs:"
         for rpm in rpms:
             print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
-        print "Changelog:"
-        for entry in session.getChangelogEntries(info['id']):
-            print "* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])
-            print entry['text']
+        if options.changelog:
+            print "Changelog:"
+            for entry in session.getChangelogEntries(info['id']):
+                print "* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])
+                print entry['text']
 
 def handle_add_target(options, session, args):
     "[admin] Create a new build target"
