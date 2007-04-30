@@ -40,10 +40,6 @@
         <td><input type="checkbox" name="success_only" value="yes"#if $notif and $notif.success_only then ' checked' else ''#>
       </tr>
       <tr>
-        <th>Email</th>
-        <td><input type="text" name="email" value="#if $notif then $notif.email else ''#"/></td>
-      </tr>
-      <tr>
         <td>
           #if $notif
           <button type="submit" name="save" value="Save">Save</button>

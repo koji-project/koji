@@ -229,12 +229,8 @@ def notificationedit(req, notificationID):
             success_only = True
         else:
             success_only = False
-
-        email = form['email'].value
-        if not email:
-            raise koji.GenericError, 'an email address for the notification must be provided'
         
-        server.updateNotification(notification['id'], package_id, tag_id, success_only, email)
+        server.updateNotification(notification['id'], package_id, tag_id, success_only)
         
         mod_python.util.redirect(req, 'index')
     elif form.has_key('cancel'):
@@ -278,12 +274,8 @@ def notificationcreate(req):
             success_only = True
         else:
             success_only = False
-
-        email = form['email'].value
-        if not email:
-            raise koji.GenericError, 'an email address for the notification must be provided'
         
-        server.createNotification(user['id'], package_id, tag_id, success_only, email)
+        server.createNotification(user['id'], package_id, tag_id, success_only)
         
         mod_python.util.redirect(req, 'index')
     elif form.has_key('cancel'):

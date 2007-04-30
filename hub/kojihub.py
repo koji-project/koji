@@ -5307,7 +5307,7 @@ class RootExports(object):
         """ % ', '.join(fields)
         return _singleRow(query, locals(), fields)
 
-    def updateNotification(self, id, package_id, tag_id, success_only, email):
+    def updateNotification(self, id, package_id, tag_id, success_only):
         """Update an existing build notification with new data.  If the notification
         with the given ID doesn't exist, or the currently logged-in user is not the
         owner or the notification or an admin, raise a GenericError."""
@@ -5326,22 +5326,28 @@ class RootExports(object):
         update = """UPDATE build_notifications
         SET package_id = %(package_id)s,
         tag_id = %(tag_id)s,
-        success_only = %(success_only)s,
-        email = %(email)s
+        success_only = %(success_only)s
         WHERE id = %(id)i
         """
 
         _dml(update, locals())
 
-    def createNotification(self, user_id, package_id, tag_id, success_only, email):
+    def createNotification(self, user_id, package_id, tag_id, success_only):
         """Create a new notification.  If the user_id does not match the currently logged-in user
         and the currently logged-in user is not an admin, raise a GenericError."""
         currentUser = self.getLoggedInUser()
         if not currentUser:
             raise koji.GenericError, 'not logged in'
-        if not (user_id == currentUser['id'] or self.hasPerm('admin')):
-            raise koji.GenericError, 'user %i cannot create notifications for user %i' % \
-                  (currentUser['id'], user_id)
+
+        notificationUser = self.getUser(user_id)
+        if not notificationUser:
+            raise koji.GenericError, 'invalid user ID: %s' % user_id
+        
+        if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
+            raise koji.GenericError, 'user %s cannot create notifications for user %s' % \
+                  (currentUser['name'], notificationUser['name'])
+        
+        email = '%s@%s' % (notificationUser['name'], context.opts['EmailDomain'])
         insert = """INSERT INTO build_notifications
         (user_id, package_id, tag_id, success_only, email)
         VALUES

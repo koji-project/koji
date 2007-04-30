@@ -154,13 +154,12 @@
   <div class="dataHeader" id="notificationlist">Your Notifications</div>
   <table class="data-list">
     <tr>
-      <td colspan="6"></td>
+      <td colspan="5"></td>
     </tr>
     <tr class="list-header">
       <th>Package</th>
       <th>Tag</th>
       <th>Type</th>
-      <th>Email</th>
       <th></th>
       <th></th>
     </tr>
@@ -169,14 +168,13 @@
       <td>#if $notif.package then $notif.package.name else 'all'#</td>
       <td>#if $notif.tag then $notif.tag.name else 'all'#</td>
       <td>#if $notif.success_only then 'success only' else 'all'#</td>
-      <td>$notif.email</td>
       <td><a href="notificationedit?notificationID=$notif.id">edit</a></td>
       <td><a href="notificationdelete?notificationID=$notif.id">delete</a></td>
     </tr>
     #end for
     #if $len($notifs) == 0
     <tr class="row-odd">
-      <td colspan="3">No notifications</td>
+      <td colspan="5">No notifications</td>
     </tr>
     #end if
   </table>
