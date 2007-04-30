@@ -3513,7 +3513,20 @@ def _get_build_target(task_id):
     # request is (path-to-srpm, build-target-name, map-of-other-options)
     return get_build_targets(request[1])[0]
 
-def get_notification_recipients(package_id, tag_id, state):
+def get_notification_recipients(build, tag_id, state):
+    """
+    Return the list of email addresses that should be notified about events
+    involving the given build and tag.  This could be the build into that tag
+    succeeding or failing, or the build being manually tagged or untagged from
+    that tag.
+
+    The list will contain email addresss for all users who have registered for
+    notifications on the package or tag (or both), as well as the package owner
+    for this tag and the user who submitted the build.  The list will not contain
+    duplicates.
+    """
+    package_id = build['package_id']
+    
     query = """SELECT email FROM build_notifications
     WHERE ((package_id = %(package_id)i OR package_id IS NULL)
       AND  (tag_id = %(tag_id)i OR tag_id IS NULL))
@@ -3522,8 +3535,19 @@ def get_notification_recipients(package_id, tag_id, state):
         query += """AND success_only = FALSE
         """
 
-    results = _fetchMulti(query, locals())
-    return [result[0] for result in results]
+    emails = [result[0] for result in _fetchMulti(query, locals())]
+
+    email_domain = context.opts['EmailDomain']
+
+    # user who submitted the build
+    emails.append('%s@%s' % (build['owner_name'], email_domain))
+
+    packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+    # owner of the package in this tag, following inheritance
+    emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+
+    emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
+    return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
     if is_successful:
@@ -3534,18 +3558,15 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
     build = get_build(build_id)
     if tag_id:
         tag = get_tag(tag_id)
-        for email in get_notification_recipients(build['package_id'], tag['id'], state):
+        for email in get_notification_recipients(build, tag['id'], state):
             recipients[email] = 1
     if from_id:
         from_tag = get_tag(from_id)
-        for email in get_notification_recipients(build['package_id'], from_tag['id'], state):
+        for email in get_notification_recipients(build, from_tag['id'], state):
             recipients[email] = 1
     recipients_uniq = recipients.keys()
     if len(recipients_uniq) > 0 and not (is_successful and ignore_success):
         task_id = make_task('tagNotification', [recipients_uniq, is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg])
-        if context.commit_pending:
-            # wtf is this for?
-            context.cnx.commit()
         return task_id
     return None
 
@@ -3558,7 +3579,7 @@ def build_notification(task_id, build_id):
 
     web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
-    recipients = get_notification_recipients(build['package_id'], target['dest_tag'], build['state'])
+    recipients = get_notification_recipients(build, target['dest_tag'], build['state'])
     if len(recipients) > 0:
         make_task('buildNotification', [recipients, build, target, web_url])
 
