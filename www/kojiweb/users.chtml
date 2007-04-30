@@ -5,11 +5,28 @@
   <h4>Users</h4>
   <table class="data-list">
     <tr>
+      <td class="charlist" colspan="5">
+        #for $char in $chars
+        #if $prefix == $char
+        <strong>$char</strong>
+        #else
+        <a href="users?prefix=$char$util.passthrough($self, 'order')">$char</a>
+        #end if
+        | 
+        #end for
+        #if $prefix
+        <a href="users?${util.passthrough($self, 'order')[1:]}">all</a>
+        #else
+        <strong>all</strong>
+        #end if
+      </td>
+    </tr>
+    <tr>
       <td class="paginate" colspan="5">
         #if $len($userPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order')';">
+          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order', 'prefix')';">
             #for $pageNum in $userPages
             <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -17,19 +34,19 @@
         </form>
         #end if
         #if $userStart > 0
-        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order')">&lt;&lt;&lt;</a>
+        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order', 'prefix')">&lt;&lt;&lt;</a>
         #end if
         #if $totalUsers != 0
         <strong>Users #echo $userStart + 1 # through #echo $userStart + $userCount # of $totalUsers</strong>
         #end if
         #if $userStart + $userCount < $totalUsers
-        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order')">&gt;&gt;&gt;</a>
+        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order', 'prefix')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="users?order=$util.toggleOrder($self, 'id')">ID</a> $util.sortImage($self, 'id')</th>
-      <th><a href="users?order=$util.toggleOrder($self, 'name')">Name</a> $util.sortImage($self, 'name')</th>
+      <th><a href="users?order=$util.toggleOrder($self, 'id')$util.passthrough($self, 'prefix')">ID</a> $util.sortImage($self, 'id')</th>
+      <th><a href="users?order=$util.toggleOrder($self, 'name')$util.passthrough($self, 'prefix')">Name</a> $util.sortImage($self, 'name')</th>
       <th>Packages</th>
       <th>Builds</th>
       <th>Tasks</th>
@@ -54,7 +71,7 @@
         #if $len($userPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order')';">
+          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order', 'prefix')';">
             #for $pageNum in $userPages
             <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -62,13 +79,13 @@
         </form>
         #end if
         #if $userStart > 0
-        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order')">&lt;&lt;&lt;</a>
+        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order', 'prefix')">&lt;&lt;&lt;</a>
         #end if
         #if $totalUsers != 0
         <strong>Users #echo $userStart + 1 # through #echo $userStart + $userCount # of $totalUsers</strong>
         #end if
         #if $userStart + $userCount < $totalUsers
-        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order')">&gt;&gt;&gt;</a>
+        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order', 'prefix')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>

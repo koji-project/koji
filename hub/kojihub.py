@@ -4382,7 +4382,7 @@ class RootExports(object):
             else:
                 clauses.append('build.task_id = %(taskID)i')
         if prefix:
-            clauses.append("package.name  ~* ('^' || %(prefix)s || '.*')")
+            clauses.append("package.name ilike %(prefix)s || '%%'")
         if state != None:
             clauses.append('build.state = %(state)i')
         if completeBefore:
@@ -4759,7 +4759,7 @@ class RootExports(object):
     dropGroupMember = staticmethod(drop_group_member)
     getGroupMembers = staticmethod(get_group_members)
 
-    def listUsers(self, userType=koji.USERTYPES['NORMAL'], queryOpts=None):
+    def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None):
         """List all users in the system.
         type can be either koji.USERTYPES['NORMAL']
         or koji.USERTYPES['HOST'].  Returns a list of maps with the
@@ -4774,7 +4774,9 @@ class RootExports(object):
         If no users of the specified
         type exist, return an empty list."""
         fields = ('id', 'name', 'status', 'usertype', 'krb_principal')
-        clauses = ('usertype = %(userType)i',)
+        clauses = ['usertype = %(userType)i']
+        if prefix:
+            clauses.append("name ilike %(prefix)s || '%%'")
         query = QueryProcessor(columns=fields, tables=('users',), clauses=clauses,
                                values=locals(), opts=queryOpts)
         return query.execute()

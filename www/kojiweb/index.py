@@ -875,15 +875,21 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
 
     return _genHTML(req, 'builds.chtml')
 
-def users(req, order='name', start=None):
+def users(req, order='name', start=None, prefix=None):
     values = _initValues(req, 'Users', 'users')
     server = _getServer(req)
 
+    if prefix:
+        prefix = prefix.lower()
+    values['prefix'] = prefix
+
     values['order'] = order
 
-    users = kojiweb.util.paginateMethod(server, values, 'listUsers',
+    users = kojiweb.util.paginateMethod(server, values, 'listUsers', kw={'prefix': prefix},
                                         start=start, dataName='users', prefix='user', order=order)
 
+    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    
     return _genHTML(req, 'users.chtml')
 
 def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None):
