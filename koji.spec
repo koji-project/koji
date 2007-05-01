@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 3
+%define baserelease 4
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -149,6 +149,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue May  1 2007 Mike Bonnet <mikeb@redhat.com> - 1.1-4
+- remove spurious Requires: from the koji-utils package
+
 * Tue May  1 2007 Mike Bonnet <mikeb@redhat.com> - 1.1-3
 - fix typo in BuildNotificationTask (patch provided by Michael Schwendt)
 - add the --changelog param to the buildinfo command
