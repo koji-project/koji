@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Search Results for "$terms"</h4>
+  <h4>Search Results for ${type}s matching "$terms"</h4>
 
   <table class="data-list">
     <tr>
