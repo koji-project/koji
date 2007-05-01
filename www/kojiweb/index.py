@@ -1074,7 +1074,10 @@ def buildrootinfo(req, buildrootID, builtStart=None, builtOrder=None, componentS
     if buildroot == None:
         raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
+    task = server.getTaskInfo(buildroot['task_id'], request=True)
+
     values['buildroot'] = buildroot
+    values['task'] = task
     
     return _genHTML(req, 'buildrootinfo.chtml')
 

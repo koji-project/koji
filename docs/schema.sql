@@ -390,7 +390,7 @@ CREATE TABLE buildroot (
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	repo_id INTEGER NOT NULL REFERENCES repo (id),
 	arch VARCHAR(16) NOT NULL,
-	task_id INTEGER REFERENCES task (id),
+	task_id INTEGER NOT NULL REFERENCES task (id),
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	retire_event INTEGER,
 	state INTEGER,
