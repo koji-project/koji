@@ -61,8 +61,6 @@ Summary: Koji Utilities
 Group: Applications/Internet
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
-Requires: rpm-build
-Requires: createrepo >= 0.4.8-2
 
 %description utils
 Utilities for the Koji system
