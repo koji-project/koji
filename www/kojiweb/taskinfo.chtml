@@ -92,12 +92,14 @@
         #elif $task.method == 'tagNotification'
         <strong>Recipients:</strong>&nbsp;$printValue('', $params[0])<br/>
         <strong>Successful?:</strong> #if $params[1] then 'yes' else 'no'#<br/>
+        #if $destTag
         <strong>Tagged Into:</strong> <a href="taginfo?tagID=$destTag.id">$destTag.name</a><br/>
+        #end if
         #if $srcTag
-        <strong>Moved From:</strong> <a href="taginfo?tagID=$srcTag.id">$srcTag.name</a><br/>
+        <strong>#if $destTag then 'Moved From:' else 'Untagged From:'#</strong> <a href="taginfo?tagID=$srcTag.id">$srcTag.name</a><br/>
         #end if
         <strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a><br/>
-        <strong>Tagged By:</strong> <a href="userinfo?userID=$user.id">$user.name</a><br/>
+        <strong>#if $destTag then 'Tagged By:' else 'Untagged By:'#</strong> <a href="userinfo?userID=$user.id">$user.name</a><br/>
         <strong>Ignore Success?:</strong> #if $params[6] then 'yes' else 'no'#<br/>
         #if $params[7]
         <strong>Failure Message:</strong> $params[7]
