@@ -1944,6 +1944,8 @@ Status: %(status)s\r
             failure_info = "Operation failed with the error:\r\n    %s\r\n" % failure_msg
 
         message = self.message_templ % locals()
+        # ensure message is in UTF-8
+        message = message.encode('utf-8')
 
         server = smtplib.SMTP(options.smtphost)
         #server.set_debuglevel(True)
@@ -2122,6 +2124,8 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         to_addrs = ', '.join(recipients)
         subject = self.subject_templ % locals()
         message = self.message_templ % locals()
+        # ensure message is in UTF-8
+        message = message.encode('utf-8')
 
         server = smtplib.SMTP(options.smtphost)
         # server.set_debuglevel(True)
