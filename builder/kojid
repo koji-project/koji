@@ -1883,7 +1883,7 @@ X-Koji-Package: %(pkg_name)s\r
 X-Koji-NVR: %(nvr)s\r
 X-Koji-User: %(user_name)s\r
 X-Koji-Status: %(status)s\r
-%(tag_headers)s\r
+%(tag_headers)s
 \r
 Package: %(pkg_name)s\r
 NVR: %(nvr)s\r
