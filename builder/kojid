@@ -1544,7 +1544,7 @@ class BuildTask(BaseTaskHandler):
         # get list of arches to build for
         buildconfig = session.getBuildConfig(build_tag)
         arches = buildconfig['arches']
-        tag_archlist = arches.split()
+        tag_archlist = [koji.canonArch(a) for a in arches.split()]
         self.logger.debug('arches: %s' % arches)
         if arches is None:
             #XXX - need to handle this better
@@ -1552,11 +1552,6 @@ class BuildTask(BaseTaskHandler):
         if extra:
             self.logger.debug('Got extra arches: %s' % extra)
             arches = "%s %s" % (arches,extra)
-        override = self.opts.get('arch_override')
-        if self.opts.get('scratch') and override:
-            #only honor override for scratch builds
-            self.logger.debug('arch override: %s' % override)
-            arches = override
         archlist = arches.split()
         self.logger.debug('base archlist: %r' % archlist)
         # - adjust arch list based on srpm macros
@@ -1564,10 +1559,10 @@ class BuildTask(BaseTaskHandler):
         exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
         excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
         if buildarchs:
-            archlist = [ a for a in archlist if a in buildarchs ]
+            archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
         if exclusivearch:
-            archlist = [ a for a in archlist if a in exclusivearch ]
+            archlist = exclusivearch
             self.logger.debug('archlist after exclusivearch: %r' % archlist)
         if excludearch:
             archlist = [ a for a in archlist if a not in excludearch ]
@@ -1576,8 +1571,15 @@ class BuildTask(BaseTaskHandler):
         if 'noarch' not in excludearch and \
                 ( 'noarch' in buildarchs or 'noarch' in exclusivearch ):
             archlist.append('noarch')
+        override = self.opts.get('arch_override')
+        if self.opts.get('scratch') and override:
+            #only honor override for scratch builds
+            self.logger.debug('arch override: %s' % override)
+            archlist = override.split()
         archdict = {}
         for a in archlist:
+            # Filter based on canonical arches for tag
+            # This prevents building for an arch that we can't handle
             if a == 'noarch' or koji.canonArch(a) in tag_archlist:
                 archdict[a] = 1
         if not archdict:
