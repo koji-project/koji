@@ -1883,7 +1883,7 @@ X-Koji-Package: %(pkg_name)s\r
 X-Koji-NVR: %(nvr)s\r
 X-Koji-User: %(user_name)s\r
 X-Koji-Status: %(status)s\r
-%(tag_headers)s
+%(tag_headers)s\r
 \r
 Package: %(pkg_name)s\r
 NVR: %(nvr)s\r
@@ -1920,14 +1920,16 @@ Status: %(status)s\r
             from_tag_name = from_tag['name']
             operation += ' from %s' % from_tag_name
             operation_details += 'From Tag: %s\r\n' % from_tag_name
-            tag_headers += 'X-Koji-Tag: %s\r\n' % from_tag_name
+            tag_headers += 'X-Koji-Tag: %s' % from_tag_name
             action = 'untagged'
         if tag_info:
             tag = session.getTag(tag_info)
             tag_name = tag['name']
             operation += ' into %s' % tag_name
             operation_details += 'Into Tag: %s\r\n' % tag_name
-            tag_headers += 'X-Koji-Tag: %s\r\n' % tag_name
+            if tag_headers:
+                tag_headers += '\r\n'
+            tag_headers += 'X-Koji-Tag: %s' % tag_name
             action = 'tagged'
         if tag_info and from_info:
             action = 'moved'
