@@ -4057,11 +4057,20 @@ class RootExports(object):
     def buildReferences(self, build):
         return build_references(get_build(build, strict=True)['id'])
 
+    def createEmptyBuild(self, name, version, release, epoch):
+        context.session.assertPerm('admin')
+        data = { 'name' : name, 'version' : version, 'release' : release,
+                 'epoch' : epoch }
+        if owner is not None:
+            data['owner'] = owner
+        return new_build(data)
+
     def importRPM(self, path, basename):
         """Import an RPM into the database.
 
         The file must be uploaded first.
         """
+        context.session.assertPerm('admin')
         uploadpath = koji.pathinfo.work()
         fn = "%s/%s/%s" %(uploadpath,path,basename)
         if not os.path.exists(fn):

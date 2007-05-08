@@ -847,16 +847,53 @@ def handle_import(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--link", action="store_true", help=_("Attempt to hardlink the rpm"))
+    parser.add_option("--test", action="store_true", help=_("Don't actually import"))
+    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
+    parser.add_option("--src-epoch", help=_("When auto-creating builds, use this epoch"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("At least one package must be specified"))
         assert False
+    if options.src_epoch in ('None', 'none', '(none)'):
+        options.src_epoch = None
+    elif options.src_epoch:
+        try:
+            options.src_epoch = int(options.src_epoch)
+        except ValueError, TypeError:
+            parser.error(_("Invalid value for epoch: %s") % options.src_epoch)
+            assert False
     activate_session(session)
+    to_import = {}
     for path in args:
-        data = koji.get_header_fields(path, ('name','version','release','arch','sigmd5','sourcepackage','sourcerpm'))
-        rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
+        data = koji.get_header_fields(path, ('name','version','release','epoch',
+                                    'arch','sigmd5','sourcepackage','sourcerpm'))
         if data['sourcepackage']:
-            rinfo['arch'] = 'src'
+            data['arch'] = 'src'
+            nvr = "%(name)s-%(version)s-%(release)s" % data
+        else:
+            nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
+        to_import.setdefault(nvr,[]).append((path,data))
+    builds_missing = False
+    nvrs = to_import.keys()
+    nvrs.sort()
+    for nvr in nvrs:
+        to_import[nvr].sort()
+        for path, data in to_import[nvr]:
+            if data['sourcepackage']:
+                break
+        else:
+            #no srpm included, check for build
+            binfo = session.getBuild(nvr)
+            if not binfo:
+                print _("Missing build or srpm: %s") % nvr
+                builds_missing = True
+    if builds_missing and not options.create_build:
+        print _("Aborting import")
+        return
+
+    #local function to help us out below
+    def do_import(path, data):
+        rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
         prev = session.getRPM(rinfo)
         if prev:
             if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
@@ -864,7 +901,10 @@ def handle_import(options, session, args):
             else:
                 print _("WARNING: md5sum mismatch for %s") % path
             print _("Skipping import")
-            continue
+            return
+        if options.test:
+            print _("Test mode -- skipping import for %s") % path
+            return
         serverdir = _unique_path('cli-import')
         if options.link:
             old_umask = os.umask(002)
@@ -890,6 +930,39 @@ def handle_import(options, session, args):
         else:
             print _("done")
         sys.stdout.flush()
+
+    for nvr in nvrs:
+        got_build = False
+        #srpms first, if any
+        for path, data in to_import[nvr]:
+            if data['sourcepackage']:
+                do_import(path, data)
+                got_build = True
+        for path, data in to_import[nvr]:
+            if data['sourcepackage']:
+                continue
+            if not got_build:
+                binfo = session.getBuild(nvr)
+                if binfo:
+                    got_build = True
+                elif options.create_build:
+                    binfo = koji.parse_NVR(nvr)
+                    if options.src_epoch:
+                        binfo['epoch'] = options.src_epoch
+                    else:
+                        binfo['epoch'] = data['epoch']
+                    if options.test:
+                        print _("Test mode -- would have created empty build: %s") % nvr
+                        got_build = True  #avoid duplicate notices
+                    else:
+                        print _("Creating empty build: %s") % nvr
+                        session.createEmptyBuild(**binfo)
+                else:
+                    #shouldn't happen
+                    print _("Build missing: %s") % nvr
+                    break
+            do_import(path, data)
+
 
 # Currently disabled, needs porting to yum.comps
 #def handle_import_comps(options, session, args):
