@@ -2366,7 +2366,7 @@ def get_options():
         if x != 'kojid':
             quit('invalid section found in config file: %s' % x)
     defaults = {'sleeptime': 15,
-                'maxjobs': 5,
+                'maxjobs': 10,
                 'minspace': 8192,
                 'admin_emails': None,
                 'topdir': '/mnt/koji',
