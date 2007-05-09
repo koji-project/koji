@@ -1854,7 +1854,7 @@ def handle_add_target(options, session, args):
     name = args[0]
     build_tag = args[1]
     if len(args) > 2:
-        dest_tag = args[3]
+        dest_tag = args[2]
     else:
         #most targets have the same name as their destination
         dest_tag = name

@@ -1544,11 +1544,11 @@ class BuildTask(BaseTaskHandler):
         # get list of arches to build for
         buildconfig = session.getBuildConfig(build_tag)
         arches = buildconfig['arches']
-        tag_archlist = [koji.canonArch(a) for a in arches.split()]
-        self.logger.debug('arches: %s' % arches)
-        if arches is None:
+        if not arches:
             #XXX - need to handle this better
             raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
+        tag_archlist = [koji.canonArch(a) for a in arches.split()]
+        self.logger.debug('arches: %s' % arches)
         if extra:
             self.logger.debug('Got extra arches: %s' % extra)
             arches = "%s %s" % (arches,extra)
