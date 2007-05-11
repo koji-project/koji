@@ -3963,7 +3963,7 @@ class RootExports(object):
             # elif offset == 0:
             #     #first chunk, so file should not exist yet
             #     raise koji.GenericError, "file already exists: %s" % fn
-        fd = os.open(fn, os.O_RDWR | os.O_CREAT)
+        fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
         # log_error("fd=%r" %fd)
         try:
             if offset == 0 or (offset == -1 and size == len(contents)):

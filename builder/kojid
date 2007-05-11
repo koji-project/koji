@@ -109,7 +109,7 @@ def log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, 
             flags = os.O_CREAT | os.O_WRONLY
             if append:
                 flags |= os.O_APPEND
-            fd = os.open(outfile, flags)
+            fd = os.open(outfile, flags, 0666)
             os.dup2(fd, 1)
             if logerror:
                 os.dup2(fd, 2)
