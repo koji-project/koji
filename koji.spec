@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 5
+%define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if x%{?testbuild} == x1
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.1
+Version: 1.2.0
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -149,6 +149,10 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue May 15 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.0-1
+- change version numbering to a 3-token scheme
+- install the koji favicon
+
 * Mon May 14 2007 Mike Bonnet <mikeb@redhat.com> - 1.1-5
 - cleanup koji-utils Requires
 - fix encoding and formatting in email notifications
