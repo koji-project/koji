@@ -1,5 +1,5 @@
 SERVERDIR = /images
-FILES = $(wildcard *.gif *.png)
+FILES = $(wildcard *.gif *.png *.ico)
 
 _default:
 	@echo "nothing to make.  try make install"
