@@ -1836,8 +1836,8 @@ def anon_handle_buildinfo(options, session, args):
         if options.changelog:
             print "Changelog:"
             for entry in session.getChangelogEntries(info['id']):
-                print "* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])
-                print entry['text']
+                print ("* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])).encode('utf-8')
+                print entry['text'].encode('utf-8')
 
 def handle_add_target(options, session, args):
     "[admin] Create a new build target"
