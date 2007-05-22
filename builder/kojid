@@ -1562,7 +1562,7 @@ class BuildTask(BaseTaskHandler):
             archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
         if exclusivearch:
-            archlist = exclusivearch
+            archlist = [ a for a in archlist if a in exclusivearch ]
             self.logger.debug('archlist after exclusivearch: %r' % archlist)
         if excludearch:
             archlist = [ a for a in archlist if a not in excludearch ]
