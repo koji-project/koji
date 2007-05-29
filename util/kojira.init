@@ -35,7 +35,11 @@ start() {
     [ "$FORCE_LOCK" == "Y" ] && ARGS="$ARGS --force-lock"
     [ "$KOJIRA_DEBUG" == "Y" ] && ARGS="$ARGS --debug"
     [ "$KOJIRA_VERBOSE" == "Y" ] && ARGS="$ARGS --verbose"
-    daemon /usr/sbin/kojira $ARGS
+    if [ -n "$RUNAS" -a "$RUNAS" != "root" ]; then
+        daemon --user "$RUNAS" /usr/sbin/kojira $ARGS
+    else
+        daemon /usr/sbin/kojira $ARGS
+    fi
     RETVAL=$?
     echo
     [ $RETVAL -eq 0 ] && touch /var/lock/subsys/kojira
