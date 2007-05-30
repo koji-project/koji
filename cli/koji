@@ -300,6 +300,21 @@ def display_tasklist_status(tasks):
             free += 1
     print "  %d free  %d open  %d done  %d failed" % (free, open, done, failed)
 
+def display_task_results(tasks):
+    for task in [task for task in tasks.values() if task.level == 0]:
+        state = task.info['state']
+        task_label = task.str()
+        
+        if state == koji.TASK_STATES['CLOSED']:
+            print '%s completed successfully' % task_label
+        elif state == koji.TASK_STATES['FAILED']:
+            print '%s failed' % task_label
+        elif state == koji.TASK_STATES['CANCELED']:
+            print '%s was canceled' % task_label
+        else:
+            # shouldn't happen
+            print '%s has not completed' % task_label
+
 def watch_tasks(session,tasklist):
     if not tasklist:
         return
@@ -329,6 +344,8 @@ def watch_tasks(session,tasklist):
                         # in case they have children also
                         all_done = False
             if all_done:
+                print
+                display_task_results(tasks)
                 break
 
             time.sleep(1)
