@@ -1486,7 +1486,7 @@ def anon_handle_list_buildroot(options, session, args):
 
 def anon_handle_list_untagged(options, session, args):
     "List untagged builds"
-    usage = _("usage: %prog list-tagged [options] [package]")
+    usage = _("usage: %prog list-untagged [options] [package]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
