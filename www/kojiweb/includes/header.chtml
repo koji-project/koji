@@ -41,6 +41,21 @@
         <!-- HEADER -->
         <div id="header">
           <img src="/koji-static/images/koji.png" alt="Koji Logo" width="49" height="40" id="kojiLogo"/>
+          <form action="search" id="headerSearch">
+            <input type="hidden" name="match" value="glob"/>
+            <select name="type">
+              <option value="package">Packages</option>
+              <option value="build">Builds</option>
+              <option value="tag">Tags</option>
+              <option value="target">Build Targets</option>
+              <option value="user">Users</option>
+              <option value="host">Hosts</option>
+              <option value="rpm">RPMs</option>
+              <option value="file">Files</option>
+            </select>
+            <input type="text" name="terms"/>
+            <input type="submit" value="Search"/>
+          </form>
         </div><!-- end header -->
 
         <!-- MAIN NAVIGATION -->
