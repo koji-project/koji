@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.0
+Version: 1.2.1
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -150,6 +150,12 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Thu May 31 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.1-1
+- don't allow ExclusiveArch to expand the archlist (bz#239359)
+- add a summary line stating whether the task succeeded or failed to the end of the "watch-task" output
+- add a search box to the header of every page in the web UI
+- new koji download-build command (patch provided by Dan Berrange)
+
 * Tue May 15 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.0-1
 - change version numbering to a 3-token scheme
 - install the koji favicon
