@@ -2421,7 +2421,6 @@ if __name__ == "__main__":
     global options
     
     koji.add_file_logger("koji", "/var/log/kojid.log")
-    koji.add_sys_logger("koji")
     #note we're setting logging params for all of koji*
     get_options()
     if options.debug:
