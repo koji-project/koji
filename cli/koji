@@ -3101,7 +3101,7 @@ def anon_handle_download_build(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
-    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display process meter"))
+    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a package N-V-R or build ID"))
