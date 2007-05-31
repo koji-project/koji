@@ -38,6 +38,8 @@ import socket
 import string
 import time
 import urllib
+import urlgrabber.grabber as grabber
+import urlgrabber.progress as progress
 import xmlrpclib
 import optparse
 #for import-comps handler (currently disabled)
@@ -98,6 +100,7 @@ def get_options():
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
     parser.add_option("--topdir", help=_("specify topdir"))
     parser.add_option("--weburl", help=_("url of the Koji web interface"))
+    parser.add_option("--pkgurl", help=_("url of the Koji package tree"))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -130,6 +133,7 @@ def get_options():
     defaults = {
         'server' : 'http://localhost/kojihub',
         'weburl' : 'http://localhost/koji',
+        'pkgurl' : 'http://localhost/packages',
         'topdir' : '/mnt/koji',
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
@@ -3089,6 +3093,65 @@ def handle_unblock_pkg(options, session, args):
     for package in args[1:]:
         #really should implement multicall...
         session.packageListUnblock(tag,package)
+
+def anon_handle_download_build(options, session, args):
+    "Download a built package"
+    usage = _("usage: %prog download-build [options] <n-v-r | build_id>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
+                      help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display process meter"))
+    (suboptions, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a package N-V-R or build ID"))
+        assert False
+    elif len(args) > 1:
+        parser.error(_("Only a single package N-V-R or build ID may be specified"))
+        assert False
+    
+    activate_session(session)
+    build = args[0]
+
+    if build.isdigit():
+        build = int(build)
+    info = session.getBuild(build)
+    if info is None:
+        print "No such build: %s" % build
+        return 1
+
+    arches = suboptions.arches
+    if len(arches) == 0:
+        arches = None
+    rpms = session.listRPMs(buildID=info['id'], arches=arches)
+    if not rpms:
+        if arches:
+            print "No %s packages available for %s" % (" or ".join(arches), koji.buildLabel(info))
+        else:
+            print "No packages available for %s" % koji.buildLabel(info)
+        return 1
+
+    if suboptions.quiet:
+        pg = None
+    else:
+        pg = progress.TextMeter()
+    
+    for rpm in rpms:
+        fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
+        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], rpm['version'], rpm['release'], rpm['arch'], fname)
+
+        file = grabber.urlopen(url, progress_obj = pg, text = "%s.%s" % (rpm['name'], rpm['arch']))
+
+        out = os.open(fname, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+        try:
+            while 1:
+                buf = file.read(4096)
+                if not buf:
+                    break
+                os.write(out, buf)
+        finally:
+            os.close(out)
+            file.close()
 
 def handle_help(options, session, args):
     "List available commands"
