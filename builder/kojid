@@ -2281,7 +2281,7 @@ class WaitrepoTask(BaseTaskHandler):
 
     PAUSE = 60
     # time in seconds before we fail this task
-    TIMEOUT = 3600
+    TIMEOUT = 7200
     
     def checkForNVR(self, tag, nvrs, repo_creation_event):
         if not isinstance(nvrs, list):
