@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.1
+Version: 1.2.2
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -150,6 +150,10 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Jun  5 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.2-1
+- only allow admins to perform non-scratch builds from srpm
+- bug fixes to the cmd-line and web UIs
+
 * Thu May 31 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.1-1
 - don't allow ExclusiveArch to expand the archlist (bz#239359)
 - add a summary line stating whether the task succeeded or failed to the end of the "watch-task" output
