@@ -1454,6 +1454,11 @@ class BuildTask(BaseTaskHandler):
         self.opts = opts
         if opts.get('arch_override') and not opts.get('scratch'):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
+        task_info = session.getTaskInfo(self.id)
+        # only allow admins to perform non-scratch builds from srpm
+        if not src.startswith('cvs://') and not opts.get('scratch') \
+               and not 'admin' in session.getUserPerms(task_info['owner']):
+            raise koji.BuildError, "only admins may peform non-scratch builds from srpm"
         target_info = session.getBuildTarget(target)
         if not target_info:
             raise koji.GenericError, 'unknown build target: %s' % target
