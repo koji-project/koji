@@ -3116,6 +3116,7 @@ def anon_handle_download_build(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -3152,6 +3153,9 @@ def anon_handle_download_build(options, session, args):
         pg = progress.TextMeter()
     
     for rpm in rpms:
+        if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
+            continue
+        
         fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
         url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], rpm['version'], rpm['release'], rpm['arch'], fname)
 
