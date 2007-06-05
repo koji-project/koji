@@ -28,7 +28,7 @@
       <tr>
         <th>Priority</th>
         <td>
-          <input type="text" name="priority" value="#if $inheritanceData then $inheritanceData.priority else $numParents#"/>
+          <input type="text" name="priority" value="#if $inheritanceData then $inheritanceData.priority else $maxPriority + 1#"/>
         </td>
       </tr>
       <tr>

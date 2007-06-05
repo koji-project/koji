@@ -756,7 +756,11 @@ def tagparent(req, tagID, parentID, action):
             values['parent'] = parent
 
             inheritanceData = server.getInheritanceData(tag['id'])
-            values['numParents'] = len(inheritanceData)
+            maxPriority = 0
+            for datum in inheritanceData:
+                if datum['priority'] > maxPriority:
+                    maxPriority = datum['priority']
+            values['maxPriority'] = maxPriority
             inheritanceData = [datum for datum in  inheritanceData \
                                if datum['parent_id'] == parent['id']]
             if len(inheritanceData) == 0:
