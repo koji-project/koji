@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Users</h4>
+  <h4>Users#if $prefix then ' starting with "%s"' % $prefix else ''#</h4>
   <table class="data-list">
     <tr>
       <td class="charlist" colspan="5">
