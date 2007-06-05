@@ -551,7 +551,10 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     sys.stdout.flush()
 
 def _running_in_bg():
-    if (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0)):
+    try:
+        if (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0)):
+            return True
+    except OSError, e:
         return True
     return False
 
