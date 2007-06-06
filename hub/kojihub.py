@@ -3356,7 +3356,7 @@ def build_references(build_id):
         ret['last_used'] = None
     else:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
-        ret['last_used'] = _fetchSingle(q, locals())
+        ret['last_used'] = _singleValue(q, locals())
     return ret
 
 def delete_build(build, strict=True, min_ref_age=604800):
