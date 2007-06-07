@@ -519,11 +519,11 @@ def _unique_path(prefix):
 
 def _format_size(size):
     if (size / 1073741824 >= 1):
-        return "%0.2f Gb" % (size / 1073741824.0)
+        return "%0.2f GiB" % (size / 1073741824.0)
     if (size / 1048576 >= 1):
-        return "%0.2f Mb" % (size / 1048576.0)
+        return "%0.2f MiB" % (size / 1048576.0)
     if (size / 1024 >=1):
-        return "%0.2f Kb" % (size / 1024.0)
+        return "%0.2f KiB" % (size / 1024.0)
     return "%0.2f B" % (size)
 
 def _format_secs(t):
