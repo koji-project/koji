@@ -51,7 +51,7 @@ Requires(pre): /usr/sbin/useradd
 Requires: cvs
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.8-2
+Requires: createrepo >= 0.4.10
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes
