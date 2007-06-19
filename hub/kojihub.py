@@ -1658,32 +1658,7 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
-def repo_new(tag_id):
-    """Create a new repo entry in the INIT state, return full repo data
-
-    Returns a dictionary containing
-        repo_id, event_id, rpms, builds, groups
-    """
-    context.session.assertPerm('repo')
-    c = context.cnx.cursor()
-    state = koji.REPO_INIT
-    id = get_tag_id(tag_id)
-    if id is None:
-        raise koji.GenericError("Could not find ID for tag: %s" % tag_id)
-    q = """INSERT INTO repo(tag_id,state) VALUES(%(id)s,%(state)s)"""
-    context.commit_pending = True
-    c.execute(q,locals())
-    #get event_id and repo_id
-    q = """SELECT currval('repo_id_seq'),currval('events_id_seq')"""
-    c.execute(q)
-    ret = {}
-    ret['repo_id'], ret['event_id'] = c.fetchone()
-    # no need to pass explicit event, since this is all one transaction
-    ret['rpms'], ret['builds'] = readTaggedRPMS(tag_id,event=None,inherit=True,latest=True)
-    ret['groups'] = readTagGroups(id,event=None,inherit=True)
-    return ret
-
-def repo_init(tag, with_src=False):
+def repo_init(tag, with_src=False, with_debuginfo=False):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -1708,10 +1683,9 @@ def repo_init(tag, with_src=False):
     #index the packages by arch
     packages = {}
     for rpminfo in rpms:
+        if rpminfo['name'].endswith('-debuginfo') and not with_debuginfo:
+            continue
         build = builds[rpminfo['build_id']]
-        if not build.has_key('name'):
-            #XXX -workaround for broken return fields
-            build['name'] = build['package_name']
         arch = rpminfo['arch']
         rpminfo['path'] = "%s/%s" % (koji.pathinfo.build(build), koji.pathinfo.rpm(rpminfo))
         if not os.path.exists(rpminfo['path']):
@@ -2383,7 +2357,7 @@ def get_build(buildInfo, strict=False):
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
-              ('package.id', 'package_id'), ('package.name', 'package_name'),
+              ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'))
     query = """SELECT %s
     FROM build
@@ -2403,7 +2377,6 @@ def get_build(buildInfo, strict=False):
             return None
     else:
         ret = dict(zip([pair[1] for pair in fields], result))
-        ret['name'] = ret['package_name']
         return ret
 
 def get_rpm(rpminfo,strict=False):
