@@ -20,6 +20,7 @@
 # Authors:
 #       Dennis Gregorovic <dgregor@redhat.com>
 #       Mike McLean <mikem@redhat.com>
+#       Cristian Balint <cbalint@redhat.com>
 import sys
 try:
     import krbV
@@ -415,6 +416,29 @@ def watch_logs(session, tasklist, options):
     except (KeyboardInterrupt):
         pass
 
+def handle_add_group(options, session, args):
+    "[admin] Add a group to a tag"
+    usage = _("usage: %prog add-group <tag> <group>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a tag name and a group name"))
+        assert False
+    tag = args[0]
+    group = args[1]
+    
+    activate_session(session)
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    dsttag = session.getTag(tag)
+    if not dsttag:
+        print "Unknown tag: %s" % tag
+        return 1
+    session.groupListAdd(tag, group)
+    
 def handle_add_host(options, session, args):
     "[admin] Add a host"
     usage = _("usage: %prog add-host [options] hostname arch [arch2 ...]")
@@ -1589,7 +1613,6 @@ def anon_handle_list_groups(options, session, args):
         for x in [x[1] for x in pkgs]:
             x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
             print_group_list_req_package(x)
-        #print "%(name)-28s %(enabled)-7s %(ready)-5s %(task_load)-4s %(capacity)-8s %(arches)s" % host
 
 def handle_add_group_pkg(options, session, args):
     "[admin] Add a package to a group's package listing"
