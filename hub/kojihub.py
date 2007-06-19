@@ -19,6 +19,7 @@
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
+#       Cristian Balint <cbalint@redhat.com>
 
 import base64
 import koji
@@ -5176,6 +5177,18 @@ class RootExports(object):
         - name
         """
         query = """SELECT id, name FROM permissions
+        ORDER BY id"""
+
+        return _multiRow(query, {}, ['id', 'name'])
+
+    def getAllChannels(self):
+        """Get a list of all channels in the system.  Returns a list of maps.  Each
+        map contains the following keys:
+
+        - id
+        - name
+        """
+        query = """SELECT id, name FROM channels
         ORDER BY id"""
 
         return _multiRow(query, {}, ['id', 'name'])
