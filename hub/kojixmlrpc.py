@@ -266,7 +266,6 @@ def handler(req, profiling=False):
         _profiling_req = None
     else:
         opts = req.get_options()
-        log_handler = None
         try:
             context._threadclear()
             context.commit_pending = False
@@ -276,7 +275,6 @@ def handler(req, profiling=False):
                                   user = opts["DBUser"],
                                   host = opts.get("DBhost",None))
             context.cnx = koji.db.connect(opts.get("KojiDebug",False))
-            log_handler = koji.add_db_logger("koji", context.cnx)
             functions = RootExports()
             hostFunctions = HostExports()
             h = ModXMLRPCRequestHandler()
@@ -297,8 +295,6 @@ def handler(req, profiling=False):
             elif context.commit_pending:
                 context.cnx.commit()
         finally:
-            if log_handler != None:
-                koji.remove_log_handler("koji", log_handler)
             #make sure context gets cleaned up
             if hasattr(context,'cnx'):
                 context.cnx.close()
