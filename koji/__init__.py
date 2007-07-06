@@ -27,7 +27,6 @@ except ImportError:
     sys.stderr.write("Warning: Could not install krbV module. Kerberos support will be disabled.\n")
     sys.stderr.flush()
 import base64
-import commands
 import datetime
 from fnmatch import fnmatch
 import logging
@@ -1625,7 +1624,7 @@ def add_db_logger(logger, cnx):
                                               'logger_name': '%(name)s',
                                               'level': '%(levelname)s',
                                               'location': '%(pathname)s:%(lineno)d',
-                                              'host': commands.getoutput("hostname"),
+                                              'host': socket.getfqdn(),
                                               })
     handler.setFormatter(logging.Formatter(datefmt='%Y-%m-%d %H:%M:%S'))
     logging.getLogger(logger).addHandler(handler)
