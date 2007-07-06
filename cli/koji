@@ -664,6 +664,7 @@ def handle_build(options, session, args):
     if _running_in_bg() or build_opts.nowait:
         return
     else:
+        session.logout()
         return watch_tasks(session,[task_id])
 
 def handle_chain_build(options, session, args):
@@ -751,6 +752,7 @@ def handle_chain_build(options, session, args):
     if _running_in_bg() or build_opts.nowait:
         return
     else:
+        session.logout()
         return watch_tasks(session,[task_id])
 
 def handle_resubmit(options, session, args):
