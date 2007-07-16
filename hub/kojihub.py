@@ -1023,7 +1023,17 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     # duplicate rpminfo entries, BUT since we make the query multiple times,
     # we can get duplicates if a package is multiply tagged.
     rpms = []
+    tags_seen = {}
     for tagid in taglist:
+        if tags_seen.has_key(tagid):
+            #certain inheritance trees can (legitimately) have the same tag
+            #appear more than once (perhaps once with a package filter and once
+            #without). The hard part of that was already done by readTaggedBuilds.
+            #We only need consider each tag once. Note how we use build_idx below.
+            #(Without this, we could report the same rpm twice)
+            continue
+        else:
+            tags_seen[tagid] = 1
         for rpminfo in _multiRow(q, locals(), [pair[1] for pair in fields]):
             #note: we're checking against the build list because
             # it has been filtered by the package list. The tag
