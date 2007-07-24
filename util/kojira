@@ -280,6 +280,7 @@ class RepoManager(object):
         #we need to determine:
         #  - which tags need a new repo
         #  - if any repos seem to be broken
+        regen = []
         for tag_id in tags.iterkeys():
             covered = False
             for repo in tag_repos.get(tag_id,[]):
@@ -297,6 +298,19 @@ class RepoManager(object):
                 #TODO - implement a timeout
                 continue
             #tag still appears to be uncovered
+            #figure out how old existing repo is
+            ts = 0
+            for repo in tag_repos.get(tag_id, []):
+                if repo.event_ts > ts:
+                    ts = repo.event_ts
+            regen.append((ts, tag_id))
+        regen.sort()
+        self.logger.debug("order: %s", regen)
+        # i.e. tags with oldest (or no) repos get precedence
+        for ts, tag_id in regen:
+            if len(self.tasks) >= options.max_repo_tasks:
+                self.logger.info("Maximum number of repo tasks reached.")
+                break
             task_id = session.newRepo(tag_id)
             self.logger.info("Created newRepo task %s for tag %s" % (task_id, tag_id))
             self.tasks[tag_id] = task_id
