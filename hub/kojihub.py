@@ -3314,29 +3314,38 @@ def build_references(build_id):
     WHERE build_id = %(build_id)i AND active = TRUE"""
     ret['tags'] = _multiRow(q, locals(), ('id', 'name'))
 
+    #we'll need the component rpm ids for the rest
+    q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
+    rpm_ids = _fetchMulti(q, locals())
+
     # find rpms whose buildroots we were in
     st_complete = koji.BUILD_STATES['COMPLETE']
     fields = ('id', 'name', 'version', 'release', 'arch', 'build_id')
-    q = """SELECT that.id, that.name, that.version, that.release, that.arch, that.build_id
-    FROM rpminfo AS this
-        JOIN buildroot_listing ON this.build_id = %(build_id)i
-            AND buildroot_listing.rpm_id = this.id
-        JOIN rpminfo AS that ON buildroot_listing.buildroot_id = that.buildroot_id
-        JOIN build on that.build_id = build.id
-    WHERE this.build_id = %(build_id)i
+    idx = {}
+    q = """SELECT rpminfo.id, rpminfo.name, rpminfo.version, rpminfo.release, rpminfo.arch, rpminfo.build_id
+    FROM buildroot_listing
+        JOIN rpminfo ON rpminfo.buildroot_id = buildroot_listing.buildroot_id
+        JOIN build on rpminfo.build_id = build.id
+    WHERE buildroot_listing.rpm_id = %(rpm_id)s
         AND build.state = %(st_complete)i"""
-    ret['rpms'] = _multiRow(q, locals(), fields)
+    for (rpm_id,) in rpm_ids:
+        for row in _multiRow(q, locals(), fields):
+            idx.setdefault(row['id'], row)
+    ret['rpms'] = idx.values()
 
     # find timestamp of most recent use in a buildroot
     q = """SELECT buildroot.create_event
     FROM buildroot_listing
-        JOIN rpminfo ON rpminfo.build_id = %(build_id)i
-            AND buildroot_listing.rpm_id = rpminfo.id
         JOIN buildroot ON buildroot_listing.buildroot_id = buildroot.id
+    WHERE buildroot_listing.rpm_id = %(rpm_id)s
     ORDER BY buildroot.create_event DESC
     LIMIT 1"""
-    event_id = _singleValue(q, locals(), strict=False)
-    if event_id is None:
+    event_id = -1
+    for (rpm_id,) in rpm_ids:
+        tmp_id = _singleValue(q, locals(), strict=False)
+        if tmp_id is not None and tmp_id > event_id:
+            event_id = tmp_id
+    if event_id == -1:
         ret['last_used'] = None
     else:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
