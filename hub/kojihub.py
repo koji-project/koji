@@ -4850,8 +4850,8 @@ class RootExports(object):
         else:
             id = get_tag_id(tag,strict=True)
 
-        fields = ['repo.id', 'repo.state', 'events.id', 'events.time']
-        aliases = ['id', 'state', 'create_event', 'creation_time']
+        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)']
+        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
         if state is None:

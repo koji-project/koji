@@ -1542,7 +1542,7 @@ class BuildTask(BaseTaskHandler):
         fo = koji.openRemoteFile(relpath, **opts)
         h = koji.get_rpm_header(fo)
         if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
-            raise koji.BuildError, "%s is not a source package" % fn
+            raise koji.BuildError, "%s is not a source package" % srpm
         return h
 
     def getArchList(self, build_tag, h, extra=None):
@@ -2302,23 +2302,25 @@ class WaitrepoTask(BaseTaskHandler):
     def handler(self, build_target_info, newer_then=None, nvr=None):
         start = time.time()
         build_target = session.getBuildTarget(build_target_info)
+        if not build_target:
+            raise koji.GenericError("Error: Invalid BuildTarget: %s" % build_target_info)
+
         repo = None
         last_repo = None
         if not newer_then and not nvr:
-            newer_then = datetime.datetime.now().isoformat(' ')
-        if not build_target:
-            raise koji.GenericError("Error: Invalid BuildTarget: %s" % build_target_info)
+            newer_then = time.time()
 
         while True:
             repo = session.getRepo(build_target['build_tag_name'])
             if repo and repo != last_repo:
-                if (nvr or newer_then) and (not nvr or self.checkForNVR(build_target['dest_tag'], nvr, repo['create_event'])) and (not newer_then or repo['creation_time'] > newer_then):
+                if (not nvr or self.checkForNVR(build_target['dest_tag'], nvr, repo['create_event'])) and \
+                       (not newer_then or repo['create_ts'] > newer_then):
                     break
-            if self.TIMEOUT and ((time.time() - start) > self.TIMEOUT):
-                raise koji.GenericError("Error: Waited %d seconds and still no repo meeting conditions, timing out" % self.TIMEOUT)
+            if (time.time() - start) > self.TIMEOUT:
+                raise koji.GenericError("Waited %d seconds and still no repo meeting conditions, timing out" % self.TIMEOUT)
             last_repo = repo
             time.sleep(self.PAUSE)
-        return "Successfully waited %s seconds for a '%s' repo (%s)" % ((time.time() - start), build_target['build_tag_name'], repo['id'])
+        return "Successfully waited %s seconds for a %s repo (%s)" % (int(time.time() - start), build_target['build_tag_name'], repo['id'])
 
 def get_options():
     """process options from command line and config file"""
