@@ -3554,6 +3554,9 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         state = koji.BUILD_STATES['FAILED']
     recipients = {}
     build = get_build(build_id)
+    if not build:
+        # the build doesn't exist, so there's nothing to send a notification about
+        return None
     if tag_id:
         tag = get_tag(tag_id)
         for email in get_notification_recipients(build, tag['id'], state):
