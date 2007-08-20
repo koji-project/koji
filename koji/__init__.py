@@ -700,14 +700,16 @@ def canonArch(arch):
     #   have some other related arch-mangling functions.
     if fnmatch(arch,'i?86') or arch == 'athlon':
         return 'i386'
+    elif arch == 'ia32e':
+        return 'x86_64'
     elif fnmatch(arch,'ppc64*'):
         return 'ppc64'
     elif fnmatch(arch,'sparc64*'):
         return 'sparc64'
     elif fnmatch(arch,'sparc*'):
         return 'sparc'
-    elif arch == 'ia32e':
-        return 'x86_64'
+    elif fnmatch(arch, 'alpha*'):
+        return 'alpha'
     else:
         return arch
 
