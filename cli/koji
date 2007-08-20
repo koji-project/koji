@@ -3473,6 +3473,17 @@ def warn(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
 
+def has_krb_creds():
+    if not sys.modules.has_key('krbV'):
+        return False
+    try:
+        ctx = krbV.default_context()
+        ccache = ctx.default_ccache()
+        princ = ccache.principal()
+        return True
+    except krbV.Krb5Error:
+        return False
+
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
@@ -3485,18 +3496,18 @@ def activate_session(session):
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif sys.modules.has_key('krbV'):
+    elif has_krb_creds():
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
         except krbV.Krb5Error, e:
-            error(_("Kerberos authentication failed: '%s' (%s)") % (e.message, e.err_code))
+            error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
         except socket.error, e:
-            warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
+            warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
     if not options.noauth and not session.logged_in:
-        error(_("Error: unable to log in"))
+        error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:
         print "successfully connected to hub"
