@@ -707,7 +707,7 @@ def handle_chain_build(options, session, args):
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) < 2:
-        parser.error(_("At least two arguments (a build target and a CVS URL or srpm file) are required"))
+        parser.error(_("At least two arguments (a build target and a CVS URL) are required"))
         assert False
     activate_session(session)
     target = args[0]
@@ -730,7 +730,6 @@ def handle_chain_build(options, session, args):
 
     sources = args[1:]
     
-    srpms = {}
     src_list = []
     build_level = []
     #src_lists is a list of lists of sources to build.
@@ -742,9 +741,8 @@ def handle_chain_build(options, session, args):
                 src_list.append(build_level)
                 build_level = []
         elif not src.startswith('cvs://'):
-            serverpath = "%s/%s" % (_unique_path('cli-build'), os.path.basename(src))
-            srpms[src] = serverpath
-            build_level.append(serverpath)
+            print _('"%s" is not a valid CVS URL')
+            return 1
         else:
             build_level.append(src)
     if build_level:
@@ -758,19 +756,6 @@ def handle_chain_build(options, session, args):
         #relative to koji.PRIO_DEFAULT
         priority = 5
     
-    if srpms:
-        print "Uploading SRPMs:"
-        if _running_in_bg() or build_opts.noprogress:
-            callback = None
-        else:
-            callback = _progress_callback
-        for source, dest in srpms.items():
-            print os.path.basename(source)
-            #uploadWrapper wants the destination dir
-            dest = os.path.dirname(dest)
-            session.uploadWrapper(source, dest, callback=callback, blocksize=65536)
-            print
-
     task_id = session.chainBuild(src_list, target, priority=priority)
 
     print "Created task:", task_id
