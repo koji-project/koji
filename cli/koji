@@ -3524,7 +3524,7 @@ if __name__ == "__main__":
         else:
             exctype, value = sys.exc_info()[:2]
             rv = 1
-            print "%s: %s" % (exctype, value)
+            print "%s: %s" % (getattr(exctype, '__name__', None) or exctype, value)
     try:
         session.logout()
     except:
