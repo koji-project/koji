@@ -1422,9 +1422,14 @@ class ChainBuildTask(BaseTaskHandler):
         for build_level in srcs:
             subtasks = []
             for src in build_level:
-                task_id = session.host.subtask(method='build',
-                                               arglist=[src,target,opts],
-                                               parent=self.id)
+                if src.startswith('cvs://'):
+                    task_id = session.host.subtask(method='build',
+                                                   arglist=[src, target, opts],
+                                                   parent=self.id)
+                else:
+                    task_id = session.host.subtask(method='waitrepo',
+                                                   arglist=[target, None, src],
+                                                   parent=self.id)
                 subtasks.append(task_id)
             if not subtasks:
                 continue
@@ -1436,10 +1441,11 @@ class ChainBuildTask(BaseTaskHandler):
                 builds = session.listBuilds(taskID=subtask)
                 if builds:
                     nvrs.append(builds[0]['nvr'])
-            task_id = session.host.subtask(method='waitrepo',
-                                           arglist=[target, None, nvrs],
-                                           parent=self.id)
-            self.wait(task_id, all=True, failany=True)
+            if nvrs:
+                task_id = session.host.subtask(method='waitrepo',
+                                               arglist=[target, None, nvrs],
+                                               parent=self.id)
+                self.wait(task_id, all=True, failany=True)
 
 class BuildTask(BaseTaskHandler):
 

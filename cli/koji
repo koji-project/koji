@@ -740,11 +740,14 @@ def handle_chain_build(options, session, args):
             if build_level:
                 src_list.append(build_level)
                 build_level = []
-        elif not src.startswith('cvs://'):
-            print _('"%s" is not a valid CVS URL')
-            return 1
-        else:
+        elif src.startswith('cvs://'):
             build_level.append(src)
+        elif '/' not in src and len(src.split('-')) >= 3:
+            # quick check that it looks like a N-V-R
+            build_level.append(src)
+        else:
+            print _('"%s" is not a CVS URL or package N-V-R')
+            return 1
     if build_level:
         src_list.append(build_level)
 
