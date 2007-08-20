@@ -3927,6 +3927,8 @@ class RootExports(object):
         # the chunk rather than the whole file. the offset indicates where
         # the chunk belongs
         # the special offset -1 is used to indicate the final chunk
+        if not context.session.logged_in:
+            raise koji.GenericError, 'you must be logged-in to upload a file'
         contents = base64.decodestring(data)
         del data
         if offset != -1:
@@ -3954,11 +3956,12 @@ class RootExports(object):
         else:
             if not stat.S_ISREG(st.st_mode):
                 raise koji.GenericError, "destination not a file: %s" % fn
-            # we expect some files to be uploaded more than once to support
-            # realtime log-file viewing
-            # elif offset == 0:
-            #     #first chunk, so file should not exist yet
-            #     raise koji.GenericError, "file already exists: %s" % fn
+            elif offset == 0:
+                #first chunk, so file should not exist yet
+                if not fn.endswith('.log'):
+                    # but we allow .log files to be uploaded multiple times to support
+                    # realtime log-file viewing
+                    raise koji.GenericError, "file already exists: %s" % fn
         fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
         # log_error("fd=%r" %fd)
         try:
