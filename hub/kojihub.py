@@ -401,7 +401,7 @@ def make_task(method,arglist,**opts):
         #calling function should enforce channel limitations, if applicable
         opts['channel_id'] = get_channel_id(opts['channel'],strict=True)
         if not context.session.logged_in:
-            opts['owner'] = None
+            raise koji.GenericError, 'task must have an owner'
         else:
             opts['owner'] = context.session.user_id
         opts['label'] = None
