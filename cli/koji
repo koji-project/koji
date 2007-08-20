@@ -437,6 +437,13 @@ def handle_add_group(options, session, args):
     if not dsttag:
         print "Unknown tag: %s" % tag
         return 1
+    
+    groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
+    group_id = groups.get(group, None)
+    if group_id is not None:
+        print "Group %s already exists for tag %s" % (group, tag)
+        return 1
+
     session.groupListAdd(tag, group)
     
 def handle_add_host(options, session, args):
@@ -523,11 +530,22 @@ def handle_add_pkg(options, session, args):
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
         assert False
+    if not options.owner:
+        parser.error(_("Please specify an owner for the package(s)"))
+        assert False
     activate_session(session)
     tag = args[0]
     opts = {}
     opts['force'] = options.force
     opts['block'] = False
+    # check if list of packages exists for that tag already
+    dsttag=session.getTag(tag)
+    pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
+    for package in args[1:]:
+        package_id = pkglist.get(package, None)
+        if not package_id is None:
+            print "Package %s already exists in tag %s" % (package, tag)
+            return 1
     if options.extra_arches:
         opts['extra_arches'] = ' '.join(options.extra_arches.replace(',',' ').split())
     for package in args[1:]:
@@ -545,6 +563,14 @@ def handle_block_pkg(options, session, args):
         assert False
     activate_session(session)
     tag = args[0]
+    # check if list of packages exists for that tag already
+    dsttag=session.getTag(tag)
+    pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
+    for package in args[1:]:
+        package_id = pkglist.get(package, None)
+        if package_id is None:
+            print "Package %s doesn't exist in tag %s" % (package, tag)
+            return 1
     for package in args[1:]:
         #really should implement multicall...
         session.packageListBlock(tag,package)
@@ -901,11 +927,15 @@ def handle_disable_host(options, session, args):
     if len(args) != 1:
         parser.error(_("Exactly one argument (a hostname) is required"))
         assert False
+    host = args[0]
+    
     activate_session(session)
-    try:
-        session.disableHost(args[0])
-    except koji.GenericError, e:
-        print "Could not enable host", e
+    id = session.getHost(host)
+    if not id:
+        print "Host %s does not exist" % host
+        return 1
+
+    session.disableHost(host)
 
 def handle_enable_host(options, session, args):
     "[admin] Mark a host as enabled"
@@ -916,11 +946,15 @@ def handle_enable_host(options, session, args):
     if len(args) != 1:
         parser.error(_("Exactly one argument (a hostname) is required"))
         assert False
+    host = args[0]
+    
     activate_session(session)
-    try:
-        session.enableHost(args[0])
-    except koji.GenericError, e:
-        print "Could not enable host", e
+    id = session.getHost(host)
+    if not id:
+        print "Host %s does not exist" % host
+        return 1
+
+    session.enableHost(host)
 
 def handle_import(options, session, args):
     "[admin] Import local RPMs to the database"
@@ -2168,8 +2202,14 @@ def handle_remove_target(options, session, args):
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
         return
-
-    session.deleteBuildTarget(args[0])
+    
+    target = args[0]
+    id = session.getBuildTarget(target)
+    if not id:
+        print "Build target %s does not exist" % target
+        return 1
+    
+    session.deleteBuildTarget(target)
 
 def anon_handle_list_targets(options, session, args):
     "List the build targets"
