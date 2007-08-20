@@ -48,6 +48,7 @@ import urlparse
 import xmlrpclib
 from xmlrpclib import loads, Fault
 import ssl.XMLRPCServerProxy
+import OpenSSL.SSL
 
 def _(args):
     """Stub function for translation"""
@@ -1301,7 +1302,7 @@ class ClientSession(object):
                     return proxy.__getattr__(name)(*args)
                 except Fault, fault:
                     raise convertFault(fault)
-                except (socket.error,socket.sslerror,xmlrpclib.ProtocolError),e:
+                except (socket.error,socket.sslerror,xmlrpclib.ProtocolError,OpenSSL.SSL.Error), e:
                     if not self.logged_in:
                         raise
                     elif debug:
