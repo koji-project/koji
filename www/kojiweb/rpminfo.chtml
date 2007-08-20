@@ -1,5 +1,6 @@
 #from kojiweb import util
 #import time
+#import urllib
 
 #include "includes/header.chtml"
   #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
@@ -134,7 +135,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&filename=$file.name">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>
