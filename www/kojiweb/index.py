@@ -508,14 +508,26 @@ def _sortByExtAndName(a, b):
 def getfile(req, taskID, name):
     server = _getServer(req)
     taskID = int(taskID)
+
+    output = server.listTaskOutput(taskID, stat=True)
+    file_info = output.get(name)
+    if not file_info:
+        raise koji.GenericError, 'no file "%s" output by task %i' % (name, taskID)
     
     if name.endswith('.rpm'):
         req.content_type = 'application/x-rpm'
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
-    
-    return server.downloadTaskOutput(taskID, name)
+    req.set_content_length(file_info['st_size'])
+
+    offset = 0
+    while True:
+        content = server.downloadTaskOutput(taskID, name, offset=offset, size=65536)
+        if not content:
+            break
+        req.write(content)
+        offset += len(content)
 
 def tags(req, start=None, order=None, childID=None):
     values = _initValues(req, 'Tags', 'tags')
