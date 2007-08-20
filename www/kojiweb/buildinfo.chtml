@@ -79,7 +79,13 @@
           #for $rpm in $rpms
           <tr>
             #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-            <td>$rpmfile&nbsp;(<a href="rpminfo?rpmID=$rpm.id">info</a>)&nbsp;(<a href="$downloadBase/$build.package_name/$build.version/$build.release/$rpm.arch/$rpmfile">download</a>)</td>
+            #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
+            <td>
+              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)
+              #if $task and $rpm.arch != 'src'
+              (<a href="$downloadBase/$nvrpath/data/logs/$rpm.arch/">build logs</a>)
+              #end if
+            </td>
           </tr>
           #end for
         </table>
