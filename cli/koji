@@ -1813,6 +1813,7 @@ def anon_handle_list_pkgs(options, session, args):
     parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
     parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
+    parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -1838,7 +1839,7 @@ def anon_handle_list_pkgs(options, session, args):
         # no limiting clauses were specified
         allpkgs = True
     opts['inherited'] = not options.noinherit
-    opts['with_dups'] = True
+    opts['with_dups'] = options.show_dups
     data = session.listPackages(**opts)
     if not data:
         print "(no matching packages)"
