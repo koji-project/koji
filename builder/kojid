@@ -1421,11 +1421,13 @@ class ChainBuildTask(BaseTaskHandler):
             raise koji.BuildError, "--scratch is not allowed with chain-builds"
         for build_level in srcs:
             subtasks = []
+            build_tasks = []
             for src in build_level:
                 if src.startswith('cvs://'):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
                                                    parent=self.id)
+                    build_tasks.append(task_id)
                 else:
                     task_id = session.host.subtask(method='waitrepo',
                                                    arglist=[target, None, src],
@@ -1437,8 +1439,8 @@ class ChainBuildTask(BaseTaskHandler):
             if srcs[-1] == build_level:
                 continue
             nvrs = []
-            for subtask in subtasks:
-                builds = session.listBuilds(taskID=subtask)
+            for build_task in build_tasks:
+                builds = session.listBuilds(taskID=build_task)
                 if builds:
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
