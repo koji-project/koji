@@ -329,8 +329,8 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
-    if state == 'active' and method == 'all' and not hostID:
-        # If we're only showing active tasks, and not filtering by host or method, only query the top-level tasks as well,
+    if state in ('active', 'toplevel') and method == 'all' and not hostID:
+        # If we're only showing active or toplevel tasks, and not filtering by host or method, only query the top-level tasks as well,
         # and then retrieve the task children so we can do the nice tree display.
         treeDisplay = True
     else:
