@@ -1574,11 +1574,19 @@ def fixEncoding(value, fallback='iso8859-15'):
     if not value:
         return value
 
-    try:
-        return value.decode('utf8').encode('utf8')
-    except UnicodeDecodeError, err:
-        return value.decode(fallback).encode('utf8')
-                                                                                                
+    if isinstance(value, unicode):
+        # value is already unicode, so just convert it
+        # to a utf8-encoded str
+        return value.encode('utf8')
+    else:
+        # value is a str, but may be encoded in utf8 or some
+        # other non-ascii charset.  Try to verify it's utf8, and if not,
+        # decode it using the fallback encoding.
+        try:
+            return value.decode('utf8').encode('utf8')
+        except UnicodeDecodeError, err:
+            return value.decode(fallback).encode('utf8')
+
 def add_file_logger(logger, fn):
     if not os.path.exists(fn):
         try:
