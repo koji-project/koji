@@ -4077,7 +4077,7 @@ class RootExports(object):
     def buildReferences(self, build):
         return build_references(get_build(build, strict=True)['id'])
 
-    def createEmptyBuild(self, name, version, release, epoch):
+    def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')
         data = { 'name' : name, 'version' : version, 'release' : release,
                  'epoch' : epoch }
