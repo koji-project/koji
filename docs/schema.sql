@@ -603,4 +603,56 @@ rpmfiles TO PUBLIC;
 --       where users.name in ('admin')
 --             and permissions.name = 'admin';
 
+-- Schema additions for multiplatform support
+
+-- we need to track some additional metadata about Maven builds
+CREATE TABLE mavenbuilds (
+        build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id),
+	group_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL
+) WITHOUT OIDS;
+
+-- Even though we call this archiveinfo, we can probably use it for
+-- any filetype output by a build process.  In general they will be
+-- archives (.zip, .jar, .tar.gz) but could also be installer executables (.exe)
+CREATE TABLE archivetypes (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT NOT NULL,
+        extensions TEXT NOT NULL
+) WITHOUT OIDS;
+
+insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives, including jars', 'zip jar war rar ear');
+
+-- Do we want to enforce a constraint that a build can only generate one
+-- archive with a given name?
+CREATE TABLE archiveinfo (
+	id SERIAL NOT NULL PRIMARY KEY,
+        type_id INTEGER NOT NULL REFERENCES archivetypes (id),
+	build_id INTEGER NOT NULL REFERENCES build (id),
+	buildroot_id INTEGER REFERENCES buildroot (id),
+	filename TEXT NOT NULL,
+	size INTEGER NOT NULL,
+	md5sum TEXT NOT NULL
+) WITHOUT OIDS;
+CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
+CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
+CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
+
+CREATE TABLE buildroot_archives (
+	buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
+	PRIMARY KEY (buildroot_id, archive_id)
+) WITHOUT OIDS;
+CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);
+
+CREATE TABLE archivefiles (
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
+	filename TEXT NOT NULL,
+	size INTEGER NOT NULL,
+	md5sum TEXT NOT NULL,
+	PRIMARY KEY (filename, archive_id)
+) WITHOUT OIDS;
+CREATE INDEX archivefiles_by_archive_id on archivefiles (archive_id);
+
 COMMIT WORK;

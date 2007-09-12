@@ -41,6 +41,7 @@ import sys
 import tempfile
 import time
 import xmlrpclib
+import zipfile
 from koji.context import context
 
 def log_error(msg):
@@ -2446,6 +2447,30 @@ def get_rpm(rpminfo,strict=False):
         return None
     return dict(zip(fields,row))
 
+def get_maven_build(buildInfo, strict=False):
+    """
+    Retrieve Maven-specific information about a build.
+    buildInfo can be either a string (n-v-r) or an integer
+    (build ID).  Returns a map containing the following keys:
+
+    build_id: id of the build (integer)
+    group_id: Maven groupId (string)
+    artifact_id: Maven artifact_Id (string)
+    """
+    fields = ('build_id', 'group_id', 'artifact_id')
+
+    build_id = find_build_id(buildInfo)
+    if not build_id:
+        if strict:
+            raise koji.GenericError, 'No matching build found: %s' % buildInfo
+        else:
+            return None
+
+    query = """SELECT build_id, group_id, artifact_id
+    FROM mavenbuilds
+    WHERE build_id = %(build_id)i"""
+    return _singleRow(query, locals(), fields, strict)
+
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
     c = context.cnx.cursor()
@@ -3060,6 +3085,126 @@ def import_build_in_place(build):
     WHERE id=%(build_id)i"""
     _dml(update,locals())
     return build_id
+
+def get_archive_type(filename, strict=False):
+    """
+    Get the archive type for the given filename, based on the file extension.
+    """
+    parts = filename.split('.')
+    if len(parts) < 2:
+        raise koji.GenericError, '%s does not have an extension, unable to determine file type' \
+              % filename
+    ext = parts[-1]
+    # special-case .tar.*
+    if len(parts) > 2 and parts[-2] == 'tar':
+        ext = '%s.%s' % tuple(parts[-2:])
+    select = r"""SELECT id, name, description, extensions FROM archivetypes
+    WHERE extensions ~ E'\\m%s\\M'""" % ext
+    results = _multiRow(select, locals(), ('id', 'name', 'extensions'))
+    if len(results) == 0:
+        if strict:
+            raise koji.GenericError, 'unsupported file extension: %s' % ext
+        else:
+            return None
+    elif len(results) > 1:
+        # this should never happen, and is a misconfiguration in the database
+        raise koji.GenericError, 'multiple matches for file extension: %s' % ext
+    else:
+        return results[0]
+
+def new_maven_build(build, group_id, artifact_id):
+    """
+    Add Maven metadata to an existing build.
+    maven_info must contain the 'group_id' and
+    'artifact_id' keys.
+
+    Note: the artifact_id must match the name of the build
+    """
+    if artifact_id != build['name']:
+        raise koji.GenericError, 'mismatch between artifact_id (%s) and build name (%s)' % \
+              (artifact_id, build['name'])
+    build_id = build['id']
+    insert = """INSERT INTO mavenbuilds (build_id, group_id, artifact_id)
+    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s)"""
+    _dml(insert, locals())
+
+def import_archive(filepath, buildinfo, buildroot_id=None):
+    """
+    Import an archive file and associate it with a build.  The archive can
+    be any non-rpm filetype supported by Koji.
+
+    filepath: path to the archive file (relative to the Koji workdir)
+    buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
+    buildroot_id: the id of the buildroot the archive was built in (may be null)
+    """
+    maveninfo = get_maven_build(buildinfo)
+    if not maveninfo:
+        raise koji.GenericError, 'no Maven info for build: %s' % koji.buildLabel(buildinfo)
+
+    filepath = '%s/%s' % (koji.pathinfo.work(), filepath)
+    if not os.path.exists(filepath):
+        raise koji.GenericError, 'no such file: %s' % filepath
+
+    filename = koji.fixEncoding(os.path.basename(filepath))
+    expected = '%(name)s-%(version)s-%(release)s' % build
+    if expected != os.path.splitext(filename)[0]:
+        raise koji.GenericError, 'filename is not in name-version-release format: %s' % filename
+    archivetype = get_archive_type(filename, strict=True)
+    type_id = archivetype['id']
+    build_id = buildinfo['id']
+    size = os.path.getsize(filepath)
+    archivefp = file(filepath)
+    m = md5.new()
+    while True:
+        contents = archivefp.read(8192)
+        if not contents:
+            break
+        m.update(contents)
+    archivefp.close()
+    md5sum = m.hexdigest()
+
+    # XXX verify that the buildroot is associated with a task that's associated with the build
+    archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
+    insert = """INSERT INTO archiveinfo
+    (id, type_id, build_id, buildroot_id, filename, size, md5sum)
+    VALUES
+    (%(archive_id)i, %(type_id)i, %(build_id)i, %(buildroot_id)s, %(filename)s, %(size)i, %(md5sum)s)"""
+    _dml(insert, locals())
+
+    if archivetype['name'] == 'zip':
+        import_zip_archive(archive_id, filepath, buildinfo, maveninfo)
+    else:
+        raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
+    import_archive_file(filepath, buildinfo, maveninfo)
+
+def import_zip_archive(archive_id, filepath, buildinfo, maveninfo):
+    """
+    Import information about the file entries in the zip file.
+    """
+    archive = zipfile.ZipFile(filepath, 'r')
+    for entry in archive.infolist():
+        filename = koji.fixEncoding(entry.filename)
+        size = entry.file_size
+        m = md5.new()
+        m.update(archive.read(entry.filename))
+        md5sum = m.hexdigest()
+        insert = """INSERT INTO archivefiles (archive_id, filename, size, md5sum)
+        VALUES
+        (%(archive_id)i, %(filename)s, %(size)i, %(md5sum)s)"""
+        _dml(insert, locals())
+    archive.close()
+
+def import_archive_file(filepath, buildinfo, maveninfo):
+    """Move the archive file to it's final location on the filesystem"""
+    final_path = "%s/%s" % (koji.pathinfo.mavenbuild(buildinfo, maveninfo),
+                            koji.fixEncoding(os.path.basename(filepath)))
+    koji.ensuredir(os.path.dirname(final_path))
+    if os.path.exists(final_path):
+        raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
+    if os.path.islink(filepath) or not os.path.isfile(filepath):
+        raise koji.GenericError("Error importing archive file, %s is not a regular file" % filepath)
+    os.rename(filepath, final_path)
+    os.symlink(final_path, filepath)
 
 def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
@@ -4080,6 +4225,8 @@ class RootExports(object):
     importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
 
+    importArchive = staticmethod(import_archive)
+
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
 
@@ -4095,6 +4242,19 @@ class RootExports(object):
         if owner is not None:
             data['owner'] = owner
         return new_build(data)
+
+    def createMavenBuild(self, build_info, group_id, artifact_id):
+        """
+        Associate Maven metadata with an existing build.  The build must
+        not already have associated Maven metadata.
+        """
+        context.session.assertPerm('admin')
+        build = get_build(build_info)
+        if not build:
+            build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
+                                             build_info['release'], build_info['epoch'])
+            build = get_build(build_id, strict=True)
+        new_maven_build(build, group_id, artifact_id)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.
@@ -4316,6 +4476,7 @@ class RootExports(object):
         return query.execute()
 
     getBuild = staticmethod(get_build)
+    getMavenBuild = staticmethod(get_maven_build)
     getChangelogEntries = staticmethod(get_changelog_entries)
 
     def cancelBuild(self, buildID):

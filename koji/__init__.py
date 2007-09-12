@@ -47,6 +47,8 @@ import urllib2
 import urlparse
 import xmlrpclib
 from xmlrpclib import loads, Fault
+import xml.sax
+import xml.sax.handler
 import ssl.XMLRPCServerProxy
 import OpenSSL.SSL
 
@@ -714,6 +716,48 @@ def canonArch(arch):
     else:
         return arch
 
+class POMHandler(xml.sax.handler.ContentHandler):
+    def __init__(self, values, fields):
+        xml.sax.handler.ContentHandler.__init__(self)
+        self.tag_stack = []
+        self.tag_content = None
+        self.values = values
+        self.fields = fields
+
+    def startElement(self, name, attrs):
+        self.tag_stack.append(name)
+        self.tag_content = ''
+
+    def characters(self, content):
+        self.tag_content += content
+
+    def endElement(self, name):
+        if len(self.tag_stack) == 2 and self.tag_stack[-2] == 'project' and \
+               self.tag_stack[-1] in fields:
+            self.values[self.tag_stack[-1]] = self.tag_content
+        self.tag_content = ''
+        self.tag_stack.pop()
+
+def parse_pom(pomfile):
+    """
+    Parse the Maven .pom file return a map containing information
+    extracted from it.  The map will contain at least the following
+    fields:
+
+    groupId
+    artifactId
+    name (human-readable)
+    version
+    """
+    fields = ('groupId', 'artifactId', 'name', 'version')
+    values = {}
+    handler = POMHandler(values)
+    xml.sax.parse(pomfile, handler, fields)
+    for field in fields:
+        if field not in values.keys():
+            raise GenericError, 'could not extract %s from POM: %s' % (field, pomfile)
+    return values
+
 def hex_string(s):
     """Converts a string to a string of hex digits"""
     return ''.join([ '%02x' % ord(x) for x in s ])
@@ -1035,6 +1079,11 @@ class PathInfo(object):
     def build(self,build):
         """Return the directory where a build belongs"""
         return self.topdir + ("/packages/%(name)s/%(version)s/%(release)s" % build)
+
+    def mavenbuild(self, build, maveninfo):
+        """Return the directory where a maven build belongs"""
+        return self.topdir + ("/maven/%(group_id)s/%(artifact_id)s" % maveninfo) + \
+               ("/%(version)s-%(release)s" % build)
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""

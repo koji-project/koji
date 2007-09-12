@@ -1624,6 +1624,70 @@ def handle_import_in_place(options, session, args):
             print _("done")
         sys.stdout.flush()
 
+def handle_import_archive(options, session, args):
+    "[admin] Import an archive file and associate it with a build"
+    usage = _("usage: %prog import-archive build-id|n-v-r /path/to/archive...")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress of the upload"))
+    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed (must be used with --pom)"))
+    parser.add_option("--pom", help=_("POM file to use when auto-creating builds"), metavar="FILE")
+    (suboptions, args) = parser.parse_args(args)
+
+    if not len(args) > 1:
+        parser.error(_("You must specify a build ID or N-V-R and the path to the archive to import"))
+        assert False
+
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print _("This action requires admin privileges")
+        return 1
+
+    needs_create = True
+
+    buildinfo = session.getBuild(args[0])
+    if not buildinfo:
+        if not suboptions.create_build:
+            print _("Could not find information for build: %s" % args[0])
+            return 1
+        else:
+            needs_create = True
+
+    maveninfo = None
+    if buildinfo:
+        maveninfo = session.getMavenBuild(buildinfo)
+    if not maveninfo:
+        if not suboptions.create_build:
+            print _("Could not find Maven information for build: %s" % args[0])
+            return 1
+        else:
+            if not suboptions.pom:
+                print _("No Maven information available to create build for %s, please specify a POM file with --pom" % args[0])
+                return 1
+            else:
+                needs_create = 1
+
+    if needs_create:
+        if not buildinfo:
+            buildinfo = koji.parse_NVR(args[0])
+        pominfo = koji.parse_pom(suboptions.pom)
+        session.createMavenBuild(buildinfo, pominfo['groupId'], pominfo['artifactId'])
+
+    for filepath in args[1:]:
+        filename = os.path.basename(filepath)
+        print "Uploading archive: %s" % filename
+        serverdir = _unique_path('cli-import')
+        if _running_in_bg() or suboptions.noprogress:
+            callback = None
+        else:
+            callback = _progress_callback
+        session.uploadWrapper(filepath, serverdir, callback=callback, blocksize=65536)
+        print
+        serverpath = "%s/%s" % (serverdir, filename)
+        session.importArchive(serverpath, buildinfo)
+
 def handle_grant_permission(options, session, args):
     "[admin] Grant a permission to a user"
     usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
