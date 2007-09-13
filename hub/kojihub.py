@@ -3137,16 +3137,15 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     """
-    maveninfo = get_maven_build(buildinfo)
-    if not maveninfo:
-        raise koji.GenericError, 'no Maven info for build: %s' % koji.buildLabel(buildinfo)
+    buildinfo = get_build(buildinfo, strict=True)
+    maveninfo = get_maven_build(buildinfo, strict=True)
 
     filepath = '%s/%s' % (koji.pathinfo.work(), filepath)
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
     filename = koji.fixEncoding(os.path.basename(filepath))
-    expected = '%(name)s-%(version)s-%(release)s' % build
+    expected = '%(name)s-%(version)s-%(release)s' % buildinfo
     if expected != os.path.splitext(filename)[0]:
         raise koji.GenericError, 'filename is not in name-version-release format: %s' % filename
     archivetype = get_archive_type(filename, strict=True)
@@ -3185,9 +3184,12 @@ def import_zip_archive(archive_id, filepath, buildinfo, maveninfo):
     for entry in archive.infolist():
         filename = koji.fixEncoding(entry.filename)
         size = entry.file_size
-        m = md5.new()
-        m.update(archive.read(entry.filename))
-        md5sum = m.hexdigest()
+        if size > 0:
+            m = md5.new()
+            m.update(archive.read(entry.filename))
+            md5sum = m.hexdigest()
+        else:
+            md5sum = None
         insert = """INSERT INTO archivefiles (archive_id, filename, size, md5sum)
         VALUES
         (%(archive_id)i, %(filename)s, %(size)i, %(md5sum)s)"""

@@ -650,7 +650,7 @@ CREATE TABLE archivefiles (
 	archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
 	filename TEXT NOT NULL,
 	size INTEGER NOT NULL,
-	md5sum TEXT NOT NULL,
+	md5sum TEXT,
 	PRIMARY KEY (filename, archive_id)
 ) WITHOUT OIDS;
 CREATE INDEX archivefiles_by_archive_id on archivefiles (archive_id);

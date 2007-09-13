@@ -1645,7 +1645,7 @@ def handle_import_archive(options, session, args):
         print _("This action requires admin privileges")
         return 1
 
-    needs_create = True
+    needs_create = False
 
     buildinfo = session.getBuild(args[0])
     if not buildinfo:
@@ -1667,11 +1667,15 @@ def handle_import_archive(options, session, args):
                 print _("No Maven information available to create build for %s, please specify a POM file with --pom" % args[0])
                 return 1
             else:
-                needs_create = 1
+                needs_create = True
 
     if needs_create:
         if not buildinfo:
             buildinfo = koji.parse_NVR(args[0])
+            if buildinfo['epoch'] == '':
+                buildinfo['epoch'] = None
+            else:
+                buildinfo['epoch'] = int(buildinfo['epoch'])
         pominfo = koji.parse_pom(suboptions.pom)
         session.createMavenBuild(buildinfo, pominfo['groupId'], pominfo['artifactId'])
 

@@ -732,9 +732,14 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.tag_content += content
 
     def endElement(self, name):
-        if len(self.tag_stack) == 2 and self.tag_stack[-2] == 'project' and \
-               self.tag_stack[-1] in fields:
-            self.values[self.tag_stack[-1]] = self.tag_content
+        if len(self.tag_stack) in (2, 3) and self.tag_stack[-1] in self.fields:
+            if self.tag_stack[-2] == 'parent':
+                # Only set a value from the "parent" tag if we don't already have
+                # that value set
+                if not self.values.has_key(self.tag_stack[-1]):
+                    self.values[self.tag_stack[-1]] = self.tag_content
+            elif self.tag_stack[-2] == 'project':
+                self.values[self.tag_stack[-1]] = self.tag_content
         self.tag_content = ''
         self.tag_stack.pop()
 
@@ -751,7 +756,7 @@ def parse_pom(pomfile):
     """
     fields = ('groupId', 'artifactId', 'name', 'version')
     values = {}
-    handler = POMHandler(values)
+    handler = POMHandler(values, fields)
     xml.sax.parse(pomfile, handler, fields)
     for field in fields:
         if field not in values.keys():
