@@ -809,6 +809,7 @@ def buildinfo(req, buildID):
     tags.sort(_sortbyname)
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
+    mavenbuild = server.getMavenBuild(buildID)
 
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
@@ -819,6 +820,7 @@ def buildinfo(req, buildID):
     values['tags'] = tags
     values['rpms'] = rpms
     values['task'] = task
+    values['mavenbuild'] = mavenbuild
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
