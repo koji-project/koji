@@ -606,10 +606,11 @@ rpmfiles TO PUBLIC;
 -- Schema additions for multiplatform support
 
 -- we need to track some additional metadata about Maven builds
-CREATE TABLE mavenbuilds (
+CREATE TABLE maven_builds (
         build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id),
 	group_id TEXT NOT NULL,
-        artifact_id TEXT NOT NULL
+        artifact_id TEXT NOT NULL,
+        version TEXT NOT NULL
 ) WITHOUT OIDS;
 
 -- Even though we call this archiveinfo, we can probably use it for
@@ -638,6 +639,13 @@ CREATE TABLE archiveinfo (
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
 CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
+
+CREATE TABLE maven_archives (
+        archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+	group_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        version TEXT NOT NULL
+) WITHOUT OIDS;
 
 CREATE TABLE buildroot_archives (
 	buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),

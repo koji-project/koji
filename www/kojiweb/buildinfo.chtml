@@ -28,7 +28,10 @@
     </tr>
     <tr>
       <th>Maven&nbsp;artifactId</th><td>$mavenbuild.artifact_id</td>
-    </tr>    
+    </tr>
+    <tr>
+      <th>Maven&nbsp;version</th><td>$mavenbuild.version</td>
+    </tr>
     #end if
     <tr>
       <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>

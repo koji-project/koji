@@ -2456,8 +2456,9 @@ def get_maven_build(buildInfo, strict=False):
     build_id: id of the build (integer)
     group_id: Maven groupId (string)
     artifact_id: Maven artifact_Id (string)
+    version: Maven version (string)
     """
-    fields = ('build_id', 'group_id', 'artifact_id')
+    fields = ('build_id', 'group_id', 'artifact_id', 'version')
 
     build_id = find_build_id(buildInfo)
     if not build_id:
@@ -2466,9 +2467,9 @@ def get_maven_build(buildInfo, strict=False):
         else:
             return None
 
-    query = """SELECT build_id, group_id, artifact_id
-    FROM mavenbuilds
-    WHERE build_id = %(build_id)i"""
+    query = """SELECT %s
+    FROM maven_builds
+    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
     return _singleRow(query, locals(), fields, strict)
 
 def _fetchMulti(query, values):
@@ -3008,13 +3009,7 @@ def import_rpm_file(fn,buildinfo,rpminfo):
     Generally this is done after the db import
     """
     final_path = "%s/%s" % (koji.pathinfo.build(buildinfo),koji.pathinfo.rpm(rpminfo))
-    koji.ensuredir(os.path.dirname(final_path))
-    if os.path.exists(final_path):
-        raise koji.GenericError("Error importing RPM file. %s already exists." % final_path)
-    if os.path.islink(fn) or not os.path.isfile(fn):
-        raise koji.GenericError("Error importing RPM file. %s is not a regular file." % fn)
-    os.rename(fn,final_path)
-    os.symlink(final_path,fn)
+    _import_archive_file(fn, final_path)
 
 def import_build_in_place(build):
     """Import a package already in the packages directory
@@ -3112,7 +3107,7 @@ def get_archive_type(filename, strict=False):
     else:
         return results[0]
 
-def new_maven_build(build, group_id, artifact_id):
+def new_maven_build(build, pom_path):
     """
     Add Maven metadata to an existing build.
     maven_info must contain the 'group_id' and
@@ -3120,13 +3115,18 @@ def new_maven_build(build, group_id, artifact_id):
 
     Note: the artifact_id must match the name of the build
     """
-    if artifact_id != build['name']:
-        raise koji.GenericError, 'mismatch between artifact_id (%s) and build name (%s)' % \
-              (artifact_id, build['name'])
+    pom = '%s/%s' % (koji.pathinfo.work(), pom_path)
+    pom_info = koji.parse_pom(pom)
+    group_id = pom_info['groupId']
+    artifact_id = pom_info['artifactId']
+    version = pom_info['version']
     build_id = build['id']
-    insert = """INSERT INTO mavenbuilds (build_id, group_id, artifact_id)
-    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s)"""
+    insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
+    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
     _dml(insert, locals())
+    _import_archive_file(pom, koji.pathinfo.mavenbuild(build, {'build_id': build_id,
+                                                               'group_id': group_id, 'artifact_id': artifact_id,
+                                                               'version': version}))
 
 def import_archive(filepath, buildinfo, buildroot_id=None):
     """
@@ -3138,16 +3138,12 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     """
     buildinfo = get_build(buildinfo, strict=True)
-    maveninfo = get_maven_build(buildinfo, strict=True)
 
     filepath = '%s/%s' % (koji.pathinfo.work(), filepath)
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
     filename = koji.fixEncoding(os.path.basename(filepath))
-    expected = '%(name)s-%(version)s-%(release)s' % buildinfo
-    if expected != os.path.splitext(filename)[0]:
-        raise koji.GenericError, 'filename is not in name-version-release format: %s' % filename
     archivetype = get_archive_type(filename, strict=True)
     type_id = archivetype['id']
     build_id = buildinfo['id']
@@ -3170,13 +3166,60 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     (%(archive_id)i, %(type_id)i, %(build_id)i, %(buildroot_id)s, %(filename)s, %(size)i, %(md5sum)s)"""
     _dml(insert, locals())
 
-    if archivetype['name'] == 'zip':
-        import_zip_archive(archive_id, filepath, buildinfo, maveninfo)
+    maveninfo = get_maven_build(buildinfo)
+    if maveninfo:
+        # XXX This means that once we associate Maven metadata with a build, we can no longer
+        # associate non-Maven archives with it.  Is this acceptable?
+        if archivetype['name'] == 'zip':
+            import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
+            _import_archive_file(filepath, koji.pathinfo.mavenbuild(buildinfo, maveninfo))
+        else:
+            raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
     else:
-        raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
-    import_archive_file(filepath, buildinfo, maveninfo)
+        if archivetype['name'] == 'zip':
+            import_zip_archive(archive_id, filepath, buildinfo)
+            _import_archive_file(filepath, koji.pathinfo.archive(buildinfo))
+        else:
+            raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
 
-def import_zip_archive(archive_id, filepath, buildinfo, maveninfo):
+def _get_pom_from_zip(filepath):
+    """
+    Get the contents of the pom.xml file stored under the META-INF/maven
+    directory.  If no pom.xml exists there, return None.
+    """
+    contents = None
+    archive = zipfile.ZipFile(filepath, 'r')
+    for entry in archive.infolist():
+        if entry.filename.startswith('META-INF/maven/') and \
+           os.path.basename(entry.filename) == 'pom.xml':
+            if contents != None:
+                raise koji.GenericError, 'duplicate pom.xml found at %s in %s' % \
+                      (entry.filename, filepath)
+            else:
+                contents = archive.read(entry.filename)
+    archive.close()
+    return contents
+
+def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
+    """
+    Import information about the file entries in the zip file.
+    The zip file (includes jars, wars, ears, etc.) must have been built
+    by Maven, and contain a pom.xml file under the META-INF/maven directory.
+    """
+    pom = _get_pom_from_zip(filepath)
+    if not pom:
+        raise koji.GenericError, 'no pom.xml found in %s' % filepath
+    pom_info = koji.parse_pom(contents=pom)
+    group_id = pom_info['groupId']
+    artifact_id = pom_info['artifactId']
+    version = pom_info['version']
+    insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
+    VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
+    _dml(insert, locals())
+
+    import_zip_archive(archive_id, filepath, buildinfo)
+
+def import_zip_archive(archive_id, filepath, buildinfo):
     """
     Import information about the file entries in the zip file.
     """
@@ -3196,15 +3239,20 @@ def import_zip_archive(archive_id, filepath, buildinfo, maveninfo):
         _dml(insert, locals())
     archive.close()
 
-def import_archive_file(filepath, buildinfo, maveninfo):
-    """Move the archive file to it's final location on the filesystem"""
-    final_path = "%s/%s" % (koji.pathinfo.mavenbuild(buildinfo, maveninfo),
+def _import_archive_file(filepath, destdir):
+    """
+    Move the file to it's final location on the filesystem.
+    filepath must exist, destdir will be created if it doesn not exist.
+    A symlink pointing from the old location to the new location will
+    be created.
+    """
+    final_path = "%s/%s" % (destdir,
                             koji.fixEncoding(os.path.basename(filepath)))
-    koji.ensuredir(os.path.dirname(final_path))
     if os.path.exists(final_path):
         raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
     if os.path.islink(filepath) or not os.path.isfile(filepath):
         raise koji.GenericError("Error importing archive file, %s is not a regular file" % filepath)
+    koji.ensuredir(destdir)
     os.rename(filepath, final_path)
     os.symlink(final_path, filepath)
 
@@ -4245,10 +4293,11 @@ class RootExports(object):
             data['owner'] = owner
         return new_build(data)
 
-    def createMavenBuild(self, build_info, group_id, artifact_id):
+    def createMavenBuild(self, build_info, pom_path):
         """
         Associate Maven metadata with an existing build.  The build must
-        not already have associated Maven metadata.
+        not already have associated Maven metadata.  pom_path must be a path
+        on the server (relative to the work/ directory).
         """
         context.session.assertPerm('admin')
         build = get_build(build_info)
@@ -4256,7 +4305,7 @@ class RootExports(object):
             build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
                                              build_info['release'], build_info['epoch'])
             build = get_build(build_id, strict=True)
-        new_maven_build(build, group_id, artifact_id)
+        new_maven_build(build, pom_path)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.

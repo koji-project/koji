@@ -1631,8 +1631,8 @@ def handle_import_archive(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
-    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed (must be used with --pom)"))
-    parser.add_option("--pom", help=_("POM file to use when auto-creating builds"), metavar="FILE")
+    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
+    parser.add_option("--pom", help=_("POM file to use when auto-creating a Maven build"), metavar="FILE")
     (suboptions, args) = parser.parse_args(args)
 
     if not len(args) > 1:
@@ -1658,16 +1658,12 @@ def handle_import_archive(options, session, args):
     maveninfo = None
     if buildinfo:
         maveninfo = session.getMavenBuild(buildinfo)
-    if not maveninfo:
+    if suboptions.pom and not maveninfo:
         if not suboptions.create_build:
             print _("Could not find Maven information for build: %s" % args[0])
             return 1
         else:
-            if not suboptions.pom:
-                print _("No Maven information available to create build for %s, please specify a POM file with --pom" % args[0])
-                return 1
-            else:
-                needs_create = True
+            needs_create = True
 
     if needs_create:
         if not buildinfo:
@@ -1676,8 +1672,19 @@ def handle_import_archive(options, session, args):
                 buildinfo['epoch'] = None
             else:
                 buildinfo['epoch'] = int(buildinfo['epoch'])
-        pominfo = koji.parse_pom(suboptions.pom)
-        session.createMavenBuild(buildinfo, pominfo['groupId'], pominfo['artifactId'])
+        if suboptions.pom:
+            print "Uploading POM: %s" % suboptions.pom
+            serverdir = _unique_path('cli-import')
+            if _running_in_bg() or suboptions.noprogress:
+                callback = None
+            else:
+                callback = _progress_callback
+            session.uploadWrapper(suboptions.pom, serverdir, callback=callback, blocksize=65536)
+            print
+            serverpom = "%s/%s" % (serverdir, os.path.basename(suboptions.pom))
+            session.createMavenBuild(buildinfo, serverpom)
+        else:
+            session.createEmptyBuild(**buildinfo)
 
     for filepath in args[1:]:
         filename = os.path.basename(filepath)
@@ -1691,6 +1698,7 @@ def handle_import_archive(options, session, args):
         print
         serverpath = "%s/%s" % (serverdir, filename)
         session.importArchive(serverpath, buildinfo)
+        print "Imported: %s" % filename
 
 def handle_grant_permission(options, session, args):
     "[admin] Grant a permission to a user"

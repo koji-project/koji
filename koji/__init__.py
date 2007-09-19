@@ -743,7 +743,7 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.tag_content = ''
         self.tag_stack.pop()
 
-def parse_pom(pomfile):
+def parse_pom(path=None, contents=None):
     """
     Parse the Maven .pom file return a map containing information
     extracted from it.  The map will contain at least the following
@@ -757,7 +757,13 @@ def parse_pom(pomfile):
     fields = ('groupId', 'artifactId', 'name', 'version')
     values = {}
     handler = POMHandler(values, fields)
-    xml.sax.parse(pomfile, handler, fields)
+    if path:
+        xml.sax.parse(path, handler)
+    elif contents:
+        xml.sax.parseString(contents, handler)
+    else:
+        raise GenericError, 'either a path to a pom file or the contents of a pom file must be specified'
+    
     for field in fields:
         if field not in values.keys():
             raise GenericError, 'could not extract %s from POM: %s' % (field, pomfile)
@@ -1087,8 +1093,14 @@ class PathInfo(object):
 
     def mavenbuild(self, build, maveninfo):
         """Return the directory where a maven build belongs"""
-        return self.topdir + ("/maven/%(group_id)s/%(artifact_id)s" % maveninfo) + \
-               ("/%(version)s-%(release)s" % build)
+        group_id = maveninfo['group_id'].replace('.', '/')
+        artifact_id = maveninfo['artifact_id']
+        version = maveninfo['version']
+        return self.topdir + ("/maven/%(group_id)s/%(artifact_id)s/%(version)s" % locals())
+
+    def archive(self, build):
+        """Return the directory where the archive belongs"""
+        return self.topdir + ("/archives/%(name)s/%(version)s/%(release)s" % build)
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
