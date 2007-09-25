@@ -659,8 +659,8 @@ CREATE TABLE archivefiles (
 	filename TEXT NOT NULL,
 	size INTEGER NOT NULL,
 	md5sum TEXT,
-	PRIMARY KEY (filename, archive_id)
+	PRIMARY KEY (archive_id, filename)
 ) WITHOUT OIDS;
-CREATE INDEX archivefiles_by_archive_id on archivefiles (archive_id);
+CREATE INDEX archivefiles_by_filename on archivefiles (filename);
 
 COMMIT WORK;

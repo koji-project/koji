@@ -13,6 +13,7 @@
     <tr>
       <th>Size</th><td>$file.size</td>
     </tr>
+    #if $rpm
     <tr>
       <th>Flags</th>
       <td>
@@ -25,6 +26,11 @@
       #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
       <th>RPM</th><td><a href="rpminfo?rpmID=$rpm.id">$rpm.name-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</td>
     </tr>
+    #elif $archive
+    <tr>
+      <th>Archive</th><td><a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></td>
+    </tr>
+    #end if
   </table>
 
 #include "includes/footer.chtml"

@@ -810,6 +810,7 @@ def buildinfo(req, buildID):
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
     mavenbuild = server.getMavenBuild(buildID)
+    archives = server.listArchives(build['id'], queryOpts={'order': 'filename'})
 
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
@@ -821,10 +822,13 @@ def buildinfo(req, buildID):
     values['rpms'] = rpms
     values['task'] = task
     values['mavenbuild'] = mavenbuild
+    values['archives'] = archives
+    
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
         values['perms'] = []
+    
     values['changelog'] = server.getChangelogEntries(build['id'])
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
@@ -964,19 +968,61 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
 
     return _genHTML(req, 'rpminfo.chtml')
 
-def fileinfo(req, rpmID, filename):
+def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
+    values = _initValues(req, 'Archive Info', 'builds')
+    server = _getServer(req)
+
+    archiveID = int(archiveID)
+    archive = server.getArchive(archiveID)
+    archive_type = server.getArchiveType(archive['type_id'])
+    build = server.getBuild(archive['build_id'])
+    maveninfo = server.getMavenArchive(archive['id'])
+    builtInRoot = None
+    if archive['buildroot_id'] != None:
+        builtInRoot = server.getBuildroot(rpm['buildroot_id'])
+    files = kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
+                                        start=fileStart, dataName='files', prefix='file', order=fileOrder)
+
+    values['archiveID'] = archive['id']
+    values['archive'] = archive
+    values['archive_type'] = archive_type
+    values['build'] = build
+    values['maveninfo'] = maveninfo
+    values['builtInRoot'] = builtInRoot
+
+    # XXX FIXME
+    values['buildroots'] = []
+
+    return _genHTML(req, 'archiveinfo.chtml')
+
+def fileinfo(req, filename, rpmID=None, archiveID=None):
     values = _initValues(req, 'File Info', 'builds')
     server = _getServer(req)
 
-    rpmID = int(rpmID)
-    rpm = server.getRPM(rpmID)
-    if not rpm:
-        raise koji.GenericError, 'invalid RPM ID: %i' % rpmID
-    file = server.getRPMFile(rpmID, filename)
-    if not file:
-        raise koji.GenericError, 'no file %s in RPM %i' % (filename, rpmID)
-
-    values['rpm'] = rpm
+    values['rpm'] = None
+    values['archive'] = None
+    
+    if rpmID:
+        rpmID = int(rpmID)
+        rpm = server.getRPM(rpmID)
+        if not rpm:
+            raise koji.GenericError, 'invalid RPM ID: %i' % rpmID
+        file = server.getRPMFile(rpm['id'], filename)
+        if not file:
+            raise koji.GenericError, 'no file %s in RPM %i' % (filename, rpmID)
+        values['rpm'] = rpm
+    elif archiveID:
+        archiveID = int(archiveID)
+        archive = server.getArchive(archiveID)
+        if not archive:
+            raise koji.GenericError, 'invalid archive ID: %i' % archiveID
+        file = server.getArchiveFile(archive['id'], filename)
+        if not file:
+            raise koji.GenericError, 'no file %s in archive %i' % (filename, archiveID)
+        values['archive'] = archive
+    else:
+        raise koji.GenericError, 'either rpmID or archiveID must be specified'
+    
     values['file'] = file
 
     return _genHTML(req, 'fileinfo.chtml')

@@ -105,6 +105,22 @@
         #end if
       </td>
     </tr>
+    #if $archives
+    <tr>
+      <th>Archives</th>
+      <td class="container">
+	<table class="nested">
+	  #for $archive in $archives
+	  <tr>
+	    <td>
+	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>)
+	    </td>
+	  </tr>
+	  #end for
+	</table>
+      </td>
+    </tr>
+    #end if
     #if $changelog
     <tr>
       <th>Changelog</th>
