@@ -1702,10 +1702,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
             continue
         arch = rpminfo['arch']
         repoarch = koji.canonArch(arch)
-        if repoarch == 'src':
+        if arch == 'src':
             if not with_src:
                 continue
-        elif repoarch == 'noarch':
+        elif arch == 'noarch':
             pass
         elif repoarch not in tag_arches:
             # Do not create a repo for arches not in the arch list for this tag
