@@ -1679,6 +1679,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
+    tag_arches = tinfo['arches'].split()
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     event_id = _singleValue("SELECT get_event()")
     q = """INSERT INTO repo(id, create_event, tag_id, state)
@@ -1696,13 +1697,21 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     for rpminfo in rpms:
         if rpminfo['name'].endswith('-debuginfo') and not with_debuginfo:
             continue
-        build = builds[rpminfo['build_id']]
         arch = rpminfo['arch']
+        repoarch = koji.canonArch(arch)
+        if repoarch == 'src':
+            if not with_src:
+                continue
+        elif repoarch == 'noarch':
+            pass
+        elif repoarch not in tag_arches:
+            # Do not create a repo for arches not in the arch list for this tag
+            continue
+        build = builds[rpminfo['build_id']]
         rpminfo['path'] = "%s/%s" % (koji.pathinfo.build(build), koji.pathinfo.rpm(rpminfo))
         if not os.path.exists(rpminfo['path']):
             logger.warn("Error: no such file: %(path)s" % rpminfo)
             continue
-        repoarch = koji.canonArch(arch)
         packages.setdefault(repoarch,[]).append(rpminfo)
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
@@ -1727,9 +1736,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
             continue
             # src and noarch special-cased -- see below
         rpmdir = "%s/%s/RPMS" % (repodir,arch)
-        srpmdir = "%s/%s/SRPMS" % (repodir,arch)
         koji.ensuredir(rpmdir)
-        koji.ensuredir(srpmdir)
         logger.info("Linking %d packages for %s" % (len(packages[arch]),arch))
         for rpminfo in packages[arch]:
             filename = os.path.basename(rpminfo['path'])
@@ -1740,6 +1747,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
             os.link(rpminfo['path'], "%s/%s" %(rpmdir,filename))
         # srpms
         if with_src:
+            srpmdir = "%s/%s/SRPMS" % (repodir,arch)
+            koji.ensuredir(srpmdir)
             for rpminfo in packages.get('src',[]):
                 filename = os.path.basename(rpminfo['path'])
                 os.link(rpminfo['path'], "%s/%s" %(srpmdir,filename))
