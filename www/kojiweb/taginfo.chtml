@@ -26,6 +26,9 @@
       <th>Permission</th><td>#if $tag.perm_id then $allPerms[$tag.perm_id] else 'none'#</td>
     </tr>
     <tr>
+      <th>Maven Support?</th><td class="$str($tag.maven_support).lower()">#if $tag.maven_support then 'yes' else 'no'#</td>
+    </tr>
+    <tr>
       <th>Inheritance</th>
       <td class="tree">
         <span class="root">$tag.name</span>

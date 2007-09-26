@@ -657,27 +657,18 @@ def tagcreate(req):
     form = req.form
 
     if form.has_key('add'):
+        params = {}
         name = form['name'].value
-        arches = form['arches'].value
-        if form.has_key('locked'):
-            locked = True
-        else:
-            locked = False
+        params['arches'] = form['arches'].value
+        params['locked'] = form.has_key('locked')
         permission = form['permission'].value
-        if permission == 'none':
-            permission = None
-        else:
-            permission = int(permission)
+        if permission != 'none':
+            params['perm'] = int(permission)
+        params['maven_support'] = form.has_key('maven_support')
 
-        server.createTag(name)
-        tag = server.getTag(name)
-        
-        if tag == None:
-            raise koji.GenericError, 'error creating tag "%s"' % name
+        tagID = server.createTag(name, **params)
 
-        server.editTag(tag['id'], name, arches, locked, permission)
-        
-        mod_python.util.redirect(req, 'taginfo?tagID=%i' % tag['id'])
+        mod_python.util.redirect(req, 'taginfo?tagID=%i' % tagID)
     elif form.has_key('cancel'):
         mod_python.util.redirect(req, 'tags')
     else:
@@ -700,16 +691,16 @@ def tagedit(req, tagID):
     form = req.form
 
     if form.has_key('save'):
-        name = form['name'].value
-        arches = form['arches'].value
-        locked = bool(form.has_key('locked'))
+        params = {}
+        params['name'] = form['name'].value
+        params['arches'] = form['arches'].value
+        params['locked'] = form.has_key('locked')
         permission = form['permission'].value
-        if permission == 'none':
-            permission = None
-        else:
-            permission = int(permission)
+        if permission != 'none':
+            params['perm'] = int(permission)
+        params['maven_support'] = form.has_key('maven_support')
 
-        server.editTag(tag['id'], name, arches, locked, permission)
+        server.editTag2(tag['id'], **params)
         
         mod_python.util.redirect(req, 'taginfo?tagID=%i' % tag['id'])
     elif form.has_key('cancel'):

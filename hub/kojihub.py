@@ -2110,7 +2110,7 @@ def lookup_build_target(info,strict=False,create=False):
     """Get the id,name for build target"""
     return lookup_name('build_target',info,strict,create)
 
-def create_tag(name, parent=None, arches=None, perm=None, locked=False):
+def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False):
     """Create a new tag"""
 
     context.session.assertPerm('admin')
@@ -2131,12 +2131,9 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False):
     #there may already be an id for a deleted tag, this will reuse it
     tag_id = get_tag_id(name,create=True)
 
-    c=context.cnx.cursor()
-
-    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked)
-    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s)"""
-    context.commit_pending = True
-    c.execute(q,locals())
+    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked,maven_support)
+    VALUES (%(tag_id)i,%(arches)s,%(perm)i,%(locked)s,%(maven_support)s)"""
+    _dml(q, locals())
 
     if parent_id:
         data = {'parent_id': parent_id,
@@ -2145,7 +2142,9 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False):
                 'intransitive': False,
                 'noconfig': False,
                 'pkg_filter': ''}
-        writeInheritanceData(get_tag(name)['id'],data)
+        writeInheritanceData(tag_id, data)
+
+    return tag_id
 
 def get_tag(tagInfo,strict=False):
     """Get tag information based on the tagInfo.  tagInfo may be either
@@ -2156,7 +2155,8 @@ def get_tag(tagInfo,strict=False):
     - name
     - perm_id (may be null)
     - arches (may be null)
-    - locked (may be null)
+    - locked
+    - maven_support
 
     If there is no tag matching the given tagInfo, and strict is False,
     return None.  If strict is True, raise a GenericError.
@@ -2165,7 +2165,7 @@ def get_tag(tagInfo,strict=False):
     in tag_config. A tag whose name appears in the tag table but has no
     active tag_config entry is considered deleted.
     """
-    fields = ('id', 'name', 'perm_id', 'arches', 'locked')
+    fields = ('id', 'name', 'perm_id', 'arches', 'locked', 'maven_support')
     q = """SELECT %s FROM tag_config
     JOIN tag ON tag_config.tag_id = tag.id
     WHERE tag_config.active = TRUE
@@ -2192,6 +2192,7 @@ def edit_tag(tagInfo, **kwargs):
         arches: change the arch list
         locked: lock or unlock the tag
         perm: change the permission requirement
+        maven_support: whether Maven repos should be generated for the tag
     """
 
     context.session.assertPerm('admin')
@@ -2228,7 +2229,7 @@ def edit_tag(tagInfo, **kwargs):
     #check for changes
     data = tag.copy()
     changed = False
-    for key in ('perm_id','arches','locked'):
+    for key in ('perm_id','arches','locked','maven_support'):
         if kwargs.has_key(key) and data[key] != kwargs[key]:
             changed = True
             data[key] = kwargs[key]
@@ -2246,9 +2247,9 @@ def edit_tag(tagInfo, **kwargs):
     _dml(update, data)
 
     insert = """INSERT INTO tag_config
-    (tag_id, arches, perm_id, locked, create_event)
+    (tag_id, arches, perm_id, locked, maven_support, create_event)
     VALUES
-    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(event_id)i)"""
+    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(maven_support)s, %(event_id)i)"""
     _dml(insert, data)
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):

@@ -24,7 +24,7 @@
         <td><input type="text" name="arches" value="#if $tag then $tag.arches else ''#"/></td>
       </tr>
       <tr>
-        <th>Locked</th>
+        <th>Locked?</th>
         <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked' else ''#>
       </tr>
       <tr>
@@ -37,6 +37,10 @@
             #end for
           </select>
         </td>
+      </tr>
+      <tr>
+        <th>Maven Support?</th>
+        <td><input type="checkbox" name="maven_support" value="yes" #if $tag and $tag.maven_support then 'checked' else ''#>
       </tr>
       <tr>
         <td>

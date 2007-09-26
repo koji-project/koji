@@ -339,6 +339,7 @@ CREATE TABLE tag_config (
 	arches TEXT,
 	perm_id INTEGER REFERENCES permissions(id),
 	locked BOOLEAN NOT NULL DEFAULT 'false',
+	maven_support BOOLEAN NOT NULL DEFAULT FALSE,
 -- versioned - see desc above
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
