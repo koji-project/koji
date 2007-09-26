@@ -470,8 +470,7 @@ if  __name__ == "__main__":
         if not os.access(options.logfile,os.W_OK):
             sys.stderr.write("Cannot write to logfile: %s\n" % options.logfile)
             sys.exit(1)
-    koji.add_file_logger("koji", "/var/log/kojira.log")
-    koji.add_sys_logger("koji")
+    koji.add_file_logger("koji", options.logfile)
     #note we're setting logging for koji.*
     logger = logging.getLogger("koji")
     if options.debug:
