@@ -1096,7 +1096,7 @@ class PathInfo(object):
         group_id = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return self.topdir + ("/maven/%(group_id)s/%(artifact_id)s/%(version)s" % locals())
+        return self.topdir + ("/maven2/%(group_id)s/%(artifact_id)s/%(version)s" % locals())
 
     def archive(self, build):
         """Return the directory where the archive belongs"""

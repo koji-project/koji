@@ -903,7 +903,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
+def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,maven_only=False):
     """Returns a list of builds for specified tag
 
     set inherit=True to follow inheritance
@@ -922,7 +922,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
     packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package)
 
     #these values are used for each iteration
-    fields = (('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
+    fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.task_id','task_id'),
@@ -930,19 +930,27 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
               ('package.id', 'package_id'), ('package.name', 'package_name'),
               ('package.name', 'name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name'))
+              ('users.id', 'owner_id'), ('users.name', 'owner_name')]
     st_complete = koji.BUILD_STATES['COMPLETE']
+
+    maven_join = ''
+    if maven_only:
+        maven_join = 'JOIN maven_builds on maven_builds.build_id = tag_listing.build_id'
+        fields.extend([('maven_builds.group_id', 'maven_group_id'),
+                       ('maven_builds.artifact_id', 'maven_artifact_id'),
+                       ('maven_builds.version', 'maven_version')])
 
     q="""SELECT %s
     FROM tag_listing
     JOIN tag ON tag.id = tag_listing.tag_id
     JOIN build ON build.id = tag_listing.build_id
+    %s
     JOIN users ON users.id = build.owner
     JOIN events ON events.id = build.create_event
     JOIN package ON package.id = build.pkg_id
     WHERE %s AND tag_id=%%(tagid)s
         AND build.state=%%(st_complete)i
-    """ % (', '.join([pair[0] for pair in fields]), eventCondition(event, 'tag_listing'))
+    """ % (', '.join([pair[0] for pair in fields]), maven_join, eventCondition(event, 'tag_listing'))
     if package:
         q += """AND package.name = %(package)s
         """
@@ -4723,12 +4731,12 @@ class RootExports(object):
                 raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
 
-    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None):
+    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,maven_only=False):
         """List builds tagged with tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package)
+        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,maven_only=maven_only)
         if prefix:
             results = [build for build in results if build['package_name'].lower().startswith(prefix)]
         return results
@@ -4741,7 +4749,7 @@ class RootExports(object):
         return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
-                   completeBefore=None, completeAfter=None, queryOpts=None):
+                   completeBefore=None, completeAfter=None, mavenOnly=False, queryOpts=None):
         """List package builds.
         If packageID is specified, restrict the results to builds of the specified package.
         If userID is specified, restrict the results to builds owned by the given user.
@@ -4753,6 +4761,7 @@ class RootExports(object):
         completion_time is before and/or after the given time.  The time may be specified as a floating
         point value indicating seconds since the Epoch (as returned by time.time()) or as a string in
         ISO format ('YYYY-MM-DD HH24:MI:SS').
+        If mavenOnly is true, only list builds with associated Maven metadata.
         One or more of packageID, userID, and taskID may be specified.
 
         Returns a list of maps.  Each map contains the following keys:
@@ -4773,14 +4782,20 @@ class RootExports(object):
           - completion_time
           - task_id
 
+        If mavenOnly is true, each map will also contain the following keys:
+
+          - maven_group_id
+          - maven_artifact_id
+          - maven_version
+
         If no builds match, an empty list is returned.
         """
-        fields = (('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
+        fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-                  ('users.id', 'owner_id'), ('users.name', 'owner_name'))
+                  ('users.id', 'owner_id'), ('users.name', 'owner_name')]
 
         tables = ['build']
         joins = ['events ON build.create_event = events.id',
@@ -4808,6 +4823,11 @@ class RootExports(object):
             if not isinstance(completeAfter, str):
                 completeAfter = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
             clauses.append('build.completion_time > %(completeAfter)s')
+        if mavenOnly:
+            joins.append('maven_builds ON build.id = maven_builds.build_id')
+            fields.extend([('maven_builds.group_id', 'maven_group_id'),
+                           ('maven_builds.artifact_id', 'maven_artifact_id'),
+                           ('maven_builds.version', 'maven_version')])
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
@@ -4816,12 +4836,12 @@ class RootExports(object):
 
         return query.execute()
 
-    def getLatestBuilds(self,tag,event=None,package=None):
+    def getLatestBuilds(self,tag,event=None,package=None,maven_only=False):
         """List latest builds for tag (inheritance enabled)"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedBuilds(tag,event,inherit=True,latest=True,package=package)
+        return readTaggedBuilds(tag,event,inherit=True,latest=True,package=package,maven_only=maven_only)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False):
         """List latest RPMS for tag (inheritance enabled)"""

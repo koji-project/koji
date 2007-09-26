@@ -1740,6 +1740,7 @@ def anon_handle_latest_pkg(options, session, args):
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
+    parser.add_option("--maven", action="store_true", default=False, help=_("Show Maven builds only"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -1771,17 +1772,30 @@ def anon_handle_latest_pkg(options, session, args):
             else:
                 fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         else:
-            data = session.getLatestBuilds(args[0], package=pkg)
+            data = session.getLatestBuilds(args[0], package=pkg, maven_only=options.maven)
             if options.paths:
-                for x in data:
-                    x['name'] = x['package_name']
-                    x['path'] = pathinfo.build(x)
-                fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
+                if options.maven:
+                    for x in data:
+                        x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
+                                                            'artifact_id': x['maven_artifact_id'],
+                                                            'version': x['maven_version']})
+                    fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                else:
+                    for x in data:
+                        x['path'] = pathinfo.build(x)
+                    fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
             else:
-                fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
+                if options.maven:
+                    fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                else:
+                    fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
             if not options.quiet:
-                print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
-                print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+                if options.maven:
+                    print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
+                    print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
+                else:
+                    print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
+                    print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
                 options.quiet = True
         
         output = [ fmt % x for x in data]
@@ -1866,6 +1880,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
+    parser.add_option("--maven", action="store_true", help=_("Show Maven builds only"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -1890,6 +1905,8 @@ def anon_handle_list_tagged(options, session, args):
     if options.sigs:
         opts['rpmsigs'] = True
         options.rpms = True
+    if options.maven and not options.rpms:
+        opts['maven_only'] = True
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
@@ -1916,15 +1933,28 @@ def anon_handle_list_tagged(options, session, args):
     else:
         data = session.listTagged(tag, **opts)
         if options.paths:
-            for x in data:
-                x['name'] = x['package_name']
-                x['path'] = pathinfo.build(x)
-            fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
+            if options.maven:
+                for x in data:
+                    x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
+                                                        'artifact_id': x['maven_artifact_id'],
+                                                        'version': x['maven_version']})
+                fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+            else:
+                for x in data:
+                    x['path'] = pathinfo.build(x)
+                fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
         else:
-            fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
+            if options.maven:
+                fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+            else:
+                fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
         if not options.quiet:
-            print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
-            print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+            if options.maven:
+                print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
+                print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
+            else:
+                print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
+                print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
 
     output = [ fmt % x for x in data]
     output.sort()
