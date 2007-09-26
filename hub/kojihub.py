@@ -1679,7 +1679,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
-    tag_arches = tinfo['arches'].split()
+    if tinfo['arches']:
+        tag_arches = tinfo['arches'].split()
+    else:
+        tag_arches = []
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     event_id = _singleValue("SELECT get_event()")
     q = """INSERT INTO repo(id, create_event, tag_id, state)
