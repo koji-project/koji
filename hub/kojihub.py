@@ -1059,6 +1059,82 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
             rpms.append(rpminfo)
     return [rpms,builds]
 
+def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, maven_only=False):
+    """Returns a list of archives for specified tag
+
+    set inherit=True to follow inheritance
+    set event to query at a time in the past
+    set latest=False to get all tagged archives (not just from the latest builds)
+    set maven_only=True to only retrieve archives with associated Maven metadata
+    """
+    taglist = [tag]
+    if inherit:
+        #XXX really should cache this - it gets called several places
+        #   (however, it is fairly quick)
+        taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
+
+    # If maven_only is true, we require that both the build *and* the archive have Maven metadata
+    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, maven_only=maven_only)
+    #index builds
+    build_idx = dict([(b['build_id'],b) for b in builds])
+
+    #the following query is run for each tag in the inheritance
+    fields = [('archiveinfo.id', 'id'),
+              ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.build_id', 'build_id'),
+              ('archiveinfo.buildroot_id', 'buildroot_id'),
+              ('archiveinfo.filename', 'filename'),
+              ('archiveinfo.size', 'size'),
+              ('archiveinfo.md5sum', 'md5sum')]
+              
+    tables = ['archiveinfo']
+    joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
+    clauses = [eventCondition(event), 'tag_listing.tag_id = %(tagid)i']
+    if package:
+        joins.append('build ON archiveinfo.build_id = build.id')
+        joins.append('package ON build.pkg_id = package.id')
+        clauses.append('package.name = %(package)s')
+    if maven_only:
+        joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
+        fields.extend([('maven_archives.group_id', 'maven_group_id'),
+                       ('maven_archives.artifact_id', 'maven_artifact_id'),
+                       ('maven_archives.version', 'maven_version')])
+
+    query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                           columns=[pair[0] for pair in fields],
+                           aliases=[pair[1] for pair in fields])
+
+    # unique constraints ensure that each of these queries will not report
+    # duplicate archiveinfo entries, BUT since we make the query multiple times,
+    # we can get duplicates if a package is multiply tagged.
+    archives = []
+    tags_seen = {}
+    for tagid in taglist:
+        if tags_seen.has_key(tagid):
+            #certain inheritance trees can (legitimately) have the same tag
+            #appear more than once (perhaps once with a package filter and once
+            #without). The hard part of that was already done by readTaggedBuilds.
+            #We only need consider each tag once. Note how we use build_idx below.
+            #(Without this, we could report the same rpm twice)
+            continue
+        else:
+            tags_seen[tagid] = 1
+        query.values = {'tagid': tagid, 'package': package}
+        for archiveinfo in query.execute():
+            #note: we're checking against the build list because
+            # it has been filtered by the package list. The tag
+            # tools should endeavor to keep tag_listing sane w.r.t.
+            # the package list, but if there is disagreement the package
+            # list should take priority
+            build = build_idx.get(archiveinfo['build_id'],None)
+            if build is None:
+                continue
+            elif build['tag_id'] != tagid:
+                #wrong tag
+                continue
+            archives.append(archiveinfo)
+    return [archives, builds]
+
 def check_tag_access(tag_id,user_id=None):
     """Determine if user has access to tag package with tag.
 
@@ -4747,6 +4823,12 @@ class RootExports(object):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
         return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs)
+
+    def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, maven_only=False):
+        """List archives and builds within a tag"""
+        if not isinstance(tag, int):
+            tag = get_tag_id(tag,strict=True)
+        return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, maven_only=maven_only)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    completeBefore=None, completeAfter=None, mavenOnly=False, queryOpts=None):
