@@ -1810,6 +1810,9 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     fo.write(comps)
     fo.close()
 
+    if tinfo['maven_support']:
+        maven_builds = readTaggedBuilds(tag_id, event=None, inherit=True, latest=True, maven_only=True)
+
     # commit the transaction now so we don't hold locks in the database while we're creating
     # links on the filesystem (which can take a long time)
     context.cnx.commit()
@@ -1835,6 +1838,20 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
             for rpminfo in packages.get('src',[]):
                 pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         pkglist.close()
+
+    if tinfo['maven_support']:
+        maven_pi = koji.PathInfo(topdir=repodir)
+        for build in maven_builds:
+            maven_info = {'group_id': build['maven_group_id'],
+                          'artifact_id': build['maven_artifact_id'],
+                          'version': build['maven_version']}
+            srcdir = koji.pathinfo.mavenbuild(build, maven_info)
+            destdir = maven_pi.mavenbuild(build, maven_info)
+            koji.ensuredir(destdir)
+            # link all files in srcdir to destdir, including metadata files
+            for repofile in os.listdir(srcdir):
+                os.link('%s/%s' % (srcdir, repofile), '%s/%s' % (destdir, repofile))
+
     return [repo_id, event_id]
 
 def repo_set_state(repo_id, state, check=True):
