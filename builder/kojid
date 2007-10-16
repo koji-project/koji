@@ -1250,7 +1250,7 @@ class BaseTaskHandler(object):
                         for task in finished:
                             try:
                                 result = session.getTaskResult(task)
-                            except (koji.GenericError, Fault):
+                            except (koji.GenericError, Fault), task_error:
                                 self.logger.info("task %s failed or was canceled" % task)
                                 failed = True
                                 break
@@ -1259,7 +1259,7 @@ class BaseTaskHandler(object):
                             session.cancelTaskChildren(self.id)
                             # reraise the original error now, rather than waiting for
                             # an error in taskWaitResults()
-                            raise
+                            raise task_error
                 else:
                     # at least one done
                     break
