@@ -36,6 +36,7 @@ import pgdb
 import random
 import re
 import rpm
+import sha
 import stat
 import sys
 import tempfile
@@ -2549,11 +2550,14 @@ def get_rpm(rpminfo,strict=False):
         return None
     return dict(zip(fields,row))
 
-def get_maven_build(buildInfo, strict=False):
+def get_maven_build(buildInfo=None, mavenInfo=None, strict=False):
     """
     Retrieve Maven-specific information about a build.
+    Either buildInfo or mavenInfo must be provided.
     buildInfo can be either a string (n-v-r) or an integer
-    (build ID).  Returns a map containing the following keys:
+    (build ID).  mavenInfo must be a map containing 'group_id',
+    'artifact_id', and 'version.
+    Returns a map containing the following keys:
 
     build_id: id of the build (integer)
     group_id: Maven groupId (string)
@@ -2562,17 +2566,25 @@ def get_maven_build(buildInfo, strict=False):
     """
     fields = ('build_id', 'group_id', 'artifact_id', 'version')
 
-    build_id = find_build_id(buildInfo)
-    if not build_id:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
-
-    query = """SELECT %s
-    FROM maven_builds
-    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
-    return _singleRow(query, locals(), fields, strict)
+    if buildInfo:
+        build_id = find_build_id(buildInfo)
+        if not build_id:
+            if strict:
+                raise koji.GenericError, 'No matching build found: %s' % buildInfo
+            else:
+                return None
+        query = """SELECT %s
+        FROM maven_builds
+        WHERE build_id = %%(build_id)i""" % ', '.join(fields)
+        return _singleRow(query, locals(), fields, strict)
+    elif mavenInfo:
+        query = """SELECT %s
+        FROM maven_builds
+        WHERE group_id = %%(group_id)s AND artifact_id = %%(artifact_id)s
+          AND version = %%(version)s""" % ', '.join(fields)
+        return _singleRow(query, mavenInfo, fields, strict)
+    else:
+        raise koji.GenericError, 'either buildInfo or mavenInfo must be specified'
 
 def list_archives(buildInfo, type=None, queryOpts=None):
     """
@@ -2618,8 +2630,7 @@ def list_archives(buildInfo, type=None, queryOpts=None):
     if type is None:
         pass
     elif type == 'maven':
-        tables.append('maven_archives')
-        joins.append('archiveinfo.id = maven_archives.archive_id')
+        joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
         columns.extend(['group_id', 'artifact_id', 'version'])
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
@@ -3360,22 +3371,22 @@ def new_maven_build(build, pom_path):
     insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
     _dml(insert, locals())
-    _import_archive_file(pom, koji.pathinfo.mavenbuild(build, {'build_id': build_id,
-                                                               'group_id': group_id, 'artifact_id': artifact_id,
-                                                               'version': version}))
+    maveninfo = {'build_id': build_id,
+                 'group_id': group_id, 'artifact_id': artifact_id,
+                 'version': version}
+    mavendir = koji.pathinfo.mavenbuild(build, maveninfo)
+    _import_archive_file(pom, mavendir)
+    _generate_maven_metadata(maveninfo, mavendir)
 
 def import_archive(filepath, buildinfo, buildroot_id=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
 
-    filepath: path to the archive file (relative to the Koji workdir)
+    filepath: full path to the archive file
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     """
-    buildinfo = get_build(buildinfo, strict=True)
-
-    filepath = '%s/%s' % (koji.pathinfo.work(), filepath)
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
@@ -3407,34 +3418,25 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         # XXX This means that once we associate Maven metadata with a build, we can no longer
         # associate non-Maven archives with it.  Is this acceptable?
         if archivetype['name'] == 'zip':
-            import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
-            _import_archive_file(filepath, koji.pathinfo.mavenbuild(buildinfo, maveninfo))
+            pom = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
+            mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+            pomname = '%(artifact_id)s-%(version)s.pom' % maveninfo
+            pompath = '%s/%s' % (mavendir, pomname)
+            if not os.path.exists(pompath):
+                pomfile = file(pompath, 'w')
+                pomfile.write(pom)
+                pomfile.close()
+            _import_archive_file(filepath, mavendir)
+            _generate_maven_metadata(maveninfo, mavendir)
         else:
             raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
     else:
+        # XXX A generic archive (not Maven)...should we throw an error here instead?
         if archivetype['name'] == 'zip':
             import_zip_archive(archive_id, filepath, buildinfo)
             _import_archive_file(filepath, koji.pathinfo.archive(buildinfo))
         else:
             raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
-
-def _get_pom_from_zip(filepath):
-    """
-    Get the contents of the pom.xml file stored under the META-INF/maven
-    directory.  If no pom.xml exists there, return None.
-    """
-    contents = None
-    archive = zipfile.ZipFile(filepath, 'r')
-    for entry in archive.infolist():
-        if entry.filename.startswith('META-INF/maven/') and \
-           os.path.basename(entry.filename) == 'pom.xml':
-            if contents != None:
-                raise koji.GenericError, 'duplicate pom.xml found at %s in %s' % \
-                      (entry.filename, filepath)
-            else:
-                contents = archive.read(entry.filename)
-    archive.close()
-    return contents
 
 def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     """
@@ -3442,7 +3444,7 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     The zip file (includes jars, wars, ears, etc.) must have been built
     by Maven, and contain a pom.xml file under the META-INF/maven directory.
     """
-    pom = _get_pom_from_zip(filepath)
+    pom = koji.get_pom_from_jar(filepath)
     if not pom:
         raise koji.GenericError, 'no pom.xml found in %s' % filepath
     pom_info = koji.parse_pom(contents=pom)
@@ -3454,6 +3456,8 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     _dml(insert, locals())
 
     import_zip_archive(archive_id, filepath, buildinfo)
+
+    return pom
 
 def import_zip_archive(archive_id, filepath, buildinfo):
     """
@@ -3491,6 +3495,43 @@ def _import_archive_file(filepath, destdir):
     koji.ensuredir(destdir)
     os.rename(filepath, final_path)
     os.symlink(final_path, filepath)
+
+def _generate_maven_metadata(maveninfo, mavendir):
+    """
+    Generate md5 and sha1 sums for every file in mavendir, if it doesn't already exist.
+    Checksum files will be named <filename>.md5 and <filename>.sha1.
+    """
+    metadata_filename = '%s/maven-metadata.xml' % mavendir
+    if not os.path.exists(metadata_filename):
+        metadata_contents = """<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>%(group_id)s</groupId>
+  <artifactId>%(artifact_id)s</artifactId>
+  <version>%(version)s</version>
+</metadata>
+""" % maveninfo
+        metadata_file = file(metadata_filename, 'w')
+        metadata_file.write(metadata_contents)
+        metadata_file.close()
+        
+    mavenfiles = os.listdir(mavendir)
+    for mavenfile in mavenfiles:
+        if os.path.splitext(mavenfile)[1] in ('.md5', '.sha1'):
+            continue
+        for ext, summodule in (('.md5', md5), ('.sha1', sha)):
+            sumfile = mavenfile + ext
+            if sumfile not in mavenfiles:
+                sum = summodule.new()
+                fobj = file('%s/%s' % (mavendir, mavenfile))
+                while True:
+                    content = fobj.read(8192)
+                    if not content:
+                        break
+                    sum.update(content)
+                fobj.close()
+                sumobj = file('%s/%s' % (mavendir, sumfile), 'w')
+                sumobj.write(sum.hexdigest())
+                sumobj.close()
 
 def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
@@ -4511,7 +4552,19 @@ class RootExports(object):
     importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
 
-    importArchive = staticmethod(import_archive)
+    def importArchive(self, filepath, buildinfo):
+        """
+        Import an archive file and associate it with a build.  The archive can
+        be any non-rpm filetype supported by Koji.
+        
+        filepath: path to the archive file (relative to the Koji workdir)
+        buildinfo: information about the build to associate the archive with
+                   May be a string (NVR), integer (buildID), or dict (containing keys: name, version, release)
+        """
+        context.session.assertPerm('admin')
+        buildinfo = get_build(buildinfo, strict=True)
+        fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
+        import_archive(fullpath, buildinfo)
 
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)

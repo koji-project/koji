@@ -51,6 +51,7 @@ import xml.sax
 import xml.sax.handler
 import ssl.XMLRPCServerProxy
 import OpenSSL.SSL
+import zipfile
 
 def _(args):
     """Stub function for translation"""
@@ -751,10 +752,9 @@ def parse_pom(path=None, contents=None):
 
     groupId
     artifactId
-    name (human-readable)
     version
     """
-    fields = ('groupId', 'artifactId', 'name', 'version')
+    fields = ('groupId', 'artifactId', 'version')
     values = {}
     handler = POMHandler(values, fields)
     if path:
@@ -766,8 +766,26 @@ def parse_pom(path=None, contents=None):
     
     for field in fields:
         if field not in values.keys():
-            raise GenericError, 'could not extract %s from POM: %s' % (field, pomfile)
+            raise GenericError, 'could not extract %s from POM: %s' % (field, (path or '<contents>'))
     return values
+
+def get_pom_from_jar(filepath):
+    """
+    Get the contents of the pom.xml file stored under the META-INF/maven
+    directory.  If no pom.xml exists there, return None.
+    """
+    contents = None
+    archive = zipfile.ZipFile(filepath, 'r')
+    for entry in archive.infolist():
+        if entry.filename.startswith('META-INF/maven/') and \
+           os.path.basename(entry.filename) == 'pom.xml':
+            if contents != None:
+                raise koji.GenericError, 'duplicate pom.xml found at %s in %s' % \
+                      (entry.filename, filepath)
+            else:
+                contents = archive.read(entry.filename)
+    archive.close()
+    return contents
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""

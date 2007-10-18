@@ -611,7 +611,8 @@ CREATE TABLE maven_builds (
         build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id),
 	group_id TEXT NOT NULL,
         artifact_id TEXT NOT NULL,
-        version TEXT NOT NULL
+        version TEXT NOT NULL,
+	CONSTRAINT maven_builds_un UNIQUE (group_id, artifact_id, version)
 ) WITHOUT OIDS;
 
 -- Even though we call this archiveinfo, we can probably use it for
