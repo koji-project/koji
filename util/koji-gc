@@ -59,15 +59,14 @@ class MySession(koji.ClientSession):
         if len(self._calls) == 0:
             return []
 
-        try:
-            #return self.proxy.multiCall(self._calls)
-            print "multicall: %r" % (self._calls,)
-            ret = self._callMethod('multiCall', (self._calls,), {})
-            print "result: %r" % (ret,)
-            return ret
-        finally:
-            self.multicall = False
-            self._calls = []
+        self.multicall = False
+        calls = self._calls
+        self._calls = []
+        #return self.proxy.multiCall(self._calls)
+        #print "multicall: %r" % (calls,)
+        ret = self._callMethod('multiCall', (calls,), {})
+        #print "result: %r" % (ret,)
+        return ret
 
 
 def _(args):
@@ -199,12 +198,16 @@ def get_options():
 
     #parse key aliases
     try:
+        options.key_aliases = {}
         if config and config.has_option('main', 'key_aliases'):
-            options.key_aliases = dict([l.split()[:2] for l in config.get('main','key_aliases').splitlines()])
-        else:
-            options.key_aliases = {}
-    except ValueError:
-        parser.error(_("Invalid key alias data in config: %s"))
+            for line in config.get('main','key_aliases').splitlines():
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                options.key_aliases[parts[0]] = parts[1]
+    except ValueError, e:
+        print e
+        parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
 
     #parse time intervals
     for key in ('delay', 'grace_period'):
@@ -891,7 +894,8 @@ if __name__ == "__main__":
     session = MySession(options.server, session_opts)
     rv = 0
     try:
-        rv = main(args)
+        if not options.skip_main:
+            rv = main(args)
         if not rv:
             rv = 0
     except KeyboardInterrupt:
@@ -909,5 +913,6 @@ if __name__ == "__main__":
         session.logout()
     except:
         pass
-    sys.exit(rv)
+    if not options.skip_main:
+        sys.exit(rv)
 
