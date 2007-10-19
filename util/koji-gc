@@ -204,7 +204,7 @@ def get_options():
                 parts = line.split()
                 if len(parts) < 2:
                     continue
-                options.key_aliases[parts[0]] = parts[1]
+                options.key_aliases[parts[0].upper()] = parts[1]
     except ValueError, e:
         print e
         parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
