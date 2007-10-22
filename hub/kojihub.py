@@ -2234,7 +2234,7 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     tag_id = get_tag_id(name,create=True)
 
     q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked,maven_support)
-    VALUES (%(tag_id)i,%(arches)s,%(perm)i,%(locked)s,%(maven_support)s)"""
+    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s,%(maven_support)s)"""
     _dml(q, locals())
 
     if parent_id:
@@ -3247,7 +3247,7 @@ def import_rpm_file(fn,buildinfo,rpminfo):
     Generally this is done after the db import
     """
     final_path = "%s/%s" % (koji.pathinfo.build(buildinfo),koji.pathinfo.rpm(rpminfo))
-    _import_archive_file(fn, final_path)
+    _import_archive_file(fn, os.path.dirname(final_path))
 
 def import_build_in_place(build):
     """Import a package already in the packages directory

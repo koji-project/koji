@@ -2077,18 +2077,18 @@ def anon_handle_list_groups(options, session, args):
 
 def handle_add_group_pkg(options, session, args):
     "[admin] Add a package to a group's package listing"
-    usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg>")
+    usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+    if len(args) < 3:
+        parser.error(_("This command takes at least three arguments"))
         assert False
     tag = args[0]
     group = args[1]
-    pkg = args[2]
     activate_session(session)
-    session.groupPackageListAdd(tag, group, pkg)
+    for pkg in args[2:]:
+        session.groupPackageListAdd(tag, group, pkg)
 
 def handle_block_group_pkg(options, session, args):
     "[admin] Block a package from a group's package listing"
