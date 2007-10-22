@@ -181,7 +181,7 @@ def get_options():
     options.config = config
 
     #figure out actions
-    actions = ('prune', 'trash', 'delete')
+    actions = ('prune', 'trash', 'delete', 'salvage')
     if options.action:
         options.action = options.action.lower().replace(',',' ').split()
         for x in options.action:
@@ -344,38 +344,47 @@ def activate_session(session):
     if options.debug:
         print "successfully connected to hub"
 
-def send_warning_notice(binfo):
+def send_warning_notice(owner_name, builds):
     if not options.mail:
         return
-    data = binfo.copy()
-    data['weburl'] = options.weburl
-    data['nvr'] = "%(name)s-%(version)s-%(release)s" % binfo
-    data['trash'] = options.trashcan_tag
-    body = """
-%(nvr)s is unreferenced and has been marked for deletion. It will be
-held in the %(trash)s tag for a grace period. At the end of that
-period, it will be deleted permanently.
+    if not builds:
+        print "Warning: empty build list. No notice sent"
+        return
+    head = """\
+The following build(s) are unreferenced and have been marked for
+deletion. They will be held in the trashcan tag for a grace period.
+At the end of that period they will be deleted permanently. This
+garbage collection is a normal part of build system operation.
+Please see the following url for more information:
 
-If you would like to prevent this build from deletion, simply make sure
-that it is tagged somewhere else.
+    http://fedoraproject.org/wiki/Koji/GarbageCollection"""
+    fmt="""\
+Build: %%(name)s-%%(version)s-%%(release)s
+%s/buildinfo?buildID=%%(id)i""" % options.weburl
+    middle = '\n\n'.join([fmt % b for b in builds])
+    tail = """\
+If you would like to protect any of these builds from deletion, please
+refer to the document linked above for instructions."""
 
-%(weburl)s/buildinfo?buildID=%(id)i
-""" % data
-    msg = MIMEText(body)
-    msg['Subject'] = "%(nvr)s marked for deletion" % data
-    msg['From'] = options.from_addr
-    msg['To'] = "%s@fedoraproject.org" % binfo['owner_name']  #XXX!
-    msg['X-Koji-Package'] = binfo['package_name']
-    msg['X-Koji-Builder'] = binfo['owner_name']
+    msg = MIMEText('\n\n'.join([head, middle, tail]))
+    if len(builds) == 1:
+        msg['Subject'] = "1 build marked for deletion"
+    else:
+        msg['Subject'] = "%i builds marked for deletion" % len(builds)
+    msg['From'] = "Koji Build System <buildsys@fedoraproject.org>" #XXX
+    msg['To'] = "%s@fedoraproject.org" % owner_name  #XXX!
+    msg['X-Brew-Builder'] = owner_name
     if options.test:
         if options.debug:
             print str(msg)
     else:
-        #s = smtplib.SMTP(options.smtp_host)
-        #s.connect()
-        #s.sendmail(msg['From'], msg['To'], msg.as_string())
-        #s.close()
-        pass
+        if options.debug:
+            print "Sending warning notice to %s" % msg['To']
+        s = smtplib.SMTP(options.smtp_host)
+        s.connect()
+        s.sendmail(msg['From'], msg['To'], msg.as_string())
+        s.close()
+
 
 def main(args):
     activate_session(session)
@@ -392,6 +401,7 @@ def handle_trash():
     #Step 1: place unreferenced builds into trashcan
     i = 0
     N = len(untagged)
+    to_trash = []
     for binfo in untagged:
         i += 1
         nvr = "%(name)s-%(version)s-%(release)s" % binfo
@@ -400,7 +410,11 @@ def handle_trash():
                 if options.debug:
                     print "[%i/%i] Skipping due to package filter: %s" % (i, N, nvr)
                 continue
-        refs = session.buildReferences(binfo['id'])
+        try:
+            refs = session.buildReferences(binfo['id'])
+        except xmlrpclib.Fault:
+            print "[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr)
+            continue
         #XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
         if refs['tags']:
@@ -447,12 +461,12 @@ def handle_trash():
             last = max(history)[1]
             if not last['revoke_event']:
                 #this might happen if the build was tagged just now
-                print "Warning: build not untagged: %s" % nvr
+                print "[%i/%i] Warning: build not untagged: %s" % (i, N, nvr)
                 continue
             age = time.time() - last['revoke_event']
         if age is not None and age < min_age:
             if options.debug:
-                print "Build untagged only recently: %s" % nvr
+                print "[%i/%i] Build untagged only recently: %s" % (i, N, nvr)
             continue
         #check build signatures
         keys = get_build_sigs(binfo['id'])
@@ -462,28 +476,43 @@ def handle_trash():
             print "Skipping build %s. Keys: %s" % (nvr, keys)
             continue
 
-        #ok, go ahead and put it in the trash
+        #ok, go ahead add it to the list
         if binfo2 is None:
             binfo2 = session.getBuild(binfo['id'])
-        send_warning_notice(binfo2)
-        if options.test:
-            print "[%i/%i] Would have moved to trashcan: %s" % (i, N, nvr)
-        else:
-            if options.debug:
-                print "[%i/%i] Moving to trashcan: %s" % (i, N, nvr)
-            #figure out owner
-            count = {}
-            for pkg in session.listPackages(pkgID=binfo['name']):
-                count.setdefault(pkg['owner_id'], 0)
-                count[pkg['owner_id']] += 1
-            if not count:
-                #XXX
-                print "Warning: no owner for %s, using build owner" % nvr
-                owner = session.getBuild(binfo['id'])['owner_id']
+        binfo2['nvr'] = nvr
+        print "[%i/%i] Adding build to trash list: %s" % (i, N, nvr)
+        to_trash.append(binfo2)
+
+    #process to_trash
+    #group by owner so we can reduce the number of notices
+    by_owner = {}
+    for binfo in to_trash:
+        by_owner.setdefault(binfo['owner_name'], []).append(binfo2)
+    owners = by_owner.keys()
+    owners.sort()
+    for owner_name in owners:
+        builds = [(b['nvr'], b) for b in by_owner[owner_name]]
+        builds.sort()
+        send_warning_notice(owner_name, [x[1] for x in builds])
+        for nvr, binfo in builds:
+            if options.test:
+                print "Would have moved to trashcan: %s" % nvr
             else:
-                owner = max([(n, k) for k, n in count.iteritems()])[1]
-            session.packageListAdd(trashcan_tag, binfo['name'], owner)
-            session.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
+                if options.debug:
+                    print "Moving to trashcan: %s" % nvr
+                #figure out package owner
+                count = {}
+                for pkg in session.listPackages(pkgID=binfo['name']):
+                    count.setdefault(pkg['owner_id'], 0)
+                    count[pkg['owner_id']] += 1
+                if not count:
+                    print "Warning: no owner for %s, using build owner" % nvr
+                    #best we can do currently
+                    owner = binfo['owner_id']
+                else:
+                    owner = max([(n, k) for k, n in count.iteritems()])[1]
+                session.packageListAdd(trashcan_tag, binfo['name'], owner)
+                session.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
 
 def protected_sig(keys):
     """Check list of keys and see if any are protected
@@ -499,17 +528,42 @@ def protected_sig(keys):
             return True
     return False
 
-def handle_delete():
-    """Delete builds that have been in the trashcan for long enough"""
+
+def handle_salvage():
+    """Reclaim builds from trashcan
+
+    Check builds in trashcan for new tags or references and salvage them
+    (remove trashcan tag) if appropriate.
+
+    The delete action also does this, but this is for when you want to
+    run this action only."""
+    return handle_delete(just_salvage=True)
+
+def salvage_build(binfo):
+    """Removes trashcan tag from a build and prints a message"""
+    if options.test:
+        print "Would have untagged from trashcan: %(nvr)s" % binfo
+    else:
+        if options.debug:
+            print "Untagging from trashcan: %(nvr)s" % binfo
+        session.untagBuildBypass(options.trashcan_tag, binfo['id'], force=True)
+
+def handle_delete(just_salvage=False):
+    """Delete builds that have been in the trashcan for long enough
+
+    If just_salvage is True, goes into salvage mode. In salvage mode it only
+    reclaims referenced builds from the trashcan, it does not perform any
+    deletes
+    """
     print "Getting list of builds in trash..."
     trashcan_tag = options.trashcan_tag
-    trash = session.listTagged(trashcan_tag)
+    trash = [(b['nvr'], b) for b in session.listTagged(trashcan_tag)]
+    trash.sort()
     print "...got %i builds" % len(trash)
     #XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
-    for binfo in trash:
+    for nvr, binfo in trash:
         # see if build has been tagged elsewhere
-        nvr = binfo['nvr']
         if options.pkg_filter:
             if not fnmatch.fnmatch(binfo['name'], options.pkg_filter):
                 if options.debug:
@@ -518,10 +572,18 @@ def handle_delete():
         tags = [t['name'] for t in session.listTags(build=binfo['id']) if t['name'] != trashcan_tag]
         if tags:
             print "Build %s tagged elsewhere: %s" % (nvr, tags)
-            if options.test:
-                print "Would have untagged from trashcan"
-            else:
-                session.untagBuildBypass(trashcan_tag, binfo['id'], force=True)
+            salvage_build(binfo)
+            continue
+        #check build signatures
+        keys = get_build_sigs(binfo['id'])
+        if keys and options.debug:
+            print "Build: %s, Keys: %s" % (nvr, keys)
+        if protected_sig(keys):
+            print "Salvaging signed build %s. Keys: %s" % (nvr, keys)
+            salvage_build(binfo)
+            continue
+        if just_salvage:
+            # skip the rest when salvaging
             continue
         # determine how long this build has been in the trashcan
         history = session.tagHistory(build=binfo['id'], tag=trashcan_tag)
@@ -538,13 +600,6 @@ def handle_delete():
         if age < grace_period:
             if options.debug:
                 print "Skipping build %s, age=%i" % (nvr, age)
-            continue
-        #check build signatures
-        keys = get_build_sigs(binfo['id'])
-        if keys and options.debug:
-            print "Build: %s, Keys: %s" % (nvr, keys)
-        if protected_sig(keys):
-            print "Skipping build %s. Keys: %s" % (nvr, keys)
             continue
 
         # go ahead and delete
