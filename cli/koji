@@ -36,6 +36,7 @@ import re
 import pprint
 import random
 import socket
+import stat
 import string
 import time
 import urllib
@@ -1188,6 +1189,149 @@ def handle_write_signed_rpm(options, session, args):
             rpms = session.listRPMs(buildID=build['id'])
             for rpm in rpms:
                 session.writeSignedRPM(rpm['id'], key)
+
+def handle_prune_signed_copies(options, session, args):
+    "[admin] Prune signed copies"
+    usage = _("usage: %prog prune-sigs [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
+    parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
+    parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
+    (options, args) = parser.parse_args(args)
+    # different ideas/modes
+    #  1) remove all signed copies of builds that are not latest for some tag
+    #  2) remove signed copies when a 'better' signature is available
+    #  3) for a specified tag, remove all signed copies that are not latest (w/ inheritance)
+    #  4) for a specified tag, remove all signed copies (no inheritance)
+    #     (but skip builds that are multiply tagged)
+
+    #for now, we're just implementing mode #1
+    if options.verbose:
+        print "Getting all complete builds..."
+    builds = [(b['nvr'], b) for b in session.listBuilds(state=koji.BUILD_STATES['COMPLETE'])]
+    if options.verbose:
+        print "...got %i builds" % len(builds)
+    builds.sort()
+    total_files = 0
+    total_space = 0
+    for nvr, binfo in builds:
+        #listBuilds returns slightly different data than normal
+        if not binfo.has_key('id'):
+            binfo['id'] = binfo['build_id']
+        if not binfo.has_key('name'):
+            binfo['name'] = binfo['package_name']
+        if options.debug:
+            print "DEBUG: %s" % nvr
+        #see if this build is latest anywhere
+        is_latest = False
+        tags = session.listTags(build=binfo['id'])
+        if options.debug:
+            print "Tags: %s" % ([t['name'] for t in tags])
+        for taginfo in tags:
+            order = session.listTagged(taginfo['name'], package=binfo['name'])
+            #note that order can be empty if the build was tagged here and
+            #later the package was blocked or otherwise lost from the package list
+            if order:
+                if order[0]['id'] == binfo['id']:
+                    #latest for this tag
+                    is_latest = True
+                    if options.debug:
+                        print "%s is latest in tag %s" % (nvr, taginfo['name'])
+                    break
+                else:
+                    #not latest for this tag
+                    if options.debug:
+                        print "tag %s, newer: %s" % (taginfo['name'], order[0]['nvr'])
+            else:
+                if options.debug:
+                    print "build not listed for tag %s" % taginfo['name']
+        if is_latest:
+            continue
+        #not latest anywhere, so we can remove all signed copies
+        rpms = session.listRPMs(buildID=binfo['id'])
+        session.multicall = True
+        for rpminfo in rpms:
+            session.queryRPMSigs(rpm_id=rpminfo['id'])
+        by_sig = {}
+        #index by sig
+        for rpminfo, [sigs] in zip(rpms, session.multiCall()):
+            for sig in sigs:
+                sigkey = sig['sigkey']
+                by_sig.setdefault(sigkey, []).append(rpminfo)
+        builddir = koji.pathinfo.build(binfo)
+        build_files = 0
+        build_space = 0
+        if not by_sig and options.debug:
+            print "(build has no signatures)"
+        for sigkey, rpms in by_sig.iteritems():
+            mycount = 0
+            archdirs = {}
+            sigdirs = {}
+            for rpminfo in rpms:
+                signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rpminfo, sigkey))
+                try:
+                    st = os.lstat(signedpath)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(st.st_mode):
+                    #warn about this
+                    print "Skipping %s. Not a regular file" % signedpath
+                    continue
+                if options.test:
+                    print "Would have unlinked: %s" % signedpath
+                else:
+                    if options.verbose:
+                        print "Unlinking: %s" % signedpath
+                    try:
+                        os.unlink(signedpath)
+                    except OSError, e:
+                        print "Error removing %s: %s" % (signedpath, e)
+                        print "This script needs write access to %s" % koji.BASEDIR
+                        continue
+                mycount +=1
+                build_files += 1
+                build_space += st.st_size
+                #XXX - this makes some layout assumptions, but
+                #      pathinfo doesn't report what we need
+                mydir = os.path.dirname(signedpath)
+                archdirs[mydir] = 1
+                sigdirs[os.path.dirname(mydir)] = 1
+            for dir in archdirs:
+                if options.test:
+                    print "Would have removed dir: %s" % dir
+                else:
+                    if options.verbose:
+                        print "Removing dir: %s" % dir
+                    try:
+                        os.rmdir(dir)
+                    except OSError, e:
+                        print "Error removing %s: %s" % (signedpath, e)
+            if len(sigdirs) == 1:
+                dir = sigdirs.keys()[0]
+                if options.test:
+                    print "Would have removed dir: %s" % dir
+                else:
+                    if options.verbose:
+                        print "Removing dir: %s" % dir
+                    try:
+                        os.rmdir(dir)
+                    except OSError, e:
+                        print "Error removing %s: %s" % (signedpath, e)
+            elif len(sigdirs) > 1:
+                print "Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs)
+        if build_files:
+            total_files += build_files
+            total_space += build_space
+            if options.verbose:
+                print "Build: %s, Removed %i signed copies (%i bytes). Total: %i/%i" \
+                        % (nvr, build_files, build_space, total_files, total_space)
+        elif options.debug and by_sig:
+            print "(build has no signed copies)"
+    print "--- Grand Totals ---"
+    print "Files: %i" % total_files
+    print "Bytes: %i" % total_space
+
 
 def handle_list_permissions(options, session, args):
     "[admin] List user permissions"
