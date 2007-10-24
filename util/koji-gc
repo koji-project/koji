@@ -487,7 +487,7 @@ def handle_trash():
     #group by owner so we can reduce the number of notices
     by_owner = {}
     for binfo in to_trash:
-        by_owner.setdefault(binfo['owner_name'], []).append(binfo2)
+        by_owner.setdefault(binfo['owner_name'], []).append(binfo)
     owners = by_owner.keys()
     owners.sort()
     for owner_name in owners:
