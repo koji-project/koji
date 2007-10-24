@@ -64,6 +64,13 @@ def _(args):
     return args
 
 def arg_filter(str):
+    valmap = {'None': None,
+              'True': True,
+              'False': False}
+    try:
+        return valmap[str]
+    except KeyError:
+        pass
     try:
         return int(str)
     except ValueError:
@@ -806,25 +813,13 @@ def handle_call(options, session, args):
     name = args[0]
     non_kw = []
     kw = {}
-
-    def _convarg(val):
-        valmap = {'None': None,
-                  'True': True,
-                  'False': False}
-        
-        if val.isdigit():
-            return int(val)
-        elif valmap.has_key(val):
-            return valmap[val]
-        else:
-            return val
     
     for arg in args[1:]:
         if arg.find('=') != -1:
             key, value = arg.split('=', 1)
-            kw[key] = _convarg(value)
+            kw[key] = arg_filter(value)
         else:
-            non_kw.append(_convarg(arg))
+            non_kw.append(arg_filter(arg))
     pprint.pprint(getattr(session, name).__call__(*non_kw, **kw))
 
 def anon_handle_mock_config(options, session, args):
@@ -1647,7 +1642,7 @@ def handle_import_archive(options, session, args):
 
     needs_create = False
 
-    buildinfo = session.getBuild(args[0])
+    buildinfo = session.getBuild(arg_filter(args[0]))
     if not buildinfo:
         if not suboptions.create_build:
             print _("Could not find information for build: %s" % args[0])

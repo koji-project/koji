@@ -1841,19 +1841,53 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         pkglist.close()
 
     if tinfo['maven_support']:
-        maven_pi = koji.PathInfo(topdir=repodir)
         for build in maven_builds:
             maven_info = {'group_id': build['maven_group_id'],
                           'artifact_id': build['maven_artifact_id'],
                           'version': build['maven_version']}
-            srcdir = koji.pathinfo.mavenbuild(build, maven_info)
-            destdir = maven_pi.mavenbuild(build, maven_info)
-            koji.ensuredir(destdir)
-            # link all files in srcdir to destdir, including metadata files
-            for repofile in os.listdir(srcdir):
-                os.link('%s/%s' % (srcdir, repofile), '%s/%s' % (destdir, repofile))
+            _populate_maven_repodir(build, maven_info, repodir)
+            # also need to check for archives created by the same build but with a different
+            # (group_id, artifact_id, version)
+            for archive_info in list_archives(build, type='maven'):
+                if archive_info['group_id'] != maven_info['group_id'] or \
+                        archive_info['artifact_id'] != maven_info['artifact_id'] or \
+                        archive_info['version'] != maven_info['version']:
+                    _populate_maven_repodir(build, archive_info, repodir)
 
     return [repo_id, event_id]
+
+def _populate_maven_repodir(buildinfo, maveninfo, repodir):
+    maven_pi = koji.PathInfo(topdir=repodir)
+    srcdir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+    destdir = maven_pi.mavenbuild(buildinfo, maveninfo)
+    koji.ensuredir(destdir)
+    # link all files in srcdir to destdir, including metadata files
+    for srcfile in os.listdir(srcdir):
+        srcpath = '%s/%s' % (srcdir, srcfile)
+        destpath = '%s/%s' % (destdir, srcfile)
+        if os.path.isfile(srcpath):
+            os.link(srcpath, destpath)
+    # the repo-specific maven-metadata.xml must be written into
+    # the parent directory of destdir
+    _write_maven_repo_metadata(maveninfo, os.path.dirname(destdir))
+
+def _write_maven_repo_metadata(maveninfo, destdir):
+    maveninfo = maveninfo.copy()
+    maveninfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    contents = """<?xml version="1.0"?>
+<metadata>
+  <groupId>%(group_id)s</groupId>
+  <artifactId>%(artifact_id)s</artifactId>
+  <versioning>
+    <latest>%(version)s</latest>
+    <versions>
+      <version>%(version)s</version>
+    </versions>
+    <lastUpdated>%(timestamp)s</lastUpdated>
+  </versioning>
+</metadata>
+"""
+    _generate_maven_metadata(maveninfo, destdir, contents=contents)
 
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
@@ -3418,14 +3452,20 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         # XXX This means that once we associate Maven metadata with a build, we can no longer
         # associate non-Maven archives with it.  Is this acceptable?
         if archivetype['name'] == 'zip':
-            pom = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
+            pom, pom_info = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
+            if pom_info:
+                maveninfo = {'group_id': pom_info['groupId'],
+                             'artifact_id': pom_info['artifactId'],
+                             'version': pom_info['version']}
             mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-            pomname = '%(artifact_id)s-%(version)s.pom' % maveninfo
-            pompath = '%s/%s' % (mavendir, pomname)
-            if not os.path.exists(pompath):
-                pomfile = file(pompath, 'w')
-                pomfile.write(pom)
-                pomfile.close()
+            koji.ensuredir(mavendir)
+            if pom:
+                pomname = '%(artifact_id)s-%(version)s.pom' % maveninfo
+                pompath = '%s/%s' % (mavendir, pomname)
+                if not os.path.exists(pompath):
+                    pomfile = file(pompath, 'w')
+                    pomfile.write(pom)
+                    pomfile.close()
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(maveninfo, mavendir)
         else:
@@ -3445,19 +3485,20 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     by Maven, and contain a pom.xml file under the META-INF/maven directory.
     """
     pom = koji.get_pom_from_jar(filepath)
-    if not pom:
-        raise koji.GenericError, 'no pom.xml found in %s' % filepath
-    pom_info = koji.parse_pom(contents=pom)
-    group_id = pom_info['groupId']
-    artifact_id = pom_info['artifactId']
-    version = pom_info['version']
-    insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
-    VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-    _dml(insert, locals())
+    pom_info = None
+    if pom:
+        # Some Maven-generated jars will not contain a pom.xml file (like -source and -javadoc jars)
+        pom_info = koji.parse_pom(contents=pom)
+        group_id = pom_info['groupId']
+        artifact_id = pom_info['artifactId']
+        version = pom_info['version']
+        insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
+        VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
+        _dml(insert, locals())
 
     import_zip_archive(archive_id, filepath, buildinfo)
 
-    return pom
+    return pom, pom_info
 
 def import_zip_archive(archive_id, filepath, buildinfo):
     """
@@ -3496,27 +3537,31 @@ def _import_archive_file(filepath, destdir):
     os.rename(filepath, final_path)
     os.symlink(final_path, filepath)
 
-def _generate_maven_metadata(maveninfo, mavendir):
+def _generate_maven_metadata(maveninfo, mavendir, contents=None):
     """
     Generate md5 and sha1 sums for every file in mavendir, if it doesn't already exist.
     Checksum files will be named <filename>.md5 and <filename>.sha1.
     """
     metadata_filename = '%s/maven-metadata.xml' % mavendir
     if not os.path.exists(metadata_filename):
-        metadata_contents = """<?xml version="1.0" encoding="UTF-8"?>
+        if not contents:
+            contents = """<?xml version="1.0" encoding="UTF-8"?>
 <metadata>
   <groupId>%(group_id)s</groupId>
   <artifactId>%(artifact_id)s</artifactId>
   <version>%(version)s</version>
 </metadata>
-""" % maveninfo
+"""
+        contents = contents % maveninfo
         metadata_file = file(metadata_filename, 'w')
-        metadata_file.write(metadata_contents)
+        metadata_file.write(contents)
         metadata_file.close()
         
     mavenfiles = os.listdir(mavendir)
     for mavenfile in mavenfiles:
         if os.path.splitext(mavenfile)[1] in ('.md5', '.sha1'):
+            continue
+        if not os.path.isfile('%s/%s' % (mavendir, mavenfile)):
             continue
         for ext, summodule in (('.md5', md5), ('.sha1', sha)):
             sumfile = mavenfile + ext
