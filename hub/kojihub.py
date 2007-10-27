@@ -39,6 +39,7 @@ import rpm
 import stat
 import sys
 import tempfile
+import time
 import xmlrpclib
 from koji.context import context
 
