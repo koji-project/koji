@@ -1812,7 +1812,11 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     fo.close()
 
     if tinfo['maven_support']:
-        maven_builds = readTaggedBuilds(tag_id, event=None, inherit=True, latest=True, maven_only=True)
+        # Right now we're putting *every* Maven package in the repo (not just the latest) because some
+        # builds require multiple versions of the same package (particularly if it's a .pom package).
+        # We should probably be smarter about this, for example, only allowing multiple versions of
+        # .pom packages, but not packages with jar files.
+        maven_builds = readTaggedBuilds(tag_id, event=None, inherit=True, latest=False, maven_only=True)
 
     # commit the transaction now so we don't hold locks in the database while we're creating
     # links on the filesystem (which can take a long time)
@@ -1841,22 +1845,25 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         pkglist.close()
 
     if tinfo['maven_support']:
+        artifact_dirs = {}
         for build in maven_builds:
             maven_info = {'group_id': build['maven_group_id'],
                           'artifact_id': build['maven_artifact_id'],
                           'version': build['maven_version']}
-            _populate_maven_repodir(build, maven_info, repodir)
+            _populate_maven_repodir(build, maven_info, repodir, artifact_dirs)
             # also need to check for archives created by the same build but with a different
             # (group_id, artifact_id, version)
             for archive_info in list_archives(build, type='maven'):
                 if archive_info['group_id'] != maven_info['group_id'] or \
                         archive_info['artifact_id'] != maven_info['artifact_id'] or \
                         archive_info['version'] != maven_info['version']:
-                    _populate_maven_repodir(build, archive_info, repodir)
+                    _populate_maven_repodir(build, archive_info, repodir, artifact_dirs)
+        for artifact_dir, artifacts in artifact_dirs.items():
+            _write_maven_repo_metadata(artifact_dir, artifacts)
 
     return [repo_id, event_id]
 
-def _populate_maven_repodir(buildinfo, maveninfo, repodir):
+def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
     maven_pi = koji.PathInfo(topdir=repodir)
     srcdir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
     destdir = maven_pi.mavenbuild(buildinfo, maveninfo)
@@ -1867,13 +1874,11 @@ def _populate_maven_repodir(buildinfo, maveninfo, repodir):
         destpath = '%s/%s' % (destdir, srcfile)
         if os.path.isfile(srcpath):
             os.link(srcpath, destpath)
-    # the repo-specific maven-metadata.xml must be written into
-    # the parent directory of destdir
-    _write_maven_repo_metadata(maveninfo, os.path.dirname(destdir))
+    artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
 
-def _write_maven_repo_metadata(maveninfo, destdir):
-    maveninfo = maveninfo.copy()
-    maveninfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+def _write_maven_repo_metadata(destdir, artifacts):
+    artifactinfo = artifacts[0]
+    artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
 <metadata>
   <groupId>%(group_id)s</groupId>
@@ -1881,13 +1886,16 @@ def _write_maven_repo_metadata(maveninfo, destdir):
   <versioning>
     <latest>%(version)s</latest>
     <versions>
-      <version>%(version)s</version>
-    </versions>
+"""
+    for artifact in artifacts:
+        contents += """      <version>%(version)s</version>
+""" % artifact
+    contents += """    </versions>
     <lastUpdated>%(timestamp)s</lastUpdated>
   </versioning>
 </metadata>
 """
-    _generate_maven_metadata(maveninfo, destdir, contents=contents)
+    _generate_maven_metadata(artifactinfo, destdir, contents=contents)
 
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
