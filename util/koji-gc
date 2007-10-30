@@ -44,11 +44,12 @@ class MySession(koji.ClientSession):
             i += 1
             try:
                 return super(MySession, self)._callMethod(name, args, kwargs)
-            except (socket.timeout, socket.error), e:
+            except (socket.timeout, socket.error, xmlrpclib.ProtocolError), e:
                 if i > retries:
                     raise
                 else:
                     print "Socket Error: %s [%i], retrying..." % (e, i)
+                    time.sleep(60)
 
     #an even worse hack
     def multiCall(self):
@@ -113,10 +114,15 @@ def get_options():
                       help=_("don't actually run main"))
     parser.add_option("--unprotected-keys", metavar="KEYS",
                       help=_("allow builds signed with these keys to be deleted"))
-    parser.add_option("--tag-filter", metavar="PATTERN",
-                      help=_("limit tags for pruning"))
-    parser.add_option("--pkg-filter", metavar="PATTERN",
-                      help=_("limit packages for pruning"))
+    parser.add_option("--tag-filter", "--tag", metavar="PATTERN", action="append",
+                      help=_("Process only tags matching PATTERN when pruning"))
+    parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
+                      help=_("Ignore tags matching PATTERN when pruning"))
+    parser.add_option("--pkg-filter", "--pkg", "--package",
+                      metavar="PATTERN", action='append',
+                      help=_("Process only packages matching PATTERN"))
+    parser.add_option("--bypass-locks", metavar="PATTERN", action="append",
+                      help=_("Bypass locks for tags matching PATTERN"))
     parser.add_option("--trashcan-tag", default='trashcan', metavar="TAG",
                       help=_("specify an alternate trashcan tag"))
     parser.add_option("--weburl", default="http://localhost/koji", metavar="URL",
@@ -218,6 +224,41 @@ def get_options():
             parser.error(_("Invalid time interval: %s") % value)
 
     return options, args
+
+def check_tag(name):
+    """Check tag name against options and determine if we should process it
+
+    The ignore option takes priority here.
+    Returns True if we should process the tag, False otherwise
+    """
+    if options.ignore_tags:
+        for pattern in options.ignore_tags:
+            if fnmatch.fnmatch(name, options.tag_filter):
+                return False
+    if options.tag_filter:
+        for pattern in options.tag_filter:
+            if fnmatch.fnmatch(name, pattern):
+                return True
+        #doesn't match any pattern in filter
+        return False
+    else:
+        #not ignored and no filter specified
+        return True
+
+def check_package(name):
+    """Check package name against options and determine if we should process it
+
+    Returns True if we should process the package, False otherwise
+    """
+    if options.pkg_filter:
+        for pattern in options.pkg_filter:
+            if fnmatch.fnmatch(name, pattern):
+                return True
+        #doesn't match any pattern in filter
+        return False
+    else:
+        #no filter specified
+        return True
 
 time_units = {
     'second' : 1,
@@ -402,11 +443,10 @@ def handle_trash():
     for binfo in untagged:
         i += 1
         nvr = "%(name)s-%(version)s-%(release)s" % binfo
-        if options.pkg_filter:
-            if not fnmatch.fnmatch(binfo['name'], options.pkg_filter):
-                if options.debug:
-                    print "[%i/%i] Skipping due to package filter: %s" % (i, N, nvr)
-                continue
+        if not check_package(binfo['name']):
+            if options.debug:
+                print "[%i/%i] Skipping package: %s" % (i, N, nvr)
+            continue
         try:
             refs = session.buildReferences(binfo['id'])
         except xmlrpclib.Fault:
@@ -561,11 +601,10 @@ def handle_delete(just_salvage=False):
     grace_period = options.grace_period
     for nvr, binfo in trash:
         # see if build has been tagged elsewhere
-        if options.pkg_filter:
-            if not fnmatch.fnmatch(binfo['name'], options.pkg_filter):
-                if options.debug:
-                    print "Skipping due to package filter: %s" % nvr
-                continue
+        if not check_package(binfo['name']):
+            if options.debug:
+                print "Skipping package: %s" % nvr
+            continue
         tags = [t['name'] for t in session.listTags(build=binfo['id']) if t['name'] != trashcan_tag]
         if tags:
             print "Build %s tagged elsewhere: %s" % (nvr, tags)
@@ -858,21 +897,29 @@ def handle_prune():
     tags = [(t['name'], t) for t in session.listTags()]
     tags.sort()
     for tagname, taginfo in tags:
-        if options.debug:
-            print tagname
-        if taginfo['locked']:
-            if options.debug:
-                print "skipping locked tag: %s" % tagname
-            continue
         if tagname == options.trashcan_tag:
             if options.debug:
-                print "skipping trashcan tag: %s" % tagname
+                print "Skipping trashcan tag: %s" % tagname
             continue
-        if options.tag_filter:
-            if not fnmatch.fnmatch(tagname, options.tag_filter):
+        if not check_tag(tagname):
+            if options.debug:
+                print "skipping tag due to filter: %s" % tagname
+            continue
+        bypass = False
+        if taginfo['locked']:
+            if options.bypass_locks:
+                for pattern in options.bypass_locks:
+                    if fnmatch.fnmatch(tagname, pattern):
+                        bypass = True
+                        break
+            if bypass:
+                print "Bypassing lock on tag: %s" % tagname
+            else:
                 if options.debug:
-                    print "skipping tag due to filter: %s" % tagname
+                    print "skipping locked tag: %s" % tagname
                 continue
+        if options.debug:
+            print "Pruning tag: %s" % tagname
         mypolicies = list(policies) # copy
         #get builds
         history = session.tagHistory(tag=tagname)
@@ -888,11 +935,10 @@ def handle_prune():
         pkgs = pkghist.keys()
         pkgs.sort()
         for pkg in pkgs:
-            if options.pkg_filter:
-                if not fnmatch.fnmatch(pkg, options.pkg_filter):
-                    #if options.debug:
-                    #    print "skipping package due to filter: %s" % pkg
-                    continue
+            if not check_package(pkg):
+                #if options.debug:
+                #    print "skipping package due to filter: %s" % pkg
+                continue
             if options.debug:
                 print pkg
             hist = pkghist[pkg]
@@ -926,7 +972,7 @@ def handle_prune():
                         else:
                             print "Untagging build %s from %s"  % (nvr, tagname)
                             try:
-                                session.untagBuildBypass(taginfo['id'], entry['build_id'])
+                                session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             except (xmlrpclib.Fault, koji.GenericError), e:
                                 print "Warning: untag operation failed: %s" % e
                                 pass
