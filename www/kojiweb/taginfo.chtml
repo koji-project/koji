@@ -29,6 +29,9 @@
       <th>Maven Support?</th><td class="$str($tag.maven_support).lower()">#if $tag.maven_support then 'yes' else 'no'#</td>
     </tr>
     <tr>
+      <th>Include All Maven Builds?</th><td class="$str($tag.maven_include_all).lower()">#if $tag.maven_include_all then 'yes' else 'no'#</td>
+    </tr>
+    <tr>
       <th>Inheritance</th>
       <td class="tree">
         <span class="root">$tag.name</span>

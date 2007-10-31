@@ -3162,6 +3162,7 @@ def handle_add_tag(options, session, args):
     parser.add_option("--parent", help=_("Specify parent"))
     parser.add_option("--arches", help=_("Specify arches"))
     parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
+    parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -3177,6 +3178,8 @@ def handle_add_tag(options, session, args):
         opts['arches'] = ' '.join(options.arches.replace(',',' ').split())
     if options.maven_support:
         opts['maven_support'] = True
+    if options.include_all:
+        opts['maven_include_all'] = True
     session.createTag(args[0],**opts)
 
 def handle_edit_tag(options, session, args):
@@ -3192,6 +3195,8 @@ def handle_edit_tag(options, session, args):
     parser.add_option("--rename", help=_("Rename the tag"))
     parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
     parser.add_option("--no-maven-support", action="store_true", help=_("Disable creation of Maven repos for this tag"))
+    parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
+    parser.add_option("--no-include-all", action="store_true", help=_("Do not include all packages in this tag when generating Maven repos"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -3215,6 +3220,10 @@ def handle_edit_tag(options, session, args):
         opts['maven_support'] = True
     if options.no_maven_support:
         opts['maven_support'] = False
+    if options.include_all:
+        opts['maven_include_all'] = True
+    if options.no_include_all:
+        opts['maven_include_all'] = False
     #XXX change callname
     session.editTag2(tag,**opts)
 

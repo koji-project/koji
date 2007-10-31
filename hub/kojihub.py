@@ -465,6 +465,18 @@ def eventCondition(event, table=None):
     else:
         raise koji.GenericError, "Invalid event: %r" % event
 
+def get_last_event():
+    """
+    Get the id and timestamp of the last event that modified the
+    system.  Returns a map containing the following fields:
+      - id
+      - ts
+    """
+    fields = ('id', 'ts')
+    q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
+            ORDER BY id DESC LIMIT 1"""
+    return _singleRow(q, {}, fields, strict=True)
+
 def readGlobalInheritance(event=None):
     c=context.cnx.cursor()
     fields = ('tag_id','parent_id','name','priority','maxdepth','intransitive',
@@ -1775,9 +1787,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     q = """INSERT INTO repo(id, create_event, tag_id, state)
     VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
     _dml(q,locals())
-    # no need to pass explicit event, since this is all one transaction
-    rpms, builds = readTaggedRPMS(tag_id, event=None, inherit=True, latest=True)
-    groups = readTagGroups(tag_id, event=None, inherit=True)
+    # Need to pass event_id because even though this is a single transaction,
+    # it is possible to see the results of other committed transactions
+    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=True)
+    groups = readTagGroups(tag_id, event=event_id, inherit=True)
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  #should not already exist
     #index builds
@@ -1812,11 +1825,19 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     fo.close()
 
     if tinfo['maven_support']:
-        # Right now we're putting *every* Maven package in the repo (not just the latest) because some
-        # builds require multiple versions of the same package (particularly if it's a .pom package).
-        # We should probably be smarter about this, for example, only allowing multiple versions of
-        # .pom packages, but not packages with jar files.
-        maven_builds = readTaggedBuilds(tag_id, event=None, inherit=True, latest=False, maven_only=True)
+        # Get the latest Maven builds using the normal build resolution logic
+        maven_builds = dict([(build['id'], build) for build in \
+                                 readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, maven_only=True)])
+        taglist = [tag_id]
+        taglist += [t['parent_id'] for t in readFullInheritance(tag_id, event=event_id)]
+        # Check if any tag in the inheritance hierarchy have maven_include_all == True
+        # If so, pull in all packages directly tagged into that tag as well
+        for maven_tag_id in taglist:
+            maven_tag = get_tag(maven_tag_id, strict=True)
+            if maven_tag['maven_include_all']:
+                logger.info('Including all packages in %s' % maven_tag['name'])
+                maven_builds.update([(build['id'], build) for build in \
+                                         readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, maven_only=True)])
 
     # commit the transaction now so we don't hold locks in the database while we're creating
     # links on the filesystem (which can take a long time)
@@ -1846,7 +1867,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
 
     if tinfo['maven_support']:
         artifact_dirs = {}
-        for build in maven_builds:
+        for build in maven_builds.itervalues():
             maven_info = {'group_id': build['maven_group_id'],
                           'artifact_id': build['maven_artifact_id'],
                           'version': build['maven_version']}
@@ -1858,7 +1879,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
                         archive_info['artifact_id'] != maven_info['artifact_id'] or \
                         archive_info['version'] != maven_info['version']:
                     _populate_maven_repodir(build, archive_info, repodir, artifact_dirs)
-        for artifact_dir, artifacts in artifact_dirs.items():
+        for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     return [repo_id, event_id]
@@ -1877,6 +1898,12 @@ def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
     artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
 
 def _write_maven_repo_metadata(destdir, artifacts):
+    # Sort the list so that the highest version number comes first.
+    # group_id and artifact_id should be the same for all entries,
+    # so we're really only comparing versions.
+    artifacts.sort(cmp=lambda a, b: rpm.labelCompare((a['group_id'], a['artifact_id'], a['version']),
+                                                     (b['group_id'], b['artifact_id'], b['version'])),
+                   reverse=True)
     artifactinfo = artifacts[0]
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
@@ -2254,7 +2281,7 @@ def lookup_build_target(info,strict=False,create=False):
     """Get the id,name for build target"""
     return lookup_name('build_target',info,strict,create)
 
-def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False):
+def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False):
     """Create a new tag"""
 
     context.session.assertPerm('admin')
@@ -2275,8 +2302,8 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     #there may already be an id for a deleted tag, this will reuse it
     tag_id = get_tag_id(name,create=True)
 
-    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked,maven_support)
-    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s,%(maven_support)s)"""
+    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked,maven_support,maven_include_all)
+    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s,%(maven_support)s,%(maven_include_all)s)"""
     _dml(q, locals())
 
     if parent_id:
@@ -2301,6 +2328,7 @@ def get_tag(tagInfo,strict=False):
     - arches (may be null)
     - locked
     - maven_support
+    - maven_include_all
 
     If there is no tag matching the given tagInfo, and strict is False,
     return None.  If strict is True, raise a GenericError.
@@ -2309,7 +2337,7 @@ def get_tag(tagInfo,strict=False):
     in tag_config. A tag whose name appears in the tag table but has no
     active tag_config entry is considered deleted.
     """
-    fields = ('id', 'name', 'perm_id', 'arches', 'locked', 'maven_support')
+    fields = ('id', 'name', 'perm_id', 'arches', 'locked', 'maven_support', 'maven_include_all')
     q = """SELECT %s FROM tag_config
     JOIN tag ON tag_config.tag_id = tag.id
     WHERE tag_config.active = TRUE
@@ -2337,6 +2365,8 @@ def edit_tag(tagInfo, **kwargs):
         locked: lock or unlock the tag
         perm: change the permission requirement
         maven_support: whether Maven repos should be generated for the tag
+        maven_include_all: include every build in this tag (including multiple
+                           versions of the same package) in the Maven repo
     """
 
     context.session.assertPerm('admin')
@@ -2373,7 +2403,7 @@ def edit_tag(tagInfo, **kwargs):
     #check for changes
     data = tag.copy()
     changed = False
-    for key in ('perm_id','arches','locked','maven_support'):
+    for key in ('perm_id','arches','locked','maven_support','maven_include_all'):
         if kwargs.has_key(key) and data[key] != kwargs[key]:
             changed = True
             data[key] = kwargs[key]
@@ -2391,9 +2421,9 @@ def edit_tag(tagInfo, **kwargs):
     _dml(update, data)
 
     insert = """INSERT INTO tag_config
-    (tag_id, arches, perm_id, locked, maven_support, create_event)
+    (tag_id, arches, perm_id, locked, maven_support, maven_include_all, create_event)
     VALUES
-    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(maven_support)s, %(event_id)i)"""
+    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(maven_support)s, %(maven_include_all)s, %(event_id)i)"""
     _dml(insert, data)
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):
@@ -4440,11 +4470,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return "%r" % context.opts
 
-    def getLastEvent(self):
-        fields = ('id', 'ts')
-        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
-        ORDER BY id DESC LIMIT 1"""
-        return _singleRow(q, {}, fields, strict=True)
+    getLastEvent = staticmethod(get_last_event)
 
     def makeTask(self,*args,**opts):
         #this is mainly for debugging

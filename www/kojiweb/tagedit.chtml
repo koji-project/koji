@@ -43,6 +43,10 @@
         <td><input type="checkbox" name="maven_support" value="yes" #if $tag and $tag.maven_support then 'checked' else ''#>
       </tr>
       <tr>
+        <th>Include All Maven Builds?</th>
+        <td><input type="checkbox" name="maven_include_all" value="yes" #if $tag and $tag.maven_include_all then 'checked' else ''#>
+      </tr>
+      <tr>
         <td>
           #if $tag
           <button type="submit" name="save" value="Save">Save</button>

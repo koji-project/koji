@@ -699,6 +699,7 @@ def tagedit(req, tagID):
         if permission != 'none':
             params['perm'] = int(permission)
         params['maven_support'] = form.has_key('maven_support')
+        params['maven_include_all'] = form.has_key('maven_include_all')
 
         server.editTag2(tag['id'], **params)
         
