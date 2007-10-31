@@ -1898,13 +1898,12 @@ def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
     artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
 
 def _write_maven_repo_metadata(destdir, artifacts):
-    # Sort the list so that the highest version number comes first.
+    # Sort the list so that the highest version number comes last.
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
     artifacts.sort(cmp=lambda a, b: rpm.labelCompare((a['group_id'], a['artifact_id'], a['version']),
-                                                     (b['group_id'], b['artifact_id'], b['version'])),
-                   reverse=True)
-    artifactinfo = artifacts[0]
+                                                     (b['group_id'], b['artifact_id'], b['version'])))
+    artifactinfo = artifacts[-1]
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
 <metadata>
