@@ -103,6 +103,7 @@ All
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough($self, 'owner', 'hostID', 'state', 'order')';">
           <option value="all" #if $method == 'all' then 'selected="selected"' else ''#>all</option>
           <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
+          <option value="buildSRPMFromSCM" #if $method == 'buildSRPMFromSCM' then 'selected="selected"' else ''#>buildSRPMFromSCM</option>
           <option value="buildSRPMFromCVS" #if $method == 'buildSRPMFromCVS' then 'selected="selected"' else ''#>buildSRPMFromCVS</option>
           <option value="buildArch" #if $method == 'buildArch' then 'selected="selected"' else ''#>buildArch</option>
           <option value="buildNotification" #if $method == 'buildNotification' then 'selected="selected"' else ''#>buildNotification</option>

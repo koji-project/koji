@@ -646,7 +646,7 @@ def handle_build(options, session, args):
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
-        parser.error(_("Exactly two arguments (a build target and a CVS URL or srpm file) are required"))
+        parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are required"))
         assert False
     if build_opts.arch_override and not build_opts.scratch:
             parser.error(_("--arch_override is only allowed for --scratch builds"))
@@ -670,7 +670,8 @@ def handle_build(options, session, args):
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
         priority = 5
-    if not source.startswith('cvs://'):
+    # try to check that source is an SRPM
+    if '://' not in source:
         # only allow admins to perform non-scratch builds from srpm
         if not opts['scratch'] and not session.hasPerm('admin'):
             parser.error(_("builds from srpm must use --scratch"))
@@ -708,7 +709,7 @@ def handle_chain_build(options, session, args):
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) < 2:
-        parser.error(_("At least two arguments (a build target and a CVS URL) are required"))
+        parser.error(_("At least two arguments (a build target and a SCM URL) are required"))
         assert False
     activate_session(session)
     target = args[0]
@@ -741,13 +742,14 @@ def handle_chain_build(options, session, args):
             if build_level:
                 src_list.append(build_level)
                 build_level = []
-        elif src.startswith('cvs://'):
+        elif '://' in src:
+            # quick check that src might be a url
             build_level.append(src)
-        elif '/' not in src and len(src.split('-')) >= 3:
+        elif '/' not in src and not src.endswith('.rpm') and len(src.split('-')) >= 3:
             # quick check that it looks like a N-V-R
             build_level.append(src)
         else:
-            print _('"%s" is not a CVS URL or package N-V-R')
+            print _('"%s" is not a SCM URL or package N-V-R')
             return 1
     if build_level:
         src_list.append(build_level)
@@ -2572,18 +2574,10 @@ def _parseTaskParams(session, method, task_id):
 
     lines = []
 
-    if method == 'buildFromCVS':
+    if method == 'buildSRPMFromCVS':
         lines.append("CVS URL: %s" % params[0])
-        lines.append("Build Target: %s" % params[1])
-    elif method == 'buildSRPMFromCVS':
-        lines.append("CVS URL: %s" % params[0])
-    elif method == 'multiArchBuild':
-        lines.append("SRPM: %s/work/%s" % (options.topdir, params[0]))
-        lines.append("Build Target: %s" % params[1])
-        lines.append("Options:")
-        for key in params[2].keys():
-            if not key == '__starstar':
-                lines.append("  %s: %s" % (key, params[2][key]))
+    elif method == 'buildSRPMFromSCM':
+        lines.append("SCM URL: %s" % params[0])
     elif method == 'buildArch':
         lines.append("SRPM: %s/work/%s" % (options.topdir, params[0]))
         lines.append("Build Tag: %s" % session.getTag(params[1])['name'])

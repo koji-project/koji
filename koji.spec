@@ -48,7 +48,9 @@ Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
 Requires(pre): /usr/sbin/useradd
-Requires: cvs
+Requires: /usr/bin/cvs
+Requires: /usr/bin/svn
+Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
 Requires: createrepo >= 0.4.10

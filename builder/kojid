@@ -95,7 +95,7 @@ def main():
     session.logout()
     sys.exit(0)
 
-def log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None):
+def log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None, env=None):
     """Run command with output redirected.  If chroot is not None, chroot to the directory specified
     before running the command."""
     pid = os.fork()
@@ -113,7 +113,12 @@ def log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, 
             os.dup2(fd, 1)
             if logerror:
                 os.dup2(fd, 2)
-            os.execvp(path, args)
+            # echo the command we're running into the logfile
+            os.write(fd, '$ %s\n' % ' '.join(args))
+            environ = os.environ.copy()
+            if env:
+                environ.update(env)
+            os.execvpe(path, args, environ)
         except:
             msg = ''.join(traceback.format_exception(*sys.exc_info()))
             if fd:
@@ -1423,7 +1428,7 @@ class ChainBuildTask(BaseTaskHandler):
             subtasks = []
             build_tasks = []
             for src in build_level:
-                if src.startswith('cvs://'):
+                if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
                                                    parent=self.id)
@@ -1464,7 +1469,7 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
         task_info = session.getTaskInfo(self.id)
         # only allow admins to perform non-scratch builds from srpm
-        if not src.startswith('cvs://') and not opts.get('scratch') \
+        if not SCM.is_scm_url(src) and not opts.get('scratch') \
                and not 'admin' in session.getUserPerms(task_info['owner']):
             raise koji.BuildError, "only admins may peform non-scratch builds from srpm"
         target_info = session.getBuildTarget(target)
@@ -1521,8 +1526,8 @@ class BuildTask(BaseTaskHandler):
     def getSRPM(self, src):
         """Get srpm from src"""
         if isinstance(src,str):
-            if src.startswith('cvs://'):
-                return self.getSRPMFromCVS(src)
+            if SCM.is_scm_url(src):
+                return self.getSRPMFromSCM(src)
             else:
                 #assume this is a path under uploads
                 return src
@@ -1530,9 +1535,9 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, 'Invalid source specification: %s' % src
             #XXX - other methods?
 
-    def getSRPMFromCVS(self, url):
+    def getSRPMFromSCM(self, url):
         #TODO - allow different ways to get the srpm
-        task_id = session.host.subtask(method='buildSRPMFromCVS',
+        task_id = session.host.subtask(method='buildSRPMFromSCM',
                                        arglist=[url],
                                        label='srpm',
                                        parent=self.id)
@@ -1795,9 +1800,9 @@ class TagBuildTask(BaseTaskHandler):
             session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
             
-class BuildSRPMFromCVSTask(BaseTaskHandler):
+class BuildSRPMFromSCMTask(BaseTaskHandler):
 
-    Methods = ['buildSRPMFromCVS']
+    Methods = ['buildSRPMFromSCM']
     _taskWeight = 0.75
 
     def spec_sanity_checks(self, filename):
@@ -1810,42 +1815,21 @@ class BuildSRPMFromCVSTask(BaseTaskHandler):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
     def handler(self,url):
-        if not url.startswith('cvs://'):
-            raise koji.BuildError("invalid cvs URL: %s" % url)
+        # will throw a BuildError if the url is invalid
+        scm = SCM(url)
 
-        # Hack it because it refuses to parse it properly otherwise
-        scheme, netloc, path, params, query, fragment = urlparse.urlparse('http'+url[3:])
-        if not (netloc and path and fragment and query):
-            raise koji.BuildError("invalid cvs URL: %s" % url)
-
-        # Steps:
-        # 1. CVS checkout into tempdir
-        # 2. create sources hardlinks
-        # 3. Run 'make srpm'
-
-        cvsdir = self.workdir + '/cvs'
-        self.logger.debug(cvsdir)
-        koji.ensuredir(cvsdir)
+        # Setup files and directories for SRPM creation
+        scmdir = self.workdir + '/scmroot'
+        self.logger.debug(scmdir)
+        koji.ensuredir(scmdir)
         logfile = self.workdir + "/srpm.log"
         uploadpath = self.getUploadDir()
-        sourcedir = '%s/%s' % (cvsdir, query)
+        sourcedir = '%s/%s' % (scmdir, scm.module)
 
-        #perform checkouts
-        cmd = ['cvs', '-d', ':pserver:anonymous@%s:%s' % (netloc, path),
-                         'checkout', '-r', fragment, query]
-        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1):
-            output = "(none)"
-            try:
-                output = open(logfile).read()
-            except IOError:
-                pass
-            raise koji.BuildError, "Error with checkout ':pserver:anonymous@%s:%s': %s" % (netloc, path, output)
-        cmd = ['cvs', '-d', ':pserver:anonymous@%s:%s' % (netloc, path),
-                        'checkout', 'common']
-        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
-            raise koji.BuildError, "Error with checkout :pserver:anonymous@%s:%s" % (netloc, path)
-        os.symlink('%s/common' % cvsdir, '%s/../common' % sourcedir)
+        # Check out spec file, etc. from SCM
+        scm.do_checkout(scmdir, sourcedir, uploadpath, logfile)
 
+        # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
         if len(spec_files) == 0:
             raise koji.BuildError("No spec file found")
@@ -1857,8 +1841,8 @@ class BuildSRPMFromCVSTask(BaseTaskHandler):
         self.spec_sanity_checks(spec_file)
 
         #build srpm
-        cmd = ['make', '-C', '%s' % sourcedir, 'srpm']
-        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=cvsdir, logerror=1, append=1):
+        cmd = ['make', 'srpm']
+        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1):
             raise koji.BuildError, "Error building SRPM"
 
         srpms = glob.glob('%s/*.src.rpm' % sourcedir)
@@ -2329,6 +2313,200 @@ class WaitrepoTask(BaseTaskHandler):
             last_repo = repo
             time.sleep(self.PAUSE)
         return "Successfully waited %s seconds for a %s repo (%s)" % (int(time.time() - start), build_target['build_tag_name'], repo['id'])
+
+class SCM(object):
+    "SCM abstraction class"
+
+    types = { 'CVS': ('cvs://',),
+              'CVS+SSH': ('cvs+ssh://',),
+              'GIT': ('git://', 'git+http://', 'git+https://', 'git+rsync://'),
+              'GIT+SSH': ('git+ssh://',),
+              'SVN': ('svn://', 'svn+http://', 'svn+https://'),
+              'SVN+SSH': ('svn+ssh://',) }
+
+    def is_scm_url(url):
+        """
+        Return True if the url appears to be a valid, accessible source location, False otherwise
+        """
+        for schemes in SCM.types.values():
+            for scheme in schemes:
+                if url.startswith(scheme):
+                    return True
+        else:
+            return False
+    is_scm_url = staticmethod(is_scm_url)
+
+    def __init__(self, url):
+        """
+        Initialize the SCM object using the specified url.
+        The expected url format is:
+
+        scheme://[user@]host/path/to/repo?path/to/module#revision_or_tag_identifier
+
+        The initialized SCM object will have the following attributes:
+        - url (the unmodified url)
+        - scheme
+        - user (may be null)
+        - host
+        - repository
+        - module
+        - revision
+
+        The exact format of each attribute is SCM-specific, but the structure of the url
+        must conform to the template above, or an error will be raised.
+        """
+        if not SCM.is_scm_url(url):
+            raise koji.GenericError, 'Invalid SCM URL: %s' % url
+
+        self.url = url
+        scheme, user, host, path, query, fragment = self._parse_url()
+
+        self.scheme = scheme
+        self.user = user
+        self.host = host
+        self.repository = path
+        self.module = query
+        self.revision = fragment
+
+        for scmtype, schemes in SCM.types.items():
+            if self.scheme in schemes:
+                self.scmtype = scmtype
+                break
+        else:
+            # should never happen
+            raise koji.GenericError, 'Invalid SCM URL: %s' % url
+
+    def _parse_url(self):
+        """
+        Parse the SCM url into usable components.
+        Return the following tuple:
+
+        (scheme, user, host, path, query, fragment)
+
+        user may be None, everything else will have a value
+        """
+        # get the url's scheme
+        scheme = self.url.split('://')[0] + '://'
+
+        # replace the scheme with http:// so that the urlparse works in all cases
+        dummyurl = self.url.replace(scheme, 'http://', 1)
+        dummyscheme, netloc, path, params, query, fragment = urlparse.urlparse(dummyurl)
+
+        user = None
+        userhost = netloc.split('@')
+        if len(userhost) == 2:
+            user = userhost[0]
+            if not user:
+                # Don't return an empty string
+                user = None
+            elif ':' in user:
+                raise koji.GenericError, 'username:password format not supported: %s' % user
+            netloc = userhost[1]
+        elif len(userhost) > 2:
+            raise koji.GenericError, 'Invalid username@hostname specified: %s' % netloc
+
+        # ensure that path and query do not end in /
+        if path.endswith('/'):
+            path = path[:-1]
+        if query.endswith('/'):
+            query = query[:-1]
+
+        # check for validity: params should be empty, everything else should be populated
+        if params or not (scheme and netloc and path and query and fragment):
+            raise koji.GenericError, 'Unable to parse SCM URL: %s' % self.url
+
+        # return parsed values
+        return (scheme, user, netloc, path, query, fragment)
+
+    def do_checkout(self, scmdir, sourcedir, uploadpath, logfile):
+        "Checkout common and package directories from the given SCM URL"
+        # TODO: sanity check arguments
+        # TODO: don't assume Dist CVS layout
+
+        update_checkout_cmd = None
+        env = None
+
+        if self.scmtype == 'CVS':
+            pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
+            module_checkout_cmd = ['cvs', '-d', pserver, 'checkout', '-r', self.revision, self.module]
+            common_checkout_cmd = ['cvs', '-d', pserver, 'checkout', 'common']
+
+        elif self.scmtype == 'CVS+SSH':
+            if not self.user:
+                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+
+            cvsserver = ':ext:%s@%s:%s' % (self.user, self.host, self.repository)
+            module_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', '-r', self.revision, self.module]
+            common_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', 'common']
+            env = {'CVS_RSH': 'ssh'}
+
+        elif self.scmtype == 'GIT':
+            scheme = self.scheme
+            if '+' in scheme:
+                scheme = scheme.split('+')[1]
+            common_path = 'common'
+            if self.module.endswith('/.git'):
+                # If we're referring to the .git subdirectory of the main module,
+                # assume we need to do the same for the common module
+                common_path = 'common/.git'
+
+            gitserver = '%s%s%s' % (scheme, self.host, self.repository)
+            module_checkout_cmd = ['git', 'clone', '-n', '%s/%s' % (gitserver, self.module), self.module]
+            common_checkout_cmd = ['git', 'clone', '%s/%s' % (gitserver, common_path)]
+            update_checkout_cmd = ['git', 'checkout', self.revision]
+
+        elif self.scmtype == 'GIT+SSH':
+            if not self.user:
+                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+            common_path = 'common'
+            if self.module.endswith('/.git'):
+                # If we're referring to the .git subdirectory of the main module,
+                # assume we need to do the same for the common module
+                common_path = 'common/.git'
+
+            gitserver = 'ssh://%s@%s%s' % (self.user, self.host, self.repository)
+            module_checkout_cmd = ['git', 'clone', '-n', '%s/%s' % (gitserver, self.module), self.module]
+            common_checkout_cmd = ['git', 'clone', '%s/%s' % (gitserver, common_path)]
+            update_checkout_cmd = ['git', 'checkout', self.revision]
+
+        elif self.scmtype == 'SVN':
+            scheme = self.scheme
+            if '+' in scheme:
+                scheme = scheme.split('+')[1]
+
+            svnserver = '%s%s%s' % (scheme, self.host, self.repository)
+            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision, '%s/%s' % (svnserver, self.module), self.module]
+            common_checkout_cmd = ['svn', 'checkout', '%s/common' % svnserver]
+
+        elif self.scmtype == 'SVN+SSH':
+            if not self.user:
+                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+
+            svnserver = 'svn+ssh://%s@%s%s' % (self.user, self.host, self.repository)
+            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision, '%s/%s' % (svnserver, self.module), self.module]
+            common_checkout_cmd = ['svn', 'checkout', '%s/common' % svnserver]
+
+        else:
+            raise koji.BuildError, 'Unknown SCM type: %s' % self.scmtype
+
+        # perform checkouts
+        if log_output(module_checkout_cmd[0], module_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, env=env):
+            raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
+                (self.scmtype, ' '.join(module_checkout_cmd), os.path.basename(logfile))
+
+        if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
+            raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
+                (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
+
+        if update_checkout_cmd:
+            # Currently only required for GIT checkouts
+            # Run the command in the directory the source was checked out into
+            if log_output(update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1, env=env):
+                raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
+                    (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
+
+        # Required by Dist CVS layout
+        os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
 
 def get_options():
     """process options from command line and config file"""

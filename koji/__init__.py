@@ -1514,17 +1514,23 @@ def taskLabel(taskInfo):
     if method == 'build':
         if taskInfo.has_key('request'):
             source, target = taskInfo['request'][:2]
-            if source.startswith('cvs://'):
-                source = source[source.rfind('/') + 1:]
+            if '://' in source:
+                source = source[source.rfind('?') + 1:]
+                source = source.replace('/.git', '')
+                source = source.replace('/#', '#')
                 source = source.replace('#', ':')
+                source = source[source.rfind('/') + 1:]
             else:
                 source = os.path.basename(source)
             extra = '%s, %s' % (target, source)
-    elif method == 'buildSRPMFromCVS':
+    elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
         if taskInfo.has_key('request'):
             url = taskInfo['request'][0]
-            url = url[url.rfind('/') + 1:]
+            url = url[url.rfind('?') + 1:]
+            url = url.replace('/.git', '')
+            url = url.replace('/#', '#')
             url = url.replace('#', ':')
+            url = url[url.rfind('/') + 1:]
             extra = url
     elif method == 'buildArch':
         if taskInfo.has_key('request'):
@@ -1535,7 +1541,9 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method == 'newRepo':
+    elif method in ('newRepo', 'tagBuild', 'tagNotification'):
+        # There is no displayable information included in the request
+        # for these methods
         pass
     elif method == 'prepRepo':
         if taskInfo.has_key('request'):

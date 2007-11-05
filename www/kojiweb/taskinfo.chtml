@@ -62,15 +62,10 @@
     <tr>
       <th>Parameters</th>
       <td>
-        #if $task.method == 'buildFromCVS'
-        <strong>CVS&nbsp;URL:</strong>&nbsp;$params[0]<br/>
-        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a>
+        #if $task.method == 'buildSRPMFromSCM'
+        <strong>SCM URL:</strong> $params[0]
         #elif $task.method == 'buildSRPMFromCVS'
         <strong>CVS URL:</strong> $params[0]
-        #elif $task.method == 'multiArchBuild'
-        <strong>SRPM:</strong> $params[0]<br/>
-        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
-        $printOpts($params[2])
         #elif $task.method == 'buildArch'
         <strong>SRPM:</strong> $params[0]<br/>
         <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
@@ -276,7 +271,7 @@ $cgi.escape($result.faultString.strip())
         <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromCVS', 'buildArch', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if

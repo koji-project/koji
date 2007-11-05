@@ -36,7 +36,7 @@ start() {
     [ "$KOJID_DEBUG" == "Y" ] && ARGS="$ARGS --debug"
     [ "$KOJID_VERBOSE" == "Y" ] && ARGS="$ARGS --verbose"
     # XXX Fix for make download-checks in kernel builds
-    # Remove once we're running the buildSRPMFromCVS task
+    # Remove once we're running the buildSRPMFromSCM task
     # as an unpriviledged user with their own environment
     export HOME="/root"
     daemon /usr/sbin/kojid $ARGS
