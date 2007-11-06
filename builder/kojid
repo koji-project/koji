@@ -2514,7 +2514,8 @@ class SCM(object):
             if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
                 raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
-            os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
+            if not os.path.exists('%s/../common' % sourcedir):
+                os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
 
         return sourcedir
 
