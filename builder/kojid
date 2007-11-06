@@ -1824,10 +1824,9 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         koji.ensuredir(scmdir)
         logfile = self.workdir + "/srpm.log"
         uploadpath = self.getUploadDir()
-        sourcedir = '%s/%s' % (scmdir, scm.module)
 
         # Check out spec file, etc. from SCM
-        scm.do_checkout(scmdir, sourcedir, uploadpath, logfile)
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=True)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
@@ -2418,10 +2417,20 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def do_checkout(self, scmdir, sourcedir, uploadpath, logfile):
-        "Checkout common and package directories from the given SCM URL"
+    def checkout(self, scmdir, uploadpath, logfile, use_common=False):
+        """
+        Checkout the module from SCM.  Accepts the following parameters:
+
+         - scmdir: the working directory
+         - uploadpath: the path on the server the logfile should be uploaded to
+         - logfile: the file used for logging command output
+         - use_common: if True, also checkout a "common" module from the top-level of the repository
+                       and symlink it into the parent directory of the module checkout
+
+        Returns the directory that the module was checked-out into (a subdirectory of scmdir)
+        """
         # TODO: sanity check arguments
-        # TODO: don't assume Dist CVS layout
+        sourcedir = '%s/%s' % (scmdir, self.module)
 
         update_checkout_cmd = None
         env = None
@@ -2494,10 +2503,6 @@ class SCM(object):
             raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                 (self.scmtype, ' '.join(module_checkout_cmd), os.path.basename(logfile))
 
-        if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
-            raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
-                (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
-
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
@@ -2505,8 +2510,13 @@ class SCM(object):
                 raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
 
-        # Required by Dist CVS layout
-        os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
+        if use_common:
+            if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
+                raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
+                    (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
+            os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
+
+        return sourcedir
 
 def get_options():
     """process options from command line and config file"""
