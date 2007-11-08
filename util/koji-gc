@@ -172,7 +172,8 @@ def get_options():
             if alias is None:
                 alias = ('main', name)
             if config.has_option(*alias):
-                print "Using option %s from config file" % (alias,)
+                if options.debug:
+                    print "Using option %s from config file" % (alias,)
                 if type == 'integer':
                     setattr(defaults, name, config.getint(*alias))
                 elif type == 'boolean':
@@ -415,6 +416,8 @@ refer to the document linked above for instructions."""
     if options.test:
         if options.debug:
             print str(msg)
+        else:
+            print "Would have sent warning notice to %s" % msg['To']
     else:
         if options.debug:
             print "Sending warning notice to %s" % msg['To']
