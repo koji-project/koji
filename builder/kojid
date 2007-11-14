@@ -2160,7 +2160,7 @@ class NewRepoTask(BaseTaskHandler):
             raise koji.GenericError, "Repo directory missing: %s" % path
         arches = []
         for fn in os.listdir(path):
-            if fn != 'groups' and os.path.isdir("%s/%s/RPMS" % (path, fn)):
+            if fn != 'groups' and os.path.isdir("%s/%s/pkglist" % (path, fn)):
                 arches.append(fn)
         #see if we can find a previous repo to update from
         oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
@@ -2187,9 +2187,12 @@ class PrepRepoTask(BaseTaskHandler):
 
     def handler(self, tinfo):
         repo_id, event_id = session.host.repoInit(tinfo['id'])
+        return repo_id, event_id
+        # Short circuit for now, can just be removed I think.
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError, "Repo directory missing: %s" % path
+        #JK We really don't need a package for this, just groupdata.
         #create and upload meta rpm
         spec = "%s/groups/groups.spec" % path
         #the repoInit call should have created groups.spec
@@ -2227,17 +2230,19 @@ class CreaterepoTask(BaseTaskHandler):
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
         pathinfo = koji.PathInfo(options.topdir)
-        repodir = pathinfo.repo(repo_id, rinfo['tag_name'])
-        repodir = "%s/%s" % (repodir, arch)
+        toprepodir = pathinfo.repo(repo_id, rinfo['tag_name'])
+        repodir = "%s/%s" % (toprepodir, arch)
         if not os.path.isdir(repodir):
             raise koji.GenericError, "Repo directory missing: %s" % repodir
         #set up our output dir
         outdir = "%s/repo" % self.workdir
         datadir = "%s/repodata" % outdir
         koji.ensuredir(outdir)
-        cmd = ['/usr/bin/createrepo', '-vp', '--outputdir', outdir]
-        if os.path.exists("%s/comps.xml" % repodir):
-            cmd.extend(['-g', 'comps.xml'])
+        pkglist = os.path.join(repodir, 'pkglist')
+        pkgdir = os.path.join(pathinfo.topdir, 'packages/')
+        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', self.pkgurl]
+        if os.path.exists("%s/comps.xml" % toprepodir):
+            cmd.extend(['-g', os.path.join(toprepodir, 'comps.xml')])
         #attempt to recycle repodata from last repo
         if oldrepo:
             oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
@@ -2251,7 +2256,7 @@ class CreaterepoTask(BaseTaskHandler):
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
-        cmd.append(repodir)
+        cmd.append(pkgdir)
 
         logfile = "%s/createrepo.log" % self.workdir
         uploadpath = self.getUploadDir()
@@ -2263,7 +2268,7 @@ class CreaterepoTask(BaseTaskHandler):
 
         files = []
         for f in os.listdir(datadir):
-            if f.endswith('.xml') or f.endswith('.xml.gz'):
+            if f.endswith('.xml') or f.endswith('.xml.gz') or f.endswith('.sqlite.bz2'):
                 files.append(f)
                 session.uploadWrapper("%s/%s" % (datadir, f), uploadpath, f)
 
@@ -2589,6 +2594,7 @@ def get_options():
                 'server': None,
                 'user': None,
                 'password': None,
+                'pkgurl': None,
                 'cert': '/etc/kojid/client.crt',
                 'ca': '/etc/kojid/clientca.crt',
                 'serverca': '/etc/kojid/serverca.crt'}
