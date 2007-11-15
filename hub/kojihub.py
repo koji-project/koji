@@ -1747,12 +1747,12 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         for rpminfo in packages[arch]:
             #filename = os.path.basename(rpminfo['path'])
             #os.link(rpminfo['path'], "%s/%s" %(rpmdir,filename))
-            pkglist.write(rpminfo['path'].split(koji.pathinfo.topdir + 'packages/')[1] + '\n')
+            pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         #noarch packages
         for rpminfo in packages.get('noarch',[]):
             #filename = os.path.basename(rpminfo['path'])
             #os.link(rpminfo['path'], "%s/%s" %(rpmdir,filename))
-            pkglist.write(rpminfo['path'].split(koji.pathinfo.topdir + 'packages/')[1] + '\n')
+            pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         # srpms
         if with_src:
             #srpmdir = "%s/%s/SRPMS" % (repodir,arch)
@@ -1760,7 +1760,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
             for rpminfo in packages.get('src',[]):
                 #filename = os.path.basename(rpminfo['path'])
                 #os.link(rpminfo['path'], "%s/%s" %(srpmdir,filename))
-                pkglist.write(rpminfo['path'].split(koji.pathinfo.topdir + 'packages/')[1] + '\n')
+                pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         pkglist.close()
         # comps
         # JK WTF are we doing here?  Just call -g to the real path?
