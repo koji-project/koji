@@ -2149,18 +2149,13 @@ class NewRepoTask(BaseTaskHandler):
     def handler(self, tag):
         self.uploadpath = self.getUploadDir()
         tinfo = session.getTag(tag, strict=True)
-        preptask = session.host.subtask(method='prepRepo',
-                                        arglist=[tinfo],
-                                        label='prep',
-                                        parent=self.id,
-                                        arch='noarch')
-        repo_id, event_id = self.wait(preptask)[preptask]
+        repo_id, event_id = session.host.repoInit(tinfo['id'])
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError, "Repo directory missing: %s" % path
         arches = []
         for fn in os.listdir(path):
-            if fn != 'groups' and os.path.isdir("%s/%s/pkglist" % (path, fn)):
+            if fn != 'groups' and os.path.isfile("%s/%s/pkglist" % (path, fn)):
                 arches.append(fn)
         #see if we can find a previous repo to update from
         oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
@@ -2186,7 +2181,6 @@ class PrepRepoTask(BaseTaskHandler):
     _taskWeight = 0.2
 
     def handler(self, tinfo):
-        repo_id, event_id = session.host.repoInit(tinfo['id'])
         return repo_id, event_id
         # Short circuit for now, can just be removed I think.
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
@@ -2240,7 +2234,8 @@ class CreaterepoTask(BaseTaskHandler):
         koji.ensuredir(outdir)
         pkglist = os.path.join(repodir, 'pkglist')
         pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', self.pkgurl]
+        #JK I really need a way to get at the pkgurl from the config here...
+        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', "http://localhost/packages"]
         if os.path.exists("%s/comps.xml" % toprepodir):
             cmd.extend(['-g', os.path.join(toprepodir, 'comps.xml')])
         #attempt to recycle repodata from last repo
