@@ -905,7 +905,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'basedir' : mockdir,
         'target_arch' : arch,
         'chroothome': '/builddir',
-        'chroot_setup_cmd': 'install buildsys-build',
+        # Use the group data rather than a generated rpm
+        'chroot_setup_cmd': 'groupinstall build',
         # don't encourage network access from the chroot
         'use_host_resolv': False
     }
