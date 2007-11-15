@@ -2175,43 +2175,6 @@ class NewRepoTask(BaseTaskHandler):
         session.host.repoDone(repo_id, data)
         return repo_id, event_id
 
-
-class PrepRepoTask(BaseTaskHandler):
-    Methods = ['prepRepo']
-    _taskWeight = 0.2
-
-    def handler(self, tinfo):
-        return repo_id, event_id
-        # Short circuit for now, can just be removed I think.
-        path = koji.pathinfo.repo(repo_id, tinfo['name'])
-        if not os.path.isdir(path):
-            raise koji.GenericError, "Repo directory missing: %s" % path
-        #JK We really don't need a package for this, just groupdata.
-        #create and upload meta rpm
-        spec = "%s/groups/groups.spec" % path
-        #the repoInit call should have created groups.spec
-        if not os.path.exists(spec):
-            raise koji.GenericError, "groups.spec missing"
-        #build command
-        cmd = ['rpmbuild']
-        for macro in ('_sourcedir', '_builddir', '_srcrpmdir', '_rpmdir'):
-            cmd.extend(['--define', "%s %s" % (macro,self.workdir)])
-        cmd.extend(['-bb', spec])
-        logfile = "%s/groups_rpm.log" % self.workdir
-        uploadpath = self.getUploadDir()
-        status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
-        if not _isSuccess(status):
-            raise koji.GenericError, "failed to build groups rpm: %s" \
-                    % _parseStatus(status, ' '.join(cmd))
-        #upload file and return path
-        fn = 'buildsys-build-1-1.noarch.rpm'
-        pkg = "%s/noarch/%s" % (self.workdir, fn)
-        session.uploadWrapper(pkg, uploadpath, fn)
-        self.logger.debug("Adding %s to repo %s" % (fn, repo_id))
-        session.host.repoAddRPM(repo_id, "%s/%s" % (uploadpath, fn))
-        return repo_id, event_id
-
-
 class CreaterepoTask(BaseTaskHandler):
 
     Methods = ['createrepo']
@@ -2234,8 +2197,7 @@ class CreaterepoTask(BaseTaskHandler):
         koji.ensuredir(outdir)
         pkglist = os.path.join(repodir, 'pkglist')
         pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        #JK I really need a way to get at the pkgurl from the config here...
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', "http://localhost/packages"]
+        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
         if os.path.exists("%s/comps.xml" % toprepodir):
             cmd.extend(['-g', os.path.join(toprepodir, 'comps.xml')])
         #attempt to recycle repodata from last repo
