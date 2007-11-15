@@ -2519,6 +2519,7 @@ def get_options():
     parser.add_option("--mockdir", help="Specify mockdir")
     parser.add_option("--mockuser", help="User to run mock as")
     parser.add_option("-s", "--server", help="url of XMLRPC server")
+    parser.add_option("--pkgurl", help="url of packages directory")
     (options, args) = parser.parse_args()
 
     if args:
@@ -2577,6 +2578,9 @@ def get_options():
 
     if not options.server:
         parser.error("--server argument required")
+
+    if not options.pkgurl:
+        parser.error("--pkgurl argument required")
 
 def quit(msg=None, code=1):
     if msg:
