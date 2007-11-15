@@ -2189,6 +2189,7 @@ class CreaterepoTask(BaseTaskHandler):
         pathinfo = koji.PathInfo(options.topdir)
         toprepodir = pathinfo.repo(repo_id, rinfo['tag_name'])
         repodir = "%s/%s" % (toprepodir, arch)
+        groupdata = os.path.join(toprepodir, 'groups', 'comps.xml')
         if not os.path.isdir(repodir):
             raise koji.GenericError, "Repo directory missing: %s" % repodir
         #set up our output dir
@@ -2198,8 +2199,8 @@ class CreaterepoTask(BaseTaskHandler):
         pkglist = os.path.join(repodir, 'pkglist')
         pkgdir = os.path.join(pathinfo.topdir, 'packages/')
         cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
-        if os.path.exists("%s/comps.xml" % toprepodir):
-            cmd.extend(['-g', os.path.join(toprepodir, 'comps.xml')])
+        if os.path.isfile(groupdata):
+            cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
         if oldrepo:
             oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
