@@ -2116,6 +2116,11 @@ def handle_clone_tag(options, session, args):
     if not srctag:
         sys.stdout.write("Unknown src-tag: %s\n" % args[0])
         return
+    if (srctag['locked'] and not options.force) or (dsttag and dsttag['locked'] and not options.force):
+        print _("Error: You are attempting to clone from or to a tag which is locked.")
+        print _("Please use --force if this is what you really want to do.")
+        return
+
     # init debug lists.
     chgpkglist=[]
     chgbldlist=[]
@@ -2145,14 +2150,9 @@ def handle_clone_tag(options, session, args):
                                 build['owner_name'],build['tag_name']))
             # copy latest builds into new tag
             if not options.test:
-                session.tagBuildBypass(newtag['name'], build)
+                session.tagBuildBypass(newtag['name'], build, force=options.force)
     # case of existing dst-tag.
     if dsttag:
-        if dsttag['locked'] and not options.force:
-            print _("Error: You are attempting to modify %s which is locked." % dsttag['name'])
-            print _("Please use --force if this is what you really want to do.")
-            return
-
         # get fresh list of packages & builds into maps.
         srcpkgs = {}
         for pkg in session.listPackages(tagID=srctag['id'],inherited=True):
