@@ -2000,8 +2000,8 @@ def anon_handle_list_pkgs(options, session, args):
             print "Package"
             print '-'*23
         else:
-            print "%-23s %-23s %-16s %-16s" % ('Package','Tag','Extra Arches','Owner')
-            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*16)
+            print "%-23s %-23s %-16s %-15s" % ('Package','Tag','Extra Arches','Owner')
+            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*15)
     for pkg in data:
         if allpkgs:
             print pkg['package_name']
@@ -2011,7 +2011,7 @@ def anon_handle_list_pkgs(options, session, args):
             if pkg.has_key('tag_id'):
                 if pkg['extra_arches'] is None:
                     pkg['extra_arches'] = ""
-                fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-16s"
+                fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-15s"
                 if pkg.get('blocked',False):
                     fmt += " [BLOCKED]"
             else:
