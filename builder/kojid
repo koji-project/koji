@@ -1904,7 +1904,7 @@ Status: %(status)s\r
         build = session.getBuild(build_info)
         user = session.getUser(user_info)
         pkg_name = build['package_name']
-        nvr = '%(package_name)s-%(version)s-%(release)s' % build
+        nvr = koji.buildLabel(build)
         user_name = user['name']
 
         from_addr = options.from_addr
@@ -1960,7 +1960,7 @@ class BuildNotificationTask(BaseTaskHandler):
     _taskWeight = 0.1
 
     # XXX externalize these templates somewhere
-    subject_templ = """Package: %(build_nevr)s Tag: %(dest_tag)s Status: %(status)s Built by: %(build_owner)s"""
+    subject_templ = """Package: %(build_nvr)s Tag: %(dest_tag)s Status: %(status)s Built by: %(build_owner)s"""
     message_templ = \
 """From: %(from_addr)s\r
 Subject: %(subject)s\r
@@ -1970,7 +1970,7 @@ X-Koji-Package: %(build_pkg_name)s\r
 X-Koji-Builder: %(build_owner)s\r
 X-Koji-Status: %(status)s\r
 \r
-Package: %(build_nevr)s\r
+Package: %(build_nvr)s\r
 Tag: %(dest_tag)s\r
 Status: %(status)s%(cancel_info)s\r
 Built by: %(build_owner)s\r
@@ -2047,7 +2047,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
 
         build_pkg_name = build['package_name']
         build_pkg_evr = '%s%s-%s' % ((build['epoch'] and str(build['epoch']) + ':' or ''), build['version'], build['release'])
-        build_nevr = '%s-%s' % (build_pkg_name, build_pkg_evr)
+        build_nvr = koji.buildLabel(build)
         build_id = build['id']
         build_owner = build['owner_name']
         # target comes from session.py:_get_build_target() 
@@ -2071,7 +2071,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         elif build['state'] == koji.BUILD_STATES['FAILED']:
             failure_data = task_data[task_id]['result']
             failed_hosts = ['%s (%s)' % (task['host'], task['arch']) for task in task_data.values() if task['host'] and task['state'] == 'failed']
-            failure_info = "\r\n%s (%d) failed on %s:\r\n  %s" % (build_nevr, build_id, 
+            failure_info = "\r\n%s (%d) failed on %s:\r\n  %s" % (build_nvr, build_id, 
                                                                   ', '.join(failed_hosts),
                                                                   failure_data)
 
