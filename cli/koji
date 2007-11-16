@@ -2149,7 +2149,7 @@ def handle_clone_tag(options, session, args):
     # case of existing dst-tag.
     if dsttag:
         if dsttag['locked'] and not options.force:
-            print _("Error: You are attempting to modify %s which is locked." % dsttag['name']
+            print _("Error: You are attempting to modify %s which is locked." % dsttag['name'])
             print _("Please use --force if this is what you really want to do.")
             return
 
