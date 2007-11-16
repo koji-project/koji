@@ -2094,6 +2094,7 @@ def handle_clone_tag(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("-v","--verbose", action="store_true", help=_("show changes"),)
+    parser.add_option("-f","--force", action="store_true", help=_("override tag locks if necessary"),)
     parser.add_option("-n","--test", action="store_true", help=_("test mode"))
     (options, args) = parser.parse_args(args)
 
@@ -2147,6 +2148,11 @@ def handle_clone_tag(options, session, args):
                 session.tagBuildBypass(newtag['name'], build)
     # case of existing dst-tag.
     if dsttag:
+        if dsttag['locked'] and not options.force:
+            print _("Error: You are attempting to modify %s which is locked." % dsttag['name']
+            print _("Please use --force if this is what you really want to do.")
+            return
+
         # get fresh list of packages & builds into maps.
         srcpkgs = {}
         for pkg in session.listPackages(tagID=srctag['id'],inherited=True):
@@ -2199,7 +2205,7 @@ def handle_clone_tag(options, session, args):
                                 build['owner_name'],build['tag_name']))
             # copy latest builds into new tag.
             if not options.test:
-                session.tagBuildBypass(dsttag['name'], build)
+                session.tagBuildBypass(dsttag['name'], build, force=options.force)
         # DEL builds.
         for build in bdellist:
             # dont delete an inherited build.
@@ -2210,7 +2216,7 @@ def handle_clone_tag(options, session, args):
                                     build['owner_name'],build['tag_name']))
                 # go on del builds from new tag.
                 if not options.test:
-                    session.untagBuildBypass(dsttag['name'], build, force=True)
+                    session.untagBuildBypass(dsttag['name'], build, force=options.force)
         # DEL packages.
         for pkg in pdellist:
             # delete only non-inherited packages.
@@ -2225,7 +2231,7 @@ def handle_clone_tag(options, session, args):
                                         build['owner_name'],build['tag_name']))
                     # so delete latest build(s) from new tag.
                     if not options.test:
-                        session.untagBuildBypass(dsttag['name'], build, force=True)
+                        session.untagBuildBypass(dsttag['name'], build, force=options.force)
                 # now safe to remove package itselfm since we resolved its builds.
                 chgpkglist.append(('[del]',pkg['package_name'],pkg['blocked'],
                                     pkg['owner_name'],pkg['tag_name']))
