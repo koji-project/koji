@@ -2071,6 +2071,9 @@ def anon_handle_buildinfo(options, session, args):
         if info is None:
             print "No such build: %s\n" % build
             continue
+        taglist = []
+        for tag in session.listTags(build):
+            taglist.append(tag['name'])
         if info['epoch'] is None:
             info['epoch'] = ""
         else:
@@ -2084,6 +2087,7 @@ def anon_handle_buildinfo(options, session, args):
         print "Built by: %(owner_name)s" % info
         print "Task: %(task_id)s" % info
         print "Finished: %s" % koji.formatTimeLong(info['completion_time'])
+        print "Tags: %s" % ' '.join(taglist)
         print "RPMs:"
         for rpm in rpms:
             print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
