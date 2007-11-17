@@ -1724,11 +1724,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     fo = file("%s/comps.xml" % groupsdir,'w')
     fo.write(comps)
     fo.close()
-    spec = koji.make_groups_spec(groups, name='buildsys-build', buildgroup='build')
-    fn = "%s/groups.spec" % groupsdir
-    fo = file(fn, 'w')
-    fo.write(spec)
-    fo.close()
 
     # commit the transaction now so we don't hold locks in the database while we're creating
     # links on the filesystem (which can take a long time)
@@ -1739,34 +1734,22 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         if arch in ['src','noarch']:
             continue
             # src and noarch special-cased -- see below
-        #rpmdir = "%s/%s/RPMS" % (repodir,arch)
         archdir = os.path.join(repodir, arch)
         koji.ensuredir(archdir)
         pkglist = file(os.path.join(repodir, arch, 'pkglist'), 'w')
         logger.info("Creating package list for %s" % arch)
         for rpminfo in packages[arch]:
-            #filename = os.path.basename(rpminfo['path'])
-            #os.link(rpminfo['path'], "%s/%s" %(rpmdir,filename))
             pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         #noarch packages
         for rpminfo in packages.get('noarch',[]):
-            #filename = os.path.basename(rpminfo['path'])
-            #os.link(rpminfo['path'], "%s/%s" %(rpmdir,filename))
             pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         # srpms
         if with_src:
-            #srpmdir = "%s/%s/SRPMS" % (repodir,arch)
-            #koji.ensuredir(srpmdir)
+            srpmdir = "%s/%s" % (repodir,'src')
+            koji.ensuredir(srpmdir)
             for rpminfo in packages.get('src',[]):
-                #filename = os.path.basename(rpminfo['path'])
-                #os.link(rpminfo['path'], "%s/%s" %(srpmdir,filename))
                 pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         pkglist.close()
-        # comps
-        # JK WTF are we doing here?  Just call -g to the real path?
-        #logger.info("Linking comps for %s" % arch)
-        #os.link("%s/comps.xml" % groupsdir,"%s/%s/comps.xml" % (repodir,arch))
-        #groups rpm linked in a later call (hasn't been generated yet)
     return [repo_id, event_id]
 
 def repo_set_state(repo_id, state, check=True):
