@@ -129,7 +129,7 @@ def get_options():
         cmd = 'handle_' + cmd
     else:
         list_commands()
-        parser.error('Unknown command: %s' % cmd)
+        parser.error('Unknown command: %s' % args[0])
         assert False
     # load local config
     defaults = {
