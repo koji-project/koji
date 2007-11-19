@@ -2360,6 +2360,7 @@ def get_build(buildInfo, strict=False):
       version
       release
       epoch
+      nvr
       state
       task_id: ID of the task that kicked off the build
       owner_id: ID of the user who kicked off the build
@@ -2382,6 +2383,7 @@ def get_build(buildInfo, strict=False):
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
+              ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'))
     query = """SELECT %s
     FROM build
