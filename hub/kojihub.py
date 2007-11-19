@@ -5486,19 +5486,13 @@ class RootExports(object):
             raise koji.GenericError, 'unknown search type: %s' % type
 
         if matchType == 'glob':
-            if '?' in terms or '*' in terms:
-                oper = 'like'
-                terms = self._prepareSearchTerms(terms, matchType)
-            else:
-                # if we're not actually globbing anything, use = so it can use the index;
-                # also, don't pass terms through _prepareSearchTerms(), because we don't need
-                # to escape slashes or underscores
-                oper = '='
+            oper = 'ilike'
         elif matchType == 'regexp':
-            oper = '~'
-            terms = self._prepareSearchTerms(terms, matchType)
+            oper = '~*'
         else:
             raise koji.GenericError, 'unknown match type: %s' % matchType
+
+        terms = self._prepareSearchTerms(terms, matchType)
 
         cols = ('id', 'name')
         aliases = cols
