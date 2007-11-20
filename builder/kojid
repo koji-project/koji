@@ -2026,6 +2026,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         data[task_id]['id'] = taskinfo['id']
         data[task_id]['method'] = taskinfo['method']
         data[task_id]['arch'] = taskinfo['arch']
+        data[task_id]['build_arch'] = taskinfo['label']
         data[task_id]['host'] = hostinfo and hostinfo['name'] or None
         data[task_id]['state'] = koji.TASK_STATES[taskinfo['state']].lower()
         data[task_id]['result'] = result
@@ -2112,7 +2113,12 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                         if task[filetype]:
                             output += "%s:\r\n" % filetype
                             for file in task[filetype]:
-                                output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
+                                if filetype == 'rpms':
+                                    output += " %s\r\n" % '/'.join([options.pkgurl, build['name'], build['version'], build['release'], task['build_arch'], file])
+                                elif filetype == 'logs':
+                                    output += " %s\r\n" % '/'.join([options.pkgurl, build['name'], build['version'], build['release'], 'data', 'logs', task['build_arch'], file])
+                                elif task[filetype] == 'misc':
+                                    output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
                     output += "\r\n"
                 output += "\r\n"
 
