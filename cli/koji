@@ -2206,7 +2206,7 @@ def handle_clone_tag(options, session, args):
             for pkg in group['packagelist']:
                 if not options.test:
                     session.groupPackageListAdd(newtag['name'], group['name'], pkg['package'], block=pkg['blocked'])
-                chggrplist.append(('[new]', pkg['package'], pkg['blocked'], group['name']))
+                chggrplist.append(('[new]', pkg['package'], group['name']))
     # case of existing dst-tag.
     if dsttag:
         # get fresh list of packages & builds into maps.
@@ -2260,7 +2260,7 @@ def handle_clone_tag(options, session, args):
         grpchanges={} # dict of changes to make in shared groups
         for (grpname, group) in srcgroups.iteritems():
             if dstgroups.has_key(grpname):
-                grpchanges[grpname] = {'adds':[], 'blocks':[]}
+                grpchanges[grpname] = {'adds':[], 'dels':[]}
                 # Store whether group is inherited or not
                 grpchanges[grpname]['inherited'] = False
                 if group['tag_id'] != dsttag['id']:
@@ -2276,7 +2276,7 @@ def handle_clone_tag(options, session, args):
                         grpchanges[grpname]['adds'].append(pkg)
                 for pkg in dstgrppkglist:
                     if not pkg in srcgrppkglist:
-                        grpchanges[grpname]['blocks'].append(pkg)
+                        grpchanges[grpname]['dels'].append(pkg)
         # ADD new packages.
         for pkg in paddlist:
             chgpkglist.append(('[add]',pkg['package_name'],
@@ -2302,14 +2302,14 @@ def handle_clone_tag(options, session, args):
                 session.groupListAdd(dsttag['name'], group['name'], force=options.force)
             for pkg in group['packagelist']:
                 if not options.test:
-                    session.groupPackageListAdd(dsttag['name'], group['name'], pkg['package'], block=pkg['blocked'], force=options.force)
-                chggrplist.append(('[new]', pkg['package'], pkg['blocked'], group['name']))
+                    session.groupPackageListAdd(dsttag['name'], group['name'], pkg['package'], force=options.force)
+                chggrplist.append(('[new]', pkg['package'], group['name']))
         # ADD group pkgs.
         for group in grpchanges:
             for pkg in grpchanges[group]['adds']:
-                chggrplist.append(('[new]', pkg, pkg['blocked'], group))
+                chggrplist.append(('[new]', pkg, group))
                 if not options.test:
-                    session.groupPackageListAdd(dsttag['name'], group, pkg, block=pkg['blocked'], force=options.force)
+                    session.groupPackageListAdd(dsttag['name'], group, pkg, force=options.force)
         # DEL builds.
         for build in bdellist:
             # dont delete an inherited build.
@@ -2364,7 +2364,7 @@ def handle_clone_tag(options, session, args):
         for group in grpchanges:
             for pkg in grpchanges[group]['dels']:
                 # Only delete a group that isn't inherited
-                if not group['inherited']:
+                if not grpchanges[group]['inherited']:
                     chggrplist.append(('[del]', pkg, group))
                     if not options.test:
                         session.groupPackageListRemove(dsttag['name'], group, pkg, force=options.force)
@@ -2376,7 +2376,7 @@ def handle_clone_tag(options, session, args):
     if options.verbose:
         pfmt='    %-7s %-28s %-10s %-10s %-10s\n'
         bfmt='    %-7s %-28s %-40s %-10s %-10s %-10s\n'
-        gfmt='    %-7s %-28s %-10s %-28s\n'
+        gfmt='    %-7s %-28s %-28s\n'
         sys.stdout.write('\nList of changes:\n\n')
         sys.stdout.write(pfmt % ('Action','Package','Blocked','Owner','From Tag'))
         sys.stdout.write(pfmt % ('-'*7,'-'*28,'-'*10,'-'*10,'-'*10))
@@ -2387,8 +2387,9 @@ def handle_clone_tag(options, session, args):
         sys.stdout.write(bfmt %  ('-'*7,'-'*28,'-'*40,'-'*10,'-'*10,'-'*10))
         for changes in chgbldlist:
             sys.stdout.write(bfmt % changes)
-        sys.stdout.write(gfmt % ('Action','Package','Blocked','Group'))
-        sys.stdout.write(gfmt %  ('-'*7,'-'*28,'-'*10,'-'*28)
+        sys.stdout.write('\n')
+        sys.stdout.write(gfmt % ('Action','Package','Group'))
+        sys.stdout.write(gfmt %  ('-'*7,'-'*28,'-'*28))
         for changes in chggrplist:
             sys.stdout.write(gfmt % changes)
 
