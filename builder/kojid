@@ -340,6 +340,49 @@ class BuildRoot(object):
         fo.write(output)
         fo.close()
 
+    def writeMavenSettings(self, destfile):
+        """
+        Write the Maven settings.xml file to the specified destination.
+        """
+        repo_id = self.repoid
+        tag_name = self.tag_name
+
+        global options
+        topurl = None
+        topdir = None
+        if hasattr(options, 'topurl'):
+            topurl = options.topurl
+        if hasattr(options, 'topdir'):
+            topdir = options.topdir
+        if topurl:
+            pi = koji.PathInfo(topdir=topurl)
+            repourl = pi.repo(repo_id, tag_name) + '/maven2'
+        elif topdir:
+            pi = koji.PathInfo(topdir=topdir)
+            repourl = 'file://' + pi.repo(repo_id, tag_name) + '/maven2'
+        else:
+            raise koji.BuildError, 'either topurl or topdir must be specified in the config file'
+
+        # XXX This should actually use <mirrorOf>*</mirrorOf>, but that's not
+        # supported until Maven 2.0.5, which is not available in Fedora yet
+        settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>koji-maven-repo-%(tag_name)s-%(repo_id)i</id>
+      <name>Koji-managed Maven repository (%(tag_name)s-%(repo_id)i)</name>
+      <url>%(repourl)s</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>
+""" % locals()
+        fo = file(destfile, 'w')
+        fo.write(settings)
+        fo.close()
+
     def mock(self, args, skip_setarch=False):
         """Run mock"""
         global options
@@ -1766,6 +1809,67 @@ class BuildArchTask(BaseTaskHandler):
 
         return ret
 
+class MavenBuildTask(BaseTaskHandler):
+
+    Methods = ['mavenBuild']
+
+    def weight(self):
+        return 1.5
+
+    def handler(self, url, target, opts=None):
+        """Use Maven to build the source from the given url"""
+        if opts is None:
+            opts = {}
+        self.opts = opts
+        target_info = session.getBuildTarget(target)
+        if not target_info:
+            raise koji.BuildError, 'unknown build target: %s' % target
+        dest_tag = target_info['dest_tag']
+        build_tag = target_info['build_tag']
+
+        scm = SCM(url)
+
+        host = session.host.getHost()
+        if not host['arches']:
+            raise koji.BuildError, 'No arch list for host: %s' % host['name']
+        br_arch = host['arches'].split()[0]
+        buildroot = BuildRoot(build_tag, br_arch, self.id)
+        self.logger.debug("Initializing buildroot")
+        buildroot.init()
+
+        if not os.path.exists('%s/usr/bin/mvn' % buildroot.rootdir()):
+            raise koji.BuildError, '/usr/bin/mvn was not found in the buildroot'
+
+        scmdir = '%s/builddir/maven2/build' % buildroot.rootdir()
+        outputdir = '%s/builddir/maven2/output' % buildroot.rootdir()
+        koji.ensuredir(scmdir)
+        koji.ensuredir(outputdir)
+
+        mockuid = None
+        try:
+            if options.mockuser:
+                if options.mockuser.isdigit():
+                    mockuid = pwd.getpwuid(int(options.mockuser)).pw_uid
+                else:
+                    mockuid = pwd.getpwnam(options.mockuser).pw_uid
+        except:
+            self.logger.warn('Could not get uid for mockuser: %s' % options.mockuser)
+        if mockuid != None:
+            os.chown(scmdir, mockuid, -1)
+            os.chown(outputdir, mockuid, -1)
+
+        logfile = self.workdir + "/checkout.log"
+        uploadpath = self.getUploadDir()
+
+        # Check out sources from the SCM
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=False)
+
+        settingsfile = '/builddir/maven2/settings.xml'
+        buildroot.writeMavenSettings(buildroot.rootdir() + settingsfile)
+        rv = buildroot.mock(['chroot', '--', 'cd', sourcedir[len(buildroot.rootdir()):], ';', '/usr/bin/mvn', '-s', settingsfile, 'install'], skip_setarch=True)
+        if rv:
+            buildroot.expire()
+            raise koji.BuildrootError, 'error building Maven package, %s' % buildroot._mockResult(rv)
 
 class TagBuildTask(BaseTaskHandler):
 

@@ -1601,7 +1601,7 @@ def taskLabel(taskInfo):
     method = taskInfo['method']
     arch = taskInfo['arch']
     extra = ''
-    if method == 'build':
+    if method in ('build', 'mavenBuild'):
         if taskInfo.has_key('request'):
             source, target = taskInfo['request'][:2]
             if '://' in source:

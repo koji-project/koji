@@ -4445,6 +4445,31 @@ class RootExports(object):
 
         return make_task('chainbuild',[srcs,target,opts],**taskOpts)
 
+    def mavenBuild(self, url, target, opts=None, priority=None, channel='maven'):
+        """Create a Maven build task
+
+        url: The url to checkout the source from.  May be a CVS, SVN, or GIT repository.
+        target: the build target
+        priority: the amount to increase (or decrease) the task priority, relative
+                  to the default priority; higher values mean lower priority; only
+                  admins have the right to specify a negative priority here
+        channel: the channel to allocate the task to (defaults to the "maven" channel)
+
+        Returns the task ID
+        """
+        if not opts:
+            opts = {}
+        taskOpts = {}
+        if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed, 'only admins may create high-priority tasks'
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        if channel:
+            taskOpts['channel'] = channel
+
+        return make_task('mavenBuild', [url, target, opts], **taskOpts)
+
     def hello(self,*args):
         return "Hello World"
 

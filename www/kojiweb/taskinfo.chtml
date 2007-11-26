@@ -103,6 +103,10 @@
         <strong>Source:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
+        #elif $task.method == 'mavenBuild'
+        <strong>SCM URL:</strong> $params[0]<br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        $printOpts($params[2])
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>
         #elif $task.method == 'prepRepo'
@@ -271,7 +275,7 @@ $cgi.escape($result.faultString.strip())
         <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'mavenBuild', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
