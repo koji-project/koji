@@ -78,17 +78,15 @@ All
         <strong>Owner</strong>:
         #if $ownerObj
           <a href="tasks?${util.passthrough($self, 'state', 'method', 'hostID', 'order')[1:]}">everyone</a>
-          #if $loggedInUser
-            #if $ownerObj.id == $loggedInUser.id
-            | <strong>me</strong>
-            #else
-            | <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
-            #end if
-          #end if
         #else
           <strong>everyone</strong>
-          #if $loggedInUser
-          | <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
+        #end if
+        #if $loggedInUser
+          |
+          #if $ownerObj and $ownerObj.id == $loggedInUser.id
+          <strong>me</strong>
+          #else
+          <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
           #end if
         #end if
         |

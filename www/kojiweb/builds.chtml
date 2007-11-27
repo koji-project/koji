@@ -18,9 +18,9 @@
     <tr>
       <td colspan="6">
         #if $inherited
-        <a href="builds?inherited=0$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix')">Hide inherited builds</a>
+        <a href="builds?inherited=0$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'state')">Hide inherited builds</a>
         #else
-        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'order', 'prefix')[1:]}">Show inherited builds</a>
+        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'state')[1:]}">Show inherited builds</a>
         #end if
       </td>
     </tr>
@@ -32,6 +32,28 @@
           <option value="all">all</option>
           #for $stateOpt in ['BUILDING', 'COMPLETE', 'FAILED', 'CANCELED']
           <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
+          #end for
+        </select>
+        <br/>
+        <strong>Built by</strong>:
+        #if $user
+          <a href="builds?${util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')[1:]}">everyone</a>
+	#else
+	  <strong>everyone</strong>
+	#end if
+        #if $loggedInUser
+          |
+          #if $user and $user.id == $loggedInUser.id
+          <strong>me</strong>
+          #else
+          <a href="builds?userID=$loggedInUser.name$util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')">me</a>
+          #end if
+        #end if
+        |
+        <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')';">
+          <option value="">(select)</option>
+          #for $userOption in $users
+          <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$userOption.name</option>
           #end for
         </select>
       </td>

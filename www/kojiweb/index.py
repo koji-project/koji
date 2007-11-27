@@ -851,6 +851,11 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
     values['userID'] = userID
     values['user'] = user
 
+    loggedInUser = req.currentUser
+    values['loggedInUser'] = loggedInUser
+
+    values['users'] = server.listUsers(queryOpts={'order': 'name'})
+
     tag = None
     if tagID != None:
         if tagID.isdigit():
