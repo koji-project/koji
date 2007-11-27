@@ -845,15 +845,17 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
 
     user = None
     if userID != None:
-        userID = int(userID)
-        user = server.getUser(userID)
+        if userID.isdigit():
+            userID = int(userID)
+        user = server.getUser(userID, strict=True)
     values['userID'] = userID
     values['user'] = user
 
     tag = None
     if tagID != None:
-        tagID = int(tagID)
-        tag = server.getTag(tagID)
+        if tagID.isdigit():
+            tagID = int(tagID)
+        tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
 
@@ -871,12 +873,12 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
     inherited = int(inherited)
     values['inherited'] = inherited
 
-    if tagID != None:
+    if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tagID, 'inherit': bool(inherited), 'prefix': prefix},
+        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'inherit': bool(inherited), 'prefix': prefix},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
-        builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': userID, 'state': state, 'prefix': prefix},
+        builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
     
     values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
@@ -904,11 +906,12 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
     values = _initValues(req, 'User Info', 'users')
     server = _getServer(req)
 
-    userID = int(userID)
-    user = server.getUser(userID)
+    if userID.isdigit():
+        userID = int(userID)
+    user = server.getUser(userID, strict=True)
     
     values['user'] = user
-    values['userID'] = user['id']
+    values['userID'] = userID
     
     packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                             start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
