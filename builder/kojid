@@ -501,13 +501,11 @@ class BuildRoot(object):
 
     def scrub(self):
         "Non-mock implementation of clean"
-        rootdir = self.rootdir()
-        umount_all(rootdir)
-        safe_rmtree(rootdir)
+        raise koji.FunctionDeprecated, "no longer needed and deprecated. use clean()"
 
     def clean(self):
         """Remove the buildroot and associated mock config"""
-        #self.mock(['clean'])
+        self.mock(['--clean'])
         raise koji.GenericError, "dangerous and deprecated. use scrub()"
 
     def resultdir(self):
