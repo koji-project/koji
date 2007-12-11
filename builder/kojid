@@ -450,7 +450,7 @@ class BuildRoot(object):
                 session.uploadWrapper(filepath, uploadpath, filename)
 
     def init(self):
-        rv = self.mock(['init'])
+        rv = self.mock(['--init'])
 
         if rv:
             self.expire()
@@ -466,7 +466,7 @@ class BuildRoot(object):
         args = ['--no-clean']
         if arch:
             args.extend(['--arch', arch])
-        args.extend(['rebuild', srpm])
+        args.extend(['--rebuild', srpm])
         rv = self.mock(args)
 
         session.host.updateBuildRootList(self.id,self.getPackageList())
