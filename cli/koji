@@ -1373,7 +1373,8 @@ def handle_prune_signed_copies(options, session, args):
                                 time.asctime(time.localtime(replaced_ts)))
             last_latest = max(timestamps)
             if last_latest > cutoff_ts:
-                print "%s was latest past the cutoff" % nvr
+                if options.debug:
+                    print "%s was latest past the cutoff" % nvr
                 is_latest = True
                 break
         if is_latest:
