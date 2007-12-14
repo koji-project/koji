@@ -1204,6 +1204,8 @@ def handle_prune_signed_copies(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
+    parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
+    parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
     # different ideas/modes
@@ -1214,14 +1216,38 @@ def handle_prune_signed_copies(options, session, args):
     #     (but skip builds that are multiply tagged)
 
     #for now, we're just implementing mode #1
+    #(with the modification that we check to see if the build was latest within
+    #the last N days)
+    if options.debug:
+        options.verbose = True
+    cutoff_ts = time.time() - options.days * 24 * 3600
+    if options.debug:
+        print "Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts))
     if options.verbose:
-        print "Getting all complete builds..."
-    builds = [(b['nvr'], b) for b in session.listBuilds(state=koji.BUILD_STATES['COMPLETE'])]
+        print "Getting builds..."
+    qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
+    if options.package:
+        pkginfo = session.getPackage(options.package)
+        qopts['packageID'] = pkginfo['id']
+    builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
     if options.verbose:
         print "...got %i builds" % len(builds)
     builds.sort()
     total_files = 0
     total_space = 0
+    def _histline(event_id, x):
+        if event_id == x['revoke_event']:
+            ts = x['revoke_ts']
+            fmt = "Untagged %(name)s-%(version)s-%(release)s from %(tag_name)s"
+        elif event_id == x['create_event']:
+            ts = x['create_ts']
+            fmt = "Tagged %(name)s-%(version)s-%(release)s with %(tag_name)s"
+            if x['active']:
+                fmt += " [still active]"
+        else:
+            raise koji.GenericError, "unknown event: (%r, %r)" % (event_id, x)
+        time_str = time.asctime(time.localtime(ts))
+        return "%s: %s" % (time_str, fmt % x)
     for nvr, binfo in builds:
         #listBuilds returns slightly different data than normal
         if not binfo.has_key('id'):
@@ -1230,32 +1256,129 @@ def handle_prune_signed_copies(options, session, args):
             binfo['name'] = binfo['package_name']
         if options.debug:
             print "DEBUG: %s" % nvr
-        #see if this build is latest anywhere
+        #see how recently this build was latest for a tag
         is_latest = False
-        tags = session.listTags(build=binfo['id'])
+        last_latest = None
+        tags = {}
+        for entry in session.tagHistory(build=binfo['id']):
+            #we used tagHistory rather than listTags so we can consider tags
+            #that the build was recently untagged from
+            tags.setdefault(entry['tag_name'], 1)
         if options.debug:
-            print "Tags: %s" % ([t['name'] for t in tags])
-        for taginfo in tags:
-            order = session.listTagged(taginfo['name'], package=binfo['name'])
-            #note that order can be empty if the build was tagged here and
-            #later the package was blocked or otherwise lost from the package list
-            if order:
-                if order[0]['id'] == binfo['id']:
-                    #latest for this tag
+            print "Tags: %s" % tags.keys()
+        for tag_name in tags:
+            #in order to determine how recently this build was latest, we have
+            #to look at the tagging history.
+            hist = session.tagHistory(tag=tag_name, package=binfo['name'])
+            if not hist:
+                #really shouldn't happen
+                raise koji.GenericError, "No history found for %s in %s" % (nvr, tag_name)
+            timeline = []
+            for x in hist:
+                #note that for revoked entries, we're effectively splitting them into
+                #two parts: creation and revocation.
+                timeline.append((x['create_event'], 0, x))
+                if x['revoke_event'] is not None:
+                    timeline.append((x['revoke_event'], 1, x))
+            timeline.sort()
+            #find most recent creation entry for our build and crop there
+            latest_ts = None
+            for i in xrange(len(timeline)-1, -1, -1):
+                #searching in reverse cronological order
+                event_id, revoked, entry = timeline[i]
+                if entry['build_id'] == binfo['id'] and not revoked:
+                    latest_ts = event_id
+                    break
+            if not latest_ts:
+                #really shouldn't happen
+                raise koji.GenericError, "No creation event found for %s in %s" % (nvr, tag_name)
+            if options.debug:
+                print _histline(event_id, entry)
+            #now go through the events since most recent creation entry
+            timeline = timeline[i+1:]
+            if not timeline:
+                is_latest = True
+                if options.debug:
+                    print "%s is latest in tag %s" % (nvr, tag_name)
+                break
+            replaced_ts = None
+            revoke_ts = None
+            others = {}
+            for event_id, revoked, entry in timeline:
+                #So two things can knock this build from the title of latest:
+                #  - it could be untagged (entry revoked)
+                #  - another build could become latest (replaced)
+                #Note however that if the superceding entry is itself revoked, then
+                #our build could become latest again
+                if options.debug:
+                    print _histline(event_id, entry)
+                if entry['build_id'] == binfo['id']:
+                    if not revoked:
+                        #shouldn't happen
+                        raise koji.GenericError, "Duplicate creation event found for %s in %s" \
+                                                    % (nvr, tag_name)
+                    else:
+                        #we've been revoked
+                        revoke_ts = entry['revoke_ts']
+                        break
+                else:
+                    if not revoked:
+                        #this build has become latest
+                        replaced_ts = entry['create_ts']
+                        if entry['active']:
+                            #this entry not revoked yet, so we're done for this tag
+                            break
+                        #since this entry is revoked later, our build might eventually be
+                        #uncovered, so we have to keep looking
+                        others[entry['build_id']] = 1
+                    else:
+                        #other build revoked
+                        #see if our build has resurfaced
+                        if others.has_key(entry['build_id']):
+                            del others[entry['build_id']]
+                        if replaced_ts is not None and not others:
+                            #we've become latest again
+                            #(note: we're not revoked yet because that triggers a break above)
+                            replaced_ts = None
+                            latest_ts = entry['revoke_ts']
+            if last_latest is None:
+                timestamps = []
+            else:
+                timestamps = [last_latest]
+            if revoke_ts is None:
+                if replaced_ts is None:
+                    #turns out we are still latest
                     is_latest = True
                     if options.debug:
-                        print "%s is latest in tag %s" % (nvr, taginfo['name'])
+                        print "%s is latest (again) in tag %s" % (nvr, tag_name)
                     break
                 else:
-                    #not latest for this tag
+                    #replaced (but not revoked)
+                    timestamps.append(replaced_ts)
                     if options.debug:
-                        print "tag %s, newer: %s" % (taginfo['name'], order[0]['nvr'])
-            else:
+                        print "tag %s: %s not latest (replaced %s)" \
+                                % (tag_name, nvr, time.asctime(time.localtime(replaced_ts)))
+            elif replaced_ts is None:
+                #revoked but not replaced
+                timestamps.append(revoke_ts)
                 if options.debug:
-                    print "build not listed for tag %s" % taginfo['name']
+                    print "tag %s: %s not latest (revoked %s)" \
+                            % (tag_name, nvr, time.asctime(time.localtime(revoke_ts)))
+            else:
+                #revoked AND replaced
+                timestamps.append(min(revoke_ts, replaced_ts))
+                if options.debug:
+                    print "tag %s: %s not latest (revoked %s, replaced %s)" \
+                            % (tag_name, nvr, time.asctime(time.localtime(revoke_ts)),
+                                time.asctime(time.localtime(replaced_ts)))
+            last_latest = max(timestamps)
+            if last_latest > cutoff_ts:
+                print "%s was latest past the cutoff" % nvr
+                is_latest = True
+                break
         if is_latest:
             continue
-        #not latest anywhere, so we can remove all signed copies
+        #not latest anywhere since cutoff, so we can remove all signed copies
         rpms = session.listRPMs(buildID=binfo['id'])
         session.multicall = True
         for rpminfo in rpms:
