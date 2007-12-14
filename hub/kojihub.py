@@ -3303,10 +3303,12 @@ def build_map():
     WHERE built.state = %(st_complete)i AND used.state =%(st_complete)i"""
     return _multiRow(q, locals(), fields)
 
-def build_references(build_id):
+def build_references(build_id, limit=None):
     """Returns references to a build
 
     This call is used to determine whether a build can be deleted
+    The optional limit arg is used to limit the size of the buildroot
+    references.
     """
     #references (that matter):
     #   tag_listing
@@ -3333,9 +3335,13 @@ def build_references(build_id):
         JOIN build on rpminfo.build_id = build.id
     WHERE buildroot_listing.rpm_id = %(rpm_id)s
         AND build.state = %(st_complete)i"""
+    if limit is not None:
+        q += "\nLIMIT %(limit)i"
     for (rpm_id,) in rpm_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
+        if limit is not None and len(idx) > limit:
+            break
     ret['rpms'] = idx.values()
 
     # find timestamp of most recent use in a buildroot
@@ -3376,7 +3382,7 @@ def delete_build(build, strict=True, min_ref_age=604800):
     """
     context.session.assertPerm('admin')
     binfo = get_build(build, strict=True)
-    refs = build_references(binfo['id'])
+    refs = build_references(binfo['id'], limit=10)
     if refs['tags']:
         if strict:
             raise koji.GenericError, "Cannot delete build, tagged: %s" % refs['tags']
@@ -4079,8 +4085,8 @@ class RootExports(object):
 
     buildMap = staticmethod(build_map)
     deleteBuild = staticmethod(delete_build)
-    def buildReferences(self, build):
-        return build_references(get_build(build, strict=True)['id'])
+    def buildReferences(self, build, limit=None):
+        return build_references(get_build(build, strict=True)['id'], limit)
 
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')
