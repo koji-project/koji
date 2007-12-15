@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.2
+Version: 1.2.3
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -53,7 +53,7 @@ Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.10
+Requires: createrepo >= 0.4.11
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes
@@ -152,6 +152,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Dec 14 2007 jkeating <jkeating@redhat.com> 1.2.3-1
+- New upstream release with lots of updates, bugfixes, and enhancements.
+
 * Tue Jun  5 2007 Mike Bonnet <mikeb@redhat.com> - 1.2.2-1
 - only allow admins to perform non-scratch builds from srpm
 - bug fixes to the cmd-line and web UIs
