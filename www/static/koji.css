@@ -270,6 +270,10 @@ td.tree {
     font-size: 0.83em;
 }
 
+.tree > ul {
+    padding-bottom: 0.6em;
+}
+
 .hidden {
     display: none;
 }
