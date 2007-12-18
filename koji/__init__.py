@@ -787,6 +787,21 @@ def get_pom_from_jar(filepath):
     archive.close()
     return contents
 
+def pom_to_nvr(pominfo):
+    """
+    Convert the output of parsing a POM into a NVR-compatible format.
+    The pom-to-nvr mapping is as follows:
+    - name: groupId + '-' + artifactId
+    - version: version.replace('-', '_')
+    - release: 1
+    - epoch: None
+    """
+    nvr = {'name': pominfo['groupId'] + '-' + pominfo['artifactId'],
+           'version': pominfo['version'].replace('-', '_'),
+           'release': 1,
+           'epoch': None}
+    return nvr
+
 def hex_string(s):
     """Converts a string to a string of hex digits"""
     return ''.join([ '%02x' % ord(x) for x in s ])
