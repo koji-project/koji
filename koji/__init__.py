@@ -1010,6 +1010,12 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         fo = urllib2.urlopen(url)
+
+        # horrible hack because urlopen() returns a wrapped HTTPConnection
+        # object which doesn't implement fileno()
+        def urlopen_fileno(fileobj):
+            return lambda: fileobj.fp._sock.fp.fileno()
+        fo.fileno = urlopen_fileno(fo)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)
