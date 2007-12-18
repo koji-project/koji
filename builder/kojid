@@ -1809,6 +1809,17 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
 
+        for allowed_scm in options.allowed_scms.split():
+            scm_tuple = allowed_scm.split(':')
+            if len(scm_tuple) == 2:
+                if scm.host == scm_tuple[0] and scm.repository == scm_tuple[1]:
+                    # SCM host:repository is in the allowed list
+                    break
+            else:
+                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
+        else:
+            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (scm.host, scm.repository)
+
         # Setup files and directories for SRPM creation
         scmdir = self.workdir + '/scmroot'
         self.logger.debug(scmdir)
@@ -2551,6 +2562,7 @@ def get_options():
                 'user': None,
                 'password': None,
                 'pkgurl': None,
+                'allowed_scms': '',
                 'cert': '/etc/kojid/client.crt',
                 'ca': '/etc/kojid/clientca.crt',
                 'serverca': '/etc/kojid/serverca.crt'}
