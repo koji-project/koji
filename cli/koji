@@ -1250,6 +1250,7 @@ def handle_prune_signed_copies(options, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
     parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
+    parser.add_option("--trashcan-tag", default="trashcan", help=_("Specify trashcan tag"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
     # different ideas/modes
@@ -1311,6 +1312,10 @@ def handle_prune_signed_copies(options, session, args):
         if options.debug:
             print "Tags: %s" % tags.keys()
         for tag_name in tags:
+            if tag_name == options.trashcan_tag:
+                if options.debug:
+                    print "Ignoring trashcan tag for build %s" % nvr
+                continue
             #in order to determine how recently this build was latest, we have
             #to look at the tagging history.
             hist = session.tagHistory(tag=tag_name, package=binfo['name'])
