@@ -146,7 +146,7 @@ def get_options():
         print "no config file"
         config = None
     else:
-        config.read(options.config_file)
+        config.read(cf)
         #allow config file to update defaults for certain options
         cfgmap = [
             ['keytab', None, 'string'],
@@ -451,7 +451,7 @@ def handle_trash():
                 print "[%i/%i] Skipping package: %s" % (i, N, nvr)
             continue
         try:
-            refs = session.buildReferences(binfo['id'])
+            refs = session.buildReferences(binfo['id'], limit=10)
         except xmlrpclib.Fault:
             print "[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr)
             continue
