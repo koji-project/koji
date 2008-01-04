@@ -458,7 +458,7 @@ class BuildRoot(object):
         session.host.setBuildRootState(self.id,'BUILDING')
         args = ['--no-clean']
         if arch:
-            args.extend(['--arch', arch])
+            args.extend(['--target', arch])
         args.extend(['--rebuild', srpm])
         rv = self.mock(args)
 
