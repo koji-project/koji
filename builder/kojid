@@ -2261,7 +2261,10 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                                 if filetype == 'rpms':
                                     output += " %s\r\n" % '/'.join([options.pkgurl, build['name'], build['version'], build['release'], task['build_arch'], file])
                                 elif filetype == 'logs':
-                                    output += " %s\r\n" % '/'.join([options.pkgurl, build['name'], build['version'], build['release'], 'data', 'logs', task['build_arch'], file])
+                                    if tasks[task_state] != 'closed':
+                                        output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
+                                    else:
+                                        output += " %s\r\n" % '/'.join([options.pkgurl, build['name'], build['version'], build['release'], 'data', 'logs', task['build_arch'], file])
                                 elif task[filetype] == 'misc':
                                     output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
                     output += "\r\n"
