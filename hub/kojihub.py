@@ -3396,9 +3396,10 @@ def delete_build(build, strict=True, min_ref_age=604800):
         if age < min_ref_age:
             if strict:
                 raise koji.GenericError, "Cannot delete build, used in recent buildroot"
-        return False
+            return False
     #otherwise we can delete it
     _delete_build(binfo)
+    return True
 
 def _delete_build(binfo):
     """Delete a build (no reference checks)
