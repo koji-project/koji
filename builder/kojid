@@ -289,7 +289,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id)
 
-    def _new(self, tag, arch, task_id, distribution=None):
+    def _new(self, tag, arch, task_id, distribution=None, repo_id=None):
         """Create a brand new repo"""
         self.task_id = task_id
         self.distribution = distribution
@@ -302,12 +302,26 @@ class BuildRoot(object):
             raise koji.BuildrootError("Could not get config info for tag: %s" % tag)
         self.tag_id = self.config['id']
         self.tag_name = self.config['name']
-        while 1:
-            repo_info = session.getRepo(self.tag_id)
-            if repo_info and repo_info['state'] == koji.REPO_READY:
-                break
-            self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
-            time.sleep(5)
+        if repo_id is None:
+            #use current active repo for tag, waiting if necessary
+            while 1:
+                repo_info = session.getRepo(self.tag_id)
+                if repo_info and repo_info['state'] == koji.REPO_READY:
+                    break
+                self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
+                time.sleep(30)
+        else:
+            repo_info = session.repoInfo(repo_id)
+            if self.config['id'] != repo_info['tag_id']:
+                raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
+                        % (self.config['name'], repo_info['tag_name'])
+            repo_state = koji.REPO_STATES[repo_info['state']]
+            if repo_state == 'EXPIRED':
+                # This should be ok. Expired repos are still intact, just not
+                # up-to-date (which may be the point in some cases).
+                self.logger.info("Requested repo (%i) is no longer current" % repo_id)
+            elif repo_state != 'READY':
+                raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
         self.repoid = repo_info['id']
         self.br_arch = koji.canonArch(arch)
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
@@ -1295,6 +1309,12 @@ class BaseTaskHandler(object):
             fn = "%s/%s" % (options.topdir, relpath)
         return fn
 
+    def subtask(self, method, arglist, **opts):
+        return session.host.subtask(method, arglist, self.id, **opts)
+
+    def subtask2(self, __taskopts, __method, *args, **kwargs):
+        return session.host.subtask2(self.id, __taskopts, __method, *args, **kwargs)
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
@@ -1415,6 +1435,9 @@ class ChainBuildTask(BaseTaskHandler):
     def handler(self, srcs, target, opts=None):
         if opts.get('scratch'):
             raise koji.BuildError, "--scratch is not allowed with chain-builds"
+        target_info = session.getBuildTarget(target)
+        if not target_info:
+            raise koji.GenericError, 'unknown build target: %s' % target
         for build_level in srcs:
             subtasks = []
             build_tasks = []
@@ -1441,7 +1464,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target, None, nvrs],
+                                               arglist=[target_info['build_tag'], None, nvrs],
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
 
@@ -1458,16 +1481,43 @@ class BuildTask(BaseTaskHandler):
         self.opts = opts
         if opts.get('arch_override') and not opts.get('scratch'):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
+        if opts.has_key(repo_id):
+            repo_info = session.repoInfo(opts['repo_id'])
+            repo_state = koji.REPO_STATES[repo_info['state']]
+            if repo_state not in ('READY', 'EXPIRED'):
+                raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
         task_info = session.getTaskInfo(self.id)
         # only allow admins to perform non-scratch builds from srpm
         if not SCM.is_scm_url(src) and not opts.get('scratch') \
                and not 'admin' in session.getUserPerms(task_info['owner']):
             raise koji.BuildError, "only admins may peform non-scratch builds from srpm"
         target_info = session.getBuildTarget(target)
-        if not target_info:
-            raise koji.GenericError, 'unknown build target: %s' % target
-        dest_tag = target_info['dest_tag']
-        build_tag = target_info['build_tag']
+        if target_info:
+            dest_tag = target_info['dest_tag']
+            build_tag = target_info['build_tag']
+            if opts.has_key(repo_id):
+                #make sure specified repo matches target
+                if repo_info['tag_id'] != target_info['build_tag']:
+                    raise koji.BuildError, 'Repo/Target mismatch: %s/%s' \
+                            % (repo_info['tag_name'], target_info['build_tag_name'])
+        else:
+            # if repo_id is specified, we can allow the 'target' arg to simply specify
+            # the destination tag (since the repo specifies the build tag).
+            if not opts.has_key(repo_id):
+                raise koji.GenericError, 'unknown build target: %s' % target
+            build_tag = repo_info['tag_id']
+            if target is None:
+                #ok, call it skip-tag for the buildroot tag
+                self.opts['skip_tag'] = True
+                dest_tag = build_tag
+            else:
+                taginfo = session.getTag(target)
+                if not taginfo:
+                    raise koji.GenericError, 'neither tag nor target: %s' % target
+                dest_tag = taginfo['id']
+        else:
+            repo_info = None
+            #we'll wait for a repo later
         srpm = self.getSRPM(src)
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
@@ -1495,8 +1545,10 @@ class BuildTask(BaseTaskHandler):
             build_id = session.host.initBuild(data)
             session.host.importChangelog(build_id, srpm)
         #(initBuild raises an exception if there is a conflict)
+        if not repo_info:
+            repo_info = self.getRepo(build_tag)  #(subtask)
         try:
-            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist)
+            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
             if opts.get('scratch'):
                 #scratch builds do not get imported
                 session.host.moveBuildToScratch(self.id,srpm,rpms,logs=logs)
@@ -1595,13 +1647,21 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, "No matching arches were found"
         return archdict.keys()
 
-    def runBuilds(self, srpm, build_tag, archlist):
+    def getRepo(self, tag):
+        """Get repo to use for builds"""
+        task_id = session.host.subtask(method='waitrepo',
+                                       arglist=[tag, None, None],
+                                       parent=self.id)
+        repo_info = self.wait(task_id)[task_id]
+        return repo_info
+
+    def runBuilds(self, srpm, build_tag, archlist, repo_id):
         self.logger.debug("Spawning jobs for arches: %r" % (archlist))
         subtasks = {}
         keep_srpm = True
         for arch in archlist:
             subtasks[arch] = session.host.subtask(method='buildArch',
-                                                  arglist=[srpm,build_tag,arch,keep_srpm],
+                                                  arglist=[srpm, build_tag, arch, keep_srpm, {'repo_id': repo_id}],
                                                   label=arch,
                                                   parent=self.id,
                                                   arch=koji.canonArch(arch))
@@ -1671,11 +1731,13 @@ class BuildArchTask(BaseTaskHandler):
         if not header[rpm.RPMTAG_DISTRIBUTION]:
             raise koji.BuildError, "The build system failed to set the distribution tag"
 
-    def handler(self, pkg, root, arch, keep_srpm, opts={}):
+    def handler(self, pkg, root, arch, keep_srpm, opts=None):
         """Build a package in a buildroot for one arch"""
         global options
         
         ret = {}
+        if opts is None:
+            opts = {}
 
         #noarch is funny
         if arch == "noarch":
@@ -1705,7 +1767,12 @@ class BuildArchTask(BaseTaskHandler):
         # if not h[rpm.RPMTAG_DISTRIBUTION]:
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
 
-        broot = BuildRoot(root, br_arch, self.id, distribution=h[rpm.RPMTAG_DISTRIBUTION])
+        rootopts = {
+            'distribution' : h[rpm.RPMTAG_DISTRIBUTION],
+            }
+        if opts.has_key('repo_id'):
+            rootopts['repo_id'] = opts['repo_id']
+        broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
         broot.init()
@@ -2249,40 +2316,64 @@ class WaitrepoTask(BaseTaskHandler):
     PAUSE = 60
     # time in seconds before we fail this task
     TIMEOUT = 7200
-    
+
     def checkForNVR(self, tag, nvrs, repo_creation_event):
+        if nvrs is None:
+            #check not requested
+            return True
         if not isinstance(nvrs, list):
             nvrs = [nvrs]
-        nvr_list = [build['nvr'] for build in session.listTagged(tag, event=repo_creation_event, inherit=True)]
-        if not nvr_list:
-            return False
+        repo_nvrs = dict([(b['nvr'], 1) for b in session.listTagged(tag, event=repo_creation_event, inherit=True)])
         for nvr in nvrs:
-            if not nvr in nvr_list:
+            if not repo_nvrs.has_key(nvr):
                 return False
         return True
-    
-    def handler(self, build_target_info, newer_then=None, nvr=None):
-        start = time.time()
-        build_target = session.getBuildTarget(build_target_info)
-        if not build_target:
-            raise koji.GenericError("Error: Invalid BuildTarget: %s" % build_target_info)
 
+    def checkNewerThan(create_ts, newer_than):
+        if newer_than is None:
+            #check not requested
+            return True
+        return (create_ts > newer_than)
+
+    def handler(self, tag, newer_than=None, nvr=None):
+        """Wait for a repo for the tag, subject to given conditions
+
+        newer_than: create_event timestamp should be newer than this
+        nvr: repo should contain this nvr (which may not exist at first)
+        If both of these are unspecified/None, then the call will wait
+        for the first ready repo.
+
+        Returns the repo info (from getRepo) of the chosen repo
+        """
+        start = time.time()
         repo = None
         last_repo = None
-        if not newer_then and not nvr:
-            newer_then = time.time()
-
+        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
+            newer_than = start
+        if not isinstance(newer_than, (int, long, float)):
+            raise koji.GenericError("Invalid value for newer_than")
+        taginfo = session.getTag(tag)
+        #sanity check
+        targets = session.getBuildTargets(buildTagID=taginfo['id'])
+        if not targets:
+            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
         while True:
-            repo = session.getRepo(build_target['build_tag_name'])
+            repo = session.getRepo(taginfo['id'])
+            #note: getRepo will only return a repo in the "READY" state
             if repo and repo != last_repo:
-                if (not nvr or self.checkForNVR(build_target['dest_tag'], nvr, repo['create_event'])) and \
-                       (not newer_then or repo['create_ts'] > newer_then):
+                if self.checkNewerThan(repo['create_ts'], newer_than) \
+                        and self.checkForNVR(taginfo['id'], nvr, repo['create_event'])
+                    #note that the self.check* calls return True if the check is not
+                    #requested (i.e. value is None). Also note that the more expensive
+                    #check is listed second.
                     break
-            if (time.time() - start) > self.TIMEOUT:
-                raise koji.GenericError("Waited %d seconds and still no repo meeting conditions, timing out" % self.TIMEOUT)
+            if self.TIMEOUT and ((time.time() - start) > self.TIMEOUT):
+                raise koji.GenericError("Timed out waiting for repo after %d seconds" % self.TIMEOUT)
             last_repo = repo
             time.sleep(self.PAUSE)
-        return "Successfully waited %s seconds for a %s repo (%s)" % (int(time.time() - start), build_target['build_tag_name'], repo['id'])
+        self.logger.debug("Successfully waited %s seconds for a '%s' repo (%s)" \
+                    % ((time.time() - start), taginfo['name'], repo['id']))
+        return repo
 
 class SCM(object):
     "SCM abstraction class"
