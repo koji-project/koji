@@ -1684,8 +1684,8 @@ def handle_import_archive(options, session, args):
     parser.add_option("--pom", help=_("POM file to use when auto-creating a Maven build"), metavar="FILE")
     (suboptions, args) = parser.parse_args(args)
 
-    if not len(args) > 1:
-        parser.error(_("You must specify a build ID or N-V-R and the path to the archive to import"))
+    if not len(args) > 0:
+        parser.error(_("You must specify a build ID or N-V-R"))
         assert False
 
     activate_session(session)
@@ -1698,21 +1698,22 @@ def handle_import_archive(options, session, args):
 
     buildinfo = session.getBuild(arg_filter(args[0]))
     if not buildinfo:
-        if not suboptions.create_build:
+        if suboptions.create_build:
+            needs_create = True
+        else:
             print _("Could not find information for build: %s" % args[0])
             return 1
-        else:
-            needs_create = True
 
     maveninfo = None
     if buildinfo:
         maveninfo = session.getMavenBuild(buildinfo)
-    if suboptions.pom and not maveninfo:
-        if not suboptions.create_build:
-            print _("Could not find Maven information for build: %s" % args[0])
-            return 1
-        else:
-            needs_create = True
+    if not maveninfo:
+        if suboptions.pom:
+            if not suboptions.create_build:
+                print _("Could not find Maven information for build: %s" % args[0])
+                return 1
+            else:
+                needs_create = True
 
     if needs_create:
         if not buildinfo:

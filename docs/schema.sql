@@ -627,6 +627,7 @@ CREATE TABLE archivetypes (
 ) WITHOUT OIDS;
 
 insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives, including jars', 'zip jar war rar ear');
+insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management files', 'pom');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?

@@ -3442,12 +3442,7 @@ def new_maven_build(build, pom_path):
     insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
     _dml(insert, locals())
-    maveninfo = {'build_id': build_id,
-                 'group_id': group_id, 'artifact_id': artifact_id,
-                 'version': version}
-    mavendir = koji.pathinfo.mavenbuild(build, maveninfo)
-    _import_archive_file(pom, mavendir)
-    _generate_maven_metadata(maveninfo, mavendir)
+    import_archive(pom, build)
 
 def import_archive(filepath, buildinfo, buildroot_id=None):
     """
@@ -3498,11 +3493,25 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
             koji.ensuredir(mavendir)
             if pom:
                 pomname = '%(artifact_id)s-%(version)s.pom' % maveninfo
-                pompath = '%s/%s' % (mavendir, pomname)
-                if not os.path.exists(pompath):
-                    pomfile = file(pompath, 'w')
-                    pomfile.write(pom)
-                    pomfile.close()
+                tmpdir = koji.pathinfo.tmpdir()
+                koji.ensuredir(tmpdir)
+                pompath = '%s/%s' % (tmpdir, pomname)
+                pomfile = file(pompath, 'w')
+                pomfile.write(pom)
+                pomfile.close()
+                # recursively call import_archive to import the .pom information
+                import_archive(pompath, buildinfo, buildroot_id)
+            _import_archive_file(filepath, mavendir)
+            _generate_maven_metadata(maveninfo, mavendir)
+        elif archivetype['name'] == 'pom':
+            pomfile = file(filepath, 'r')
+            pomdata = pomfile.read()
+            pomfile.close()
+            pom_info = _insert_maven_archive(archive_id, pomdata)
+            maveninfo = {'group_id': pom_info['groupId'],
+                         'artifact_id': pom_info['artifactId'],
+                         'version': pom_info['version']}
+            mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(maveninfo, mavendir)
         else:
@@ -3515,6 +3524,17 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         else:
             raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
 
+def _insert_maven_archive(archive_id, pomdata):
+    """Parse the pomdata and associate it with the given archive"""
+    pom_info = koji.parse_pom(contents=pomdata)
+    group_id = pom_info['groupId']
+    artifact_id = pom_info['artifactId']
+    version = pom_info['version']
+    insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
+        VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
+    _dml(insert, locals())
+    return pom_info
+
 def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     """
     Import information about the file entries in the zip file.
@@ -3525,14 +3545,7 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     pom_info = None
     if pom:
         # Some Maven-generated jars will not contain a pom.xml file (like -source and -javadoc jars)
-        pom_info = koji.parse_pom(contents=pom)
-        group_id = pom_info['groupId']
-        artifact_id = pom_info['artifactId']
-        version = pom_info['version']
-        insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
-        VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-        _dml(insert, locals())
-
+        pom_info = _insert_maven_archive(archive_id, pom)
     import_zip_archive(archive_id, filepath, buildinfo)
 
     return pom, pom_info

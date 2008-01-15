@@ -35,6 +35,7 @@ import md5
 import os
 import os.path
 import pwd
+import random
 import re
 import rpm
 import signal
@@ -802,6 +803,13 @@ def pom_to_nvr(pominfo):
            'epoch': None}
     return nvr
 
+def mavenLabel(maveninfo):
+    """
+    Return a user-friendly label for the given maveninfo.  maveninfo is
+    a dict as returned by kojihub:getMavenBuild().
+    """
+    return '%(group_id)s-%(artifact_id)s-%(version)s' % maveninfo
+
 def hex_string(s):
     """Converts a string to a string of hex digits"""
     return ''.join([ '%02x' % ord(x) for x in s ])
@@ -1113,6 +1121,8 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
 
 
 class PathInfo(object):
+    # ASCII numbers and upper- and lower-case letter for use in tmpdir()
+    ASCII_CHARS = [chr(i) for i in range(48, 58) + range(65, 91) + range(97, 123)]
 
     def __init__(self,topdir=None):
         if topdir is None:
@@ -1162,6 +1172,13 @@ class PathInfo(object):
     def work(self):
         """Return the work dir"""
         return self.topdir + '/work'
+
+    def tmpdir(self):
+        """Return a path to a unique directory under work()/tmp/"""
+        tmp = None
+        while tmp is None or os.path.exists(tmp):
+            tmp = self.work() + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS) for dummy in '123456'])
+        return tmp
 
     def scratch(self):
         """Return the main scratch dir"""
