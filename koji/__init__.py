@@ -803,6 +803,20 @@ def pom_to_nvr(pominfo):
            'epoch': None}
     return nvr
 
+def pom_to_maven_info(pominfo):
+    """
+    Convert the output of parsing a POM into a format compatible
+    with the output of getMavenBuild.
+    The mapping is as follows:
+    - groupId: group_id
+    - artifactId: artifact_id
+    - version: version
+    """
+    maveninfo = {'group_id': pominfo['groupId'],
+                 'artifact_id': pominfo['artifactId'],
+                 'version': pominfo['version']}
+    return maveninfo
+
 def mavenLabel(maveninfo):
     """
     Return a user-friendly label for the given maveninfo.  maveninfo is

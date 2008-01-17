@@ -2781,6 +2781,37 @@ def get_archive_file(archive_id, filename):
     query.values = {'archive_id': archive_id, 'filename': filename}
     return query.executeOne()
 
+def find_maven_archive(maven_info, filename, queryOpts=None):
+    """
+    Find information about the Maven archive associated with the
+    given Maven info and with the given filename.
+
+    maven_info is a dict that must contain 'group_id', 'artifact_id', and
+    'version' fields.
+    """
+    tables = ('archiveinfo',)
+    columns = ('id', 'type_id', 'archiveinfo.build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+    aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+    joins = ('maven_builds ON archiveinfo.build_id = maven_builds.build_id',
+             'LEFT JOIN maven_archives ON archiveinfo.id = maven_archives.archive_id')
+    clauses = ('archiveinfo.filename = %(filename)s',
+               """
+         (maven_builds.group_id = %(group_id)s and
+          maven_builds.artifact_id = %(artifact_id)s and
+          maven_builds.version = %(version)s)
+        OR
+         (maven_archives.group_id = %(group_id)s and
+          maven_archives.artifact_id = %(artifact_id)s and
+          maven_archives.version = %(version)s)
+ """)
+    values = maven_info.copy()
+    values['filename'] = filename
+    query = QueryProcessor(tables=tables, columns=columns, aliases=aliases,
+                           joins=joins, clauses=clauses,
+                           values=values,
+                           opts=queryOpts)
+    return query.executeOne()
+
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
     c = context.cnx.cursor()
@@ -4281,7 +4312,7 @@ class QueryProcessor(object):
         if values:
             self.values = values
         else:
-            self.value = {}
+            self.values = {}
         if opts:
             self.opts = opts
         else:
@@ -6276,6 +6307,37 @@ class BuildRoot(object):
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         self._setList(rpmlist,update=True)
 
+    def getArchiveList(self, queryOpts=None):
+        """Get the list of archives in the buildroot"""
+        tables = ('archiveinfo',)
+        joins = ('buildroot_archives ON archiveinfo.id = buildroot_archives.archive_id',)
+        clauses = ('buildroot_archives.buildroot_id = %(id)i',)
+        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'md5sum')
+        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+        query = QueryProcessor(tables=tables, columns=columns,
+                               joins=joins, clauses=clauses,
+                               values=self.data,
+                               opts=queryOpts)
+        return query.execute()
+
+    def updateArchiveList(self, archives):
+        """Update the list of archives in a buildroot"""
+        if self.data['state'] != koji.BR_STATES['BUILDING']:
+            raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
+        current = dict([(r['id'], 1) for r in self.getArchiveList()])
+        archive_ids = []
+        for archive in archives:
+            if current.has_key(archive['id']):
+                continue
+            else:
+                archive_ids.append(archive['id'])
+        insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id)
+        VALUES
+        (%(broot_id)i, %(archive_id)i)"""
+        broot_id = self.id
+        archive_ids.sort()
+        for archive_id in archive_ids:
+            _dml(insert, locals())
 
 class Host(object):
 
@@ -6774,6 +6836,44 @@ class HostExports(object):
         if task_id is not None:
             br.assertTask(task_id)
         return br.updateList(rpmlist)
+
+    def updateMavenBuildRootList(self, brootid, mavenlist, ignore, task_id=None):
+        host = Host()
+        host.verify()
+        if task_id is not None:
+            Task(task_id).assertHost(host.id)
+        br = BuildRoot(brootid)
+        br.assertHost(host.id)
+        if task_id is not None:
+            br.assertTask(task_id)
+        archives = []
+        for entry in mavenlist:
+            pom = entry['pom']
+            files = entry['files']
+            maven_info = {'group_id': pom['groupId'],
+                          'artifact_id': pom['artifactId'],
+                          'version': pom['version']}
+            for filename in files:
+                archiveinfo = find_maven_archive(maven_info, filename)
+                if archiveinfo:
+                    archives.append(archiveinfo)
+                else:
+                    # check if it's in the ignore list
+                    for ignore_entry in ignore:
+                        ignore_pom = ignore_entry['pom']
+                        ignore_files = ignore_entry['files']
+                        if pom['groupId'] == ignore_pom['groupId'] and \
+                                pom['artifactId'] == ignore_pom['artifactId'] and \
+                                pom['version'] == ignore_pom['version'] and \
+                                filename in ignore_files:
+                            # artifact is in the ignore list, don't bail out
+                            break
+                    else:
+                        # artifact was not in the ignore list, raise an error
+                        raise koji.BuildrootError, 'unknown file in buildroot: %s; groupId: %s, artifactId: %s, version: %s' % \
+                            (filename, pom['groupId'], pom['artifactId'], pom['version'])
+
+        return br.updateArchiveList(archives)
 
     def repoInit(self, tag, with_src=False):
         """Initialize a new repo for tag"""
