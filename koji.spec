@@ -53,7 +53,12 @@ Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.11
+%if 0%{?rhel} >= 5
+  Requires: createrepo >= 0.4.11-2
+%endif
+%if 0%{?fedora} >= 9
+  Requires: createrepo >= 0.9.2
+%endif
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes

@@ -2209,7 +2209,7 @@ class CreaterepoTask(BaseTaskHandler):
         koji.ensuredir(outdir)
         pkglist = os.path.join(repodir, 'pkglist')
         pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
+        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', '--skip-stat', options.pkgurl]
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
