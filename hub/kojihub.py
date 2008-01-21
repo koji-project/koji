@@ -1682,7 +1682,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     tag_id = tinfo['id']
     repo_arches = {}
     if tinfo['arches']:
-        for arch in tinfo['arches'].split()
+        for arch in tinfo['arches'].split():
             repo_arches[koji.canonArch(arch)] = 1
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     event_id = _singleValue("SELECT get_event()")
