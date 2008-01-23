@@ -975,9 +975,12 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
     maveninfo = server.getMavenArchive(archive['id'])
     builtInRoot = None
     if archive['buildroot_id'] != None:
-        builtInRoot = server.getBuildroot(rpm['buildroot_id'])
+        builtInRoot = server.getBuildroot(archive['buildroot_id'])
     files = kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
                                         start=fileStart, dataName='files', prefix='file', order=fileOrder)
+    buildroots = server.listBuildroots(archiveID=archive['id'])
+    buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
+
 
     values['archiveID'] = archive['id']
     values['archive'] = archive
@@ -985,9 +988,7 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
     values['build'] = build
     values['maveninfo'] = maveninfo
     values['builtInRoot'] = builtInRoot
-
-    # XXX FIXME
-    values['buildroots'] = []
+    values['buildroots'] = buildroots
 
     return _genHTML(req, 'archiveinfo.chtml')
 
@@ -1172,6 +1173,32 @@ def rpmlist(req, buildrootID, type, start=None, order='nvr'):
     values['order'] = order
 
     return _genHTML(req, 'rpmlist.chtml')
+
+def archivelist(req, buildrootID, type, start=None, order='filename'):
+    values = _initValues(req, 'Archive List', 'hosts')
+    server = _getServer(req)
+
+    buildrootID = int(buildrootID)
+    buildroot = server.getBuildroot(buildrootID)
+    if buildroot == None:
+        raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
+
+    archives = None
+    if type == 'component':
+        rpms = kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
+                                           start=start, dataName='archives', prefix='archive', order=order)
+    elif type == 'built':
+        rpms = kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
+                                           start=start, dataName='archives', prefix='archive', order=order)
+    else:
+        raise koji.GenericError, 'invalid type: %s' % type
+
+    values['buildroot'] = buildroot
+    values['type'] = type
+
+    values['order'] = order
+
+    return _genHTML(req, 'archivelist.chtml')
 
 def buildtargets(req, start=None, order='name'):
     values = _initValues(req, 'Build Targets', 'buildtargets')
