@@ -8,13 +8,13 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.4
+Version: 1.2.5
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
 Group: Applications/System
 URL: http://fedorahosted.org/koji
-Source: https://fedorahosted.org/koji/attachment/wiki/KojiRelease/%{name}-%{PACKAGE_VERSION}.tar.bz2
+Source: https://fedorahosted.org/koji/attachment/wiki/%{version}/%{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
@@ -157,6 +157,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Jan 25 2008 jkeating <jkeating@redhat.com> 1.2.5-1
+- Put createrepo arguments in correct order
+
 * Thu Jan 24 2008 jkeating <jkeating@redhat.com> 1.2.4-1
 - Use the --skip-stat flag in createrepo calls.
 - canonicalize tag arches before using them (dgilmore)
