@@ -2209,7 +2209,7 @@ class CreaterepoTask(BaseTaskHandler):
         koji.ensuredir(outdir)
         pkglist = os.path.join(repodir, 'pkglist')
         pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', '--skip-stat', options.pkgurl]
+        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
@@ -2222,6 +2222,7 @@ class CreaterepoTask(BaseTaskHandler):
                 koji.ensuredir(datadir)
                 os.system('cp -a %s/* %s' % (olddatadir, datadir))
                 cmd.append('--update')
+                cmd.append('--skip-stat')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
