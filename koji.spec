@@ -13,8 +13,8 @@ Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
 Group: Applications/System
-URL: http://hosted.fedoraproject.org/projects/koji
-Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
+URL: http://fedorahosted.org/koji
+Source: https://fedorahosted.org/koji/attachment/wiki/%{version}/%{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
@@ -54,10 +54,10 @@ Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
 %if 0%{?rhel} >= 5
-  Requires: createrepo >= 0.4.11-2
+Requires: createrepo >= 0.4.11-2
 %endif
 %if 0%{?fedora} >= 9
-  Requires: createrepo >= 0.9.2
+Requires: createrepo >= 0.9.2
 %endif
 
 %description builder
