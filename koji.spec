@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.3
+Version: 1.2.4
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
@@ -157,6 +157,16 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Thu Jan 24 2008 jkeating <jkeating@redhat.com> 1.2.4-1
+- Use the --skip-stat flag in createrepo calls.
+- canonicalize tag arches before using them (dgilmore)
+- fix return value of delete_build
+- Revert to getfile urls if the task is not successful in emails
+- Pass --target instead of --arch to mock.
+- ignore trashcan tag in prune-signed-copies command
+- add the "allowed_scms" kojid parameter
+- allow filtering builds by the person who built them
+
 * Fri Dec 14 2007 jkeating <jkeating@redhat.com> 1.2.3-1
 - New upstream release with lots of updates, bugfixes, and enhancements.
 
