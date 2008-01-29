@@ -8,13 +8,13 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.3
+Version: 1.2.5
 Release: %{release}%{?dist}
 License: LGPL
 Summary: Build system tools
 Group: Applications/System
-URL: http://hosted.fedoraproject.org/projects/koji
-Source: %{name}-%{PACKAGE_VERSION}.tar.bz2
+URL: http://fedorahosted.org/koji
+Source: https://fedorahosted.org/koji/attachment/wiki/KojiRelease/%{name}-%{PACKAGE_VERSION}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
@@ -53,7 +53,12 @@ Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
-Requires: createrepo >= 0.4.11
+%if 0%{?rhel} >= 5
+Requires: createrepo >= 0.4.11-2
+%endif
+%if 0%{?fedora} >= 9
+Requires: createrepo >= 0.9.2
+%endif
 
 %description builder
 koji-builder is the daemon that runs on build machines and executes
@@ -152,6 +157,19 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Jan 25 2008 jkeating <jkeating@redhat.com> 1.2.5-1
+- Put createrepo arguments in correct order
+
+* Thu Jan 24 2008 jkeating <jkeating@redhat.com> 1.2.4-1
+- Use the --skip-stat flag in createrepo calls.
+- canonicalize tag arches before using them (dgilmore)
+- fix return value of delete_build
+- Revert to getfile urls if the task is not successful in emails
+- Pass --target instead of --arch to mock.
+- ignore trashcan tag in prune-signed-copies command
+- add the "allowed_scms" kojid parameter
+- allow filtering builds by the person who built them
+
 * Fri Dec 14 2007 jkeating <jkeating@redhat.com> 1.2.3-1
 - New upstream release with lots of updates, bugfixes, and enhancements.
 
