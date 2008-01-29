@@ -2809,21 +2809,23 @@ def get_archive_file(archive_id, filename):
     query.values = {'archive_id': archive_id, 'filename': filename}
     return query.executeOne()
 
-def find_maven_archive(maven_info, filename, queryOpts=None):
+def find_maven_archives(maven_info, filename=None, queryOpts=None):
     """
     Find information about the Maven archive associated with the
-    given Maven info and with the given filename.
+    given Maven info.
+
+    If filename is not none, also filter by filename.
 
     maven_info is a dict that must contain 'group_id', 'artifact_id', and
     'version' fields.
     """
+    values = maven_info.copy()
     tables = ('archiveinfo',)
     columns = ('id', 'type_id', 'archiveinfo.build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
     aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
     joins = ('maven_builds ON archiveinfo.build_id = maven_builds.build_id',
              'LEFT JOIN maven_archives ON archiveinfo.id = maven_archives.archive_id')
-    clauses = ('archiveinfo.filename = %(filename)s',
-               """
+    clauses = ("""
          (maven_builds.group_id = %(group_id)s and
           maven_builds.artifact_id = %(artifact_id)s and
           maven_builds.version = %(version)s)
@@ -2831,9 +2833,10 @@ def find_maven_archive(maven_info, filename, queryOpts=None):
          (maven_archives.group_id = %(group_id)s and
           maven_archives.artifact_id = %(artifact_id)s and
           maven_archives.version = %(version)s)
- """)
-    values = maven_info.copy()
-    values['filename'] = filename
+ """,)
+    if filename:
+        clauses += ('archiveinfo.filename = %(filename)s',)
+        values['filename'] = filename
     query = QueryProcessor(tables=tables, columns=columns, aliases=aliases,
                            joins=joins, clauses=clauses,
                            values=values,
@@ -3453,6 +3456,11 @@ def import_build_in_place(build):
     _dml(update,locals())
     return build_id
 
+def _get_archive_type_by_name(name, strict=True):
+    select = """SELECT id, name, description, extensions FROM archivetypes
+    WHERE name = %(name)s"""
+    return _singleRow(select, locals(), ('id', 'name', 'description', 'extensions'), strict)
+
 def _get_archive_type_by_id(type_id, strict=False):
     select = """SELECT id, name, description, extensions FROM archivetypes
     WHERE id = %(type_id)i"""
@@ -3488,7 +3496,7 @@ def get_archive_type(filename_or_type_id, strict=False):
     else:
         return results[0]
 
-def new_maven_build(build, pom_path):
+def new_maven_build(build, pom):
     """
     Add Maven metadata to an existing build.
     maven_info must contain the 'group_id' and
@@ -3496,7 +3504,6 @@ def new_maven_build(build, pom_path):
 
     Note: the artifact_id must match the name of the build
     """
-    pom = '%s/%s' % (koji.pathinfo.work(), pom_path)
     pom_info = koji.parse_pom(pom)
     group_id = pom_info['groupId']
     artifact_id = pom_info['artifactId']
@@ -3549,31 +3556,19 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         if archivetype['name'] == 'zip':
             pom, pom_info = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
             if pom_info:
-                maveninfo = {'group_id': pom_info['groupId'],
-                             'artifact_id': pom_info['artifactId'],
-                             'version': pom_info['version']}
+                maveninfo = koji.pom_to_maven_info(pom_info)
+                other_archives = find_maven_archives(maveninfo)
+                if not other_archives:
+                    # the pom file must be imported before any zips/jars can
+                    raise koji.BuildError, 'unknown Maven build: %s' % maveninfo
             mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
             koji.ensuredir(mavendir)
-            if pom:
-                pomname = '%(artifact_id)s-%(version)s.pom' % maveninfo
-                tmpdir = koji.pathinfo.tmpdir()
-                koji.ensuredir(tmpdir)
-                pompath = '%s/%s' % (tmpdir, pomname)
-                pomfile = file(pompath, 'w')
-                pomfile.write(pom)
-                pomfile.close()
-                # recursively call import_archive to import the .pom information
-                import_archive(pompath, buildinfo, buildroot_id)
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(maveninfo, mavendir)
         elif archivetype['name'] == 'pom':
-            pomfile = file(filepath, 'r')
-            pomdata = pomfile.read()
-            pomfile.close()
-            pom_info = _insert_maven_archive(archive_id, pomdata)
-            maveninfo = {'group_id': pom_info['groupId'],
-                         'artifact_id': pom_info['artifactId'],
-                         'version': pom_info['version']}
+            pom_info = koji.parse_pom(filepath)
+            maveninfo = koji.pom_to_maven_info(pom_info)
+            _insert_maven_archive(archive_id, maveninfo)
             mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(maveninfo, mavendir)
@@ -3587,16 +3582,13 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         else:
             raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
 
-def _insert_maven_archive(archive_id, pomdata):
-    """Parse the pomdata and associate it with the given archive"""
-    pom_info = koji.parse_pom(contents=pomdata)
-    group_id = pom_info['groupId']
-    artifact_id = pom_info['artifactId']
-    version = pom_info['version']
+def _insert_maven_archive(archive_id, mavendata):
+    """Associate the Maven data with the given archive"""
+    mavendata = mavendata.copy()
+    mavendata['archive_id'] = archive_id
     insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
         VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-    _dml(insert, locals())
-    return pom_info
+    _dml(insert, mavendata)
 
 def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     """
@@ -3608,7 +3600,9 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
     pom_info = None
     if pom:
         # Some Maven-generated jars will not contain a pom.xml file (like -source and -javadoc jars)
-        pom_info = _insert_maven_archive(archive_id, pom)
+        pom_info = koji.parse_pom(contents=pom)
+        maveninfo = koji.pom_to_maven_info(pom_info)
+    _insert_maven_archive(archive_id, maveninfo)
     import_zip_archive(archive_id, filepath, buildinfo)
 
     return pom, pom_info
@@ -4707,22 +4701,30 @@ class RootExports(object):
         is a map containing the values of the st_* attributes returned by
         os.stat()."""
         taskDir = '%s/tasks/%i' % (koji.pathinfo.work(), taskID)
-        if os.path.isdir(taskDir):
-            output = os.listdir(taskDir)
-            if stat:
-                ret = {}
-                for filename in output:
-                    stat_info = os.stat(os.path.join(taskDir, filename))
+
+        if stat:
+            result = {}
+        else:
+            result = []
+
+        if not os.path.isdir(taskDir):
+            return result
+
+        for path, dirs, files in os.walk(taskDir):
+            relpath = path[len(taskDir) + 1:]
+            for filename in files:
+                relfilename = os.path.join(relpath, filename)
+                if stat:
+                    stat_info = os.stat(os.path.join(path, filename))
                     stat_map = {}
                     for attr in dir(stat_info):
                         if attr.startswith('st_'):
                             stat_map[attr] = getattr(stat_info, attr)
-                    ret[filename] = stat_map
-                return ret
-            else:
-                return output
-        else:
-            return []
+                    result[relfilename] = stat_map
+                else:
+                    result.append(relfilename)
+
+        return result
 
     createTag = staticmethod(create_tag)
     editTag = staticmethod(old_edit_tag)
@@ -4774,7 +4776,8 @@ class RootExports(object):
             build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
                                              build_info['release'], build_info['epoch'])
             build = get_build(build_id, strict=True)
-        new_maven_build(build, pom_path)
+        pom = '%s/%s' % (koji.pathinfo.work(), pom_path)
+        new_maven_build(build, pom)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.
@@ -6750,6 +6753,74 @@ class HostExports(object):
         build_notification(task_id, build_id)
         return result
 
+    def completeMavenBuild(self, task_id, uploadpath, buildroot_id):
+        """Create new Maven build, import the generated archives, and complete the build."""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+
+        outputdir = os.path.join(koji.pathinfo.work(), uploadpath)
+        pom_extensions = ['.' + ext for ext in _get_archive_type_by_name('pom')['extensions'].split()]
+        jar_extensions = ['.' + ext for ext in _get_archive_type_by_name('zip')['extensions'].split()]
+        logs = []
+        poms = []
+        jars = []
+
+        for path, dirs, files in os.walk(outputdir):
+            for filename in files:
+                root, ext = os.path.splitext(filename)
+                if ext == '.log':
+                    logs.append(os.path.join(path, filename))
+                elif ext in pom_extensions:
+                    poms.append(os.path.join(path, filename))
+                elif ext in jar_extensions:
+                    jars.append(os.path.join(path, filename))
+                elif ext == '.md5' or \
+                        ext == '.sha1' or \
+                        filename == 'maven-metadata.xml':
+                    # metadata, we'll recreate that ourselves
+                    pass
+                else:
+                    raise koji.GenericError, 'unknown file type: %s' % filename
+
+        if not poms:
+            raise koji.GenericError, 'no .pom files found'
+
+        # the first pom is the main pom for this build
+        pom_info = koji.parse_pom(poms[0])
+        build_info = koji.pom_to_nvr(pom_info)
+        maven_info = koji.pom_to_maven_info(pom_info)
+
+        build_info['task_id'] = task_id
+        build_info['owner'] = task.getOwner()
+        build_info['state'] = koji.BUILD_STATES['BUILDING']
+        build_info['completion_time'] = None
+        build_id = new_build(build_info)
+        build_info['id'] = build_id
+        new_maven_build(build_info, poms[0])
+
+        # import the poms
+        for pom_path in poms[1:]:
+            import_archive(pom_path, build_info, buildroot_id)
+        # import the jars
+        for jar_path in jars:
+            import_archive(jar_path, build_info, buildroot_id)
+        # move the logs to their final destination
+        for log_path in logs:
+            import_build_log(log_path, build_info, subdir='maven2')
+
+        # update build state
+        st_complete = koji.BUILD_STATES['COMPLETE']
+        update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
+        WHERE id=%(build_id)i"""
+        _dml(update,locals())
+
+        # send email
+        build_notification(task_id, build_id)
+
+        return build_id
+
     def failBuild(self, task_id, build_id):
         """Mark the build as failed.  If the current state is not
         'BUILDING', or the current competion_time is not null, a
@@ -6886,7 +6957,7 @@ class HostExports(object):
                           'artifact_id': pom['artifactId'],
                           'version': pom['version']}
             for filename in files:
-                archiveinfo = find_maven_archive(maven_info, filename)
+                archiveinfo = find_maven_archives(maven_info, filename)
                 if archiveinfo:
                     archives.append(archiveinfo)
                 else:
