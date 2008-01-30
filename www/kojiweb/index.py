@@ -456,6 +456,10 @@ def taskinfo(req, taskID):
     elif task['method'] == 'dependantTask':
         deps = [server.getTaskInfo(depID, request=True) for depID in params[0]]
         values['deps'] = deps
+    elif task['method'] == 'jarWrapperRPM':
+        if params[2]:
+            wrapTask = server.getTaskInfo(params[2]['id'], request=True)
+            values['wrapTask'] = wrapTask
     
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:

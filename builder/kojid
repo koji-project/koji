@@ -1378,12 +1378,15 @@ class BaseTaskHandler(object):
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             session.uploadWrapper(filename, uploadPath, remoteName)
 
-    def uploadTree(self, dirpath):
+    def uploadTree(self, dirpath, flatten=False):
         """Upload the directory tree at dirpath to the task directory on the
         hub, preserving the directory structure"""
         dirpath = dirpath.rstrip('/')
         for path, dirs, files in os.walk(dirpath):
-            relpath = path[len(dirpath) + 1:]
+            if flatten:
+                relpath = None
+            else:
+                relpath = path[len(dirpath) + 1:]
             for filename in files:
                 self.uploadFile(os.path.join(path, filename), relpath)
 
@@ -1942,14 +1945,147 @@ class MavenBuildTask(BaseTaskHandler):
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile)
         self.uploadTree(outputdir)
         if not self.opts.get('scratch'):
+            # XXX Don't actually complete this until the wrapper rpm step is done
             build_id = session.host.completeMavenBuild(self.id, uploadpath, buildroot.id)
-            if not self.opts.get('skip_tag'):
-                task_id = session.host.subtask(method='tagBuild',
+
+        spec_url = self.opts.get('specfile')
+        if spec_url:
+            if self.opts.get('scratch'):
+                task = session.getTaskInfo(self.id)
+                # if it's a scratch build, grab the artifacts from the task output
+                arglist = [spec_url, None, task]
+            else:
+                # if it's a real build, grab the artifacts from th build output
+                build = session.getBuild(build_id)
+                arglist = [spec_url, build, None]
+
+            rpm_task_id = session.host.subtask(method='jarWrapperRPM',
+                                               arglist=arglist,
+                                               label='rpm',
+                                               parent=self.id,
+                                               arch='noarch')
+            self.wait(rpm_task_id)
+
+            if not self.opts.get('scratch'):
+                srpm = None
+                rpms = []
+                logs = []
+                for filename in session.listTaskOutput(rpm_task_id):
+                    if filename.endswith('.src.rpm'):
+                        if srpm:
+                            raise koji.BuildError, 'duplicate srpms found: %s and %s' % (srpm, filename)
+                        else:
+                            srpm = filename
+                    elif filename.endswith('.rpm'):
+                        rpms.append(filename)
+                    elif filename.endswith('.log'):
+                        logs.append(filename)
+                    else:
+                        raise koji.BuildError, 'unknown file found: %s' % filename
+
+                session.host.importWrapperRPMs(self.id, rpm_task_id, build, srpm, rpms, logs)
+
+        if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
+            tag_task_id = session.host.subtask(method='tagBuild',
                                                arglist=[dest_tag, build_id, False, None, True],
                                                label='tag',
                                                parent=self.id,
                                                arch='noarch')
-                self.wait(task_id)
+            self.wait(tag_task_id)
+
+class JarWrapperRPMTask(BaseTaskHandler):
+
+    Methods = ['jarWrapperRPM']
+
+    def handler(self, spec_url, build=None, task=None):
+        if build:
+            jarinfos = [archive for archive in session.listArchives(buildID=build['id'], type='maven') if \
+                            archive['filename'].endswith('.jar')]
+            jars = []
+            for jarinfo in jarinfos:
+                jars.append(os.path.join(koji.pathinfo.mavenbuild(build, jarinfo), jarinfo['filename']))
+        elif task:
+            jarnames = [filename for filename in session.listTaskOutput(task['id']) if \
+                            filename.endswith('.jar')]
+            jars = []
+            for jarname in jarnames:
+                jars.append(os.path.join(koji.pathinfo.work(), 'tasks', str(task['id']), jarname))
+        else:
+            raise koji.BuildError, 'either a build or a task must be specified'
+
+        scm = SCM(spec_url)
+
+        for allowed_scm in options.allowed_scms.split():
+            scm_tuple = allowed_scm.split(':')
+            if len(scm_tuple) == 2:
+                if scm.host == scm_tuple[0] and scm.repository == scm_tuple[1]:
+                    # SCM host:repository is in the allowed list
+                    break
+            else:
+                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
+        else:
+            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (scm.host, scm.repository)
+
+        logfile = os.path.join(self.workdir, 'checkout.log')
+        scmdir = os.path.join(self.workdir, 'scm')
+        koji.ensuredir(scmdir)
+        specdir = scm.checkout(scmdir, self.getUploadDir(), logfile, use_common=False)
+
+        specfile = None
+        for path, dir, files in os.walk(specdir):
+            files.sort()
+            for filename in files:
+                if filename.endswith('.spec'):
+                    specfile = os.path.join(path, filename)
+                    break
+        if not specfile:
+            raise koji.BuildError, 'no spec file found at URL: %s' % spec_url
+
+        jardir = os.path.join(self.workdir, 'jars')
+        koji.ensuredir(jardir)
+
+        sourcelist = ''
+        installlist = ''
+        filelist = ''
+        i = 0
+        for jarpath in jars:
+            shutil.copy(jarpath, jardir)
+            jarname = os.path.basename(jarpath)
+            # sourcelist += jarname += '\n'
+            sourcelist += 'Source%i: %s\n' % (i, jarname)
+            installlist += '/usr/bin/install -m 644 %%{SOURCE%i} $RPM_BUILD_ROOT/usr/share/java\n' % i
+            filelist += '/usr/share/java/' + jarname + '\n'
+            i += 1
+        values = {'sourcelist': sourcelist,
+                  'installlist': installlist,
+                  'filelist': filelist}
+        values.update((build or task))
+
+        specfd = file(specfile, 'r+')
+        contents = specfd.read()
+        contents = contents % values
+        specfd.seek(0)
+        specfd.write(contents)
+        specfd.close()
+
+        builddir = os.path.join(self.workdir, 'build')
+        koji.ensuredir(builddir)
+        outputdir = os.path.join(self.workdir, 'output')
+        koji.ensuredir(outputdir)
+
+        cmd = ['/usr/bin/rpmbuild', '--define', '_topdir %s' % self.workdir, '--define', '_builddir %s' % builddir,
+               '--define', '_rpmdir %s' % outputdir, '--define', '_sourcedir %s' % jardir, '--define',
+               '_specdir %s' % os.path.dirname(specfile), '--define', '_srcrpmdir %s' % outputdir,
+               '-ba', '--nodeps', specfile]
+
+        logfile = os.path.join(self.workdir, 'rpmbuild.log')
+
+        if log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=1, cwd=self.workdir):
+            raise koji.BuildError, 'error running rpmbuild'
+
+        self.uploadTree(outputdir, flatten=True)
+
+        return [filename for filename in os.listdir(outputdir) if filename.endswith('.rpm')]
 
 class TagBuildTask(BaseTaskHandler):
 
