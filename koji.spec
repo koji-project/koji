@@ -53,6 +53,7 @@ Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: rpm-build
 Requires: redhat-rpm-config
+Requires: python-cheetah
 %if 0%{?rhel} >= 5
 Requires: createrepo >= 0.4.11-2
 %endif

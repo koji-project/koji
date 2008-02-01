@@ -50,6 +50,7 @@ import traceback
 import urllib2
 import urlparse
 import xmlrpclib
+import Cheetah.Template
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
 from optparse import OptionParser
@@ -2031,40 +2032,30 @@ class JarWrapperRPMTask(BaseTaskHandler):
         koji.ensuredir(scmdir)
         specdir = scm.checkout(scmdir, self.getUploadDir(), logfile, use_common=False)
 
-        specfile = None
+        spec_template = None
         for path, dir, files in os.walk(specdir):
             files.sort()
             for filename in files:
-                if filename.endswith('.spec'):
-                    specfile = os.path.join(path, filename)
+                if filename.endswith('.spec.tmpl'):
+                    spec_template = os.path.join(path, filename)
                     break
-        if not specfile:
-            raise koji.BuildError, 'no spec file found at URL: %s' % spec_url
+        if not spec_template:
+            raise koji.BuildError, 'no spec file template found at URL: %s' % spec_url
 
         jardir = os.path.join(self.workdir, 'jars')
         koji.ensuredir(jardir)
 
-        sourcelist = ''
-        installlist = ''
-        filelist = ''
-        i = 0
         for jarpath in jars:
             shutil.copy(jarpath, jardir)
-            jarname = os.path.basename(jarpath)
-            # sourcelist += jarname += '\n'
-            sourcelist += 'Source%i: %s\n' % (i, jarname)
-            installlist += '/usr/bin/install -m 644 %%{SOURCE%i} $RPM_BUILD_ROOT/usr/share/java\n' % i
-            filelist += '/usr/share/java/' + jarname + '\n'
-            i += 1
-        values = {'sourcelist': sourcelist,
-                  'installlist': installlist,
-                  'filelist': filelist}
+
+        values = {'jars': [os.path.basename(jarpath) for jarpath in jars]}
         values.update((build or task))
 
-        specfd = file(specfile, 'r+')
-        contents = specfd.read()
-        contents = contents % values
-        specfd.seek(0)
+        contents = Cheetah.Template.Template(file=spec_template, searchList=[values], 
+                                             filter='EncodeUnicode').respond()
+
+        specfile = spec_template[:-5]
+        specfd = file(specfile, 'w')
         specfd.write(contents)
         specfd.close()
 
