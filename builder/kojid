@@ -1880,12 +1880,11 @@ class BuildArchTask(BaseTaskHandler):
 
         return ret
 
-class MavenBuildTask(BaseTaskHandler):
+class MavenTask(BaseTaskHandler):
 
-    Methods = ['mavenBuild']
+    Methods = ['maven']
 
-    def weight(self):
-        return 1.5
+    _taskWeight = 0.2
 
     def handler(self, url, target, opts=None):
         """Use Maven to build the source from the given url"""
@@ -1895,16 +1894,82 @@ class MavenBuildTask(BaseTaskHandler):
         target_info = session.getBuildTarget(target)
         if not target_info:
             raise koji.BuildError, 'unknown build target: %s' % target
-        dest_tag = target_info['dest_tag']
-        build_tag = target_info['build_tag']
+        dest_tag = session.getTag(target_info['dest_tag'], strict=True)
+        build_tag = session.getTag(target_info['build_tag'], strict=True)
 
+        build_task_id = session.host.subtask(method='buildMaven',
+                                             arglist=[url, build_tag],
+                                             label='build',
+                                             parent=self.id,
+                                             arch='noarch')
+        buildroot_id = self.wait(build_task_id)
+
+        if not self.opts.get('scratch'):
+            # XXX Don't actually complete this until the wrapper rpm step is done
+            build_id = session.host.importMavenBuild(self.id, build_task_id, buildroot_id)
+
+        spec_url = self.opts.get('specfile')
+        if spec_url:
+            if self.opts.get('scratch'):
+                task = session.getTaskInfo(self.id)
+                # if it's a scratch build, grab the artifacts from the task output
+                arglist = [spec_url, None, task]
+            else:
+                # if it's a real build, grab the artifacts from the build output
+                build = session.getBuild(build_id)
+                arglist = [spec_url, build, None]
+
+            rpm_task_id = session.host.subtask(method='wrapperRPM',
+                                               arglist=arglist,
+                                               label='rpm',
+                                               parent=self.id,
+                                               arch='noarch')
+            self.wait(rpm_task_id)
+
+            if not self.opts.get('scratch'):
+                srpm = None
+                rpms = []
+                logs = []
+                for filename in session.listTaskOutput(rpm_task_id):
+                    if filename.endswith('.src.rpm'):
+                        if srpm:
+                            raise koji.BuildError, 'duplicate srpms found: %s and %s' % (srpm, filename)
+                        else:
+                            srpm = filename
+                    elif filename.endswith('.rpm'):
+                        rpms.append(filename)
+                    elif filename.endswith('.log'):
+                        logs.append(filename)
+                    else:
+                        raise koji.BuildError, 'unknown file found: %s' % filename
+
+                session.host.importWrapperRPMs(self.id, rpm_task_id, build, srpm, rpms, logs)
+
+        if not self.opts.get('scratch'):
+            session.host.completeMavenBuild(self.id, build_id)
+
+            if not self.opts.get('skip_tag'):
+                tag_task_id = session.host.subtask(method='tagBuild',
+                                                   arglist=[dest_tag['id'], build_id, False, None, True],
+                                                   label='tag',
+                                                   parent=self.id,
+                                                   arch='noarch')
+                self.wait(tag_task_id)
+
+class BuildMavenTask(BaseTaskHandler):
+
+    Methods = ['buildMaven']
+
+    _taskWeight = 1.5
+
+    def handler(self, url, build_tag):
         scm = SCM(url)
 
         host = session.host.getHost()
         if not host['arches']:
             raise koji.BuildError, 'No arch list for host: %s' % host['name']
         br_arch = host['arches'].split()[0]
-        buildroot = BuildRoot(build_tag, br_arch, self.id)
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id)
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
@@ -1945,61 +2010,14 @@ class MavenBuildTask(BaseTaskHandler):
 
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile)
         self.uploadTree(outputdir)
-        if not self.opts.get('scratch'):
-            # XXX Don't actually complete this until the wrapper rpm step is done
-            build_id = session.host.importMavenBuild(self.id, uploadpath, buildroot.id)
 
-        spec_url = self.opts.get('specfile')
-        if spec_url:
-            if self.opts.get('scratch'):
-                task = session.getTaskInfo(self.id)
-                # if it's a scratch build, grab the artifacts from the task output
-                arglist = [spec_url, None, task]
-            else:
-                # if it's a real build, grab the artifacts from th build output
-                build = session.getBuild(build_id)
-                arglist = [spec_url, build, None]
+        return buildroot.id
 
-            rpm_task_id = session.host.subtask(method='jarWrapperRPM',
-                                               arglist=arglist,
-                                               label='rpm',
-                                               parent=self.id,
-                                               arch='noarch')
-            self.wait(rpm_task_id)
+class WrapperRPMTask(BaseTaskHandler):
 
-            if not self.opts.get('scratch'):
-                srpm = None
-                rpms = []
-                logs = []
-                for filename in session.listTaskOutput(rpm_task_id):
-                    if filename.endswith('.src.rpm'):
-                        if srpm:
-                            raise koji.BuildError, 'duplicate srpms found: %s and %s' % (srpm, filename)
-                        else:
-                            srpm = filename
-                    elif filename.endswith('.rpm'):
-                        rpms.append(filename)
-                    elif filename.endswith('.log'):
-                        logs.append(filename)
-                    else:
-                        raise koji.BuildError, 'unknown file found: %s' % filename
+    Methods = ['wrapperRPM']
 
-                session.host.importWrapperRPMs(self.id, rpm_task_id, build, srpm, rpms, logs)
-
-        if not self.opts.get('scratch'):
-            session.host.completeMavenBuild(self.id, build_id)
-
-            if not self.opts.get('skip_tag'):
-                tag_task_id = session.host.subtask(method='tagBuild',
-                                                   arglist=[dest_tag, build_id, False, None, True],
-                                                   label='tag',
-                                                   parent=self.id,
-                                                   arch='noarch')
-                self.wait(tag_task_id)
-
-class JarWrapperRPMTask(BaseTaskHandler):
-
-    Methods = ['jarWrapperRPM']
+    _taskWeight = 1.5
 
     def handler(self, spec_url, build=None, task=None):
         if build:
@@ -2078,8 +2096,6 @@ class JarWrapperRPMTask(BaseTaskHandler):
             raise koji.BuildError, 'error running rpmbuild'
 
         self.uploadTree(outputdir, flatten=True)
-
-        return [filename for filename in os.listdir(outputdir) if filename.endswith('.rpm')]
 
 class TagBuildTask(BaseTaskHandler):
 

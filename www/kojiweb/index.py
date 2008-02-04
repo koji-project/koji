@@ -432,6 +432,9 @@ def taskinfo(req, taskID):
     if task['method'] == 'buildArch':
         buildTag = server.getTag(params[1])
         values['buildTag'] = buildTag
+    elif task['method'] == 'buildMaven':
+        buildTag = params[1]
+        values['buildTag'] = buildTag
     elif task['method'] == 'tagBuild':
         destTag = server.getTag(params[0])
         build = server.getBuild(params[1])
@@ -456,7 +459,7 @@ def taskinfo(req, taskID):
     elif task['method'] == 'dependantTask':
         deps = [server.getTaskInfo(depID, request=True) for depID in params[0]]
         values['deps'] = deps
-    elif task['method'] == 'jarWrapperRPM':
+    elif task['method'] == 'wrapperRPM':
         if params[2]:
             wrapTask = server.getTaskInfo(params[2]['id'], request=True)
             values['wrapTask'] = wrapTask

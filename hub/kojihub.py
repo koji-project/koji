@@ -4539,7 +4539,7 @@ class RootExports(object):
         if channel:
             taskOpts['channel'] = channel
 
-        return make_task('mavenBuild', [url, target, opts], **taskOpts)
+        return make_task('maven', [url, target, opts], **taskOpts)
 
     def hello(self,*args):
         return "Hello World"
@@ -6753,14 +6753,14 @@ class HostExports(object):
         build_notification(task_id, build_id)
         return result
 
-    def importMavenBuild(self, task_id, uploadpath, buildroot_id):
+    def importMavenBuild(self, task_id, build_task_id, buildroot_id):
         """Create new Maven build and import the generated archives."""
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
 
-        outputdir = os.path.join(koji.pathinfo.work(), uploadpath)
+        outputdir = os.path.join(koji.pathinfo.work(), 'tasks', str(build_task_id))
         pom_extensions = ['.' + ext for ext in _get_archive_type_by_name('pom')['extensions'].split()]
         jar_extensions = ['.' + ext for ext in _get_archive_type_by_name('zip')['extensions'].split()]
         logs = []

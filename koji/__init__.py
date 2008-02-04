@@ -1647,7 +1647,7 @@ def taskLabel(taskInfo):
     method = taskInfo['method']
     arch = taskInfo['arch']
     extra = ''
-    if method in ('build', 'mavenBuild'):
+    if method in ('build', 'maven'):
         if taskInfo.has_key('request'):
             source, target = taskInfo['request'][:2]
             if '://' in source:
@@ -1673,6 +1673,10 @@ def taskLabel(taskInfo):
             srpm, tagID, arch = taskInfo['request'][:3]
             srpm = os.path.basename(srpm)
             extra = '%s, %s' % (srpm, arch)
+    elif method == 'buildMaven':
+        if taskInfo.has_key('request'):
+            build_tag = taskInfo['request'][1]
+            extra = build_tag['name']
     elif method == 'buildNotification':
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]

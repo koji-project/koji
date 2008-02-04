@@ -103,11 +103,14 @@
         <strong>Source:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
-        #elif $task.method == 'mavenBuild'
+        #elif $task.method == 'maven'
         <strong>SCM URL:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
-	#elif $task.method == 'jarWrapperRPM'
+	#elif $task.method == 'buildMaven'
+	<strong>SCM URL:</strong> $params[0]<br/>
+	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+	#elif $task.method == 'wrapperRPM'
 	<strong>Spec File URL:</strong> $params[0]<br/>
 	#if $params[1]
 	<strong>Build:</strong> $koji.buildLabel($params[1])<br/>
