@@ -1947,7 +1947,7 @@ class MavenBuildTask(BaseTaskHandler):
         self.uploadTree(outputdir)
         if not self.opts.get('scratch'):
             # XXX Don't actually complete this until the wrapper rpm step is done
-            build_id = session.host.completeMavenBuild(self.id, uploadpath, buildroot.id)
+            build_id = session.host.importMavenBuild(self.id, uploadpath, buildroot.id)
 
         spec_url = self.opts.get('specfile')
         if spec_url:
@@ -1986,13 +1986,16 @@ class MavenBuildTask(BaseTaskHandler):
 
                 session.host.importWrapperRPMs(self.id, rpm_task_id, build, srpm, rpms, logs)
 
-        if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
-            tag_task_id = session.host.subtask(method='tagBuild',
-                                               arglist=[dest_tag, build_id, False, None, True],
-                                               label='tag',
-                                               parent=self.id,
-                                               arch='noarch')
-            self.wait(tag_task_id)
+        if not self.opts.get('scratch'):
+            session.host.completeMavenBuild(self.id, build_id)
+
+            if not self.opts.get('skip_tag'):
+                tag_task_id = session.host.subtask(method='tagBuild',
+                                                   arglist=[dest_tag, build_id, False, None, True],
+                                                   label='tag',
+                                                   parent=self.id,
+                                                   arch='noarch')
+                self.wait(tag_task_id)
 
 class JarWrapperRPMTask(BaseTaskHandler):
 
