@@ -1913,37 +1913,22 @@ class MavenTask(BaseTaskHandler):
             if self.opts.get('scratch'):
                 task = session.getTaskInfo(self.id)
                 # if it's a scratch build, grab the artifacts from the task output
-                arglist = [spec_url, None, task]
+                arglist = [spec_url, build_tag, None, task]
             else:
                 # if it's a real build, grab the artifacts from the build output
                 build = session.getBuild(build_id)
-                arglist = [spec_url, build, None]
+                arglist = [spec_url, build_tag, build, None]
 
             rpm_task_id = session.host.subtask(method='wrapperRPM',
                                                arglist=arglist,
                                                label='rpm',
                                                parent=self.id,
                                                arch='noarch')
-            self.wait(rpm_task_id)
+            results = self.wait(rpm_task_id)[rpm_task_id]
 
             if not self.opts.get('scratch'):
-                srpm = None
-                rpms = []
-                logs = []
-                for filename in session.listTaskOutput(rpm_task_id):
-                    if filename.endswith('.src.rpm'):
-                        if srpm:
-                            raise koji.BuildError, 'duplicate srpms found: %s and %s' % (srpm, filename)
-                        else:
-                            srpm = filename
-                    elif filename.endswith('.rpm'):
-                        rpms.append(filename)
-                    elif filename.endswith('.log'):
-                        logs.append(filename)
-                    else:
-                        raise koji.BuildError, 'unknown file found: %s' % filename
-
-                session.host.importWrapperRPMs(self.id, rpm_task_id, build, srpm, rpms, logs)
+                session.host.importWrapperRPMs(self.id, rpm_task_id, build,
+                                               results['srpm'], results['rpms'], results['logs'])
 
         if not self.opts.get('scratch'):
             session.host.completeMavenBuild(self.id, build_id)
@@ -1964,6 +1949,7 @@ class BuildMavenTask(BaseTaskHandler):
 
     def handler(self, url, build_tag):
         scm = SCM(url)
+        scm.assert_allowed(options.allowed_scms)
 
         host = session.host.getHost()
         if not host['arches']:
@@ -2019,7 +2005,16 @@ class WrapperRPMTask(BaseTaskHandler):
 
     _taskWeight = 1.5
 
-    def handler(self, spec_url, build=None, task=None):
+    def check_srpm(self, srpm, build):
+        """Basic sanity check that the SRPM E:N-V-R matches the build"""
+        fields = ['name', 'version', 'release', 'epoch']
+        srpminfo = koji.get_header_fields(srpm, fields)
+        for field in fields:
+            if srpminfo[field] != build[field]:
+                raise koji.BuildError, 'srpm header "%s" does not match build info: srpm: %s, build: %s' % \
+                    (field, srpminfo[field], build[field])
+
+    def handler(self, spec_url, build_tag, build=None, task=None):
         if build:
             jarinfos = [archive for archive in session.listArchives(buildID=build['id'], type='maven') if \
                             archive['filename'].endswith('.jar')]
@@ -2036,20 +2031,10 @@ class WrapperRPMTask(BaseTaskHandler):
             raise koji.BuildError, 'either a build or a task must be specified'
 
         scm = SCM(spec_url)
-
-        for allowed_scm in options.allowed_scms.split():
-            scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) == 2:
-                if scm.host == scm_tuple[0] and scm.repository == scm_tuple[1]:
-                    # SCM host:repository is in the allowed list
-                    break
-            else:
-                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
-        else:
-            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (scm.host, scm.repository)
+        scm.assert_allowed(options.allowed_scms)
 
         logfile = os.path.join(self.workdir, 'checkout.log')
-        scmdir = os.path.join(self.workdir, 'scm')
+        scmdir = os.path.join(self.workdir, 'scmroot')
         koji.ensuredir(scmdir)
         specdir = scm.checkout(scmdir, self.getUploadDir(), logfile, use_common=False)
 
@@ -2063,11 +2048,13 @@ class WrapperRPMTask(BaseTaskHandler):
         if not spec_template:
             raise koji.BuildError, 'no spec file template found at URL: %s' % spec_url
 
-        jardir = os.path.join(self.workdir, 'jars')
-        koji.ensuredir(jardir)
+        # Put the jars into the same directory as the specfile.  This directory will be
+        # set to the rpm _sourcedir so other files in the SCM may be referenced in the
+        # specfile as well.
+        specdir = os.path.dirname(spec_template)
 
         for jarpath in jars:
-            shutil.copy(jarpath, jardir)
+            shutil.copy(jarpath, specdir)
 
         values = {'jars': [os.path.basename(jarpath) for jarpath in jars]}
         values.update((build or task))
@@ -2085,17 +2072,80 @@ class WrapperRPMTask(BaseTaskHandler):
         outputdir = os.path.join(self.workdir, 'output')
         koji.ensuredir(outputdir)
 
-        cmd = ['/usr/bin/rpmbuild', '--define', '_topdir %s' % self.workdir, '--define', '_builddir %s' % builddir,
-               '--define', '_rpmdir %s' % outputdir, '--define', '_sourcedir %s' % jardir, '--define',
-               '_specdir %s' % os.path.dirname(specfile), '--define', '_srcrpmdir %s' % outputdir,
-               '-ba', '--nodeps', specfile]
+        cmd = ['/usr/bin/rpmbuild',
+               '--define', '_topdir %s' % self.workdir,
+               '--define', '_sourcedir %s' % specdir,
+               '--define', '_specdir %s' % specdir,
+               '--define', '_builddir %s' % builddir,
+               '--define', '_srcrpmdir %s' % outputdir,
+               '--define', '_rpmdir %s' % outputdir,
+               '--nodeps', '-bs', specfile]
 
         logfile = os.path.join(self.workdir, 'rpmbuild.log')
 
         if log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=1, cwd=self.workdir):
             raise koji.BuildError, 'error running rpmbuild'
 
-        self.uploadTree(outputdir, flatten=True)
+        srpms = glob.glob('%s/*.src.rpm' % outputdir)
+        if len(srpms) == 0:
+            raise koji.BuildError, 'no srpms found in %s' % outputdir
+        elif len(srpms) > 1:
+            raise koji.BuildError, 'multiple srpms found in %s: %s' % (outputdir, ', '.join(srpms))
+        else:
+            srpm = srpms[0]
+
+        if build:
+            self.check_srpm(srpm, build)
+
+        host = session.host.getHost()
+        if not host['arches']:
+            raise koji.BuildError, 'no arch list for host: %s' % host['name']
+        br_arch = host['arches'].split()[0]
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id)
+        self.logger.debug("Initializing buildroot")
+        buildroot.init()
+
+        buildroot.build(srpm)
+
+        resultdir = buildroot.resultdir()
+        srpm = None
+        rpms = []
+        logs = ['checkout.log', 'rpmbuild.log']
+
+        for filename in os.listdir(resultdir):
+            if filename.endswith('.src.rpm'):
+                if not srpm:
+                    srpm = filename
+                else:
+                    raise koji.BuildError, 'multiple srpms found in %s: %s, %s' % \
+                        (resultdir, srpm, filename)
+            elif filename.endswith('.rpm'):
+                rpms.append(filename)
+            elif filename.endswith('.log'):
+                logs.append(filename)
+            else:
+                raise koji.BuildError, 'unexpected file found in %s: %s' % \
+                    (resultdir, filename)
+
+        if not srpm:
+            raise koji.BuildError, 'no srpm found'
+        elif build:
+            self.check_srpm(os.path.join(resultdir, srpm), build)
+
+        if not rpms:
+            raise koji.BuildError, 'no rpms found'
+
+        for rpm in [srpm] + rpms:
+            self.uploadFile(os.path.join(resultdir, rpm))
+
+        # no need to upload logs, they've already been streamed to the hub
+        # during the build process
+
+        buildroot.expire()
+
+        return {'srpm': srpm,
+                'rpms': rpms,
+                'logs': logs}
 
 class TagBuildTask(BaseTaskHandler):
 
@@ -2138,17 +2188,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
     def handler(self,url):
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
-
-        for allowed_scm in options.allowed_scms.split():
-            scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) == 2:
-                if scm.host == scm_tuple[0] and scm.repository == scm_tuple[1]:
-                    # SCM host:repository is in the allowed list
-                    break
-            else:
-                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
-        else:
-            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (scm.host, scm.repository)
+        scm.assert_allowed(options.allowed_scms)
 
         # Setup files and directories for SRPM creation
         scmdir = self.workdir + '/scmroot'
@@ -2659,6 +2699,8 @@ class SCM(object):
         The exact format of each attribute is SCM-specific, but the structure of the url
         must conform to the template above, or an error will be raised.
         """
+        self.logger = logging.getLogger('koji.build.SCM')
+
         if not SCM.is_scm_url(url):
             raise koji.GenericError, 'Invalid SCM URL: %s' % url
 
@@ -2721,6 +2763,26 @@ class SCM(object):
 
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
+
+    def assert_allowed(self, allowed):
+        """
+        Verify that the host and repository of this SCM is in the provided list of
+        allowed repositories.
+
+        allowed is a space-separated list of host:repository tuples.  Incorrectly-formatted
+        tuples will be ignored.
+        """
+        for allowed_scm in allowed.split():
+            scm_tuple = allowed_scm.split(':')
+            if len(scm_tuple) == 2:
+                if self.host == scm_tuple[0] and self.repository == scm_tuple[1]:
+                    # SCM host:repository is in the allowed list
+                    break
+            else:
+                # incorrectly-formatted tuple, ignore
+                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
+        else:
+            raise koji.GenericError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
 
     def checkout(self, scmdir, uploadpath, logfile, use_common=False):
         """

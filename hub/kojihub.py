@@ -4087,6 +4087,7 @@ def reset_build(build):
     if not binfo:
         #nothing to do
         return
+    minfo = get_maven_build(binfo)
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
     for (rpm_id,) in ids:
@@ -4123,6 +4124,11 @@ def reset_build(build):
     rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % builddir)
     if rv != 0:
         raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, builddir)
+    if minfo:
+        mavendir = koji.pathinfo.mavenbuild(binfo, minfo)
+        rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % mavendir)
+        if rv != 0:
+            raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, mavendir)
 
 def cancel_build(build_id, cancel_task=True):
     """Cancel a build

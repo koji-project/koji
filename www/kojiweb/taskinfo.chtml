@@ -112,10 +112,11 @@
 	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
 	#elif $task.method == 'wrapperRPM'
 	<strong>Spec File URL:</strong> $params[0]<br/>
-	#if $params[1]
-	<strong>Build:</strong> $koji.buildLabel($params[1])<br/>
-	#elif $params[2]
-	<strong>Task:</strong> $koji.taskLabel($wrapTask)<br/>
+	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+	#if $params[2]
+	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a>
+	#elif $params[3]
+	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a>
 	#end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>

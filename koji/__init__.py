@@ -1677,6 +1677,10 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build_tag = taskInfo['request'][1]
             extra = build_tag['name']
+    elif method == 'wrapperRPM':
+        if taskInfo.has_key('request'):
+            build_tag = taskInfo['request'][1]
+            extra = build_tag['name']
     elif method == 'buildNotification':
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
