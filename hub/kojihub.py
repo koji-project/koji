@@ -4100,7 +4100,20 @@ def reset_build(build):
         _dml(delete, locals())
     delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
+    q = """SELECT id FROM archiveinfo WHERE build_id=%(id)i"""
+    ids = _fetchMulti(q, binfo)
+    for (archive_id,) in ids:
+        delete = """DELETE FROM maven_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archivefiles WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+    delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
+    _dml(delete, binfo)
     delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['FAILED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
