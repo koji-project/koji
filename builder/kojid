@@ -1902,7 +1902,7 @@ class MavenTask(BaseTaskHandler):
                                              label='build',
                                              parent=self.id,
                                              arch='noarch')
-        buildroot_id = self.wait(build_task_id)
+        buildroot_id = self.wait(build_task_id)[build_task_id]
 
         if not self.opts.get('scratch'):
             # XXX Don't actually complete this until the wrapper rpm step is done
