@@ -285,7 +285,7 @@ $cgi.escape($result.faultString.strip())
         <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'mavenBuild', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'buildMaven', 'wrapperRPM', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
