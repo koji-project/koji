@@ -2072,7 +2072,7 @@ class WrapperRPMTask(BaseTaskHandler):
         values = {'jars': [os.path.basename(jarpath) for jarpath in jars]}
         values.update((build or task))
 
-        contents = Cheetah.Template.Template(file=spec_template, searchList=[values], 
+        contents = Cheetah.Template.Template(file=spec_template, searchList=[values],
                                              filter='EncodeUnicode').respond()
 
         specfile = spec_template[:-5]

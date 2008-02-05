@@ -887,7 +887,7 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'inherit': bool(inherited), 'prefix': prefix, 
+        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'inherit': bool(inherited), 'prefix': prefix,
                                                                                 'maven_only': bool(mavenonly)},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
