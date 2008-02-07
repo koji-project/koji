@@ -321,6 +321,9 @@ class Task(object):
         id = self.id
         query = """SELECT request FROM task WHERE id = %(id)i"""
         xml_request = _singleValue(query, locals())
+        if xml_request.find('<?xml', 0, 10) == -1:
+            #handle older base64 encoded data
+            xml_request = base64.decodestring(xml_request)
         params, method = xmlrpclib.loads(xml_request)
         return params
 
@@ -341,6 +344,9 @@ class Task(object):
         # If you try to return a fault as a value, it gets reduced to
         # a mere struct.
         # f = Fault(1,"hello"); print dumps((f,))
+        if xml_result.find('<?xml', 0, 10) == -1:
+            #handle older base64 encoded data
+            xml_result = base64.decodestring(xml_result)
         result, method = xmlrpclib.loads(xml_result)
         return result[0]
 
@@ -363,6 +369,9 @@ class Task(object):
         results = _multiRow(query, vars(self), [f[1] for f in fields])
         if request:
             for task in results:
+                if task['request'].find('<?xml', 0, 10) == -1:
+                    #handle older base64 encoded data
+                    task['request'] = base64.decodestring(task['request'])
                 task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
@@ -5045,6 +5054,9 @@ class RootExports(object):
                 for f in ('request','result'):
                     if task[f]:
                         try:
+                            if task[f].find('<?xml', 0, 10) == -1:
+                                #handle older base64 encoded data
+                                task[f] = base64.decodestring(task[f])
                             data, method = xmlrpclib.loads(task[f])
                         except xmlrpclib.Fault, fault:
                             data = fault
