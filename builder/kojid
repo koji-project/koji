@@ -1905,41 +1905,53 @@ class MavenTask(BaseTaskHandler):
         buildroot_id = self.wait(build_task_id)[build_task_id]
 
         if not self.opts.get('scratch'):
-            # XXX Don't actually complete this until the wrapper rpm step is done
-            build_id = session.host.importMavenBuild(self.id, build_task_id, buildroot_id)
+            self.build_id = session.host.importMavenBuild(self.id, build_task_id, buildroot_id)
 
-        spec_url = self.opts.get('specfile')
-        if spec_url:
-            if self.opts.get('scratch'):
-                task = session.getTaskInfo(self.id)
-                # if it's a scratch build, grab the artifacts from the task output
-                arglist = [spec_url, build_tag, None, task]
-            else:
-                # if it's a real build, grab the artifacts from the build output
-                build = session.getBuild(build_id)
-                arglist = [spec_url, build_tag, build, None]
-
-            rpm_task_id = session.host.subtask(method='wrapperRPM',
-                                               arglist=arglist,
-                                               label='rpm',
-                                               parent=self.id,
-                                               arch='noarch')
-            results = self.wait(rpm_task_id)[rpm_task_id]
+        try:
+            spec_url = self.opts.get('specfile')
+            if spec_url:
+                self.buildWrapperRPM(spec_url, build_tag)
 
             if not self.opts.get('scratch'):
-                session.host.importWrapperRPMs(self.id, rpm_task_id, build,
-                                               results['srpm'], results['rpms'], results['logs'])
+                session.host.completeMavenBuild(self.id, self.build_id)
+        except (SystemExit, ServerExit, KeyboardInterrupt):
+            # we do not trap these
+            raise
+        except:
+            if not self.opts.get('scratch'):
+                #scratch builds do not get imported
+                session.host.failBuild(self.id, self.build_id)
+            # reraise the exception
+            raise
+
+        if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
+            tag_task_id = session.host.subtask(method='tagBuild',
+                                               arglist=[dest_tag['id'], self.build_id, False, None, True],
+                                               label='tag',
+                                               parent=self.id,
+                                               arch='noarch')
+            self.wait(tag_task_id)
+
+    def buildWrapperRPM(self, spec_url, build_tag):
+        if self.opts.get('scratch'):
+            task = session.getTaskInfo(self.id)
+            # if it's a scratch build, grab the artifacts from the task output
+            arglist = [spec_url, build_tag, None, task]
+        else:
+            # if it's a real build, grab the artifacts from the build output
+            build = session.getBuild(self.build_id)
+            arglist = [spec_url, build_tag, build, None]
+
+        rpm_task_id = session.host.subtask(method='wrapperRPM',
+                                           arglist=arglist,
+                                           label='rpm',
+                                           parent=self.id,
+                                           arch='noarch')
+        results = self.wait(rpm_task_id)[rpm_task_id]
 
         if not self.opts.get('scratch'):
-            session.host.completeMavenBuild(self.id, build_id)
-
-            if not self.opts.get('skip_tag'):
-                tag_task_id = session.host.subtask(method='tagBuild',
-                                                   arglist=[dest_tag['id'], build_id, False, None, True],
-                                                   label='tag',
-                                                   parent=self.id,
-                                                   arch='noarch')
-                self.wait(tag_task_id)
+            session.host.importWrapperRPMs(self.id, rpm_task_id, build,
+                                           results['srpm'], results['rpms'], results['logs'])
 
 class BuildMavenTask(BaseTaskHandler):
 
