@@ -1897,15 +1897,15 @@ class MavenTask(BaseTaskHandler):
         dest_tag = session.getTag(target_info['dest_tag'], strict=True)
         build_tag = session.getTag(target_info['build_tag'], strict=True)
 
-        build_task_id = session.host.subtask(method='buildMaven',
-                                             arglist=[url, build_tag],
-                                             label='build',
-                                             parent=self.id,
-                                             arch='noarch')
-        buildroot_id = self.wait(build_task_id)[build_task_id]
+        self.build_task_id = session.host.subtask(method='buildMaven',
+                                                  arglist=[url, build_tag],
+                                                  label='build',
+                                                  parent=self.id,
+                                                  arch='noarch')
+        buildroot_id = self.wait(self.build_task_id)[self.build_task_id]
 
         if not self.opts.get('scratch'):
-            self.build_id = session.host.importMavenBuild(self.id, build_task_id, buildroot_id)
+            self.build_id = session.host.importMavenBuild(self.id, self.build_task_id, buildroot_id)
 
         try:
             spec_url = self.opts.get('specfile')
@@ -1934,7 +1934,7 @@ class MavenTask(BaseTaskHandler):
 
     def buildWrapperRPM(self, spec_url, build_tag):
         if self.opts.get('scratch'):
-            task = session.getTaskInfo(self.id)
+            task = session.getTaskInfo(self.build_task_id)
             # if it's a scratch build, grab the artifacts from the task output
             arglist = [spec_url, build_tag, None, task]
         else:
@@ -2017,6 +2017,10 @@ class WrapperRPMTask(BaseTaskHandler):
 
     _taskWeight = 1.5
 
+    def copy_fields(self, src, tgt, *fields):
+        for field in fields:
+            tgt[field] = src.get(field)
+
     def check_srpm(self, srpm, build):
         """Basic sanity check that the SRPM E:N-V-R matches the build"""
         fields = ['name', 'version', 'release', 'epoch']
@@ -2027,20 +2031,40 @@ class WrapperRPMTask(BaseTaskHandler):
                     (field, srpminfo[field], build[field])
 
     def handler(self, spec_url, build_tag, build=None, task=None):
+        values = {}
         if build:
             jarinfos = [archive for archive in session.listArchives(buildID=build['id'], type='maven') if \
                             archive['filename'].endswith('.jar')]
             jars = []
             for jarinfo in jarinfos:
                 jars.append(os.path.join(koji.pathinfo.mavenbuild(build, jarinfo), jarinfo['filename']))
+            jars.sort()
+            self.copy_fields(build, values, 'epoch', 'name', 'version', 'release')
         elif task:
             jarnames = [filename for filename in session.listTaskOutput(task['id']) if \
                             filename.endswith('.jar')]
             jars = []
             for jarname in jarnames:
                 jars.append(os.path.join(koji.pathinfo.work(), 'tasks', str(task['id']), jarname))
+            jars.sort()
+            # Get the pom info from the first jar that has a pom and convert it to build format
+            # so we can use it as substitution variables in the template.
+            # If no jar has a pom, populate the values dict with empty placeholders.  If the spec file 
+            # doesn't require these variables, it should work.  If it does, then the rpmbuild will 
+            # likely fail.
+            for jar in jars:
+                pom = koji.get_pom_from_jar(jar)
+                if pom:
+                    pom_info = koji.parse_pom(contents=pom)
+                    pom_nvr = koji.pom_to_nvr(pom_info)
+                    self.copy_fields(pom_nvr, values, 'epoch', 'name', 'version', 'release')
+                    break
+            else:
+                values.update({'epoch': None, 'name': '', 'version': '', 'release': ''})
         else:
             raise koji.BuildError, 'either a build or a task must be specified'
+
+        values['jars'] = [os.path.basename(jarpath) for jarpath in jars]
 
         scm = SCM(spec_url)
         scm.assert_allowed(options.allowed_scms)
@@ -2064,15 +2088,11 @@ class WrapperRPMTask(BaseTaskHandler):
         # set to the rpm _sourcedir so other files in the SCM may be referenced in the
         # specfile as well.
         specdir = os.path.dirname(spec_template)
-
         for jarpath in jars:
             shutil.copy(jarpath, specdir)
 
-        values = {'jars': [os.path.basename(jarpath) for jarpath in jars]}
-        values.update((build or task))
-
-        contents = Cheetah.Template.Template(file=spec_template, searchList=[values],
-                                             filter='EncodeUnicode').respond()
+        contents = Cheetah.Template.Template(file=spec_template,
+                                             searchList=[values]).respond()
 
         specfile = spec_template[:-5]
         specfd = file(specfile, 'w')
