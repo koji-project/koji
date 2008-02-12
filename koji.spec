@@ -118,6 +118,12 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
 %{_sysconfdir}/kojira
 %config(noreplace) %{_sysconfdir}/kojira/kojira.conf
+%{_sbindir}/koji-gc
+%{_sysconfdir}/koji-gc
+%config(noreplace) %{_sysconfdir}/koji-gc/koji-gc.conf
+%{_sbindir}/koji-shadow
+%{_sysconfdir}/koji-shadow
+%config(noreplace) %{_sysconfdir}/koji-shadow/koji-shadow.conf
 
 %files web
 %defattr(-,root,root)

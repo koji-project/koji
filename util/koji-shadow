@@ -103,7 +103,7 @@ def get_options():
             parser.error(_("No such file: %s") % cf)
             assert False
     else:
-        cf = '/etc/koji-shadow.conf'
+        cf = '/etc/koji-shadow/koji-shadow.conf'
         if not os.access(cf, os.F_OK):
             cf = None
     if not cf:
