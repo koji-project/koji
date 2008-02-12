@@ -449,6 +449,7 @@ class BuildTracker(object):
 
     builds = {}
     state_idx = {}
+    rebuild_order = 0
 
     def scanBuild(self, build_id, from_build=None, depth=0):
         """Recursively scan a build and its dependencies"""
@@ -492,6 +493,10 @@ class BuildTracker(object):
                 for retry in xrange(10):
                     try:
                         self.scanBuild(dep_id, from_build=build, depth=depth+1)
+                        # set rebuild order as we go
+                        # we do this /after/ the recursion, so our deps have a lower order number
+                        self.rebuild_order += 1
+                        build.order = self.rebuild_order
                     except (socket.timeout, socket.error):
                         print "retry"
                         continue
@@ -537,6 +542,9 @@ class BuildTracker(object):
                 print "Dependency missing for %s: %s (%s)" % (build.nvr, dep.nvr, dep.state)
                 return
             deps.append(dep)
+        if options.test:
+            print "Skipping rebuild of %s" % build.nvr
+            return
         #check/create tag
         our_tag = "SHADOWBUILD-%s" % build.br_tag
         taginfo = session.getTag(our_tag)
