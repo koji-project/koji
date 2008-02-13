@@ -4197,7 +4197,9 @@ def get_notification_recipients(build, tag_id, state):
 
     packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
     # owner of the package in this tag, following inheritance
-    emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+    package_info = packages.get(package_id)
+    if package_info:
+        emails.append('%s@%s' % (package_info['owner_name'], email_domain))
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
