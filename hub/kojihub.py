@@ -3466,14 +3466,20 @@ def _get_archive_type_by_id(type_id, strict=False):
     WHERE id = %(type_id)i"""
     return _singleRow(select, locals(), ('id', 'name', 'description', 'extensions'), strict)
 
-def get_archive_type(filename_or_type_id, strict=False):
+def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     """
-    Get the archive type for the given filename, based on the file extension.
+    Get the archive type for the given filename, type_name, or type_id.
     """
-    if isinstance(filename_or_type_id, int):
-        return _get_archive_type_by_id(filename_or_type_id, strict)
+    if type_id:
+        return _get_archive_type_by_id(type_id, strict)
+    elif type_name:
+        return _get_archive_type_by_name(type_name, strict)
+    elif filename:
+        # we handle that below
+        pass
+    else:
+        raise koji.GenericError, 'one of filename, type_name, or type_id must be specified'
 
-    filename = filename_or_type_id
     parts = filename.split('.')
     if len(parts) < 2:
         raise koji.GenericError, '%s does not have an extension, unable to determine file type' \
@@ -3496,23 +3502,34 @@ def get_archive_type(filename_or_type_id, strict=False):
     else:
         return results[0]
 
-def new_maven_build(build, pom):
+def new_maven_build(build, maven_info):
     """
     Add Maven metadata to an existing build.
     maven_info must contain the 'group_id' and
     'artifact_id' keys.
 
-    Note: the artifact_id must match the name of the build
+    Note: the "group_id-artifact_id" must match the name of the build
     """
-    pom_info = koji.parse_pom(pom)
-    group_id = pom_info['groupId']
-    artifact_id = pom_info['artifactId']
-    version = pom_info['version']
-    build_id = build['id']
-    insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
-    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-    _dml(insert, locals())
-    import_archive(pom, build)
+    maven_info = maven_info.copy()
+    maven_nvr = koji.maven_info_to_nvr(maven_info)
+
+    for field in ('name', 'version', 'release', 'epoch'):
+        if build[field] != maven_nvr[field]:
+            raise koji.BuildError, '%s mismatch between build and Maven: %s, %s' % \
+                (build[field], maven_nvr[field])
+
+    current_maven_info = get_maven_build(build)
+    if current_maven_info:
+        # already exists, verify that it matches
+        for field in ('group_id', 'artifact_id', 'version'):
+            if current_maven_info[field] != maven_info[field]:
+                raise koji.BuildError, '%s mismatch between existing and new Maven info: %s, %s' % \
+                    (current_maven_info[field], maven_info[field])
+    else:
+        maven_info['build_id'] = build['id']
+        insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
+                    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
+        _dml(insert, maven_info)
 
 def import_archive(filepath, buildinfo, buildroot_id=None):
     """
@@ -4785,7 +4802,7 @@ class RootExports(object):
             data['owner'] = owner
         return new_build(data)
 
-    def createMavenBuild(self, build_info, pom_path):
+    def createMavenBuild(self, build_info, maven_info):
         """
         Associate Maven metadata with an existing build.  The build must
         not already have associated Maven metadata.  pom_path must be a path
@@ -4797,8 +4814,7 @@ class RootExports(object):
             build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
                                              build_info['release'], build_info['epoch'])
             build = get_build(build_id, strict=True)
-        pom = '%s/%s' % (koji.pathinfo.work(), pom_path)
-        new_maven_build(build, pom)
+        new_maven_build(build, maven_info)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.
@@ -6774,45 +6790,12 @@ class HostExports(object):
         build_notification(task_id, build_id)
         return result
 
-    def importMavenBuild(self, task_id, build_task_id, buildroot_id):
-        """Create new Maven build and import the generated archives."""
+    def initMavenBuild(self, task_id, build_info, maven_info):
+        """Create a new in-progress Maven build"""
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-
-        outputdir = os.path.join(koji.pathinfo.work(), 'tasks', str(build_task_id))
-        pom_extensions = ['.' + ext for ext in _get_archive_type_by_name('pom')['extensions'].split()]
-        jar_extensions = ['.' + ext for ext in _get_archive_type_by_name('zip')['extensions'].split()]
-        logs = []
-        poms = []
-        jars = []
-
-        for path, dirs, files in os.walk(outputdir):
-            # sort the list of files so the first pom found is predictable
-            files.sort()
-            for filename in files:
-                root, ext = os.path.splitext(filename)
-                if ext == '.log':
-                    logs.append(os.path.join(path, filename))
-                elif ext in pom_extensions:
-                    poms.append(os.path.join(path, filename))
-                elif ext in jar_extensions:
-                    jars.append(os.path.join(path, filename))
-                elif ext == '.md5' or \
-                        ext == '.sha1' or \
-                        filename == 'maven-metadata.xml':
-                    # metadata, we'll recreate that ourselves
-                    pass
-                else:
-                    raise koji.GenericError, 'unknown file type: %s' % filename
-        if not poms:
-            raise koji.GenericError, 'no .pom files found'
-
-        # the first pom is the main pom for this build
-        pom_info = koji.parse_pom(poms[0])
-        build_info = koji.pom_to_nvr(pom_info)
-        maven_info = koji.pom_to_maven_info(pom_info)
 
         build_info['task_id'] = task_id
         build_info['owner'] = task.getOwner()
@@ -6820,58 +6803,59 @@ class HostExports(object):
         build_info['completion_time'] = None
         build_id = new_build(build_info)
         build_info['id'] = build_id
-        new_maven_build(build_info, poms[0])
-
-        # import the poms
-        for pom_path in poms[1:]:
-            import_archive(pom_path, build_info, buildroot_id)
-        # import the jars
-        for jar_path in jars:
-            import_archive(jar_path, build_info, buildroot_id)
-        # move the logs to their final destination
-        for log_path in logs:
-            import_build_log(log_path, build_info, subdir='maven2')
+        new_maven_build(build_info, maven_info)
 
         return build_id
 
-    def completeMavenBuild(self, task_id, build_id):
+    def completeMavenBuild(self, task_id, build_id, maven_results, rpm_results):
         """Complete the Maven build."""
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
 
+        build_info = get_build(build_id, strict=True)
+
+        maven_task_id = maven_results['task_id']
+        maven_buildroot_id = maven_results['buildroot_id']
+        maven_task_dir = koji.pathinfo.task(maven_task_id)
+        # import the poms
+        for pom_path in maven_results['poms']:
+            import_archive(os.path.join(maven_task_dir, pom_path),
+                           build_info, maven_buildroot_id)
+        # import the jars
+        for jar_path in maven_results['jars']:
+            import_archive(os.path.join(maven_task_dir, jar_path),
+                           build_info, maven_buildroot_id)
+        # move the logs to their final destination
+        for log_path in maven_results['logs']:
+            import_build_log(os.path.join(maven_task_dir, log_path),
+                             build_info, subdir='maven2')
+
+        if rpm_results:
+            rpm_task_id = rpm_results['task_id']
+            rpm_buildroot_id = rpm_results['buildroot_id']
+            rpm_task_dir = koji.pathinfo.task(rpm_task_id)
+
+            for rpm_path in [rpm_results['srpm']] + rpm_results['rpms']:
+                rpm_path = os.path.join(rpm_task_dir, rpm_path)
+                rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id)
+                import_rpm_file(rpm_path, build_info, rpm_info)
+                add_rpm_sig(rpm_info['id'], koji.rip_rpm_sighdr(rpm_path))
+
+            for log in rpm_results['logs']:
+                # assume we're only importing noarch packages
+                import_build_log(os.path.join(rpm_task_dir, log),
+                                 build_info, subdir='noarch')
+
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
-        update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
+        update = """UPDATE build SET state=%(st_complete)i, completion_time=NOW()
         WHERE id=%(build_id)i"""
         _dml(update,locals())
 
         # send email
         build_notification(task_id, build_id)
-
-    def importWrapperRPMs(self, task_id, wrapper_task_id, build, srpm, rpms, logs):
-        """Import the wrapper rpms generated by the task and associate them with
-        the specified build."""
-        # XXX make sure the info from the build and the rpms matches (name, version, release)
-        host = Host()
-        host.verify()
-        task = Task(task_id)
-        task.assertHost(host.id)
-
-        rpmpaths = ['%s/tasks/%i/%s' % (koji.pathinfo.work(), wrapper_task_id, srpm)]
-        for rpm in rpms:
-            rpmpaths.append('%s/tasks/%i/%s' % (koji.pathinfo.work(), wrapper_task_id, rpm))
-
-        for rpmpath in rpmpaths:
-            rpminfo = import_rpm(rpmpath, build)
-            import_rpm_file(rpmpath, build, rpminfo)
-            add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(rpmpath))
-
-        for log in logs:
-            # assume we're only importing noarch packages
-            import_build_log('%s/tasks/%i/%s' % (koji.pathinfo.work(), wrapper_task_id, log),
-                             build, subdir='noarch')
 
     def failBuild(self, task_id, build_id):
         """Mark the build as failed.  If the current state is not

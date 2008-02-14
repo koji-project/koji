@@ -4,7 +4,7 @@
 #import cgi
 
 #def printValue($key, $value, $sep=', ')
-  #if $key == 'brootid'
+  #if $key in ('brootid', 'buildroot_id')
 <a href="buildrootinfo?buildrootID=$value">$value</a>
   #else
 #if $isinstance($value, list) then $sep.join([$str($val) for $val in $value]) else $value#
@@ -114,10 +114,9 @@
 	<strong>Spec File URL:</strong> $params[0]<br/>
 	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
 	#if $params[2]
-	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a>
-	#elif $params[3]
-	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a>
+	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
 	#end if
+	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a>
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>
         #elif $task.method == 'prepRepo'

@@ -797,10 +797,8 @@ def pom_to_nvr(pominfo):
     - release: 1
     - epoch: None
     """
-    nvr = {'name': pominfo['groupId'] + '-' + pominfo['artifactId'],
-           'version': pominfo['version'].replace('-', '_'),
-           'release': 1,
-           'epoch': None}
+    maveninfo = pom_to_maven_info(pominfo)
+    nvr = maven_info_to_nvr(maveninfo)
     return nvr
 
 def pom_to_maven_info(pominfo):
@@ -816,6 +814,17 @@ def pom_to_maven_info(pominfo):
                  'artifact_id': pominfo['artifactId'],
                  'version': pominfo['version']}
     return maveninfo
+
+def maven_info_to_nvr(maveninfo):
+    """
+    Convert the maveninfo to NVR-compatible format.
+    Uses the same mapping as pom_to_nvr().
+    """
+    nvr = {'name': maveninfo['group_id'] + '-' + maveninfo['artifact_id'],
+           'version': maveninfo['version'].replace('-', '_'),
+           'release': 1,
+           'epoch': None}
+    return nvr
 
 def mavenLabel(maveninfo):
     """
@@ -1197,6 +1206,10 @@ class PathInfo(object):
     def scratch(self):
         """Return the main scratch dir"""
         return self.topdir + '/scratch'
+
+    def task(self, task_id):
+        """Return the output directory for the task with the given id"""
+        return self.work() + '/tasks/' + str(task_id)
 
 pathinfo = PathInfo()
 

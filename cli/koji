@@ -1725,16 +1725,9 @@ def handle_import_archive(options, session, args):
             else:
                 buildinfo['epoch'] = int(buildinfo['epoch'])
         if suboptions.pom:
-            print "Uploading POM: %s" % suboptions.pom
-            serverdir = _unique_path('cli-import')
-            if _running_in_bg() or suboptions.noprogress:
-                callback = None
-            else:
-                callback = _progress_callback
-            session.uploadWrapper(suboptions.pom, serverdir, callback=callback, blocksize=65536)
-            print
-            serverpom = "%s/%s" % (serverdir, os.path.basename(suboptions.pom))
-            session.createMavenBuild(buildinfo, serverpom)
+            pom_info = koji.parse_pom(suboptions.pom)
+            maven_info = koji.pom_to_maven_info(pom_info)
+            session.createMavenBuild(buildinfo, maven_info)
         else:
             session.createEmptyBuild(**buildinfo)
 
