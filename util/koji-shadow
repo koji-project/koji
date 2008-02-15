@@ -336,8 +336,17 @@ class TrackedBuild(object):
             #children tracks the builds that were built using this one
             self.children[child] = 1
         #see if we have it
-        ours = session.getBuild(self.nvr)
         self.rebuilt = False
+        self.updateState()
+        if self.state == 'missing':
+            self.getDeps()   #sets deps, br_tag, base, order, (maybe state)
+
+    def updateState(self):
+        """Update state from local hub
+
+        This is intended to be called at initialization and after a missing
+        build has been rebuilt"""
+        ours = session.getBuild(self.nvr)
         if ours is not None:
             state = koji.BUILD_STATES[ours['state']]
             if state == 'COMPLETE':
@@ -353,7 +362,6 @@ class TrackedBuild(object):
                 self.setState("broken")
                 return
         self.setState("missing")
-        self.getDeps()   #sets deps, br_tag, base, order, (maybe state)
 
     def setState(self, state):
         #print "%s -> %s" % (self.nvr, state)
@@ -543,7 +551,7 @@ class BuildTracker(object):
                 return
             deps.append(dep)
         if options.test:
-            print "Skipping rebuild of %s" % build.nvr
+            print "Skipping rebuild of %s (test mode)" % build.nvr
             return
         #check/create tag
         our_tag = "SHADOWBUILD-%s" % build.br_tag
@@ -680,39 +688,96 @@ class BuildTracker(object):
     def runRebuilds(self):
         """Rebuild missing builds"""
         print "Determining rebuild order"
-        builds = [(b.order, b.id, b) for b in self.builds.itervalues()]
-        builds.sort()
-        b_avail = {}
-        ok = 0
-        bad = 0
-        for order, build_id, build in builds:
+        b_avail = {}    #track available builds
+        b_problem = {}   #track problem builds
+        b_missing = {}  #track builds which need to be rebuilt
+        b_pending = {}  #track builds being rebuilt
+        # generate initial lists
+        for build in self.builds.itervalues():
             if build.state == 'common':
-                b_avail[build_id] = 1
+                b_avail[build.id] = build
             elif build.state == 'missing':
+                b_missing[build.id] = build
+            else:
+                b_problem[build.id] = build
+        initial_avail = len(b_avail)
+        #small helper function for output
+        def print_builds(mylist):
+            for build_id in mylist:
+                build = self.builds[build_id]
+                print "    %s" % build.nvr
+        while True:
+            print "available: %i, missing: %i, pending: %i, problem: %i" \
+                    % (len(b_avail), len(b_missing), len(b_pending), len(b_problem))
+            if not b_pending and not b_missing:
+                #we're done
+                break
+            for build_id, task_id in b_pending.items():
+                #check pending builds
+                build = self.builds[build_id]
+                info = session.getTaskInfo(task_id)
+                if not info:
+                    print "No such task: %i (build %s)" % (task_id, build.nvr)
+                    del b_pending[build_id]
+                    b_problem[build_id] = build
+                    continue
+                state = koji.TASK_STATES[info['state']]
+                if state in ('CANCELED', 'FAILED'):
+                    print "Task %i is %s (build %s)" % (task_id, state, build.nvr)
+                    del b_pending[build_id]
+                    b_problem[build_id] = build
+                elif state == 'CLOSED':
+                    print "Task %i complete (build %s)" % (task_id, build.nvr)
+                    build.updateState()
+                    del b_pending[build_id]
+                    if build.state == 'common':
+                        b_avail[build_id] = build
+                    else:
+                        print "Build %s still missing (nvr shift?)" % build.nvr
+                        b_problem[build_id] = build
+            missing = [(b.order, b.id, b) for b in b_missing.itervalues()]
+            missing.sort()
+            for order, build_id, build in missing:
                 #check deps
+                problem = [x for x in build.deps.iterkeys() if b_problem.get(x)]
+                if problem:
+                    print "Can't rebuild %s, missing %i deps" % (build.nvr, len(problem))
+                    del b_missing[build_id]
+                    b_problem[build_id] = build
+                    print_builds(problem)
+                    continue
+                missing = [x for x in build.deps.iterkeys() if b_missing.get(x)]
+                if missing:
+                    #this indicates an ordering problem
+                    #we'll just skip it for now
+                    print "Out of order: %s, missing %i deps" % (build.nvr, len(missing))
+                    print_builds(missing)
+                    continue
+                pending = [x for x in build.deps.iterkeys() if b_pending.get(x)]
+                if pending:
+                    #deps for this build are currently building
+                    print "%s, Waiting on %i deps" % (build.nvr, len(pending))
+                    continue
                 not_avail = [x for x in build.deps.iterkeys() if not b_avail.get(x)]
                 if not_avail:
-                    print "Can't rebuild %s, missing %i deps" % (build.nvr, len(not_avail))
-                    b_avail[build_id] = 0
-                    bad += 1
-                    for dep_id in not_avail:
-                        dep = self.builds[dep_id]
-                        avail = b_avail.get(dep_id)
-                        if avail is None:
-                            print "  %s (out of order?)" % dep.nvr
-                        elif not avail:
-                            print "  %s (%s)" % (dep.nvr, dep.state)
-                else:
-                    ok += 1
-                    print "rebuild: %s" % build.nvr
-                    self.rebuild(build)
-                    break #XXX
+                    #In theory this should not happen
+                    print "ERROR: %s has %i unavailable deps" % (build.nvr, len(not_avail))
+                    del b_missing[build_id]
+                    b_problem[build_id] = build
+                    print_builds(not_avail)
+                    continue
+                #otherwise, we should be good to rebuild
+                print "rebuild: %s" % build.nvr
+                task_id = self.rebuild(build)
+                del b_missing[build_id]
+                if options.test:
+                    #pretend build is available
                     b_avail[build_id] = 1
-            else:
-                print "build: %s, state: %s, #children: %i" \
-                        % (build.nvr, build.state, len(build.children))
-                b_avail[build_id] = 0
-        print "ok: %i, bad: %i" % (ok, bad)
+                else:
+                    b_pending[build_id] = task_id
+                #break #XXX
+                #XXX - make sure build is really available
+        print "Rebuilt %i builds" % (len(b_avail) - initial_avail)
 
     def showOrder(self):
         """Show order of rebuilds (for debugging)
