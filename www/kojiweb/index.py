@@ -979,7 +979,7 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
 
     archiveID = int(archiveID)
     archive = server.getArchive(archiveID)
-    archive_type = server.getArchiveType(archive['type_id'])
+    archive_type = server.getArchiveType(type_id=archive['type_id'])
     build = server.getBuild(archive['build_id'])
     maveninfo = server.getMavenArchive(archive['id'])
     builtInRoot = None

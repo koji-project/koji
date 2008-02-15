@@ -759,12 +759,18 @@ def parse_pom(path=None, contents=None):
     values = {}
     handler = POMHandler(values, fields)
     if path:
-        xml.sax.parse(path, handler)
-    elif contents:
-        xml.sax.parseString(contents, handler)
-    else:
+        fd = file(path)
+        contents = fd.read()
+        fd.close()
+
+    if not contents:
         raise GenericError, 'either a path to a pom file or the contents of a pom file must be specified'
+
+    # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
     
+    contents = fixEncoding(contents)
+    xml.sax.parseString(contents, handler)
+
     for field in fields:
         if field not in values.keys():
             raise GenericError, 'could not extract %s from POM: %s' % (field, (path or '<contents>'))
@@ -822,8 +828,10 @@ def maven_info_to_nvr(maveninfo):
     """
     nvr = {'name': maveninfo['group_id'] + '-' + maveninfo['artifact_id'],
            'version': maveninfo['version'].replace('-', '_'),
-           'release': 1,
+           'release': '1',
            'epoch': None}
+    # for backwards-compatibility
+    nvr['package_name'] = nvr['name']
     return nvr
 
 def mavenLabel(maveninfo):

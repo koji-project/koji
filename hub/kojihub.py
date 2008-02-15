@@ -1887,6 +1887,9 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
 def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
     maven_pi = koji.PathInfo(topdir=repodir)
     srcdir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+    if not os.path.isdir(srcdir):
+        # srcdir doesn't exist, so there's nothing to do
+        return
     destdir = maven_pi.mavenbuild(buildinfo, maveninfo)
     koji.ensuredir(destdir)
     # link all files in srcdir to destdir, including metadata files
@@ -3515,16 +3518,16 @@ def new_maven_build(build, maven_info):
 
     for field in ('name', 'version', 'release', 'epoch'):
         if build[field] != maven_nvr[field]:
-            raise koji.BuildError, '%s mismatch between build and Maven: %s, %s' % \
-                (build[field], maven_nvr[field])
+            raise koji.BuildError, '%s mismatch (build: %s, maven: %s)' % \
+                (field, build[field], maven_nvr[field])
 
     current_maven_info = get_maven_build(build)
     if current_maven_info:
         # already exists, verify that it matches
         for field in ('group_id', 'artifact_id', 'version'):
             if current_maven_info[field] != maven_info[field]:
-                raise koji.BuildError, '%s mismatch between existing and new Maven info: %s, %s' % \
-                    (current_maven_info[field], maven_info[field])
+                raise koji.BuildError, '%s mismatch (current: %s, new: %s)' % \
+                    (field, current_maven_info[field], maven_info[field])
     else:
         maven_info['build_id'] = build['id']
         insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
