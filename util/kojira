@@ -230,7 +230,8 @@ class RepoManager(object):
                         #just in case something deletes the repo out from under us
                         continue
                     if age > 36000:
-                        self.logger.warn("Unexpected directory (no such repo): %s" % repodir)
+                        if not options.ignore_stray_repos:
+                            self.logger.warn("Unexpected directory (no such repo): %s" % repodir)
                     continue
                 if rinfo['tag_name'] != taginfo['name']:
                     self.logger.warn("Tag name mismatch: %s" % repodir)
@@ -384,6 +385,8 @@ def get_options():
                       help="run in foreground")
     parser.add_option("-d", "--debug", action="store_true",
                       help="show debug output")
+    parser.add_option("-q", "--quiet", action="store_true",
+                      help="don't show warnings")
     parser.add_option("-v", "--verbose", action="store_true",
                       help="show verbose output")
     parser.add_option("--with-src", action="store_true",
@@ -410,6 +413,7 @@ def get_options():
     defaults = {'with_src': False,
                 'verbose': False,
                 'debug': False,
+                'ignore_stray_repos': False,
                 'topdir': '/mnt/koji',
                 'server': None,
                 'logfile': '/var/log/kojira.log',
@@ -427,7 +431,7 @@ def get_options():
         int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks',
                     'delete_batch_size')
         str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab', 'cert', 'ca', 'serverca')
-        bool_opts = ('with_src','verbose','debug')
+        bool_opts = ('with_src','verbose','debug','ignore_stray_repos')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
@@ -477,6 +481,8 @@ if  __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
     elif options.verbose:
         logger.setLevel(logging.INFO)
+    elif options.quiet:
+        logger.setLevel(logging.ERROR)
     else:
         logger.setLevel(logging.WARNING)
     session_opts = {}
