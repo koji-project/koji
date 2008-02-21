@@ -1486,6 +1486,9 @@ class BuildTask(BaseTaskHandler):
             repo_state = koji.REPO_STATES[repo_info['state']]
             if repo_state not in ('READY', 'EXPIRED'):
                 raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
+        else:
+            repo_info = None
+            #we'll wait for a repo later (self.getRepo)
         task_info = session.getTaskInfo(self.id)
         # only allow admins to perform non-scratch builds from srpm
         if not SCM.is_scm_url(src) and not opts.get('scratch') \
@@ -1495,7 +1498,7 @@ class BuildTask(BaseTaskHandler):
         if target_info:
             dest_tag = target_info['dest_tag']
             build_tag = target_info['build_tag']
-            if opts.has_key(repo_id):
+            if repo_info is not None:
                 #make sure specified repo matches target
                 if repo_info['tag_id'] != target_info['build_tag']:
                     raise koji.BuildError, 'Repo/Target mismatch: %s/%s' \
@@ -1515,9 +1518,6 @@ class BuildTask(BaseTaskHandler):
                 if not taginfo:
                     raise koji.GenericError, 'neither tag nor target: %s' % target
                 dest_tag = taginfo['id']
-        else:
-            repo_info = None
-            #we'll wait for a repo later
         srpm = self.getSRPM(src)
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
@@ -2366,7 +2366,7 @@ class WaitrepoTask(BaseTaskHandler):
             #note: getRepo will only return a repo in the "READY" state
             if repo and repo != last_repo:
                 if self.checkNewerThan(repo['create_ts'], newer_than) \
-                        and self.checkForNVR(taginfo['id'], nvr, repo['create_event'])
+                        and self.checkForNVR(taginfo['id'], nvr, repo['create_event']):
                     #note that the self.check* calls return True if the check is not
                     #requested (i.e. value is None). Also note that the more expensive
                     #check is listed second.
