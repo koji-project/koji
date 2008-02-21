@@ -86,6 +86,8 @@ def get_options():
 #                      help=_("limit tags for pruning"))
 #    parser.add_option("--pkg-filter", metavar="PATTERN",
 #                      help=_("limit packages for pruning"))
+    parser.add_option("--max-jobs", type="int", default=0,
+                      help=_("limit number of tasks"))
     parser.add_option("--build",
                       help=_("scan just this build"))
     parser.add_option("-s", "--server",
@@ -121,6 +123,7 @@ def get_options():
             ['noauth', None, 'boolean'],
             ['server', None, 'string'],
             ['remote', None, 'string'],
+            ['max_jobs', None, 'integer'],
             ]
         for name, alias, type in cfgmap:
             if alias is None:
@@ -559,16 +562,18 @@ class BuildTracker(object):
         parents = None
         if not taginfo:
             #XXX - not sure what is best here
-            #how do we pick arches?  for now just assume all....
+            #how do we pick arches?  for now just hardcoded
             #XXX this call for perms is stupid, but it's all we've got
             perm_id = None
             for data in session.getAllPerms():
                 if data['name'] == 'admin':
                     perm_id = data['id']
                     break
-            session.createTag(our_tag, perm=perm_id, arches='i386 ia64 ppc ppc64 s390 s390x x86_64')
+            session.createTag(our_tag, perm=perm_id, arches='i386 ppc ppc64 x86_64')
             taginfo = session.getTag(our_tag, strict=True)
-            session.createBuildTarget(taginfo['name'], taginfo['id'], taginfo['id'])
+            #we don't need a target, we trigger our own repo creation and
+            #pass that repo_id to the build call
+            #session.createBuildTarget(taginfo['name'], taginfo['id'], taginfo['id'])
         else:
             parents = session.getInheritanceData(taginfo['id'])
             if parents:
@@ -615,6 +620,12 @@ class BuildTracker(object):
                     to_untag.append(binfo)
             if not tagged:
                 to_tag.append(dep)
+        #TODO - "add-on" packages
+        #       for handling arch-specific deps that may not show up on remote
+        #       e.g. elilo or similar
+        #       these extra packages should be added to tag, but not the build group
+        #TODO - local extra builds
+        #       a configurable mechanism to add specific local builds to the buildroot
         drop_groups = []
         build_group = None
         for group in session.getTagGroups(taginfo['id']):
@@ -625,7 +636,7 @@ class BuildTracker(object):
                 print "Warning: found stray group: %s" % group
                 drop_groups.append(group['name'])
         if build_group:
-            #TODO - fix build group package list based on base of build to shadow
+            #fix build group package list based on base of build to shadow
             needed = dict([(n,1) for n in build.base])
             current = dict([(p['package'],1) for p in build_group['packagelist']])
             add_pkgs = [n for n in needed if not current.has_key(n)]
@@ -660,7 +671,7 @@ class BuildTracker(object):
             session.groupPackageListAdd(taginfo['id'], 'build', pkg_name)
             #we never add any blocks, so forcing shouldn't be required
         #TODO - adjust extra_arches for package to build
-        #TODO - get event id to facilitate waiting on repo
+        #get event id to facilitate waiting on repo
         #       not sure if getLastEvent is good enough
         #       short of adding a new call, perhaps use getLastEvent together with event of
         #       current latest repo for tag
@@ -668,14 +679,15 @@ class BuildTracker(object):
         results = session.multiCall()
         [event_id, event_ts] = results[-1]
         #TODO - verify / check results ?
-        #TODO - call newRepo
+        task_id = session.newRepo(our_tag)
         #TODO - upload src
+        #       [?] use remote SCM url (if avail)?
         src = "" #XXX
-        #TODO - wait for repo
+        #TODO - wait for repo task
+        #       ...and verify repo
         #TODO - kick off build
-        #task_id = session.build(src, taginfo['name'], ... ) #XXX
-        #TODO - add task/build to some sort of watch list
-        #TODO - post-build validation
+        #task_id = session.build(src, taginfo['name'], opts={'repo_id': repo_id} )
+        return task_id
 
     def report(self):
         print time.asctime()
@@ -735,6 +747,11 @@ class BuildTracker(object):
                     else:
                         print "Build %s still missing (nvr shift?)" % build.nvr
                         b_problem[build_id] = build
+            if options.max_jobs and len(b_pending) >= options.max_jobs:
+                if options.debug:
+                    print "Maximum number of jobs reached."
+                time.sleep(60)
+                continue
             missing = [(b.order, b.id, b) for b in b_missing.itervalues()]
             missing.sort()
             for order, build_id, build in missing:
@@ -773,10 +790,9 @@ class BuildTracker(object):
                 if options.test:
                     #pretend build is available
                     b_avail[build_id] = 1
+                    build.state = 'common'  #XXX
                 else:
                     b_pending[build_id] = task_id
-                #break #XXX
-                #XXX - make sure build is really available
         print "Rebuilt %i builds" % (len(b_avail) - initial_avail)
 
     def showOrder(self):
