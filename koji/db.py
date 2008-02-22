@@ -120,15 +120,19 @@ def connect(debug=False):
         # Make sure the previous transaction has been
         # closed.  This is safe to call multiple times.
         conn = _DBconn.conn
-        conn.rollback()
-    else:
-        opts = _DBopts
-        if opts is None:
-            opts = {}
-        conn = pgdb.connect(**opts)
-        # XXX test
-        # return conn
-        _DBconn.conn = conn
+        try:
+            conn.rollback()
+            return DBWrapper(conn, debug)
+        except pgdb.Error:
+            del _DBconn.conn
+    #create a fresh connection
+    opts = _DBopts
+    if opts is None:
+        opts = {}
+    conn = pgdb.connect(**opts)
+    # XXX test
+    # return conn
+    _DBconn.conn = conn
 
     return DBWrapper(conn, debug)
 
