@@ -1,0 +1,30 @@
+
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  <h4>Error</h4>
+
+<div>
+$util.escapeHTML($explanation)
+</div>
+
+#if $debug_level >= 1
+<div>
+#else
+<div style="visibility: hidden">
+#end if
+$util.escapeHTML($tb_short)
+</div>
+
+#if $debug_level >= 2
+<div>
+#else
+<div style="visibility: hidden">
+#end if
+<pre>
+#echo $util.escapeHTML($tb_long)
+</pre>
+</div>
+
+#include "includes/footer.chtml"
