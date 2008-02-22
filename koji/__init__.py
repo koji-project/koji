@@ -1306,7 +1306,7 @@ class ClientSession(object):
             debug = self.opts.get('debug',False)
             max_retries = self.opts.get('max_retries',30)
             interval = self.opts.get('retry_interval',20)
-            while tries <= max_retries:
+            while True:
                 tries += 1
                 try:
                     return proxy.__getattr__(name)(*args)
@@ -1317,6 +1317,7 @@ class ClientSession(object):
                 # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
                 # and hence retryable.
                 except Fault, fault:
+                    #try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
                         if self.opts.get('offline_retry',False):
@@ -1338,10 +1339,13 @@ class ClientSession(object):
                         #this behavior is governed by the anon_retry opt.
                         if not self.opts.get('anon_retry',False):
                             raise
+                    if tries > max_retries:
+                        raise
+                    #otherwise keep retrying
                     if debug:
                         self.logger.debug("Try #%d for call %d (%s) failed: %s" % (tries, self.callnum, name, e))
                 time.sleep(interval)
-            raise RetryError, "reached maximum number of retries, last call failed with: %s" % ''.join(traceback.format_exception_only(*sys.exc_info()[:2]))
+            #not reached
 
     def multiCall(self):
         """Execute a multicall (multiple function calls passed to the server
@@ -1361,11 +1365,10 @@ class ClientSession(object):
         if len(self._calls) == 0:
             return []
 
-        try:
-            return self.proxy.multiCall(self._calls)
-        finally:
-            self.multicall = False
-            self._calls = []
+        self.multicall = False
+        calls = self._calls
+        self._calls = []
+        return self._callMethod('multiCall', (calls,), {})
 
     def __getattr__(self,name):
         #if name[:1] == '_':
