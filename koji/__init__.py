@@ -256,6 +256,10 @@ class FunctionDeprecated(GenericError):
     """Raised by a deprecated function"""
     faultCode = 1013
 
+class ServerOffline(GenericError):
+    """Raised when the server is offline"""
+    faultCode = 1014
+
 #A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
@@ -1020,7 +1024,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)
     else:
-        raise koji.GenericError, "No access method for remote file: %s" % relpath
+        raise GenericError, "No access method for remote file: %s" % relpath
     return fo
 
 
@@ -1306,12 +1310,35 @@ class ClientSession(object):
                 tries += 1
                 try:
                     return proxy.__getattr__(name)(*args)
+                #basically, we want to retry on most errors, with a few exceptions
+                #  - faults (this means the call completed and failed)
+                #  - SystemExit, KeyboardInterrupt
+                # note that, for logged-in sessions the server should tell us (via a RetryError fault)
+                # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
+                # and hence retryable.
                 except Fault, fault:
-                    raise convertFault(fault)
-                except (socket.error,socket.sslerror,xmlrpclib.ProtocolError,OpenSSL.SSL.Error), e:
+                    err = convertFault(fault)
+                    if isinstance(err, ServerOffline):
+                        if self.opts.get('offline_retry',False):
+                            secs = self.opts.get('offline_retry_interval', interval)
+                            if debug:
+                                self.logger.debug("Server offline. Retrying in %i seconds" % secs)
+                            time.sleep(secs)
+                            #reset try count - this isn't a typical error, this is a running server
+                            #correctly reporting an outage
+                            tries = 0
+                            continue
+                    raise err
+                except (SystemExit, KeyboardInterrupt):
+                    #(depending on the python version, these may or may not be subclasses of Exception)
+                    raise
+                except Exception, e:
                     if not self.logged_in:
-                        raise
-                    elif debug:
+                        #in the past, non-logged-in sessions did not retry. For compatibility purposes
+                        #this behavior is governed by the anon_retry opt.
+                        if not self.opts.get('anon_retry',False):
+                            raise
+                    if debug:
                         self.logger.debug("Try #%d for call %d (%s) failed: %s" % (tries, self.callnum, name, e))
                 time.sleep(interval)
             raise RetryError, "reached maximum number of retries, last call failed with: %s" % ''.join(traceback.format_exception_only(*sys.exc_info()[:2]))

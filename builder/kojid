@@ -2565,6 +2565,10 @@ def get_options():
                 'server': None,
                 'user': None,
                 'password': None,
+                'retry_interval': 60,
+                'max_retries': 120,
+                'offline_retry': True,
+                'offline_retry_interval': 120,
                 'pkgurl': None,
                 'allowed_scms': '',
                 'cert': '/etc/kojid/client.crt',
@@ -2572,7 +2576,8 @@ def get_options():
                 'serverca': '/etc/kojid/serverca.crt'}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
-            if name in ['sleeptime', 'maxjobs', 'minspace']:
+            if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
+                        'max_retries', 'offline_retry_interval']:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
@@ -2621,8 +2626,11 @@ if __name__ == "__main__":
 
     #build session options
     session_opts = {}
-    for k in ('user','password','debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
+    for k in ('user','password','debug_xmlrpc', 'debug',
+              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
+        v = getattr(options, k, None)
+        if v is not None:
+            session_opts[k] = v
     #start a session and login
     session = koji.ClientSession(options.server, session_opts)
     if os.path.isfile(options.cert):
