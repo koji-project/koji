@@ -420,6 +420,10 @@ def get_options():
                 'logfile': '/var/log/kojira.log',
                 'principal': None,
                 'keytab': None,
+                'retry_interval': 60,
+                'max_retries': 120,
+                'offline_retry': True,
+                'offline_retry_interval': 120,
                 'prune_batch_size': 4,
                 'delete_batch_size': 3,
                 'max_repo_tasks' : 10,
@@ -430,9 +434,9 @@ def get_options():
                 }
     if config.has_section(section):
         int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks',
-                    'delete_batch_size')
+                    'delete_batch_size', 'retry_interval', 'max_retries', 'offline_retry_interval')
         str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab', 'cert', 'ca', 'serverca')
-        bool_opts = ('with_src','verbose','debug')
+        bool_opts = ('with_src','verbose','debug', 'offline_retry')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
@@ -485,7 +489,8 @@ if  __name__ == "__main__":
     else:
         logger.setLevel(logging.WARNING)
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
+    for k in ('user', 'password', 'debug_xmlrpc', 'debug',
+              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)
     if os.path.isfile(options.cert):

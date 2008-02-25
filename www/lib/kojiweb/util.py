@@ -1,5 +1,19 @@
 import time
 import koji
+#a bunch of exception classes that explainError needs
+from socket import error as socket_error
+from socket import sslerror as socket_sslerror
+from xmlrpclib import ProtocolError
+from xml.parsers.expat import ExpatError
+
+class NoSuchException(Exception):
+    pass
+
+try:
+    # pyOpenSSL might not be around
+    from OpenSSL.SSL import Error as SSL_Error
+except:
+    SSL_Error = NoSuchException
 
 def toggleOrder(template, sortKey, orderVar='order'):
     """
@@ -274,3 +288,60 @@ def escapeHTML(value):
     return value.replace('&', '&amp;').\
            replace('<', '&lt;').\
            replace('>', '&gt;')
+
+def explainError(error):
+    """Explain an exception in user-consumable terms
+
+    Some of the explanations are web-centric, which is why this call is not part
+    of the main koji library, at least for now...
+
+    Returns a tuple: (str, level)
+    str = explanation in plain text
+    level = an integer indicating how much traceback data should
+            be shown:
+                0 - no traceback data
+                1 - just the exception
+                2 - full traceback
+    """
+    str = "An exception has occurred"
+    level = 2
+    if isinstance(error, koji.ServerOffline):
+        str = "The server is offline. Please try again later."
+        level = 0
+    elif isinstance(error, koji.ActionNotAllowed):
+        str = """\
+The web interface has tried to do something that your account is not \
+allowed to do. This is most likely a bug in the web interface."""
+    elif isinstance(error, koji.FunctionDeprecated):
+        str = """\
+The web interface has tried to access a deprecated function. This is \
+most likely a bug in the web interface."""
+    elif isinstance(error, koji.RetryError):
+        str = """\
+The web interface is having difficulty communicating with the main \
+server and was unable to retry an operation. Most likely this indicates \
+a network issue, but it could also be a configuration issue."""
+        level = 1
+    elif isinstance(error, koji.GenericError):
+        if getattr(error, 'fromFault', False):
+            str = """\
+An error has occurred on the main server. This could be a software \
+bug, a server configuration issue, or possibly something else."""
+        else:
+            str = """\
+An error has occurred in the web interface code. This could be due to \
+a bug or a configuration issue."""
+    elif isinstance(error, (socket_error, socket_sslerror)):
+        str = """\
+The web interface is having difficulty communicating with the main \
+server. This most likely indicates a network issue."""
+        level = 1
+    elif isinstance(error, (ProtocolError, ExpatError)):
+        str = """\
+The main server returned an invalid response. This could be caused by \
+a network issue or load issues on the server."""
+        level = 1
+    else:
+        str = "An error has occurred while processing your request."
+    return str, level
+

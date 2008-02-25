@@ -246,6 +246,18 @@ class ModXMLRPCRequestHandler(object):
         req.write(response)
 
 
+def offline_reply(req, msg=None):
+    """Send a ServerOffline reply"""
+    faultCode = koji.ServerOffline.faultCode
+    if msg is None:
+        faultString = "server is offline"
+    else:
+        faultString = msg
+    response = dumps(Fault(faultCode, faultString))
+    req.content_type = "text/xml"
+    req.set_content_length(len(response))
+    req.write(response)
+
 #
 # mod_python handler
 #
@@ -267,6 +279,9 @@ def handler(req, profiling=False):
     else:
         opts = req.get_options()
         try:
+            if opts.get("ServerOffline", False):
+                offline_reply(req, msg=opts.get("OfflineMessage", None))
+                return apache.OK
             context._threadclear()
             context.commit_pending = False
             context.opts = opts
@@ -274,7 +289,11 @@ def handler(req, profiling=False):
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
                                   host = opts.get("DBhost",None))
-            context.cnx = koji.db.connect(opts.get("KojiDebug",False))
+            try:
+                context.cnx = koji.db.connect(opts.get("KojiDebug",False))
+            except Exception:
+                offline_reply(req, msg="database outage")
+                return apache.OK
             functions = RootExports()
             hostFunctions = HostExports()
             h = ModXMLRPCRequestHandler()
