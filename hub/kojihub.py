@@ -3531,7 +3531,11 @@ def _get_build_target(task_id):
     task = Task(task_id)
     request = task.getRequest()
     # request is (path-to-srpm, build-target-name, map-of-other-options)
-    return get_build_targets(request[1])[0]
+    ret = get_build_targets(request[1])
+    if ret:
+        return ret[0]
+    else:
+        return None
 
 def get_notification_recipients(build, tag_id, state):
     """
@@ -3545,31 +3549,44 @@ def get_notification_recipients(build, tag_id, state):
     for this tag and the user who submitted the build.  The list will not contain
     duplicates.
     """
-    package_id = build['package_id']
     
-    query = """SELECT email FROM build_notifications
-    WHERE ((package_id = %(package_id)i OR package_id IS NULL)
-      AND  (tag_id = %(tag_id)i OR tag_id IS NULL))
-    """
-    if state != koji.BUILD_STATES['COMPLETE']:
-        query += """AND success_only = FALSE
-        """
+    clauses = []
 
-    emails = [result[0] for result in _fetchMulti(query, locals())]
+    if build:
+        package_id = build['package_id']
+        clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+    else:
+        clauses.append('package_id IS NULL')
+    if tag_id:
+        clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
+    else:
+        clauses.append('tag_id IS NULL')
+    if state != koji.BUILD_STATES['COMPLETE']:
+        clauses.append('success_only = FALSE')
+
+    query = QueryProcessor(columns=('email',), tables=['build_notifications'],
+                           clauses=clauses, values=locals(),
+                           opts={'asList':True})
+    emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
 
     # user who submitted the build
     emails.append('%s@%s' % (build['owner_name'], email_domain))
 
-    packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
-    # owner of the package in this tag, following inheritance
-    emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+    if tag_id:
+        packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+        # owner of the package in this tag, following inheritance
+        emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+    #FIXME - if tag_id is None, we don't have a good way to get the package owner.
+    #   using all package owners from all tags would be way overkill.
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
+    if context.opts.get('DisableNotifications', 'no') == 'yes':
+        return
     if is_successful:
         state = koji.BUILD_STATES['COMPLETE']
     else:
@@ -3594,15 +3611,21 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
     return None
 
 def build_notification(task_id, build_id):
+    if context.opts.get('DisableNotifications', 'no') == 'yes':
+        return
     build = get_build(build_id)
     target = _get_build_target(task_id)
+
+    dest_tag = None
+    if target:
+        dest_tag = target['dest_tag']
 
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         raise koji.GenericError, 'never send notifications for incomplete builds'
 
     web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
-    recipients = get_notification_recipients(build, target['dest_tag'], build['state'])
+    recipients = get_notification_recipients(build, dest_tag, build['state'])
     if len(recipients) > 0:
         make_task('buildNotification', [recipients, build, target, web_url])
 

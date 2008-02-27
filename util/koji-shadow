@@ -376,6 +376,23 @@ class TrackedBuild(object):
         if self.tracker:
             self.tracker.state_idx.setdefault(self.state, {})[self.id] = 1
 
+    def getSource(self):
+        """Get source from remote"""
+        task_id = self.info['task_id']
+        if task_id:
+            tinfo = remote.getTaskInfo(task_id)
+            if tinfo['method'] == 'build':
+                try:
+                    request = remote.getTaskRequest(task_id)
+                    src = request[0]
+                    #XXX - Move SCM class out of kojid and use it to check for scm url
+                    if src.startswith('cvs:'):
+                        return src
+                except:
+                    pass
+        #TODO - otherwise we just have to download the srpm
+        return None #XXX
+
     def addChild(self, child):
         self.children[child] = 1
 
@@ -393,6 +410,10 @@ class TrackedBuild(object):
         #while we've got the rpm list, let's note the extra arches
         #XXX  - really should reorganize this a bit
         self.setExtraArchesFromRPMs(rpms)
+        #also, might as well note the src rpm
+        for rinfo in rpms:
+            if rinfo['arch'] == 'src':
+                self.srpm = rinfo
         brs = {}
         bad = []
         for rinfo in rpms:
@@ -677,16 +698,29 @@ class BuildTracker(object):
         #       current latest repo for tag
         session.getLastEvent()
         results = session.multiCall()
-        [event_id, event_ts] = results[-1]
+        [event_id, event_ts] = results[0][-1]
         #TODO - verify / check results ?
         task_id = session.newRepo(our_tag)
         #TODO - upload src
         #       [?] use remote SCM url (if avail)?
-        src = "" #XXX
-        #TODO - wait for repo task
-        #       ...and verify repo
-        #TODO - kick off build
-        #task_id = session.build(src, taginfo['name'], opts={'repo_id': repo_id} )
+        src = build.getSource()
+        if not src:
+            print "Couldn't get source for %s" % build.nvr
+            return None
+        #wait for repo task
+        while True:
+            tinfo = session.getTaskInfo(task_id)
+            tstate = koji.TASK_STATES[tinfo['state']]
+            if tstate == 'CLOSED':
+                break
+            elif tstate in ('CANCELED', 'FAILED'):
+                print "Error: failed to generate repo"
+                return None
+            #add a timeout?
+        #TODO       ...and verify repo
+        repo_id, event_id = session.getTaskResult(task_id)
+        #kick off build
+        task_id = session.build(src, None, opts={'repo_id': repo_id} )
         return task_id
 
     def report(self):
@@ -721,9 +755,13 @@ class BuildTracker(object):
         while True:
             print "available: %i, missing: %i, pending: %i, problem: %i" \
                     % (len(b_avail), len(b_missing), len(b_pending), len(b_problem))
-            if not b_pending and not b_missing:
-                #we're done
-                break
+            if not b_missing:
+                if not b_pending:
+                    #we're done
+                    break
+                else:
+                    print "Waiting on %i jobs to finish" % len(b_pending)
+                    time.sleep(30)
             for build_id, task_id in b_pending.items():
                 #check pending builds
                 build = self.builds[build_id]
@@ -763,17 +801,17 @@ class BuildTracker(object):
                     b_problem[build_id] = build
                     print_builds(problem)
                     continue
+                pending = [x for x in build.deps.iterkeys() if b_pending.get(x)]
+                if pending:
+                    #deps for this build are currently building
+                    print "%s, Waiting on %i deps" % (build.nvr, len(pending))
+                    continue
                 missing = [x for x in build.deps.iterkeys() if b_missing.get(x)]
                 if missing:
                     #this indicates an ordering problem
                     #we'll just skip it for now
                     print "Out of order: %s, missing %i deps" % (build.nvr, len(missing))
                     print_builds(missing)
-                    continue
-                pending = [x for x in build.deps.iterkeys() if b_pending.get(x)]
-                if pending:
-                    #deps for this build are currently building
-                    print "%s, Waiting on %i deps" % (build.nvr, len(pending))
                     continue
                 not_avail = [x for x in build.deps.iterkeys() if not b_avail.get(x)]
                 if not_avail:
@@ -789,10 +827,15 @@ class BuildTracker(object):
                 del b_missing[build_id]
                 if options.test:
                     #pretend build is available
-                    b_avail[build_id] = 1
+                    b_avail[build_id] = build
                     build.state = 'common'  #XXX
+                elif not task_id:
+                    #something went wrong setting up the rebuild
+                    b_problem[build_id] = build
+                    print_builds(problem)
                 else:
                     b_pending[build_id] = task_id
+            time.sleep(15)
         print "Rebuilt %i builds" % (len(b_avail) - initial_avail)
 
     def showOrder(self):
