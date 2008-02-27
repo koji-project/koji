@@ -131,7 +131,12 @@ class ManagedRepo(object):
             return False
         self.logger.info("Deleted repo %s" % self.repo_id)
         self.state = koji.REPO_DELETED
-        tag_name = session.getTag(self.tag_id)['name']
+        tag_info = session.getTag(self.tag_id)
+        if not tag_info:
+            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' % 
+                             (self.tag_id, self.repo_id))
+            return False
+        tag_name = tag_info['name']
         path = pathinfo.repo(self.repo_id, tag_name)
         safe_rmtree(path, strict=False)
         return True
