@@ -1,4 +1,4 @@
-BINFILES = kojira
+BINFILES = kojira koji-gc
 
 _default:
 	@echo "nothing to make. try make install"
@@ -23,3 +23,6 @@ install:
 
 	mkdir -p $(DESTDIR)/etc/kojira
 	install -p -m 644 kojira.conf $(DESTDIR)/etc/kojira/kojira.conf
+
+	mkdir -p $(DESTDIR)/etc/koji-gc
+	install -p -m 644 koji-gc.conf $(DESTDIR)/etc/koji-gc/koji-gc.conf
