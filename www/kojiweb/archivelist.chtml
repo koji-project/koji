@@ -1,0 +1,76 @@
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+  #if $type == 'component'
+  <h4>Component Archives of buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  #else
+  <h4>Archives built in buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  #end if
+
+  <table class="data-list">
+    <tr>
+      <td class="paginate" colspan="2">
+        #if $len($archivePages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'archivelist?buildrootID=$buildroot.id&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
+            #for $pageNum in $archivePages
+            <option value="$pageNum"#if $pageNum == $archiveCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $archiveStart > 0
+        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalArchives != 0
+        <strong>Archives #echo $archiveStart + 1 # through #echo $archiveStart + $archiveCount # of $totalArchives</strong>
+        #end if
+        #if $archiveStart + $archiveCount < $totalArchives
+        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="archivelist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'filename')$util.passthrough($self, 'type')">Filename</a> $util.sortImage($self, 'filename')</th>
+      <th><a href="archivelist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'type_name')$util.passthrough($self, 'type')">Type</a> $util.sortImage($self, 'type_name')</th>
+    </tr>
+    #if $len($archives) > 0
+    #for $archive in $archives
+    <tr class="$util.rowToggle($self)">
+      <td><a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></td>
+      <td>$archive.type_name</td>
+    </tr>
+    #end for
+    #else
+    <tr class="row-odd">
+      <td colspan="2">No Archives</td>
+    </tr>
+    #end if
+    <tr>
+      <td class="paginate" colspan="2">
+        #if $len($archivePages) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'archivelist?buildrootID=$buildroot.id&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
+            #for $pageNum in $archivePages
+            <option value="$pageNum"#if $pageNum == $archiveCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            #end for
+          </select>
+        </form>
+        #end if
+        #if $archiveStart > 0
+        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        #end if
+        #if $totalArchives != 0
+        <strong>Archives #echo $archiveStart + 1 # through #echo $archiveStart + $archiveCount # of $totalArchives</strong>
+        #end if
+        #if $archiveStart + $archiveCount < $totalArchives
+        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        #end if
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"
