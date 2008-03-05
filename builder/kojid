@@ -386,6 +386,12 @@ class BuildRoot(object):
       <url>%(repourl)s</url>
       <mirrorOf>jboss</mirrorOf>
     </mirror>
+    <mirror>
+      <id>koji-jboss-org-repo-%(tag_name)s-%(repo_id)i</id>
+      <name>Koji-managed JBoss repository (%(tag_name)s-%(repo_id)i)</name>
+      <url>%(repourl)s</url>
+      <mirrorOf>repository.jboss.org</mirrorOf>
+    </mirror>
   </mirrors>
 </settings>
 """ % locals()
