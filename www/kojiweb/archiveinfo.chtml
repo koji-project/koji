@@ -1,0 +1,106 @@
+#import koji
+#from kojiweb import util
+#import urllib
+
+#include "includes/header.chtml"
+  <h4>Information for archive $archive.filename</h4>
+
+  <table>
+    <tr>
+      <th>ID</th><td>$archive.id</td>
+    </tr>
+    <tr>
+      <th>File Name</th><td>$archive.filename</td>
+    </tr>
+    <tr>
+      <th>File Type</th><td>$archive_type.name</td>
+    </tr>
+    <tr>
+      <th>Build</th><td><a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></td>
+    </tr>
+    #if $maveninfo
+    <tr>
+      <th>Maven groupId</th><td>$maveninfo.group_id</td>
+    </tr>
+    <tr>
+      <th>Maven artifactId</th><td>$maveninfo.artifact_id</td>
+    </tr>
+    <tr>
+      <th>Maven version</th><td>$maveninfo.version</td>
+    </tr>
+    #end if
+    <tr>
+      <th>Size</th><td>$archive.size</td>
+    </tr>
+    <tr>
+      <th>MD5 Sum</th><td>$archive.md5sum</td>
+    </tr>
+    #if $builtInRoot
+    <tr>
+      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
+    </tr>
+    #end if
+    <tr>
+      <th id="filelist">Files</th>
+      <td class="container">
+        #if $len($files) > 0
+        <table class="nested data-list">
+          <tr>
+            <td class="paginate" colspan="2">
+              #if $len($filePages) > 1
+              <form class="pageJump">
+                Page:
+                <select onchange="javascript: window.location = 'archiveinfo?fileStart=' + this.value * $fileRange + '$util.passthrough($self, 'archiveID', 'fileOrder')#filelist';">
+                  #for $pageNum in $filePages
+                  <option value="$pageNum"#if $pageNum == $fileCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+                  #end for
+                </select>
+              </form>
+              #end if
+              #if $fileStart > 0
+              <a href="archiveinfo?fileStart=#echo $fileStart - $fileRange #$util.passthrough($self, 'archiveID', 'fileOrder')#filelist">&lt;&lt;&lt;</a>
+              #end if
+              <strong>#echo $fileStart + 1 # through #echo $fileStart + $fileCount # of $totalFiles</strong>
+              #if $fileStart + $fileCount < $totalFiles
+              <a href="archiveinfo?fileStart=#echo $fileStart + $fileRange#$util.passthrough($self, 'archiveID', 'fileOrder')#filelist">&gt;&gt;&gt;</a>
+              #end if
+            </td>
+          </tr>
+          <tr class="list-header">
+            <th><a href="archiveinfo?fileOrder=$util.toggleOrder($self, 'name', 'fileOrder')$util.passthrough($self, 'archiveID')#filelist">Name</a> $util.sortImage($self, 'name', 'fileOrder')</th>
+            <th><a href="archiveinfo?fileOrder=$util.toggleOrder($self, 'size', 'fileOrder')$util.passthrough($self, 'archiveID')#filelist">Size</a> $util.sortImage($self, 'size', 'fileOrder')</th>
+          </tr>
+          #for $file in $files
+          <tr class="$util.rowToggle($self)">
+            <td><a href="fileinfo?archiveID=$archive.id&filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No files
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Component&nbsp;of</th>
+      <td class="container">
+        #if $len($buildroots) > 0
+        <table class="nested data-list">
+          <tr class="list-header">
+            <th>Buildroot</th><th>State</th>
+          </tr>
+          #for $buildroot in $buildroots
+          <tr class="$util.rowToggle($self)">
+            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
+            <td>$util.imageTag($util.brStateName($buildroot.state))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Buildroots
+        #end if
+      </td>      
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"
