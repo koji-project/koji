@@ -1867,18 +1867,23 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
 
     if tinfo['maven_support']:
         artifact_dirs = {}
+        seen = {}
         for build in maven_builds.itervalues():
             maven_info = {'group_id': build['maven_group_id'],
                           'artifact_id': build['maven_artifact_id'],
                           'version': build['maven_version']}
             _populate_maven_repodir(build, maven_info, repodir, artifact_dirs)
+            seen[koji.mavenLabel(maven_info)] = True
             # also need to check for archives created by the same build but with a different
             # (group_id, artifact_id, version)
             for archive_info in list_archives(buildID=build['id'], type='maven'):
                 if archive_info['group_id'] != maven_info['group_id'] or \
                         archive_info['artifact_id'] != maven_info['artifact_id'] or \
                         archive_info['version'] != maven_info['version']:
-                    _populate_maven_repodir(build, archive_info, repodir, artifact_dirs)
+                    if not seen.get(koji.mavenLabel(archive_info)):
+                        # multiple archives may have the same maven info, so filter out duplicates
+                        _populate_maven_repodir(build, archive_info, repodir, artifact_dirs)
+                        seen[koji.mavenLabel(archive_info)] = True
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
