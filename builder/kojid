@@ -622,7 +622,8 @@ class TaskManager(object):
                         else:
                             self.logger.warn("%s: %s" % (desc, e))
                             continue
-                    age = min(age, time.time() - st.st_mtime)
+                    else:
+                        age = min(age, time.time() - st.st_mtime)
                 #note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
                 #If rpmlib is installing in this chroot, removing it entirely
                 #can lead to a world of hurt.
