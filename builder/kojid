@@ -2228,10 +2228,13 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag):
+    def handler(self, tag, event=None):
         self.uploadpath = self.getUploadDir()
         tinfo = session.getTag(tag, strict=True)
-        repo_id, event_id = session.host.repoInit(tinfo['id'])
+        kwargs = {}
+        if event is not None:
+            kwargs['event'] = event
+        repo_id, event_id = session.host.repoInit(tinfo['id'], **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError, "Repo directory missing: %s" % path
@@ -2254,7 +2257,10 @@ class NewRepoTask(BaseTaskHandler):
         for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
-        session.host.repoDone(repo_id, data)
+        kwargs = {}
+        if event is not None:
+            kwargs['expire'] = True
+        session.host.repoDone(repo_id, data, **kwargs)
         return repo_id, event_id
 
 class CreaterepoTask(BaseTaskHandler):

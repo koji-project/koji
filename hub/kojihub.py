@@ -1679,7 +1679,7 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
-def repo_init(tag, with_src=False, with_debuginfo=False):
+def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -1694,7 +1694,13 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         for arch in tinfo['arches'].split():
             repo_arches[koji.canonArch(arch)] = 1
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
-    event_id = _singleValue("SELECT get_event()")
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        #make sure event is valid
+        q = "SELECT time FROM events WHERE id=%(event)s"
+        event_time = _singleValue(q, locals(), strict=True)
+        event_id = event
     q = """INSERT INTO repo(id, create_event, tag_id, state)
     VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
     _dml(q,locals())
@@ -4916,10 +4922,14 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def newRepo(self, tag):
+    def newRepo(self, tag, event=None):
         """Create a newRepo task. returns task id"""
         context.session.assertPerm('repo')
-        return make_task('newRepo', [tag], priority=15, channel='createrepo')
+        if event:
+            args = koji.encode_args(tag, event=None)
+        else:
+            args = [tag]
+        return make_task('newRepo', args, priority=15, channel='createrepo')
 
     def repoExpire(self, repo_id):
         """mark repo expired"""
@@ -6173,11 +6183,11 @@ class HostExports(object):
             br.assertTask(task_id)
         return br.updateList(rpmlist)
 
-    def repoInit(self, tag, with_src=False):
+    def repoInit(self, tag, with_src=False, event=None):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src)
+        return repo_init(tag, with_src=with_src, event=event)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""
@@ -6222,11 +6232,14 @@ class HostExports(object):
             else:
                 os.link(filepath, dst)
 
-    def repoDone(self, repo_id, data):
+    def repoDone(self, repo_id, data, expire=False):
         """Move repo data into place, mark as ready, and expire earlier repos
 
         repo_id: the id of the repo
         data: a dictionary of the form { arch: (uploadpath, files), ...}
+        expire(optional): if set to true, mark the repo expired immediately*
+
+        * This is used when a repo from an older event is generated
         """
         host = Host()
         host.verify()
@@ -6248,8 +6261,11 @@ class HostExports(object):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 os.link(src, dst)
                 os.unlink(src)
-        repo_ready(repo_id)
-        repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+        if expire:
+            repo_expire(repo_id)
+        else:
+            repo_ready(repo_id)
+            repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
 
     def isEnabled(self):
         host = Host()
