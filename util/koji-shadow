@@ -31,10 +31,15 @@ import fnmatch
 import optparse
 import os
 import pprint
+import random
+import shutil
 import smtplib
 import socket   # for socket.error and socket.setdefaulttimeout
+import string
 import sys
 import time
+import urllib2
+import urlgrabber.grabber as grabber
 import xmlrpclib  # for ProtocolError and Fault
 
 # koji.fp.o keeps stalling, probably network errors...
@@ -56,6 +61,11 @@ if optparse.__version__ == "1.4.1+":
 def _(args):
     """Stub function for translation"""
     return args
+
+
+class SubOption(object):
+    """A simple container to help with tracking ConfigParser data"""
+    pass
 
 def get_options():
     """process options from command line and config file"""
@@ -94,6 +104,12 @@ def get_options():
                       help=_("url of local XMLRPC server"))
     parser.add_option("-r", "--remote",
                       help=_("url of remote XMLRPC server"))
+    parser.add_option("--link-imports",
+                      help=_("use 'import --link' functionality"))
+    parser.add_option("--remote-topurl",
+                      help=_("topurl for remote server"))
+    parser.add_option("--workpath", default="/tmp/koji-shadow",
+                      help=_("location to store work files"))
     #parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -113,8 +129,27 @@ def get_options():
         config = None
     else:
         config.read(cf)
-        #allow config file to update defaults for certain options
-        cfgmap = [
+        #allow config file to update defaults
+        for opt in parser.option_list:
+            if not opt.dest:
+                continue
+            name = opt.dest
+            alias = ('global', name)
+            if config.has_option(*alias):
+                print "Using option %s from config file" % (alias,)
+                if opt.action in ('store_true', 'store_false'):
+                    setattr(defaults, name, config.getboolean(*alias))
+                elif opt.action != 'store':
+                    pass
+                elif opt.type in ('int', 'long'):
+                    setattr(defaults, name, config.getint(*alias))
+                elif opt.type in ('float'):
+                    setattr(defaults, name, config.getfloat(*alias))
+                else:
+                    setattr(defaults, name, config.get(*alias))
+        #config file options without a cmdline equivalent
+        otheropts = [
+            #name, type, default
             ['keytab', None, 'string'],
             ['principal', None, 'string'],
             ['runas', None, 'string'],
@@ -123,19 +158,10 @@ def get_options():
             ['noauth', None, 'boolean'],
             ['server', None, 'string'],
             ['remote', None, 'string'],
-            ['max_jobs', None, 'integer'],
+            ['max_jobs', None, 'int']
             ]
-        for name, alias, type in cfgmap:
-            if alias is None:
-                alias = ('global', name)
-            if config.has_option(*alias):
-                print "Using option %s from config file" % (alias,)
-                if type == 'integer':
-                    setattr(defaults, name, config.getint(*alias))
-                elif type == 'boolean':
-                    setattr(defaults, name, config.getboolean(*alias))
-                else:
-                    setattr(defaults, name, config.get(*alias))
+
+
     #parse again with updated defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
@@ -250,79 +276,26 @@ def activate_session(session):
     if options.debug:
         print "successfully connected to hub"
 
+def _unique_path(prefix):
+    """Create a unique path fragment by appending a path component
+    to prefix.  The path component will consist of a string of letter and numbers
+    that is unlikely to be a duplicate, but is not guaranteed to be unique."""
+    # Use time() in the dirname to provide a little more information when
+    # browsing the filesystem.
+    # For some reason repr(time.time()) includes 4 or 5
+    # more digits of precision than str(time.time())
+    return '%s/%r.%s' % (prefix, time.time(),
+                      ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
-def main(args):
-    #activate_session(session)
-    bar()
 
+class LocalBuild(object):
+    """A stand-in for substitute deps that are only available locally"""
 
-def remote_buildroots(build_id):
-    """Return a list of buildroots for remote build"""
-    #XXX - only used in old test code (foo)
-    rpms = remote.listRPMs(build_id)
-    brs = {}
-    for rinfo in rpms:
-        br_id = rinfo.get('buildroot_id')
-        if not br_id:
-            print "Warning: no buildroot for: %s" % rinfo
-            continue
-        brs[br_id] = 1
-    return brs.keys()
-
-def remote_br_builds(brlist):
-    """Given a list of buildroots, return build data of contents"""
-    #XXX - only used in old test code (foo)
-    seen = {}
-    builds = {}
-    for br_id in brlist:
-        if seen.has_key(br_id):
-            continue
-        seen[br_id] = 1
-        #print "."
-        for rinfo in remote.listRPMs(componentBuildrootID=br_id):
-            builds[rinfo['build_id']] = 1
-    return dict([(b, remote.getBuild(b)) for b in builds])
-
-def foo():
-    """just experimenting...."""
-    binfo = remote.getBuild(args[0])
-    buildroots = remote_buildroots(binfo['id'])
-    if not buildroots:
-        #nothing we can do
-        return
-    build_idx = remote_br_builds(buildroots)
-    name_idx = {}
-    for binfo2 in build_idx.itervalues():
-        name_idx.setdefault(binfo2['name'], []).append(binfo2)
-    names = name_idx.keys()
-    missing = {}
-    found = {}
-    for name, builds in name_idx.iteritems():
-        if len(builds) > 1:
-            print "Warning: found multiple versions of %s: %s" % (name, builds)
-            #pick latest (by completion time)
-            order = [(b['completion_ts'], b) for b in builds]
-            order.sort()
-            build = order[-1][1]
-        else:
-            build = builds[0]
-        nvr = "%(name)s-%(version)s-%(release)s" % build
-        build.setdefault('nvr', nvr)
-        #see if our server has it
-        ours = session.getBuild(nvr)
-        if ours:
-            ours.setdefault('nvr', nvr)
-            found[name] = ours
-        else:
-            missing[name] = build
-    names = found.keys()
-    names.sort()
-    for name in names:
-        print "Found common build: %(nvr)s" % found[name]
-    names = missing.keys()
-    names.sort()
-    for name in names:
-        print "Missing remote build: %(nvr)s" % missing[name]
+    def __init__(self, info, tracker=None):
+        self.info = info
+        self.id = info['id']
+        self.nvr = "%(name)s-%(version)s-%(release)s" % self.info
+        self.state = 'local'
 
 
 class TrackedBuild(object):
@@ -332,9 +305,12 @@ class TrackedBuild(object):
         self.tracker = tracker
         self.info = remote.getBuild(build_id)
         self.nvr = "%(name)s-%(version)s-%(release)s" % self.info
+        self.srpm = None
+        self.rpms = None
         self.children = {}
         self.state = None
         self.order = 0
+        self.substitute = None
         if child is not None:
             #children tracks the builds that were built using this one
             self.children[child] = 1
@@ -342,6 +318,11 @@ class TrackedBuild(object):
         self.rebuilt = False
         self.updateState()
         if self.state == 'missing':
+            self.rpms = remote.listRPMs(self.id)
+            for rinfo in self.rpms:
+                if rinfo['arch'] == 'src':
+                    self.srpm = rinfo
+            self.getExtraArches()
             self.getDeps()   #sets deps, br_tag, base, order, (maybe state)
 
     def updateState(self):
@@ -360,8 +341,12 @@ class TrackedBuild(object):
             elif state in ('FAILED', 'CANCELED'):
                 #treat these as having no build
                 pass
+            elif state == 'BUILDING' and ours['task_id']:
+                self.setState("pending")
+                self.task_id = ours['task_id']
+                return
             else:
-                # DELETED, BUILDING
+                # DELETED or BUILDING(no task)
                 self.setState("broken")
                 return
         self.setState("missing")
@@ -374,10 +359,28 @@ class TrackedBuild(object):
             del self.tracker.state_idx[self.state][self.id]
         self.state = state
         if self.tracker:
-            self.tracker.state_idx.setdefault(self.state, {})[self.id] = 1
+            self.tracker.state_idx.setdefault(self.state, {})[self.id] = self
 
     def getSource(self):
         """Get source from remote"""
+        if options.remote_topurl and self.srpm:
+            #download srpm from remote
+            pathinfo = koji.PathInfo(options.remote_topurl)
+            url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
+            print "Downloading %s" % url
+            #XXX - this is not really the right place for this
+            fsrc = urllib2.urlopen(url)
+            fn = "/tmp/koji-shadow/%s.src.rpm" % self.nvr
+            koji.ensuredir(os.path.dirname(fn))
+            fdst = file(fn, 'w')
+            shutil.copyfileobj(fsrc, fdst)
+            fsrc.close()
+            fdst.close()
+            serverdir = _unique_path('koji-shadow')
+            session.uploadWrapper(fn, serverdir, blocksize=65536)
+            src = "%s/%s" % (serverdir, os.path.basename(fn))
+            return src
+        #otherwise use SCM url
         task_id = self.info['task_id']
         if task_id:
             tinfo = remote.getTaskInfo(task_id)
@@ -390,33 +393,23 @@ class TrackedBuild(object):
                         return src
                 except:
                     pass
-        #TODO - otherwise we just have to download the srpm
-        return None #XXX
+        #otherwise fail
+        return None
 
     def addChild(self, child):
         self.children[child] = 1
 
-    def setExtraArchesFromRPMs(self, rpms=None):
-        if rpms is None:
-            rpms = remote.listRPMs(self.id)
+    def getExtraArches(self):
         arches = {}
-        for rpminfo in rpms:
+        for rpminfo in self.rpms:
             arches.setdefault(rpminfo['arch'], 1)
         self.extraArches = [a for a in arches if koji.canonArch(a) != a]
 
     def getBuildroots(self):
         """Return a list of buildroots for remote build"""
-        rpms = remote.listRPMs(self.id)
-        #while we've got the rpm list, let's note the extra arches
-        #XXX  - really should reorganize this a bit
-        self.setExtraArchesFromRPMs(rpms)
-        #also, might as well note the src rpm
-        for rinfo in rpms:
-            if rinfo['arch'] == 'src':
-                self.srpm = rinfo
         brs = {}
         bad = []
-        for rinfo in rpms:
+        for rinfo in self.rpms:
             br_id = rinfo.get('buildroot_id')
             if not br_id:
                 bad.append(rinfo)
@@ -459,10 +452,12 @@ class TrackedBuild(object):
         #        repo and others the new one.
         base = []
         for name, brlist in bases.iteritems():
-            for br_id in buildroots:
-                if br_id not in brlist:
-                    break
-            else:
+            #We want to determine for each name if that package was present
+            #in /all/ the buildroots or just some.
+            #Because brlist is constructed only from elements of buildroots, we
+            #can simply check the length
+            assert len(brlist) <= len(buildroots)
+            if len(brlist) == len(buildroots):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
@@ -473,15 +468,105 @@ class TrackedBuild(object):
         else:
             tag = tags.keys()[0]
         self.deps = builds
+        self.revised_deps = None  #BuildTracker will set this later
         self.br_tag = tag
         self.base = base
 
 
 class BuildTracker(object):
 
-    builds = {}
-    state_idx = {}
-    rebuild_order = 0
+    def __init__(self):
+        self.rebuild_order = 0
+        self.builds = {}
+        self.state_idx = {}
+        self.nvr_idx = {}
+        for state in ('common', 'pending', 'missing', 'broken', 'brokendeps',
+                     'noroot', 'blocked', 'grey'):
+            self.state_idx.setdefault(state, {})
+        self.scanRules()
+
+    def scanRules(self):
+        """Reads/parses rules data from the config
+
+        This data consists mainly of
+            white/black/greylist data
+            substitution data
+        """
+        self.blacklist = None
+        self.whitelist = None
+        self.greylist = None
+        self.substitute_idx = {}
+        self.substitutions = {}
+        if options.config.has_option('rules', 'whitelist'):
+            self.whitelist = options.config.get('rules', 'whitelist').split()
+        if options.config.has_option('rules', 'blacklist'):
+            self.blacklist = options.config.get('rules', 'blacklist').split()
+        if options.config.has_option('rules', 'greylist'):
+            self.greylist = options.config.get('rules', 'greylist').split()
+        if options.config.has_option('rules', 'substitutions'):
+            #At present this is a simple multi-line format
+            #one substitution per line
+            #format:
+            #  missing-build  build-to-substitute
+            #TODO: allow more robust substitutions
+            for line in options.config.get('rules', 'substitutions').splitlines():
+                line = line.strip()
+                if line[:1] == "#":
+                    #skip comment
+                    continue
+                if not line:
+                    #blank
+                    continue
+                data = line.split()
+                if len(data) != 2:
+                    raise Exception, "Bad substitution: %s" % line
+                match, replace = data
+                self.substitutions[match] = replace
+
+    def checkFilter(self, build, grey=None, default=True):
+        """Check build against white/black/grey lists
+
+        Whitelisting takes precedence over blacklisting. In our case, the whitelist
+        is a list of exceptions to black/greylisting.
+
+        If the build is greylisted, returns the value specified by the 'grey' parameter
+
+        If the build matches nothing, returns the value specified in the 'default' parameter
+        """
+        if self.whitelist:
+            for pattern in self.whitelist:
+                if fnmatch.fnmatch(build.nvr, pattern):
+                    return True
+        if self.blacklist:
+            for pattern in self.blacklist:
+                if fnmatch.fnmatch(build.nvr, pattern):
+                    return False
+        if self.greylist:
+            for pattern in self.greylist:
+                if fnmatch.fnmatch(build.nvr, pattern):
+                    return grey
+        return default
+
+    def getSubstitute(self, nvr):
+        build = self.substitute_idx.get(nvr)
+        if not build:
+            #see if remote has it
+            info = remote.getBuild(nvr)
+            if info:
+                #see if we're already tracking it
+                build = self.builds.get(info['id'])
+                if not build:
+                    build = TrackedBuild(info['id'], tracker=self)
+            else:
+                #remote doesn't have it
+                #see if we have it locally
+                info = session.getBuild(nvr)
+                if info:
+                    build = LocalBuild(info)
+                else:
+                    build = None
+            self.substitute_idx[nvr] = build
+        return build
 
     def scanBuild(self, build_id, from_build=None, depth=0):
         """Recursively scan a build and its dependencies"""
@@ -491,51 +576,94 @@ class BuildTracker(object):
             #already scanned
             if from_build:
                 build.addChild(from_build.id)
-            return build
-        #otherwise...
-        child_id = None
-        if from_build:
-            child_id = from_build.id
-        build = TrackedBuild(build_id, child=child_id, tracker=self)
-        #print build.id, build.nvr
-        self.builds[build_id] = build
-        if len(self.builds) % 50 == 0:
-            self.report()
+            #There are situations where, we'll need to go forward anyway:
+            # - if we were greylisted before, and depth > 0 now
+            # - if we're being substituted and depth is 0
+            if not (depth > 0 and build.state == 'grey') \
+                    and not (depth == 0 and build.substitute):
+                return build
+        else:
+            child_id = None
+            if from_build:
+                child_id = from_build.id
+            build = TrackedBuild(build_id, child=child_id, tracker=self)
+            self.builds[build_id] = build
         if from_build:
             tail = " (from %s)" % from_build.nvr
         else:
             tail = ""
         head = " " * depth
+        check = self.checkFilter(build, grey=None)
+        if check is None:
+            #greylisted builds are ok as deps, but not primary builds
+            if depth == 0:
+                print "%sGreylisted build %s%s" % (head, build.nvr, tail)
+                build.setState('grey')
+                return build
+            #get rid of 'grey' state (filter will not be checked again)
+            build.updateState()
+        elif not check:
+            print "%sBlocked build %s%s" % (head, build.nvr, tail)
+            build.setState('blocked')
+            return build
+        #check to see if a substition applies
+        replace = self.substitutions.get(build.nvr)
+        if replace:
+            build.substitute = replace
+            if depth > 0:
+                print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
+                return build
         if build.state == "common":
             #we're good
             if build.rebuilt:
                 print "%sCommon build (rebuilt) %s%s" % (head, build.nvr, tail)
             else:
                 print "%sCommon build %s%s" % (head, build.nvr, tail)
+        elif build.state == 'pending':
+            print "%sRebuild in progress: %s%s" % (head, build.nvr, tail)
         elif build.state == "noroot":
             #we're fucked
             print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
         elif build.state == "broken":
             #also fucked
             print "%sWarning: build exists, but is invalid: %s%s" % (head, build.nvr, tail)
+        elif build.state == 'brokendeps':
+            #should not be possible at this point
+            print "Error: build reports brokendeps state before dep scan"
         elif build.state == "missing":
             #scan its deps
             print "%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail)
+            newdeps = []
+            #don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
-                for retry in xrange(10):
-                    try:
-                        self.scanBuild(dep_id, from_build=build, depth=depth+1)
-                        # set rebuild order as we go
-                        # we do this /after/ the recursion, so our deps have a lower order number
-                        self.rebuild_order += 1
-                        build.order = self.rebuild_order
-                    except (socket.timeout, socket.error):
-                        print "retry"
-                        continue
+                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1)
+                if dep.substitute:
+                    dep2 = self.getSubstitute(dep.substitute)
+                    if isinstance(dep2, TrackedBuild):
+                        self.scanBuild(dep2.id, from_build=build, depth=depth+1)
+                    elif dep2 is None:
+                        #dep is missing on both local and remote
+                        print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
+                        #no point in continuing
+                        break
+                    #otherwise dep2 should be LocalBuild instance
+                    newdeps.append(dep2)
+                elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
+                    #no point in continuing
+                    newdeps = None
                     break
                 else:
-                    print "Error: unable to scan dep: %i for %s" % (dep_id, build.nvr)
-                    continue
+                    newdeps.append(dep)
+                # set rebuild order as we go
+                # we do this /after/ the recursion, so our deps have a lower order number
+                self.rebuild_order += 1
+                build.order = self.rebuild_order
+            build.revised_deps = newdeps
+        #scanning takes a long time, might as well start builds if we can
+        self.checkJobs()
+        self.rebuildMissing()
+        if len(self.builds) % 50 == 0:
+            self.report()
         return build
 
     def scanTag(self, tag):
@@ -556,6 +684,60 @@ class BuildTracker(object):
                 print "Error: unable to scan %(name)s-%(version)s-%(release)s" % build
                 continue
 
+    def _importURL(self, url, fn):
+        """Import an rpm directly from a url"""
+        serverdir = _unique_path('koji-shadow')
+        if options.link_imports:
+            #bit of a hack, but faster than uploading
+            dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, fn)
+            old_umask = os.umask(002)
+            try:
+                koji.ensuredir(os.path.dirname(dst))
+                os.chown(os.path.dirname(dst), 48, 48)  #XXX - hack
+                print "Downloading %s to %s" % (url, dst)
+                fsrc = urllib2.urlopen(url)
+                fdst = file(fn, 'w')
+                shutil.copyfileobj(fsrc, fdst)
+                fsrc.close()
+                fdst.close()
+            finally:
+                os.umask(old_umask)
+        else:
+            #TODO - would be possible, using uploadFile directly, to upload without writing locally.
+            #for now, though, just use uploadWrapper
+            print "Downloading %s..." % url
+            koji.ensuredir(options.workpath)
+            dst = "%s/%s" % (options.workpath, fn)
+            fsrc = urllib2.urlopen(url)
+            fdst = file(fn, 'w')
+            shutil.copyfileobj(fsrc, fdst)
+            fsrc.close()
+            fdst.close()
+            print "Uploading %s..." % path
+            session.uploadWrapper(dst, serverdir, blocksize=65536)
+        session.importRPM('serverdir', fn)
+
+    def importBuild(self, build):
+        '''import a build from remote hub'''
+        if not build.srpm:
+            print "No srpm for build %s, skipping import" % build.nvr
+            #TODO - support no-src imports here
+            return False
+        if not options.options.remote_topurl:
+            print "Skipping import of %s, remote_topurl not specified" % build.nvr
+            return False
+        pathinfo = koji.PathInfo(options.remote_topurl)
+        build_url = pathinfo.build(build.info)
+        url = "%s/%s" % (pathinfo.build(build.info), pathinfo.rpm(build.srpm))
+        fname = "%s.src.rpm" % build.nvr
+        self._importURL(url, fname)
+        for rpminfo in build.rpms:
+            relpath = pathinfo.rpm(rpminfo)
+            url = "%s/%s" % (build_url, relpath)
+            fname = os.path.basename(relpath)
+            self._importURL(url, fname)
+        return True
+
     def scan(self):
         """Scan based on config file"""
         to_scan = []
@@ -564,16 +746,23 @@ class BuildTracker(object):
     def rebuild(self, build):
         """Rebuild a remote build using closest possible buildroot"""
         #first check that we can
-        deps = []
-        for build_id in build.deps:
-            dep = self.builds.get(build_id)
-            if not dep:
-                print "Missing dependency %i for %s. Not scanned?" % (build_id, build.nvr)
-                return
-            if dep.state != 'common':
-                print "Dependency missing for %s: %s (%s)" % (build.nvr, dep.nvr, dep.state)
-                return
-            deps.append(dep)
+        if build.state != 'missing':
+            print "Can't rebuild %s. state=%s" % (build.nvr, build.state)
+            return
+        #deps = []
+        #for build_id in build.deps:
+        #    dep = self.builds.get(build_id)
+        #    if not dep:
+        #        print "Missing dependency %i for %s. Not scanned?" % (build_id, build.nvr)
+        #        return
+        #    if dep.state != 'common':
+        #        print "Dependency missing for %s: %s (%s)" % (build.nvr, dep.nvr, dep.state)
+        #        return
+        #    deps.append(dep)
+        deps = build.revised_deps
+        if deps is None:
+            print "Can't rebuild %s" % build.nvr
+            return
         if options.test:
             print "Skipping rebuild of %s (test mode)" % build.nvr
             return
@@ -697,10 +886,10 @@ class BuildTracker(object):
         #       short of adding a new call, perhaps use getLastEvent together with event of
         #       current latest repo for tag
         session.getLastEvent()
-        results = session.multiCall()
-        [event_id, event_ts] = results[0][-1]
+        results = session.multiCall(strict=True)
+        event_id = results[-1][0]['id']
         #TODO - verify / check results ?
-        task_id = session.newRepo(our_tag)
+        task_id = session.newRepo(our_tag, event=event_id)
         #TODO - upload src
         #       [?] use remote SCM url (if avail)?
         src = build.getSource()
@@ -708,6 +897,7 @@ class BuildTracker(object):
             print "Couldn't get source for %s" % build.nvr
             return None
         #wait for repo task
+        print "Waiting on newRepo task %i" % task_id
         while True:
             tinfo = session.getTaskInfo(task_id)
             tstate = koji.TASK_STATES[tinfo['state']]
@@ -731,156 +921,126 @@ class BuildTracker(object):
         for s in states:
             print "%s: %i" % (s, len(self.state_idx[s]))
 
+    def report_brief(self):
+        N = len(self.builds)
+        states = self.state_idx.keys()
+        states.sort()
+        parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
+        parts.append("total: %i" % N)
+        print ' '.join(parts)
+
+    def _print_builds(self, mylist):
+        """small helper function for output"""
+        for build_id in mylist:
+            build = self.builds[build_id]
+            print "    %s (%s)" % (build.nvr, build.state)
+
+    def checkJobs(self):
+        """Check outstanding jobs. Return true if anything changes"""
+        ret = False
+        for build_id, build in self.state_idx['pending'].items():
+            #check pending builds
+            if not build.task_id:
+                print "No task id recorded for %s" % build.nvr
+                build.updateState()
+                ret = True
+            info = session.getTaskInfo(build.task_id)
+            if not info:
+                print "No such task: %i (build %s)" % (build.task_id, build.nvr)
+                build.updateState()
+                ret = True
+                continue
+            state = koji.TASK_STATES[info['state']]
+            if state in ('CANCELED', 'FAILED'):
+                print "Task %i is %s (build %s)" % (build.task_id, state, build.nvr)
+                #we have to set the state to broken manually (updateState will mark
+                #a failed build as missing)
+                build.setState('broken')
+                ret = True
+            elif state == 'CLOSED':
+                print "Task %i complete (build %s)" % (build.task_id, build.nvr)
+                build.updateState()
+                ret = True
+                if build.state != 'common':
+                    print "Task %i finished, but %s still missing" \
+                            % (build.task_id, build.nvr)
+        return ret
+
+    def checkBuildDeps(self, build):
+        #check deps
+        if build.revised_deps is None:
+            #print "Can't rebuild %s" % build.nvr
+            return False
+        problem = [x for x in build.revised_deps
+                         if build.state in ('broken', 'brokendeps', 'noroot')]
+        if problem:
+            print "Can't rebuild %s, missing %i deps" % (build.nvr, len(problem))
+            build.setState('brokendeps')
+            self._print_builds(problem)
+            return False
+        not_common = [x for x in build.revised_deps
+                         if build.state not in ('common', 'local')]
+        if not_common:
+            #could be missing or still building or whatever
+            return False
+        #otherwise, we should be good to rebuild
+        return True
+
+    def rebuildMissing(self):
+        """Initiate rebuilds for missing builds, if possible.
+
+        Returns True if any builds were attempted"""
+        ret = False
+        if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
+            return ret
+        missing = [(b.order, b.id, b) for b in self.state_idx['missing'].itervalues()]
+        missing.sort()
+        for order, build_id, build in missing:
+            if not self.checkBuildDeps(build):
+                continue
+            #otherwise, we should be good to rebuild
+            print "rebuild: %s" % build.nvr
+            task_id = self.rebuild(build)
+            ret = True
+            if options.test:
+                #pretend build is available
+                build.setState('common')
+            elif not task_id:
+                #something went wrong setting up the rebuild
+                print "Did not get a task for %s" % build.nvr
+                build.setState('broken')
+            else:
+                # build might not show up as 'BUILDING' immediately, so we
+                # set this state manually rather than by updateState
+                build.task_id = task_id
+                build.setState('pending')
+            if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
+                if options.debug:
+                    print "Maximum number of jobs reached."
+                break
+        return ret
+
     def runRebuilds(self):
         """Rebuild missing builds"""
         print "Determining rebuild order"
-        b_avail = {}    #track available builds
-        b_problem = {}   #track problem builds
-        b_missing = {}  #track builds which need to be rebuilt
-        b_pending = {}  #track builds being rebuilt
-        # generate initial lists
-        for build in self.builds.itervalues():
-            if build.state == 'common':
-                b_avail[build.id] = build
-            elif build.state == 'missing':
-                b_missing[build.id] = build
-            else:
-                b_problem[build.id] = build
-        initial_avail = len(b_avail)
-        #small helper function for output
-        def print_builds(mylist):
-            for build_id in mylist:
-                build = self.builds[build_id]
-                print "    %s" % build.nvr
+        #using self.state_idx to track build states
+        #make sure state_idx has at least these states
+        initial_avail = len(self.state_idx['common'])
+        self.report_brief()
         while True:
-            print "available: %i, missing: %i, pending: %i, problem: %i" \
-                    % (len(b_avail), len(b_missing), len(b_pending), len(b_problem))
-            if not b_missing:
-                if not b_pending:
-                    #we're done
-                    break
-                else:
-                    print "Waiting on %i jobs to finish" % len(b_pending)
-                    time.sleep(30)
-            for build_id, task_id in b_pending.items():
-                #check pending builds
-                build = self.builds[build_id]
-                info = session.getTaskInfo(task_id)
-                if not info:
-                    print "No such task: %i (build %s)" % (task_id, build.nvr)
-                    del b_pending[build_id]
-                    b_problem[build_id] = build
-                    continue
-                state = koji.TASK_STATES[info['state']]
-                if state in ('CANCELED', 'FAILED'):
-                    print "Task %i is %s (build %s)" % (task_id, state, build.nvr)
-                    del b_pending[build_id]
-                    b_problem[build_id] = build
-                elif state == 'CLOSED':
-                    print "Task %i complete (build %s)" % (task_id, build.nvr)
-                    build.updateState()
-                    del b_pending[build_id]
-                    if build.state == 'common':
-                        b_avail[build_id] = build
-                    else:
-                        print "Build %s still missing (nvr shift?)" % build.nvr
-                        b_problem[build_id] = build
-            if options.max_jobs and len(b_pending) >= options.max_jobs:
-                if options.debug:
-                    print "Maximum number of jobs reached."
-                time.sleep(60)
+            if not self.state_idx['missing'] and not self.state_idx['pending']:
+                #we're done
+                break
+            changed1 = self.checkJobs()
+            changed2 = self.rebuildMissing()
+            if not changed1 and not changed2:
+                time.sleep(30)
                 continue
-            missing = [(b.order, b.id, b) for b in b_missing.itervalues()]
-            missing.sort()
-            for order, build_id, build in missing:
-                #check deps
-                problem = [x for x in build.deps.iterkeys() if b_problem.get(x)]
-                if problem:
-                    print "Can't rebuild %s, missing %i deps" % (build.nvr, len(problem))
-                    del b_missing[build_id]
-                    b_problem[build_id] = build
-                    print_builds(problem)
-                    continue
-                pending = [x for x in build.deps.iterkeys() if b_pending.get(x)]
-                if pending:
-                    #deps for this build are currently building
-                    print "%s, Waiting on %i deps" % (build.nvr, len(pending))
-                    continue
-                missing = [x for x in build.deps.iterkeys() if b_missing.get(x)]
-                if missing:
-                    #this indicates an ordering problem
-                    #we'll just skip it for now
-                    print "Out of order: %s, missing %i deps" % (build.nvr, len(missing))
-                    print_builds(missing)
-                    continue
-                not_avail = [x for x in build.deps.iterkeys() if not b_avail.get(x)]
-                if not_avail:
-                    #In theory this should not happen
-                    print "ERROR: %s has %i unavailable deps" % (build.nvr, len(not_avail))
-                    del b_missing[build_id]
-                    b_problem[build_id] = build
-                    print_builds(not_avail)
-                    continue
-                #otherwise, we should be good to rebuild
-                print "rebuild: %s" % build.nvr
-                task_id = self.rebuild(build)
-                del b_missing[build_id]
-                if options.test:
-                    #pretend build is available
-                    b_avail[build_id] = build
-                    build.state = 'common'  #XXX
-                elif not task_id:
-                    #something went wrong setting up the rebuild
-                    b_problem[build_id] = build
-                    print_builds(problem)
-                else:
-                    b_pending[build_id] = task_id
-            time.sleep(15)
-        print "Rebuilt %i builds" % (len(b_avail) - initial_avail)
+            self.report_brief()
+        print "Rebuilt %i builds" % (len(self.state_idx['common']) - initial_avail)
 
-    def showOrder(self):
-        """Show order of rebuilds (for debugging)
 
-        This is sort of a dress rehearsal for the rebuild scheduler
-        """
-        print "Determining rebuild order"
-        builds = [(b.order, b.id, b) for b in self.builds.itervalues()]
-        #builds = self.builds.items()  # (id, build)
-        builds.sort()
-        b_avail = {}
-        ok = 0
-        bad = 0
-        #for build_id, build in builds:
-        for order, build_id, build in builds:
-            if build.state == 'common':
-                b_avail[build_id] = 1
-            elif build.state == 'missing':
-                #for sanity, check deps
-                for dep_id in build.deps.iterkeys():
-                    dep = self.builds[dep_id]
-                    avail = b_avail.get(dep_id)
-                    if avail is None:
-                        print "Can't rebuild %s, missing %s (out of order?)" % (build.nvr, dep.nvr)
-                        b_avail[build_id] = 0
-                        bad += 1
-                        break
-                    elif not avail:
-                        print "Can't rebuild %s, missing %s (%s)" % (build.nvr, dep.nvr, dep.state)
-                        b_avail[build_id] = 0
-                        bad += 1
-                        break
-                else:
-                    ok += 1
-                    print "rebuild: %s" % build.nvr
-                    b_avail[build_id] = 1
-            else:
-                print "build: %s, state: %s, #children: %i" \
-                        % (build.nvr, build.state, len(build.children))
-                #show_children(build_id)
-                b_avail[build_id] = 0
-        print "ok: %i, bad: %i" % (ok, bad)
-
-def bar():
+def main(args):
     tracker = BuildTracker()
     #binfo = remote.getBuild(args[0], strict=True)
     #tracker.scanBuild(binfo['id'])
@@ -890,7 +1050,6 @@ def bar():
     else:
         tracker.scanTag(args[0])
     tracker.report()
-    tracker.showOrder()
     tracker.runRebuilds()
 
 
@@ -906,7 +1065,10 @@ if __name__ == "__main__":
         session.login()
     #XXX - sane auth
     #XXX - config!
-    remote = koji.ClientSession(options.remote, session_opts)
+    remote_opts = {'anon_retry': True}
+    for k in ('debug_xmlrpc', 'debug'):
+        session_opts[k] = getattr(options,k)
+    remote = koji.ClientSession(options.remote, remote_opts)
     rv = 0
     try:
         rv = main(args)
