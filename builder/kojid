@@ -588,12 +588,15 @@ class BuildRoot(object):
 
         return packages
 
-    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile):
+    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None):
         session.host.setBuildRootState(self.id, 'BUILDING')
-        rv = self.mock(['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
-                        '/usr/bin/mvn', '-s', settingsfile, 'deploy',
-                        '-DaltDeploymentRepository=koji-output::default::file://%s' % outputdir[len(self.rootdir()):]],
-                       skip_setarch=True)
+        cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
+               '/usr/bin/mvn', '-s', settingsfile]
+        if props:
+            for name, value in props.items():
+                cmd.append('-D%s=%s' % (name, value))
+        cmd.extend(['deploy', '-DaltDeploymentRepository=koji-output::default::file://%s' % outputdir[len(self.rootdir()):]])
+        rv = self.mock(cmd, skip_setarch=True)
 
         # ignore newly-built archives we find in the repo, we'll import them soon
         session.host.updateMavenBuildRootList(self.id, self.getMavenPackageList(repodir),
@@ -1910,8 +1913,12 @@ class MavenTask(BaseTaskHandler):
         dest_tag = session.getTag(target_info['dest_tag'], strict=True)
         build_tag = session.getTag(target_info['build_tag'], strict=True)
 
+        build_opts = {}
+        if opts.get('properties'):
+            build_opts['properties'] = opts['properties'] 
+
         self.build_task_id = session.host.subtask(method='buildMaven',
-                                                  arglist=[url, build_tag],
+                                                  arglist=[url, build_tag, build_opts],
                                                   label='build',
                                                   parent=self.id,
                                                   arch='noarch')
@@ -1986,7 +1993,11 @@ class BuildMavenTask(BaseTaskHandler):
 
     _taskWeight = 1.5
 
-    def handler(self, url, build_tag):
+    def handler(self, url, build_tag, opts=None):
+        if opts is None:
+            opts = {}
+        self.opts = opts
+
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
@@ -2033,7 +2044,7 @@ class BuildMavenTask(BaseTaskHandler):
         settingsfile = '/maven/settings.xml'
         buildroot.writeMavenSettings(repodir, settingsfile)
 
-        buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile)
+        buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile, props=self.opts.get('properties'))
 
         pom_extensions = ['.' + ext for ext in session.getArchiveType(type_name='pom')['extensions'].split()]
         jar_extensions = ['.' + ext for ext in session.getArchiveType(type_name='zip')['extensions'].split()]

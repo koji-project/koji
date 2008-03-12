@@ -6,8 +6,12 @@
 #def printValue($key, $value, $sep=', ')
   #if $key in ('brootid', 'buildroot_id')
 <a href="buildrootinfo?buildrootID=$value">$value</a>
-  #else
-#if $isinstance($value, list) then $sep.join([$str($val) for $val in $value]) else $value#
+  #elif $isinstance($value, list) 
+$sep.join([$str($val) for $val in $value]) 
+  #elif $isinstance($value, dict)
+$sep.join(['%s=%s' % ($n, $v) for $n, $v in $value.items()])
+  #else 
+$value
   #end if
 #end def
 
@@ -109,7 +113,10 @@
         $printOpts($params[2])
 	#elif $task.method == 'buildMaven'
 	<strong>SCM URL:</strong> $params[0]<br/>
-	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+	#if $len($params) > 2
+        $printOpts($params[2])
+        #end if
 	#elif $task.method == 'wrapperRPM'
 	<strong>Spec File URL:</strong> $params[0]<br/>
 	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
