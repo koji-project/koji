@@ -104,7 +104,9 @@ def get_options():
                       help=_("url of local XMLRPC server"))
     parser.add_option("-r", "--remote",
                       help=_("url of remote XMLRPC server"))
-    parser.add_option("--link-imports",
+    parser.add_option("--import-noarch", action="store_true",
+                      help=_("import missing noarch builds rather than rebuilding"))
+    parser.add_option("--link-imports", action="store_true",
                       help=_("use 'import --link' functionality"))
     parser.add_option("--remote-topurl",
                       help=_("topurl for remote server"))
@@ -350,6 +352,18 @@ class TrackedBuild(object):
                 self.setState("broken")
                 return
         self.setState("missing")
+
+    def isNoarch(self):
+        if not self.rpms:
+            return False
+        noarch = False
+        for rpminfo in self.rpms:
+            if rpminfo['arch'] == 'noarch':
+                #note that we've seen a noarch rpm
+                noarch = True
+            elif rpminfo['arch'] != 'src':
+                return False
+        return noarch
 
     def setState(self, state):
         #print "%s -> %s" % (self.nvr, state)
@@ -621,15 +635,25 @@ class BuildTracker(object):
                 print "%sCommon build %s%s" % (head, build.nvr, tail)
         elif build.state == 'pending':
             print "%sRebuild in progress: %s%s" % (head, build.nvr, tail)
-        elif build.state == "noroot":
-            #we're fucked
-            print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
         elif build.state == "broken":
-            #also fucked
+            #The build already exists locally, but is somehow invalid.
+            #We should not replace it automatically. An admin can reset it
+            #if that is the correct thing. A substitution might also be in order
             print "%sWarning: build exists, but is invalid: %s%s" % (head, build.nvr, tail)
+        #
+        #  !! Cases where importing a noarch is /not/ ok must occur
+        #     before this point
+        #
+        elif options.import_noarch and build.isNoarch():
+            self.importBuild(build)
+        elif build.state == "noroot":
+            #Can't rebuild it, this is what substitutions are for
+            print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
         elif build.state == 'brokendeps':
             #should not be possible at this point
             print "Error: build reports brokendeps state before dep scan"
+            if build.isNoarch():
+                self.importBuild(build)
         elif build.state == "missing":
             #scan its deps
             print "%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail)
@@ -650,6 +674,8 @@ class BuildTracker(object):
                     newdeps.append(dep2)
                 elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
                     #no point in continuing
+                    build.setState('brokendeps')
+                    print "%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state)
                     newdeps = None
                     break
                 else:
@@ -705,17 +731,17 @@ class BuildTracker(object):
         else:
             #TODO - would be possible, using uploadFile directly, to upload without writing locally.
             #for now, though, just use uploadWrapper
-            print "Downloading %s..." % url
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
+            print "Downloading %s to %s..." % (url, dst)
             fsrc = urllib2.urlopen(url)
-            fdst = file(fn, 'w')
+            fdst = file(dst, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
-            print "Uploading %s..." % path
+            print "Uploading %s..." % dst
             session.uploadWrapper(dst, serverdir, blocksize=65536)
-        session.importRPM('serverdir', fn)
+        session.importRPM(serverdir, fn)
 
     def importBuild(self, build):
         '''import a build from remote hub'''
@@ -723,7 +749,7 @@ class BuildTracker(object):
             print "No srpm for build %s, skipping import" % build.nvr
             #TODO - support no-src imports here
             return False
-        if not options.options.remote_topurl:
+        if not options.remote_topurl:
             print "Skipping import of %s, remote_topurl not specified" % build.nvr
             return False
         pathinfo = koji.PathInfo(options.remote_topurl)
@@ -732,6 +758,9 @@ class BuildTracker(object):
         fname = "%s.src.rpm" % build.nvr
         self._importURL(url, fname)
         for rpminfo in build.rpms:
+            if rpminfo['arch'] == 'src':
+                #already imported above
+                continue
             relpath = pathinfo.rpm(rpminfo)
             url = "%s/%s" % (build_url, relpath)
             fname = os.path.basename(relpath)
@@ -969,19 +998,20 @@ class BuildTracker(object):
     def checkBuildDeps(self, build):
         #check deps
         if build.revised_deps is None:
-            #print "Can't rebuild %s" % build.nvr
+            #print "No revised deplist yet for %s" % build.nvr
             return False
         problem = [x for x in build.revised_deps
-                         if build.state in ('broken', 'brokendeps', 'noroot')]
+                         if x.state in ('broken', 'brokendeps', 'noroot', 'blocked')]
         if problem:
             print "Can't rebuild %s, missing %i deps" % (build.nvr, len(problem))
             build.setState('brokendeps')
             self._print_builds(problem)
             return False
         not_common = [x for x in build.revised_deps
-                         if build.state not in ('common', 'local')]
+                         if x.state not in ('common', 'local')]
         if not_common:
             #could be missing or still building or whatever
+            #print "Still missing %i revised deps for %s" % (len(not_common), build.nvr)
             return False
         #otherwise, we should be good to rebuild
         return True
