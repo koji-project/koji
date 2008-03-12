@@ -3465,7 +3465,7 @@ def reset_build(build):
 
     WARNING: this function is potentially destructive. use with care.
     nulls task_id
-    sets state to FAILED
+    sets state to CANCELED
     clears data in rpminfo, rpmdeps, rpmfiles
     removes rpminfo entries from any buildroot_listings [!]
     remove files related to the build
@@ -3494,7 +3494,7 @@ def reset_build(build):
     _dml(delete, binfo)
     delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
     _dml(delete, binfo)
-    binfo['state'] = koji.BUILD_STATES['FAILED']
+    binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
     _dml(update, binfo)
     #now clear the build dir
