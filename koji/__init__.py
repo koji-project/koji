@@ -1347,7 +1347,7 @@ class ClientSession(object):
                 time.sleep(interval)
             #not reached
 
-    def multiCall(self):
+    def multiCall(self, strict=False):
         """Execute a multicall (multiple function calls passed to the server
         and executed at the same time, with results being returned in a batch).
         Before calling this method, the self.multicall field must have
@@ -1368,7 +1368,15 @@ class ClientSession(object):
         self.multicall = False
         calls = self._calls
         self._calls = []
-        return self._callMethod('multiCall', (calls,), {})
+        ret = self._callMethod('multiCall', (calls,), {})
+        if strict:
+            #check for faults and raise first one
+            for entry in ret:
+                if isinstance(entry, dict):
+                    fault = Fault(entry['faultCode'], entry['faultString'])
+                    err = convertFault(fault)
+                    raise err
+        return ret
 
     def __getattr__(self,name):
         #if name[:1] == '_':
