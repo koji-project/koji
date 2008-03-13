@@ -652,8 +652,6 @@ class BuildTracker(object):
         elif build.state == 'brokendeps':
             #should not be possible at this point
             print "Error: build reports brokendeps state before dep scan"
-            if build.isNoarch():
-                self.importBuild(build)
         elif build.state == "missing":
             #scan its deps
             print "%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail)
@@ -765,6 +763,7 @@ class BuildTracker(object):
             url = "%s/%s" % (build_url, relpath)
             fname = os.path.basename(relpath)
             self._importURL(url, fname)
+        build.updateState()
         return True
 
     def scan(self):
@@ -943,12 +942,47 @@ class BuildTracker(object):
         return task_id
 
     def report(self):
-        print time.asctime()
-        print "%i builds" % len(self.builds)
-        states = self.state_idx.keys()
-        states.sort()
-        for s in states:
-            print "%s: %i" % (s, len(self.state_idx[s]))
+        print "-- %s --" % time.asctime()
+        self.report_brief()
+        for state in ('broken', 'noroot', 'blocked'):
+            builds = self.state_idx[state].values()
+            not_replaced = [b for b in builds if not b.substitute]
+            n_replaced = len(builds) - len(not_replaced)
+            print "%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced)
+            if not_replaced and len(not_replaced) < 8:
+                print '', ' '.join([b.nvr for b in not_replaced])
+        #generate a report of the most frequent problem deps
+        problem_counts = {}
+        for build in self.state_idx['brokendeps'].values():
+            for dep_id in build.deps:
+                dep = self.builds.get(dep_id)
+                if not dep:
+                    #unscanned
+                    #possible because we short circuit the earlier scan on problems
+                    #we don't really know if this one is a problem or not, so just
+                    #skip it.
+                    continue
+                if dep.state in ('common', 'pending', 'missing'):
+                    #not a problem
+                    continue
+                nvr = dep.nvr
+                if dep.substitute:
+                    dep2 = self.getSubstitute(dep.substitute)
+                    if dep2:
+                        #we have a substitution, so not a problem
+                        continue
+                    #otherwise the substitution is the problem
+                    nvr = dep.substitute
+                problem_counts.setdefault(nvr, 0)
+                problem_counts[nvr] += 1
+        order = [(c, nvr) for (nvr, c) in problem_counts.iteritems()]
+        if order:
+            order.sort()
+            order.reverse()
+            #print top 5 problems
+            print "-- top problems --"
+            for (c, nvr) in order[:5]:
+                print " %s (%i)" % (nvr, c)
 
     def report_brief(self):
         N = len(self.builds)
