@@ -3794,8 +3794,11 @@ def anon_handle_download_build(options, session, args):
     
     if suboptions.latestfrom:
         # We want the latest build, not a specific build
-        buildid = session.listTagged(suboptions.latestfrom, latest=True, package=build)
-        info = session.getBuild(buildid)
+        builds = session.listTagged(suboptions.latestfrom, latest=True, package=build)
+        if builds is None:
+            print "%s has no builds of %s" % (suboptions.latestfrom, build)
+            return 1
+        info = session.getBuild(builds[0]['id'])
     else:
         info = session.getBuild(build)
         
