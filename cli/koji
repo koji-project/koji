@@ -3767,11 +3767,12 @@ def handle_unblock_pkg(options, session, args):
 
 def anon_handle_download_build(options, session, args):
     "Download a built package"
-    usage = _("usage: %prog download-build [options] <n-v-r | build_id>")
+    usage = _("usage: %prog download-build [options] <n-v-r | build_id | package>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("--latest", dest="latest", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
     (suboptions, args) = parser.parse_args(args)
@@ -3786,8 +3787,18 @@ def anon_handle_download_build(options, session, args):
     build = args[0]
 
     if build.isdigit():
+        if suboptions.latest:
+            print "--latest not compatible with build IDs, specify a package name."
+            return 1
         build = int(build)
-    info = session.getBuild(build)
+    
+    if suboptions.latest:
+        # We want the latest build, not a specific build
+        buildid = session.listTagged(suboptions.latest, latest=True, package=build)
+        info = session.getBuild(buildid)
+    else:
+        info = session.getBuild(build)
+        
     if info is None:
         print "No such build: %s" % build
         return 1
