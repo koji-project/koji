@@ -3802,7 +3802,7 @@ def anon_handle_download_build(options, session, args):
         if not builds:
             print "%s has no builds of %s" % (suboptions.latestfrom, build)
             return 1
-        info = session.getBuild(builds[0]['id'])
+        info = builds[0]
     else:
         info = session.getBuild(build)
         
