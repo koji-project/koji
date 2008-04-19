@@ -784,8 +784,10 @@ def handle_maven_build(options, session, args):
     usage = _("usage: %prog maven-build [options] target URL")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--specfile", action="store",
-                      help=_("URL of a spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--specfile", action="store", metavar="URL",
+                      help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--patches", action="store", metavar="URL",
+                      help=_("SCM URL of a directory containing patches to apply to the sources before building"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
@@ -818,8 +820,10 @@ def handle_maven_build(options, session, args):
         parser.error(_("Invalid SCM URL: %s" % source))
         assert False
     opts = {}
-    for key in ('skip_tag', 'scratch', 'specfile'):
-        opts[key] = getattr(build_opts, key)
+    for key in ('skip_tag', 'scratch', 'specfile', 'patches'):
+        val = getattr(build_opts, key)
+        if val:
+            opts[key] = val
     props = {}
     for prop in build_opts.properties:
         fields = prop.split('=', 1)

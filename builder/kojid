@@ -1915,7 +1915,9 @@ class MavenTask(BaseTaskHandler):
 
         build_opts = {}
         if opts.get('properties'):
-            build_opts['properties'] = opts['properties'] 
+            build_opts['properties'] = opts['properties']
+        if opts.get('patches'):
+            build_opts['patches'] = opts['patches']
 
         self.build_task_id = session.host.subtask(method='buildMaven',
                                                   arglist=[url, build_tag, build_opts],
@@ -2015,9 +2017,11 @@ class BuildMavenTask(BaseTaskHandler):
         scmdir = '%s/maven/build' % buildroot.rootdir()
         outputdir = '%s/maven/output' % buildroot.rootdir()
         repodir = '%s/maven/repo' % buildroot.rootdir()
+        patchdir = '%s/maven/patches' % buildroot.rootdir()
         koji.ensuredir(scmdir)
         koji.ensuredir(outputdir)
         koji.ensuredir(repodir)
+        koji.ensuredir(patchdir)
 
         mockuid = None
         try:
@@ -2029,17 +2033,40 @@ class BuildMavenTask(BaseTaskHandler):
         except:
             self.logger.warn('Could not get uid for mockuser: %s' % options.mockuser)
 
-        logfile = self.workdir + "/checkout.log"
+        logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=False)
+
+        # Checkout out patches, if present
+        if self.opts.get('patches'):
+            patchlog = self.workdir + '/patches.log'
+            patch_scm = SCM(self.opts.get('patches'))
+            patch_scm.assert_allowed(options.allowed_scms)
+            patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog, use_common=False)
+
         # Set ownership of the entire source tree to the mock user
         if mockuid != None:
             cmd = ['/bin/chown', '-R', str(mockuid), scmdir, outputdir, repodir]
+            if self.opts.get('patches'):
+                cmd.append(patchdir)
             ret = log_output(cmd[0], cmd, logfile, uploadpath, logerror=1, append=1)
             if ret:
-                raise koji.BuildrootError, 'error changing ownership of the source, repo, and output directories'
+                raise koji.BuildError, 'error changing ownership of the source, repo, and output directories'
+
+        # Apply patches, if present
+        if self.opts.get('patches'):
+            # filter out files/directories beginning with . (probably the scm metadata dir)
+            patches = [patch for patch in os.listdir(patchcheckoutdir) if not patch.startswith('.')]
+            if not patches:
+                raise koji.BuildError, 'no patches found at %s' % self.opts.get('patches')
+            patches.sort()
+            for patch in patches:
+                cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchcheckoutdir, patch)]
+                ret = log_output(cmd[0], cmd, patchlog, uploadpath, logerror=1, append=1)
+                if ret:
+                    raise koji.BuildError, 'error applying patches from %s, see patches.log for details' % self.opts.get('patches')
 
         settingsfile = '/maven/settings.xml'
         buildroot.writeMavenSettings(repodir, settingsfile)
