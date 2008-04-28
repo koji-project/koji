@@ -3831,7 +3831,7 @@ def anon_handle_download_build(options, session, args):
             continue
         
         fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
-        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], rpm['version'], rpm['release'], rpm['arch'], fname)
+        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], rpm['arch'], fname)
 
         file = grabber.urlopen(url, progress_obj = pg, text = "%s.%s" % (rpm['name'], rpm['arch']))
 
