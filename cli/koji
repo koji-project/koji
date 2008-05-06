@@ -846,6 +846,40 @@ def handle_maven_build(options, session, args):
         session.logout()
         return watch_tasks(session,[task_id])
 
+def handle_wrapper_rpm(options, session, args):
+    """[admin] Build wrapper rpms for any jars associated with the build.  Any existing rpms will be deleted from the database and the filesystem."""
+    usage = _("usage: %prog wrapper-rpm [options] target build-id|n-v-r URL")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
+    parser.add_option("--background", action="store_true", help=_("Run the build at a lower priority"))
+
+    (build_opts, args) = parser.parse_args(args)
+    if len(args) < 3:
+        parser.error(_("You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment"))
+        assert False
+    activate_session(session)
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return 1
+
+    target = args[0]
+    build_id = args[1]
+    if build_id.isdigit():
+        build_id = int(build_id)
+    url = args[2]
+    priority = None
+    if build_opts.background:
+        priority = 5
+    task_id = session.wrapperRPM(build_id, url, target, priority)
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if _running_in_bg() or build_opts.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session,[task_id])
+
 def handle_resubmit(options, session, args):
     """Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] taskID")

@@ -2629,6 +2629,69 @@ def get_rpm(rpminfo,strict=False):
         return None
     return dict(zip(fields,row))
 
+def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
+    """List RPMS.  If buildID and/or buildrootID are specified,
+    restrict the list of RPMs to only those RPMs that are part of that
+    build, or were built in that buildroot.  If componentBuildrootID is specified,
+    restrict the list to only those RPMs that will get pulled into that buildroot
+    when it is used to build another package.  A list of maps is returned, each map
+    containing the following keys:
+
+    - id
+    - name
+    - version
+    - release
+    - nvr (synthesized for sorting purposes)
+    - arch
+    - epoch
+    - payloadhash
+    - size
+    - buildtime
+    - build_id
+    - buildroot_id
+
+    If componentBuildrootID is specified, two additional keys will be included:
+    - component_buildroot_id
+    - is_update
+
+    If no build has the given ID, or the build generated no RPMs,
+    an empty list is returned."""
+    fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
+              ('rpminfo.release', 'release'),
+              ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
+              ('rpminfo.arch', 'arch'),
+              ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
+              ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
+              ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id')]
+    joins = []
+    clauses = []
+
+    if buildID != None:
+        clauses.append('rpminfo.build_id = %(buildID)i')
+    if buildrootID != None:
+        clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
+    if componentBuildrootID != None:
+        fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
+                       'component_buildroot_id'))
+        fields.append(('buildroot_listing.is_update', 'is_update'))
+        joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
+        clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
+    if hostID != None:
+        joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
+        clauses.append('buildroot.host_id = %(hostID)i')
+    if arches != None:
+        if isinstance(arches, list) or isinstance(arches, tuple):
+            clauses.append('rpminfo.arch IN %(arches)s')
+        elif isinstance(arches, str):
+            clauses.append('rpminfo.arch = %(arches)s')
+        else:
+            raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
+
+    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                           tables=['rpminfo'], joins=joins, clauses=clauses,
+                           values=locals(), opts=queryOpts)
+    return query.execute()
+
 def get_maven_build(buildInfo=None, mavenInfo=None, strict=False):
     """
     Retrieve Maven-specific information about a build.
@@ -3463,6 +3526,22 @@ def import_build_in_place(build):
     WHERE id=%(build_id)i"""
     _dml(update,locals())
     return build_id
+
+def _import_wrapper(task_id, build_info, rpm_results):
+    """Helper function to import wrapper rpms for a Maven build"""
+    rpm_buildroot_id = rpm_results['buildroot_id']
+    rpm_task_dir = koji.pathinfo.task(task_id)
+
+    for rpm_path in [rpm_results['srpm']] + rpm_results['rpms']:
+        rpm_path = os.path.join(rpm_task_dir, rpm_path)
+        rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id)
+        import_rpm_file(rpm_path, build_info, rpm_info)
+        add_rpm_sig(rpm_info['id'], koji.rip_rpm_sighdr(rpm_path))
+
+    for log in rpm_results['logs']:
+        # assume we're only importing noarch packages
+        import_build_log(os.path.join(rpm_task_dir, log),
+                         build_info, subdir='noarch')
 
 def _get_archive_type_by_name(name, strict=True):
     select = """SELECT id, name, description, extensions FROM archivetypes
@@ -4587,6 +4666,36 @@ class RootExports(object):
 
         return make_task('maven', [url, target, opts], **taskOpts)
 
+    def wrapperRPM(self, build, url, target, priority=None, channel='maven'):
+        """Create a top-level wrapperRPM task
+
+        build: The build to generate wrapper rpms for.  Must be in the COMPLETE state, and have
+               associated Maven jars.
+        url: SCM URL to a specfile fragment
+        target: The build target to use when building the wrapper rpm.  The build_tag of the target will
+                be used to populate the buildroot in which the rpms are built.
+        priority: the amount to increase (or decrease) the task priority, relative
+                  to the default priority; higher values mean lower priority; only
+                  admins have the right to specify a negative priority here
+        channel: the channel to allocate the task to (defaults to the "maven" channel)
+
+        returns the task ID
+        """
+        context.session.assertPerm('admin')
+
+        build = self.getBuild(build, strict=True)
+        build_target = self.getBuildTarget(target)
+        if not build_target:
+            raise koji.PreBuildError, 'no such build target: %s' % target
+        build_tag = self.getTag(build_target['build_tag'], strict=True)
+
+        taskOpts = {}
+        if priority:
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        taskOpts['channel'] = channel
+
+        return make_task('wrapperRPM', [url, build_tag, build, None], **taskOpts)
+
     def hello(self,*args):
         return "Hello World"
 
@@ -5296,68 +5405,7 @@ class RootExports(object):
                 mapping[int(key)] = mapping[key]
         return readFullInheritance(tag,event,reverse,stops,jumps)
 
-    def listRPMs(self, buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
-        """List RPMS.  If buildID and/or buildrootID are specified,
-        restrict the list of RPMs to only those RPMs that are part of that
-        build, or were built in that buildroot.  If componentBuildrootID is specified,
-        restrict the list to only those RPMs that will get pulled into that buildroot
-        when it is used to build another package.  A list of maps is returned, each map
-        containing the following keys:
-
-        - id
-        - name
-        - version
-        - release
-        - nvr (synthesized for sorting purposes)
-        - arch
-        - epoch
-        - payloadhash
-        - size
-        - buildtime
-        - build_id
-        - buildroot_id
-
-        If componentBuildrootID is specified, two additional keys will be included:
-        - component_buildroot_id
-        - is_update
-
-        If no build has the given ID, or the build generated no RPMs,
-        an empty list is returned."""
-        fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
-                  ('rpminfo.release', 'release'),
-                  ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
-                  ('rpminfo.arch', 'arch'),
-                  ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
-                  ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
-                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id')]
-        joins = []
-        clauses = []
-
-        if buildID != None:
-            clauses.append('rpminfo.build_id = %(buildID)i')
-        if buildrootID != None:
-            clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
-        if componentBuildrootID != None:
-            fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
-                           'component_buildroot_id'))
-            fields.append(('buildroot_listing.is_update', 'is_update'))
-            joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
-            clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
-        if hostID != None:
-            joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
-            clauses.append('buildroot.host_id = %(hostID)i')
-        if arches != None:
-            if isinstance(arches, list) or isinstance(arches, tuple):
-                clauses.append('rpminfo.arch IN %(arches)s')
-            elif isinstance(arches, str):
-                clauses.append('rpminfo.arch = %(arches)s')
-            else:
-                raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
-
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpminfo'], joins=joins, clauses=clauses,
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+    listRPMs = staticmethod(list_rpms)
 
     def listBuildRPMs(self,build):
         """Get information about all the RPMs generated by the build with the given
@@ -6841,20 +6889,7 @@ class HostExports(object):
                              build_info, subdir='maven2')
 
         if rpm_results:
-            rpm_task_id = rpm_results['task_id']
-            rpm_buildroot_id = rpm_results['buildroot_id']
-            rpm_task_dir = koji.pathinfo.task(rpm_task_id)
-
-            for rpm_path in [rpm_results['srpm']] + rpm_results['rpms']:
-                rpm_path = os.path.join(rpm_task_dir, rpm_path)
-                rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id)
-                import_rpm_file(rpm_path, build_info, rpm_info)
-                add_rpm_sig(rpm_info['id'], koji.rip_rpm_sighdr(rpm_path))
-
-            for log in rpm_results['logs']:
-                # assume we're only importing noarch packages
-                import_build_log(os.path.join(rpm_task_dir, log),
-                                 build_info, subdir='noarch')
+            _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
@@ -6864,6 +6899,51 @@ class HostExports(object):
 
         # send email
         build_notification(task_id, build_id)
+
+    def importWrapperRPMs(self, task_id, build_id, rpm_results):
+        """Import the wrapper rpms and associate them with the given build.  Any existing
+           rpms are deleted before import."""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+
+        build_info = get_build(build_id, strict=True)
+
+        if build_info['state'] != koji.BUILD_STATES['COMPLETE']:
+            raise koji.GenericError, 'cannot import wrapper rpms for %s: build state is %s, not complete' % \
+                (koji.buildLabel(build_info), koji.BUILD_STATES[build_info['state']].lower())
+
+        rpms = list_rpms(buildID=build_info['id'])
+        rpmfiles = []
+        for rpm in rpms:
+            # delete rpminfo from the database
+            # this will fail if the rpm has ever been used in a buildroot, which is what we want
+            delete = """DELETE FROM rpmdeps WHERE rpm_id=%(id)i"""
+            _dml(delete, rpm)
+            delete = """DELETE FROM rpmfiles WHERE rpm_id=%(id)i"""
+            _dml(delete, rpm)
+            delete = """DELETE FROM rpmsigs WHERE rpm_id=%(id)i"""
+            _dml(delete, rpm)
+            delete = """DELETE FROM rpminfo WHERE id=%(id)i"""
+            _dml(delete, rpm)
+            rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm))
+            rpmfiles.append(rpm_path)
+
+        for rpm_path in rpmfiles:
+            os.remove(rpm_path)
+            if not os.listdir(os.path.dirname(rpm_path)):
+                # also remove empty directories
+                os.removedirs(os.path.dirname(rpm_path))
+
+        for log in rpm_results['logs']:
+            # remove previously imported build logs too
+            log_path = os.path.join(koji.pathinfo.build_logs(build_info), 'noarch',
+                                    os.path.basename(log))
+            if os.path.exists(log_path):
+                os.remove(log_path)
+
+        _import_wrapper(task.id, build_info, rpm_results)
 
     def failBuild(self, task_id, build_id):
         """Mark the build as failed.  If the current state is not

@@ -2126,6 +2126,11 @@ class BuildMavenTask(BaseTaskHandler):
                 'jars': jars}
 
 class WrapperRPMTask(BaseTaskHandler):
+    """Build a wrapper rpm around jars output from a Maven build.
+    Can either be called as a subtask of a maven task or as a separate
+    top-level task.  In the latter case it will permanently delete any
+    existing rpms associated with the build and replace them with the
+    newly-built rpms."""
 
     Methods = ['wrapperRPM']
 
@@ -2147,12 +2152,32 @@ class WrapperRPMTask(BaseTaskHandler):
     def handler(self, spec_url, build_tag, build, task):
         values = {}
 
-        jarnames = [filename for filename in session.listTaskOutput(task['id']) if \
-                        filename.endswith('.jar')]
-        jars = []
-        for jarname in jarnames:
-            jars.append(os.path.join(koji.pathinfo.task(task['id']), jarname))
-        jars.sort()
+        if task:
+            # called as a subtask of a maven build
+            jarnames = [filename for filename in session.listTaskOutput(task['id']) if \
+                            filename.endswith('.jar')]
+            jars = []
+            for jarname in jarnames:
+                jars.append(os.path.join(koji.pathinfo.task(task['id']), jarname))
+            jars.sort()
+        else:
+            # called as a top-level task to create or replace wrapper rpms on an existing build
+            # verify that the build is complete
+            if not build['state'] == koji.BUILD_STATES['COMPLETE']:
+                raise koji.BuildError, 'cannot call wrapperRPM on a build that did not complete successfully'
+
+            # get the list of jars from the build instead of the task, because the task output directory may
+            # have already been cleaned up
+            jarinfos = [archive for archive in session.listArchives(buildID=build['id'], type='maven') if \
+                            archive['filename'].endswith('.jar')]
+            jars = []
+            for jarinfo in jarinfos:
+                jars.append(os.path.join(koji.pathinfo.mavenbuild(build, jarinfo), jarinfo['filename']))
+            jars.sort()
+
+        if not jars:
+            raise koji.BuildError, 'no jars found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
+
         values['jars'] = [os.path.basename(jarpath) for jarpath in jars]
 
         if build:
@@ -2277,15 +2302,22 @@ class WrapperRPMTask(BaseTaskHandler):
         for rpm in [srpm] + rpms:
             self.uploadFile(os.path.join(resultdir, rpm))
 
+        results = {'buildroot_id': buildroot.id,
+                   'srpm': srpm,
+                   'rpms': rpms,
+                   'logs': logs}
+
+        if not task:
+            # Called as a standalone top-level task, so import the rpms now.
+            # Otherwise we let the parent task handle it.
+            session.host.importWrapperRPMs(self.id, build['id'], results)
+
         # no need to upload logs, they've already been streamed to the hub
         # during the build process
 
         buildroot.expire()
 
-        return {'buildroot_id': buildroot.id,
-                'srpm': srpm,
-                'rpms': rpms,
-                'logs': logs}
+        return results
 
 class TagBuildTask(BaseTaskHandler):
 
