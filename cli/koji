@@ -3774,6 +3774,7 @@ def anon_handle_download_build(options, session, args):
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
+    parser.add_option("--key", help=_("Download rpms signed with the given key"))
     parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -3829,13 +3830,17 @@ def anon_handle_download_build(options, session, args):
     for rpm in rpms:
         if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
             continue
-        
-        fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
-        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], rpm['arch'], fname)
+
+        if suboptions.key:
+            fname = koji.pathinfo.signed(rpm, suboptions.key)
+        else:
+            fname = koji.pathinfo.rpm(rpm)
+
+        url = "%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], fname)
 
         file = grabber.urlopen(url, progress_obj = pg, text = "%s.%s" % (rpm['name'], rpm['arch']))
 
-        out = os.open(fname, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+        out = os.open(os.path.basename(fname), os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
         try:
             while 1:
                 buf = file.read(4096)
