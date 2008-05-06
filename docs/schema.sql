@@ -655,6 +655,7 @@ CREATE TABLE maven_archives (
 CREATE TABLE buildroot_archives (
 	buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),
 	archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
+	project_dep BOOLEAN NOT NULL,
 	PRIMARY KEY (buildroot_id, archive_id)
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);

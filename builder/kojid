@@ -595,12 +595,23 @@ class BuildRoot(object):
         if props:
             for name, value in props.items():
                 cmd.append('-D%s=%s' % (name, value))
+
+        rv = self.mock(cmd + ['dependency:resolve-plugins'])
+        if rv:
+            self.expire()
+            raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv)
+
+        plugin_deps = self.getMavenPackageList(repodir)
+        session.host.updateMavenBuildRootList(self.id, self.task_id, plugin_deps, project=False)
+
         cmd.extend(['deploy', '-DaltDeploymentRepository=koji-output::default::file://%s' % outputdir[len(self.rootdir()):]])
         rv = self.mock(cmd, skip_setarch=True)
 
-        # ignore newly-built archives we find in the repo, we'll import them soon
-        session.host.updateMavenBuildRootList(self.id, self.getMavenPackageList(repodir),
-                                              ignore=self.getMavenPackageList(outputdir))
+        # ignore plugin dependencies (we've already recorded them) and
+        # newly-built archives we find in the repo (we'll import them soon)
+        session.host.updateMavenBuildRootList(self.id, self.task_id, self.getMavenPackageList(repodir),
+                                              ignore=(plugin_deps + self.getMavenPackageList(outputdir)),
+                                              project=True)
         if rv:
             self.expire()
             raise koji.BuildrootError, 'error building Maven package, %s' % self._mockResult(rv)

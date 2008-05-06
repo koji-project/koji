@@ -1919,6 +1919,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
   <artifactId>%(artifact_id)s</artifactId>
   <versioning>
     <latest>%(version)s</latest>
+    <release>%(version)s</release>
     <versions>
 """
     for artifact in artifacts:
@@ -2750,6 +2751,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     size: size of the archive (integer)
     md5sum: md5sum of the archive (string)
 
+    If componentBuildrootID is specified, then the map will also contain the following key:
+    project: whether the archive was pulled in as a project dependency, or as part of the 
+             build environment setup (boolean)
+
     If 'type' is specified, then the archives listed will be limited
     those associated with additional metadata of the given type.
     Currently supported types are:
@@ -2763,7 +2768,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     artifact_id: Maven artifactId (string)
     version: Maven version (string)
 
-    If there are no archives associated with the specified build,
+    If there are no archives matching the selection criteria,
     an empty list is returned.
     """
     values = {}
@@ -2787,8 +2792,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         joins.append('buildroot_archives on archiveinfo.id = buildroot_archives.archive_id')
         clauses.append('buildroot_archives.buildroot_id = %(component_buildroot_id)i')
         values['component_buildroot_id'] = componentBuildrootID
-        columns.append('buildroot_archives.buildroot_id')
-        aliases.append('component_buildroot_id')
+        columns.extend(['buildroot_archives.buildroot_id', 'buildroot_archives.project_dep'])
+        aliases.extend(['component_buildroot_id', 'project'])
     if hostID is not None:
         joins.append('buildroot on archiveinfo.buildroot_id = buildroot.id')
         clauses.append('buildroot.host_id = %(host_id)i')
@@ -2912,7 +2917,7 @@ def find_maven_archives(maven_info, filename=None, queryOpts=None):
                            joins=joins, clauses=clauses,
                            values=values,
                            opts=queryOpts)
-    return query.executeOne()
+    return query.execute()
 
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
@@ -6448,8 +6453,10 @@ class BuildRoot(object):
                                opts=queryOpts)
         return query.execute()
 
-    def updateArchiveList(self, archives):
-        """Update the list of archives in a buildroot"""
+    def updateArchiveList(self, archives, project=False):
+        """Update the list of archives in a buildroot.
+        If project is True, the archives are project dependencies.  If False, they dependencies required to setup the
+        build environment."""
         if self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         current = dict([(r['id'], 1) for r in self.getArchiveList()])
@@ -6459,9 +6466,9 @@ class BuildRoot(object):
                 continue
             else:
                 archive_ids.append(archive['id'])
-        insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id)
+        insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id, project_dep)
         VALUES
-        (%(broot_id)i, %(archive_id)i)"""
+        (%(broot_id)i, %(archive_id)i, %(project)s)"""
         broot_id = self.id
         archive_ids.sort()
         for archive_id in archive_ids:
@@ -7064,15 +7071,15 @@ class HostExports(object):
             br.assertTask(task_id)
         return br.updateList(rpmlist)
 
-    def updateMavenBuildRootList(self, brootid, mavenlist, ignore, task_id=None):
+    def updateMavenBuildRootList(self, brootid, task_id, mavenlist, ignore=None, project=False):
         host = Host()
         host.verify()
-        if task_id is not None:
-            Task(task_id).assertHost(host.id)
+        Task(task_id).assertHost(host.id)
         br = BuildRoot(brootid)
         br.assertHost(host.id)
-        if task_id is not None:
-            br.assertTask(task_id)
+        br.assertTask(task_id)
+        if not ignore:
+            ignore = []
         archives = []
         for entry in mavenlist:
             pom = entry['pom']
@@ -7081,9 +7088,13 @@ class HostExports(object):
                           'artifact_id': pom['artifactId'],
                           'version': pom['version']}
             for filename in files:
-                archiveinfo = find_maven_archives(maven_info, filename)
-                if archiveinfo:
-                    archives.append(archiveinfo)
+                archiveinfos = find_maven_archives(maven_info, filename)
+                if archiveinfos:
+                    if len(archiveinfos) == 1:
+                        archives.append(archiveinfos[0])
+                    else:
+                        raise koji.BuildrootError, 'multiple matches for %s in %s; archive IDs: %s' % \
+                            (filename, koji.mavenLabel(maven_info), ', '.join([str(a['id']) for a in archiveinfos]))
                 else:
                     # check if it's in the ignore list
                     for ignore_entry in ignore:
@@ -7100,7 +7111,7 @@ class HostExports(object):
                         raise koji.BuildrootError, 'unknown file in buildroot: %s; groupId: %s, artifactId: %s, version: %s' % \
                             (filename, pom['groupId'], pom['artifactId'], pom['version'])
 
-        return br.updateArchiveList(archives)
+        return br.updateArchiveList(archives, project)
 
     def repoInit(self, tag, with_src=False):
         """Initialize a new repo for tag"""
