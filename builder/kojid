@@ -1423,11 +1423,13 @@ class ChainBuildTask(BaseTaskHandler):
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
+                                                   label=src,
                                                    parent=self.id)
                     build_tasks.append(task_id)
                 else:
                     task_id = session.host.subtask(method='waitrepo',
                                                    arglist=[target, None, src],
+                                                   label=src,
                                                    parent=self.id)
                 subtasks.append(task_id)
             if not subtasks:
@@ -1443,6 +1445,7 @@ class ChainBuildTask(BaseTaskHandler):
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
                                                arglist=[target, None, nvrs],
+                                               label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
 
