@@ -2156,7 +2156,11 @@ def anon_handle_list_pkgs(options, session, args):
         # no limiting clauses were specified
         allpkgs = True
     opts['inherited'] = not options.noinherit
-    opts['with_dups'] = options.show_dups
+    #hiding dups only makes sense if we're querying a tag
+    if options.tag:
+        opts['with_dups'] = options.show_dups
+    else:
+        opts['with_dups'] = True
     data = session.listPackages(**opts)
     if not data:
         print "(no matching packages)"
