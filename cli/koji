@@ -3858,31 +3858,14 @@ def anon_handle_wait_repo(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
                       help=_("Check that the given build (or a later build of the same package) is in the newly-generated repo (may be used multiple times)"))
+    parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
     parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
     parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"))
     (suboptions, args) = parser.parse_args(args)
 
-    def _duration(s):
-        elapsed = time.time() - s
-        mins = int(elapsed / 60)
-        secs = int(elapsed % 60)
-        return '%s:%02i' % (mins, secs)
-    def _print_list(l):
-        if len(l) == 0:
-            return ''
-        elif len(l) == 1:
-            return l[0]
-        elif len(l) == 2:
-            return ' and '.join(l)
-        else:
-            ret = ', '.join(l[:-1])
-            ret += ', and '
-            ret += l[-1]
-            return ret
+    start = time.time()
 
-    builds = []
-    for build in suboptions.builds:
-        builds.append(koji.parse_NVR(build))
+    builds = [koji.parse_NVR(build) for build in suboptions.builds]
     if len(args) < 1:
         parser.error(_("Please specify a tag name"))
     elif len(args) > 1:
@@ -3890,42 +3873,44 @@ def anon_handle_wait_repo(options, session, args):
 
     tag = args[0]
 
-    start = time.time()
+    if suboptions.target:
+        target_info = session.getBuildTarget(tag)
+        if not target_info:
+            parser.error("Invalid build target: %s" % tag)
+        tag = target_info['build_tag_name']
+        tag_id = target_info['build_tag']
+    else:
+        tag_info = session.getTag(tag)
+        if not tag_info:
+            parser.error("Invalid tag: %s" % tag)
+        tag_id = tag_info['id']
 
     last_repo = None
-    repo = session.getRepo(tag)
+    repo = session.getRepo(tag_id)
 
     while True:
         if builds and repo and repo != last_repo:
-            # check if the current repo contains the NVR we're waiting for
-            for build in builds:
-                tagged_list = session.listTagged(tag, event=repo['create_event'], package=build['name'], inherit=True)
-                for tagged in tagged_list:
-                    if tagged['version'] == build['version'] and tagged['release'] == build['release']:
-                        break
-                else:
-                    break
-            else:
+            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event']):
                 if not suboptions.quiet:
-                    print "Successfully waited %s for %s to appear in the %s repo" % (_duration(start), _print_list(suboptions.builds), tag)
+                    print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
                 return
 
         time.sleep(60)
         last_repo = repo
-        repo = session.getRepo(tag)
+        repo = session.getRepo(tag_id)
 
         if not builds:
             if repo != last_repo:
                 if not suboptions.quiet:
-                    print "Successfully waited %s for a new %s repo" % (_duration(start), tag)
+                    print "Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
                 return
 
         if (time.time() - start) > (suboptions.timeout * 60.0):
             if not suboptions.quiet:
                 if builds:
-                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (_duration(start), _print_list(suboptions.builds), tag)
+                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
                 else:
-                    print "Unsuccessfully waited %s for a new %s repo" % (_duration(start), tag)
+                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
             return 1
 
 def handle_help(options, session, args):
