@@ -1827,7 +1827,6 @@ def anon_handle_list_tagged(options, session, args):
             build_idx = dict([(b['id'],b) for b in builds])
             for rinfo in data:
                 build = build_idx[rinfo['build_id']]
-                build['name'] = build['package_name']
                 builddir = pathinfo.build(build)
                 if options.sigs:
                     sigkey = rinfo['sigkey']
