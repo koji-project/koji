@@ -1206,6 +1206,7 @@ def handle_prune_signed_copies(options, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
     parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
+    parser.add_option("-b", "--build", help=_("Limit to a single build"))
     parser.add_option("--trashcan-tag", default="trashcan", help=_("Specify trashcan tag"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
@@ -1224,16 +1225,24 @@ def handle_prune_signed_copies(options, session, args):
     cutoff_ts = time.time() - options.days * 24 * 3600
     if options.debug:
         print "Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts))
-    if options.verbose:
-        print "Getting builds..."
-    qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
-    if options.package:
-        pkginfo = session.getPackage(options.package)
-        qopts['packageID'] = pkginfo['id']
-    builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
-    if options.verbose:
-        print "...got %i builds" % len(builds)
-    builds.sort()
+    if not options.build:
+        if options.verbose:
+            print "Getting builds..."
+        qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
+        if options.package:
+            pkginfo = session.getPackage(options.package)
+            qopts['packageID'] = pkginfo['id']
+        builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
+        if options.verbose:
+            print "...got %i builds" % len(builds)
+        builds.sort()
+    else:
+        #single build
+        binfo = session.getBuild(options.build)
+        if not binfo:
+            parser.error('No such build: %s' % options.build)
+            assert False
+        builds = [("%(name)s-%(version)s-%(release)s" % binfo, binfo)]
     total_files = 0
     total_space = 0
     def _histline(event_id, x):
@@ -1282,16 +1291,17 @@ def handle_prune_signed_copies(options, session, args):
             for x in hist:
                 #note that for revoked entries, we're effectively splitting them into
                 #two parts: creation and revocation.
-                timeline.append((x['create_event'], 0, x))
+                timeline.append((x['create_event'], 1, x))
+                #at the same event, revokes happen first
                 if x['revoke_event'] is not None:
-                    timeline.append((x['revoke_event'], 1, x))
+                    timeline.append((x['revoke_event'], 0, x))
             timeline.sort()
             #find most recent creation entry for our build and crop there
             latest_ts = None
             for i in xrange(len(timeline)-1, -1, -1):
                 #searching in reverse cronological order
-                event_id, revoked, entry = timeline[i]
-                if entry['build_id'] == binfo['id'] and not revoked:
+                event_id, is_create, entry = timeline[i]
+                if entry['build_id'] == binfo['id'] and is_create:
                     latest_ts = event_id
                     break
             if not latest_ts:
@@ -1309,7 +1319,7 @@ def handle_prune_signed_copies(options, session, args):
             replaced_ts = None
             revoke_ts = None
             others = {}
-            for event_id, revoked, entry in timeline:
+            for event_id, is_create, entry in timeline:
                 #So two things can knock this build from the title of latest:
                 #  - it could be untagged (entry revoked)
                 #  - another build could become latest (replaced)
@@ -1318,7 +1328,7 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print _histline(event_id, entry)
                 if entry['build_id'] == binfo['id']:
-                    if not revoked:
+                    if is_create:
                         #shouldn't happen
                         raise koji.GenericError, "Duplicate creation event found for %s in %s" \
                                                     % (nvr, tag_name)
@@ -1327,7 +1337,7 @@ def handle_prune_signed_copies(options, session, args):
                         revoke_ts = entry['revoke_ts']
                         break
                 else:
-                    if not revoked:
+                    if is_create:
                         #this build has become latest
                         replaced_ts = entry['create_ts']
                         if entry['active']:
