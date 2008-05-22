@@ -1455,7 +1455,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(src)
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target, None, nvrs],
+                                               arglist=[target['build_tag'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 subtasks.append(task_id)
@@ -1471,7 +1471,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target, None, nvrs],
+                                               arglist=[target['build_tag'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
@@ -2340,44 +2340,66 @@ class WaitrepoTask(BaseTaskHandler):
     # time in minutes before we fail this task
     TIMEOUT = 120
 
-    def handler(self, build_target_info, newer_then=None, nvrs=None):
+    def handler(self, tag, newer_than=None, nvrs=None):
+        """Wait for a repo for the tag, subject to given conditions
+
+        newer_than: create_event timestamp should be newer than this
+        nvr: repo should contain this nvr (which may not exist at first)
+
+        Only one of the options may be specified. If neither is, then
+        the call will wait for the first ready repo.
+
+        Returns the repo info (from getRepo) of the chosen repo
+        """
+
         start = time.time()
 
-        build_target = session.getBuildTarget(build_target_info)
-        if not build_target:
-            raise koji.GenericError, "invalid build target: %s" % build_target_info
+        taginfo = session.getTag(tag)
+        targets = session.getBuildTargets(buildTagID=taginfo['id'])
+        if not targets:
+            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
+
+        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
+            newer_than = start
+        if not isinstance(newer_than, (int, long, float)):
+            raise koji.GenericError, "Invalid value for newer_than"
+
+        if newer_than and nvrs:
+            raise koji.GenericError, "only one of (newer_than, nvrs) may be specified"
 
         if not nvrs:
             nvrs = []
         builds = [koji.parse_NVR(nvr) for nvr in nvrs]
 
-        if not newer_then and not builds:
-            newer_then = time.time()
-
         last_repo = None
-        repo = session.getRepo(build_target['build_tag'])
 
         while True:
-            if builds and repo and repo != last_repo:
-                if koji.util.checkForBuilds(session, build_target['build_tag'], builds, repo['create_event']):
-                    return "Successfully waited %s for %s to appear in the %s repo" % \
-                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
-            elif newer_then:
-                if repo['create_ts'] > newer_then:
-                    return "Successfully waited %s for a new %s repo" % \
-                        (koji.util.duration(start), build_target['build_tag_name'])
+            repo = session.getRepo(taginfo['id'])
+            if repo and repo != last_repo:
+                if builds:
+                    if koji.util.checkForBuilds(session, taginfo['id'], builds, repo['create_event']):
+                        self.logger.debug("Successfully waited %s for %s to appear in the %s repo" % \
+                            (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name']))
+                        return repo
+                elif newer_than:
+                    if repo['create_ts'] > newer_than:
+                        self.logger.debug("Successfully waited %s for a new %s repo" % \
+                            (koji.util.duration(start), taginfo['name']))
+                        return repo
+                else:
+                    #no check requested -- return first ready repo
+                    return repo
 
             if (time.time() - start) > (self.TIMEOUT * 60.0):
                 if builds:
                     raise koji.GenericError, "Unsuccessfully waited %s for %s to appear in the %s repo" % \
-                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+                        (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name'])
                 else:
                     raise koji.GenericError, "Unsuccessfully waited %s for a new %s repo" % \
-                        (koji.util.duration(start), build_target['build_tag_name'])
+                        (koji.util.duration(start), taginfo['name'])
 
             time.sleep(self.PAUSE)
             last_repo = repo
-            repo = session.getRepo(build_target['build_tag'])
 
 class SCM(object):
     "SCM abstraction class"
