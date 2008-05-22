@@ -636,7 +636,8 @@ class TaskManager(object):
                         else:
                             self.logger.warn("%s: %s" % (desc, e))
                             continue
-                    age = min(age, time.time() - st.st_mtime)
+                    else:
+                        age = min(age, time.time() - st.st_mtime)
                 #note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
                 #If rpmlib is installing in this chroot, removing it entirely
                 #can lead to a world of hurt.
@@ -1441,16 +1442,22 @@ class ChainBuildTask(BaseTaskHandler):
         for build_level in srcs:
             subtasks = []
             build_tasks = []
+            nvrs = []
             for src in build_level:
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
+                                                   label=src,
                                                    parent=self.id)
                     build_tasks.append(task_id)
+                    subtasks.append(task_id)
                 else:
-                    task_id = session.host.subtask(method='waitrepo',
-                                                   arglist=[target, None, src],
-                                                   parent=self.id)
+                    nvrs.append(src)
+            if nvrs:
+                task_id = session.host.subtask(method='waitrepo',
+                                               arglist=[target, None, nvrs],
+                                               label=','.join(nvrs),
+                                               parent=self.id)
                 subtasks.append(task_id)
             if not subtasks:
                 continue
@@ -1464,7 +1471,8 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target_info['build_tag'], None, nvrs],
+                                               arglist=[target, None, nvrs],
+                                               label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
 
@@ -2329,66 +2337,47 @@ class WaitrepoTask(BaseTaskHandler):
     _taskWeight = 0.2
 
     PAUSE = 60
-    # time in seconds before we fail this task
-    TIMEOUT = 7200
+    # time in minutes before we fail this task
+    TIMEOUT = 120
 
-    def checkForNVR(self, tag, nvrs, repo_creation_event):
-        if nvrs is None:
-            #check not requested
-            return True
-        if not isinstance(nvrs, list):
-            nvrs = [nvrs]
-        repo_nvrs = dict([(b['nvr'], 1) for b in session.listTagged(tag, event=repo_creation_event, inherit=True)])
-        for nvr in nvrs:
-            if not repo_nvrs.has_key(nvr):
-                return False
-        return True
-
-    def checkNewerThan(create_ts, newer_than):
-        if newer_than is None:
-            #check not requested
-            return True
-        return (create_ts > newer_than)
-
-    def handler(self, tag, newer_than=None, nvr=None):
-        """Wait for a repo for the tag, subject to given conditions
-
-        newer_than: create_event timestamp should be newer than this
-        nvr: repo should contain this nvr (which may not exist at first)
-        If both of these are unspecified/None, then the call will wait
-        for the first ready repo.
-
-        Returns the repo info (from getRepo) of the chosen repo
-        """
+    def handler(self, build_target_info, newer_then=None, nvrs=None):
         start = time.time()
-        repo = None
+
+        build_target = session.getBuildTarget(build_target_info)
+        if not build_target:
+            raise koji.GenericError, "invalid build target: %s" % build_target_info
+
+        if not nvrs:
+            nvrs = []
+        builds = [koji.parse_NVR(nvr) for nvr in nvrs]
+
+        if not newer_then and not builds:
+            newer_then = time.time()
+
         last_repo = None
-        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
-            newer_than = start
-        if not isinstance(newer_than, (int, long, float)):
-            raise koji.GenericError("Invalid value for newer_than")
-        taginfo = session.getTag(tag)
-        #sanity check
-        targets = session.getBuildTargets(buildTagID=taginfo['id'])
-        if not targets:
-            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
+        repo = session.getRepo(build_target['build_tag'])
+
         while True:
-            repo = session.getRepo(taginfo['id'])
-            #note: getRepo will only return a repo in the "READY" state
-            if repo and repo != last_repo:
-                if self.checkNewerThan(repo['create_ts'], newer_than) \
-                        and self.checkForNVR(taginfo['id'], nvr, repo['create_event']):
-                    #note that the self.check* calls return True if the check is not
-                    #requested (i.e. value is None). Also note that the more expensive
-                    #check is listed second.
-                    break
-            if self.TIMEOUT and ((time.time() - start) > self.TIMEOUT):
-                raise koji.GenericError("Timed out waiting for repo after %d seconds" % self.TIMEOUT)
-            last_repo = repo
+            if builds and repo and repo != last_repo:
+                if koji.util.checkForBuilds(session, build_target['build_tag'], builds, repo['create_event']):
+                    return "Successfully waited %s for %s to appear in the %s repo" % \
+                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+            elif newer_then:
+                if repo['create_ts'] > newer_then:
+                    return "Successfully waited %s for a new %s repo" % \
+                        (koji.util.duration(start), build_target['build_tag_name'])
+
+            if (time.time() - start) > (self.TIMEOUT * 60.0):
+                if builds:
+                    raise koji.GenericError, "Unsuccessfully waited %s for %s to appear in the %s repo" % \
+                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+                else:
+                    raise koji.GenericError, "Unsuccessfully waited %s for a new %s repo" % \
+                        (koji.util.duration(start), build_target['build_tag_name'])
+
             time.sleep(self.PAUSE)
-        self.logger.debug("Successfully waited %s seconds for a '%s' repo (%s)" \
-                    % ((time.time() - start), taginfo['name'], repo['id']))
-        return repo
+            last_repo = repo
+            repo = session.getRepo(build_target['build_tag'])
 
 class SCM(object):
     "SCM abstraction class"

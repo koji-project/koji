@@ -45,6 +45,7 @@ import traceback
 import urllib
 import urllib2
 import urlparse
+import util
 import xmlrpclib
 from xmlrpclib import loads, Fault
 import ssl.XMLRPCServerProxy
@@ -912,7 +913,9 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # Use the group data rather than a generated rpm
         'chroot_setup_cmd': 'groupinstall build',
         # don't encourage network access from the chroot
-        'use_host_resolv': False
+        'use_host_resolv': False,
+        # Don't let a build last more than 24 hours
+        'rpmbuild_timeout': 86400
     }
 
     config_opts['yum.conf'] = """[main]
@@ -1383,7 +1386,7 @@ class ClientSession(object):
         #    raise AttributeError, "no attribute %r" % name
         return VirtualMethod(self._callMethod,name)
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=262144):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=1048576):
         """upload a file in chunks using the uploadFile call"""
         # XXX - stick in a config or something
         start=time.time()

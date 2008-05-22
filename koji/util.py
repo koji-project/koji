@@ -31,3 +31,36 @@ def formatChangelog(entries):
 """ % (_changelogDate(entry['date']), entry['author'], entry['text'])
 
     return result
+
+def checkForBuilds(session, tag, builds, event):
+    """Check that the builds existed in tag at the time of the event."""
+    for build in builds:
+        tagged_list = session.listTagged(tag, event=event, package=build['name'], inherit=True)
+        for tagged in tagged_list:
+            if tagged['version'] == build['version'] and tagged['release'] == build['release']:
+                break
+        else:
+            return False
+
+    return True
+
+def duration(start):
+    """Return the duration between start and now in MM:SS format"""
+    elapsed = time.time() - start
+    mins = int(elapsed / 60)
+    secs = int(elapsed % 60)
+    return '%s:%02i' % (mins, secs)
+
+def printList(l):
+    """Print the contents of the list comma-separated"""
+    if len(l) == 0:
+        return ''
+    elif len(l) == 1:
+        return l[0]
+    elif len(l) == 2:
+        return ' and '.join(l)
+    else:
+        ret = ', '.join(l[:-1])
+        ret += ', and '
+        ret += l[-1]
+        return ret

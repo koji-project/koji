@@ -503,7 +503,7 @@ def handle_trash():
                 #this might happen if the build was tagged just now
                 print "[%i/%i] Warning: build not untagged: %s" % (i, N, nvr)
                 continue
-            age = time.time() - last['revoke_event']
+            age = time.time() - last['revoke_ts']
         if age is not None and age < min_age:
             if options.debug:
                 print "[%i/%i] Build untagged only recently: %s" % (i, N, nvr)

@@ -688,7 +688,7 @@ def handle_build(options, session, args):
             callback = None
         else:
             callback = _progress_callback
-        session.uploadWrapper(source, serverdir, callback=callback, blocksize=65536)
+        session.uploadWrapper(source, serverdir, callback=callback)
         print
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
@@ -1028,7 +1028,7 @@ def handle_import(options, session, args):
         else:
             print _("uploading %s...") % path,
             sys.stdout.flush()
-            session.uploadWrapper(path, serverdir, blocksize=65536)
+            session.uploadWrapper(path, serverdir)
             print _("done")
             sys.stdout.flush()
         print _("importing %s...") % path,
@@ -1211,6 +1211,7 @@ def handle_prune_signed_copies(options, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
     parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
+    parser.add_option("-b", "--build", help=_("Limit to a single build"))
     parser.add_option("--trashcan-tag", default="trashcan", help=_("Specify trashcan tag"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
@@ -1229,16 +1230,24 @@ def handle_prune_signed_copies(options, session, args):
     cutoff_ts = time.time() - options.days * 24 * 3600
     if options.debug:
         print "Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts))
-    if options.verbose:
-        print "Getting builds..."
-    qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
-    if options.package:
-        pkginfo = session.getPackage(options.package)
-        qopts['packageID'] = pkginfo['id']
-    builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
-    if options.verbose:
-        print "...got %i builds" % len(builds)
-    builds.sort()
+    if not options.build:
+        if options.verbose:
+            print "Getting builds..."
+        qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
+        if options.package:
+            pkginfo = session.getPackage(options.package)
+            qopts['packageID'] = pkginfo['id']
+        builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
+        if options.verbose:
+            print "...got %i builds" % len(builds)
+        builds.sort()
+    else:
+        #single build
+        binfo = session.getBuild(options.build)
+        if not binfo:
+            parser.error('No such build: %s' % options.build)
+            assert False
+        builds = [("%(name)s-%(version)s-%(release)s" % binfo, binfo)]
     total_files = 0
     total_space = 0
     def _histline(event_id, x):
@@ -1287,16 +1296,17 @@ def handle_prune_signed_copies(options, session, args):
             for x in hist:
                 #note that for revoked entries, we're effectively splitting them into
                 #two parts: creation and revocation.
-                timeline.append((x['create_event'], 0, x))
+                timeline.append((x['create_event'], 1, x))
+                #at the same event, revokes happen first
                 if x['revoke_event'] is not None:
-                    timeline.append((x['revoke_event'], 1, x))
+                    timeline.append((x['revoke_event'], 0, x))
             timeline.sort()
             #find most recent creation entry for our build and crop there
             latest_ts = None
             for i in xrange(len(timeline)-1, -1, -1):
                 #searching in reverse cronological order
-                event_id, revoked, entry = timeline[i]
-                if entry['build_id'] == binfo['id'] and not revoked:
+                event_id, is_create, entry = timeline[i]
+                if entry['build_id'] == binfo['id'] and is_create:
                     latest_ts = event_id
                     break
             if not latest_ts:
@@ -1314,7 +1324,7 @@ def handle_prune_signed_copies(options, session, args):
             replaced_ts = None
             revoke_ts = None
             others = {}
-            for event_id, revoked, entry in timeline:
+            for event_id, is_create, entry in timeline:
                 #So two things can knock this build from the title of latest:
                 #  - it could be untagged (entry revoked)
                 #  - another build could become latest (replaced)
@@ -1323,7 +1333,7 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print _histline(event_id, entry)
                 if entry['build_id'] == binfo['id']:
-                    if not revoked:
+                    if is_create:
                         #shouldn't happen
                         raise koji.GenericError, "Duplicate creation event found for %s in %s" \
                                                     % (nvr, tag_name)
@@ -1332,7 +1342,7 @@ def handle_prune_signed_copies(options, session, args):
                         revoke_ts = entry['revoke_ts']
                         break
                 else:
-                    if not revoked:
+                    if is_create:
                         #this build has become latest
                         replaced_ts = entry['create_ts']
                         if entry['active']:
@@ -2161,7 +2171,11 @@ def anon_handle_list_pkgs(options, session, args):
         # no limiting clauses were specified
         allpkgs = True
     opts['inherited'] = not options.noinherit
-    opts['with_dups'] = options.show_dups
+    #hiding dups only makes sense if we're querying a tag
+    if options.tag:
+        opts['with_dups'] = options.show_dups
+    else:
+        opts['with_dups'] = True
     data = session.listPackages(**opts)
     if not data:
         print "(no matching packages)"
@@ -3772,12 +3786,14 @@ def handle_unblock_pkg(options, session, args):
 
 def anon_handle_download_build(options, session, args):
     "Download a built package"
-    usage = _("usage: %prog download-build [options] <n-v-r | build_id>")
+    usage = _("usage: %prog download-build [options] <n-v-r | build_id | package>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
+    parser.add_option("--key", help=_("Download rpms signed with the given key"))
     parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -3791,8 +3807,25 @@ def anon_handle_download_build(options, session, args):
     build = args[0]
 
     if build.isdigit():
+        if suboptions.latestfrom:
+            print "--latestfrom not compatible with build IDs, specify a package name."
+            return 1
         build = int(build)
-    info = session.getBuild(build)
+    
+    if suboptions.latestfrom:
+        # We want the latest build, not a specific build
+        try:
+            builds = session.listTagged(suboptions.latestfrom, latest=True, package=build)
+        except koji.GenericError, data:
+            print "Error finding latest build: %s" % data
+            return 1
+        if not builds:
+            print "%s has no builds of %s" % (suboptions.latestfrom, build)
+            return 1
+        info = builds[0]
+    else:
+        info = session.getBuild(build)
+        
     if info is None:
         print "No such build: %s" % build
         return 1
@@ -3816,13 +3849,17 @@ def anon_handle_download_build(options, session, args):
     for rpm in rpms:
         if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
             continue
-        
-        fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
-        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], rpm['version'], rpm['release'], rpm['arch'], fname)
+
+        if suboptions.key:
+            fname = koji.pathinfo.signed(rpm, suboptions.key)
+        else:
+            fname = koji.pathinfo.rpm(rpm)
+
+        url = "%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], fname)
 
         file = grabber.urlopen(url, progress_obj = pg, text = "%s.%s" % (rpm['name'], rpm['arch']))
 
-        out = os.open(fname, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+        out = os.open(os.path.basename(fname), os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
         try:
             while 1:
                 buf = file.read(4096)
@@ -3832,6 +3869,68 @@ def anon_handle_download_build(options, session, args):
         finally:
             os.close(out)
             file.close()
+
+def anon_handle_wait_repo(options, session, args):
+    "Wait for a repo to be regenerated"
+    usage = _("usage: %prog wait-repo [options] <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
+                      help=_("Check that the given build (or a later build of the same package) is in the newly-generated repo (may be used multiple times)"))
+    parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
+    parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
+    parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"))
+    (suboptions, args) = parser.parse_args(args)
+
+    start = time.time()
+
+    builds = [koji.parse_NVR(build) for build in suboptions.builds]
+    if len(args) < 1:
+        parser.error(_("Please specify a tag name"))
+    elif len(args) > 1:
+        parser.error(_("Only one tag may be specified"))
+
+    tag = args[0]
+
+    if suboptions.target:
+        target_info = session.getBuildTarget(tag)
+        if not target_info:
+            parser.error("Invalid build target: %s" % tag)
+        tag = target_info['build_tag_name']
+        tag_id = target_info['build_tag']
+    else:
+        tag_info = session.getTag(tag)
+        if not tag_info:
+            parser.error("Invalid tag: %s" % tag)
+        tag_id = tag_info['id']
+
+    last_repo = None
+    repo = session.getRepo(tag_id)
+
+    while True:
+        if builds and repo and repo != last_repo:
+            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event']):
+                if not suboptions.quiet:
+                    print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                return
+
+        time.sleep(60)
+        last_repo = repo
+        repo = session.getRepo(tag_id)
+
+        if not builds:
+            if repo != last_repo:
+                if not suboptions.quiet:
+                    print "Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+                return
+
+        if (time.time() - start) > (suboptions.timeout * 60.0):
+            if not suboptions.quiet:
+                if builds:
+                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                else:
+                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+            return 1
 
 def handle_help(options, session, args):
     "List available commands"
