@@ -1659,10 +1659,13 @@ class BuildTask(BaseTaskHandler):
 
     def getRepo(self, tag):
         """Get repo to use for builds"""
-        task_id = session.host.subtask(method='waitrepo',
-                                       arglist=[tag, None, None],
-                                       parent=self.id)
-        repo_info = self.wait(task_id)[task_id]
+        repo = session.getRepo(taginfo['id'])
+        if not repo:
+            #wait for it
+            task_id = session.host.subtask(method='waitrepo',
+                                           arglist=[tag, None, None],
+                                           parent=self.id)
+            repo_info = self.wait(task_id)[task_id]
         return repo_info
 
     def runBuilds(self, srpm, build_tag, archlist, repo_id):
