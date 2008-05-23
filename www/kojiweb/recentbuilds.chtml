@@ -19,10 +19,13 @@
 
 <rss version="2.0">
   <channel>
-    <title>koji: most recent builds#if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
+    <title>Koji: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
     <link>$linkURL()</link>
     <description>
       A list of the most recent builds
+      #if $package
+      of package $package.name
+      #end if
       #if $tag
       into tag $tag.name
       #end if

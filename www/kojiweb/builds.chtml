@@ -11,16 +11,16 @@
 
 #include "includes/header.chtml"
 
-  <h4>#if $state != None then $util.stateName($state).capitalize() else ''# Builds#if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
+  <h4>#if $state != None then $util.stateName($state).capitalize() else ''# Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
 
   <table class="data-list">
     #if $tag
     <tr>
       <td colspan="6">
         #if $inherited
-        <a href="builds?inherited=0$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'state')">Hide inherited builds</a>
+        <a href="builds?inherited=0$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')">Hide inherited builds</a>
         #else
-        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'state')[1:]}">Show inherited builds</a>
+        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')[1:]}">Show inherited builds</a>
         #end if
       </td>
     </tr>
@@ -28,7 +28,7 @@
     <tr>
       <td colspan="#if $tag then '6' else '5'#">
         <strong>State</strong>:
-        <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')';">
+        <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited')';">
           <option value="all">all</option>
           #for $stateOpt in ['BUILDING', 'COMPLETE', 'FAILED', 'CANCELED']
           <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
@@ -37,7 +37,7 @@
         <br/>
         <strong>Built by</strong>:
         #if $user
-          <a href="builds?${util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')[1:]}">everyone</a>
+          <a href="builds?${util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')[1:]}">everyone</a>
 	#else
 	  <strong>everyone</strong>
 	#end if
@@ -46,11 +46,11 @@
           #if $user and $user.id == $loggedInUser.id
           <strong>me</strong>
           #else
-          <a href="builds?userID=$loggedInUser.name$util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')">me</a>
+          <a href="builds?userID=$loggedInUser.name$util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">me</a>
           #end if
         #end if
         |
-        <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough($self, 'tagID', 'order', 'prefix', 'inherited', 'state')';">
+        <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')';">
           <option value="">(select)</option>
           #for $userOption in $users
           <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$userOption.name</option>
@@ -64,12 +64,12 @@
         #if $prefix == $char
         <strong>$char</strong>
         #else
-        <a href="builds?prefix=$char$util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'state')">$char</a>
+        <a href="builds?prefix=$char$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'inherited', 'state')">$char</a>
         #end if
         | 
         #end for
         #if $prefix
-        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'state')[1:]}">all</a>
+        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'inherited', 'state')[1:]}">all</a>
         #else
         <strong>all</strong>
         #end if
@@ -80,7 +80,7 @@
         #if $len($buildPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')';">
+          <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')';">
             #for $pageNum in $buildPages
             <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -88,25 +88,25 @@
         </form>
         #end if
         #if $buildStart > 0
-        <a href="builds?start=#echo $buildStart - $buildRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')">&lt;&lt;&lt;</a>
+        <a href="builds?start=#echo $buildStart - $buildRange #$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">&lt;&lt;&lt;</a>
         #end if
         #if $totalBuilds != 0
         <strong>Builds #echo $buildStart + 1 # through #echo $buildStart + $buildCount # of $totalBuilds</strong>
         #end if
         #if $buildStart + $buildCount < $totalBuilds
-        <a href="builds?start=#echo $buildStart + $buildRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')">&gt;&gt;&gt;</a>
+        <a href="builds?start=#echo $buildStart + $buildRange#$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="builds?order=$util.toggleOrder($self, 'build_id')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">ID</a> $util.sortImage($self, 'build_id')</th>
-      <th><a href="builds?order=$util.toggleOrder($self, 'nvr')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">NVR</a> $util.sortImage($self, 'nvr')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'build_id')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">ID</a> $util.sortImage($self, 'build_id')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'nvr')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">NVR</a> $util.sortImage($self, 'nvr')</th>
       #if $tag
-      <th><a href="builds?order=$util.toggleOrder($self, 'tag_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">Tag</a> $util.sortImage($self, 'tag_name')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'tag_name')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">Tag</a> $util.sortImage($self, 'tag_name')</th>
       #end if
-      <th><a href="builds?order=$util.toggleOrder($self, 'owner_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">Built by</a> $util.sortImage($self, 'owner_name')</th>
-      <th><a href="builds?order=$util.toggleOrder($self, 'completion_time')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">Finished</a> $util.sortImage($self, 'completion_time')</th>
-      <th><a href="builds?order=$util.toggleOrder($self, 'state')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'state')">State</a> $util.sortImage($self, 'state')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'owner_name')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">Built by</a> $util.sortImage($self, 'owner_name')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'completion_time')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">Finished</a> $util.sortImage($self, 'completion_time')</th>
+      <th><a href="builds?order=$util.toggleOrder($self, 'state')$util.passthrough($self, 'userID', 'tagID', 'packageID', 'prefix', 'inherited', 'state')">State</a> $util.sortImage($self, 'state')</th>
     </tr>
     #if $len($builds) > 0
       #for $build in $builds
@@ -132,7 +132,7 @@
         #if $len($buildPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')';">
+          <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')';">
             #for $pageNum in $buildPages
             <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -140,13 +140,13 @@
         </form>
         #end if
         #if $buildStart > 0
-        <a href="builds?start=#echo $buildStart - $buildRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')">&lt;&lt;&lt;</a>
+        <a href="builds?start=#echo $buildStart - $buildRange #$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">&lt;&lt;&lt;</a>
         #end if
         #if $totalBuilds != 0
         <strong>Builds #echo $buildStart + 1 # through #echo $buildStart + $buildCount # of $totalBuilds</strong>
         #end if
         #if $buildStart + $buildCount < $totalBuilds
-        <a href="builds?start=#echo $buildStart + $buildRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'state')">&gt;&gt;&gt;</a>
+        <a href="builds?start=#echo $buildStart + $buildRange#$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
