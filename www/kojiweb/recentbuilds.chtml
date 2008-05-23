@@ -10,6 +10,9 @@
   #if $user
   #silent $query.append('userID=%i' % $user.id)
   #end if
+  #if $package
+  #silent $query.append('packageID=%i' % $package.id)
+  #end if
   #if $query
   #echo '%s/%s?%s' % ($weburl, 'builds', '&amp;'.join($query))
   #else
