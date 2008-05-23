@@ -143,14 +143,15 @@ def get_options():
         }
     # grab settings from /etc/koji.conf first, and allow them to be
     # overridden by user config
+    progname = os.path.basename(sys.argv[0]) or 'koji'
     for configFile in ('/etc/koji.conf', os.path.expanduser(options.configFile)):
         if os.access(configFile, os.F_OK):
             f = open(configFile)
             config = ConfigParser.ConfigParser()
             config.readfp(f)
             f.close()
-            if config.has_section('koji'):
-                for name, value in config.items('koji'):
+            if config.has_section(progname):
+                for name, value in config.items(progname):
                     #note the defaults dictionary also serves to indicate which
                     #options *can* be set via the config file. Such options should
                     #not have a default value set in the option parser.
