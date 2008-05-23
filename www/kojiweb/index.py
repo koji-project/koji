@@ -17,6 +17,7 @@ def _setUserCookie(req, user):
     options = req.get_options()
     cookie = mod_python.Cookie.SignedCookie('user', user,
                                             secret=options['Secret'],
+                                            secure=True,
                                             path=os.path.dirname(req.uri),
                                             expires=(time.time() + (int(options['LoginTimeout']) * 60 * 60)))
     mod_python.Cookie.add_cookie(req, cookie)
@@ -110,13 +111,34 @@ def _getServer(req):
     req._session = session
     return session
 
-def _redirectBack(req, page):
+def _getBaseURL(req):
+    pieces = req.uri.split('/')
+    base = '/'.join(pieces[:-1])
+    return req.construct_url(base)
+
+def _redirectBack(req, page, forceSSL):
     if page:
-        mod_python.util.redirect(req, page)
+        # We'll work with the page we were given
+        pass
     elif req.headers_in.get('Referer'):
-        mod_python.util.redirect(req, req.headers_in.get('Referer'))
+        page = req.headers_in.get('Referer')
     else:
-        mod_python.util.redirect(req, 'index')    
+        page = 'index'
+
+    # Modify the scheme if necessary
+    if page.startswith('http'):
+        pass
+    elif page.startswith('/'):
+        page = req.construct_url(page)
+    else:
+        page = _getBaseURL(req) + '/' + page
+    if forceSSL:
+        page = page.replace('http:', 'https:')
+    else:
+        page = page.replace('https:', 'http:')
+
+    # and redirect to the page
+    mod_python.util.redirect(req, page)
 
 def login(req, page=None):
     session = _getServer(req)
@@ -127,10 +149,10 @@ def login(req, page=None):
         req.add_common_vars()
         env = req.subprocess_env
         if not env.get('HTTPS') == 'on':
-            https_url = options['KojiWebURL'].replace('http://', 'https://') + '/login'
-            if req.args:
-                https_url += '?' + req.args
-            mod_python.util.redirect(req, https_url)
+            dest = 'login'
+            if page:
+                dest = dest + '?page=' + page
+            _redirectBack(req, dest, forceSSL=True)
             return
 
         if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
@@ -157,13 +179,13 @@ def login(req, page=None):
         raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
 
     _setUserCookie(req, username)
-
-    _redirectBack(req, page)
+    # To protect the session cookie, we must forceSSL
+    _redirectBack(req, page, forceSSL=True)
 
 def logout(req, page=None):
     _clearUserCookie(req)
 
-    _redirectBack(req, page)
+    _redirectBack(req, page, forceSSL=False)
 
 def index(req, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, taskOrder='-completion_time', taskStart=None):
     values = _initValues(req)
@@ -1270,6 +1292,7 @@ def buildtargetdelete(req, targetID):
     mod_python.util.redirect(req, 'buildtargets')
 
 def reports(req):
+    server = _getServer(req)
     values = _initValues(req, 'Reports', 'reports')
     return _genHTML(req, 'reports.chtml')
 
@@ -1574,7 +1597,7 @@ def recentbuilds(req, user=None, tag=None, package=None):
     values['user'] = userObj
     values['package'] = packageObj
     values['builds'] = builds
-    values['weburl'] = req.get_options().get('KojiWebURL', 'http://localhost/koji')
+    values['weburl'] = _getBaseURL(req)
 
     req.content_type = 'text/xml'
     return _genHTML(req, 'recentbuilds.chtml')
