@@ -2862,7 +2862,13 @@ def import_rpm(fn,buildinfo=None,brootid=None):
         #figure it out for ourselves
         if rpminfo['sourcepackage'] == 1:
             buildinfo = rpminfo.copy()
-            buildinfo['id'] = new_build(rpminfo)
+            build_id = find_build_id(buildinfo)
+            if build_id:
+                # build already exists
+                buildinfo['id'] = build_id
+            else:
+                # create a new build
+                buildinfo['id'] = new_build(rpminfo)
         else:
             #figure it out from sourcerpm string
             buildinfo = get_build(koji.parse_NVRA(rpminfo['sourcerpm']))
