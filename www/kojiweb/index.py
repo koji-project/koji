@@ -832,6 +832,15 @@ def buildinfo(req, buildID):
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
 
+    rpmsByArch = {}
+    debuginfoByArch = {}
+    for rpm in rpms:
+        canon_arch = koji.canonArch(rpm['arch'])
+        if rpm['name'].endswith('-debuginfo') or rpm['name'].endswith('-debuginfo-common'):
+            debuginfoByArch.setdefault(canon_arch, []).append(rpm)
+        else:
+            rpmsByArch.setdefault(canon_arch, []).append(rpm)
+
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
     else:
@@ -839,7 +848,8 @@ def buildinfo(req, buildID):
 
     values['build'] = build
     values['tags'] = tags
-    values['rpms'] = rpms
+    values['rpmsByArch'] = rpmsByArch
+    values['debuginfoByArch'] = debuginfoByArch
     values['task'] = task
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
