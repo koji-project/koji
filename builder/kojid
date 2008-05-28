@@ -68,11 +68,12 @@ def main():
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
+    taken = False
     while 1:
         try:
             tm.updateBuildroots()
             tm.updateTasks()
-            tm.getNextTask()
+            taken = tm.getNextTask()
         except (SystemExit,ServerExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
@@ -86,7 +87,11 @@ def main():
             # log the exception and continue
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
         try:
-            time.sleep(options.sleeptime)
+            if not taken:
+                # Only sleep if we didn't take a task, otherwise retry immediately.
+                # The load-balancing code in getNextTask() will prevent a single builder
+                # from getting overloaded.
+                time.sleep(options.sleeptime)
         except (SystemExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
@@ -772,7 +777,7 @@ class TaskManager(object):
         session.host.updateHost(self.task_load,self.ready)
         if not self.ready:
             self.logger.info("Not ready for task")
-            return
+            return False
         hosts, tasks = session.host.getLoadData()
         self.logger.debug("Load Data:")
         self.logger.debug("  hosts: %r" % hosts)
@@ -796,10 +801,10 @@ class TaskManager(object):
         self.logger.debug("bins: %r" % bins)
         if our_avail is None:
             self.logger.info("Server did not report this host. Are we disabled?")
-            return
+            return False
         elif not bins:
             self.logger.info("No bins for this host. Missing channel/arch config?")
-            return
+            return False
         #sort available capacities for each of our bins
         avail = {}
         for bin in bins.iterkeys():
@@ -814,7 +819,7 @@ class TaskManager(object):
                 if self.host_id == task['host_id']:
                     #assigned to us, we can take it regardless
                     if self.takeTask(task['id']):
-                        return
+                        return True
             elif task['state'] == koji.TASK_STATES['FREE']:
                 bin = "%(channel_id)s:%(arch)s" % task
                 self.logger.debug("task is free, bin=%r" % bin)
@@ -830,14 +835,14 @@ class TaskManager(object):
                 if our_avail < median:
                     self.logger.debug("Skipping - available capacity in lower half")
                     #decline for now and give the upper half a chance
-                    return
+                    return False
                 #otherwise, we attempt to open the task
                 if self.takeTask(task['id']):
-                    return
+                    return True
             else:
                 #should not happen
                 raise Exception, "Invalid task state reported by server"
-        return
+        return False
 
     def _waitTask(self, task_id, pid=None):
         """Wait (nohang) on the task, return true if finished"""
