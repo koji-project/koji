@@ -97,6 +97,8 @@ def get_options():
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
                       help=_("show xmlrpc debug output"))
+    parser.add_option("-q", "--quiet", action="store_true", default=False,
+		      help=_("run quietly"))
     parser.add_option("--skip-main", action="store_true", default=False,
                       help=_("don't actually run main"))
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
@@ -1668,7 +1670,7 @@ def anon_handle_latest_pkg(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -1724,7 +1726,7 @@ def anon_handle_latest_by_tag(options, session, args):
     usage = _("usage: %prog latest-by-tag [options] package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -1793,7 +1795,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     (options, args) = parser.parse_args(args)
@@ -2075,7 +2077,7 @@ def anon_handle_list_hosts(options, session, args):
     parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
     parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
     parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     opts = {}
     activate_session(session)
@@ -2127,7 +2129,7 @@ def anon_handle_list_pkgs(options, session, args):
     parser.add_option("--owner", help=_("Specify owner"))
     parser.add_option("--tag", help=_("Specify tag"))
     parser.add_option("--package", help=_("Specify package"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
     parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
@@ -2623,7 +2625,7 @@ def anon_handle_list_targets(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--name", help=_("Specify the build target name"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -3491,7 +3493,7 @@ def handle_list_tasks(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -3775,7 +3777,8 @@ def anon_handle_download_build(options, session, args):
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("--key", help=_("Download rpms signed with the given key"))
-    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
+    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"),
+                      default=options.quiet)
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a package N-V-R or build ID"))
