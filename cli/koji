@@ -3947,7 +3947,8 @@ def list_commands(show_admin=False):
             desc = desc[8:]
         print "        %-20s %s" % (alias, desc)
     print _('(Type "koji --help" for help about global options')
-    print _(' or "koji <command> --help" for help about a particular command\'s options.)')
+    print _(' or "koji <command> --help" for help about a particular command\'s options')
+    print _(' or "koji help --admin" for help about privileged administrative commands.)')
 
 def error(msg=None, code=1):
     if msg:
