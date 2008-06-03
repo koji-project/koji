@@ -783,12 +783,16 @@ def handle_resubmit(options, session, args):
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
     parser.add_option("--nowatch", action="store_true", dest="nowait",
             help=_("An alias for --nowait"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the task information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a task ID"))
         assert False
     activate_session(session)
     taskID = args[0]
+    if not options.quiet:
+        print "Resubmitting the following task:"
+        _printTaskInfo(session, int(taskID), 0, False, True)
     newID = session.resubmitTask(int(taskID))
     print "Resubmitted task %s as new task %s" % (taskID, newID)
     if _running_in_bg() or options.nowait:
