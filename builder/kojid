@@ -1825,7 +1825,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         for allowed_scm in options.allowed_scms.split():
             scm_tuple = allowed_scm.split(':')
             if len(scm_tuple) == 2:
-                if scm.host == scm_tuple[0] and scm.repository == scm_tuple[1]:
+                if fnmatch(scm.host, scm_tuple[0]) and fnmatch(scm.repository, scm_tuple[1]):
                     # SCM host:repository is in the allowed list
                     break
             else:
