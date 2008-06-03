@@ -17,6 +17,7 @@ def _setUserCookie(req, user):
     options = req.get_options()
     cookie = mod_python.Cookie.SignedCookie('user', user,
                                             secret=options['Secret'],
+                                            secure=True,
                                             path=os.path.dirname(req.uri),
                                             expires=(time.time() + (int(options['LoginTimeout']) * 60 * 60)))
     mod_python.Cookie.add_cookie(req, cookie)
@@ -110,13 +111,34 @@ def _getServer(req):
     req._session = session
     return session
 
-def _redirectBack(req, page):
+def _getBaseURL(req):
+    pieces = req.uri.split('/')
+    base = '/'.join(pieces[:-1])
+    return req.construct_url(base)
+
+def _redirectBack(req, page, forceSSL):
     if page:
-        mod_python.util.redirect(req, page)
+        # We'll work with the page we were given
+        pass
     elif req.headers_in.get('Referer'):
-        mod_python.util.redirect(req, req.headers_in.get('Referer'))
+        page = req.headers_in.get('Referer')
     else:
-        mod_python.util.redirect(req, 'index')    
+        page = 'index'
+
+    # Modify the scheme if necessary
+    if page.startswith('http'):
+        pass
+    elif page.startswith('/'):
+        page = req.construct_url(page)
+    else:
+        page = _getBaseURL(req) + '/' + page
+    if forceSSL:
+        page = page.replace('http:', 'https:')
+    else:
+        page = page.replace('https:', 'http:')
+
+    # and redirect to the page
+    mod_python.util.redirect(req, page)
 
 def login(req, page=None):
     session = _getServer(req)
@@ -127,10 +149,10 @@ def login(req, page=None):
         req.add_common_vars()
         env = req.subprocess_env
         if not env.get('HTTPS') == 'on':
-            https_url = options['KojiWebURL'].replace('http://', 'https://') + '/login'
-            if req.args:
-                https_url += '?' + req.args
-            mod_python.util.redirect(req, https_url)
+            dest = 'login'
+            if page:
+                dest = dest + '?page=' + page
+            _redirectBack(req, dest, forceSSL=True)
             return
 
         if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
@@ -157,13 +179,13 @@ def login(req, page=None):
         raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
 
     _setUserCookie(req, username)
-
-    _redirectBack(req, page)
+    # To protect the session cookie, we must forceSSL
+    _redirectBack(req, page, forceSSL=True)
 
 def logout(req, page=None):
     _clearUserCookie(req)
 
-    _redirectBack(req, page)
+    _redirectBack(req, page, forceSSL=False)
 
 def index(req, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, taskOrder='-completion_time', taskStart=None):
     values = _initValues(req)
@@ -810,6 +832,15 @@ def buildinfo(req, buildID):
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
 
+    rpmsByArch = {}
+    debuginfoByArch = {}
+    for rpm in rpms:
+        canon_arch = koji.canonArch(rpm['arch'])
+        if rpm['name'].endswith('-debuginfo') or rpm['name'].endswith('-debuginfo-common'):
+            debuginfoByArch.setdefault(canon_arch, []).append(rpm)
+        else:
+            rpmsByArch.setdefault(canon_arch, []).append(rpm)
+
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
     else:
@@ -817,7 +848,8 @@ def buildinfo(req, buildID):
 
     values['build'] = build
     values['tags'] = tags
-    values['rpms'] = rpms
+    values['rpmsByArch'] = rpmsByArch
+    values['debuginfoByArch'] = debuginfoByArch
     values['task'] = task
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
@@ -839,7 +871,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1'):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1'):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
@@ -864,6 +896,14 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
     values['tagID'] = tagID
     values['tag'] = tag
 
+    package = None
+    if packageID != None:
+        if packageID.isdigit():
+            packageID = int(packageID)
+        package = server.getPackage(packageID, strict=True)
+    values['packageID'] = packageID
+    values['package'] = package
+
     if state == 'all':
         state = None
     elif state != None:
@@ -880,10 +920,13 @@ def builds(req, userID=None, tagID=None, state=None, order='-completion_time', s
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'inherit': bool(inherited), 'prefix': prefix},
+        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
+                                                                                'owner': (user and user['name'] or None),
+                                                                                'inherit': bool(inherited), 'prefix': prefix},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
-        builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'state': state, 'prefix': prefix},
+        builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
+                                                                               'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
     
     values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
@@ -1259,6 +1302,7 @@ def buildtargetdelete(req, targetID):
     mod_python.util.redirect(req, 'buildtargets')
 
 def reports(req):
+    server = _getServer(req)
     values = _initValues(req, 'Reports', 'reports')
     return _genHTML(req, 'reports.chtml')
 
@@ -1499,33 +1543,40 @@ def buildsbytarget(req, days='7', start=None, order='-builds'):
 
     return _genHTML(req, 'buildsbytarget.chtml')
     
-def recentbuilds(req, user=None, tag=None, userID=None, tagID=None):
+def recentbuilds(req, user=None, tag=None, package=None):
     values = _initValues(req, 'Recent Build RSS')
     server = _getServer(req)
-    
+
     tagObj = None
     if tag != None:
+        if tag.isdigit():
+            tag = int(tag)
         tagObj = server.getTag(tag)
-    elif tagID != None:
-        tagID = int(tagID)
-        tagObj = server.getTag(tagID)
 
     userObj = None
     if user != None:
+        if user.isdigit():
+            user = int(user)
         userObj = server.getUser(user)
-    elif userID != None:
-        userID = int(userID)
-        userObj = server.getUser(userID)
+
+    packageObj = None
+    if package:
+        if package.isdigit():
+            package = int(package)
+        packageObj = server.getPackage(package)
 
     if tagObj != None:
-        builds = server.listTagged(tagObj['id'], inherit=True)
+        builds = server.listTagged(tagObj['id'], inherit=True, package=(packageObj and packageObj['name'] or None),
+                                   owner=(userObj and userObj['name'] or None))
         builds.sort(kojiweb.util.sortByKeyFunc('-completion_time', noneGreatest=True))
         builds = builds[:20]
-    elif userObj != None:
-        builds = server.listBuilds(userID=userObj['id'], queryOpts={'order': '-completion_time',
-                                                                    'limit': 20})
     else:
-        builds = server.listBuilds(queryOpts={'order': '-completion_time', 'limit': 20})
+        kwargs = {}
+        if userObj:
+            kwargs['userID'] = userObj['id']
+        if packageObj:
+            kwargs['packageID'] = packageObj['id']
+        builds = server.listBuilds(queryOpts={'order': '-completion_time', 'limit': 20}, **kwargs)
 
     server.multicall = True
     for build in builds:
@@ -1554,8 +1605,9 @@ def recentbuilds(req, user=None, tag=None, userID=None, tagID=None):
     
     values['tag'] = tagObj
     values['user'] = userObj
+    values['package'] = packageObj
     values['builds'] = builds
-    values['weburl'] = req.get_options().get('KojiWebURL', 'http://localhost/koji')
+    values['weburl'] = _getBaseURL(req)
 
     req.content_type = 'text/xml'
     return _genHTML(req, 'recentbuilds.chtml')

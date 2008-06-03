@@ -84,6 +84,9 @@ srpm: tarball
 rpm: tarball
 	$(RPM_WITH_DIRS) $(DIST_DEFINES) -bb $(SPECFILE)
 
+test-rpm: tarball
+	$(RPM_WITH_DIRS) $(DIST_DEFINES) --define "testbuild 1" -bb $(SPECFILE)
+
 tag::
 	git tag -a $(TAG)
 	@echo "Tagged with: $(TAG)"

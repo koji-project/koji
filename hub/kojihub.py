@@ -911,7 +911,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
+def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None):
     """Returns a list of builds for specified tag
 
     set inherit=True to follow inheritance
@@ -954,6 +954,9 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
     if package:
         q += """AND package.name = %(package)s
         """
+    if owner:
+        q += """AND users.name = %(owner)s
+        """
     q += """ORDER BY tag_listing.create_event DESC
     """
     # i.e. latest first
@@ -980,7 +983,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None):
 
     return builds
 
-def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False):
+def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False,owner=None):
     """Returns a list of rpms for specified tag
 
     set inherit=True to follow inheritance
@@ -993,7 +996,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         #   (however, it is fairly quick)
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
 
-    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package)
+    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, owner=owner)
     #index builds
     build_idx = dict([(b['build_id'],b) for b in builds])
 
@@ -2875,7 +2878,13 @@ def import_rpm(fn,buildinfo=None,brootid=None):
         #figure it out for ourselves
         if rpminfo['sourcepackage'] == 1:
             buildinfo = rpminfo.copy()
-            buildinfo['id'] = new_build(rpminfo)
+            build_id = find_build_id(buildinfo)
+            if build_id:
+                # build already exists
+                buildinfo['id'] = build_id
+            else:
+                # create a new build
+                buildinfo['id'] = new_build(rpminfo)
         else:
             #figure it out from sourcerpm string
             buildinfo = get_build(koji.parse_NVRA(rpminfo['sourcerpm']))
@@ -4410,22 +4419,23 @@ class RootExports(object):
                 raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
 
-    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None):
+    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None):
         """List builds tagged with tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package)
+        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,owner=owner)
         if prefix:
+            prefix = prefix.lower()
             results = [build for build in results if build['package_name'].lower().startswith(prefix)]
         return results
 
-    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False):
+    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False,owner=None):
         """List rpms and builds within tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs)
+        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs,owner=owner)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    completeBefore=None, completeAfter=None, queryOpts=None):
