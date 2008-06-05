@@ -1494,7 +1494,7 @@ class BuildTask(BaseTaskHandler):
         self.opts = opts
         if opts.get('arch_override') and not opts.get('scratch'):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
-        if opts.has_key('repo_id'):
+        if opts.get('repo_id') is not None:
             repo_info = session.repoInfo(opts['repo_id'])
             repo_state = koji.REPO_STATES[repo_info['state']]
             if repo_state not in ('READY', 'EXPIRED'):
@@ -1521,7 +1521,7 @@ class BuildTask(BaseTaskHandler):
         else:
             # if repo_id is specified, we can allow the 'target' arg to simply specify
             # the destination tag (since the repo specifies the build tag).
-            if not opts.has_key('repo_id'):
+            if repo_info is None:
                 raise koji.GenericError, 'unknown build target: %s' % target
             build_tag = repo_info['tag_id']
             if target is None:
@@ -1664,8 +1664,8 @@ class BuildTask(BaseTaskHandler):
 
     def getRepo(self, tag):
         """Get repo to use for builds"""
-        repo = session.getRepo(taginfo['id'])
-        if not repo:
+        repo_info = session.getRepo(tag)
+        if not repo_info:
             #wait for it
             task_id = session.host.subtask(method='waitrepo',
                                            arglist=[tag, None, None],
@@ -1788,7 +1788,7 @@ class BuildArchTask(BaseTaskHandler):
         rootopts = {
             'distribution' : h[rpm.RPMTAG_DISTRIBUTION],
             }
-        if opts.has_key('repo_id'):
+        if opts.get('repo_id') is not None:
             rootopts['repo_id'] = opts['repo_id']
         broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
