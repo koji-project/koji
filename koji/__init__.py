@@ -630,10 +630,11 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     dst_fo.close()
     return dst
 
-def get_rpm_header(f):
+def get_rpm_header(f, ts=None):
     """Return the rpm header."""
-    ts = rpm.TransactionSet()
-    ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
+    if ts is None:
+        ts = rpm.TransactionSet()
+        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, (str, unicode)):
         fo = file(f, "r")
     else:
