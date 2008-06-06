@@ -1214,6 +1214,14 @@ def handle_prune_signed_copies(options, session, args):
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
     parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
     parser.add_option("-b", "--build", help=_("Limit to a single build"))
+    parser.add_option("-i", "--ignore-tag", action="append", default=[],
+                      help=_("Ignore these tags when considering whether a build is/was latest"))
+    parser.add_option("--ignore-tag-file",
+                      help=_("File to read tag ignore patterns from"))
+    parser.add_option("-r", "--protect-tag", action="append", default=[],
+                      help=_("Do not prune signed copies from matching tags"))
+    parser.add_option("--protect-tag-file",
+                      help=_("File to read tag protect patterns from"))
     parser.add_option("--trashcan-tag", default="trashcan", help=_("Specify trashcan tag"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
@@ -1227,6 +1235,14 @@ def handle_prune_signed_copies(options, session, args):
     #for now, we're just implementing mode #1
     #(with the modification that we check to see if the build was latest within
     #the last N days)
+    if options.ignore_tag_file:
+        fo = file(options.ignore_tag_file)
+        options.ignore_tag.extend([line.strip() for line in fo.readlines()])
+        fo.close()
+    if options.protect_tag_file:
+        fo = file(options.protect_tag_file)
+        options.protect_tag.extend([line.strip() for line in fo.readlines()])
+        fo.close()
     if options.debug:
         options.verbose = True
     cutoff_ts = time.time() - options.days * 24 * 3600
@@ -1275,6 +1291,7 @@ def handle_prune_signed_copies(options, session, args):
             print "DEBUG: %s" % nvr
         #see how recently this build was latest for a tag
         is_latest = False
+        is_protected = False
         last_latest = None
         tags = {}
         for entry in session.tagHistory(build=binfo['id']):
@@ -1287,6 +1304,15 @@ def handle_prune_signed_copies(options, session, args):
             if tag_name == options.trashcan_tag:
                 if options.debug:
                     print "Ignoring trashcan tag for build %s" % nvr
+                continue
+            ignore_tag = False
+            for pattern in options.ignore_tag:
+                if fnmatch.fnmatch(tag_name, pattern):
+                    if options.debug:
+                        print "Ignoring tag %s for build %s" % (tag_name, nvr)
+                    ignore_tag = True
+                    break
+            if ignore_tag:
                 continue
             #in order to determine how recently this build was latest, we have
             #to look at the tagging history.
@@ -1314,8 +1340,9 @@ def handle_prune_signed_copies(options, session, args):
             if not latest_ts:
                 #really shouldn't happen
                 raise koji.GenericError, "No creation event found for %s in %s" % (nvr, tag_name)
+            our_entry = entry
             if options.debug:
-                print _histline(event_id, entry)
+                print _histline(event_id, our_entry)
             #now go through the events since most recent creation entry
             timeline = timeline[i+1:]
             if not timeline:
@@ -1323,6 +1350,29 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print "%s is latest in tag %s" % (nvr, tag_name)
                 break
+            #before we go any further, is this a protected tag?
+            protect_tag = False
+            for pattern in options.protect_tag:
+                if fnmatch.fnmatch(tag_name, pattern):
+                    protect_tag = True
+                    break
+            if protect_tag:
+                # we use the same time limit as for the latest calculation
+                # if this build was in this tag within that limit, then we will
+                # not prune its signed copies
+                if our_entry['revoke_event'] is None:
+                    #we're still tagged with a protected tag
+                    if options.debug:
+                        print "Build %s has protected tag %s" % (nvr, tag_name)
+                    is_protected = True
+                    break
+                elif our_entry['revoke_ts'] > cutoff_ts:
+                    #we were still tagged here sometime before the cutoff
+                    if options.debug:
+                        print "Build %s had protected tag %s until %s" \
+                                % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts'])))
+                    is_protected = True
+                    break
             replaced_ts = None
             revoke_ts = None
             others = {}
@@ -1400,6 +1450,8 @@ def handle_prune_signed_copies(options, session, args):
                 is_latest = True
                 break
         if is_latest:
+            continue
+        if is_protected:
             continue
         #not latest anywhere since cutoff, so we can remove all signed copies
         rpms = session.listRPMs(buildID=binfo['id'])
