@@ -1068,6 +1068,10 @@ class PathInfo(object):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/cache" % locals())
 
+    def taskrelpath(self, task_id):
+        """Return the relative path for the task work directory"""
+        return "tasks/%s/%s" % (task_id % 10000, task_id)
+
     def work(self):
         """Return the work dir"""
         return self.topdir + '/work'

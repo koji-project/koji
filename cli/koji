@@ -3011,7 +3011,7 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     files = session.listTaskOutput(task_id)
     logs = [filename for filename in files if filename.endswith('.log')]
     output = [filename for filename in files if not filename.endswith('.log')]
-    files_dir = '%s/tasks/%i' % (koji.pathinfo.work(), task_id)
+    files_dir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(task_id))
 
     owner = session.getUser(info['owner'])['name']
 

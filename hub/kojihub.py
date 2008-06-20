@@ -4040,7 +4040,7 @@ class RootExports(object):
         given ID."""
         if '..' in fileName or '/' in fileName:
             raise koji.GenericError, 'Invalid file name: %s' % fileName
-        filePath = '%s/tasks/%i/%s' % (koji.pathinfo.work(), taskID, fileName)
+        filePath = '%s/%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID), fileName)
         filePath = os.path.normpath(filePath)
         if not os.path.isfile(filePath):
             raise koji.GenericError, 'no file "%s" output by task %i' % (fileName, taskID)
@@ -4064,7 +4064,7 @@ class RootExports(object):
         If stat is True, return a map of filename -> stat_info where stat_info
         is a map containing the values of the st_* attributes returned by
         os.stat()."""
-        taskDir = '%s/tasks/%i' % (koji.pathinfo.work(), taskID)
+        taskDir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID))
         if os.path.isdir(taskDir):
             output = os.listdir(taskDir)
             if stat:
