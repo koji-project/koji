@@ -1585,7 +1585,10 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method in ('newRepo', 'tagBuild', 'tagNotification'):
+    elif method == 'newRepo':
+        if taskInfo.has_key('request'):
+            extra = str(taskInfo['request'][0])
+    elif method in ('tagBuild', 'tagNotification'):
         # There is no displayable information included in the request
         # for these methods
         pass

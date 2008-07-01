@@ -274,7 +274,7 @@ class RepoManager(object):
         tags = {}
         for target in session.getBuildTargets():
             tag_id = target['build_tag']
-            tags[tag_id] = 1
+            tags[tag_id] = target['build_tag_name']
         #index repos by tag
         tag_repos = {}
         for repo in self.repos.values():
@@ -316,8 +316,8 @@ class RepoManager(object):
             if len(self.tasks) >= options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached.")
                 break
-            task_id = session.newRepo(tag_id)
-            self.logger.info("Created newRepo task %s for tag %s" % (task_id, tag_id))
+            task_id = session.newRepo(tags[tag_id])
+            self.logger.info("Created newRepo task %s for tag %s (%s)" % (task_id, tag_id, tags[tag_id]))
             self.tasks[tag_id] = task_id
         #some cleanup
         n_deletes = 0
