@@ -1723,7 +1723,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
-    comps = koji.generate_comps(groups)
+    comps = koji.generate_comps(groups, expand_groups=True)
     fo = file("%s/comps.xml" % groupsdir,'w')
     fo.write(comps)
     fo.close()

@@ -3486,6 +3486,8 @@ def anon_handle_show_groups(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--comps", action="store_true", help=_("Print in comps format"))
+    parser.add_option("-x", "--expand", action="store_true", default=False,
+                      help=_("Expand groups in comps format"))
     parser.add_option("--spec", action="store_true", help=_("Print build spec"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -3495,7 +3497,7 @@ def anon_handle_show_groups(options, session, args):
     tag = args[0]
     groups = session.getTagGroups(tag)
     if options.comps:
-        print koji.generate_comps(groups)
+        print koji.generate_comps(groups, expand_groups=options.expand)
     elif options.spec:
         print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
     else:
