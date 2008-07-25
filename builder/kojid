@@ -443,7 +443,7 @@ class BuildRoot(object):
     def getUploadPath(self):
         """Get the path that should be used when uploading files to
         the hub."""
-        return 'tasks/%i' % self.task_id
+        return koji.pathinfo.taskrelpath(self.task_id)
 
     def uploadDir(self, dirpath, suffix=None):
         """Upload the contents of the given directory to the
@@ -1176,7 +1176,7 @@ class BaseTaskHandler(object):
         # handle named parameters
         self.params,self.opts = koji.decode_args(*params)
         if workdir is None:
-            workdir = "%s/tasks/%s" % (options.workdir, id)
+            workdir = "%s/%s" % (options.workdir, koji.pathinfo.taskrelpath(id))
         self.workdir = workdir
         self.logger = logging.getLogger("koji.build.BaseTaskHandler")
 
@@ -1288,7 +1288,7 @@ class BaseTaskHandler(object):
         return dict(session.host.taskWaitResults(self.id,subtasks))
 
     def getUploadDir(self):
-        return 'tasks/%i' % self.id
+        return koji.pathinfo.taskrelpath(self.id)
 
     def uploadFile(self, filename, remoteName=None):
         """Upload the file with the given name to the task output directory

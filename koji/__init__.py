@@ -630,10 +630,11 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     dst_fo.close()
     return dst
 
-def get_rpm_header(f):
+def get_rpm_header(f, ts=None):
     """Return the rpm header."""
-    ts = rpm.TransactionSet()
-    ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
+    if ts is None:
+        ts = rpm.TransactionSet()
+        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, (str, unicode)):
         fo = file(f, "r")
     else:
@@ -1066,6 +1067,10 @@ class PathInfo(object):
     def repocache(self,tag_str):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/cache" % locals())
+
+    def taskrelpath(self, task_id):
+        """Return the relative path for the task work directory"""
+        return "tasks/%s/%s" % (task_id % 10000, task_id)
 
     def work(self):
         """Return the work dir"""
@@ -1588,7 +1593,10 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method in ('newRepo', 'tagBuild', 'tagNotification'):
+    elif method == 'newRepo':
+        if taskInfo.has_key('request'):
+            extra = str(taskInfo['request'][0])
+    elif method in ('tagBuild', 'tagNotification'):
         # There is no displayable information included in the request
         # for these methods
         pass
