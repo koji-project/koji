@@ -33,6 +33,8 @@ import koji
 import koji.auth
 import koji.db
 import koji.plugin
+import koji.policy
+import kojihub
 from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
@@ -403,6 +405,11 @@ def load_config(req):
                     opts[name] = modpy_opts.get(name)
             else:
                 opts[name] = default
+    # load policies
+    # (only from config file)
+    if cf and config.has_section('policy'):
+        #for the moment, we simply transfer the policy conf to opts
+        opts['policy'] = dict(config.items('policy'))
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
         koji.BASEDIR = opts['KojiDir']
@@ -427,6 +434,33 @@ def load_plugins(opts):
         sys.stderr.flush()
     return tracker
 
+def get_policy(opts, plugins):
+    if not opts.get('policy'):
+        return
+    #first find available policy tests
+    alltests = [koji.policy.findSimpleTests([vars(kojihub), vars(koji.policy)])]
+    # we delay merging these to allow a test to be overridden for a specific policy
+    for plugin_name in opts.get('Plugins', '').split():
+        alltests.append(koji.policy.findSimpleTests(vars(plugins.get(plugin_name))))
+    policy = {}
+    for pname, text in opts['policy'].iteritems():
+        #filter/merge tests
+        merged = {}
+        for tests in alltests:
+            # tests can be limited to certain policies by setting a class variable
+            for name, test in tests.iteritems():
+                if hasattr(test, 'policy'):
+                    if isinstance(test.policy, basestring):
+                        if pname != test.policy:
+                            continue
+                    elif pname not in test.policy:
+                            continue
+                # in case of name overlap, last one wins
+                # hence plugins can override builtin tests
+                merged[name] = test
+        policy[pname] = koji.policy.SimpleRuleSet(text.splitlines(), merged)
+    return policy
+
 
 #
 # mod_python handler
@@ -437,12 +471,13 @@ ready = False
 opts = {}
 
 def handler(req, profiling=False):
-    global firstcall, ready, registry, opts, plugins
+    global firstcall, ready, registry, opts, plugins, policy
     if firstcall:
         firstcall = False
         opts = load_config(req)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
+        policy = get_policy(opts, plugins)
         ready = True
     if not ready:
         #this will happen on subsequent passes if an error happens in the firstcall code
@@ -471,6 +506,7 @@ def handler(req, profiling=False):
             context.opts = opts
             context.handlers = HandlerAccess(registry)
             context.req = req
+            context.policy = policy
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
                                   password = opts.get("DBPass",None),
