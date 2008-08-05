@@ -110,6 +110,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-hub
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%config(noreplace) /etc/koji-hub/hub.conf
 
 %files utils
 %defattr(-,root,root)

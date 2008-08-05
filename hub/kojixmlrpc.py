@@ -20,6 +20,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from ConfigParser import ConfigParser
 import sys
 import time
 import traceback
@@ -35,33 +36,30 @@ from kojihub import HostExports
 from koji.context import context
 
 def _opt_bool(opts, name):
-    """Convert a string option into a boolean
-    True or False value.  The following values
-    will be considered True (case-insensitive):
-    yes, on, true, 1
-    Anything else will be considered False."""
-    val = opts.get(name, 'no')
-    if val is None:
-        val = ''
-    if val.lower() in ('yes', 'on', 'true', '1'):
-        return True
-    else:
-        return False
+    """Convert option into a boolean if necessary
 
-class ModXMLRPCRequestHandler(object):
-    """Simple XML-RPC handler for mod_python environment"""
+    For strings, the following values
+    will be considered True (case-insensitive):
+        yes, on, true, 1
+    Any other strings will be considered False."""
+    val = opts.get(name, False)
+    if isinstance(val, bool):
+        return val
+    elif isinstance(val, basestring):
+        if val.lower() in ('yes', 'on', 'true', '1'):
+            return True
+    return False
+
+class HandlerRegistry(object):
+    """Track handlers for RPC calls"""
 
     def __init__(self):
         self.funcs = {}
-        self.traceback = False
         #introspection functions
         self.register_function(self.list_api, name="_listapi")
         self.register_function(self.system_listMethods, name="system.listMethods")
         self.register_function(self.system_methodSignature, name="system.methodSignature")
         self.register_function(self.system_methodHelp, name="system.methodHelp")
-        self.register_function(self.multiCall)
-        # Also register it as system.multicall for standards compliance
-        self.register_function(self.multiCall, name="system.multicall")
 
     def register_function(self, function, name = None):
         if name is None:
@@ -90,6 +88,72 @@ class ModXMLRPCRequestHandler(object):
 
     def register_instance(self,instance):
         self.register_module(instance)
+
+    def list_api(self):
+        funcs = []
+        for name,func in self.funcs.items():
+            #the keys in self.funcs determine the name of the method as seen over xmlrpc
+            #func.__name__ might differ (e.g. for dotted method names)
+            args = self._getFuncArgs(func)
+            funcs.append({'name': name,
+                          'doc': func.__doc__,
+                          'args': args})
+        return funcs
+
+    def _getFuncArgs(self, func):
+        args = []
+        for x in range(0, func.func_code.co_argcount):
+            if x == 0 and func.func_code.co_varnames[x] == "self":
+                continue
+            if func.func_defaults and func.func_code.co_argcount - x <= len(func.func_defaults):
+                args.append((func.func_code.co_varnames[x], func.func_defaults[x - func.func_code.co_argcount + len(func.func_defaults)]))
+            else:
+                args.append(func.func_code.co_varnames[x])
+        return args
+
+    def system_listMethods(self):
+        return self.funcs.keys()
+
+    def system_methodSignature(self, method):
+        #it is not possible to autogenerate this data
+        return 'signatures not supported'
+
+    def system_methodHelp(self, method):
+        func = self.funcs.get(method)
+        if func is None:
+            return ""
+        arglist = []
+        for arg in self._getFuncArgs(func):
+            if isinstance(arg,str):
+                arglist.append(arg)
+            else:
+                arglist.append('%s=%s' % (arg[0], arg[1]))
+        ret = '%s(%s)' % (method, ", ".join(arglist))
+        if func.__doc__:
+            ret += "\ndescription: %s" % func.__doc__
+        return ret
+
+    def get(self, name):
+        func = self.funcs.get(name, None)
+        if func is None:
+            raise koji.GenericError, "Invalid method: %s" % name
+        return func
+
+
+class ModXMLRPCRequestHandler(object):
+    """Simple XML-RPC handler for mod_python environment"""
+
+    def __init__(self, handlers):
+        self.traceback = False
+        self.handlers = handlers  #expecting HandlerRegistry instance
+
+    def _get_handler(self, name):
+        # just a wrapper so we can handle multicall ourselves
+        # we don't register multicall since the registry will outlive our instance
+        if name in ('multiCall', 'system.multicall'):
+            return self.multiCall
+        else:
+            return self.handlers.get(name)
 
     def _marshaled_dispatch(self, data):
         """Dispatches an XML-RPC method from marshalled (XML) data."""
@@ -140,9 +204,7 @@ class ModXMLRPCRequestHandler(object):
         return response
 
     def _dispatch(self,method,params):
-        func = self.funcs.get(method,None)
-        if func is None:
-            raise koji.GenericError, "Invalid method: %s" % method
+        func = self._get_handler(method)
         context.method = method
         if not hasattr(context,"session"):
             #we may be called again by one of our meta-calls (like multiCall)
@@ -157,7 +219,7 @@ class ModXMLRPCRequestHandler(object):
             if _opt_bool(context.opts, 'LockOut') and \
                    method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
                 if not context.session.hasPerm('admin'):
-                    raise koji.GenericError, "Server disabled for maintenance"
+                    raise koji.ServerOffline, "Server disabled for maintenance"
         # handle named parameters
         params,opts = koji.decode_args(*params)
 
@@ -203,50 +265,6 @@ class ModXMLRPCRequestHandler(object):
 
         return results
 
-    def list_api(self):
-        funcs = []
-        for name,func in self.funcs.items():
-            #the keys in self.funcs determine the name of the method as seen over xmlrpc
-            #func.__name__ might differ (e.g. for dotted method names)
-            args = self._getFuncArgs(func)
-            funcs.append({'name': name,
-                          'doc': func.__doc__,
-                          'args': args})
-        return funcs
-
-    def _getFuncArgs(self, func):
-        args = []
-        for x in range(0, func.func_code.co_argcount):
-            if x == 0 and func.func_code.co_varnames[x] == "self":
-                continue
-            if func.func_defaults and func.func_code.co_argcount - x <= len(func.func_defaults):
-                args.append((func.func_code.co_varnames[x], func.func_defaults[x - func.func_code.co_argcount + len(func.func_defaults)]))
-            else:
-                args.append(func.func_code.co_varnames[x])
-        return args
-
-    def system_listMethods(self):
-        return self.funcs.keys()
-
-    def system_methodSignature(self, method):
-        #it is not possible to autogenerate this data
-        return 'signatures not supported'
-
-    def system_methodHelp(self, method):
-        func = self.funcs.get(method)
-        if func is None:
-            return ""
-        arglist = []
-        for arg in self._getFuncArgs(func):
-            if isinstance(arg,str):
-                arglist.append(arg)
-            else:
-                arglist.append('%s=%s' % (arg[0], arg[1]))
-        ret = '%s(%s)' % (method, ", ".join(arglist))
-        if func.__doc__:
-            ret += "\ndescription: %s" % func.__doc__
-        return ret
-
     def handle_request(self,req):
         """Handle a single XML-RPC request"""
 
@@ -274,11 +292,102 @@ def offline_reply(req, msg=None):
     req.set_content_length(len(response))
     req.write(response)
 
+def load_config(req):
+    """Load configuration options
+
+    Options are read from a config file. The config file location is
+    controlled by the PythonOption ConfigFile in the httpd config.
+
+    Backwards compatibility:
+        - if ConfigFile is not set, opts are loaded from http config
+        - if ConfigFile is set, then the http config must not provide Koji options
+        - In a future version we will load the default hub config regardless
+        - all PythonOptions (except ConfigFile) are now deprecated and support for them
+          will disappear in a future version of Koji
+    """
+    #get our config file
+    modpy_opts = req.get_options()
+    #cf = modpy_opts.get('ConfigFile', '/etc/koji-hub/hub.conf')
+    cf = modpy_opts.get('ConfigFile', None)
+    if cf:
+        # to aid in the transition from PythonOptions to hub.conf, we only load
+        # the configfile if it is explicitly configured
+        config = ConfigParser()
+        config.read(cf)
+    else:
+        sys.stderr.write('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf\n')
+        sys.stderr.flush()
+    cfgmap = [
+        #option, type, default
+        ['DBName', 'string', None],
+        ['DBUser', 'string', None],
+        ['DBHost', 'string', None],
+        ['DBPass', 'string', None],
+        ['KojiDir', 'string', None],
+
+        ['AuthPrincipal', 'string', None],
+        ['AuthKeytab', 'string', None],
+        ['ProxyPrincipals', 'string', None],
+        ['HostPrincipalFormat', 'string', None],
+
+        ['DNUsernameComponent', 'string', None],
+        ['ProxyDNs', 'string', None],
+
+        ['LoginCreatesUser', 'boolean', True],
+        ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
+        ['EmailDomain', 'string', None],
+
+        ['KojiDebug', 'boolean', False],
+        ['KojiTraceback', 'string', None],
+        ['EnableFunctionDebug', 'boolean', False],
+
+        ['LockOut', 'boolean', False],
+        ['ServerOffline', 'string', False],
+        ['OfflineMessage', 'string', None],
+    ]
+    opts = {}
+    for name, dtype, default in cfgmap:
+        if cf:
+            key = ('hub', name)
+            if config.has_option(*key):
+                if dtype == 'integer':
+                    opts[name] = config.getint(*key)
+                elif dtype == 'boolean':
+                    opts[name] = config.getboolean(*key)
+                else:
+                    opts[name] = config.get(*key)
+            else:
+                opts[name] = default
+        else:
+            if modpy_opts.get(name, None) is not None:
+                if dtype == 'integer':
+                    opts[name] = int(modpy_opts.get(name))
+                elif dtype == 'boolean':
+                    opts[name] = modpy_opts.get(name).lower() in ('yes', 'on', 'true', '1')
+                else:
+                    opts[name] = modpy_opts.get(name)
+            else:
+                opts[name] = default
+    # use configured KojiDir
+    if opts.get('KojiDir') is not None:
+        koji.BASEDIR = opts['KojiDir']
+        koji.pathinfo.topdir = opts['KojiDir']
+    return opts
+
+
+
 #
 # mod_python handler
 #
 
+firstcall = True
+
 def handler(req, profiling=False):
+    global firstcall, registry, opts
+    if firstcall:
+        registry = get_registry()
+        opts = load_config(req)
+        firstcall = False
     if profiling:
         import profile, pstats, StringIO, tempfile
         global _profiling_req
@@ -293,7 +402,6 @@ def handler(req, profiling=False):
         req.write("<pre>" + strstream.getvalue() + "</pre>")
         _profiling_req = None
     else:
-        opts = req.get_options()
         try:
             if _opt_bool(opts, 'ServerOffline'):
                 offline_reply(req, msg=opts.get("OfflineMessage", None))
@@ -311,19 +419,7 @@ def handler(req, profiling=False):
             except Exception:
                 offline_reply(req, msg="database outage")
                 return apache.OK
-            functions = RootExports()
-            hostFunctions = HostExports()
-            h = ModXMLRPCRequestHandler()
-            h.register_instance(functions)
-            h.register_module(hostFunctions,"host")
-            h.register_function(koji.auth.login)
-            h.register_function(koji.auth.krbLogin)
-            h.register_function(koji.auth.sslLogin)
-            h.register_function(koji.auth.logout)
-            h.register_function(koji.auth.subsession)
-            h.register_function(koji.auth.logoutChild)
-            h.register_function(koji.auth.exclusiveSession)
-            h.register_function(koji.auth.sharedSession)
+            h = ModXMLRPCRequestHandler(registry)
             h.handle_request(req)
             if h.traceback:
                 #rollback
@@ -336,3 +432,21 @@ def handler(req, profiling=False):
                 context.cnx.close()
             context._threadclear()
     return apache.OK
+
+def get_registry():
+    # Create and populate handler registry
+    registry = HandlerRegistry()
+    functions = RootExports()
+    hostFunctions = HostExports()
+    registry.register_instance(functions)
+    registry.register_module(hostFunctions,"host")
+    registry.register_function(koji.auth.login)
+    registry.register_function(koji.auth.krbLogin)
+    registry.register_function(koji.auth.sslLogin)
+    registry.register_function(koji.auth.logout)
+    registry.register_function(koji.auth.subsession)
+    registry.register_function(koji.auth.logoutChild)
+    registry.register_function(koji.auth.exclusiveSession)
+    registry.register_function(koji.auth.sharedSession)
+    return registry
+
