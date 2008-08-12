@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for channel $channel.name</h4>
+  <h4>Information for channel <a href="channelinfo?channelID=$channel.id">$channel.name</a></h4>
 
   <table>
     <tr>

@@ -4,7 +4,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for build $koji.buildLabel($build)</h4>
+  <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
 
   <table>
     <tr>

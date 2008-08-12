@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for tag $tag.name</h4>
+  <h4>Information for tag <a href="taginfo?tagID=$tag.id">$tag.name</a></h4>
 
   <table>
     #if $child and 'admin' in $perms

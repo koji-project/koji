@@ -1,7 +1,8 @@
 #from kojiweb import util
+#import urllib
 
 #include "includes/header.chtml"
-  <h4>Information for file $file.name</h4>
+  <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&filename=$urllib.quote($file.name)">$file.name</a></h4>
 
   <table>
     <tr>

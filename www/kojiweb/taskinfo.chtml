@@ -53,7 +53,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for task $task.id</h4>
+  <h4>Information for task <a href="taskinfo?taskID=$task.id">$task.id</a></h4>
 
   <table>
     <tr>
