@@ -2409,8 +2409,8 @@ class SCM(object):
         if query.endswith('/'):
             query = query[:-1]
 
-        # check for validity: params should be empty, everything else should be populated
-        if params or not (scheme and netloc and path and query and fragment):
+        # check for validity: params should be empty, query may be empty, everything else should be populated
+        if params or not (scheme and netloc and path and fragment):
             raise koji.GenericError, 'Unable to parse SCM URL: %s' % self.url
 
         # return parsed values
@@ -2432,6 +2432,7 @@ class SCM(object):
         sourcedir = '%s/%s' % (scmdir, self.module)
 
         update_checkout_cmd = None
+        update_checkout_dir = None
         env = None
 
         if self.scmtype == 'CVS':
@@ -2452,16 +2453,30 @@ class SCM(object):
             scheme = self.scheme
             if '+' in scheme:
                 scheme = scheme.split('+')[1]
-            common_path = 'common'
-            if self.module.endswith('/.git'):
+            gitrepo = '%s%s%s' % (scheme, self.host, self.repository)
+            commonrepo = os.path.dirname(gitrepo) + '/common'
+            checkout_path = os.path.basename(self.repository)
+            if self.repository.endswith('/.git'):
                 # If we're referring to the .git subdirectory of the main module,
                 # assume we need to do the same for the common module
-                common_path = 'common/.git'
+                checkout_path = os.path.basename(self.repository[:-5])
+                commonrepo = os.path.dirname(gitrepo[:-5]) + '/common/.git'
+            elif self.repository.endswith('.git'):
+                # If we're referring to a bare repository for the main module,
+                # assume we need to do the same for the common module
+                checkout_path = os.path.basename(self.repository[:-4])
+                commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
-            gitserver = '%s%s%s' % (scheme, self.host, self.repository)
-            module_checkout_cmd = ['git', 'clone', '-n', '%s/%s' % (gitserver, self.module), self.module]
-            common_checkout_cmd = ['git', 'clone', '%s/%s' % (gitserver, common_path)]
+            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, checkout_path]
+            common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
             update_checkout_cmd = ['git', 'checkout', self.revision]
+            update_checkout_dir = '%s/%s' % (scmdir, checkout_path)
+
+            sourcedir = '%s/%s' % (scmdir, checkout_path)
+            # self.module may be empty, in which case the specfile should be in the top-level directory
+            if self.module:
+                # Treat the module as a directory inside the git repository
+                sourcedir = '%s/%s' % (sourcedir, self.module)
 
         elif self.scmtype == 'GIT+SSH':
             if not self.user:
@@ -2505,7 +2520,8 @@ class SCM(object):
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            if log_output(update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1, env=env):
+            if log_output(update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=update_checkout_dir,
+                          logerror=1, append=1, env=env):
                 raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
 
