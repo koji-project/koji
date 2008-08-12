@@ -1822,11 +1822,17 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
 
+        use_common = True
+
         for allowed_scm in options.allowed_scms.split():
             scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) == 2:
+            if len(scm_tuple) in (2, 3):
                 if fnmatch(scm.host, scm_tuple[0]) and fnmatch(scm.repository, scm_tuple[1]):
                     # SCM host:repository is in the allowed list
+                    # check if we specify a value for use_common
+                    if len(scm_tuple) == 3:
+                        if scm_tuple[2].lower() in ('false', 'no', '0'):
+                            use_common = False
                     break
             else:
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
@@ -1841,7 +1847,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         uploadpath = self.getUploadDir()
 
         # Check out spec file, etc. from SCM
-        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=True)
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=use_common)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
