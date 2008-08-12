@@ -414,7 +414,7 @@ def taskinfo(req, taskID):
     if not task:
         raise koji.GenericError, 'invalid task ID: %s' % taskID
 
-    values['title'] += ': ' + koji.taskLabel(task)
+    values['title'] = koji.taskLabel(task) + ' | Task Info'
 
     values['task'] = task
     params = task['request']
@@ -613,7 +613,7 @@ def packageinfo(req, packageID, tagOrder='name', tagStart=None, buildOrder='-com
     if package == None:
         raise koji.GenericError, 'invalid package ID: %s' % packageID
 
-    values['title'] += ': ' + package['name']
+    values['title'] = package['name'] + ' | Package Info'
 
     values['package'] = package
     values['packageID'] = package['id']
@@ -633,7 +633,7 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
         tagID = int(tagID)
     tag = server.getTag(tagID, strict=True)
 
-    values['title'] += ': ' + tag['name']
+    values['title'] = tag['name'] + ' | Tag Info'
 
     all = int(all)
 
@@ -835,7 +835,7 @@ def buildinfo(req, buildID):
     
     build = server.getBuild(buildID)
 
-    values['title'] += ': ' + koji.buildLabel(build)
+    values['title'] = koji.buildLabel(build) + ' | Build Info'
 
     tags = server.listTags(build['id'])
     tags.sort(_sortbyname)
@@ -968,7 +968,7 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
         userID = int(userID)
     user = server.getUser(userID, strict=True)
 
-    values['title'] += ': ' + user['name']
+    values['title'] = user['name'] + ' | User Info'
 
     values['user'] = user
     values['userID'] = userID
@@ -988,7 +988,7 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
     rpmID = int(rpmID)
     rpm = server.getRPM(rpmID)
 
-    values['title'] += ': %(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm
+    values['title'] = '%(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm + ' | RPM Info'
     epochStr = ''
     if rpm['epoch'] != None:
         epochStr = '%s:' % rpm['epoch']
@@ -1036,7 +1036,7 @@ def fileinfo(req, rpmID, filename):
     if not file:
         raise koji.GenericError, 'no file %s in RPM %i' % (filename, rpmID)
 
-    values['title'] += ': ' + file['name']
+    values['title'] = file['name'] + ' | File Info'
 
     values['rpm'] = rpm
     values['file'] = file
@@ -1099,7 +1099,7 @@ def hostinfo(req, hostID=None, userID=None):
     else:
         raise koji.GenericError, 'hostID or userID must be provided'
 
-    values['title'] += ': ' + host['name']
+    values['title'] = host['name'] + ' | Host Info'
 
     channels = server.listChannels(host['id'])
     channels.sort(_sortbyname)
@@ -1147,7 +1147,7 @@ def channelinfo(req, channelID):
     if channel == None:
         raise koji.GenericError, 'invalid channel ID: %i' % channelID
 
-    values['title'] += ': ' + channel['name']
+    values['title'] = channel['name'] + ' | Channel Info'
 
     hosts = server.listHosts(channelID=channelID)
     hosts.sort(_sortbyname)
@@ -1164,7 +1164,7 @@ def buildrootinfo(req, buildrootID, builtStart=None, builtOrder=None, componentS
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
 
-    values['title'] += ': %(tag_name)s-%(id)i-%(repo_id)i' % buildroot
+    values['title'] = '%(tag_name)s-%(id)i-%(repo_id)i' % buildroot + ' | Buildroot Info'
 
     if buildroot == None:
         raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
@@ -1229,7 +1229,7 @@ def buildtargetinfo(req, targetID=None, name=None):
     if target == None:
         raise koji.GenericError, 'invalid build target: %s' % (targetID or name)
 
-    values['title'] += ': ' + target['name']
+    values['title'] = target['name'] + ' | Build Target Info'
 
     buildTag = server.getTag(target['build_tag'])
     destTag = server.getTag(target['dest_tag'])
