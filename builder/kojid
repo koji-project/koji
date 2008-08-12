@@ -50,6 +50,7 @@ import traceback
 import urllib2
 import urlparse
 import xmlrpclib
+import zipfile
 import Cheetah.Template
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
@@ -2006,6 +2007,16 @@ class BuildMavenTask(BaseTaskHandler):
 
     _taskWeight = 1.5
 
+    def _zip_dir(self, rootdir, filename):
+        rootbase = os.path.basename(rootdir)
+        roottrim = len(rootdir) - len(rootbase)
+        zfo = zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED)
+        for dirpath, dirnames, filenames in os.walk(rootdir):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                zfo.write(filepath, filepath[roottrim:])
+        zfo.close()
+
     def handler(self, url, build_tag, opts=None):
         if opts is None:
             opts = {}
@@ -2050,12 +2061,16 @@ class BuildMavenTask(BaseTaskHandler):
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=False)
 
+        # zip up pristine sources for auditing purposes
+        self._zip_dir(sourcedir, outputdir + '/koji-task%i-sources.zip' % self.id)
+
         # Checkout out patches, if present
         if self.opts.get('patches'):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(options.allowed_scms)
             patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog, use_common=False)
+            self._zip_dir(patchcheckoutdir, outputdir + '/koji-task%i-patches.zip' % self.id)
 
         # Set ownership of the entire source tree to the mock user
         if mockuid != None:
@@ -2163,33 +2178,47 @@ class WrapperRPMTask(BaseTaskHandler):
     def handler(self, spec_url, build_tag, build, task):
         values = {}
 
+        artifacts = {}
+
         if task:
             # called as a subtask of a maven build
-            jarnames = [filename for filename in session.listTaskOutput(task['id']) if \
-                            filename.endswith('.jar')]
-            jars = []
-            for jarname in jarnames:
-                jars.append(os.path.join(koji.pathinfo.task(task['id']), jarname))
-            jars.sort()
+            artifact_names = session.listTaskOutput(task['id'])
+
+            for artifact_name in artifact_names:
+                base, ext = os.path.splitext(artifact_name)
+                if ext == '.log':
+                    # Exclude log files for consistency with the output of listArchives() used below
+                    continue
+                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.task(task['id']), artifact_name))
         else:
             # called as a top-level task to create or replace wrapper rpms on an existing build
             # verify that the build is complete
             if not build['state'] == koji.BUILD_STATES['COMPLETE']:
                 raise koji.BuildError, 'cannot call wrapperRPM on a build that did not complete successfully'
 
-            # get the list of jars from the build instead of the task, because the task output directory may
+            # get the list of files from the build instead of the task, because the task output directory may
             # have already been cleaned up
-            jarinfos = [archive for archive in session.listArchives(buildID=build['id'], type='maven') if \
-                            archive['filename'].endswith('.jar')]
-            jars = []
-            for jarinfo in jarinfos:
-                jars.append(os.path.join(koji.pathinfo.mavenbuild(build, jarinfo), jarinfo['filename']))
-            jars.sort()
+            artifacts = session.listArchives(buildID=build['id'], type='maven')
 
-        if not jars:
-            raise koji.BuildError, 'no jars found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
+            for artifact in artifacts:
+                artifact_name = artifact['filename']
+                base, ext = os.path.splitext(artifact_name)
+                if ext == '.log':
+                    # listArchives() should never return .log files, but we check for completeness
+                    continue
+                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.mavenbuild(build, artifact), artifact_name))
 
-        values['jars'] = [os.path.basename(jarpath) for jarpath in jars]
+        if not artifacts:
+            raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
+
+        artifacts_base = {}
+        # construct a map of just basenames to pass to the template
+        for key, vals in artifacts.items():
+            # sort the lists while we're at it
+            vals.sort()
+            artifacts_base[key] = [os.path.basename(val) for val in vals]
+
+        values['artifacts'] = artifacts_base
 
         if build:
             self.copy_fields(build, values, 'epoch', 'name', 'version', 'release')
@@ -2199,7 +2228,7 @@ class WrapperRPMTask(BaseTaskHandler):
             # If no jar has a pom, populate the values dict with empty placeholders.  If the spec file 
             # doesn't require these variables, it should work.  If it does, then the rpmbuild will 
             # likely fail.
-            for jar in jars:
+            for jar in artifacts.get('.jar', []):
                 pom = koji.get_pom_from_jar(jar)
                 if pom:
                     pom_info = koji.parse_pom(contents=pom)
@@ -2231,8 +2260,9 @@ class WrapperRPMTask(BaseTaskHandler):
         # set to the rpm _sourcedir so other files in the SCM may be referenced in the
         # specfile as well.
         specdir = os.path.dirname(spec_template)
-        for jarpath in jars:
-            shutil.copy(jarpath, specdir)
+        for key, filepaths in artifacts.items():
+            for filepath in filepaths:
+                shutil.copy(filepath, specdir)
 
         contents = Cheetah.Template.Template(file=spec_template,
                                              searchList=[values]).respond()
