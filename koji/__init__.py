@@ -1588,6 +1588,24 @@ def buildLabel(buildInfo, showEpoch=False):
     return '%s%s-%s-%s' % (epochStr, buildInfo['package_name'],
                            buildInfo['version'], buildInfo['release'])
 
+def _module_info(url):
+    module_info = ''
+    if '?' in url:
+        # extract the module path
+        module_info = url[url.find('?') + 1:url.find('#')]
+    # Find the first / after the scheme://
+    repo_start = url.find('/', url.find('://') + 3)
+    # Find the ? if present, otherwise find the #
+    repo_end = url.find('?')
+    if repo_end == -1:
+        repo_end = url.find('#')
+    repo_info = url[repo_start:repo_end]
+    rev_info = url[url.find('#') + 1:]
+    if module_info:
+        return '%s:%s:%s' % (repo_info, module_info, rev_info)
+    else:
+        return '%s:%s' % (repo_info, rev_info)
+
 def taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
     method = taskInfo['method']
@@ -1597,23 +1615,14 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             source, target = taskInfo['request'][:2]
             if '://' in source:
-                source = source[source.rfind('?') + 1:]
-                source = source.replace('/.git', '')
-                source = source.replace('/#', '#')
-                source = source.replace('#', ':')
-                source = source[source.rfind('/') + 1:]
+                module_info = _module_info(source)
             else:
-                source = os.path.basename(source)
-            extra = '%s, %s' % (target, source)
+                module_info = os.path.basename(source)
+            extra = '%s, %s' % (target, module_info)
     elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
         if taskInfo.has_key('request'):
             url = taskInfo['request'][0]
-            url = url[url.rfind('?') + 1:]
-            url = url.replace('/.git', '')
-            url = url.replace('/#', '#')
-            url = url.replace('#', ':')
-            url = url[url.rfind('/') + 1:]
-            extra = url
+            extra = _module_info(url)
     elif method == 'buildArch':
         if taskInfo.has_key('request'):
             srpm, tagID, arch = taskInfo['request'][:3]
