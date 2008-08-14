@@ -60,6 +60,8 @@ class ModXMLRPCRequestHandler(object):
         self.register_function(self.system_methodSignature, name="system.methodSignature")
         self.register_function(self.system_methodHelp, name="system.methodHelp")
         self.register_function(self.multiCall)
+        # Also register it as system.multicall for standards compliance
+        self.register_function(self.multiCall, name="system.multicall")
 
     def register_function(self, function, name = None):
         if name is None:
