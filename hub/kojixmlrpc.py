@@ -288,6 +288,7 @@ def handler(req, profiling=False):
             context.req = req
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
+                                  password = opts.get("DBPass",None),
                                   host = opts.get("DBhost",None))
             try:
                 context.cnx = koji.db.connect(opts.get("KojiDebug",False))
