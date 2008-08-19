@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for target $target.name</h4>
+  <h4>Information for target <a href="buildtargetinfo?targetID=$target.id">$target.name</a></h4>
 
   <table>
     <tr>

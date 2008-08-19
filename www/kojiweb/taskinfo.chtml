@@ -53,9 +53,12 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for task $task.id</h4>
+  <h4>Information for task <a href="taskinfo?taskID=$task.id">$koji.taskLabel($task)</a></h4>
 
   <table>
+    <tr>
+      <th>ID</th><td>$task.id</td>
+    </tr>
     <tr>
       <th>Method</th><td>$task.method</td>
     </tr>

@@ -34,6 +34,20 @@ from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
 
+def _opt_bool(opts, name):
+    """Convert a string option into a boolean
+    True or False value.  The following values
+    will be considered True (case-insensitive):
+    yes, on, true, 1
+    Anything else will be considered False."""
+    val = opts.get(name, 'no')
+    if val is None:
+        val = ''
+    if val.lower() in ('yes', 'on', 'true', '1'):
+        return True
+    else:
+        return False
+
 class ModXMLRPCRequestHandler(object):
     """Simple XML-RPC handler for mod_python environment"""
 
@@ -46,6 +60,8 @@ class ModXMLRPCRequestHandler(object):
         self.register_function(self.system_methodSignature, name="system.methodSignature")
         self.register_function(self.system_methodHelp, name="system.methodHelp")
         self.register_function(self.multiCall)
+        # Also register it as system.multicall for standards compliance
+        self.register_function(self.multiCall, name="system.multicall")
 
     def register_function(self, function, name = None):
         if name is None:
@@ -98,7 +114,7 @@ class ModXMLRPCRequestHandler(object):
             tb_type = context.opts.get('KojiTraceback',None)
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             if issubclass(e_class, koji.GenericError):
-                if context.opts.get('KojiDebug','off').lower() in ('yes', 'on', 'true', '1'):
+                if _opt_bool(context.opts, 'KojiDebug'):
                     if tb_type == "extended":
                         faultString = koji.format_exc_plus()
                     else:
@@ -116,7 +132,7 @@ class ModXMLRPCRequestHandler(object):
             sys.stderr.write('\n')
             response = dumps(Fault(faultCode, faultString))
 
-        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+        if _opt_bool(context.opts, 'KojiDebug'):
             sys.stderr.write("Returning %d bytes after %f seconds\n" %
                              (len(response),time.time() - start))
             sys.stderr.flush()
@@ -138,14 +154,14 @@ class ModXMLRPCRequestHandler(object):
                 #might be ok, depending on method
                 if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
                     raise
-            if context.opts.get('LockOut', 'no').lower() in ('yes', 'on', 'true', '1') and \
+            if _opt_bool(context.opts, 'LockOut') and \
                    method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
                 if not context.session.hasPerm('admin'):
                     raise koji.GenericError, "Server disabled for maintenance"
         # handle named parameters
         params,opts = koji.decode_args(*params)
-        
-        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+
+        if _opt_bool(context.opts, 'KojiDebug'):
             sys.stderr.write("Handling method %s for session %s (#%s)\n" \
                              % (method, context.session.id, context.session.callnum))
             if method != 'uploadFile':
@@ -155,7 +171,7 @@ class ModXMLRPCRequestHandler(object):
             
         ret = func(*params,**opts)
 
-        if context.opts.get('KojiDebug', 'no').lower() in ('yes', 'on', 'true', '1'):
+        if _opt_bool(context.opts, 'KojiDebug'):
             sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
                              % (method, context.session.id, context.session.callnum,
                                 time.time()-start))
@@ -279,7 +295,7 @@ def handler(req, profiling=False):
     else:
         opts = req.get_options()
         try:
-            if opts.get("ServerOffline", False):
+            if _opt_bool(opts, 'ServerOffline'):
                 offline_reply(req, msg=opts.get("OfflineMessage", None))
                 return apache.OK
             context._threadclear()
@@ -291,7 +307,7 @@ def handler(req, profiling=False):
                                   password = opts.get("DBPass",None),
                                   host = opts.get("DBhost",None))
             try:
-                context.cnx = koji.db.connect(opts.get("KojiDebug",False))
+                context.cnx = koji.db.connect(_opt_bool(opts, 'KojiDebug'))
             except Exception:
                 offline_reply(req, msg="database outage")
                 return apache.OK

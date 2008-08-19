@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for package $package.name</h4>
+  <h4>Information for package <a href="packageinfo?packageID=$package.id">$package.name</a></h4>
 
   <table>
     <tr>
