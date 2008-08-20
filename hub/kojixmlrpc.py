@@ -24,6 +24,7 @@ from ConfigParser import ConfigParser
 import sys
 import time
 import traceback
+import types
 import pprint
 from xmlrpclib import loads,dumps,Fault
 from mod_python import apache
@@ -31,6 +32,7 @@ from mod_python import apache
 import koji
 import koji.auth
 import koji.db
+import koji.plugin
 from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
@@ -89,6 +91,22 @@ class HandlerRegistry(object):
     def register_instance(self,instance):
         self.register_module(instance)
 
+    def register_plugin(self, plugin):
+        """Scan a given plugin for handlers
+
+        Handlers are functions marked with one of the decorators defined in koji.plugin
+        """
+        for v in vars(plugin).itervalues():
+            if isinstance(v, (types.ClassType, types.TypeType)):
+                #skip classes
+                continue
+            if callable(v) and getattr(v, 'exported', False):
+                if hasattr(v, 'export_alias'):
+                    name = getattr(v, 'export_alias')
+                else:
+                    name = v.__name__
+                self.register_function(v, name=name)
+
     def list_api(self):
         funcs = []
         for name,func in self.funcs.items():
@@ -138,6 +156,19 @@ class HandlerRegistry(object):
         if func is None:
             raise koji.GenericError, "Invalid method: %s" % name
         return func
+
+
+class HandlerAccess(object):
+    """This class is used to grant access to the rpc handlers"""
+
+    def __init__(self, registry):
+        self.__reg = registry
+
+    def call(self, __name, *args, **kwargs):
+        return self.__reg.get(__name)(*args, **kwargs)
+
+    def get(self, name):
+        return self.__Reg.get(name)
 
 
 class ModXMLRPCRequestHandler(object):
@@ -194,6 +225,7 @@ class ModXMLRPCRequestHandler(object):
                     faultString = "%s: %s" % (e_class,e)
             sys.stderr.write(tb_str)
             sys.stderr.write('\n')
+            sys.stderr.flush()
             response = dumps(Fault(faultCode, faultString))
 
         if _opt_bool(context.opts, 'KojiDebug'):
@@ -337,6 +369,9 @@ def load_config(req):
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
 
+        ['Plugins', 'string', None],
+        ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],
+
         ['KojiDebug', 'boolean', False],
         ['KojiTraceback', 'string', None],
         ['EnableFunctionDebug', 'boolean', False],
@@ -375,19 +410,44 @@ def load_config(req):
     return opts
 
 
+def load_plugins(opts):
+    """Load plugins specified by our configuration"""
+    if not opts['Plugins']:
+        return
+    tracker = koji.plugin.PluginTracker(path=opts['PluginPath'].split(':'))
+    for name in opts['Plugins'].split():
+        sys.stderr.write('Loading plugin: %s\n' % name)
+        try:
+            tracker.load(name)
+        except Exception:
+            sys.stderr.write(''.join(traceback.format_exception(*sys.exc_info())))
+            #make this non-fatal, but set ServerOffline
+            opts['ServerOffline'] = True
+            opts['OfflineMessage'] = 'configuration error'
+        sys.stderr.flush()
+    return tracker
+
 
 #
 # mod_python handler
 #
 
 firstcall = True
+ready = False
+opts = {}
 
 def handler(req, profiling=False):
-    global firstcall, registry, opts
+    global firstcall, ready, registry, opts, plugins
     if firstcall:
-        registry = get_registry()
-        opts = load_config(req)
         firstcall = False
+        opts = load_config(req)
+        plugins = load_plugins(opts)
+        registry = get_registry(opts, plugins)
+        ready = True
+    if not ready:
+        #this will happen on subsequent passes if an error happens in the firstcall code
+        opts['ServerOffline'] = True
+        opts['OfflineMessage'] = 'server startup error'
     if profiling:
         import profile, pstats, StringIO, tempfile
         global _profiling_req
@@ -409,6 +469,7 @@ def handler(req, profiling=False):
             context._threadclear()
             context.commit_pending = False
             context.opts = opts
+            context.handlers = HandlerAccess(registry)
             context.req = req
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
@@ -433,7 +494,7 @@ def handler(req, profiling=False):
             context._threadclear()
     return apache.OK
 
-def get_registry():
+def get_registry(opts, plugins):
     # Create and populate handler registry
     registry = HandlerRegistry()
     functions = RootExports()
@@ -448,5 +509,7 @@ def get_registry():
     registry.register_function(koji.auth.logoutChild)
     registry.register_function(koji.auth.exclusiveSession)
     registry.register_function(koji.auth.sharedSession)
+    for name in opts.get('Plugins', '').split():
+        registry.register_plugin(plugins.get(name))
     return registry
 

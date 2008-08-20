@@ -26,6 +26,7 @@ except ImportError:
     pass
 import base64
 import koji
+import koji.plugin
 import koji.util
 import commands
 import errno
@@ -55,6 +56,10 @@ from fnmatch import fnmatch
 from optparse import OptionParser
 from xmlrpclib import Fault
 
+# our private modules
+sys.path.insert(0, '/usr/share/koji-builder/lib')
+import tasks
+
 class ServerExit(Exception):
     """Raised to shutdown the server"""
     pass
@@ -65,6 +70,12 @@ def main():
     logger = logging.getLogger("koji.build")
     logger.info('Starting up')
     tm = TaskManager()
+    if options.plugin:
+        #load plugins
+        pt = koji.plugin.PluginTracker(path=options.pluginpath.split(':'))
+        for name in options.plugin:
+            logger.info('Loading plugin: %s' % name)
+            tm.scanPlugin(pt.load(name))
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
@@ -543,6 +554,15 @@ class TaskManager(object):
                 for method in v.Methods:
                     handlers[method] = v
         self.handlers = handlers
+
+    def scanPlugin(self, plugin):
+        """Find task handlers in a plugin"""
+        # XXX - this is a very simple implementation for now.
+        #       it should be improved
+        for v in vars(plugin).itervalues():
+            if type(v) == type(tasks.BaseTaskHandler) and issubclass(v,tasks.BaseTaskHandler):
+                for method in v.Methods:
+                    self.handlers[method] = v
 
     def shutdown(self):
         """Attempt to shut down cleanly"""
@@ -1070,7 +1090,11 @@ class TaskManager(object):
             handlerClass = self.handlers['default']
         else:
             raise koji.GenericError, "No handler found for method '%s'" % method
-        handler = handlerClass(id,method,params)
+        if issubclass(handlerClass, tasks.BaseTaskHandler):
+            #new style handler needs session and options passed
+            handler = handlerClass(id,method,params,session,options)
+        else:
+            handler = handlerClass(id,method,params)
         # set weight
         session.host.setTaskWeight(task_id,handler.weight())
         if handler.Foreground:
@@ -2615,6 +2639,8 @@ def get_options():
     parser.add_option("--topdir", help="Specify topdir")
     parser.add_option("--topurl", help="Specify topurl")
     parser.add_option("--workdir", help="Specify workdir")
+    parser.add_option("--pluginpath", help="Specify plugin search path")
+    parser.add_option("--plugin", action="append", help="Load specified plugin")
     parser.add_option("--mockdir", help="Specify mockdir")
     parser.add_option("--mockuser", help="User to run mock as")
     parser.add_option("-s", "--server", help="url of XMLRPC server")
@@ -2639,6 +2665,7 @@ def get_options():
                 'topdir': '/mnt/koji',
                 'topurl': None,
                 'workdir': '/tmp/koji',
+                'pluginpath': '/usr/lib/koji-builder-plugins',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',
                 'packager': 'Koji',
@@ -2669,6 +2696,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
+            elif name in ['plugin', 'plugins']:
+                defaults['plugin'] = value.split()
             elif name in defaults.keys():
                 defaults[name] = value
             else:
