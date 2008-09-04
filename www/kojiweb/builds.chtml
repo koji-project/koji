@@ -14,19 +14,16 @@
   <h4>#if $state != None then $util.stateName($state).capitalize() else ''# Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
 
   <table class="data-list">
-    #if $tag
-    <tr>
-      <td colspan="6">
-        #if $inherited
-        <a href="builds?inherited=0$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')">Hide inherited builds</a>
-        #else
-        <a href="builds?${util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')[1:]}">Show inherited builds</a>
-        #end if
-      </td>
-    </tr>
-    #end if
     <tr>
       <td colspan="#if $tag then '6' else '5'#">
+	#if $tag
+	<strong>Inherited</strong>:
+	<select name="inherited" class="filterlist" onchange="javascript: window.location = 'builds?inherited=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')';">
+	  <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
+	  <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
+	</select>
+	<br/>
+	#end if
         <strong>State</strong>:
         <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited')';">
           <option value="all">all</option>
