@@ -2684,12 +2684,12 @@ def handle_remove_target(options, session, args):
         return
     
     target = args[0]
-    id = session.getBuildTarget(target)
-    if not id:
+    target_info = session.getBuildTarget(target)
+    if not target_info:
         print "Build target %s does not exist" % target
         return 1
     
-    session.deleteBuildTarget(target)
+    session.deleteBuildTarget(target_info['id'])
 
 def handle_remove_tag(options, session, args):
     "[admin] Remove a tag"
