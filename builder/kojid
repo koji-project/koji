@@ -456,8 +456,13 @@ class BuildRoot(object):
         session.host.setBuildRootList(self.id,self.getPackageList())
 
     def _mockResult(self, rv):
-        return _parseStatus(rv, 'mock')
-    
+        if os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
+            logfile = 'build.log'
+        else:
+            logfile = 'root.log'
+        msg = '; see %s for more information' % logfile
+        return _parseStatus(rv, 'mock') + msg
+
     def build(self,srpm,arch=None):
         # run build
         session.host.setBuildRootState(self.id,'BUILDING')
@@ -470,7 +475,7 @@ class BuildRoot(object):
         session.host.updateBuildRootList(self.id,self.getPackageList())
         if rv:
             self.expire()
-            raise koji.BuildrootError, "error building package (arch %s), %s" % (arch, self._mockResult(rv))
+            raise koji.BuildError, "error building package (arch %s), %s" % (arch, self._mockResult(rv))
 
     def getPackageList(self):
         """Return a list of packages from the buildroot
