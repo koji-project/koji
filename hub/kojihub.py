@@ -5514,6 +5514,12 @@ class RootExports(object):
         elif type == 'file':
             clause = 'filename %s %%(terms)s' % oper
             cols = ('rpm_id', 'filename')
+        elif type == 'tag':
+            joins.append('tag_config ON tag.id = tag_config.tag_id')
+            clause = 'tag_config.active = TRUE and name %s %%(terms)s' % oper
+        elif type == 'target':
+            joins.append('build_target_config ON build_target.id = build_target_config.build_target_id')
+            clause = 'build_target_config.active = TRUE and name %s %%(terms)s' % oper
         else:
             clause = 'name %s %%(terms)s' % oper
 
