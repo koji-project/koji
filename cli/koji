@@ -2691,6 +2691,30 @@ def handle_remove_target(options, session, args):
     
     session.deleteBuildTarget(target)
 
+def handle_remove_tag(options, session, args):
+    "[admin] Remove a tag"
+    usage = _("usage: %prog remove-tag [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Please specify a tag to remove"))
+        assert False
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    tag = args[0]
+    tag_info = session.getTag(tag)
+    if not tag_info:
+        print "Tag %s does not exist" % tag
+        return 1
+
+    session.deleteTag(tag_info['id'])
+
 def anon_handle_list_targets(options, session, args):
     "List the build targets"
     usage = _("usage: %prog list-targets [options]")
