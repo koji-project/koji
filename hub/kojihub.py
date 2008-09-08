@@ -5497,7 +5497,7 @@ class RootExports(object):
         elif matchType == 'regexp':
             oper = '~*'
         else:
-            raise koji.GenericError, 'unknown match type: %s' % matchType
+            oper = '='
 
         terms = self._prepareSearchTerms(terms, matchType)
 
@@ -5512,7 +5512,8 @@ class RootExports(object):
             clause = "name || '-' || version || '-' || release || '.' || arch || '.rpm' %s %%(terms)s" % oper
             cols = ('id', "name || '-' || version || '-' || release || '.' || arch || '.rpm'")
         elif type == 'file':
-            clause = 'filename %s %%(terms)s' % oper
+            # only search for exact matches against files, so we can use the index and not thrash the disks
+            clause = 'filename = %(terms)s'
             cols = ('rpm_id', 'filename')
         elif type == 'tag':
             joins.append('tag_config ON tag.id = tag_config.tag_id')
