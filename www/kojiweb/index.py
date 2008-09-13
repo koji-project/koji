@@ -111,10 +111,20 @@ def _getServer(req):
     req._session = session
     return session
 
+def _construct_url(req, page):
+    port = req.server.port
+    url_scheme = 'http'
+    if env.get('HTTPS') == 'on':
+        url_scheme = 'https'
+    if (url_scheme == 'https' and port == 443) or \
+        (url_scheme == 'http' and port == 80):
+        return "%s://%s%s" % (url_scheme, req.hostname, page)
+    return "%s://%s:%d%s" % (url_scheme, req.hostname, port, page)
+
 def _getBaseURL(req):
     pieces = req.uri.split('/')
     base = '/'.join(pieces[:-1])
-    return req.construct_url(base)
+    return _construct_url(req, base)
 
 def _redirectBack(req, page, forceSSL):
     if page:
@@ -129,7 +139,7 @@ def _redirectBack(req, page, forceSSL):
     if page.startswith('http'):
         pass
     elif page.startswith('/'):
-        page = req.construct_url(page)
+        page = _construct_url(req, page)
     else:
         page = _getBaseURL(req) + '/' + page
     if forceSSL:
