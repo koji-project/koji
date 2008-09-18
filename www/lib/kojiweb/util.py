@@ -58,6 +58,22 @@ def passthrough(template, *vars):
     else:
         return ''
 
+def passthrough_except(template, *exclude):
+    """
+    Construct a string suitable for use as URL
+    parameters.  The template calling this method must have
+    previously used
+    #attr _PASSTHROUGH = ...
+    to define the list of variable names to be passed-through.
+    Any variables names passed in will be excluded from the 
+    list of variables in the output string.
+    """
+    passvars = []
+    for var in template._PASSTHROUGH:
+        if not var in exclude:
+            passvars.append(var)
+    return passthrough(template, *passvars)
+
 def sortByKeyFunc(key, noneGreatest=False):
     """Return a function to sort a list of maps by the given key.
     If the key starts with '-', sort in reverse order.  If noneGreatest
