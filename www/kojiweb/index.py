@@ -112,8 +112,9 @@ def _getServer(req):
     return session
 
 def _construct_url(req, page):
-    port = req.server.port
+    port = req.connection.local_addr[1]
     url_scheme = 'http'
+    env = req.subprocess_env
     if env.get('HTTPS') == 'on':
         url_scheme = 'https'
     if (url_scheme == 'https' and port == 443) or \
