@@ -49,20 +49,9 @@ All
       <td colspan="6">
         <form action="tasks">
         <strong>State</strong>:
-        #if $state == 'active'
-        <strong>active</strong>
-        #else
-        <a href="tasks?state=active$util.passthrough_except($self, 'state')">active</a>
-        #end if
-        |
-        #if $state == 'all'
-        <strong>all</strong>
-        #else
-        <a href="tasks?state=all$util.passthrough_except($self, 'state')">all</a>
-        #end if
-        |
         <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough_except($self, 'state')';">
-          <option value="active">(select)</option>
+          <option value="active" $util.toggleSelected($self, $state, 'active')>active</option>
+          <option value="all" $util.toggleSelected($self, $state, 'all')>all</option>
           <option value="free" #if $state == 'free' then 'selected="selected"' else ''#>free</option>
           <option value="open" #if $state == 'open' then 'selected="selected"' else ''#>open</option>
           <option value="closed" #if $state == 'closed' then 'selected="selected"' else ''#>closed</option>
@@ -72,36 +61,19 @@ All
         </select>
 	<br/>
         <strong>Owner</strong>:
-        #if $ownerObj
-          <a href="tasks?${util.passthrough_except($self, 'owner')[1:]}">everyone</a>
-        #else
-          <strong>everyone</strong>
-        #end if
-        #if $loggedInUser
-          |
-          #if $ownerObj and $ownerObj.id == $loggedInUser.id
-          <strong>me</strong>
-          #else
-          <a href="tasks?owner=$loggedInUser.name$util.passthrough_except($self, 'owner')">me</a>
-          #end if
-        #end if
-        |
         <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough_except($self, 'owner')';">
-          <option value="">(select)</option>
+          <option value="" #if not $owner then 'selected="selected"' else ''#>everyone</option>
+	  #if $loggedInUser
+	  <option value="$loggedInUser.name">me</option>
+	  #end if
           #for $user in $users
           <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$user.name</option>
           #end for
         </select>
         <br/>
         <strong>Method</strong>:
-	#if $method == 'all'
-	<strong>all</strong>
-	#else
-	<a href="tasks?method=all$util.passthrough_except($self, 'method')">all</a>
-	#end if
-	|
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
-          <option value="all">(select)</option>
+          <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
           <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
           <option value="buildSRPMFromSCM" #if $method == 'buildSRPMFromSCM' then 'selected="selected"' else ''#>buildSRPMFromSCM</option>
           <option value="buildSRPMFromCVS" #if $method == 'buildSRPMFromCVS' then 'selected="selected"' else ''#>buildSRPMFromCVS</option>
@@ -118,31 +90,11 @@ All
         </select>
 	<br/>
 	<strong>View</strong>:
-	#if $view == 'tree'
-	<strong>tree</strong>
-	#else
-	#if $treeEnabled
-	<a href="tasks?view=tree$util.passthrough_except($self, 'view')">tree</a>
-	#else
-	<span class="disabled">tree</span>
-	#end if
-	#end if
-	|
-	#if $view == 'toplevel'
-	<strong>toplevel</strong>
-	#else
-	#if $toplevelEnabled
-	<a href="tasks?view=toplevel$util.passthrough_except($self, 'view')">toplevel</a>
-	#else
-	<span class="disabled">toplevel</span>
-	#end if
-	#end if
-	|
-	#if $view == 'flat'
-	<strong>flat</strong>
-	#else
-	<a href="tasks?view=flat$util.passthrough_except($self, 'view')">flat</a>
-	#end if
+        <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '$util.passthrough_except($self, 'view')';">
+	  <option value="tree" $util.toggleSelected($self, $view, 'tree') #if not $treeEnabled then 'disabled="disabled"' else ''#>tree</option>
+	  <option value="toplevel" $util.toggleSelected($self, $view, 'toplevel') #if not $toplevelEnabled then 'disabled="disabled"' else ''#>toplevel</option>
+	  <option value="flat" $util.toggleSelected($self, $view, 'flat')>flat</option>
+	</select>
         </form>
       </td>
     </tr>
