@@ -83,6 +83,10 @@ p#footer a {
     display: none;
 }
 
+.disabled {
+    color: #808080;
+}
+
 #mainNav {
     width: 100%;
     background-color: #009;

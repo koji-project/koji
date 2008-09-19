@@ -343,7 +343,9 @@ def hello(req):
 def showSession(req):
     return _getServer(req).showSession()
 
-def tasks(req, owner=None, state='active', method='all', hostID=None, start=None, order='-completion_time'):
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
+
+def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-completion_time'):
     values = _initValues(req, 'Tasks', 'tasks')
     server = _getServer(req)
 
@@ -361,32 +363,41 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
-    if state in ('active', 'toplevel') and method == 'all' and not hostID:
-        # If we're only showing active or toplevel tasks, and not filtering by host or method, only query the top-level tasks as well,
-        # and then retrieve the task children so we can do the nice tree display.
+    treeEnabled = True
+    if hostID or (method not in ['all', 'toplevel'] + _TOPLEVEL_TASKS):
+        # force flat view if we're filtering by a hostID or non-toplevel task
+        view = 'flat'
+        # don't let them choose tree view either
+        treeEnabled = False
+    values['view'] = view
+    values['treeEnabled'] = treeEnabled
+
+    if view == 'tree':
         treeDisplay = True
     else:
         treeDisplay = False
     values['treeDisplay'] = treeDisplay
 
-    if method != 'all':
+    if method == 'all':
+        # If we're showing all methods, and want it in tree view, we need to
+        # get only the top-level tasks.  We'll retrieve their child tasks later.
+        if view == 'tree':
+            opts['parent'] = None
+    elif method == 'toplevel':
+        opts['parent'] = None
+    else:
         opts['method'] = method
     values['method'] = method
     
     if state == 'active':
         opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
-        if treeDisplay:
-            opts['parent'] = None
-    elif state == 'toplevel':
-        # Show all top-level tasks, no tree display
-        opts['parent'] = None
     elif state == 'all':
         pass
     else:
         # Assume they've passed in a state name
         opts['state'] = [koji.TASK_STATES[state.upper()]]
     values['state'] = state
-        
+
     if hostID:
         hostID = int(hostID)
         host = server.getHost(hostID, strict=True)
@@ -405,7 +416,7 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
     tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': opts},
                                         start=start, dataName='tasks', prefix='task', order=order)
     
-    if treeDisplay:
+    if view == 'tree':
         server.multicall = True
         for task in tasks:
             server.getTaskDescendents(task['id'], request=True)
