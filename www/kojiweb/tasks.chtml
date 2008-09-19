@@ -29,8 +29,6 @@
 #def headerPrefix($state)
   #if $state == 'active'
 Active
-  #elif $state == 'toplevel'
-Top-level
   #elif $state == 'all'
 All
   #else
@@ -42,13 +40,16 @@ All
 
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
+  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
 
   <table class="data-list">
     <tr>
       <td colspan="6">
         <form action="tasks">
+        <table class="nested">
+        <tr><td>
         <strong>State</strong>:
+        </td><td>
         <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough_except($self, 'state')';">
           <option value="active" $util.toggleSelected($self, $state, 'active')>active</option>
           <option value="all" $util.toggleSelected($self, $state, 'all')>all</option>
@@ -59,19 +60,22 @@ All
           <option value="canceled" #if $state == 'canceled' then 'selected="selected"' else ''#>canceled</option>
           <option value="assigned" #if $state == 'assigned' then 'selected="selected"' else ''#>assigned</option> 
         </select>
-	<br/>
+        </td><td>
         <strong>Owner</strong>:
+        </td><td>
         <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough_except($self, 'owner')';">
           <option value="" #if not $owner then 'selected="selected"' else ''#>everyone</option>
-	  #if $loggedInUser
-	  <option value="$loggedInUser.name">me</option>
-	  #end if
+          #if $loggedInUser
+          <option value="$loggedInUser.name">me</option>
+          #end if
           #for $user in $users
           <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$user.name</option>
           #end for
         </select>
-        <br/>
+        </td></tr>
+        <tr><td>
         <strong>Method</strong>:
+        </td><td>
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
           <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
           <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
@@ -88,13 +92,16 @@ All
           <option value="chainbuild" #if $method == 'chainbuild' then 'selected="selected"' else ''#>chainbuild</option>
           <option value="waitrepo" #if $method == 'waitrepo' then 'selected="selected"' else ''#>waitrepo</option>
         </select>
-	<br/>
-	<strong>View</strong>:
+        </td><td>
+        <strong>View</strong>:
+        </td><td>
         <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '$util.passthrough_except($self, 'view')';">
-	  <option value="tree" $util.toggleSelected($self, $view, 'tree') #if not $treeEnabled then 'disabled="disabled"' else ''#>tree</option>
-	  <option value="toplevel" $util.toggleSelected($self, $view, 'toplevel') #if not $toplevelEnabled then 'disabled="disabled"' else ''#>toplevel</option>
-	  <option value="flat" $util.toggleSelected($self, $view, 'flat')>flat</option>
-	</select>
+          <option value="tree" $util.toggleSelected($self, $view, 'tree') #if not $treeEnabled then 'disabled="disabled"' else ''#>tree</option>
+          <option value="toplevel" $util.toggleSelected($self, $view, 'toplevel') #if not $toplevelEnabled then 'disabled="disabled"' else ''#>toplevel</option>
+          <option value="flat" $util.toggleSelected($self, $view, 'flat')>flat</option>
+        </select>
+        </td></tr>
+        </table>
         </form>
       </td>
     </tr>
