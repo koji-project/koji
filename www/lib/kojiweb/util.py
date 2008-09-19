@@ -25,6 +25,17 @@ def toggleOrder(template, sortKey, orderVar='order'):
     else:
         return sortKey
 
+def toggleSelected(template, var, option):
+    """
+    If the passed in variable var equals the literal value in option,
+    return 'selected="selected"', otherwise return ''.
+    Used for setting the selected option in select boxes.
+    """
+    if var == option:
+        return 'selected="selected"'
+    else:
+        return ''
+
 def sortImage(template, sortKey, orderVar='order'):
     """
     Return an html img tag suitable for inclusion in the sortKey of a sortable table,
