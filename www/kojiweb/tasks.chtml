@@ -100,12 +100,6 @@ All
 	<a href="tasks?method=all$util.passthrough_except($self, 'method')">all</a>
 	#end if
 	|
-	#if $method == 'toplevel'
-	<strong>toplevel</strong>
-	#else
-	<a href="tasks?method=toplevel$util.passthrough_except($self, 'method')">toplevel</a>
-	#end if
-	|
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
           <option value="all">(select)</option>
           <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
@@ -131,6 +125,16 @@ All
 	<a href="tasks?view=tree$util.passthrough_except($self, 'view')">tree</a>
 	#else
 	<span class="disabled">tree</span>
+	#end if
+	#end if
+	|
+	#if $view == 'toplevel'
+	<strong>toplevel</strong>
+	#else
+	#if $toplevelEnabled
+	<a href="tasks?view=toplevel$util.passthrough_except($self, 'view')">toplevel</a>
+	#else
+	<span class="disabled">toplevel</span>
 	#end if
 	#end if
 	|

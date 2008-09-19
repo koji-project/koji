@@ -343,7 +343,10 @@ def hello(req):
 def showSession(req):
     return _getServer(req).showSession()
 
+# Tasks that can exist without a parent
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
+# Tasks that can have children
+_PARENT_TASKS = ['build', 'chainbuild', 'newRepo']
 
 def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-completion_time'):
     values = _initValues(req, 'Tasks', 'tasks')
@@ -364,13 +367,23 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
     treeEnabled = True
-    if hostID or (method not in ['all', 'toplevel'] + _TOPLEVEL_TASKS):
-        # force flat view if we're filtering by a hostID or non-toplevel task
-        view = 'flat'
+    if hostID or (method not in ['all'] + _PARENT_TASKS):
+        # force flat view if we're filtering by a hostID or a task that never has children
+        if view == 'tree':
+            view = 'flat'
         # don't let them choose tree view either
         treeEnabled = False
-    values['view'] = view
     values['treeEnabled'] = treeEnabled
+
+    toplevelEnabled = True
+    if method not in ['all'] + _TOPLEVEL_TASKS:
+        # force flat view if we're viewing a task that is never a top-level task
+        if view == 'toplevel':
+            view = 'flat'
+        toplevelEnabled = False
+    values['toplevelEnabled'] = toplevelEnabled
+
+    values['view'] = view
 
     if view == 'tree':
         treeDisplay = True
@@ -378,16 +391,12 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
         treeDisplay = False
     values['treeDisplay'] = treeDisplay
 
-    if method == 'all':
-        # If we're showing all methods, and want it in tree view, we need to
-        # get only the top-level tasks.  We'll retrieve their child tasks later.
-        if view == 'tree':
-            opts['parent'] = None
-    elif method == 'toplevel':
-        opts['parent'] = None
-    else:
+    if method != 'all':
         opts['method'] = method
     values['method'] = method
+
+    if view in ('tree', 'toplevel'):
+        opts['parent'] = None
     
     if state == 'active':
         opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
