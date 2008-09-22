@@ -917,7 +917,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     server = _getServer(req)
 
     user = None
-    if userID != None:
+    if userID:
         if userID.isdigit():
             userID = int(userID)
         user = server.getUser(userID, strict=True)
@@ -930,7 +930,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
     tag = None
-    if tagID != None:
+    if tagID:
         if tagID.isdigit():
             tagID = int(tagID)
         tag = server.getTag(tagID, strict=True)
@@ -938,7 +938,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['tag'] = tag
 
     package = None
-    if packageID != None:
+    if packageID:
         if packageID.isdigit():
             packageID = int(packageID)
         package = server.getPackage(packageID, strict=True)

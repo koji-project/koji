@@ -9,6 +9,8 @@
   #end if
 #end def
 
+#attr _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited']
+
 #include "includes/header.chtml"
 
   <h4>#if $state != None then $util.stateName($state).capitalize() else ''# Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
@@ -16,43 +18,41 @@
   <table class="data-list">
     <tr>
       <td colspan="#if $tag then '6' else '5'#">
+        <table class="nested">
 	#if $tag
+        <tr><td>
 	<strong>Inherited</strong>:
+        </td><td>
 	<select name="inherited" class="filterlist" onchange="javascript: window.location = 'builds?inherited=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'state')';">
 	  <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
 	  <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
 	</select>
-	<br/>
+	</td></tr>
 	#end if
+        <tr><td>
         <strong>State</strong>:
+        </td><td>
         <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough($self, 'userID', 'tagID', 'packageID', 'order', 'prefix', 'inherited')';">
           <option value="all">all</option>
           #for $stateOpt in ['BUILDING', 'COMPLETE', 'FAILED', 'CANCELED']
           <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
           #end for
         </select>
-        <br/>
+        </td></tr>
+        <tr><td>
         <strong>Built by</strong>:
-        #if $user
-          <a href="builds?${util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')[1:]}">everyone</a>
-	#else
-	  <strong>everyone</strong>
-	#end if
-        #if $loggedInUser
-          |
-          #if $user and $user.id == $loggedInUser.id
-          <strong>me</strong>
-          #else
-          <a href="builds?userID=$loggedInUser.name$util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')">me</a>
-          #end if
-        #end if
-        |
+        </td><td>
         <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough($self, 'tagID', 'packageID', 'order', 'prefix', 'inherited', 'state')';">
-          <option value="">(select)</option>
+          <option value="" #if not $user then 'selected="selected"' else ''#>everyone</option>
+          #if $loggedInUser
+          <option value="$loggedInUser.name">me</option>
+          #end if
           #for $userOption in $users
           <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$userOption.name</option>
           #end for
         </select>
+        </td></tr>
+        </table>
       </td>
     </tr>
     <tr>
