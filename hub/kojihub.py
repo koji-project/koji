@@ -4046,6 +4046,7 @@ def build_references(build_id, limit=None):
     #references (that matter):
     #   tag_listing
     #   buildroot_listing (via rpminfo)
+    #   buildroot_archives (via archiveinfo)
     #   ?? rpmsigs (via rpminfo)
     ret = {}
 
@@ -4077,6 +4078,27 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = idx.values()
 
+    # find archives whose buildroots we were in
+    q = """SELECT id FROM archiveinfo WHERE build_id = %(build_id)i"""
+    archive_ids = _fetchMulti(q, locals())
+    fields = ('id', 'type_id', 'type_name', 'build_id', 'filename')
+    idx = {}
+    q = """SELECT archiveinfo.id, archiveinfo.type_id, archivetypes.name, archiveinfo.build_id, archiveinfo.filename
+    FROM buildroot_archives
+        JOIN archiveinfo ON archiveinfo.buildroot_id = buildroot_archives.buildroot_id
+        JOIN build ON archiveinfo.build_id = build.id
+        JOIN archivetypes ON archivetypes.id = archiveinfo.type_id
+    WHERE buildroot_archives.archive_id = %(archive_id)i
+        AND build.state = %(st_complete)i"""
+    if limit is not None:
+        q += "\nLIMIT %(limit)i"
+    for (archive_id,) in archive_ids:
+        for row in _multiRow(q, locals(), fields):
+            idx.setdefault(row['id'], row)
+        if limit is not None and len(idx) > limit:
+            break
+    ret['archives'] = idx.values()
+
     # find timestamp of most recent use in a buildroot
     q = """SELECT buildroot.create_event
     FROM buildroot_listing
@@ -4094,6 +4116,26 @@ def build_references(build_id, limit=None):
     else:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
+
+    q = """SELECT buildroot.create_event
+    FROM buildroot_archives
+        JOIN buildroot ON buildroot_archives.buildroot_id = buildroot.id
+    WHERE buildroot_archives.archive_id = %(archive_id)i
+    ORDER BY buildroot.create_event DESC
+    LIMIT 1"""
+    event_id = -1
+    for (archive_id,) in archive_ids:
+        tmp_id = _singleValue(q, locals(), strict=False)
+        if tmp_id is not None and tmp_id > event_id:
+            event_id = tmp_id
+    if event_id == -1:
+        pass
+    else:
+        q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
+        last_archive_use = _singleValue(q, locals())
+        if ret['last_used'] is None or last_archive_use > ret['last_used']:
+            ret['last_used'] = last_archive_use
+
     return ret
 
 def delete_build(build, strict=True, min_ref_age=604800):
@@ -4124,6 +4166,10 @@ def delete_build(build, strict=True, min_ref_age=604800):
         if strict:
             raise koji.GenericError, "Cannot delete build, used in buildroots: %s" % refs['rpms']
         return False
+    if refs['archives']:
+        if strict:
+            raise koji.GenericError, "Cannot delete build, used in archive buildroots: %s" % refs['archives']
+        return False
     if refs['last_used']:
         age = time.time() - refs['last_used']
         if age < min_ref_age:
@@ -4141,6 +4187,7 @@ def _delete_build(binfo):
     """
     # build-related data:
     #   build   KEEP (marked deleted)
+    #   maven_builds KEEP
     #   task ??
     #   changelogs  DELETE
     #   tag_listing REVOKE (versioned) (but should ideally be empty anyway)
@@ -4149,6 +4196,9 @@ def _delete_build(binfo):
     #           rpmsigs DELETE
     #           rpmdeps DELETE
     #           rpmfiles DELETE
+    #   archiveinfo KEEP
+    #               buildroot_archives KEEP (but should ideally be empty anyway)
+    #               archivefiles DELETE
     #   files on disk: DELETE
     build_id = binfo['id']
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
@@ -4160,6 +4210,11 @@ def _delete_build(binfo):
         _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
+    q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
+    archive_ids = _fetchMulti(q, locals())
+    for (archive_id,) in archive_ids:
+        delete = """DELETE FROM archivefiles WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
     delete = """DELETE FROM changelogs WHERE build_id=%(build_id)i"""
     _dml(delete, locals())
     event_id = _singleValue("SELECT get_event()")
@@ -4169,13 +4224,25 @@ def _delete_build(binfo):
     st_deleted = koji.BUILD_STATES['DELETED']
     update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
     _dml(update, locals())
-    #now clear the build dir
+    #now clear the build dirs
+    dirs_to_clear = []
     builddir = koji.pathinfo.build(binfo)
-    rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % builddir)
-    if rv != 0:
-        raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, builddir)
-    #and clear out the emptied dirs
-    os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % builddir)
+    if os.path.exists(builddir):
+        dirs_to_clear.append(builddir)
+    archivedir = koji.pathinfo.archive(binfo)
+    if os.path.exists(archivedir):
+        dirs_to_clear.append(archivedir)
+    maven_info = get_maven_build(buildInfo=build_id)
+    if maven_info:
+        mavendir = koji.pathinfo.mavenbuild(binfo, maven_info)
+        if os.path.exists(mavendir):
+            dirs_to_clear.append(mavendir)
+    for filedir in dirs_to_clear:
+        rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
+        if rv != 0:
+            raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, filedir)
+        #and clear out the emptied dirs
+        os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
 
 def reset_build(build):
     """Reset a build so that it can be reimported
@@ -4185,6 +4252,8 @@ def reset_build(build):
     sets state to FAILED
     clears data in rpminfo, rpmdeps, rpmfiles
     removes rpminfo entries from any buildroot_listings [!]
+    clears data in archiveinfo, archivefiles, maven_info
+    removes archiveinfo entries from buildroot_archives
     remove files related to the build
 
     note, we don't actually delete the build data, so tags
@@ -4228,16 +4297,24 @@ def reset_build(build):
     binfo['state'] = koji.BUILD_STATES['FAILED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
     _dml(update, binfo)
-    #now clear the build dir
+    #now clear the build dirs
+    dirs_to_clear = []
     builddir = koji.pathinfo.build(binfo)
-    rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % builddir)
-    if rv != 0:
-        raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, builddir)
+    if os.path.exists(builddir):
+        dirs_to_clear.append(builddir)
+    archivedir = koji.pathinfo.archive(binfo)
+    if os.path.exists(archivedir):
+        dirs_to_clear.append(archivedir)
     if minfo:
         mavendir = koji.pathinfo.mavenbuild(binfo, minfo)
-        rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % mavendir)
+        if os.path.exists(mavendir):
+            dirs_to_clear.append(mavendir)
+    for filedir in dirs_to_clear:
+        rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
         if rv != 0:
-            raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, mavendir)
+            raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, filedir)
+        #and clear out the emptied dirs
+        os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
 
 def cancel_build(build_id, cancel_task=True):
     """Cancel a build
