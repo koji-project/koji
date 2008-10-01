@@ -118,7 +118,7 @@
 	    #set $archiveurl = '%s/%s/%s/%s' % ($archiveBase, $build.name, $build.version, $build.release)
 	    #end if
 	    <td>
-	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
+	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>) #if $mavenbuild and $archive.filename.endswith('.pom') then '(<a href="%s/%s/data/logs/maven2/">build logs</a>)' % ($downloadBase, $nvrpath) else ''#
 	    </td>
 	  </tr>
 	  #end for
