@@ -2436,7 +2436,7 @@ class SCM(object):
         repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
         directory.
         """
-        for allowed_scm in options.allowed_scms.split():
+        for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
             if len(scm_tuple) in (2, 3):
                 if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
