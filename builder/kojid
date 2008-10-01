@@ -1842,23 +1842,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
     def handler(self,url):
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
-
-        use_common = True
-
-        for allowed_scm in options.allowed_scms.split():
-            scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) in (2, 3):
-                if fnmatch(scm.host, scm_tuple[0]) and fnmatch(scm.repository, scm_tuple[1]):
-                    # SCM host:repository is in the allowed list
-                    # check if we specify a value for use_common
-                    if len(scm_tuple) == 3:
-                        if scm_tuple[2].lower() in ('false', 'no', '0'):
-                            use_common = False
-                    break
-            else:
-                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
-        else:
-            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (scm.host, scm.repository)
+        scm.assert_allowed(options.allowed_scms)
 
         # Setup files and directories for SRPM creation
         scmdir = self.workdir + '/scmroot'
@@ -1868,7 +1852,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         uploadpath = self.getUploadDir()
 
         # Check out spec file, etc. from SCM
-        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=use_common)
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
@@ -2370,6 +2354,8 @@ class SCM(object):
         - repository
         - module
         - revision
+        - use_common (defaults to True, may be set by assert_allowed())
+        - scmtype
 
         The exact format of each attribute is SCM-specific, but the structure of the url
         must conform to the template above, or an error will be raised.
@@ -2386,6 +2372,7 @@ class SCM(object):
         self.repository = path
         self.module = query
         self.revision = fragment
+        self.use_common = True
 
         for scmtype, schemes in SCM.types.items():
             if self.scheme in schemes:
@@ -2437,15 +2424,40 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def checkout(self, scmdir, uploadpath, logfile, use_common=False):
+    def assert_allowed(self, allowed):
+        """
+        Verify that the host and repository of this SCM is in the provided list of
+        allowed repositories.
+
+        allowed is a space-separated list of host:repository[:use_common] tuples.  Incorrectly-formatted
+        tuples will be ignored.
+
+        If use_common is not present, kojid will attempt to checkout a common/ directory from the
+        repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
+        directory.
+        """
+        for allowed_scm in options.allowed_scms.split():
+            scm_tuple = allowed_scm.split(':')
+            if len(scm_tuple) in (2, 3):
+                if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
+                    # SCM host:repository is in the allowed list
+                    # check if we specify a value for use_common
+                    if len(scm_tuple) == 3:
+                        if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
+                            self.use_common = False
+                    break
+            else:
+                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
+        else:
+            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
+
+    def checkout(self, scmdir, uploadpath, logfile):
         """
         Checkout the module from SCM.  Accepts the following parameters:
 
          - scmdir: the working directory
          - uploadpath: the path on the server the logfile should be uploaded to
          - logfile: the file used for logging command output
-         - use_common: if True, also checkout a "common" module from the top-level of the repository
-                       and symlink it into the parent directory of the module checkout
 
         Returns the directory that the module was checked-out into (a subdirectory of scmdir)
         """
@@ -2546,7 +2558,7 @@ class SCM(object):
                 raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
 
-        if use_common:
+        if self.use_common:
             if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
                 raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
