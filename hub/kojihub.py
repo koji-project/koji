@@ -916,7 +916,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,maven_only=False):
+def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None,maven_only=False):
     """Returns a list of builds for specified tag
 
     set inherit=True to follow inheritance
@@ -967,6 +967,9 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,mave
     if package:
         q += """AND package.name = %(package)s
         """
+    if owner:
+        q += """AND users.name = %(owner)s
+        """
     q += """ORDER BY tag_listing.create_event DESC
     """
     # i.e. latest first
@@ -993,7 +996,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,mave
 
     return builds
 
-def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False):
+def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False,owner=None):
     """Returns a list of rpms for specified tag
 
     set inherit=True to follow inheritance
@@ -1006,7 +1009,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         #   (however, it is fairly quick)
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
 
-    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package)
+    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, owner=owner)
     #index builds
     build_idx = dict([(b['build_id'],b) for b in builds])
 
@@ -1819,7 +1822,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
-    comps = koji.generate_comps(groups)
+    comps = koji.generate_comps(groups, expand_groups=True)
     fo = file("%s/comps.xml" % groupsdir,'w')
     fo.write(comps)
     fo.close()
@@ -3336,7 +3339,13 @@ def import_rpm(fn,buildinfo=None,brootid=None):
         #figure it out for ourselves
         if rpminfo['sourcepackage'] == 1:
             buildinfo = rpminfo.copy()
-            buildinfo['id'] = new_build(rpminfo)
+            build_id = find_build_id(buildinfo)
+            if build_id:
+                # build already exists
+                buildinfo['id'] = build_id
+            else:
+                # create a new build
+                buildinfo['id'] = new_build(rpminfo)
         else:
             #figure it out from sourcerpm string
             buildinfo = get_build(koji.parse_NVRA(rpminfo['sourcerpm']))
@@ -4913,7 +4922,7 @@ class RootExports(object):
         given ID."""
         if '..' in fileName:
             raise koji.GenericError, 'Invalid file name: %s' % fileName
-        filePath = '%s/tasks/%i/%s' % (koji.pathinfo.work(), taskID, fileName)
+        filePath = '%s/%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID), fileName)
         filePath = os.path.normpath(filePath)
         if not os.path.isfile(filePath):
             raise koji.GenericError, 'no file "%s" output by task %i' % (fileName, taskID)
@@ -4937,7 +4946,7 @@ class RootExports(object):
         If stat is True, return a map of filename -> stat_info where stat_info
         is a map containing the values of the st_* attributes returned by
         os.stat()."""
-        taskDir = '%s/tasks/%i' % (koji.pathinfo.work(), taskID)
+        taskDir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID))
 
         if stat:
             result = {}
@@ -5296,22 +5305,23 @@ class RootExports(object):
                 raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
 
-    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,maven_only=False):
+    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None,maven_only=False):
         """List builds tagged with tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,maven_only=maven_only)
+        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,owner=owner,maven_only=maven_only)
         if prefix:
+            prefix = prefix.lower()
             results = [build for build in results if build['package_name'].lower().startswith(prefix)]
         return results
 
-    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False):
+    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False,owner=None):
         """List rpms and builds within tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs)
+        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs,owner=owner)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, maven_only=False):
         """List archives and builds within a tag"""
@@ -6369,7 +6379,7 @@ class RootExports(object):
         elif matchType == 'regexp':
             oper = '~*'
         else:
-            raise koji.GenericError, 'unknown match type: %s' % matchType
+            oper = '='
 
         terms = self._prepareSearchTerms(terms, matchType)
 
@@ -6384,8 +6394,15 @@ class RootExports(object):
             clause = "name || '-' || version || '-' || release || '.' || arch || '.rpm' %s %%(terms)s" % oper
             cols = ('id', "name || '-' || version || '-' || release || '.' || arch || '.rpm'")
         elif type == 'file':
-            clause = 'filename %s %%(terms)s' % oper
+            # only search for exact matches against files, so we can use the index and not thrash the disks
+            clause = 'filename = %(terms)s'
             cols = ('rpm_id', 'filename')
+        elif type == 'tag':
+            joins.append('tag_config ON tag.id = tag_config.tag_id')
+            clause = 'tag_config.active = TRUE and name %s %%(terms)s' % oper
+        elif type == 'target':
+            joins.append('build_target_config ON build_target.id = build_target_config.build_target_id')
+            clause = 'build_target_config.active = TRUE and name %s %%(terms)s' % oper
         else:
             clause = 'name %s %%(terms)s' % oper
 

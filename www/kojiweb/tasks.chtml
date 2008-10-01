@@ -29,8 +29,6 @@
 #def headerPrefix($state)
   #if $state == 'active'
 Active
-  #elif $state == 'toplevel'
-Top-level
   #elif $state == 'all'
 All
   #else
@@ -38,35 +36,23 @@ All
   #end if
 #end def
 
+#attr _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'order']
+
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
+  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
 
   <table class="data-list">
     <tr>
       <td colspan="6">
         <form action="tasks">
+        <table class="nested">
+        <tr><td>
         <strong>State</strong>:
-        #if $state == 'active'
-        <strong>active</strong>
-        #else
-        <a href="tasks?${util.passthrough($self, 'owner', 'method', 'hostID', 'order')[1:]}">active</a>
-        #end if
-        |
-        #if $state == 'toplevel'
-        <strong>toplevel</strong>
-        #else
-        <a href="tasks?state=toplevel$util.passthrough($self, 'owner', 'method', 'hostID', 'order')">toplevel</a>
-        #end if
-        |
-        #if $state == 'all'
-        <strong>all</strong>
-        #else
-        <a href="tasks?state=all$util.passthrough($self, 'owner', 'method', 'hostID', 'order')">all</a>
-        #end if
-        |
-        <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough($self, 'owner', 'hostID', 'method', 'order')';">
-          <option value="active">(select)</option>
+        </td><td>
+        <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough_except($self, 'state')';">
+          <option value="active" $util.toggleSelected($self, $state, 'active')>active</option>
+          <option value="all" $util.toggleSelected($self, $state, 'all')>all</option>
           <option value="free" #if $state == 'free' then 'selected="selected"' else ''#>free</option>
           <option value="open" #if $state == 'open' then 'selected="selected"' else ''#>open</option>
           <option value="closed" #if $state == 'closed' then 'selected="selected"' else ''#>closed</option>
@@ -74,32 +60,24 @@ All
           <option value="canceled" #if $state == 'canceled' then 'selected="selected"' else ''#>canceled</option>
           <option value="assigned" #if $state == 'assigned' then 'selected="selected"' else ''#>assigned</option> 
         </select>
-        <br/>
+        </td><td>
         <strong>Owner</strong>:
-        #if $ownerObj
-          <a href="tasks?${util.passthrough($self, 'state', 'method', 'hostID', 'order')[1:]}">everyone</a>
-        #else
-          <strong>everyone</strong>
-        #end if
-        #if $loggedInUser
-          |
-          #if $ownerObj and $ownerObj.id == $loggedInUser.id
-          <strong>me</strong>
-          #else
-          <a href="tasks?owner=$loggedInUser.name$util.passthrough($self, 'state', 'method', 'hostID', 'order')">me</a>
+        </td><td>
+        <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough_except($self, 'owner')';">
+          <option value="" #if not $owner then 'selected="selected"' else ''#>everyone</option>
+          #if $loggedInUser
+          <option value="$loggedInUser.name">me</option>
           #end if
-        #end if
-        |
-        <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough($self, 'hostID', 'state', 'method', 'order')';">
-          <option value="">(select)</option>
           #for $user in $users
           <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$user.name</option>
           #end for
         </select>
-        <br/>
+        </td></tr>
+        <tr><td>
         <strong>Method</strong>:
-        <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough($self, 'owner', 'hostID', 'state', 'order')';">
-          <option value="all" #if $method == 'all' then 'selected="selected"' else ''#>all</option>
+        </td><td>
+        <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
+          <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
           <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
           <option value="buildSRPMFromSCM" #if $method == 'buildSRPMFromSCM' then 'selected="selected"' else ''#>buildSRPMFromSCM</option>
           <option value="buildSRPMFromCVS" #if $method == 'buildSRPMFromCVS' then 'selected="selected"' else ''#>buildSRPMFromCVS</option>
@@ -114,6 +92,16 @@ All
           <option value="chainbuild" #if $method == 'chainbuild' then 'selected="selected"' else ''#>chainbuild</option>
           <option value="waitrepo" #if $method == 'waitrepo' then 'selected="selected"' else ''#>waitrepo</option>
         </select>
+        </td><td>
+        <strong>View</strong>:
+        </td><td>
+        <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '$util.passthrough_except($self, 'view')';">
+          <option value="tree" $util.toggleSelected($self, $view, 'tree') #if not $treeEnabled then 'disabled="disabled"' else ''#>tree</option>
+          <option value="toplevel" $util.toggleSelected($self, $view, 'toplevel') #if not $toplevelEnabled then 'disabled="disabled"' else ''#>toplevel</option>
+          <option value="flat" $util.toggleSelected($self, $view, 'flat')>flat</option>
+        </select>
+        </td></tr>
+        </table>
         </form>
       </td>
     </tr>
@@ -122,7 +110,7 @@ All
         #if $len($taskPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')';">
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
             <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -130,23 +118,23 @@ All
         </form>
         #end if
         #if $taskStart > 0
-        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&lt;&lt;&lt;</a>
+        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough_except($self)">&lt;&lt;&lt;</a>
         #end if
         #if $totalTasks != 0
         <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
         #end if
         #if $taskStart + $taskCount < $totalTasks
-        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&gt;&gt;&gt;</a>
+        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="tasks?order=$util.toggleOrder($self, 'id')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">ID</a> $util.sortImage($self, 'id')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'method')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Type</a> $util.sortImage($self, 'method')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'owner')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Owner</a> $util.sortImage($self, 'owner')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'arch')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Arch</a> $util.sortImage($self, 'arch')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'completion_time')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">Finished</a> $util.sortImage($self, 'completion_time')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'state')$util.passthrough($self, 'owner', 'hostID', 'state', 'method')">State</a> $util.sortImage($self, 'state')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'id')$util.passthrough_except($self, 'order')">ID</a> $util.sortImage($self, 'id')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'method')$util.passthrough_except($self, 'order')">Type</a> $util.sortImage($self, 'method')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'owner')$util.passthrough_except($self, 'order')">Owner</a> $util.sortImage($self, 'owner')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'arch')$util.passthrough_except($self, 'order')">Arch</a> $util.sortImage($self, 'arch')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'completion_time')$util.passthrough_except($self, 'order')">Finished</a> $util.sortImage($self, 'completion_time')</th>
+      <th><a href="tasks?order=$util.toggleOrder($self, 'state')$util.passthrough_except($self, 'order')">State</a> $util.sortImage($self, 'state')</th>
     </tr>
     #if $len($tasks) > 0
       #for $task in $tasks
@@ -181,7 +169,7 @@ All
         #if $len($taskPages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')';">
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
             <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -189,13 +177,13 @@ All
         </form>
         #end if
         #if $taskStart > 0
-        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&lt;&lt;&lt;</a>
+        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough_except($self)">&lt;&lt;&lt;</a>
         #end if
         #if $totalTasks != 0
         <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
         #end if
         #if $taskStart + $taskCount < $totalTasks
-        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough($self, 'owner', 'hostID', 'state', 'method', 'order')">&gt;&gt;&gt;</a>
+        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>

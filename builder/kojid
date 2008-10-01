@@ -70,11 +70,12 @@ def main():
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
+    taken = False
     while 1:
         try:
             tm.updateBuildroots()
             tm.updateTasks()
-            tm.getNextTask()
+            taken = tm.getNextTask()
         except (SystemExit,ServerExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
@@ -88,7 +89,11 @@ def main():
             # log the exception and continue
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
         try:
-            time.sleep(options.sleeptime)
+            if not taken:
+                # Only sleep if we didn't take a task, otherwise retry immediately.
+                # The load-balancing code in getNextTask() will prevent a single builder
+                # from getting overloaded.
+                time.sleep(options.sleeptime)
         except (SystemExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
@@ -484,7 +489,7 @@ class BuildRoot(object):
     def getUploadPath(self):
         """Get the path that should be used when uploading files to
         the hub."""
-        return 'tasks/%i' % self.task_id
+        return koji.pathinfo.taskrelpath(self.task_id)
 
     def uploadDir(self, dirpath, suffix=None):
         """Upload the contents of the given directory to the
@@ -511,8 +516,13 @@ class BuildRoot(object):
         session.host.setBuildRootList(self.id,self.getPackageList())
 
     def _mockResult(self, rv):
-        return _parseStatus(rv, 'mock')
-    
+        if os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
+            logfile = 'build.log'
+        else:
+            logfile = 'root.log'
+        msg = '; see %s for more information' % logfile
+        return _parseStatus(rv, 'mock') + msg
+
     def build(self,srpm,arch=None):
         # run build
         session.host.setBuildRootState(self.id,'BUILDING')
@@ -525,7 +535,7 @@ class BuildRoot(object):
         session.host.updateBuildRootList(self.id,self.getPackageList())
         if rv:
             self.expire()
-            raise koji.BuildrootError, "error building package (arch %s), %s" % (arch, self._mockResult(rv))
+            raise koji.BuildError, "error building package (arch %s), %s" % (arch, self._mockResult(rv))
 
     def getPackageList(self):
         """Return a list of packages from the buildroot
@@ -897,7 +907,7 @@ class TaskManager(object):
         session.host.updateHost(self.task_load,self.ready)
         if not self.ready:
             self.logger.info("Not ready for task")
-            return
+            return False
         hosts, tasks = session.host.getLoadData()
         self.logger.debug("Load Data:")
         self.logger.debug("  hosts: %r" % hosts)
@@ -921,10 +931,10 @@ class TaskManager(object):
         self.logger.debug("bins: %r" % bins)
         if our_avail is None:
             self.logger.info("Server did not report this host. Are we disabled?")
-            return
+            return False
         elif not bins:
             self.logger.info("No bins for this host. Missing channel/arch config?")
-            return
+            return False
         #sort available capacities for each of our bins
         avail = {}
         for bin in bins.iterkeys():
@@ -939,7 +949,7 @@ class TaskManager(object):
                 if self.host_id == task['host_id']:
                     #assigned to us, we can take it regardless
                     if self.takeTask(task['id']):
-                        return
+                        return True
             elif task['state'] == koji.TASK_STATES['FREE']:
                 bin = "%(channel_id)s:%(arch)s" % task
                 self.logger.debug("task is free, bin=%r" % bin)
@@ -955,14 +965,14 @@ class TaskManager(object):
                 if our_avail < median:
                     self.logger.debug("Skipping - available capacity in lower half")
                     #decline for now and give the upper half a chance
-                    return
+                    return False
                 #otherwise, we attempt to open the task
                 if self.takeTask(task['id']):
-                    return
+                    return True
             else:
                 #should not happen
                 raise Exception, "Invalid task state reported by server"
-        return
+        return False
 
     def _waitTask(self, task_id, pid=None):
         """Wait (nohang) on the task, return true if finished"""
@@ -1282,7 +1292,7 @@ class BaseTaskHandler(object):
         # handle named parameters
         self.params,self.opts = koji.decode_args(*params)
         if workdir is None:
-            workdir = "%s/tasks/%s" % (options.workdir, id)
+            workdir = "%s/%s" % (options.workdir, koji.pathinfo.taskrelpath(id))
         self.workdir = workdir
         self.logger = logging.getLogger("koji.build.BaseTaskHandler")
 
@@ -1394,7 +1404,7 @@ class BaseTaskHandler(object):
         return dict(session.host.taskWaitResults(self.id,subtasks))
 
     def getUploadDir(self):
-        return 'tasks/%i' % self.id
+        return koji.pathinfo.taskrelpath(self.id)
 
     def uploadFile(self, filename, relPath=None, remoteName=None):
         """Upload the file with the given name to the task output directory
@@ -1560,16 +1570,22 @@ class ChainBuildTask(BaseTaskHandler):
         for build_level in srcs:
             subtasks = []
             build_tasks = []
+            nvrs = []
             for src in build_level:
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
+                                                   label=src,
                                                    parent=self.id)
                     build_tasks.append(task_id)
+                    subtasks.append(task_id)
                 else:
-                    task_id = session.host.subtask(method='waitrepo',
-                                                   arglist=[target, None, src],
-                                                   parent=self.id)
+                    nvrs.append(src)
+            if nvrs:
+                task_id = session.host.subtask(method='waitrepo',
+                                               arglist=[target, None, nvrs],
+                                               label=','.join(nvrs),
+                                               parent=self.id)
                 subtasks.append(task_id)
             if not subtasks:
                 continue
@@ -1584,6 +1600,7 @@ class ChainBuildTask(BaseTaskHandler):
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
                                                arglist=[target, None, nvrs],
+                                               label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
 
@@ -1821,11 +1838,27 @@ class BuildArchTask(BaseTaskHandler):
 
         #noarch is funny
         if arch == "noarch":
-            #use any arch this host can handle
-            host = session.host.getHost()
-            if host['arches'] is None:
+            #we need a buildroot arch. Pick one that:
+            #  a) this host can handle
+            #  b) the build tag can support
+            #  c) is canonical
+            host_arches = session.host.getHost()['arches']
+            if not host_arches:
                 raise koji.BuildError, "No arch list for this host"
-            br_arch = host['arches'].split()[0]
+            tag_arches = session.getBuildConfig(root)['arches']
+            if not tag_arches:
+                raise koji.BuildError, "No arch list for tag: %s" % build_tag
+            #index canonical host arches
+            host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
+            #pick the first suitable match from tag's archlist
+            for br_arch in tag_arches.split():
+                br_arch = koji.canonArch(br_arch)
+                if host_arches.has_key(br_arch):
+                    #we're done
+                    break
+            else:
+                #no overlap
+                raise koji.BuildError, "host does not match tag arches: %s (%s)" % (root, tag_arches)
         else:
             br_arch = arch
 
@@ -2059,7 +2092,7 @@ class BuildMavenTask(BaseTaskHandler):
         uploadpath = self.getUploadDir()
 
         # Check out sources from the SCM
-        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=False)
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile)
 
         # zip up pristine sources for auditing purposes
         self._zip_dir(sourcedir, outputdir + '/koji-task%i-sources.zip' % self.id)
@@ -2069,7 +2102,7 @@ class BuildMavenTask(BaseTaskHandler):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(options.allowed_scms)
-            patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog, use_common=False)
+            patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog)
             self._zip_dir(patchcheckoutdir, outputdir + '/koji-task%i-patches.zip' % self.id)
 
         # Set ownership of the entire source tree to the mock user
@@ -2246,7 +2279,7 @@ class WrapperRPMTask(BaseTaskHandler):
         logfile = os.path.join(self.workdir, 'checkout.log')
         scmdir = os.path.join(self.workdir, 'scmroot')
         koji.ensuredir(scmdir)
-        specdir = scm.checkout(scmdir, self.getUploadDir(), logfile, use_common=False)
+        specdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
 
         spec_template = None
         for path, dir, files in os.walk(specdir):
@@ -2413,7 +2446,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         uploadpath = self.getUploadDir()
 
         # Check out spec file, etc. from SCM
-        sourcedir = scm.checkout(scmdir, uploadpath, logfile, use_common=True)
+        sourcedir = scm.checkout(scmdir, uploadpath, logfile)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
@@ -2836,42 +2869,47 @@ class WaitrepoTask(BaseTaskHandler):
     _taskWeight = 0.2
 
     PAUSE = 60
-    # time in seconds before we fail this task
-    TIMEOUT = 7200
-    
-    def checkForNVR(self, tag, nvrs, repo_creation_event):
-        if not isinstance(nvrs, list):
-            nvrs = [nvrs]
-        nvr_list = [build['nvr'] for build in session.listTagged(tag, event=repo_creation_event, inherit=True)]
-        if not nvr_list:
-            return False
-        for nvr in nvrs:
-            if not nvr in nvr_list:
-                return False
-        return True
-    
-    def handler(self, build_target_info, newer_then=None, nvr=None):
+    # time in minutes before we fail this task
+    TIMEOUT = 120
+
+    def handler(self, build_target_info, newer_then=None, nvrs=None):
         start = time.time()
+
         build_target = session.getBuildTarget(build_target_info)
         if not build_target:
-            raise koji.GenericError("Error: Invalid BuildTarget: %s" % build_target_info)
+            raise koji.GenericError, "invalid build target: %s" % build_target_info
 
-        repo = None
-        last_repo = None
-        if not newer_then and not nvr:
+        if not nvrs:
+            nvrs = []
+        builds = [koji.parse_NVR(nvr) for nvr in nvrs]
+
+        if not newer_then and not builds:
             newer_then = time.time()
 
+        last_repo = None
+        repo = session.getRepo(build_target['build_tag'])
+
         while True:
-            repo = session.getRepo(build_target['build_tag_name'])
-            if repo and repo != last_repo:
-                if (not nvr or self.checkForNVR(build_target['dest_tag'], nvr, repo['create_event'])) and \
-                       (not newer_then or repo['create_ts'] > newer_then):
-                    break
-            if (time.time() - start) > self.TIMEOUT:
-                raise koji.GenericError("Waited %d seconds and still no repo meeting conditions, timing out" % self.TIMEOUT)
-            last_repo = repo
+            if builds and repo and repo != last_repo:
+                if koji.util.checkForBuilds(session, build_target['build_tag'], builds, repo['create_event']):
+                    return "Successfully waited %s for %s to appear in the %s repo" % \
+                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+            elif newer_then:
+                if repo['create_ts'] > newer_then:
+                    return "Successfully waited %s for a new %s repo" % \
+                        (koji.util.duration(start), build_target['build_tag_name'])
+
+            if (time.time() - start) > (self.TIMEOUT * 60.0):
+                if builds:
+                    raise koji.GenericError, "Unsuccessfully waited %s for %s to appear in the %s repo" % \
+                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+                else:
+                    raise koji.GenericError, "Unsuccessfully waited %s for a new %s repo" % \
+                        (koji.util.duration(start), build_target['build_tag_name'])
+
             time.sleep(self.PAUSE)
-        return "Successfully waited %s seconds for a %s repo (%s)" % (int(time.time() - start), build_target['build_tag_name'], repo['id'])
+            last_repo = repo
+            repo = session.getRepo(build_target['build_tag'])
 
 class SCM(object):
     "SCM abstraction class"
@@ -2910,6 +2948,8 @@ class SCM(object):
         - repository
         - module
         - revision
+        - use_common (defaults to True, may be set by assert_allowed())
+        - scmtype
 
         The exact format of each attribute is SCM-specific, but the structure of the url
         must conform to the template above, or an error will be raised.
@@ -2928,6 +2968,7 @@ class SCM(object):
         self.repository = path
         self.module = query
         self.revision = fragment
+        self.use_common = True
 
         for scmtype, schemes in SCM.types.items():
             if self.scheme in schemes:
@@ -2972,8 +3013,8 @@ class SCM(object):
         if query.endswith('/'):
             query = query[:-1]
 
-        # check for validity: params should be empty, everything else should be populated
-        if params or not (scheme and netloc and path and query and fragment):
+        # check for validity: params should be empty, query may be empty, everything else should be populated
+        if params or not (scheme and netloc and path and fragment):
             raise koji.GenericError, 'Unable to parse SCM URL: %s' % self.url
 
         # return parsed values
@@ -2984,30 +3025,35 @@ class SCM(object):
         Verify that the host and repository of this SCM is in the provided list of
         allowed repositories.
 
-        allowed is a space-separated list of host:repository tuples.  Incorrectly-formatted
+        allowed is a space-separated list of host:repository[:use_common] tuples.  Incorrectly-formatted
         tuples will be ignored.
+
+        If use_common is not present, kojid will attempt to checkout a common/ directory from the
+        repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
+        directory.
         """
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) == 2:
-                if self.host == scm_tuple[0] and self.repository == scm_tuple[1]:
+            if len(scm_tuple) in (2, 3):
+                if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
                     # SCM host:repository is in the allowed list
+                    # check if we specify a value for use_common
+                    if len(scm_tuple) == 3:
+                        if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
+                            self.use_common = False
                     break
             else:
-                # incorrectly-formatted tuple, ignore
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
         else:
-            raise koji.GenericError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
+            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
 
-    def checkout(self, scmdir, uploadpath, logfile, use_common=False):
+    def checkout(self, scmdir, uploadpath, logfile):
         """
         Checkout the module from SCM.  Accepts the following parameters:
 
          - scmdir: the working directory
          - uploadpath: the path on the server the logfile should be uploaded to
          - logfile: the file used for logging command output
-         - use_common: if True, also checkout a "common" module from the top-level of the repository
-                       and symlink it into the parent directory of the module checkout
 
         Returns the directory that the module was checked-out into (a subdirectory of scmdir)
         """
@@ -3015,6 +3061,7 @@ class SCM(object):
         sourcedir = '%s/%s' % (scmdir, self.module)
 
         update_checkout_cmd = None
+        update_checkout_dir = None
         env = None
 
         if self.scmtype == 'CVS':
@@ -3035,30 +3082,58 @@ class SCM(object):
             scheme = self.scheme
             if '+' in scheme:
                 scheme = scheme.split('+')[1]
-            common_path = 'common'
-            if self.module.endswith('/.git'):
+            gitrepo = '%s%s%s' % (scheme, self.host, self.repository)
+            commonrepo = os.path.dirname(gitrepo) + '/common'
+            checkout_path = os.path.basename(self.repository)
+            if self.repository.endswith('/.git'):
                 # If we're referring to the .git subdirectory of the main module,
                 # assume we need to do the same for the common module
-                common_path = 'common/.git'
+                checkout_path = os.path.basename(self.repository[:-5])
+                commonrepo = os.path.dirname(gitrepo[:-5]) + '/common/.git'
+            elif self.repository.endswith('.git'):
+                # If we're referring to a bare repository for the main module,
+                # assume we need to do the same for the common module
+                checkout_path = os.path.basename(self.repository[:-4])
+                commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
-            gitserver = '%s%s%s' % (scheme, self.host, self.repository)
-            module_checkout_cmd = ['git', 'clone', '-n', '%s/%s' % (gitserver, self.module), self.module]
-            common_checkout_cmd = ['git', 'clone', '%s/%s' % (gitserver, common_path)]
-            update_checkout_cmd = ['git', 'checkout', self.revision]
+            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, checkout_path]
+            common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
+            update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_dir = '%s/%s' % (scmdir, checkout_path)
+
+            sourcedir = '%s/%s' % (scmdir, checkout_path)
+            # self.module may be empty, in which case the specfile should be in the top-level directory
+            if self.module:
+                # Treat the module as a directory inside the git repository
+                sourcedir = '%s/%s' % (sourcedir, self.module)
 
         elif self.scmtype == 'GIT+SSH':
             if not self.user:
                 raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
-            common_path = 'common'
-            if self.module.endswith('/.git'):
+            gitrepo = 'git+ssh://%s@%s%s' % (self.user, self.host, self.repository)
+            commonrepo = os.path.dirname(gitrepo) + '/common'
+            checkout_path = os.path.basename(self.repository)
+            if self.repository.endswith('/.git'):
                 # If we're referring to the .git subdirectory of the main module,
                 # assume we need to do the same for the common module
-                common_path = 'common/.git'
+                checkout_path = os.path.basename(self.repository[:-5])
+                commonrepo = os.path.dirname(gitrepo[:-5]) + '/common/.git'
+            elif self.repository.endswith('.git'):
+                # If we're referring to a bare repository for the main module,
+                # assume we need to do the same for the common module
+                checkout_path = os.path.basename(self.repository[:-4])
+                commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
-            gitserver = 'ssh://%s@%s%s' % (self.user, self.host, self.repository)
-            module_checkout_cmd = ['git', 'clone', '-n', '%s/%s' % (gitserver, self.module), self.module]
-            common_checkout_cmd = ['git', 'clone', '%s/%s' % (gitserver, common_path)]
-            update_checkout_cmd = ['git', 'checkout', self.revision]
+            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, checkout_path]
+            common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
+            update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_dir = '%s/%s' % (scmdir, checkout_path)
+
+            sourcedir = '%s/%s' % (scmdir, checkout_path)
+            # self.module may be empty, in which case the specfile should be in the top-level directory
+            if self.module:
+                # Treat the module as a directory inside the git repository
+                sourcedir = '%s/%s' % (sourcedir, self.module)
 
         elif self.scmtype == 'SVN':
             scheme = self.scheme
@@ -3088,11 +3163,12 @@ class SCM(object):
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            if log_output(update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1, env=env):
+            if log_output(update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=update_checkout_dir,
+                          logerror=1, append=1, env=env):
                 raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
 
-        if use_common:
+        if self.use_common:
             if log_output(common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
                 raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))

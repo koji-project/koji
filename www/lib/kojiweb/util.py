@@ -25,6 +25,17 @@ def toggleOrder(template, sortKey, orderVar='order'):
     else:
         return sortKey
 
+def toggleSelected(template, var, option):
+    """
+    If the passed in variable var equals the literal value in option,
+    return 'selected="selected"', otherwise return ''.
+    Used for setting the selected option in select boxes.
+    """
+    if var == option:
+        return 'selected="selected"'
+    else:
+        return ''
+
 def sortImage(template, sortKey, orderVar='order'):
     """
     Return an html img tag suitable for inclusion in the sortKey of a sortable table,
@@ -57,6 +68,22 @@ def passthrough(template, *vars):
         return '&' + '&'.join(result)
     else:
         return ''
+
+def passthrough_except(template, *exclude):
+    """
+    Construct a string suitable for use as URL
+    parameters.  The template calling this method must have
+    previously used
+    #attr _PASSTHROUGH = ...
+    to define the list of variable names to be passed-through.
+    Any variables names passed in will be excluded from the 
+    list of variables in the output string.
+    """
+    passvars = []
+    for var in template._PASSTHROUGH:
+        if not var in exclude:
+            passvars.append(var)
+    return passthrough(template, *passvars)
 
 def sortByKeyFunc(key, noneGreatest=False):
     """Return a function to sort a list of maps by the given key.

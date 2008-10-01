@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # command line interface for the Koji build system
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2008 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -100,10 +100,13 @@ def get_options():
                       help=_("do not authenticate"))
     parser.add_option("--force-auth", action="store_true", default=False,
                       help=_("authenticate even for read-only operations"))
+    parser.add_option("--authtype", help=_("force use of a type of authentication, options: noauth, ssl, password, or kerberos"))
     parser.add_option("-d", "--debug", action="store_true", default=False,
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
                       help=_("show xmlrpc debug output"))
+    parser.add_option("-q", "--quiet", action="store_true", default=False,
+		      help=_("run quietly"))
     parser.add_option("--skip-main", action="store_true", default=False,
                       help=_("don't actually run main"))
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
@@ -146,18 +149,20 @@ def get_options():
         'topdir' : '/mnt/koji',
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
-        'serverca': '~/.koji/serverca.crt'
+        'serverca': '~/.koji/serverca.crt', 
+        'authtype': None
         }
     # grab settings from /etc/koji.conf first, and allow them to be
     # overridden by user config
+    progname = os.path.basename(sys.argv[0]) or 'koji'
     for configFile in ('/etc/koji.conf', os.path.expanduser(options.configFile)):
         if os.access(configFile, os.F_OK):
             f = open(configFile)
             config = ConfigParser.ConfigParser()
             config.readfp(f)
             f.close()
-            if config.has_section('koji'):
-                for name, value in config.items('koji'):
+            if config.has_section(progname):
+                for name, value in config.items(progname):
                     #note the defaults dictionary also serves to indicate which
                     #options *can* be set via the config file. Such options should
                     #not have a default value set in the option parser.
@@ -690,7 +695,7 @@ def handle_build(options, session, args):
             callback = None
         else:
             callback = _progress_callback
-        session.uploadWrapper(source, serverdir, callback=callback, blocksize=65536)
+        session.uploadWrapper(source, serverdir, callback=callback)
         print
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
@@ -888,12 +893,16 @@ def handle_resubmit(options, session, args):
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
     parser.add_option("--nowatch", action="store_true", dest="nowait",
             help=_("An alias for --nowait"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the task information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a task ID"))
         assert False
     activate_session(session)
     taskID = args[0]
+    if not options.quiet:
+        print "Resubmitting the following task:"
+        _printTaskInfo(session, int(taskID), 0, False, True)
     newID = session.resubmitTask(int(taskID))
     print "Resubmitted task %s as new task %s" % (taskID, newID)
     if _running_in_bg() or options.nowait:
@@ -1119,7 +1128,7 @@ def handle_import(options, session, args):
         else:
             print _("uploading %s...") % path,
             sys.stdout.flush()
-            session.uploadWrapper(path, serverdir, blocksize=65536)
+            session.uploadWrapper(path, serverdir)
             print _("done")
             sys.stdout.flush()
         print _("importing %s...") % path,
@@ -1302,6 +1311,15 @@ def handle_prune_signed_copies(options, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
     parser.add_option("-p", "--package", "--pkg", help=_("Limit to a single package"))
+    parser.add_option("-b", "--build", help=_("Limit to a single build"))
+    parser.add_option("-i", "--ignore-tag", action="append", default=[],
+                      help=_("Ignore these tags when considering whether a build is/was latest"))
+    parser.add_option("--ignore-tag-file",
+                      help=_("File to read tag ignore patterns from"))
+    parser.add_option("-r", "--protect-tag", action="append", default=[],
+                      help=_("Do not prune signed copies from matching tags"))
+    parser.add_option("--protect-tag-file",
+                      help=_("File to read tag protect patterns from"))
     parser.add_option("--trashcan-tag", default="trashcan", help=_("Specify trashcan tag"))
     parser.add_option("--debug", action="store_true", help=_("Show debugging output"))
     (options, args) = parser.parse_args(args)
@@ -1315,21 +1333,37 @@ def handle_prune_signed_copies(options, session, args):
     #for now, we're just implementing mode #1
     #(with the modification that we check to see if the build was latest within
     #the last N days)
+    if options.ignore_tag_file:
+        fo = file(options.ignore_tag_file)
+        options.ignore_tag.extend([line.strip() for line in fo.readlines()])
+        fo.close()
+    if options.protect_tag_file:
+        fo = file(options.protect_tag_file)
+        options.protect_tag.extend([line.strip() for line in fo.readlines()])
+        fo.close()
     if options.debug:
         options.verbose = True
     cutoff_ts = time.time() - options.days * 24 * 3600
     if options.debug:
         print "Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts))
-    if options.verbose:
-        print "Getting builds..."
-    qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
-    if options.package:
-        pkginfo = session.getPackage(options.package)
-        qopts['packageID'] = pkginfo['id']
-    builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
-    if options.verbose:
-        print "...got %i builds" % len(builds)
-    builds.sort()
+    if not options.build:
+        if options.verbose:
+            print "Getting builds..."
+        qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
+        if options.package:
+            pkginfo = session.getPackage(options.package)
+            qopts['packageID'] = pkginfo['id']
+        builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
+        if options.verbose:
+            print "...got %i builds" % len(builds)
+        builds.sort()
+    else:
+        #single build
+        binfo = session.getBuild(options.build)
+        if not binfo:
+            parser.error('No such build: %s' % options.build)
+            assert False
+        builds = [("%(name)s-%(version)s-%(release)s" % binfo, binfo)]
     total_files = 0
     total_space = 0
     def _histline(event_id, x):
@@ -1355,6 +1389,7 @@ def handle_prune_signed_copies(options, session, args):
             print "DEBUG: %s" % nvr
         #see how recently this build was latest for a tag
         is_latest = False
+        is_protected = False
         last_latest = None
         tags = {}
         for entry in session.tagHistory(build=binfo['id']):
@@ -1368,6 +1403,15 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print "Ignoring trashcan tag for build %s" % nvr
                 continue
+            ignore_tag = False
+            for pattern in options.ignore_tag:
+                if fnmatch.fnmatch(tag_name, pattern):
+                    if options.debug:
+                        print "Ignoring tag %s for build %s" % (tag_name, nvr)
+                    ignore_tag = True
+                    break
+            if ignore_tag:
+                continue
             #in order to determine how recently this build was latest, we have
             #to look at the tagging history.
             hist = session.tagHistory(tag=tag_name, package=binfo['name'])
@@ -1378,23 +1422,25 @@ def handle_prune_signed_copies(options, session, args):
             for x in hist:
                 #note that for revoked entries, we're effectively splitting them into
                 #two parts: creation and revocation.
-                timeline.append((x['create_event'], 0, x))
+                timeline.append((x['create_event'], 1, x))
+                #at the same event, revokes happen first
                 if x['revoke_event'] is not None:
-                    timeline.append((x['revoke_event'], 1, x))
+                    timeline.append((x['revoke_event'], 0, x))
             timeline.sort()
             #find most recent creation entry for our build and crop there
             latest_ts = None
             for i in xrange(len(timeline)-1, -1, -1):
                 #searching in reverse cronological order
-                event_id, revoked, entry = timeline[i]
-                if entry['build_id'] == binfo['id'] and not revoked:
+                event_id, is_create, entry = timeline[i]
+                if entry['build_id'] == binfo['id'] and is_create:
                     latest_ts = event_id
                     break
             if not latest_ts:
                 #really shouldn't happen
                 raise koji.GenericError, "No creation event found for %s in %s" % (nvr, tag_name)
+            our_entry = entry
             if options.debug:
-                print _histline(event_id, entry)
+                print _histline(event_id, our_entry)
             #now go through the events since most recent creation entry
             timeline = timeline[i+1:]
             if not timeline:
@@ -1402,10 +1448,33 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print "%s is latest in tag %s" % (nvr, tag_name)
                 break
+            #before we go any further, is this a protected tag?
+            protect_tag = False
+            for pattern in options.protect_tag:
+                if fnmatch.fnmatch(tag_name, pattern):
+                    protect_tag = True
+                    break
+            if protect_tag:
+                # we use the same time limit as for the latest calculation
+                # if this build was in this tag within that limit, then we will
+                # not prune its signed copies
+                if our_entry['revoke_event'] is None:
+                    #we're still tagged with a protected tag
+                    if options.debug:
+                        print "Build %s has protected tag %s" % (nvr, tag_name)
+                    is_protected = True
+                    break
+                elif our_entry['revoke_ts'] > cutoff_ts:
+                    #we were still tagged here sometime before the cutoff
+                    if options.debug:
+                        print "Build %s had protected tag %s until %s" \
+                                % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts'])))
+                    is_protected = True
+                    break
             replaced_ts = None
             revoke_ts = None
             others = {}
-            for event_id, revoked, entry in timeline:
+            for event_id, is_create, entry in timeline:
                 #So two things can knock this build from the title of latest:
                 #  - it could be untagged (entry revoked)
                 #  - another build could become latest (replaced)
@@ -1414,7 +1483,7 @@ def handle_prune_signed_copies(options, session, args):
                 if options.debug:
                     print _histline(event_id, entry)
                 if entry['build_id'] == binfo['id']:
-                    if not revoked:
+                    if is_create:
                         #shouldn't happen
                         raise koji.GenericError, "Duplicate creation event found for %s in %s" \
                                                     % (nvr, tag_name)
@@ -1423,7 +1492,7 @@ def handle_prune_signed_copies(options, session, args):
                         revoke_ts = entry['revoke_ts']
                         break
                 else:
-                    if not revoked:
+                    if is_create:
                         #this build has become latest
                         replaced_ts = entry['create_ts']
                         if entry['active']:
@@ -1479,6 +1548,8 @@ def handle_prune_signed_copies(options, session, args):
                 is_latest = True
                 break
         if is_latest:
+            continue
+        if is_protected:
             continue
         #not latest anywhere since cutoff, so we can remove all signed copies
         rpms = session.listRPMs(buildID=binfo['id'])
@@ -1833,7 +1904,7 @@ def anon_handle_latest_pkg(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--maven", action="store_true", default=False, help=_("Show Maven builds only"))
     (options, args) = parser.parse_args(args)
@@ -1903,7 +1974,7 @@ def anon_handle_latest_by_tag(options, session, args):
     usage = _("usage: %prog latest-by-tag [options] package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -1972,7 +2043,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     parser.add_option("--maven", action="store_true", help=_("Show Maven builds only"))
@@ -2010,7 +2081,6 @@ def anon_handle_list_tagged(options, session, args):
             build_idx = dict([(b['id'],b) for b in builds])
             for rinfo in data:
                 build = build_idx[rinfo['build_id']]
-                build['name'] = build['package_name']
                 builddir = pathinfo.build(build)
                 if options.sigs:
                     sigkey = rinfo['sigkey']
@@ -2271,7 +2341,7 @@ def anon_handle_list_hosts(options, session, args):
     parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
     parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
     parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     opts = {}
     activate_session(session)
@@ -2323,7 +2393,7 @@ def anon_handle_list_pkgs(options, session, args):
     parser.add_option("--owner", help=_("Specify owner"))
     parser.add_option("--tag", help=_("Specify tag"))
     parser.add_option("--package", help=_("Specify package"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
     parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
@@ -2352,7 +2422,11 @@ def anon_handle_list_pkgs(options, session, args):
         # no limiting clauses were specified
         allpkgs = True
     opts['inherited'] = not options.noinherit
-    opts['with_dups'] = options.show_dups
+    #hiding dups only makes sense if we're querying a tag
+    if options.tag:
+        opts['with_dups'] = options.show_dups
+    else:
+        opts['with_dups'] = True
     data = session.listPackages(**opts)
     if not data:
         print "(no matching packages)"
@@ -2806,12 +2880,36 @@ def handle_remove_target(options, session, args):
         return
     
     target = args[0]
-    id = session.getBuildTarget(target)
-    if not id:
+    target_info = session.getBuildTarget(target)
+    if not target_info:
         print "Build target %s does not exist" % target
         return 1
     
-    session.deleteBuildTarget(target)
+    session.deleteBuildTarget(target_info['id'])
+
+def handle_remove_tag(options, session, args):
+    "[admin] Remove a tag"
+    usage = _("usage: %prog remove-tag [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Please specify a tag to remove"))
+        assert False
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    tag = args[0]
+    tag_info = session.getTag(tag)
+    if not tag_info:
+        print "Tag %s does not exist" % tag
+        return 1
+
+    session.deleteTag(tag_info['id'])
 
 def anon_handle_list_targets(options, session, args):
     "List the build targets"
@@ -2819,7 +2917,7 @@ def anon_handle_list_targets(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--name", help=_("Specify the build target name"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -3135,7 +3233,7 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     files = session.listTaskOutput(task_id)
     logs = [filename for filename in files if filename.endswith('.log')]
     output = [filename for filename in files if not filename.endswith('.log')]
-    files_dir = '%s/tasks/%i' % (koji.pathinfo.work(), task_id)
+    files_dir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(task_id))
 
     owner = session.getUser(info['owner'])['name']
 
@@ -3628,6 +3726,8 @@ def anon_handle_show_groups(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--comps", action="store_true", help=_("Print in comps format"))
+    parser.add_option("-x", "--expand", action="store_true", default=False,
+                      help=_("Expand groups in comps format"))
     parser.add_option("--spec", action="store_true", help=_("Print build spec"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -3637,7 +3737,7 @@ def anon_handle_show_groups(options, session, args):
     tag = args[0]
     groups = session.getTagGroups(tag)
     if options.comps:
-        print koji.generate_comps(groups)
+        print koji.generate_comps(groups, expand_groups=options.expand)
     elif options.spec:
         print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
     else:
@@ -3705,7 +3805,7 @@ def handle_list_tasks(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"))
+    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -3988,7 +4088,9 @@ def anon_handle_download_build(options, session, args):
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
-    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"))
+    parser.add_option("--key", help=_("Download rpms signed with the given key"))
+    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"),
+                      default=options.quiet)
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a package N-V-R or build ID"))
@@ -4043,13 +4145,17 @@ def anon_handle_download_build(options, session, args):
     for rpm in rpms:
         if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
             continue
-        
-        fname = "%s-%s-%s.%s.rpm" % (rpm['name'], rpm['version'], rpm['release'], rpm['arch'])
-        url = "%s/%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], rpm['arch'], fname)
+
+        if suboptions.key:
+            fname = koji.pathinfo.signed(rpm, suboptions.key)
+        else:
+            fname = koji.pathinfo.rpm(rpm)
+
+        url = "%s/%s/%s/%s/%s" % (options.pkgurl, info['package_name'], info['version'], info['release'], fname)
 
         file = grabber.urlopen(url, progress_obj = pg, text = "%s.%s" % (rpm['name'], rpm['arch']))
 
-        out = os.open(fname, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+        out = os.open(os.path.basename(fname), os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
         try:
             while 1:
                 buf = file.read(4096)
@@ -4059,6 +4165,68 @@ def anon_handle_download_build(options, session, args):
         finally:
             os.close(out)
             file.close()
+
+def anon_handle_wait_repo(options, session, args):
+    "Wait for a repo to be regenerated"
+    usage = _("usage: %prog wait-repo [options] <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
+                      help=_("Check that the given build (or a later build of the same package) is in the newly-generated repo (may be used multiple times)"))
+    parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
+    parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
+    parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"))
+    (suboptions, args) = parser.parse_args(args)
+
+    start = time.time()
+
+    builds = [koji.parse_NVR(build) for build in suboptions.builds]
+    if len(args) < 1:
+        parser.error(_("Please specify a tag name"))
+    elif len(args) > 1:
+        parser.error(_("Only one tag may be specified"))
+
+    tag = args[0]
+
+    if suboptions.target:
+        target_info = session.getBuildTarget(tag)
+        if not target_info:
+            parser.error("Invalid build target: %s" % tag)
+        tag = target_info['build_tag_name']
+        tag_id = target_info['build_tag']
+    else:
+        tag_info = session.getTag(tag)
+        if not tag_info:
+            parser.error("Invalid tag: %s" % tag)
+        tag_id = tag_info['id']
+
+    last_repo = None
+    repo = session.getRepo(tag_id)
+
+    while True:
+        if builds and repo and repo != last_repo:
+            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event']):
+                if not suboptions.quiet:
+                    print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                return
+
+        time.sleep(60)
+        last_repo = repo
+        repo = session.getRepo(tag_id)
+
+        if not builds:
+            if repo != last_repo:
+                if not suboptions.quiet:
+                    print "Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+                return
+
+        if (time.time() - start) > (suboptions.timeout * 60.0):
+            if not suboptions.quiet:
+                if builds:
+                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                else:
+                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+            return 1
 
 def handle_help(options, session, args):
     "List available commands"
@@ -4091,7 +4259,8 @@ def list_commands(show_admin=False):
             desc = desc[8:]
         print "        %-20s %s" % (alias, desc)
     print _('(Type "koji --help" for help about global options')
-    print _(' or "koji <command> --help" for help about a particular command\'s options.)')
+    print _(' or "koji <command> --help" for help about a particular command\'s options')
+    print _(' or "koji help --admin" for help about privileged administrative commands.)')
 
 def error(msg=None, code=1):
     if msg:
@@ -4117,16 +4286,16 @@ def has_krb_creds():
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
-    if options.noauth:
+    if options.authtype == "noauth" or options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.cert):
+    elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
         session.ssl_login(options.cert, options.ca, options.serverca, proxyuser=options.runas)
-    elif options.user:
+    elif options.authtype == "password" or options.user and options.authtype is None:
         # authenticate using user/password
         session.login()
-    elif has_krb_creds():
+    elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
@@ -4136,7 +4305,7 @@ def activate_session(session):
             error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
         except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
-    if not options.noauth and not session.logged_in:
+    if not options.noauth and options.authtype != "noauth" and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:

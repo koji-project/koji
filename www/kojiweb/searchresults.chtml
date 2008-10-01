@@ -1,4 +1,5 @@
 #from kojiweb import util
+#import urllib
 
 #include "includes/header.chtml"
 
@@ -36,7 +37,9 @@
     #for $result in $results
     <tr class="$util.rowToggle($self)">
       <td>$result.id</td>
-      <td><a href="${infoURL % $result}">$result.name</a></td>
+      #set $quoted = $result.copy()
+      #silent $quoted['name'] = $urllib.quote($quoted['name'])
+      <td><a href="${infoURL % $quoted}">$result.name</a></td>
     </tr>
     #end for
     #else

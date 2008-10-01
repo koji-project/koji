@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for user $user.name</h4>
+  <h4>Information for user <a href="userinfo?userID=$user.id">$user.name</a></h4>
 
   <table>
     <tr>

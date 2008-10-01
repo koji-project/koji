@@ -139,7 +139,7 @@ def get_options():
             parser.error(_("No such file: %s") % cf)
             assert False
     else:
-        cf = '/etc/koji-gc.conf'
+        cf = '/etc/koji-gc/koji-gc.conf'
         if not os.access(cf, os.F_OK):
             cf = None
     if not cf:
@@ -503,7 +503,7 @@ def handle_trash():
                 #this might happen if the build was tagged just now
                 print "[%i/%i] Warning: build not untagged: %s" % (i, N, nvr)
                 continue
-            age = time.time() - last['revoke_event']
+            age = time.time() - last['revoke_ts']
         if age is not None and age < min_age:
             if options.debug:
                 print "[%i/%i] Build untagged only recently: %s" % (i, N, nvr)

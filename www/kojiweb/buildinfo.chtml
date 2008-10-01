@@ -4,7 +4,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for build $koji.buildLabel($build)</h4>
+  <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
 
   <table>
     <tr>
@@ -85,19 +85,43 @@
     <tr>
       <th>RPMs</th>
       <td class="container">
-        #if $len($rpms) > 0
+        #if $len($rpmsByArch) > 0
         <table class="nested">
-          #for $rpm in $rpms
+          #if $rpmsByArch.has_key('src')
+          <tr><th>src</th><th></th></tr>
+          #for $rpm in $rpmsByArch['src']
+          #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
+          #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
           <tr>
-            #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-            #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
+            <td></td>
+            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)</td>
+          </tr>
+          #end for
+          #end if
+          #set $arches = $rpmsByArch.keys()
+          #silent $arches.sort()
+          #for $arch in $arches
+          #if $arch == 'src'
+          #silent continue
+          #end if
+          <tr>
+            <th>$arch</th>
             <td>
-              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)
-              #if $task and $rpm.arch != 'src'
-              (<a href="$downloadBase/$nvrpath/data/logs/$rpm.arch/">build logs</a>)
+              #if $task
+              (<a href="$downloadBase/$nvrpath/data/logs/$arch/">build logs</a>)
               #end if
             </td>
           </tr>
+          #for $rpm in $rpmsByArch[$arch] + $debuginfoByArch.get($arch, [])
+          <tr>
+            #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
+            #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
+            <td></td>
+            <td>
+              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)
+            </td>
+          </tr>
+          #end for
           #end for
         </table>
         #else
