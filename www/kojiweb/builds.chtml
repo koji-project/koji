@@ -11,16 +11,6 @@
     <tr>
       <td colspan="#if $tag then '6' else '5'#">
         <table class="nested">
-        #if $tag
-        <tr><td>
-        <strong>Inherited</strong>:
-        </td><td>
-        <select name="inherited" class="filterlist" onchange="javascript: window.location = 'builds?inherited=' + this.value + '$util.passthrough_except($self, 'inherited')';">
-          <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
-          <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
-        </select>
-        </td></tr>
-        #end if
         <tr><td>
         <strong>State</strong>:
         </td><td>
@@ -30,8 +20,7 @@
           <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
           #end for
         </select>
-        </td></tr>
-        <tr><td>
+        </td><td>
         <strong>Built by</strong>:
         </td><td>
         <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough_except($self, 'userID')';">
@@ -51,7 +40,18 @@
           <option value="0" #if not $mavenonly then 'selected="selected"' else ''#>all</option>
           <option value="1" #if $mavenonly then 'selected="selected"' else ''#>Maven</option>
         </select>
-        </td></tr>
+        </td>
+        #if $tag
+        <td>
+        <strong>Inherited</strong>:
+        </td><td>
+        <select name="inherited" class="filterlist" onchange="javascript: window.location = 'builds?inherited=' + this.value + '$util.passthrough_except($self, 'inherited')';">
+          <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
+          <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
+        </select>
+        </td>
+        #end if
+        </tr>
         </table>
       </td>
     </tr>
