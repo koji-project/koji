@@ -1267,7 +1267,7 @@ class PathInfo(object):
 
     def task(self, task_id):
         """Return the output directory for the task with the given id"""
-        return self.work() + '/tasks/' + str(task_id)
+        return self.work() + '/' + self.taskrelpath(task_id)
 
 pathinfo = PathInfo()
 

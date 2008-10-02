@@ -2102,6 +2102,8 @@ class BuildMavenTask(BaseTaskHandler):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(options.allowed_scms)
+            # never try to check out a common/ dir when checking out patches
+            patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog)
             self._zip_dir(patchcheckoutdir, outputdir + '/koji-task%i-patches.zip' % self.id)
 
@@ -2116,8 +2118,10 @@ class BuildMavenTask(BaseTaskHandler):
 
         # Apply patches, if present
         if self.opts.get('patches'):
-            # filter out files/directories beginning with . (probably the scm metadata dir)
-            patches = [patch for patch in os.listdir(patchcheckoutdir) if not patch.startswith('.')]
+            # filter out directories and files beginning with . (probably scm metadata)
+            patches = [patch for patch in os.listdir(patchcheckoutdir) if \
+                           os.path.isfile(os.path.join(patchcheckoutdir, patch)) and \
+                           not patch.startswith('.')]
             if not patches:
                 raise koji.BuildError, 'no patches found at %s' % self.opts.get('patches')
             patches.sort()
