@@ -875,6 +875,9 @@ def buildinfo(req, buildID):
     rpms.sort(_sortbyname)
     mavenbuild = server.getMavenBuild(buildID)
     archives = server.listArchives(build['id'], queryOpts={'order': 'filename'})
+    archivesByExt = {}
+    for archive in archives:
+        archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
 
     rpmsByArch = {}
     debuginfoByArch = {}
@@ -897,6 +900,7 @@ def buildinfo(req, buildID):
     values['task'] = task
     values['mavenbuild'] = mavenbuild
     values['archives'] = archives
+    values['archivesByExt'] = archivesByExt
     
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])

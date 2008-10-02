@@ -134,17 +134,29 @@
       <th>Archives</th>
       <td class="container">
 	<table class="nested">
-	  #for $archive in $archives
+	  #set $exts = $archivesByExt.keys()
+	  #for ext in $exts
 	  <tr>
+	    <th>$ext</th>
+	    <td>
+	      #if $mavenbuild and $ext == 'pom'
+	      (<a href="$downloadBase/$nvrpath/data/logs/maven2/">build logs</a>)
+	      #end if
+	    </td>
+	  </tr>
+	  #for $archive in $archivesByExt[$ext]
+	  <tr>
+	    <td/>
 	    #if $mavenbuild
 	    #set $archiveurl = '%s/%s/%s/%s' % ($mavenBase, $mavenbuild.group_id.replace('.', '/'), $mavenbuild.artifact_id, $mavenbuild.version)
 	    #else
 	    #set $archiveurl = '%s/%s/%s/%s' % ($archiveBase, $build.name, $build.version, $build.release)
 	    #end if
 	    <td>
-	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>) #if $mavenbuild and $archive.filename.endswith('.pom') then '(<a href="%s/%s/data/logs/maven2/">build logs</a>)' % ($downloadBase, $nvrpath) else ''#
+	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
 	    </td>
 	  </tr>
+	  #end for
 	  #end for
 	</table>
       </td>
