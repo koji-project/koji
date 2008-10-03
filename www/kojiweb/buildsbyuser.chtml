@@ -7,11 +7,11 @@
     <tr>
       <td class="paginate" colspan="3">
         #if $len($userBuildPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'buildsbyuser?start=' + this.value * $userBuildRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $userBuildPages
-            <option value="$pageNum"#if $pageNum == $userBuildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $userBuildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -36,7 +36,7 @@
     #for $userBuild in $userBuilds
     <tr class="$util.rowToggle($self)">
       <td><a href="userinfo?userID=$userBuild.id">$userBuild.name</a></td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $userBuild.builds#" height="15" class="graphrow"/></td>
+      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $userBuild.builds#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$userBuild.builds</td>
     </tr>
     #end for
@@ -48,11 +48,11 @@
     <tr>
       <td class="paginate" colspan="3">
         #if $len($userBuildPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'buildsbyuser?start=' + this.value * $userBuildRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $userBuildPages
-            <option value="$pageNum"#if $pageNum == $userBuildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $userBuildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

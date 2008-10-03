@@ -30,7 +30,7 @@
         <select name="buildTag">
           <option value="">select tag</option>
           #for $tag in $tags
-          <option value="$tag.id"#if $target and $target.build_tag == $tag.id then ' selected' else ''#>$tag.name</option>
+          <option value="$tag.id"#if $target and $target.build_tag == $tag.id then ' selected="selected"' else ''#>$tag.name</option>
           #end for
         </select>
       </td>
@@ -41,7 +41,7 @@
         <select name="destTag">
           <option value="">select tag</option>
           #for $tag in $tags
-          <option value="$tag.id"#if $target and $target.dest_tag == $tag.id then ' selected' else ''#>$tag.name</option>
+          <option value="$tag.id"#if $target and $target.dest_tag == $tag.id then ' selected="selected"' else ''#>$tag.name</option>
           #end for
         </select>
       </td>
@@ -56,6 +56,7 @@
       </td>
       <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
     </tr>
-  </table>
+    </table>
+    </form>
 
 #include "includes/footer.chtml"

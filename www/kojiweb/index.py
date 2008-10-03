@@ -4,6 +4,7 @@ import re
 import sys
 import mod_python
 import mod_python.Cookie
+import Cheetah.Filters
 import Cheetah.Template
 import datetime
 import time
@@ -85,6 +86,16 @@ def _initValues(req, title='Build System Info', pageID='summary'):
 
     return values
 
+# Escape ampersands so the output can be valid XHTML
+class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
+    def filter(self, *args, **kw):
+        result = super(XHTMLFilter, self).filter(*args, **kw)
+        result = result.replace('&', '&amp;')
+        result = result.replace('&amp;nbsp;', '&nbsp;')
+        result = result.replace('&amp;lt;', '&lt;')
+        result = result.replace('&amp;gt;', '&gt;')
+        return result
+
 def _genHTML(req, fileName):
     os.chdir(os.path.dirname(req.filename))
 
@@ -93,7 +104,7 @@ def _genHTML(req, fileName):
     else:
         req._values['currentUser'] = None
         
-    return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter='EncodeUnicode').respond()
+    return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter=XHTMLFilter).respond()
 
 def _getServer(req):
     serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
