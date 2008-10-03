@@ -112,7 +112,6 @@ def _genHTML(req, fileName):
     if not tmpl_class:
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
-        mod_python.apache.log_error('Compiled template for ' + fileName)
     tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
     return str(tmpl_inst)
 
