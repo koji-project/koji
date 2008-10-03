@@ -25,7 +25,7 @@
       </tr>
       <tr>
         <th>Locked</th>
-        <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked' else ''#/></td>
+        <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked="checked"' else ''#/></td>
       </tr>
       <tr>
         <th>Permission</th>

@@ -40,13 +40,13 @@
       <tr>
         <th>Intransitive</th>
         <td>
-          <input type="checkbox" name="intransitive" value="yes" #if $inheritanceData and $inheritanceData.intransitive then 'checked' else ''#/>
+          <input type="checkbox" name="intransitive" value="yes" #if $inheritanceData and $inheritanceData.intransitive then 'checked="checked"' else ''#/>
         </td>
       </tr>
       <tr>
         <th>Packages Only</th>
         <td>
-          <input type="checkbox" name="noconfig" value="yes" #if $inheritanceData and $inheritanceData.noconfig then 'checked' else ''#/>
+          <input type="checkbox" name="noconfig" value="yes" #if $inheritanceData and $inheritanceData.noconfig then 'checked="checked"' else ''#/>
         </td>
       </tr>
       <tr>
