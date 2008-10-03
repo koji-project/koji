@@ -96,15 +96,25 @@ class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
         result = result.replace('&amp;gt;', '&gt;')
         return result
 
+TEMPLATES = {}
+
 def _genHTML(req, fileName):
-    os.chdir(os.path.dirname(req.filename))
+    reqdir = os.path.dirname(req.filename)
+    if os.getcwd() != reqdir:
+        os.chdir(reqdir)
 
     if hasattr(req, 'currentUser'):
         req._values['currentUser'] = req.currentUser
     else:
         req._values['currentUser'] = None
         
-    return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter=XHTMLFilter).respond()
+    tmpl_class = TEMPLATES.get(fileName)
+    if not tmpl_class:
+        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
+        TEMPLATES[fileName] = tmpl_class
+        mod_python.apache.log_error('Compiled template for ' + fileName)
+    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
+    return str(tmpl_inst)
 
 def _getServer(req):
     serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
