@@ -3,7 +3,7 @@
 
 #include "includes/header.chtml"
 
-  <div class="pageHeader">Welcome to Koji Web</div>
+  <div class="pageHeader">$welcomeMessage</div>
   
   <div class="dataHeader" id="buildlist">#if $user then 'Your ' else ''#Recent Builds</div>
   <table class="data-list">

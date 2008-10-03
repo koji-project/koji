@@ -1,9 +1,10 @@
 /* 
   Koji styling
-  Copyright (c) 2007 Red Hat, Inc.
+  Copyright (c) 2007,2008 Red Hat, Inc.
 
   Authors:
     Mike Bonnet <mikeb@redhat.com>
+    Mike McLean <mikem@redhat.com>
 */
 
 html {
@@ -58,7 +59,10 @@ a:hover {
 }
 
 #kojiLogo {
+    /* Used only for the koji logo icon */
     float: left;
+    width: 49px;
+    height: 40px;
 }
 
 div#content {
@@ -187,7 +191,10 @@ td.true {
 }
 
 img.sort {
+    /* used for up/down sort arrows*/
     vertical-align: baseline;
+    width: 10px;
+    height: 9px;
 }
 
 td.paginate {
