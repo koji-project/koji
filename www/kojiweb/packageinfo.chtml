@@ -20,11 +20,11 @@
           <tr>
             <td class="paginate" colspan="4">
               #if $len($buildPages) > 1
-              <form class="pageJump">
+              <form class="pageJump" action="">
                 Page:
                 <select onchange="javascript: window.location = 'packageinfo?buildStart=' + this.value * $buildRange + '$util.passthrough($self, 'packageID', 'buildOrder', 'tagOrder', 'tagStart')#buildlist';">
                   #for $pageNum in $buildPages
-                  <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>
@@ -68,11 +68,11 @@
           <tr>
             <td class="paginate" colspan="4">
               #if $len($tagPages) > 1
-              <form class="pageJump">
+              <form class="pageJump" action="">
                 Page:
                 <select onchange="javascript: window.location = 'packageinfo?tagStart=' + this.value * $tagRange + '$util.passthrough($self, 'packageID', 'tagOrder', 'buildOrder', 'buildStart')#taglist';">
                   #for $pageNum in $tagPages
-                  <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>

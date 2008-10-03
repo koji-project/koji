@@ -24,14 +24,14 @@
         <td><input type="text" name="arches" value="#if $tag then $tag.arches else ''#"/></td>
       </tr>
       <tr>
-        <th>Locked?</th>
-        <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked' else ''#>
+        <th>Locked</th>
+        <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked' else ''#/></td>
       </tr>
       <tr>
         <th>Permission</th>
         <td>
           <select name="permission">
-            <option value="none" #if $tag and not $tag.perm_id then 'selected' else ''#>none</option>
+            <option value="none" #if $tag and not $tag.perm_id then 'selected="selected"' else ''#>none</option>
             #for $permission in $permissions
             <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected' else ''#>$permission.name</option>
             #end for

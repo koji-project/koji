@@ -43,9 +43,9 @@ def sortImage(template, sortKey, orderVar='order'):
     """
     orderVal = template.getVar(orderVar)
     if orderVal == sortKey:
-        return '<img src="/koji-static/images/gray-triangle-up.gif" width="10" height="9" class="sort"/>'
+        return '<img src="/koji-static/images/gray-triangle-up.gif" width="10" height="9" class="sort" alt="ascending sort"/>'
     elif orderVal == '-' + sortKey:
-        return '<img src="/koji-static/images/gray-triangle-down.gif" width="10" height="9" class="sort"/>'
+        return '<img src="/koji-static/images/gray-triangle-down.gif" width="10" height="9" class="sort" alt="descending sort"/>'
     else:
         return ''
 

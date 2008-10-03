@@ -108,11 +108,11 @@ All
     <tr>
       <td class="paginate" colspan="6">
         #if $len($taskPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -167,11 +167,11 @@ All
     <tr>
       <td class="paginate" colspan="6">
         #if $len($taskPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

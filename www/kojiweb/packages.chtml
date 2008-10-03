@@ -36,11 +36,11 @@
     <tr>
       <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
         #if $len($packagePages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')';">
             #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -85,11 +85,11 @@
     <tr>
       <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
         #if $len($packagePages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited')';">
             #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
