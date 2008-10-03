@@ -40,11 +40,11 @@
       </tr>
       <tr>
         <th>Maven Support?</th>
-        <td><input type="checkbox" name="maven_support" value="yes" #if $tag and $tag.maven_support then 'checked' else ''#>
+        <td><input type="checkbox" name="maven_support" value="yes" #if $tag and $tag.maven_support then 'checked="checked"' else ''#>
       </tr>
       <tr>
         <th>Include All Maven Builds?</th>
-        <td><input type="checkbox" name="maven_include_all" value="yes" #if $tag and $tag.maven_include_all then 'checked' else ''#>
+        <td><input type="checkbox" name="maven_include_all" value="yes" #if $tag and $tag.maven_include_all then 'checked="checked"' else ''#>
       </tr>
       <tr>
         <td>
