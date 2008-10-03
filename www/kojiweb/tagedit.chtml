@@ -33,7 +33,7 @@
           <select name="permission">
             <option value="none" #if $tag and not $tag.perm_id then 'selected="selected"' else ''#>none</option>
             #for $permission in $permissions
-            <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected' else ''#>$permission.name</option>
+            <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected="selected"' else ''#>$permission.name</option>
             #end for
           </select>
         </td>
