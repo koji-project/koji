@@ -1109,7 +1109,7 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
     buildroots = server.listBuildroots(archiveID=archive['id'])
     buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
 
-    values['title'] = archive['name'] + ' | Archive Info'
+    values['title'] = archive['filename'] + ' | Archive Info'
 
     values['archiveID'] = archive['id']
     values['archive'] = archive
