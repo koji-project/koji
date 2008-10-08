@@ -43,7 +43,7 @@
 
         <!-- HEADER -->
         <div id="header">
-          <img src="/koji-static/images/koji.png" alt="Koji Logo" width="49" height="40" id="kojiLogo"/>
+          <img src="/koji-static/images/koji.png" alt="Koji Logo" id="kojiLogo"/>
           <form action="search" id="headerSearch">
             <input type="hidden" name="match" value="glob"/>
             <select name="type">

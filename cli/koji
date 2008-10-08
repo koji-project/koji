@@ -677,7 +677,9 @@ def handle_build(options, session, args):
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
     for key in ('skip_tag','scratch'):
-        opts[key] = getattr(build_opts,key)
+        val = getattr(build_opts, key)
+        if val is not None:
+            opts[key] = val
     priority = None
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT

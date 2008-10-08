@@ -251,6 +251,7 @@ def index(req, packageOrder='package_name', packageStart=None, buildOrder='-comp
         values['notifs'] = notifs
         
     values['user'] = user
+    values['welcomeMessage'] = req.get_options().get('KojiGreeting', 'Welcome to Koji Web')
     
     return _genHTML(req, 'index.chtml')
 
