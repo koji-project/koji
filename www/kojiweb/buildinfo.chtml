@@ -3,6 +3,7 @@
 #from kojiweb import util
 
 #include "includes/header.chtml"
+#set $nvrpath = '%(name)s/%(version)s/%(release)s' % $build
 
   <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
 
@@ -76,7 +77,6 @@
       <td class="container">
         #if $len($rpmsByArch) > 0
         <table class="nested">
-          #set $nvrpath = '%(name)s/%(version)s/%(release)s' % $build
           #if $rpmsByArch.has_key('src')
           <tr><th>src</th><th></th></tr>
           #for $rpm in $rpmsByArch['src']
