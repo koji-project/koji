@@ -515,8 +515,10 @@ class BuildRoot(object):
             raise koji.BuildrootError, "could not init mock buildroot, %s" % self._mockResult(rv)
         session.host.setBuildRootList(self.id,self.getPackageList())
 
-    def _mockResult(self, rv):
-        if os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
+    def _mockResult(self, rv, logfile=None):
+        if logfile:
+            pass
+        elif os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
             logfile = 'build.log'
         else:
             logfile = 'root.log'
@@ -579,7 +581,7 @@ class BuildRoot(object):
                     # Found a pom file, process it
                     try:
                         pom_info = koji.parse_pom(path=os.path.join(path, repofile))
-                        maven_files.append(repofile)
+                        maven_files.append({'filename': repofile})
                     except:
                         self.logger.error('Could not parse pom: %s' % repofile)
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
@@ -591,11 +593,30 @@ class BuildRoot(object):
                     # Maven throws these metadata files around all over the place, ignore them
                     continue
                 else:
-                    maven_files.append(repofile)
+                    maven_files.append({'filename': repofile})
             if pom_info:
                 packages.append({'pom': pom_info, 'files': maven_files})
             elif maven_files:
-                self.logger.error('Found files in repo with no associated .pom: %s' % ', '.join(maven_files))
+                # get the filesize and md5sum of the files so the hub might be able to identify them
+                # if the hub can't identify them, it'll throw an error (we don't want untracked files
+                # in the build environment)
+                orphan_info = []
+                for orphan in maven_files:
+                    orphan_path = os.path.join(path, orphan['filename'])
+                    orphan_size = os.stat(orphan_path).st_size
+                    sum = md5.new()
+                    orphan_fd = file(orphan_path)
+                    while True:
+                        contents = orphan_fd.read(65536)
+                        if contents:
+                            sum.update(contents)
+                        else:
+                            break
+                    orphan_fd.close()
+                    orphan_sum = sum.hexdigest()
+                    orphan_info.append({'filename': orphan['filename'], 'size': orphan_size,
+                                        'md5sum': orphan_sum})
+                packages.append({'pom': None, 'files': orphan_info})
 
         return packages
 
@@ -610,7 +631,7 @@ class BuildRoot(object):
         rv = self.mock(cmd + ['dependency:resolve-plugins'])
         if rv:
             self.expire()
-            raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv)
+            raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv, logfile='root.log')
 
         plugin_deps = self.getMavenPackageList(repodir)
         session.host.updateMavenBuildRootList(self.id, self.task_id, plugin_deps, project=False)
@@ -625,7 +646,7 @@ class BuildRoot(object):
                                               project=True)
         if rv:
             self.expire()
-            raise koji.BuildrootError, 'error building Maven package, %s' % self._mockResult(rv)
+            raise koji.BuildrootError, 'error building Maven package, %s' % self._mockResult(rv, logfile='root.log')
 
     def scrub(self):
         "Non-mock implementation of clean"

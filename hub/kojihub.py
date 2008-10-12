@@ -2732,7 +2732,8 @@ def get_maven_build(buildInfo=None, mavenInfo=None, strict=False):
     else:
         raise koji.GenericError, 'either buildInfo or mavenInfo must be specified'
 
-def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None, queryOpts=None):
+def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
+                  filename=None, size=None, md5sum=None, queryOpts=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -2740,6 +2741,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     If componentBuildrootID is not null it will restrict the list to archives that were present in the
       buildroot with that ID.
     If hostID is not null it will restrict the list to archives built on the host with that ID.
+    If filename, size, and/or md5sum are not null it will filter the results to entries matching the provided values.
 
     Returns a list of maps containing the following keys:
 
@@ -2803,6 +2805,15 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         values['host_id'] = hostID
         columns.append('buildroot.host_id')
         aliases.append('host_id')
+    if filename is not None:
+        clauses.append('filename = %(filename)s')
+        values['filename'] = filename
+    if size is not None:
+        clauses.append('size = %(size)i')
+        values['size'] = size
+    if md5sum is not None:
+        clauses.append('md5sum = %(md5sum)s')
+        values['md5sum'] = md5sum
 
     if type is None:
         pass
@@ -7178,32 +7189,55 @@ class HostExports(object):
         for entry in mavenlist:
             pom = entry['pom']
             files = entry['files']
-            maven_info = {'group_id': pom['groupId'],
-                          'artifact_id': pom['artifactId'],
-                          'version': pom['version']}
-            for filename in files:
-                archiveinfos = find_maven_archives(maven_info, filename)
+            if pom:
+                maven_info = {'group_id': pom['groupId'],
+                              'artifact_id': pom['artifactId'],
+                              'version': pom['version']}
+            for fileinfo in files:
+                filename = fileinfo['filename']
+                if pom:
+                    archiveinfos = find_maven_archives(maven_info, filename)
+                else:
+                    archiveinfos = list_archives(filename=filename, size=fileinfo['size'],
+                                                 md5sum=fileinfo['md5sum'])
                 if archiveinfos:
                     if len(archiveinfos) == 1:
                         archives.append(archiveinfos[0])
                     else:
-                        raise koji.BuildrootError, 'multiple matches for %s in %s; archive IDs: %s' % \
-                            (filename, koji.mavenLabel(maven_info), ', '.join([str(a['id']) for a in archiveinfos]))
+                        raise koji.BuildrootError, 'multiple matches for %s; archive IDs: %s' % \
+                            (filename, ', '.join([str(a['id']) for a in archiveinfos]))
                 else:
                     # check if it's in the ignore list
                     for ignore_entry in ignore:
                         ignore_pom = ignore_entry['pom']
                         ignore_files = ignore_entry['files']
-                        if pom['groupId'] == ignore_pom['groupId'] and \
-                                pom['artifactId'] == ignore_pom['artifactId'] and \
-                                pom['version'] == ignore_pom['version'] and \
-                                filename in ignore_files:
-                            # artifact is in the ignore list, don't bail out
-                            break
+                        if pom:
+                            if ignore_pom:
+                                if pom['groupId'] == ignore_pom['groupId'] and \
+                                        pom['artifactId'] == ignore_pom['artifactId'] and \
+                                        pom['version'] == ignore_pom['version'] and \
+                                        filename in [e['filename'] for e in ignore_files]:
+                                    # artifact is in the ignore list, don't bail out
+                                    break
+                        else:
+                            found = False
+                            if not ignore_pom:
+                                for ignore_file in ignore_files:
+                                    if filename == ignore_file['filename'] and \
+                                            fileinfo['size'] == ignore_file['size'] and \
+                                            fileinfo['md5sum'] == ignore_file['md5sum']:
+                                        found = True
+                                        break
+                            if found:
+                                break
                     else:
                         # artifact was not in the ignore list, raise an error
-                        raise koji.BuildrootError, 'unknown file in buildroot: %s; groupId: %s, artifactId: %s, version: %s' % \
-                            (filename, pom['groupId'], pom['artifactId'], pom['version'])
+                        if pom:
+                            raise koji.BuildrootError, 'unknown file in buildroot: %s; groupId: %s, artifactId: %s, version: %s' % \
+                                (filename, pom['groupId'], pom['artifactId'], pom['version'])
+                        else:
+                            raise koji.BuildrootError, 'unknown file in buildroot: %s; size: %s, md5sum: %s' % \
+                                (filename, fileinfo['size'], fileinfo['md5sum'])
 
         return br.updateArchiveList(archives, project)
 

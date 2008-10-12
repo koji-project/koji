@@ -644,6 +644,7 @@ CREATE TABLE archiveinfo (
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
 CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
+CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
 
 CREATE TABLE maven_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
