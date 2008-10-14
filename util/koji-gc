@@ -89,7 +89,7 @@ def get_options():
                       help=_("SSL certification file for authentication"))
     parser.add_option("--ca", default='/etc/koji-gc/clientca.crt',
                       help=_("SSL certification file for authentication"))
-    parser.add_option("--serverca", default='etc/koji-gc/serverca.crt',
+    parser.add_option("--serverca", default='/etc/koji-gc/serverca.crt',
                       help=_("SSL certification file for authentication"))
     parser.add_option("-n", "--test", action="store_true", default=False,
                       help=_("test mode"))
