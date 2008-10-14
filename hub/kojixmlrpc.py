@@ -370,6 +370,7 @@ def load_config(req):
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
+        ['DisableNotifications', 'boolean', False],
 
         ['Plugins', 'string', None],
         ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],

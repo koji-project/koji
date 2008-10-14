@@ -3580,6 +3580,8 @@ def get_notification_recipients(build, tag_id, state):
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
+    if context.opts.get('DisableNotifications'):
+        return
     if is_successful:
         state = koji.BUILD_STATES['COMPLETE']
     else:
@@ -3604,6 +3606,8 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
     return None
 
 def build_notification(task_id, build_id):
+    if context.opts.get('DisableNotifications'):
+        return
     build = get_build(build_id)
     target = _get_build_target(task_id)
 
