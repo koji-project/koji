@@ -466,6 +466,11 @@ def handle_trash():
                 print "[%i/%i] Build has %i rpm references: %s" % (i, N, len(refs['rpms']), nvr)
                 #pprint.pprint(refs['rpms'])
             continue
+        if refs['archives']:
+            if options.debug:
+                print "[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr)
+                #pprint.pprint(refs['archives'])
+            continue
         ts = refs['last_used']
         if ts:
             #work around server bug
