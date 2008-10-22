@@ -3723,7 +3723,7 @@ class QueryProcessor(object):
         if values:
             self.values = values
         else:
-            self.value = {}
+            self.values = {}
         if opts:
             self.opts = opts
         else:
@@ -5005,7 +5005,7 @@ class RootExports(object):
                                          the given date, in either float (seconds since the epoch)
                                          or str (ISO) format
         """
-        if opts is None:
+        if not opts:
             opts = {}
 
         tables = ['task']
