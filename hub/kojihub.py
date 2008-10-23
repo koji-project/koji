@@ -6228,6 +6228,17 @@ class HostExports(object):
                 os.unlink(src)
         repo_ready(repo_id)
         repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+        #make a latest link
+        latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
+        #XXX - this is a slight abuse of pathinfo
+        try:
+            if os.path.lexists(latestrepolink):
+                os.unlink(latestrepolink)
+            os.symlink(repodir, latestrepolink)
+        except OSError:
+            #making this link is nonessential
+            log_error("Unable to create latest link for repo: %s" % repodir)
+
 
     def isEnabled(self):
         host = Host()
