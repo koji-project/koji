@@ -3,7 +3,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  <h4>Information for buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></h4>
 
   <table>
     <tr>
@@ -44,10 +44,10 @@
       <th>Repo Created</th><td>$util.formatTimeLong($buildroot.repo_create_event_time)</td>
     </tr>
     <tr>
-      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
+      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&amp;type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
     </tr>
     <tr>
-      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
+      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&amp;type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
     </tr>
   </table>
 

@@ -12,11 +12,11 @@
     <tr>
       <td class="paginate" colspan="#if $type == 'component' then '2' else '1'#">
         #if $len($rpmPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'rpmlist?buildrootID=$buildroot.id&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $rpmPages
-            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -57,11 +57,11 @@
     <tr>
       <td class="paginate" colspan="#if $type == 'component' then '2' else '1'#">
         #if $len($rpmPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'rpmlist?buildrootID=$buildroot.id&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $rpmPages
-            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

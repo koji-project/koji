@@ -4,6 +4,7 @@ import re
 import sys
 import mod_python
 import mod_python.Cookie
+import Cheetah.Filters
 import Cheetah.Template
 import datetime
 import time
@@ -85,15 +86,34 @@ def _initValues(req, title='Build System Info', pageID='summary'):
 
     return values
 
+# Escape ampersands so the output can be valid XHTML
+class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
+    def filter(self, *args, **kw):
+        result = super(XHTMLFilter, self).filter(*args, **kw)
+        result = result.replace('&', '&amp;')
+        result = result.replace('&amp;nbsp;', '&nbsp;')
+        result = result.replace('&amp;lt;', '&lt;')
+        result = result.replace('&amp;gt;', '&gt;')
+        return result
+
+TEMPLATES = {}
+
 def _genHTML(req, fileName):
-    os.chdir(os.path.dirname(req.filename))
+    reqdir = os.path.dirname(req.filename)
+    if os.getcwd() != reqdir:
+        os.chdir(reqdir)
 
     if hasattr(req, 'currentUser'):
         req._values['currentUser'] = req.currentUser
     else:
         req._values['currentUser'] = None
         
-    return Cheetah.Template.Template(file=fileName, searchList=[req._values], filter='EncodeUnicode').respond()
+    tmpl_class = TEMPLATES.get(fileName)
+    if not tmpl_class:
+        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
+        TEMPLATES[fileName] = tmpl_class
+    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
+    return str(tmpl_inst)
 
 def _getServer(req):
     serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
@@ -111,10 +131,21 @@ def _getServer(req):
     req._session = session
     return session
 
+def _construct_url(req, page):
+    port = req.connection.local_addr[1]
+    url_scheme = 'http'
+    env = req.subprocess_env
+    if env.get('HTTPS') == 'on':
+        url_scheme = 'https'
+    if (url_scheme == 'https' and port == 443) or \
+        (url_scheme == 'http' and port == 80):
+        return "%s://%s%s" % (url_scheme, req.hostname, page)
+    return "%s://%s:%d%s" % (url_scheme, req.hostname, port, page)
+
 def _getBaseURL(req):
     pieces = req.uri.split('/')
     base = '/'.join(pieces[:-1])
-    return req.construct_url(base)
+    return _construct_url(req, base)
 
 def _redirectBack(req, page, forceSSL):
     if page:
@@ -129,7 +160,7 @@ def _redirectBack(req, page, forceSSL):
     if page.startswith('http'):
         pass
     elif page.startswith('/'):
-        page = req.construct_url(page)
+        page = _construct_url(req, page)
     else:
         page = _getBaseURL(req) + '/' + page
     if forceSSL:
@@ -220,6 +251,7 @@ def index(req, packageOrder='package_name', packageStart=None, buildOrder='-comp
         values['notifs'] = notifs
         
     values['user'] = user
+    values['welcomeMessage'] = req.get_options().get('KojiGreeting', 'Welcome to Koji Web')
     
     return _genHTML(req, 'index.chtml')
 
@@ -333,7 +365,12 @@ def hello(req):
 def showSession(req):
     return _getServer(req).showSession()
 
-def tasks(req, owner=None, state='active', method='all', hostID=None, start=None, order='-completion_time'):
+# Tasks that can exist without a parent
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
+# Tasks that can have children
+_PARENT_TASKS = ['build', 'chainbuild', 'newRepo']
+
+def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-completion_time'):
     values = _initValues(req, 'Tasks', 'tasks')
     server = _getServer(req)
 
@@ -351,9 +388,26 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
-    if state in ('active', 'toplevel') and method == 'all' and not hostID:
-        # If we're only showing active or toplevel tasks, and not filtering by host or method, only query the top-level tasks as well,
-        # and then retrieve the task children so we can do the nice tree display.
+    treeEnabled = True
+    if hostID or (method not in ['all'] + _PARENT_TASKS):
+        # force flat view if we're filtering by a hostID or a task that never has children
+        if view == 'tree':
+            view = 'flat'
+        # don't let them choose tree view either
+        treeEnabled = False
+    values['treeEnabled'] = treeEnabled
+
+    toplevelEnabled = True
+    if method not in ['all'] + _TOPLEVEL_TASKS:
+        # force flat view if we're viewing a task that is never a top-level task
+        if view == 'toplevel':
+            view = 'flat'
+        toplevelEnabled = False
+    values['toplevelEnabled'] = toplevelEnabled
+
+    values['view'] = view
+
+    if view == 'tree':
         treeDisplay = True
     else:
         treeDisplay = False
@@ -362,21 +416,19 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
     if method != 'all':
         opts['method'] = method
     values['method'] = method
+
+    if view in ('tree', 'toplevel'):
+        opts['parent'] = None
     
     if state == 'active':
         opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
-        if treeDisplay:
-            opts['parent'] = None
-    elif state == 'toplevel':
-        # Show all top-level tasks, no tree display
-        opts['parent'] = None
     elif state == 'all':
         pass
     else:
         # Assume they've passed in a state name
         opts['state'] = [koji.TASK_STATES[state.upper()]]
     values['state'] = state
-        
+
     if hostID:
         hostID = int(hostID)
         host = server.getHost(hostID, strict=True)
@@ -395,7 +447,7 @@ def tasks(req, owner=None, state='active', method='all', hostID=None, start=None
     tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': opts},
                                         start=start, dataName='tasks', prefix='task', order=order)
     
-    if treeDisplay:
+    if view == 'tree':
         server.multicall = True
         for task in tasks:
             server.getTaskDescendents(task['id'], request=True)
@@ -413,7 +465,9 @@ def taskinfo(req, taskID):
     task = server.getTaskInfo(taskID, request=True)
     if not task:
         raise koji.GenericError, 'invalid task ID: %s' % taskID
-    
+
+    values['title'] = koji.taskLabel(task) + ' | Task Info'
+
     values['task'] = task
     params = task['request']
     values['params'] = params
@@ -610,6 +664,9 @@ def packageinfo(req, packageID, tagOrder='name', tagStart=None, buildOrder='-com
     package = server.getPackage(packageID)
     if package == None:
         raise koji.GenericError, 'invalid package ID: %s' % packageID
+
+    values['title'] = package['name'] + ' | Package Info'
+
     values['package'] = package
     values['packageID'] = package['id']
     
@@ -627,6 +684,8 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
     if tagID.isdigit():
         tagID = int(tagID)
     tag = server.getTag(tagID, strict=True)
+
+    values['title'] = tag['name'] + ' | Tag Info'
 
     all = int(all)
 
@@ -827,6 +886,9 @@ def buildinfo(req, buildID):
     buildID = int(buildID)
     
     build = server.getBuild(buildID)
+
+    values['title'] = koji.buildLabel(build) + ' | Build Info'
+
     tags = server.listTags(build['id'])
     tags.sort(_sortbyname)
     rpms = server.listBuildRPMs(build['id'])
@@ -876,7 +938,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     server = _getServer(req)
 
     user = None
-    if userID != None:
+    if userID:
         if userID.isdigit():
             userID = int(userID)
         user = server.getUser(userID, strict=True)
@@ -889,7 +951,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
     tag = None
-    if tagID != None:
+    if tagID:
         if tagID.isdigit():
             tagID = int(tagID)
         tag = server.getTag(tagID, strict=True)
@@ -897,7 +959,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['tag'] = tag
 
     package = None
-    if packageID != None:
+    if packageID:
         if packageID.isdigit():
             packageID = int(packageID)
         package = server.getPackage(packageID, strict=True)
@@ -957,7 +1019,9 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
     if userID.isdigit():
         userID = int(userID)
     user = server.getUser(userID, strict=True)
-    
+
+    values['title'] = user['name'] + ' | User Info'
+
     values['user'] = user
     values['userID'] = userID
     
@@ -975,6 +1039,13 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
 
     rpmID = int(rpmID)
     rpm = server.getRPM(rpmID)
+
+    values['title'] = '%(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm + ' | RPM Info'
+    epochStr = ''
+    if rpm['epoch'] != None:
+        epochStr = '%s:' % rpm['epoch']
+    values['title'] = values['title'] % epochStr
+
     build = server.getBuild(rpm['build_id'])
     builtInRoot = None
     if rpm['buildroot_id'] != None:
@@ -1016,6 +1087,8 @@ def fileinfo(req, rpmID, filename):
     file = server.getRPMFile(rpmID, filename)
     if not file:
         raise koji.GenericError, 'no file %s in RPM %i' % (filename, rpmID)
+
+    values['title'] = file['name'] + ' | File Info'
 
     values['rpm'] = rpm
     values['file'] = file
@@ -1077,7 +1150,9 @@ def hostinfo(req, hostID=None, userID=None):
             raise koji.GenericError, 'invalid host ID: %s' % userID
     else:
         raise koji.GenericError, 'hostID or userID must be provided'
-    
+
+    values['title'] = host['name'] + ' | Host Info'
+
     channels = server.listChannels(host['id'])
     channels.sort(_sortbyname)
     buildroots = server.listBuildroots(hostID=host['id'],
@@ -1124,6 +1199,8 @@ def channelinfo(req, channelID):
     if channel == None:
         raise koji.GenericError, 'invalid channel ID: %i' % channelID
 
+    values['title'] = channel['name'] + ' | Channel Info'
+
     hosts = server.listHosts(channelID=channelID)
     hosts.sort(_sortbyname)
 
@@ -1138,6 +1215,9 @@ def buildrootinfo(req, buildrootID, builtStart=None, builtOrder=None, componentS
 
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
+
+    values['title'] = '%(tag_name)s-%(id)i-%(repo_id)i' % buildroot + ' | Buildroot Info'
+
     if buildroot == None:
         raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
@@ -1200,6 +1280,8 @@ def buildtargetinfo(req, targetID=None, name=None):
     
     if target == None:
         raise koji.GenericError, 'invalid build target: %s' % (targetID or name)
+
+    values['title'] = target['name'] + ' | Build Target Info'
 
     buildTag = server.getTag(target['build_tag'])
     destTag = server.getTag(target['dest_tag'])

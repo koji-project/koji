@@ -788,7 +788,7 @@ This is a meta-package that requires a defined group of packages
 """)
     return ''.join(data)
 
-def generate_comps(groups):
+def generate_comps(groups, expand_groups=False):
     """Generate comps content from groups data"""
     def boolean_text(x):
         if x:
@@ -803,6 +803,7 @@ def generate_comps(groups):
 <comps>
 """ ]
     groups = list(groups)
+    group_idx = dict([(g['name'],g) for g in groups])
     groups.sort(lambda a,b:cmp(a['name'],b['name']))
     for g in groups:
         group_id = g['name']
@@ -825,7 +826,7 @@ def generate_comps(groups):
 """ % boolean_text(True))
 
         #print grouplist, if any
-        if g['grouplist']:
+        if g['grouplist'] and not expand_groups:
             data.append(
 """    <grouplist>
 """)
@@ -851,6 +852,15 @@ def generate_comps(groups):
 """)
 
         #print packagelist, if any
+        def package_entry(pkg):
+            #p['package_id','type','basearchonly','requires','name']
+            name = pkg['package']
+            opts = 'type="%s"' % pkg['type']
+            if pkg['basearchonly']:
+                opts += ' basearchonly="%s"' % boolean_text(True)
+            if pkg['requires']:
+                opts += ' requires="%s"' % pkg['requires']
+            return "<packagereq %(opts)s>%(name)s</packagereq>" % locals()
         if g['packagelist']:
             data.append(
 """    <packagelist>
@@ -858,16 +868,44 @@ def generate_comps(groups):
             packagelist = list(g['packagelist'])
             packagelist.sort(lambda a,b:cmp(a['package'],b['package']))
             for p in packagelist:
-                #['package_id','type','basearchonly','requires','name']
-                name = p['package']
-                opts = 'type="%s"' % p['type']
-                if p['basearchonly']:
-                    opts += ' basearchonly="%s"' % boolean_text(True)
-                if p['requires']:
-                    opts += ' requires="%s"' % p['requires']
                 data.append(
-"""      <packagereq %(opts)s>%(name)s</packagereq>
-""" % locals())
+"""      %s
+""" % package_entry(p))
+            # also include expanded list, if needed
+            if expand_groups and g['grouplist']:
+                #add a requires entry for all packages in groups required by buildgroup
+                need = [req['name'] for req in g['grouplist']]
+                seen_grp = { g['name'] : 1}
+                seen_pkg = {}
+                for p in g['packagelist']:
+                    seen_pkg[p['package']] = 1
+                for group_name in need:
+                    if seen_grp.has_key(group_name):
+                        continue
+                    seen_grp[group_name] = 1
+                    group = group_idx.get(group_name)
+                    if group is None:
+                        data.append(
+"""      <!-- MISSING GROUP: %s -->
+""" % group_name)
+                        continue
+                    data.append(
+"""      <!-- Expanding Group: %s -->
+""" % group_name)
+                    pkglist = list(group['packagelist'])
+                    pkglist.sort(lambda a,b: cmp(a['package'], b['package']))
+                    for pkg in pkglist:
+                        pkg_name = pkg['package']
+                        if seen_pkg.has_key(pkg_name):
+                            continue
+                        data.append(
+"""      %s
+""" % package_entry(pkg))
+                    for req in group['grouplist']:
+                        req_name = req['name']
+                        if seen_grp.has_key(req_name):
+                            continue
+                        need.append(req_name)
             data.append(
 """    </packagelist>
 """)
@@ -1558,6 +1596,24 @@ def buildLabel(buildInfo, showEpoch=False):
     return '%s%s-%s-%s' % (epochStr, buildInfo['package_name'],
                            buildInfo['version'], buildInfo['release'])
 
+def _module_info(url):
+    module_info = ''
+    if '?' in url:
+        # extract the module path
+        module_info = url[url.find('?') + 1:url.find('#')]
+    # Find the first / after the scheme://
+    repo_start = url.find('/', url.find('://') + 3)
+    # Find the ? if present, otherwise find the #
+    repo_end = url.find('?')
+    if repo_end == -1:
+        repo_end = url.find('#')
+    repo_info = url[repo_start:repo_end]
+    rev_info = url[url.find('#') + 1:]
+    if module_info:
+        return '%s:%s:%s' % (repo_info, module_info, rev_info)
+    else:
+        return '%s:%s' % (repo_info, rev_info)
+
 def taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
     method = taskInfo['method']
@@ -1567,23 +1623,14 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             source, target = taskInfo['request'][:2]
             if '://' in source:
-                source = source[source.rfind('?') + 1:]
-                source = source.replace('/.git', '')
-                source = source.replace('/#', '#')
-                source = source.replace('#', ':')
-                source = source[source.rfind('/') + 1:]
+                module_info = _module_info(source)
             else:
-                source = os.path.basename(source)
-            extra = '%s, %s' % (target, source)
+                module_info = os.path.basename(source)
+            extra = '%s, %s' % (target, module_info)
     elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
         if taskInfo.has_key('request'):
             url = taskInfo['request'][0]
-            url = url[url.rfind('?') + 1:]
-            url = url.replace('/.git', '')
-            url = url.replace('/#', '#')
-            url = url.replace('#', ':')
-            url = url[url.rfind('/') + 1:]
-            extra = url
+            extra = _module_info(url)
     elif method == 'buildArch':
         if taskInfo.has_key('request'):
             srpm, tagID, arch = taskInfo['request'][:3]

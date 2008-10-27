@@ -7,11 +7,11 @@
     <tr>
       <td class="paginate" colspan="3">
         #if $len($userPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasksbyuser?start=' + this.value * $userRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $userPages
-            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -36,7 +36,7 @@
     #for $user in $users
     <tr class="$util.rowToggle($self)">
       <td><a href="userinfo?userID=$user.id">$user.name</a></td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $user.tasks#" height="15" class="graphrow"/></td>
+      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $user.tasks#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$user.tasks</td>
     </tr>
     #end for
@@ -48,11 +48,11 @@
     <tr>
       <td class="paginate" colspan="3">
         #if $len($userPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasksbyuser?start=' + this.value * $userRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $userPages
-            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

@@ -1,9 +1,10 @@
 /* 
   Koji styling
-  Copyright (c) 2007 Red Hat, Inc.
+  Copyright (c) 2007,2008 Red Hat, Inc.
 
   Authors:
     Mike Bonnet <mikeb@redhat.com>
+    Mike McLean <mikem@redhat.com>
 */
 
 html {
@@ -58,7 +59,10 @@ a:hover {
 }
 
 #kojiLogo {
+    /* Used only for the koji logo icon */
     float: left;
+    width: 49px;
+    height: 40px;
 }
 
 div#content {
@@ -81,6 +85,10 @@ p#footer a {
 
 .hide {
     display: none;
+}
+
+.disabled {
+    color: #808080;
 }
 
 #mainNav {
@@ -122,16 +130,16 @@ p#footer a {
     border-color: #ddd;
 }
 
-body#summary #mainNav li#summary a,
-body#tasks #mainNav li#tasks a,
-body#tags #mainNav li#tags a,
-body#builds #mainNav li#builds a,
-body#packages #mainNav li#packages a,
-body#users #mainNav li#users a,
-body#hosts #mainNav li#hosts a,
-body#buildtargets #mainNav li#buildtargets a,
-body#reports #mainNav li#reports a,
-body#search #mainNav li#search a {
+body#summary #mainNav li#summaryTab a,
+body#tasks #mainNav li#tasksTab a,
+body#tags #mainNav li#tagsTab a,
+body#builds #mainNav li#buildsTab a,
+body#packages #mainNav li#packagesTab a,
+body#users #mainNav li#usersTab a,
+body#hosts #mainNav li#hostsTab a,
+body#buildtargets #mainNav li#buildtargetsTab a,
+body#reports #mainNav li#reportsTab a,
+body#search #mainNav li#searchTab a {
     background-color: #eee;
     color: #000;
 }
@@ -183,7 +191,10 @@ td.true {
 }
 
 img.sort {
+    /* used for up/down sort arrows*/
     vertical-align: baseline;
+    width: 10px;
+    height: 9px;
 }
 
 td.paginate {
@@ -321,11 +332,13 @@ tr.list-header th {
 }
 
 tr.list-header th:first-child {
-    -moz-border-radius-topleft: 15px;
+    -moz-border-radius-topleft: 1em;
+    -webkit-border-top-left-radius: 1em;
 }
 
 tr.list-header th:last-child {
-    -moz-border-radius-topright: 15px;
+    -moz-border-radius-topright: 1em;
+    -webkit-border-top-right-radius: 1em;
 }
 
 tr.row-odd {

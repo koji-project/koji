@@ -1,4 +1,5 @@
 #from kojiweb import util
+#import urllib
 
 #include "includes/header.chtml"
 
@@ -8,11 +9,11 @@
     <tr>
       <td class="paginate" colspan="2">
         #if $len($resultPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'search?start=' + this.value * $resultRange + '$util.passthrough($self, 'order', 'terms', 'type', 'match')';">
             #for $pageNum in $resultPages
-            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -36,7 +37,9 @@
     #for $result in $results
     <tr class="$util.rowToggle($self)">
       <td>$result.id</td>
-      <td><a href="${infoURL % $result}">$result.name</a></td>
+      #set $quoted = $result.copy()
+      #silent $quoted['name'] = $urllib.quote($quoted['name'])
+      <td><a href="${infoURL % $quoted}">$result.name</a></td>
     </tr>
     #end for
     #else
@@ -47,11 +50,11 @@
     <tr>
       <td class="paginate" colspan="2">
         #if $len($resultPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'search?start=' + this.value * $resultRange + '$util.passthrough($self, 'order', 'terms', 'type', 'match')';">
             #for $pageNum in $resultPages
-            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

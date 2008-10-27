@@ -1,7 +1,7 @@
 #import koji
 #import random
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 #def greeting()
 #set $greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
@@ -43,7 +43,7 @@
 
         <!-- HEADER -->
         <div id="header">
-          <img src="/koji-static/images/koji.png" alt="Koji Logo" width="49" height="40" id="kojiLogo"/>
+          <img src="/koji-static/images/koji.png" alt="Koji Logo" id="kojiLogo"/>
           <form action="search" id="headerSearch">
             <input type="hidden" name="match" value="glob"/>
             <select name="type">
@@ -65,16 +65,16 @@
         <div id="mainNav">
           <h4 class="hide">Main Site Links:</h4>
           <ul>
-            <li id="summary"><a href="index">Summary</a></li>
-            <li id="packages"><a href="packages">Packages</a></li>
-            <li id="builds"><a href="builds">Builds</a></li>
-            <li id="tasks"><a href="tasks">Tasks</a></li>
-            <li id="tags"><a href="tags">Tags</a></li>
-            <li id="buildtargets"><a href="buildtargets">Build Targets</a></li>
-            <li id="users"><a href="users">Users</a></li>
-            <li id="hosts"><a href="hosts">Hosts</a></li>
-            <li id="reports"><a href="reports">Reports</a></li>
-            <li id="search"><a href="search">Search</a></li>
+            <li id="summaryTab"><a href="index">Summary</a></li>
+            <li id="packagesTab"><a href="packages">Packages</a></li>
+            <li id="buildsTab"><a href="builds">Builds</a></li>
+            <li id="tasksTab"><a href="tasks">Tasks</a></li>
+            <li id="tagsTab"><a href="tags">Tags</a></li>
+            <li id="buildtargetsTab"><a href="buildtargets">Build Targets</a></li>
+            <li id="usersTab"><a href="users">Users</a></li>
+            <li id="hostsTab"><a href="hosts">Hosts</a></li>
+            <li id="reportsTab"><a href="reports">Reports</a></li>
+            <li id="searchTab"><a href="search">Search</a></li>
           </ul>
         </div><!-- end mainNav -->
 

@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for host $host.name</h4>
+  <h4>Information for host <a href="hostinfo?hostID=$host.id">$host.name</a></h4>
 
   <table>
     <tr>

@@ -7,11 +7,11 @@
     <tr>
       <td class="paginate" colspan="6">
         #if $len($hostPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'hosts?start=' + this.value * $hostRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -54,11 +54,11 @@
     <tr>
       <td class="paginate" colspan="6">
         #if $len($hostPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'hosts?start=' + this.value * $hostRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

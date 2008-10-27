@@ -71,14 +71,14 @@ case "$1" in
   status)
         status $prog
         ;;
-  restart|reload)
+  restart|reload|force-reload)
         restart
         ;;
-  condrestart)
+  condrestart|try-restart)
         [ -f /var/lock/subsys/kojid ] && restart || :
         ;;
   *)
-        echo $"Usage: $0 {start|stop|status|restart|reload|condrestart}"
+	echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
         exit 1
 esac
 

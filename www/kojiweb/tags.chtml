@@ -7,11 +7,11 @@
     <tr>
       <td class="paginate" colspan="2">
         #if $len($tagPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tags?start=' + this.value * $tagRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'childID')';">
             #for $pageNum in $tagPages
-            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -46,11 +46,11 @@
     <tr>
       <td class="paginate" colspan="2">
         #if $len($tagPages) > 1
-        <form class="pageJump">
+        <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tags?start=' + this.value * $tagRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'childID')';">
             #for $pageNum in $tagPages
-            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

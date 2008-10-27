@@ -93,6 +93,7 @@ def get_options():
                       help=_("do not authenticate"))
     parser.add_option("--force-auth", action="store_true", default=False,
                       help=_("authenticate even for read-only operations"))
+    parser.add_option("--authtype", help=_("force use of a type of authentication, options: noauth, ssl, password, or kerberos"))
     parser.add_option("-d", "--debug", action="store_true", default=False,
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
@@ -141,7 +142,8 @@ def get_options():
         'topdir' : '/mnt/koji',
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
-        'serverca': '~/.koji/serverca.crt'
+        'serverca': '~/.koji/serverca.crt', 
+        'authtype': None
         }
     # grab settings from /etc/koji.conf first, and allow them to be
     # overridden by user config
@@ -673,7 +675,9 @@ def handle_build(options, session, args):
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
     for key in ('skip_tag', 'scratch', 'repo_id'):
-        opts[key] = getattr(build_opts,key)
+        val = getattr(build_opts, key)
+        if val is not None:
+            opts[key] = val
     priority = None
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
@@ -681,7 +685,7 @@ def handle_build(options, session, args):
     # try to check that source is an SRPM
     if '://' not in source:
         # only allow admins to perform non-scratch builds from srpm
-        if not opts['scratch'] and not session.hasPerm('admin'):
+        if not opts.get('scratch') and not session.hasPerm('admin'):
             parser.error(_("builds from srpm must use --scratch"))
             assert False
         #treat source as an srpm and upload it
@@ -2687,12 +2691,36 @@ def handle_remove_target(options, session, args):
         return
     
     target = args[0]
-    id = session.getBuildTarget(target)
-    if not id:
+    target_info = session.getBuildTarget(target)
+    if not target_info:
         print "Build target %s does not exist" % target
         return 1
     
-    session.deleteBuildTarget(target)
+    session.deleteBuildTarget(target_info['id'])
+
+def handle_remove_tag(options, session, args):
+    "[admin] Remove a tag"
+    usage = _("usage: %prog remove-tag [options] name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Please specify a tag to remove"))
+        assert False
+    activate_session(session)
+
+    if not session.hasPerm('admin'):
+        print "This action requires admin privileges"
+        return
+
+    tag = args[0]
+    tag_info = session.getTag(tag)
+    if not tag_info:
+        print "Tag %s does not exist" % tag
+        return 1
+
+    session.deleteTag(tag_info['id'])
 
 def anon_handle_list_targets(options, session, args):
     "List the build targets"
@@ -3491,6 +3519,8 @@ def anon_handle_show_groups(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--comps", action="store_true", help=_("Print in comps format"))
+    parser.add_option("-x", "--expand", action="store_true", default=False,
+                      help=_("Expand groups in comps format"))
     parser.add_option("--spec", action="store_true", help=_("Print build spec"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -3500,7 +3530,7 @@ def anon_handle_show_groups(options, session, args):
     tag = args[0]
     groups = session.getTagGroups(tag)
     if options.comps:
-        print koji.generate_comps(groups)
+        print koji.generate_comps(groups, expand_groups=options.expand)
     elif options.spec:
         print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
     else:
@@ -4049,16 +4079,16 @@ def has_krb_creds():
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
-    if options.noauth:
+    if options.authtype == "noauth" or options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.cert):
+    elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
         session.ssl_login(options.cert, options.ca, options.serverca, proxyuser=options.runas)
-    elif options.user:
+    elif options.authtype == "password" or options.user and options.authtype is None:
         # authenticate using user/password
         session.login()
-    elif has_krb_creds():
+    elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
@@ -4068,7 +4098,7 @@ def activate_session(session):
             error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
         except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
-    if not options.noauth and not session.logged_in:
+    if not options.noauth and options.authtype != "noauth" and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:

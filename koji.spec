@@ -2,15 +2,15 @@
 
 %define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
-%if x%{?testbuild} == x1
+%if "x%{?testbuild}" == "x1"
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.5
+Version: 1.2.6
 Release: %{release}%{?dist}
-License: LGPL
+License: LGPLv2
 Summary: Build system tools
 Group: Applications/System
 URL: http://fedorahosted.org/koji
@@ -110,6 +110,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-hub
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%config(noreplace) /etc/koji-hub/hub.conf
 
 %files utils
 %defattr(-,root,root)
@@ -138,6 +139,7 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
 %dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
+%{_datadir}/koji-builder
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder
@@ -163,6 +165,19 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Aug 25 2008 Mike McLean <mikem@redhat.com> 1.2.6-1
+- fix testbuild conditional [downstream]
+- fix license tag [downstream]
+- bump version
+- more robust client sessions
+- handle errors gracefully in web ui
+- koji-gc added to utils subpackage
+- skip sleep in kojid after taking a task
+- new dir layout for task workdirs (avoids large directories)
+- unified boolean option parsing in kojihub
+- new ServerOffline exception
+- other miscellaneous fixes
+
 * Fri Jan 25 2008 jkeating <jkeating@redhat.com> 1.2.5-1
 - Put createrepo arguments in correct order
 

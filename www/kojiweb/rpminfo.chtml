@@ -4,7 +4,7 @@
 
 #include "includes/header.chtml"
   #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
-  <h4>Information for RPM $rpm.name-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</h4>
+  <h4>Information for RPM <a href="rpminfo?rpmID=$rpm.id">$rpm.name-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</a></h4>
 
   <table>
     <tr>
@@ -46,7 +46,7 @@
         <table class="nested">
           #for $dep in $provides
           <tr>
-            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
           </tr>
           #end for
         </table>
@@ -62,7 +62,7 @@
         <table class="nested">
           #for $dep in $requires
           <tr>
-            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
           </tr>
           #end for
         </table>
@@ -78,7 +78,7 @@
         <table class="nested">
           #for $dep in $obsoletes
           <tr>
-            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
           </tr>
           #end for
         </table>
@@ -94,7 +94,7 @@
         <table class="nested">
           #for $dep in $conflicts
           <tr>
-            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
           </tr>
           #end for
         </table>
@@ -111,11 +111,11 @@
           <tr>
             <td class="paginate" colspan="2">
               #if $len($filePages) > 1
-              <form class="pageJump">
+              <form class="pageJump" action="">
                 Page:
                 <select onchange="javascript: window.location = 'rpminfo?fileStart=' + this.value * $fileRange + '$util.passthrough($self, 'rpmID', 'fileOrder')#filelist';">
                   #for $pageNum in $filePages
-                  <option value="$pageNum"#if $pageNum == $fileCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $fileCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>
@@ -135,7 +135,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>

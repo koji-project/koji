@@ -3,8 +3,9 @@
 #from kojiweb import util
 
 #include "includes/header.chtml"
+#set $nvrpath = '%(name)s/%(version)s/%(release)s' % $build
 
-  <h4>Information for build $koji.buildLabel($build)</h4>
+  <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
 
   <table>
     <tr>
@@ -80,7 +81,6 @@
           <tr><th>src</th><th></th></tr>
           #for $rpm in $rpmsByArch['src']
           #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-          #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
           <tr>
             <td></td>
             <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)</td>
@@ -104,7 +104,6 @@
           #for $rpm in $rpmsByArch[$arch] + $debuginfoByArch.get($arch, [])
           <tr>
             #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-            #set $nvrpath = '%(package_name)s/%(version)s/%(release)s' % $build
             <td></td>
             <td>
               $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)

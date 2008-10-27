@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # koji-gc: a garbage collection tool for Koji
-# Copyright (c) 2007 Red Hat
+# Copyright (c) 2007, 2008 Red Hat
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 import koji
+import koji.policy
 import ConfigParser
 from email.MIMEText import MIMEText
 import fnmatch
@@ -89,7 +90,7 @@ def get_options():
                       help=_("SSL certification file for authentication"))
     parser.add_option("--ca", default='/etc/koji-gc/clientca.crt',
                       help=_("SSL certification file for authentication"))
-    parser.add_option("--serverca", default='etc/koji-gc/serverca.crt',
+    parser.add_option("--serverca", default='/etc/koji-gc/serverca.crt',
                       help=_("SSL certification file for authentication"))
     parser.add_option("-n", "--test", action="store_true", default=False,
                       help=_("test mode"))
@@ -656,66 +657,39 @@ def handle_delete(just_salvage=False):
         #TODO - log details for delete failures
 
 
-class BasePruneTest(object):
-    """Abstract base class for pruning tests"""
-
-    #Provide the name of the test
-    name = None
-
-    def __init__(self, str):
-        """Read the test parameters from string"""
-        raise NotImplementedError
-
-    def run(self, data):
-        """Run the test against data provided"""
-        raise NotImplementedError
-
-    def __str__(self):
-        return "%s test handler" % self.name
-
-
-class TagPruneTest(BasePruneTest):
+class TagPruneTest(koji.policy.BaseSimpleTest):
 
     name = 'tag'
 
-    def __init__(self, str):
-        """Read the test parameters from string"""
-        self.patterns = str.split()[1:]
-
     def run(self, data):
-        for pat in self.patterns:
+        patterns = self.str.split()[1:]
+        for pat in patterns:
             if fnmatch.fnmatch(data['tagname'], pat):
                 return True
         return False
 
 
-class PackagePruneTest(BasePruneTest):
+class PackagePruneTest(koji.policy.BaseSimpleTest):
 
     name = 'package'
 
-    def __init__(self, str):
-        """Read the test parameters from string"""
-        self.patterns = str.split()[1:]
-
     def run(self, data):
-        for pat in self.patterns:
+        patterns = self.str.split()[1:]
+        for pat in patterns:
             if fnmatch.fnmatch(data['pkgname'], pat):
                 return True
         return False
 
 
-class SigPruneTest(BasePruneTest):
+class SigPruneTest(koji.policy.BaseSimpleTest):
 
     name = 'sig'
 
-    def __init__(self, str):
-        """Read the test parameters from string"""
-        self.patterns = str.split()[1:]
-
     def run(self, data):
         # true if any of the keys match any of the patterns
+        patterns = self.str.split()[1:]
         for key in data['keys']:
-            if sigmatch(key, self.patterns):
+            if sigmatch(key, patterns):
                 return True
         return False
 
@@ -736,7 +710,7 @@ def sigmatch(key, patterns):
     return False
 
 
-class OrderPruneTest(BasePruneTest):
+class OrderPruneTest(koji.policy.BaseSimpleTest):
 
     name = 'order'
 
@@ -751,6 +725,7 @@ class OrderPruneTest(BasePruneTest):
 
     def __init__(self, str):
         """Read the test parameters from string"""
+        super(OrderPruneTest, self).__init__(str)
         self.cmp, value = str.split(None, 3)[1:]
         self.func = self.cmp_idx.get(self.cmp, None)
         if self.func is None:
@@ -763,7 +738,7 @@ class OrderPruneTest(BasePruneTest):
         return self.func(data['order'], self.value)
 
 
-class AgePruneTest(BasePruneTest):
+class AgePruneTest(koji.policy.BaseSimpleTest):
 
     name = 'age'
 
@@ -778,6 +753,7 @@ class AgePruneTest(BasePruneTest):
 
     def __init__(self, str):
         """Read the test parameters from string"""
+        super(AgePruneTest, self).__init__(str)
         self.cmp, value = str.split(None, 2)[1:]
         self.func = self.cmp_idx.get(self.cmp, None)
         if self.func is None:
@@ -788,58 +764,6 @@ class AgePruneTest(BasePruneTest):
         return self.func(time.time() - data['ts'], self.span)
 
 
-class PruneRule(object):
-
-    def __init__(self, line=None):
-        self.line = line
-        self.tests = []
-        self.action = None
-        #find available tests
-        self.test_handlers = {}
-        for v in globals().values():
-            if type(v) == type(BasePruneTest) and issubclass(v, BasePruneTest):
-                self.test_handlers[v.name] = v
-        if line is not None:
-            self.parse_line(line)
-
-    def parse_line(self, line):
-        """Parse line as a pruning rule
-
-        Expected format is:
-        test [params] [&& test [params] ...] :: (keep|untag|skip)
-        """
-        line = line.split('#', 1)[0].strip()
-        if not line:
-            #blank or all comment
-            return
-        split1 = line.split('::')
-        if len(split1) != 2:
-            raise Exception, "bad policy line: %s" % line
-        tests, action = split1
-        tests = [x.strip() for x in tests.split('&&')]
-        action = action.strip().lower()
-        self.tests = []
-        for str in tests:
-            tname = str.split(None,1)[0]
-            handler = self.test_handlers[tname]
-            self.tests.append(handler(str))
-        valid_actions = ("keep", "untag", "skip")
-        #skip means to keep, but to ignore for the sake of order number
-        if action not in valid_actions:
-            raise Exception, "Invalid action: %s" % str
-        self.action = action
-
-    def apply(self, data):
-        for test in self.tests:
-            if not test.run(data):
-                return None
-        #else
-        return self.action
-
-    def __str__(self):
-        return "prune rule: %s" % self.line.rstrip()
-
-
 def read_policies(fn=None):
     """Read tag gc policies from file
 
@@ -847,13 +771,9 @@ def read_policies(fn=None):
         test [params] [&& test [params] ...] :: (keep|untag|skip)
     """
     fo = file(fn, 'r')
-    ret = []
-    for line in fo:
-        rule = PruneRule(line)
-        if rule.action:
-            ret.append(rule)
-            if options.debug:
-                print rule
+    tests = koji.policy.findSimpleTests(globals())
+    ret = koji.policy.SimpleRuleSet(fo, tests)
+    fo.close()
     return ret
 
 def scan_policies(str):
@@ -862,14 +782,8 @@ def scan_policies(str):
     The expected format as follows
         test [params] [&& test [params] ...] :: (keep|untag|skip)
     """
-    ret = []
-    for line in str.splitlines():
-        rule = PruneRule(line)
-        if rule.action:
-            ret.append(rule)
-            if options.debug:
-                print rule
-    return ret
+    tests = koji.policy.findSimpleTests(globals())
+    return koji.policy.SimpleRuleSet(str.splitlines(), tests)
 
 def get_build_sigs(build):
     rpms = session.listRPMs(buildID=build)
@@ -896,6 +810,11 @@ def handle_prune():
         return
     #policies = read_policies(options.policy_file)
     policies = scan_policies(options.config.get('prune', 'policy'))
+    for action in policies.all_actions():
+        if action not in ("keep", "untag", "skip"):
+            raise Exception, "Invalid action: %s" % action
+    if options.debug:
+        pprint.pprint(policies.ruleset)
     #get tags
     tags = [(t['name'], t) for t in session.listTags()]
     tags.sort()
@@ -905,8 +824,8 @@ def handle_prune():
                 print "Skipping trashcan tag: %s" % tagname
             continue
         if not check_tag(tagname):
-            if options.debug:
-                print "skipping tag due to filter: %s" % tagname
+            #if options.debug:
+            #    print "skipping tag due to filter: %s" % tagname
             continue
         bypass = False
         if taginfo['locked']:
@@ -923,7 +842,6 @@ def handle_prune():
                 continue
         if options.debug:
             print "Pruning tag: %s" % tagname
-        mypolicies = list(policies) # copy
         #get builds
         history = session.tagHistory(tag=tagname)
         if not history:
@@ -961,28 +879,26 @@ def handle_prune():
                     'keys' : keys,
                     'nvr' : nvr,
                     }
-                for policy in mypolicies:
-                    action = policy.apply(data)
-                    if not action:
-                        continue
-                    elif action == 'skip':
-                        skipped += 1
-                    if options.debug:
-                        print "%s: %s (%s, %s)" % (action, nvr, tagname, policy)
-                    if action == 'untag':
-                        if options.test:
-                            print "Would have untagged %s from %s" % (nvr, tagname)
-                        else:
-                            print "Untagging build %s from %s"  % (nvr, tagname)
-                            try:
-                                session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
-                            except (xmlrpclib.Fault, koji.GenericError), e:
-                                print "Warning: untag operation failed: %s" % e
-                                pass
-                    break
-                else:
+                action = policies.apply(data)
+                if action is None:
                     if options.debug:
                         print "No policy for %s (%s)" % (nvr, tagname)
+                if action == 'skip':
+                    skipped += 1
+                if options.debug:
+                    print policies.last_rule()
+                    print "%s: %s (%s, %i)" % (action, nvr, tagname, order)
+                if action == 'untag':
+                    if options.test:
+                        print "Would have untagged %s from %s" % (nvr, tagname)
+                    else:
+                        print "Untagging build %s from %s"  % (nvr, tagname)
+                        try:
+                            session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
+                        except (xmlrpclib.Fault, koji.GenericError), e:
+                            print "Warning: untag operation failed: %s" % e
+                            pass
+                # if action == 'keep' do nothing
 
 
 if __name__ == "__main__":
