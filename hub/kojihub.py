@@ -1783,6 +1783,7 @@ def repo_info(repo_id, strict=False):
         ('repo.id', 'id'),
         ('repo.state', 'state'),
         ('repo.create_event', 'create_event'),
+        ('events.time','creation_time'),  #for compatibility with getRepo
         ('EXTRACT(EPOCH FROM events.time)','create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
