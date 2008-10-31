@@ -379,6 +379,8 @@ def load_config(req):
         ['KojiTraceback', 'string', None],
         ['EnableFunctionDebug', 'boolean', False],
 
+        ['MissingPolicyOK', 'boolean', True],
+
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'string', False],
         ['OfflineMessage', 'string', None],

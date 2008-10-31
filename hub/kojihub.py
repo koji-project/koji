@@ -4024,9 +4024,12 @@ def check_policy(name, data, default='deny', strict=False):
     """
     ruleset = context.policy.get(name)
     if not ruleset:
-        result = default
+        if context.opts.get('MissingPolicyOk'):
+            # for backwards compatibility, this is the default
+            result = "allow"
+        else:
+            result = "deny"
         reason = "missing policy"
-        #XXX - maybe this should be an error condition
     else:
         result = ruleset.apply(data)
         if result is None:
