@@ -6193,6 +6193,9 @@ class HostExports(object):
             if row:
                 #return task id
                 return row[0]
+        if opts.has_key('kwargs'):
+            arglist = koji.encode_args(*arglist, **opts['kwargs'])
+            del opts['kwargs']
         return make_task(method,arglist,**opts)
 
     def subtask2(self,__parent,__taskopts,__method,*args,**opts):
