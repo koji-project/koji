@@ -1501,15 +1501,23 @@ class BuildTask(BaseTaskHandler):
         if opts.get('arch_override') and not opts.get('scratch'):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
         task_info = session.getTaskInfo(self.id)
-        # only allow admins to perform non-scratch builds from srpm
-        if not SCM.is_scm_url(src) and not opts.get('scratch') \
-               and not 'admin' in session.getUserPerms(task_info['owner']):
-            raise koji.BuildError, "only admins may peform non-scratch builds from srpm"
         target_info = session.getBuildTarget(target)
         if not target_info:
             raise koji.GenericError, 'unknown build target: %s' % target
         dest_tag = target_info['dest_tag']
         build_tag = target_info['build_tag']
+        if not SCM.is_scm_url(src) and not opts.get('scratch'):
+            #let hub policy decide
+            policy_data = {
+                'user_id' : task_info['owner'],
+                'source' : src,
+                'task_id' : self.id,
+                'target' : target['id'],
+                'build_tag' : build_tag,  #id
+            }
+            if not self.opts.get('skip_tag'):
+                policy_data['tag'] = dest_tag  #id
+            session.assertPolicy('build_from_srpm', policy_data)
         srpm = self.getSRPM(src)
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
