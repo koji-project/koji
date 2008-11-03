@@ -50,6 +50,16 @@ class FalseTest(BaseSimpleTest):
         return False
 
 
+class AllTest(TrueTest):
+    name = 'all'
+    #alias for true
+
+
+class NoneTest(FalseTest):
+    name = 'none'
+    #alias for false
+
+
 class MatchTest(BaseSimpleTest):
     """Matches a field in the data against glob patterns
 
