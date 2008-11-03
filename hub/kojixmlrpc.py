@@ -413,6 +413,11 @@ def load_config(req):
     if cf and config.has_section('policy'):
         #for the moment, we simply transfer the policy conf to opts
         opts['policy'] = dict(config.items('policy'))
+    else:
+        opts['policy'] = {}
+    opts['policy']
+    for pname, text in _default_policies.iteritems():
+        opts.setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
         koji.BASEDIR = opts['KojiDir']
@@ -436,6 +441,13 @@ def load_plugins(opts):
             opts['OfflineMessage'] = 'configuration error'
         sys.stderr.flush()
     return tracker
+
+_default_policies = {
+    'build_from_srpm' : '''
+            hasperm admin :: allow
+            all :: deny
+            ''',
+}
 
 def get_policy(opts, plugins):
     if not opts.get('policy'):
