@@ -4016,6 +4016,31 @@ def anon_handle_wait_repo(options, session, args):
                     print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
             return 1
 
+_search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'file')
+
+def anon_handle_search(options, session, args):
+    "Search koji"
+    usage = _("usage: %prog sync [options] search_type pattern")
+    usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
+    parser.add_option("--exact", action="store_true", help=_("exact matches only"))
+    main_options = options
+    (options, args) = parser.parse_args(args)
+    type = args[0]
+    if type not in _search_types:
+        parser.error(_("Unknown search type: %s") % type)
+    pattern = args[1]
+    matchType = 'glob'
+    if options.regex:
+        matchType = 'regexp'
+    elif options.exact:
+        matchType = 'exact'
+    data = session.search(pattern, type, matchType)
+    for row in data:
+        print row['name']
+
 def handle_help(options, session, args):
     "List available commands"
     usage = _("usage: %prog help [options]")
