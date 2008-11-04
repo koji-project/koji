@@ -3930,24 +3930,37 @@ class HasTagTest(koji.policy.BaseSimpleTest):
 class BuildTagTest(koji.policy.BaseSimpleTest):
     """Check the build tag of the build
 
-    Build tag is determined by the buildroots of the component rpms"""
+    If build_tag is not provided in policy data, it is determined by the
+    buildroots of the component rpms
+    """
     name = 'buildtag'
     def run(self, data):
-        #in theory, we should find only one unique build tag
-        #it is possible that some rpms could have been imported later and hence
-        #not have a buildroot.
-        #or if the entire build was imported, there will be no buildroots
-        rpms = context.handlers.call('listRPMs', buildID=data['build'])
-        args = self.str.split()[1:]
-        for rpminfo in rpms:
-            if rpminfo['buildroot_id'] is None:
-                continue
-            tagname = get_buildroot(rpminfo['buildroot_id'])['tag_name']
+        if data.has_key('build_tag'):
+            tagname = get_tag(data['build_tag'])
             for pattern in args:
                 if fnmatch.fnmatch(tagname, pattern):
                     return True
-        #otherwise...
-        return False
+            #else
+            return False
+        elif data.has_key('build'):
+            #determine build tag from buildroots
+            #in theory, we should find only one unique build tag
+            #it is possible that some rpms could have been imported later and hence
+            #not have a buildroot.
+            #or if the entire build was imported, there will be no buildroots
+            rpms = context.handlers.call('listRPMs', buildID=data['build'])
+            args = self.str.split()[1:]
+            for rpminfo in rpms:
+                if rpminfo['buildroot_id'] is None:
+                    continue
+                tagname = get_buildroot(rpminfo['buildroot_id'])['tag_name']
+                for pattern in args:
+                    if fnmatch.fnmatch(tagname, pattern):
+                        return True
+            #otherwise...
+            return False
+        else:
+            return False
 
 class ImportedTest(koji.policy.BaseSimpleTest):
     """Check if any part of a build was imported
@@ -3980,6 +3993,42 @@ class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
         #otherwise...
         return False
 
+class UserInGroupTest(koji.policy.BaseSimpleTest):
+    """Check if user is in group(s)
+
+    args are treated as patterns and matched against group name
+    true is user is in /any/ matching group
+    """
+    name = "user_in_group"
+    def run(self, data):
+        user = get_user(data['user_id'])
+        groups = koji.auth.get_user_groups(user['id'])
+        args = self.str.split()[1:]
+        for group_id, group in groups.iteritems():
+            for pattern in args:
+                if fnmatch.fnmatch(group, pattern):
+                    return True
+        #otherwise...
+        return False
+
+class HasPermTest(koji.policy.BaseSimpleTest):
+    """Check if user has permission(s)
+
+    args are treated as patterns and matched against permission name
+    true is user has /any/ matching permission
+    """
+    name = "has_perm"
+    def run(self, data):
+        user = get_user(data['user_id'])
+        perms = koji.auth.get_user_perms(user['id'])
+        args = self.str.split()[1:]
+        for perm in perms:
+            for pattern in args:
+                if fnmatch.fnmatch(perm, pattern):
+                    return True
+        #otherwise...
+        return False
+
 class SourceTest(koji.policy.MatchTest):
     """Match build source
 
@@ -3989,14 +4038,20 @@ class SourceTest(koji.policy.MatchTest):
     name = "source"
     field = '_source'
     def run(self, data):
-        build = get_build(data['build'])
-        if build['task_id'] is None:
-            #imported, no source to match against
+        if data.has_key('source'):
+            data[self.field] = data['source']
+        elif data.has_key('build'):
+            #crack open the build task
+            build = get_build(data['build'])
+            if build['task_id'] is None:
+                #imported, no source to match against
+                return False
+            task = Task(build['task_id'])
+            params = task.getRequest()
+            #signature is (src, target, opts=None)
+            data[self.field] = params[0]
+        else:
             return False
-        task = Task(build['task_id'])
-        params = task.getRequest()
-        #signature is (src, target, opts=None)
-        data[self.field] = params[0]
         return super(SourceTest, self).run(data)
 
 class PolicyTest(koji.policy.BaseSimpleTest):
@@ -4049,9 +4104,12 @@ def check_policy(name, data, default='deny', strict=False):
     """
     ruleset = context.policy.get(name)
     if not ruleset:
-        result = default
+        if context.opts.get('MissingPolicyOk'):
+            # for backwards compatibility, this is the default
+            result = "allow"
+        else:
+            result = "deny"
         reason = "missing policy"
-        #XXX - maybe this should be an error condition
     else:
         result = ruleset.apply(data)
         if result is None:
@@ -6396,12 +6454,12 @@ class HostExports(object):
         rpmfile = '%s/%s' % (koji.pathinfo.work(), rpmfile)
         import_changelog(build, rpmfile, replace=True)
 
-    def checkPolicy(name, data, default='deny', strict=False):
+    def checkPolicy(self, name, data, default='deny', strict=False):
         host = Host()
         host.verify()
         return check_policy(name, data, default=default, strict=strict)
 
-    def assertPolicy(name, data, default='deny'):
+    def assertPolicy(self, name, data, default='deny'):
         host = Host()
         host.verify()
         check_policy(name, data, default=default, strict=True)
