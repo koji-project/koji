@@ -1525,6 +1525,8 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
         if opts.get('repo_id') is not None:
             repo_info = session.repoInfo(opts['repo_id'])
+            if not repo_info:
+                raise koji.BuildError, 'No such repo: %s' % opts['repo_id']
             repo_state = koji.REPO_STATES[repo_info['state']]
             if repo_state not in ('READY', 'EXPIRED'):
                 raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
