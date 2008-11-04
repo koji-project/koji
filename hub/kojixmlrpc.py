@@ -415,9 +415,8 @@ def load_config(req):
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
-    opts['policy']
     for pname, text in _default_policies.iteritems():
-        opts.setdefault(pname, text)
+        opts['policy'].setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
         koji.BASEDIR = opts['KojiDir']
@@ -444,7 +443,7 @@ def load_plugins(opts):
 
 _default_policies = {
     'build_from_srpm' : '''
-            hasperm admin :: allow
+            has_perm admin :: allow
             all :: deny
             ''',
 }

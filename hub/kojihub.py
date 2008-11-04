@@ -6425,12 +6425,12 @@ class HostExports(object):
         rpmfile = '%s/%s' % (koji.pathinfo.work(), rpmfile)
         import_changelog(build, rpmfile, replace=True)
 
-    def checkPolicy(name, data, default='deny', strict=False):
+    def checkPolicy(self, name, data, default='deny', strict=False):
         host = Host()
         host.verify()
         return check_policy(name, data, default=default, strict=strict)
 
-    def assertPolicy(name, data, default='deny'):
+    def assertPolicy(self, name, data, default='deny'):
         host = Host()
         host.verify()
         check_policy(name, data, default=default, strict=True)
