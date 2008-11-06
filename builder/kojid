@@ -305,7 +305,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id)
 
-    def _new(self, tag, arch, task_id, distribution=None):
+    def _new(self, tag, arch, task_id, distribution=None, repo_id=None):
         """Create a brand new repo"""
         self.task_id = task_id
         self.distribution = distribution
@@ -318,12 +318,26 @@ class BuildRoot(object):
             raise koji.BuildrootError("Could not get config info for tag: %s" % tag)
         self.tag_id = self.config['id']
         self.tag_name = self.config['name']
-        while 1:
-            repo_info = session.getRepo(self.tag_id)
-            if repo_info and repo_info['state'] == koji.REPO_READY:
-                break
-            self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
-            time.sleep(5)
+        if repo_id is None:
+            #use current active repo for tag, waiting if necessary
+            while 1:
+                repo_info = session.getRepo(self.tag_id)
+                if repo_info and repo_info['state'] == koji.REPO_READY:
+                    break
+                self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
+                time.sleep(30)
+        else:
+            repo_info = session.repoInfo(repo_id)
+            if self.config['id'] != repo_info['tag_id']:
+                raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
+                        % (self.config['name'], repo_info['tag_name'])
+            repo_state = koji.REPO_STATES[repo_info['state']]
+            if repo_state == 'EXPIRED':
+                # This should be ok. Expired repos are still intact, just not
+                # up-to-date (which may be the point in some cases).
+                self.logger.info("Requested repo (%i) is no longer current" % repo_id)
+            elif repo_state != 'READY':
+                raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
         self.repoid = repo_info['id']
         self.br_arch = koji.canonArch(arch)
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
@@ -1330,6 +1344,12 @@ class BaseTaskHandler(object):
             fn = "%s/%s" % (options.topdir, relpath)
         return fn
 
+    def subtask(self, method, arglist, **opts):
+        return session.host.subtask(method, arglist, self.id, **opts)
+
+    def subtask2(self, __taskopts, __method, *args, **kwargs):
+        return session.host.subtask2(self.id, __taskopts, __method, *args, **kwargs)
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
@@ -1450,6 +1470,9 @@ class ChainBuildTask(BaseTaskHandler):
     def handler(self, srcs, target, opts=None):
         if opts.get('scratch'):
             raise koji.BuildError, "--scratch is not allowed with chain-builds"
+        target_info = session.getBuildTarget(target)
+        if not target_info:
+            raise koji.GenericError, 'unknown build target: %s' % target
         for build_level in srcs:
             subtasks = []
             build_tasks = []
@@ -1466,7 +1489,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(src)
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target, None, nvrs],
+                                               arglist=[target['build_tag'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 subtasks.append(task_id)
@@ -1482,7 +1505,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target, None, nvrs],
+                                               arglist=[target['build_tag'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
@@ -1500,24 +1523,60 @@ class BuildTask(BaseTaskHandler):
         self.opts = opts
         if opts.get('arch_override') and not opts.get('scratch'):
             raise koji.BuildError, "arch_override is only allowed for scratch builds"
+        if opts.get('repo_id') is not None:
+            repo_info = session.repoInfo(opts['repo_id'])
+            if not repo_info:
+                raise koji.BuildError, 'No such repo: %s' % opts['repo_id']
+            repo_state = koji.REPO_STATES[repo_info['state']]
+            if repo_state not in ('READY', 'EXPIRED'):
+                raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
+        else:
+            repo_info = None
+            #we'll wait for a repo later (self.getRepo)
         task_info = session.getTaskInfo(self.id)
-        target_info = session.getBuildTarget(target)
-        if not target_info:
-            raise koji.GenericError, 'unknown build target: %s' % target
-        dest_tag = target_info['dest_tag']
-        build_tag = target_info['build_tag']
+        target_info = None
+        if target:
+            target_info = session.getBuildTarget(target)
+        if target_info:
+            dest_tag = target_info['dest_tag']
+            build_tag = target_info['build_tag']
+            if repo_info is not None:
+                #make sure specified repo matches target
+                if repo_info['tag_id'] != target_info['build_tag']:
+                    raise koji.BuildError, 'Repo/Target mismatch: %s/%s' \
+                            % (repo_info['tag_name'], target_info['build_tag_name'])
+        else:
+            # if repo_id is specified, we can allow the 'target' arg to simply specify
+            # the destination tag (since the repo specifies the build tag).
+            if repo_info is None:
+                raise koji.GenericError, 'unknown build target: %s' % target
+            build_tag = repo_info['tag_id']
+            if target is None:
+                #ok, call it skip-tag for the buildroot tag
+                self.opts['skip_tag'] = True
+                dest_tag = build_tag
+            else:
+                taginfo = session.getTag(target)
+                if not taginfo:
+                    raise koji.GenericError, 'neither tag nor target: %s' % target
+                dest_tag = taginfo['id']
+        #policy checks...
+        policy_data = {
+            'user_id' : task_info['owner'],
+            'source' : src,
+            'task_id' : self.id,
+            'build_tag' : build_tag,  #id
+        }
+        if target_info:
+            policy_data['target'] = target_info['id'],
+        if not self.opts.get('skip_tag'):
+            policy_data['tag'] = dest_tag  #id
         if not SCM.is_scm_url(src) and not opts.get('scratch'):
             #let hub policy decide
-            policy_data = {
-                'user_id' : task_info['owner'],
-                'source' : src,
-                'task_id' : self.id,
-                'target' : target['id'],
-                'build_tag' : build_tag,  #id
-            }
-            if not self.opts.get('skip_tag'):
-                policy_data['tag'] = dest_tag  #id
-            session.assertPolicy('build_from_srpm', policy_data)
+            session.host.assertPolicy('build_from_srpm', policy_data)
+        if opts.get('repo_id') is not None:
+            # use of this option is governed by policy
+            session.host.assertPolicy('build_from_repo_id', policy_data)
         srpm = self.getSRPM(src)
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
@@ -1545,8 +1604,10 @@ class BuildTask(BaseTaskHandler):
             build_id = session.host.initBuild(data)
             session.host.importChangelog(build_id, srpm)
         #(initBuild raises an exception if there is a conflict)
+        if not repo_info:
+            repo_info = self.getRepo(build_tag)  #(subtask)
         try:
-            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist)
+            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
             if opts.get('scratch'):
                 #scratch builds do not get imported
                 session.host.moveBuildToScratch(self.id,srpm,rpms,logs=logs)
@@ -1645,13 +1706,24 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, "No matching arches were found"
         return archdict.keys()
 
-    def runBuilds(self, srpm, build_tag, archlist):
+    def getRepo(self, tag):
+        """Get repo to use for builds"""
+        repo_info = session.getRepo(tag)
+        if not repo_info:
+            #wait for it
+            task_id = session.host.subtask(method='waitrepo',
+                                           arglist=[tag, None, None],
+                                           parent=self.id)
+            repo_info = self.wait(task_id)[task_id]
+        return repo_info
+
+    def runBuilds(self, srpm, build_tag, archlist, repo_id):
         self.logger.debug("Spawning jobs for arches: %r" % (archlist))
         subtasks = {}
         keep_srpm = True
         for arch in archlist:
             subtasks[arch] = session.host.subtask(method='buildArch',
-                                                  arglist=[srpm,build_tag,arch,keep_srpm],
+                                                  arglist=[srpm, build_tag, arch, keep_srpm, {'repo_id': repo_id}],
                                                   label=arch,
                                                   parent=self.id,
                                                   arch=koji.canonArch(arch))
@@ -1721,11 +1793,13 @@ class BuildArchTask(BaseTaskHandler):
         if not header[rpm.RPMTAG_DISTRIBUTION]:
             raise koji.BuildError, "The build system failed to set the distribution tag"
 
-    def handler(self, pkg, root, arch, keep_srpm, opts={}):
+    def handler(self, pkg, root, arch, keep_srpm, opts=None):
         """Build a package in a buildroot for one arch"""
         global options
         
         ret = {}
+        if opts is None:
+            opts = {}
 
         #noarch is funny
         if arch == "noarch":
@@ -1771,7 +1845,12 @@ class BuildArchTask(BaseTaskHandler):
         # if not h[rpm.RPMTAG_DISTRIBUTION]:
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
 
-        broot = BuildRoot(root, br_arch, self.id, distribution=h[rpm.RPMTAG_DISTRIBUTION])
+        rootopts = {
+            'distribution' : h[rpm.RPMTAG_DISTRIBUTION],
+            }
+        if opts.get('repo_id') is not None:
+            rootopts['repo_id'] = opts['repo_id']
+        broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
         broot.init()
@@ -2109,8 +2188,10 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         build_nvr = koji.buildLabel(build)
         build_id = build['id']
         build_owner = build['owner_name']
-        # target comes from session.py:_get_build_target() 
-        dest_tag = target['dest_tag_name']
+        # target comes from session.py:_get_build_target()
+        dest_tag = None
+        if target is not None:
+            dest_tag = target['dest_tag_name']
         status = koji.BUILD_STATES[build['state']].lower()
         creation_time = koji.formatTimeLong(build['creation_time'])
         completion_time = koji.formatTimeLong(build['completion_time'])
@@ -2213,10 +2294,13 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag):
+    def handler(self, tag, event=None):
         self.uploadpath = self.getUploadDir()
         tinfo = session.getTag(tag, strict=True)
-        repo_id, event_id = session.host.repoInit(tinfo['id'])
+        kwargs = {}
+        if event is not None:
+            kwargs['event'] = event
+        repo_id, event_id = session.host.repoInit(tinfo['id'], **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError, "Repo directory missing: %s" % path
@@ -2239,7 +2323,10 @@ class NewRepoTask(BaseTaskHandler):
         for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
-        session.host.repoDone(repo_id, data)
+        kwargs = {}
+        if event is not None:
+            kwargs['expire'] = True
+        session.host.repoDone(repo_id, data, **kwargs)
         return repo_id, event_id
 
 class CreaterepoTask(BaseTaskHandler):
@@ -2278,7 +2365,8 @@ class CreaterepoTask(BaseTaskHandler):
                 koji.ensuredir(datadir)
                 os.system('cp -a %s/* %s' % (olddatadir, datadir))
                 cmd.append('--update')
-                cmd.append('--skip-stat')
+                if options.createrepo_skip_stat:
+                    cmd.append('--skip-stat')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -2310,44 +2398,66 @@ class WaitrepoTask(BaseTaskHandler):
     # time in minutes before we fail this task
     TIMEOUT = 120
 
-    def handler(self, build_target_info, newer_then=None, nvrs=None):
+    def handler(self, tag, newer_than=None, nvrs=None):
+        """Wait for a repo for the tag, subject to given conditions
+
+        newer_than: create_event timestamp should be newer than this
+        nvr: repo should contain this nvr (which may not exist at first)
+
+        Only one of the options may be specified. If neither is, then
+        the call will wait for the first ready repo.
+
+        Returns the repo info (from getRepo) of the chosen repo
+        """
+
         start = time.time()
 
-        build_target = session.getBuildTarget(build_target_info)
-        if not build_target:
-            raise koji.GenericError, "invalid build target: %s" % build_target_info
+        taginfo = session.getTag(tag)
+        targets = session.getBuildTargets(buildTagID=taginfo['id'])
+        if not targets:
+            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
+
+        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
+            newer_than = start
+        if not isinstance(newer_than, (int, long, float)):
+            raise koji.GenericError, "Invalid value for newer_than"
+
+        if newer_than and nvrs:
+            raise koji.GenericError, "only one of (newer_than, nvrs) may be specified"
 
         if not nvrs:
             nvrs = []
         builds = [koji.parse_NVR(nvr) for nvr in nvrs]
 
-        if not newer_then and not builds:
-            newer_then = time.time()
-
         last_repo = None
-        repo = session.getRepo(build_target['build_tag'])
 
         while True:
-            if builds and repo and repo != last_repo:
-                if koji.util.checkForBuilds(session, build_target['build_tag'], builds, repo['create_event']):
-                    return "Successfully waited %s for %s to appear in the %s repo" % \
-                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
-            elif newer_then:
-                if repo['create_ts'] > newer_then:
-                    return "Successfully waited %s for a new %s repo" % \
-                        (koji.util.duration(start), build_target['build_tag_name'])
+            repo = session.getRepo(taginfo['id'])
+            if repo and repo != last_repo:
+                if builds:
+                    if koji.util.checkForBuilds(session, taginfo['id'], builds, repo['create_event']):
+                        self.logger.debug("Successfully waited %s for %s to appear in the %s repo" % \
+                            (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name']))
+                        return repo
+                elif newer_than:
+                    if repo['create_ts'] > newer_than:
+                        self.logger.debug("Successfully waited %s for a new %s repo" % \
+                            (koji.util.duration(start), taginfo['name']))
+                        return repo
+                else:
+                    #no check requested -- return first ready repo
+                    return repo
 
             if (time.time() - start) > (self.TIMEOUT * 60.0):
                 if builds:
                     raise koji.GenericError, "Unsuccessfully waited %s for %s to appear in the %s repo" % \
-                        (koji.util.duration(start), koji.util.printList(nvrs), build_target['build_tag_name'])
+                        (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name'])
                 else:
                     raise koji.GenericError, "Unsuccessfully waited %s for a new %s repo" % \
-                        (koji.util.duration(start), build_target['build_tag_name'])
+                        (koji.util.duration(start), taginfo['name'])
 
             time.sleep(self.PAUSE)
             last_repo = repo
-            repo = session.getRepo(build_target['build_tag'])
 
 class SCM(object):
     "SCM abstraction class"
@@ -2691,6 +2801,7 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
+                'createrepo_skip_stat': True,
                 'pkgurl': None,
                 'allowed_scms': '',
                 'cert': '/etc/kojid/client.crt',
@@ -2704,6 +2815,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
+            elif name in ['offline_retry', 'createrepo_skip_stat']:
+                defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
             elif name in defaults.keys():

@@ -1684,7 +1684,7 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
-def repo_init(tag, with_src=False, with_debuginfo=False):
+def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -1699,7 +1699,13 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         for arch in tinfo['arches'].split():
             repo_arches[koji.canonArch(arch)] = 1
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
-    event_id = _singleValue("SELECT get_event()")
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        #make sure event is valid
+        q = "SELECT time FROM events WHERE id=%(event)s"
+        event_time = _singleValue(q, locals(), strict=True)
+        event_id = event
     q = """INSERT INTO repo(id, create_event, tag_id, state)
     VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
     _dml(q,locals())
@@ -3542,7 +3548,11 @@ def _get_build_target(task_id):
     task = Task(task_id)
     request = task.getRequest()
     # request is (path-to-srpm, build-target-name, map-of-other-options)
-    return get_build_targets(request[1])[0]
+    ret = get_build_targets(request[1])
+    if ret:
+        return ret[0]
+    else:
+        return None
 
 def get_notification_recipients(build, tag_id, state):
     """
@@ -3556,26 +3566,37 @@ def get_notification_recipients(build, tag_id, state):
     for this tag and the user who submitted the build.  The list will not contain
     duplicates.
     """
-    package_id = build['package_id']
     
-    query = """SELECT email FROM build_notifications
-    WHERE ((package_id = %(package_id)i OR package_id IS NULL)
-      AND  (tag_id = %(tag_id)i OR tag_id IS NULL))
-    """
-    if state != koji.BUILD_STATES['COMPLETE']:
-        query += """AND success_only = FALSE
-        """
+    clauses = []
 
-    emails = [result[0] for result in _fetchMulti(query, locals())]
+    if build:
+        package_id = build['package_id']
+        clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+    else:
+        clauses.append('package_id IS NULL')
+    if tag_id:
+        clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
+    else:
+        clauses.append('tag_id IS NULL')
+    if state != koji.BUILD_STATES['COMPLETE']:
+        clauses.append('success_only = FALSE')
+
+    query = QueryProcessor(columns=('email',), tables=['build_notifications'],
+                           clauses=clauses, values=locals(),
+                           opts={'asList':True})
+    emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
 
     # user who submitted the build
     emails.append('%s@%s' % (build['owner_name'], email_domain))
 
-    packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
-    # owner of the package in this tag, following inheritance
-    emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+    if tag_id:
+        packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+        # owner of the package in this tag, following inheritance
+        emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+    #FIXME - if tag_id is None, we don't have a good way to get the package owner.
+    #   using all package owners from all tags would be way overkill.
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
@@ -3612,12 +3633,16 @@ def build_notification(task_id, build_id):
     build = get_build(build_id)
     target = _get_build_target(task_id)
 
+    dest_tag = None
+    if target:
+        dest_tag = target['dest_tag']
+
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         raise koji.GenericError, 'never send notifications for incomplete builds'
 
     web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
-    recipients = get_notification_recipients(build, target['dest_tag'], build['state'])
+    recipients = get_notification_recipients(build, dest_tag, build['state'])
     if len(recipients) > 0:
         make_task('buildNotification', [recipients, build, target, web_url])
 
@@ -5189,10 +5214,14 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def newRepo(self, tag):
+    def newRepo(self, tag, event=None):
         """Create a newRepo task. returns task id"""
         context.session.assertPerm('repo')
-        return make_task('newRepo', [tag], priority=15, channel='createrepo')
+        if event:
+            args = koji.encode_args(tag, event=None)
+        else:
+            args = [tag]
+        return make_task('newRepo', args, priority=15, channel='createrepo')
 
     def repoExpire(self, repo_id):
         """mark repo expired"""
@@ -6476,11 +6505,11 @@ class HostExports(object):
             br.assertTask(task_id)
         return br.updateList(rpmlist)
 
-    def repoInit(self, tag, with_src=False):
+    def repoInit(self, tag, with_src=False, event=None):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src)
+        return repo_init(tag, with_src=with_src, event=event)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""
@@ -6525,11 +6554,14 @@ class HostExports(object):
             else:
                 os.link(filepath, dst)
 
-    def repoDone(self, repo_id, data):
+    def repoDone(self, repo_id, data, expire=False):
         """Move repo data into place, mark as ready, and expire earlier repos
 
         repo_id: the id of the repo
         data: a dictionary of the form { arch: (uploadpath, files), ...}
+        expire(optional): if set to true, mark the repo expired immediately*
+
+        * This is used when a repo from an older event is generated
         """
         host = Host()
         host.verify()
@@ -6551,6 +6583,10 @@ class HostExports(object):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 os.link(src, dst)
                 os.unlink(src)
+        if expire:
+            repo_expire(repo_id)
+            return
+        #else:
         repo_ready(repo_id)
         repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
         #make a latest link

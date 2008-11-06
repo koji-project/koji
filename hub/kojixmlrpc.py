@@ -446,6 +446,10 @@ _default_policies = {
             has_perm admin :: allow
             all :: deny
             ''',
+    'build_from_repo_id' : '''
+            has_perm admin :: allow
+            all :: deny
+            ''',
 }
 
 def get_policy(opts, plugins):

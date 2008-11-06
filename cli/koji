@@ -645,6 +645,7 @@ def handle_build(options, session, args):
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
     parser.add_option("--arch-override", help=_("Override build arches"))
+    parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
@@ -657,19 +658,23 @@ def handle_build(options, session, args):
             parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
     target = args[0]
-    build_target = session.getBuildTarget(target)
-    if not build_target:
-        parser.error(_("Unknown build target: %s" % target))
-    dest_tag = session.getTag(build_target['dest_tag'])
-    if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
-    if dest_tag['locked'] and not build_opts.scratch:
-        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    if target.lower() == "none" and build_opts.repo_id:
+        target = None
+        build_opts.skip_tag = True
+    else:
+        build_target = session.getBuildTarget(target)
+        if not build_target:
+            parser.error(_("Unknown build target: %s" % target))
+        dest_tag = session.getTag(build_target['dest_tag'])
+        if not dest_tag:
+            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        if dest_tag['locked'] and not build_opts.scratch:
+            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
     source = args[1]
     opts = {}
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
-    for key in ('skip_tag','scratch'):
+    for key in ('skip_tag', 'scratch', 'repo_id'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
