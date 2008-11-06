@@ -1138,6 +1138,8 @@ class TaskManager(object):
             os.setpgrp()
             #use the subsession
             session = newhub
+            if hasattr(handler, 'session'):
+                handler.session = session
             #set a do-nothing handler for sigusr2
             signal.signal(signal.SIGUSR2,lambda *args: None)
             self.runTask(handler)
