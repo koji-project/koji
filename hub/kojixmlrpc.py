@@ -20,9 +20,11 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from ConfigParser import ConfigParser
 import sys
 import time
 import traceback
+import types
 import pprint
 from xmlrpclib import loads,dumps,Fault
 from mod_python import apache
@@ -30,38 +32,38 @@ from mod_python import apache
 import koji
 import koji.auth
 import koji.db
+import koji.plugin
+import koji.policy
+import kojihub
 from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
 
 def _opt_bool(opts, name):
-    """Convert a string option into a boolean
-    True or False value.  The following values
-    will be considered True (case-insensitive):
-    yes, on, true, 1
-    Anything else will be considered False."""
-    val = opts.get(name, 'no')
-    if val is None:
-        val = ''
-    if val.lower() in ('yes', 'on', 'true', '1'):
-        return True
-    else:
-        return False
+    """Convert option into a boolean if necessary
 
-class ModXMLRPCRequestHandler(object):
-    """Simple XML-RPC handler for mod_python environment"""
+    For strings, the following values
+    will be considered True (case-insensitive):
+        yes, on, true, 1
+    Any other strings will be considered False."""
+    val = opts.get(name, False)
+    if isinstance(val, bool):
+        return val
+    elif isinstance(val, basestring):
+        if val.lower() in ('yes', 'on', 'true', '1'):
+            return True
+    return False
+
+class HandlerRegistry(object):
+    """Track handlers for RPC calls"""
 
     def __init__(self):
         self.funcs = {}
-        self.traceback = False
         #introspection functions
         self.register_function(self.list_api, name="_listapi")
         self.register_function(self.system_listMethods, name="system.listMethods")
         self.register_function(self.system_methodSignature, name="system.methodSignature")
         self.register_function(self.system_methodHelp, name="system.methodHelp")
-        self.register_function(self.multiCall)
-        # Also register it as system.multicall for standards compliance
-        self.register_function(self.multiCall, name="system.multicall")
 
     def register_function(self, function, name = None):
         if name is None:
@@ -91,117 +93,21 @@ class ModXMLRPCRequestHandler(object):
     def register_instance(self,instance):
         self.register_module(instance)
 
-    def _marshaled_dispatch(self, data):
-        """Dispatches an XML-RPC method from marshalled (XML) data."""
+    def register_plugin(self, plugin):
+        """Scan a given plugin for handlers
 
-        params, method = loads(data)
-
-        start = time.time()
-        # generate response
-        try:
-            response = self._dispatch(method, params)
-            # wrap response in a singleton tuple
-            response = (response,)
-            response = dumps(response, methodresponse=1, allow_none=1)
-        except Fault, fault:
-            self.traceback = True
-            response = dumps(fault)
-        except:
-            self.traceback = True
-            # report exception back to server
-            e_class, e = sys.exc_info()[:2]
-            faultCode = getattr(e_class,'faultCode',1)
-            tb_type = context.opts.get('KojiTraceback',None)
-            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
-            if issubclass(e_class, koji.GenericError):
-                if _opt_bool(context.opts, 'KojiDebug'):
-                    if tb_type == "extended":
-                        faultString = koji.format_exc_plus()
-                    else:
-                        faultString = tb_str
+        Handlers are functions marked with one of the decorators defined in koji.plugin
+        """
+        for v in vars(plugin).itervalues():
+            if isinstance(v, (types.ClassType, types.TypeType)):
+                #skip classes
+                continue
+            if callable(v) and getattr(v, 'exported', False):
+                if hasattr(v, 'export_alias'):
+                    name = getattr(v, 'export_alias')
                 else:
-                    faultString = str(e)
-            else:
-                if tb_type == "normal":
-                    faultString = tb_str
-                elif tb_type == "extended":
-                    faultString = koji.format_exc_plus()
-                else:
-                    faultString = "%s: %s" % (e_class,e)
-            sys.stderr.write(tb_str)
-            sys.stderr.write('\n')
-            response = dumps(Fault(faultCode, faultString))
-
-        if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Returning %d bytes after %f seconds\n" %
-                             (len(response),time.time() - start))
-            sys.stderr.flush()
-        
-        return response
-
-    def _dispatch(self,method,params):
-        func = self.funcs.get(method,None)
-        if func is None:
-            raise koji.GenericError, "Invalid method: %s" % method
-        context.method = method
-        if not hasattr(context,"session"):
-            #we may be called again by one of our meta-calls (like multiCall)
-            #so we should only create a session if one does not already exist
-            context.session = koji.auth.Session()
-            try:
-                context.session.validate()
-            except koji.AuthLockError:
-                #might be ok, depending on method
-                if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
-                    raise
-            if _opt_bool(context.opts, 'LockOut') and \
-                   method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
-                if not context.session.hasPerm('admin'):
-                    raise koji.GenericError, "Server disabled for maintenance"
-        # handle named parameters
-        params,opts = koji.decode_args(*params)
-
-        if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Handling method %s for session %s (#%s)\n" \
-                             % (method, context.session.id, context.session.callnum))
-            if method != 'uploadFile':
-                sys.stderr.write("Params: %s\n" % pprint.pformat(params))
-                sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
-            start = time.time()
-            
-        ret = func(*params,**opts)
-
-        if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
-                             % (method, context.session.id, context.session.callnum,
-                                time.time()-start))
-            sys.stderr.flush()
-        
-        return ret
-
-    def multiCall(self, calls):
-        """Execute a multicall.  Execute each method call in the calls list, collecting
-        results and errors, and return those as a list."""
-        results = []
-        for call in calls:
-            try:
-                result = self._dispatch(call['methodName'], call['params'])
-            except Fault, fault:
-                results.append({'faultCode': fault.faultCode, 'faultString': fault.faultString})
-            except:
-                # transform unknown exceptions into XML-RPC Faults
-                # don't create a reference to full traceback since this creates
-                # a circular reference.
-                exc_type, exc_value = sys.exc_info()[:2]
-                faultCode = getattr(exc_type, 'faultCode', 1)
-                faultString = ', '.join(exc_value.args)
-                trace = traceback.format_exception(*sys.exc_info())
-                # traceback is not part of the multicall spec, but we include it for debugging purposes
-                results.append({'faultCode': faultCode, 'faultString': faultString, 'traceback': trace})
-            else:
-                results.append([result])
-
-        return results
+                    name = v.__name__
+                self.register_function(v, name=name)
 
     def list_api(self):
         funcs = []
@@ -247,6 +153,152 @@ class ModXMLRPCRequestHandler(object):
             ret += "\ndescription: %s" % func.__doc__
         return ret
 
+    def get(self, name):
+        func = self.funcs.get(name, None)
+        if func is None:
+            raise koji.GenericError, "Invalid method: %s" % name
+        return func
+
+
+class HandlerAccess(object):
+    """This class is used to grant access to the rpc handlers"""
+
+    def __init__(self, registry):
+        self.__reg = registry
+
+    def call(self, __name, *args, **kwargs):
+        return self.__reg.get(__name)(*args, **kwargs)
+
+    def get(self, name):
+        return self.__Reg.get(name)
+
+
+class ModXMLRPCRequestHandler(object):
+    """Simple XML-RPC handler for mod_python environment"""
+
+    def __init__(self, handlers):
+        self.traceback = False
+        self.handlers = handlers  #expecting HandlerRegistry instance
+
+    def _get_handler(self, name):
+        # just a wrapper so we can handle multicall ourselves
+        # we don't register multicall since the registry will outlive our instance
+        if name in ('multiCall', 'system.multicall'):
+            return self.multiCall
+        else:
+            return self.handlers.get(name)
+
+    def _marshaled_dispatch(self, data):
+        """Dispatches an XML-RPC method from marshalled (XML) data."""
+
+        params, method = loads(data)
+
+        start = time.time()
+        # generate response
+        try:
+            response = self._dispatch(method, params)
+            # wrap response in a singleton tuple
+            response = (response,)
+            response = dumps(response, methodresponse=1, allow_none=1)
+        except Fault, fault:
+            self.traceback = True
+            response = dumps(fault)
+        except:
+            self.traceback = True
+            # report exception back to server
+            e_class, e = sys.exc_info()[:2]
+            faultCode = getattr(e_class,'faultCode',1)
+            tb_type = context.opts.get('KojiTraceback',None)
+            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+            if issubclass(e_class, koji.GenericError):
+                if _opt_bool(context.opts, 'KojiDebug'):
+                    if tb_type == "extended":
+                        faultString = koji.format_exc_plus()
+                    else:
+                        faultString = tb_str
+                else:
+                    faultString = str(e)
+            else:
+                if tb_type == "normal":
+                    faultString = tb_str
+                elif tb_type == "extended":
+                    faultString = koji.format_exc_plus()
+                else:
+                    faultString = "%s: %s" % (e_class,e)
+            sys.stderr.write(tb_str)
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+            response = dumps(Fault(faultCode, faultString))
+
+        if _opt_bool(context.opts, 'KojiDebug'):
+            sys.stderr.write("Returning %d bytes after %f seconds\n" %
+                             (len(response),time.time() - start))
+            sys.stderr.flush()
+        
+        return response
+
+    def _dispatch(self,method,params):
+        func = self._get_handler(method)
+        context.method = method
+        if not hasattr(context,"session"):
+            #we may be called again by one of our meta-calls (like multiCall)
+            #so we should only create a session if one does not already exist
+            context.session = koji.auth.Session()
+            try:
+                context.session.validate()
+            except koji.AuthLockError:
+                #might be ok, depending on method
+                if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
+                    raise
+            if _opt_bool(context.opts, 'LockOut') and \
+                   method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
+                if not context.session.hasPerm('admin'):
+                    raise koji.ServerOffline, "Server disabled for maintenance"
+        # handle named parameters
+        params,opts = koji.decode_args(*params)
+
+        if _opt_bool(context.opts, 'KojiDebug'):
+            sys.stderr.write("Handling method %s for session %s (#%s)\n" \
+                             % (method, context.session.id, context.session.callnum))
+            if method != 'uploadFile':
+                sys.stderr.write("Params: %s\n" % pprint.pformat(params))
+                sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
+            start = time.time()
+            
+        ret = func(*params,**opts)
+
+        if _opt_bool(context.opts, 'KojiDebug'):
+            sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
+                             % (method, context.session.id, context.session.callnum,
+                                time.time()-start))
+            sys.stderr.flush()
+        
+        return ret
+
+    def multiCall(self, calls):
+        """Execute a multicall.  Execute each method call in the calls list, collecting
+        results and errors, and return those as a list."""
+        results = []
+        for call in calls:
+            try:
+                result = self._dispatch(call['methodName'], call['params'])
+            except Fault, fault:
+                results.append({'faultCode': fault.faultCode, 'faultString': fault.faultString})
+            except:
+                # transform unknown exceptions into XML-RPC Faults
+                # don't create a reference to full traceback since this creates
+                # a circular reference.
+                exc_type, exc_value = sys.exc_info()[:2]
+                faultCode = getattr(exc_type, 'faultCode', 1)
+                faultString = ', '.join(exc_value.args)
+                trace = traceback.format_exception(*sys.exc_info())
+                # traceback is not part of the multicall spec, but we include it for debugging purposes
+                results.append({'faultCode': faultCode, 'faultString': faultString, 'traceback': trace})
+            else:
+                results.append([result])
+
+        return results
+
     def handle_request(self,req):
         """Handle a single XML-RPC request"""
 
@@ -274,11 +326,181 @@ def offline_reply(req, msg=None):
     req.set_content_length(len(response))
     req.write(response)
 
+def load_config(req):
+    """Load configuration options
+
+    Options are read from a config file. The config file location is
+    controlled by the PythonOption ConfigFile in the httpd config.
+
+    Backwards compatibility:
+        - if ConfigFile is not set, opts are loaded from http config
+        - if ConfigFile is set, then the http config must not provide Koji options
+        - In a future version we will load the default hub config regardless
+        - all PythonOptions (except ConfigFile) are now deprecated and support for them
+          will disappear in a future version of Koji
+    """
+    #get our config file
+    modpy_opts = req.get_options()
+    #cf = modpy_opts.get('ConfigFile', '/etc/koji-hub/hub.conf')
+    cf = modpy_opts.get('ConfigFile', None)
+    if cf:
+        # to aid in the transition from PythonOptions to hub.conf, we only load
+        # the configfile if it is explicitly configured
+        config = ConfigParser()
+        config.read(cf)
+    else:
+        sys.stderr.write('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf\n')
+        sys.stderr.flush()
+    cfgmap = [
+        #option, type, default
+        ['DBName', 'string', None],
+        ['DBUser', 'string', None],
+        ['DBHost', 'string', None],
+        ['DBPass', 'string', None],
+        ['KojiDir', 'string', None],
+
+        ['AuthPrincipal', 'string', None],
+        ['AuthKeytab', 'string', None],
+        ['ProxyPrincipals', 'string', None],
+        ['HostPrincipalFormat', 'string', None],
+
+        ['DNUsernameComponent', 'string', None],
+        ['ProxyDNs', 'string', None],
+
+        ['LoginCreatesUser', 'boolean', True],
+        ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
+        ['EmailDomain', 'string', None],
+        ['DisableNotifications', 'boolean', False],
+
+        ['Plugins', 'string', None],
+        ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],
+
+        ['KojiDebug', 'boolean', False],
+        ['KojiTraceback', 'string', None],
+        ['EnableFunctionDebug', 'boolean', False],
+
+        ['MissingPolicyOK', 'boolean', True],
+
+        ['LockOut', 'boolean', False],
+        ['ServerOffline', 'string', False],
+        ['OfflineMessage', 'string', None],
+    ]
+    opts = {}
+    for name, dtype, default in cfgmap:
+        if cf:
+            key = ('hub', name)
+            if config.has_option(*key):
+                if dtype == 'integer':
+                    opts[name] = config.getint(*key)
+                elif dtype == 'boolean':
+                    opts[name] = config.getboolean(*key)
+                else:
+                    opts[name] = config.get(*key)
+            else:
+                opts[name] = default
+        else:
+            if modpy_opts.get(name, None) is not None:
+                if dtype == 'integer':
+                    opts[name] = int(modpy_opts.get(name))
+                elif dtype == 'boolean':
+                    opts[name] = modpy_opts.get(name).lower() in ('yes', 'on', 'true', '1')
+                else:
+                    opts[name] = modpy_opts.get(name)
+            else:
+                opts[name] = default
+    # load policies
+    # (only from config file)
+    if cf and config.has_section('policy'):
+        #for the moment, we simply transfer the policy conf to opts
+        opts['policy'] = dict(config.items('policy'))
+    else:
+        opts['policy'] = {}
+    for pname, text in _default_policies.iteritems():
+        opts['policy'].setdefault(pname, text)
+    # use configured KojiDir
+    if opts.get('KojiDir') is not None:
+        koji.BASEDIR = opts['KojiDir']
+        koji.pathinfo.topdir = opts['KojiDir']
+    return opts
+
+
+def load_plugins(opts):
+    """Load plugins specified by our configuration"""
+    if not opts['Plugins']:
+        return
+    tracker = koji.plugin.PluginTracker(path=opts['PluginPath'].split(':'))
+    for name in opts['Plugins'].split():
+        sys.stderr.write('Loading plugin: %s\n' % name)
+        try:
+            tracker.load(name)
+        except Exception:
+            sys.stderr.write(''.join(traceback.format_exception(*sys.exc_info())))
+            #make this non-fatal, but set ServerOffline
+            opts['ServerOffline'] = True
+            opts['OfflineMessage'] = 'configuration error'
+        sys.stderr.flush()
+    return tracker
+
+_default_policies = {
+    'build_from_srpm' : '''
+            has_perm admin :: allow
+            all :: deny
+            ''',
+    'build_from_repo_id' : '''
+            has_perm admin :: allow
+            all :: deny
+            ''',
+}
+
+def get_policy(opts, plugins):
+    if not opts.get('policy'):
+        return
+    #first find available policy tests
+    alltests = [koji.policy.findSimpleTests([vars(kojihub), vars(koji.policy)])]
+    # we delay merging these to allow a test to be overridden for a specific policy
+    for plugin_name in opts.get('Plugins', '').split():
+        alltests.append(koji.policy.findSimpleTests(vars(plugins.get(plugin_name))))
+    policy = {}
+    for pname, text in opts['policy'].iteritems():
+        #filter/merge tests
+        merged = {}
+        for tests in alltests:
+            # tests can be limited to certain policies by setting a class variable
+            for name, test in tests.iteritems():
+                if hasattr(test, 'policy'):
+                    if isinstance(test.policy, basestring):
+                        if pname != test.policy:
+                            continue
+                    elif pname not in test.policy:
+                            continue
+                # in case of name overlap, last one wins
+                # hence plugins can override builtin tests
+                merged[name] = test
+        policy[pname] = koji.policy.SimpleRuleSet(text.splitlines(), merged)
+    return policy
+
+
 #
 # mod_python handler
 #
 
+firstcall = True
+ready = False
+opts = {}
+
 def handler(req, profiling=False):
+    global firstcall, ready, registry, opts, plugins, policy
+    if firstcall:
+        firstcall = False
+        opts = load_config(req)
+        plugins = load_plugins(opts)
+        registry = get_registry(opts, plugins)
+        policy = get_policy(opts, plugins)
+        ready = True
+    if not ready:
+        #this will happen on subsequent passes if an error happens in the firstcall code
+        opts['ServerOffline'] = True
+        opts['OfflineMessage'] = 'server startup error'
     if profiling:
         import profile, pstats, StringIO, tempfile
         global _profiling_req
@@ -293,7 +515,6 @@ def handler(req, profiling=False):
         req.write("<pre>" + strstream.getvalue() + "</pre>")
         _profiling_req = None
     else:
-        opts = req.get_options()
         try:
             if _opt_bool(opts, 'ServerOffline'):
                 offline_reply(req, msg=opts.get("OfflineMessage", None))
@@ -301,7 +522,9 @@ def handler(req, profiling=False):
             context._threadclear()
             context.commit_pending = False
             context.opts = opts
+            context.handlers = HandlerAccess(registry)
             context.req = req
+            context.policy = policy
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
                                   password = opts.get("DBPass",None),
@@ -311,19 +534,7 @@ def handler(req, profiling=False):
             except Exception:
                 offline_reply(req, msg="database outage")
                 return apache.OK
-            functions = RootExports()
-            hostFunctions = HostExports()
-            h = ModXMLRPCRequestHandler()
-            h.register_instance(functions)
-            h.register_module(hostFunctions,"host")
-            h.register_function(koji.auth.login)
-            h.register_function(koji.auth.krbLogin)
-            h.register_function(koji.auth.sslLogin)
-            h.register_function(koji.auth.logout)
-            h.register_function(koji.auth.subsession)
-            h.register_function(koji.auth.logoutChild)
-            h.register_function(koji.auth.exclusiveSession)
-            h.register_function(koji.auth.sharedSession)
+            h = ModXMLRPCRequestHandler(registry)
             h.handle_request(req)
             if h.traceback:
                 #rollback
@@ -336,3 +547,23 @@ def handler(req, profiling=False):
                 context.cnx.close()
             context._threadclear()
     return apache.OK
+
+def get_registry(opts, plugins):
+    # Create and populate handler registry
+    registry = HandlerRegistry()
+    functions = RootExports()
+    hostFunctions = HostExports()
+    registry.register_instance(functions)
+    registry.register_module(hostFunctions,"host")
+    registry.register_function(koji.auth.login)
+    registry.register_function(koji.auth.krbLogin)
+    registry.register_function(koji.auth.sslLogin)
+    registry.register_function(koji.auth.logout)
+    registry.register_function(koji.auth.subsession)
+    registry.register_function(koji.auth.logoutChild)
+    registry.register_function(koji.auth.exclusiveSession)
+    registry.register_function(koji.auth.sharedSession)
+    for name in opts.get('Plugins', '').split():
+        registry.register_plugin(plugins.get(name))
+    return registry
+

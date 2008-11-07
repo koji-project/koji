@@ -89,7 +89,11 @@ $value
         #set $buildTarget = $params[2]
         <strong>Recipients:</strong>&nbsp;$printValue('', $params[0])<br/>
         <strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a><br/>
+        #if $buildTarget
         <strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
+        #else
+        <strong>Build Target:</strong> (no build target)<br/>
+        #end if
         <strong>Web URL:</strong> <a href="$params[3]">$params[3]</a>
         #elif $task.method == 'tagNotification'
         <strong>Recipients:</strong>&nbsp;$printValue('', $params[0])<br/>

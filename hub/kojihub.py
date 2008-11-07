@@ -25,11 +25,13 @@ import base64
 import koji
 import koji.auth
 import koji.db
+import koji.policy
 import datetime
 import errno
 import logging
 import logging.handlers
 import fcntl
+import fnmatch
 import md5
 import os
 import pgdb
@@ -323,6 +325,9 @@ class Task(object):
         id = self.id
         query = """SELECT request FROM task WHERE id = %(id)i"""
         xml_request = _singleValue(query, locals())
+        if xml_request.find('<?xml', 0, 10) == -1:
+            #handle older base64 encoded data
+            xml_request = base64.decodestring(xml_request)
         params, method = xmlrpclib.loads(xml_request)
         return params
 
@@ -343,6 +348,9 @@ class Task(object):
         # If you try to return a fault as a value, it gets reduced to
         # a mere struct.
         # f = Fault(1,"hello"); print dumps((f,))
+        if xml_result.find('<?xml', 0, 10) == -1:
+            #handle older base64 encoded data
+            xml_result = base64.decodestring(xml_result)
         result, method = xmlrpclib.loads(xml_result)
         return result[0]
 
@@ -365,6 +373,9 @@ class Task(object):
         results = _multiRow(query, vars(self), [f[1] for f in fields])
         if request:
             for task in results:
+                if task['request'].find('<?xml', 0, 10) == -1:
+                    #handle older base64 encoded data
+                    task['request'] = base64.decodestring(task['request'])
                 task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
@@ -1771,7 +1782,7 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
-def repo_init(tag, with_src=False, with_debuginfo=False):
+def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -1786,7 +1797,13 @@ def repo_init(tag, with_src=False, with_debuginfo=False):
         for arch in tinfo['arches'].split():
             repo_arches[koji.canonArch(arch)] = 1
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
-    event_id = _singleValue("SELECT get_event()")
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        #make sure event is valid
+        q = "SELECT time FROM events WHERE id=%(event)s"
+        event_time = _singleValue(q, locals(), strict=True)
+        event_id = event
     q = """INSERT INTO repo(id, create_event, tag_id, state)
     VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
     _dml(q,locals())
@@ -1952,6 +1969,7 @@ def repo_info(repo_id, strict=False):
         ('repo.id', 'id'),
         ('repo.state', 'state'),
         ('repo.create_event', 'create_event'),
+        ('events.time','creation_time'),  #for compatibility with getRepo
         ('EXTRACT(EPOCH FROM events.time)','create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
@@ -4269,7 +4287,7 @@ def reset_build(build):
 
     WARNING: this function is potentially destructive. use with care.
     nulls task_id
-    sets state to FAILED
+    sets state to CANCELED
     clears data in rpminfo, rpmdeps, rpmfiles
     removes rpminfo entries from any buildroot_listings [!]
     clears data in archiveinfo, archivefiles, maven_info
@@ -4314,7 +4332,7 @@ def reset_build(build):
     _dml(delete, binfo)
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
-    binfo['state'] = koji.BUILD_STATES['FAILED']
+    binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
     _dml(update, binfo)
     #now clear the build dirs
@@ -4370,7 +4388,11 @@ def _get_build_target(task_id):
     task = Task(task_id)
     request = task.getRequest()
     # request is (path-to-srpm, build-target-name, map-of-other-options)
-    return get_build_targets(request[1])[0]
+    ret = get_build_targets(request[1])
+    if ret:
+        return ret[0]
+    else:
+        return None
 
 def get_notification_recipients(build, tag_id, state):
     """
@@ -4384,33 +4406,46 @@ def get_notification_recipients(build, tag_id, state):
     for this tag and the user who submitted the build.  The list will not contain
     duplicates.
     """
-    package_id = build['package_id']
     
-    query = """SELECT email FROM build_notifications
-    WHERE ((package_id = %(package_id)i OR package_id IS NULL)
-      AND  (tag_id = %(tag_id)i OR tag_id IS NULL))
-    """
-    if state != koji.BUILD_STATES['COMPLETE']:
-        query += """AND success_only = FALSE
-        """
+    clauses = []
 
-    emails = [result[0] for result in _fetchMulti(query, locals())]
+    if build:
+        package_id = build['package_id']
+        clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+    else:
+        clauses.append('package_id IS NULL')
+    if tag_id:
+        clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
+    else:
+        clauses.append('tag_id IS NULL')
+    if state != koji.BUILD_STATES['COMPLETE']:
+        clauses.append('success_only = FALSE')
+
+    query = QueryProcessor(columns=('email',), tables=['build_notifications'],
+                           clauses=clauses, values=locals(),
+                           opts={'asList':True})
+    emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
 
     # user who submitted the build
     emails.append('%s@%s' % (build['owner_name'], email_domain))
 
-    packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
-    # owner of the package in this tag, following inheritance
-    package_info = packages.get(package_id)
-    if package_info:
-        emails.append('%s@%s' % (package_info['owner_name'], email_domain))
+    if tag_id:
+        packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+        # owner of the package in this tag, following inheritance
+        package_info = packages.get(package_id)
+        if package_info:
+            emails.append('%s@%s' % (package_info['owner_name'], email_domain))
+    #FIXME - if tag_id is None, we don't have a good way to get the package owner.
+    #   using all package owners from all tags would be way overkill.
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
+    if context.opts.get('DisableNotifications'):
+        return
     if is_successful:
         state = koji.BUILD_STATES['COMPLETE']
     else:
@@ -4435,15 +4470,21 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
     return None
 
 def build_notification(task_id, build_id):
+    if context.opts.get('DisableNotifications'):
+        return
     build = get_build(build_id)
     target = _get_build_target(task_id)
+
+    dest_tag = None
+    if target:
+        dest_tag = target['dest_tag']
 
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         raise koji.GenericError, 'never send notifications for incomplete builds'
 
     web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
-    recipients = get_notification_recipients(build, target['dest_tag'], build['state'])
+    recipients = get_notification_recipients(build, dest_tag, build['state'])
     if len(recipients) > 0:
         make_task('buildNotification', [recipients, build, target, web_url])
 
@@ -4684,6 +4725,258 @@ SELECT %(col_str)s
             else:
                 return None
         return results
+
+
+#
+# Policy Test Handlers
+
+
+class OperationTest(koji.policy.MatchTest):
+    """Checks operation against glob patterns"""
+    name = 'operation'
+    field = 'operation'
+
+class PackageTest(koji.policy.MatchTest):
+    """Checks package against glob patterns"""
+    name = 'package'
+    field = '_package'
+    def run(self, data):
+        #we need to find the package name from the base data
+        data[self.field] = get_build(data['build'])['name']
+        return super(PackageTest, self).run(data)
+
+class TagTest(koji.policy.MatchTest):
+    name = 'tag'
+    field = '_tagname'
+    def run(self, data):
+        #we need to find the tag name from the base data
+        if not data['tag']:
+            return False
+        data[self.field] = get_tag(data['tag'])['name']
+        return super(TagTest, self).run(data)
+
+class HasTagTest(koji.policy.BaseSimpleTest):
+    """Check to see if build (currently) has a given tag"""
+    name = 'hastag'
+    def run(self, data):
+        tags = context.handlers.call('listTags', build=data['build'])
+        #True if any of these tags match any of the patterns
+        args = self.str.split()[1:]
+        for tag in tags:
+            for pattern in args:
+                if fnmatch.fnmatch(tag['name'], pattern):
+                    return True
+        #otherwise...
+        return False
+
+class BuildTagTest(koji.policy.BaseSimpleTest):
+    """Check the build tag of the build
+
+    If build_tag is not provided in policy data, it is determined by the
+    buildroots of the component rpms
+    """
+    name = 'buildtag'
+    def run(self, data):
+        if data.has_key('build_tag'):
+            tagname = get_tag(data['build_tag'])
+            for pattern in args:
+                if fnmatch.fnmatch(tagname, pattern):
+                    return True
+            #else
+            return False
+        elif data.has_key('build'):
+            #determine build tag from buildroots
+            #in theory, we should find only one unique build tag
+            #it is possible that some rpms could have been imported later and hence
+            #not have a buildroot.
+            #or if the entire build was imported, there will be no buildroots
+            rpms = context.handlers.call('listRPMs', buildID=data['build'])
+            args = self.str.split()[1:]
+            for rpminfo in rpms:
+                if rpminfo['buildroot_id'] is None:
+                    continue
+                tagname = get_buildroot(rpminfo['buildroot_id'])['tag_name']
+                for pattern in args:
+                    if fnmatch.fnmatch(tagname, pattern):
+                        return True
+            #otherwise...
+            return False
+        else:
+            return False
+
+class ImportedTest(koji.policy.BaseSimpleTest):
+    """Check if any part of a build was imported
+
+    This is determined by checking the buildroots of the rpms
+    True if any rpm lacks a buildroot (strict)"""
+    name = 'imported'
+    def run(self, data):
+        rpms = context.handlers.call('listRPMs', buildID=data['build'])
+        #no test args
+        for rpminfo in rpms:
+            if rpminfo['buildroot_id'] is None:
+                return True
+        #otherwise...
+        return False
+
+class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
+    """Check if user owns the build"""
+    name = "is_build_owner"
+    def run(self, data):
+        build = get_build(data['build'])
+        owner = get_user(build['owner_id'])
+        user = get_user(data['user_id'])
+        if owner['id'] == user['id']:
+            return True
+        if owner['usertype'] == koji.USERTYPES['GROUP']:
+            # owner is a group, check to see if user is a member
+            if owner['id'] in koji.auth.get_user_groups(user['id']):
+                return True
+        #otherwise...
+        return False
+
+class UserInGroupTest(koji.policy.BaseSimpleTest):
+    """Check if user is in group(s)
+
+    args are treated as patterns and matched against group name
+    true is user is in /any/ matching group
+    """
+    name = "user_in_group"
+    def run(self, data):
+        user = get_user(data['user_id'])
+        groups = koji.auth.get_user_groups(user['id'])
+        args = self.str.split()[1:]
+        for group_id, group in groups.iteritems():
+            for pattern in args:
+                if fnmatch.fnmatch(group, pattern):
+                    return True
+        #otherwise...
+        return False
+
+class HasPermTest(koji.policy.BaseSimpleTest):
+    """Check if user has permission(s)
+
+    args are treated as patterns and matched against permission name
+    true is user has /any/ matching permission
+    """
+    name = "has_perm"
+    def run(self, data):
+        user = get_user(data['user_id'])
+        perms = koji.auth.get_user_perms(user['id'])
+        args = self.str.split()[1:]
+        for perm in perms:
+            for pattern in args:
+                if fnmatch.fnmatch(perm, pattern):
+                    return True
+        #otherwise...
+        return False
+
+class SourceTest(koji.policy.MatchTest):
+    """Match build source
+
+    This is not the cleanest, since we have to crack open the task parameters
+    True if build source matches any of the supplied patterns
+    """
+    name = "source"
+    field = '_source'
+    def run(self, data):
+        if data.has_key('source'):
+            data[self.field] = data['source']
+        elif data.has_key('build'):
+            #crack open the build task
+            build = get_build(data['build'])
+            if build['task_id'] is None:
+                #imported, no source to match against
+                return False
+            task = Task(build['task_id'])
+            params = task.getRequest()
+            #signature is (src, target, opts=None)
+            data[self.field] = params[0]
+        else:
+            return False
+        return super(SourceTest, self).run(data)
+
+class PolicyTest(koji.policy.BaseSimpleTest):
+    """Test named policy
+
+    The named policy must exist
+    Returns True is the policy results in an action of:
+        yes, true, allow
+    Otherwise returns False
+    (Also returns False if there are no matches in the policy)
+    Watch out for loops
+    """
+    name = 'policy'
+
+    def __init__(self, str):
+        super(PolicyTest, self).__init__(str)
+        self.depth = 0
+        # this is used to detect loops. Note that each test in a ruleset is
+        # a distinct instance of its test class. So this value is particular
+        # to a given appearance of a policy check in a ruleset.
+
+    def run(self, data):
+        args = self.str.split()[1:]
+        if self.depth != 0:
+            #LOOP!
+            raise koji.GenericError, "encountered policy loop at %s" % self.str
+        ruleset = context.policy.get(args[0])
+        if not ruleset:
+            raise koji.GenericError, "no such policy: %s" % args[0]
+        self.depth += 1
+        result = ruleset.apply(data)
+        self.depth -= 1
+        if result is None:
+            return False
+        else:
+            return result.lower() in ('yes', 'true', 'allow')
+
+
+def check_policy(name, data, default='deny', strict=False):
+    """Check data against the named policy
+
+    This assumes the policy actions consist of:
+        allow
+        deny
+
+    Returns a pair (access, reason)
+        access: True if the policy result is allow, false otherwise
+        reason: reason for the access
+    If strict is True, will raise ActionNotAllowed if the action is not 'allow'
+    """
+    ruleset = context.policy.get(name)
+    if not ruleset:
+        if context.opts.get('MissingPolicyOk'):
+            # for backwards compatibility, this is the default
+            result = "allow"
+        else:
+            result = "deny"
+        reason = "missing policy"
+    else:
+        result = ruleset.apply(data)
+        if result is None:
+            result = default
+        reason = ruleset.last_rule()
+    if context.opts.get('KojiDebug', False):
+        log_error("policy %(name)s gave %(result)s, reason: %(reason)s" % locals())
+    if result.lower() == 'allow':
+        return True, reason
+    if not strict:
+        return False, reason
+    err_str = "policy violation"
+    if context.opts.get('KojiDebug', False):
+        err_str += " -- %s" % reason
+    raise koji.ActionNotAllowed, err_str
+
+def assert_policy(name, data, default='deny'):
+    """Enforce the named policy
+
+    This assumes the policy actions consist of:
+        allow
+        deny
+    Raises ActionNotAllowed if policy result is not allow
+    """
+    check_policy(name, data, default=default, strict=True)
 
 
 #
@@ -5096,6 +5389,16 @@ class RootExports(object):
             pkg_error = "Package %s not in list for %s" % (build['name'], tag['name'])
         elif pkgs[pkg_id]['blocked']:
             pkg_error = "Package %s blocked in %s" % (build['name'], tag['name'])
+        policy_data = {'tag' : tag_id, 'build' : build_id, 'fromtag' : fromtag_id}
+        policy_data['user_id'] = context.session.user_id
+        if fromtag is None:
+            policy_data['operation'] = 'tag'
+        else:
+            policy_data['operation'] = 'move'
+        #don't check policy for admins using force
+        if not force or not context.session.hasPerm('admin'):
+            assert_policy('tag', policy_data)
+        #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
         if pkg_error:
             if force and context.session.hasPerm('admin'):
                 pkglist_add(tag_id,pkg_id,force=True,block=False)
@@ -5115,13 +5418,21 @@ class RootExports(object):
         No return value"""
         #we can't staticmethod this one -- we're limiting the options
         user_id = context.session.user_id
+        tag_id = get_tag(tag, strict=True)['id']
+        build_id = get_build(build, strict=True)['id']
+        policy_data = {'tag' : None, 'build' : build_id, 'fromtag' : tag_id}
+        policy_data['user_id'] = context.session.user_id
+        policy_data['operation'] = 'untag'
         try:
+            #don't check policy for admins using force
+            if not force or not context.session.hasPerm('admin'):
+                assert_policy('tag', policy_data)
             _untag_build(tag,build,strict=strict,force=force)
             tag_notification(True, None, tag, build, user_id)
         except Exception, e:
             exctype, value = sys.exc_info()[:2]
             tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
-            raise e
+            raise
 
     def untagBuildBypass(self, tag, build, strict=True, force=False):
         """Untag a build without any checks or notifications
@@ -5171,6 +5482,16 @@ class RootExports(object):
         build_list = readTaggedBuilds(tag1_id, package=package)
         # we want 'ORDER BY tag_listing.create_event ASC' not DESC so reverse
         build_list.reverse()
+
+        #policy check
+        policy_data = {'tag' : tag2, 'fromtag' : tag1, 'operation' : 'move'}
+        policy_data['user_id'] = context.session.user_id
+        #don't check policy for admins using force
+        if not force or not context.session.hasPerm('admin'):
+            for build in build_list:
+                policy_data['build'] = build
+                assert_policy('tag', policy_data)
+                #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
 
         wait_on = []
         tasklist = []
@@ -5786,10 +6107,14 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def newRepo(self, tag):
+    def newRepo(self, tag, event=None):
         """Create a newRepo task. returns task id"""
         context.session.assertPerm('repo')
-        return make_task('newRepo', [tag], priority=15, channel='createrepo')
+        if event:
+            args = koji.encode_args(tag, event=None)
+        else:
+            args = [tag]
+        return make_task('newRepo', args, priority=15, channel='createrepo')
 
     def repoExpire(self, repo_id):
         """mark repo expired"""
@@ -5898,7 +6223,7 @@ class RootExports(object):
                                          the given date, in either float (seconds since the epoch)
                                          or str (ISO) format
         """
-        if opts is None:
+        if not opts:
             opts = {}
 
         tables = ['task']
@@ -5947,6 +6272,9 @@ class RootExports(object):
                 for f in ('request','result'):
                     if task[f]:
                         try:
+                            if task[f].find('<?xml', 0, 10) == -1:
+                                #handle older base64 encoded data
+                                task[f] = base64.decodestring(task[f])
                             data, method = xmlrpclib.loads(task[f])
                         except xmlrpclib.Fault, fault:
                             data = fault
@@ -6879,6 +7207,9 @@ class HostExports(object):
             if row:
                 #return task id
                 return row[0]
+        if opts.has_key('kwargs'):
+            arglist = koji.encode_args(*arglist, **opts['kwargs'])
+            del opts['kwargs']
         return make_task(method,arglist,**opts)
 
     def subtask2(self,__parent,__taskopts,__method,*args,**opts):
@@ -6891,6 +7222,7 @@ class HostExports(object):
 
         Remaining args are passed on to the subtask
         """
+        #self.subtask will verify the host
         args = koji.encode_args(*args,**opts)
         return self.subtask(__method,args,__parent,**__taskopts)
 
@@ -7104,6 +7436,16 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
         user_id = task.getOwner()
+        policy_data = {'tag' : tag, 'build' : build, 'fromtag' : fromtag}
+        policy_data['user_id'] = user_id
+        if fromtag is None:
+            policy_data['operation'] = 'tag'
+        else:
+            policy_data['operation'] = 'move'
+        #don't check policy for admins using force
+        perms = koji.auth.get_user_perms(user_id)
+        if not force or 'admin' not in perms:
+            assert_policy('tag', policy_data)
         if fromtag:
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
@@ -7111,6 +7453,8 @@ class HostExports(object):
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.
         Handles creation of tagNotification tasks for hosts."""
+        host = Host()
+        host.verify()
         tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg)
 
     def importChangelog(self, buildID, rpmfile):
@@ -7134,6 +7478,16 @@ class HostExports(object):
 
         rpmfile = '%s/%s' % (koji.pathinfo.work(), rpmfile)
         import_changelog(build, rpmfile, replace=True)
+
+    def checkPolicy(self, name, data, default='deny', strict=False):
+        host = Host()
+        host.verify()
+        return check_policy(name, data, default=default, strict=strict)
+
+    def assertPolicy(self, name, data, default='deny'):
+        host = Host()
+        host.verify()
+        check_policy(name, data, default=default, strict=True)
 
     def newBuildRoot(self, repo, arch, task_id=None):
         host = Host()
@@ -7241,11 +7595,11 @@ class HostExports(object):
 
         return br.updateArchiveList(archives, project)
 
-    def repoInit(self, tag, with_src=False):
+    def repoInit(self, tag, with_src=False, event=None):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src)
+        return repo_init(tag, with_src=with_src, event=event)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""
@@ -7290,11 +7644,14 @@ class HostExports(object):
             else:
                 os.link(filepath, dst)
 
-    def repoDone(self, repo_id, data):
+    def repoDone(self, repo_id, data, expire=False):
         """Move repo data into place, mark as ready, and expire earlier repos
 
         repo_id: the id of the repo
         data: a dictionary of the form { arch: (uploadpath, files), ...}
+        expire(optional): if set to true, mark the repo expired immediately*
+
+        * This is used when a repo from an older event is generated
         """
         host = Host()
         host.verify()
@@ -7316,8 +7673,23 @@ class HostExports(object):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 os.link(src, dst)
                 os.unlink(src)
+        if expire:
+            repo_expire(repo_id)
+            return
+        #else:
         repo_ready(repo_id)
         repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+        #make a latest link
+        latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
+        #XXX - this is a slight abuse of pathinfo
+        try:
+            if os.path.lexists(latestrepolink):
+                os.unlink(latestrepolink)
+            os.symlink(repodir, latestrepolink)
+        except OSError:
+            #making this link is nonessential
+            log_error("Unable to create latest link for repo: %s" % repodir)
+
 
     def isEnabled(self):
         host = Host()

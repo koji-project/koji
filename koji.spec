@@ -111,17 +111,21 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-hub
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%config(noreplace) /etc/koji-hub/hub.conf
 
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
 %{_initrddir}/kojira
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
-%{_sysconfdir}/kojira
+%dir %{_sysconfdir}/kojira
 %config(noreplace) %{_sysconfdir}/kojira/kojira.conf
 %{_sbindir}/koji-gc
 %dir %{_sysconfdir}/koji-gc
 %config(noreplace) %{_sysconfdir}/koji-gc/koji-gc.conf
+%{_sbindir}/koji-shadow
+%dir %{_sysconfdir}/koji-shadow
+%config(noreplace) %{_sysconfdir}/koji-shadow/koji-shadow.conf
 
 %files web
 %defattr(-,root,root)
@@ -134,8 +138,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojid
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
-%{_sysconfdir}/kojid
+%dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
+%{_datadir}/koji-builder
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder

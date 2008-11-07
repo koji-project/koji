@@ -652,6 +652,7 @@ def handle_build(options, session, args):
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
     parser.add_option("--arch-override", help=_("Override build arches"))
+    parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
@@ -664,19 +665,23 @@ def handle_build(options, session, args):
             parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
     target = args[0]
-    build_target = session.getBuildTarget(target)
-    if not build_target:
-        parser.error(_("Unknown build target: %s" % target))
-    dest_tag = session.getTag(build_target['dest_tag'])
-    if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
-    if dest_tag['locked'] and not build_opts.scratch:
-        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    if target.lower() == "none" and build_opts.repo_id:
+        target = None
+        build_opts.skip_tag = True
+    else:
+        build_target = session.getBuildTarget(target)
+        if not build_target:
+            parser.error(_("Unknown build target: %s" % target))
+        dest_tag = session.getTag(build_target['dest_tag'])
+        if not dest_tag:
+            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        if dest_tag['locked'] and not build_opts.scratch:
+            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
     source = args[1]
     opts = {}
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
-    for key in ('skip_tag','scratch'):
+    for key in ('skip_tag', 'scratch', 'repo_id'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
@@ -687,7 +692,7 @@ def handle_build(options, session, args):
     # try to check that source is an SRPM
     if '://' not in source:
         # only allow admins to perform non-scratch builds from srpm
-        if not opts['scratch'] and not session.hasPerm('admin'):
+        if not opts.get('scratch') and not session.hasPerm('admin'):
             parser.error(_("builds from srpm must use --scratch"))
             assert False
         #treat source as an srpm and upload it
@@ -2149,7 +2154,7 @@ def anon_handle_list_buildroot(options, session, args):
         opts['componentBuildrootID'] = buildrootID
     data = session.listRPMs(**opts)
 
-    fmt = "%(nvr)s"
+    fmt = "%(nvr)s.%(arch)s"
     output = [ fmt % x for x in data]
     output.sort()
     for line in output:
@@ -4229,6 +4234,31 @@ def anon_handle_wait_repo(options, session, args):
                 else:
                     print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
             return 1
+
+_search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'file')
+
+def anon_handle_search(options, session, args):
+    "Search koji"
+    usage = _("usage: %prog sync [options] search_type pattern")
+    usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
+    parser.add_option("--exact", action="store_true", help=_("exact matches only"))
+    main_options = options
+    (options, args) = parser.parse_args(args)
+    type = args[0]
+    if type not in _search_types:
+        parser.error(_("Unknown search type: %s") % type)
+    pattern = args[1]
+    matchType = 'glob'
+    if options.regex:
+        matchType = 'regexp'
+    elif options.exact:
+        matchType = 'exact'
+    data = session.search(pattern, type, matchType)
+    for row in data:
+        print row['name']
 
 def handle_help(options, session, args):
     "List available commands"
