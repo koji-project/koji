@@ -372,7 +372,7 @@ def load_config(req):
         ['EmailDomain', 'string', None],
         ['DisableNotifications', 'boolean', False],
 
-        ['Plugins', 'string', None],
+        ['Plugins', 'string', ''],
         ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],
 
         ['KojiDebug', 'boolean', False],
