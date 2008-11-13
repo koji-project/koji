@@ -377,6 +377,7 @@ def load_config(req):
 
         ['KojiDebug', 'boolean', False],
         ['KojiTraceback', 'string', None],
+        ['VerbosePolicy', 'boolean', False],
         ['EnableFunctionDebug', 'boolean', False],
 
         ['MissingPolicyOK', 'boolean', True],

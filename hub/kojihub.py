@@ -4151,7 +4151,7 @@ def check_policy(name, data, default='deny', strict=False):
     if not strict:
         return False, reason
     err_str = "policy violation"
-    if context.opts.get('KojiDebug', False):
+    if context.opts.get('KojiDebug') or context.opts.get('VerbosePolicy'):
         err_str += " -- %s" % reason
     raise koji.ActionNotAllowed, err_str
 

@@ -293,7 +293,7 @@ class SimpleRuleSet(object):
             else:
                 line += ' :: '
             ret.append(line)
-        ret = '\n... '.join(ret)
+        ret = '... '.join(ret)
         if self.lastaction is None:
             ret += "(no match)"
         else:
