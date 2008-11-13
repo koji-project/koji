@@ -684,10 +684,6 @@ def handle_build(options, session, args):
         priority = 5
     # try to check that source is an SRPM
     if '://' not in source:
-        # only allow admins to perform non-scratch builds from srpm
-        if not opts.get('scratch') and not session.hasPerm('admin'):
-            parser.error(_("builds from srpm must use --scratch"))
-            assert False
         #treat source as an srpm and upload it
         print "Uploading srpm: %s" % source
         serverdir = _unique_path('cli-build')
