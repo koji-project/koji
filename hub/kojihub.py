@@ -3906,12 +3906,32 @@ class PackageTest(koji.policy.MatchTest):
 class TagTest(koji.policy.MatchTest):
     name = 'tag'
     field = '_tagname'
+
+    def get_tag(self, data):
+        """extract the tag to test against from the data
+
+        return None if there is no tag to test
+        """
+        tag = data.get('tag')
+        if tag is None:
+            return None
+        return get_tag(tag, strict=False)
+
     def run(self, data):
         #we need to find the tag name from the base data
-        if not data['tag']:
+        tinfo = self.get_tag(data)
+        if tinfo is None:
             return False
-        data[self.field] = get_tag(data['tag'])['name']
+        data[self.field] = tinfo['name']
         return super(TagTest, self).run(data)
+
+class FromTagTest(TagTest):
+    name = 'fromtag'
+    def get_tag(self, data):
+        tag = data.get('fromtag')
+        if tag is None:
+            return None
+        return get_tag(tag, strict=False)
 
 class HasTagTest(koji.policy.BaseSimpleTest):
     """Check to see if build (currently) has a given tag"""
@@ -3926,6 +3946,15 @@ class HasTagTest(koji.policy.BaseSimpleTest):
                     return True
         #otherwise...
         return False
+
+class SkipTagTest(koji.policy.BaseSimpleTest):
+    """Check for the skip_tag option
+
+    For policies regarding build tasks (e.g. build_from_srpm)
+    """
+    name = 'skip_tag'
+    def run(self, data):
+        return bool(data.get('skip_tag'))
 
 class BuildTagTest(koji.policy.BaseSimpleTest):
     """Check the build tag of the build
