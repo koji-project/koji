@@ -1730,6 +1730,7 @@ class BuildTask(BaseTaskHandler):
             'source' : src,
             'task_id' : self.id,
             'build_tag' : build_tag,  #id
+            'skip_tag' : bool(self.opts.get('skip_tag')),
         }
         if target_info:
             policy_data['target'] = target_info['id'],
