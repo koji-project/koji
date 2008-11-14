@@ -806,7 +806,7 @@ def pom_to_nvr(pominfo):
     The pom-to-nvr mapping is as follows:
     - name: groupId + '-' + artifactId
     - version: version.replace('-', '_')
-    - release: 1
+    - release: None
     - epoch: None
     """
     maveninfo = pom_to_maven_info(pominfo)
@@ -831,10 +831,12 @@ def maven_info_to_nvr(maveninfo):
     """
     Convert the maveninfo to NVR-compatible format.
     Uses the same mapping as pom_to_nvr().
+    The release cannot be determined from Maven metadata, and will
+    be set to None.
     """
     nvr = {'name': maveninfo['group_id'] + '-' + maveninfo['artifact_id'],
            'version': maveninfo['version'].replace('-', '_'),
-           'release': '1',
+           'release': None,
            'epoch': None}
     # for backwards-compatibility
     nvr['package_name'] = nvr['name']
@@ -1213,10 +1215,11 @@ class PathInfo(object):
 
     def mavenbuild(self, build, maveninfo):
         """Return the directory where a maven build belongs"""
-        group_id = maveninfo['group_id'].replace('.', '/')
+        group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return self.topdir + ("/maven2/%(group_id)s/%(artifact_id)s/%(version)s" % locals())
+        release = build['release']
+        return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
 
     def archive(self, build):
         """Return the directory where the archive belongs"""

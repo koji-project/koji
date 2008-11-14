@@ -1782,6 +1782,48 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
+def maven_tag_packages(taginfo, event_id):
+    """
+    Get Maven builds associated with the given tag, following inheritance.
+    For any parent tags where 'maven_include_all' is true, include all tagged
+    builds, not just the latest.  If there are multiple releases of the same
+    Maven groupId-artifactId-version, only take the latest release.
+    """
+    logger = logging.getLogger("koji.hub.repo_init")
+    if not taginfo['maven_support']:
+        return []
+
+    tag_id = taginfo['id']
+    # Get the latest Maven builds using the normal build resolution logic
+    builds = readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, maven_only=True)
+
+    taglist = [tag_id]
+    taglist += [t['parent_id'] for t in readFullInheritance(tag_id, event=event_id)]
+    # Check if any tag in the inheritance hierarchy have maven_include_all == True
+    # If so, pull in all packages directly tagged into that tag as well
+    for maven_tag_id in taglist:
+        maven_tag = get_tag(maven_tag_id, strict=True)
+        if maven_tag['maven_include_all']:
+            logger.info('Including all packages in %s' % maven_tag['name'])
+            builds.extend(readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, maven_only=True))
+
+    seen = {}
+    results = []
+    # Since a Maven repo structure only has room for one version of a given groupId-artifactId, keep the
+    # first version found via the inheritance/tag-date mechanism, and skip all the rest
+    for build in builds:
+        maven_info = {'group_id': build['maven_group_id'],
+                      'artifact_id': build['maven_artifact_id'],
+                      'version': build['maven_version']}
+        maven_label = koji.mavenLabel(maven_info)
+        if seen.has_key(maven_label):
+            logger.info('Skipping duplicate Maven package: %s, build ID: %i' % (maven_label, build['id']))
+            continue
+        else:
+            results.append(build)
+            seen[maven_label] = True
+    return results
+
 def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """Create a new repo entry in the INIT state, return full repo data
 
@@ -1845,19 +1887,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.close()
 
     if tinfo['maven_support']:
-        # Get the latest Maven builds using the normal build resolution logic
-        maven_builds = dict([(build['id'], build) for build in \
-                                 readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, maven_only=True)])
-        taglist = [tag_id]
-        taglist += [t['parent_id'] for t in readFullInheritance(tag_id, event=event_id)]
-        # Check if any tag in the inheritance hierarchy have maven_include_all == True
-        # If so, pull in all packages directly tagged into that tag as well
-        for maven_tag_id in taglist:
-            maven_tag = get_tag(maven_tag_id, strict=True)
-            if maven_tag['maven_include_all']:
-                logger.info('Including all packages in %s' % maven_tag['name'])
-                maven_builds.update([(build['id'], build) for build in \
-                                         readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, maven_only=True)])
+        maven_builds = dict([(build['id'], build) for build in maven_tag_packages(tinfo, event_id)])
 
     # commit the transaction now so we don't hold locks in the database while we're creating
     # links on the filesystem (which can take a long time)
@@ -1915,15 +1945,12 @@ def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
     if not os.path.isdir(srcdir):
         # srcdir doesn't exist, so there's nothing to do
         return
-    destdir = maven_pi.mavenbuild(buildinfo, maveninfo)
-    koji.ensuredir(destdir)
-    # link all files in srcdir to destdir, including metadata files
-    for srcfile in os.listdir(srcdir):
-        srcpath = '%s/%s' % (srcdir, srcfile)
-        destpath = '%s/%s' % (destdir, srcfile)
-        if os.path.isfile(srcpath):
-            os.link(srcpath, destpath)
-    artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
+    # trim the release from the Maven storage dir structure
+    destdir = os.path.dirname(maven_pi.mavenbuild(buildinfo, maveninfo))
+    koji.ensuredir(os.path.dirname(destdir))
+    if not os.path.exists(destdir):
+        os.symlink(srcdir, destdir)
+        artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
 
 def _write_maven_repo_metadata(destdir, artifacts):
     # Sort the list so that the highest version number comes last.
@@ -3642,8 +3669,9 @@ def new_maven_build(build, maven_info):
     """
     maven_info = maven_info.copy()
     maven_nvr = koji.maven_info_to_nvr(maven_info)
+    maven_nvr['release'] = build['release']
 
-    for field in ('name', 'version', 'release', 'epoch'):
+    for field in ('name', 'version', 'epoch'):
         if build[field] != maven_nvr[field]:
             raise koji.BuildError, '%s mismatch (build: %s, maven: %s)' % \
                 (field, build[field], maven_nvr[field])
@@ -6907,8 +6935,8 @@ class BuildRoot(object):
         tables = ('archiveinfo',)
         joins = ('buildroot_archives ON archiveinfo.id = buildroot_archives.archive_id',)
         clauses = ('buildroot_archives.buildroot_id = %(id)i',)
-        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'md5sum')
-        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'md5sum', 'project_dep')
+        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum', 'project_dep')
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
                                values=self.data,
@@ -7320,21 +7348,47 @@ class HostExports(object):
         return result
 
     def initMavenBuild(self, task_id, build_info, maven_info):
-        """Create a new in-progress Maven build"""
+        """Create a new in-progress Maven build
+           Synthesize the release number by taking the (integer) release of the
+           last successful build and incrementing it."""
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
 
-        build_info['task_id'] = task_id
-        build_info['owner'] = task.getOwner()
-        build_info['state'] = koji.BUILD_STATES['BUILDING']
-        build_info['completion_time'] = None
-        build_id = new_build(build_info)
+        # find the last successful build of this N-V
+        values = {'name': build_info['name'],
+                  'version': build_info['version'],
+                  'state': koji.BUILD_STATES['COMPLETE']}
+        query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
+                               columns=['build.id', 'release'],
+                               clauses=['name = %(name)s', 'version = %(version)s',
+                                        'state = %(state)s'],
+                               values=values,
+                               opts={'order': '-build.id'})
+        result = query.executeOne()
+        release = None
+        if result:
+            release = result['release']
+
+        if not release:
+            release = '1'
+        elif release.isdigit():
+            release = str(int(release) + 1)
+        else:
+            raise koji.BuildError, 'Invalid release value for a Maven build: %s' % release
+        build_info['release'] = release
+
+        data = build_info.copy()
+        data['task_id'] = task_id
+        data['owner'] = task.getOwner()
+        data['state'] = koji.BUILD_STATES['BUILDING']
+        data['completion_time'] = None
+        build_id = new_build(data)
         build_info['id'] = build_id
         new_maven_build(build_info, maven_info)
 
-        return build_id
+        return build_id, build_info
 
     def completeMavenBuild(self, task_id, build_id, maven_results, rpm_results):
         """Complete the Maven build."""
@@ -7566,61 +7620,66 @@ class HostExports(object):
         br = BuildRoot(brootid)
         br.assertHost(host.id)
         br.assertTask(task_id)
+
+        repo = repo_info(br.data['repo_id'], strict=True)
+        tag = get_tag(repo['tag_id'], strict=True)
+        tag_builds = maven_tag_packages(tag, repo['create_event'])
+        archives_by_label = {}
+        for build in tag_builds:
+            maven_info = {'group_id': build['maven_group_id'],
+                          'artifact_id': build['maven_artifact_id'],
+                          'version': build['maven_version']}
+            maven_label = koji.mavenLabel(maven_info)
+            if archives_by_label.has_key(maven_label):
+                # A previous build has already claimed this groupId-artifactId-version, and thus
+                # the spot in the filesystem.  This build never made it into the build environment.
+                continue
+            newly_added_versions = [maven_label]
+            archives_by_label[maven_label] = {}
+            for archive in list_archives(buildID=build['id'], type='maven'):
+                archive_label = koji.mavenLabel(archive)
+                if archive_label in newly_added_versions:
+                    archives_by_label[archive_label][archive['filename']] = archive
+                elif not archives_by_label.has_key(archive_label):
+                    # These archives have a different label than their parent build, but that label
+                    # has not been processed yet.  These archives may have made their way into the
+                    # build environment.
+                    newly_added_versions.append(archive_label)
+                    archives_by_label[archive_label] = {}
+                    archives_by_label[archive_label][archive['filename']] = archive
+                else:
+                    # We've already added entries for archives with this label, but associated
+                    # with another build.  These archives never made it into the build environment.
+                    continue
+
         if not ignore:
             ignore = []
+        ignore_by_label = dict([(koji.mavenLabel(entry['maven_info']), entry['files']) for entry in ignore])
+
         archives = []
         for entry in mavenlist:
-            pom = entry['pom']
-            files = entry['files']
-            if pom:
-                maven_info = {'group_id': pom['groupId'],
-                              'artifact_id': pom['artifactId'],
-                              'version': pom['version']}
-            for fileinfo in files:
-                filename = fileinfo['filename']
-                if pom:
-                    archiveinfos = find_maven_archives(maven_info, filename)
+            maven_info = entry['maven_info']
+            maven_label = koji.mavenLabel(maven_info)
+            tag_archives = archives_by_label.get(maven_label, {})
+
+            for fileinfo in entry['files']:
+                tag_archive = tag_archives.get(fileinfo['filename'])
+                if tag_archive and fileinfo['size'] == tag_archive['size']:
+                    archives.append(tag_archive)
                 else:
-                    archiveinfos = list_archives(filename=filename, size=fileinfo['size'],
-                                                 md5sum=fileinfo['md5sum'])
-                if archiveinfos:
-                    if len(archiveinfos) == 1:
-                        archives.append(archiveinfos[0])
+                    # check the ignore list
+                    ignore = False
+                    ignore_archives = ignore_by_label.get(maven_label, [])
+                    for ignore_archive in ignore_archives:
+                        if ignore_archive['filename'] == fileinfo['filename'] and \
+                                ignore_archive['size'] == fileinfo['size']:
+                            ignore = True
+                            break
+                    if ignore:
+                        continue
                     else:
-                        raise koji.BuildrootError, 'multiple matches for %s; archive IDs: %s' % \
-                            (filename, ', '.join([str(a['id']) for a in archiveinfos]))
-                else:
-                    # check if it's in the ignore list
-                    for ignore_entry in ignore:
-                        ignore_pom = ignore_entry['pom']
-                        ignore_files = ignore_entry['files']
-                        if pom:
-                            if ignore_pom:
-                                if pom['groupId'] == ignore_pom['groupId'] and \
-                                        pom['artifactId'] == ignore_pom['artifactId'] and \
-                                        pom['version'] == ignore_pom['version'] and \
-                                        filename in [e['filename'] for e in ignore_files]:
-                                    # artifact is in the ignore list, don't bail out
-                                    break
-                        else:
-                            found = False
-                            if not ignore_pom:
-                                for ignore_file in ignore_files:
-                                    if filename == ignore_file['filename'] and \
-                                            fileinfo['size'] == ignore_file['size'] and \
-                                            fileinfo['md5sum'] == ignore_file['md5sum']:
-                                        found = True
-                                        break
-                            if found:
-                                break
-                    else:
-                        # artifact was not in the ignore list, raise an error
-                        if pom:
-                            raise koji.BuildrootError, 'unknown file in buildroot: %s; groupId: %s, artifactId: %s, version: %s' % \
-                                (filename, pom['groupId'], pom['artifactId'], pom['version'])
-                        else:
-                            raise koji.BuildrootError, 'unknown file in buildroot: %s; size: %s, md5sum: %s' % \
-                                (filename, fileinfo['size'], fileinfo['md5sum'])
+                        raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
+                            ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
 
         return br.updateArchiveList(archives, project)
 
