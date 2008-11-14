@@ -307,7 +307,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id)
 
-    def _new(self, tag, arch, task_id, distribution=None, repo_id=None, setup_dns=False):
+    def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False):
         """Create a brand new repo"""
         self.task_id = task_id
         self.distribution = distribution
@@ -348,6 +348,7 @@ class BuildRoot(object):
             raise koji.BuildrootError, "failed to get a buildroot id"
         self.id = id
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
+        self.install_group = install_group
         self.setup_dns = setup_dns
         self._writeMockConfig()
 
@@ -367,6 +368,7 @@ class BuildRoot(object):
                 opts[k] = getattr(options, k)
         opts['buildroot_id'] = self.id
         opts['use_host_resolv'] = self.setup_dns
+        opts['install_group'] = self.install_group
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
@@ -2176,7 +2178,7 @@ class BuildMavenTask(BaseTaskHandler):
         if not host['arches']:
             raise koji.BuildError, 'No arch list for host: %s' % host['name']
         br_arch = host['arches'].split()[0]
-        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, setup_dns=True)
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True)
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
