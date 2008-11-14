@@ -2090,13 +2090,10 @@ class MavenTask(BaseTaskHandler):
         maven_results = self.wait(self.build_task_id)[self.build_task_id]
         maven_results['task_id'] = self.build_task_id
 
+        build_info = None
         if not self.opts.get('scratch'):
-            pom_file = maven_results['poms'][0]
-            pom_path = os.path.join(koji.pathinfo.task(self.build_task_id),
-                                    pom_file)
-            pom_info = koji.parse_pom(pom_path)
-            maven_info = koji.pom_to_maven_info(pom_info)
-            build_info = koji.pom_to_nvr(pom_info)
+            maven_info = maven_results['maven_info']
+            build_info = koji.maven_info_to_nvr(maven_info)
 
             dest_cfg = session.getPackageConfig(dest_tag['id'], build_info['name'])
             # Make sure package is on the list for this tag
@@ -2113,7 +2110,7 @@ class MavenTask(BaseTaskHandler):
             rpm_results = None
             spec_url = self.opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, build_tag)
+                rpm_results = self.buildWrapperRPM(spec_url, build_tag, build_info)
 
             if not self.opts.get('scratch'):
                 session.host.completeMavenBuild(self.id, self.build_id, maven_results, rpm_results)
@@ -2135,10 +2132,7 @@ class MavenTask(BaseTaskHandler):
                                                arch='noarch')
             self.wait(tag_task_id)
 
-    def buildWrapperRPM(self, spec_url, build_tag):
-        build = None
-        if not self.opts.get('scratch'):
-            build = session.getBuild(self.build_id)
+    def buildWrapperRPM(self, spec_url, build_tag, build):
         task = session.getTaskInfo(self.build_task_id)
         arglist = [spec_url, build_tag, build, task]
 
@@ -2214,7 +2208,8 @@ class BuildMavenTask(BaseTaskHandler):
         sourcedir = scm.checkout(scmdir, uploadpath, logfile)
 
         # zip up pristine sources for auditing purposes
-        self._zip_dir(sourcedir, outputdir + '/koji-task%i-sources.zip' % self.id)
+        task_sources = 'koji-task%i-sources.zip' % self.id
+        self._zip_dir(sourcedir, os.path.join(outputdir, task_sources))
 
         # Checkout out patches, if present
         if self.opts.get('patches'):
@@ -2224,7 +2219,8 @@ class BuildMavenTask(BaseTaskHandler):
             # never try to check out a common/ dir when checking out patches
             patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, uploadpath, patchlog)
-            self._zip_dir(patchcheckoutdir, outputdir + '/koji-task%i-patches.zip' % self.id)
+            task_patches = 'koji-task%i-patches.zip' % self.id
+            self._zip_dir(patchcheckoutdir, os.path.join(outputdir, task_patches))
 
         # Set ownership of the entire source tree to the mock user
         if mockuid != None:
@@ -2281,9 +2277,24 @@ class BuildMavenTask(BaseTaskHandler):
                     # metadata, we'll recreate that ourselves
                     pass
                 else:
-                    raise koji.GenericError, 'unknown file type: %s' % filename
+                    raise koji.BuildError, 'unknown file type: %s' % filename
         if not poms:
-            raise koji.GenericError, 'no .pom files found'
+            raise koji.BuildError, 'no .pom files found'
+
+        build_pom = poms[0]
+        pom_info = koji.parse_pom(os.path.join(outputdir, build_pom))
+        maven_info = koji.pom_to_maven_info(pom_info)
+        maven_label = koji.mavenLabel(maven_info)
+        # rename the -sources and -patches zips to more meaningful names
+        build_sources = maven_label + '-sources.zip'
+        os.rename(os.path.join(outputdir, task_sources),
+                  os.path.join(outputdir, build_sources))
+        jars[jars.index(task_sources)] = build_sources
+        if self.opts.get('patches'):
+            build_patches = maven_label + '-patches.zip'
+            os.rename(os.path.join(outputdir, task_patches),
+                      os.path.join(outputdir, build_patches))
+            jars[jars.index(task_patches)] = build_patches
 
         for filepath in logs + poms + jars:
             self.uploadFile(os.path.join(outputdir, filepath),
@@ -2300,11 +2311,12 @@ class BuildMavenTask(BaseTaskHandler):
                     # only files with content get uploaded to the hub
                     logs.append(filename)
             else:
-                raise koji.GenericError, 'unknown file type: %s' % filename
+                raise koji.BuildError, 'unknown file type: %s' % filename
 
         buildroot.expire()
 
-        return {'buildroot_id': buildroot.id,
+        return {'maven_info': maven_info,
+                'buildroot_id': buildroot.id,
                 'logs': logs,
                 'poms': poms,
                 'jars': jars}
