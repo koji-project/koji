@@ -1081,7 +1081,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # Use the group data rather than a generated rpm
         'chroot_setup_cmd': 'groupinstall build',
         # don't encourage network access from the chroot
-        'use_host_resolv': False,
+        'use_host_resolv': opts.get('use_host_resolv', False),
         # Don't let a build last more than 24 hours
         'rpmbuild_timeout': 86400
     }
