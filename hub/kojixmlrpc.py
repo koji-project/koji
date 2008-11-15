@@ -356,6 +356,7 @@ def load_config(req):
         ['DBName', 'string', None],
         ['DBUser', 'string', None],
         ['DBHost', 'string', None],
+        ['DBhost', 'string', None],   # alias for backwards compatibility
         ['DBPass', 'string', None],
         ['KojiDir', 'string', None],
 
@@ -409,6 +410,8 @@ def load_config(req):
                     opts[name] = modpy_opts.get(name)
             else:
                 opts[name] = default
+    if opts['DBHost'] is None:
+        opts['DBHost'] = opts['DBhost']
     # load policies
     # (only from config file)
     if cf and config.has_section('policy'):
@@ -529,7 +532,7 @@ def handler(req, profiling=False):
             koji.db.provideDBopts(database = opts["DBName"],
                                   user = opts["DBUser"],
                                   password = opts.get("DBPass",None),
-                                  host = opts.get("DBhost",None))
+                                  host = opts.get("DBHost", None))
             try:
                 context.cnx = koji.db.connect(_opt_bool(opts, 'KojiDebug'))
             except Exception:
