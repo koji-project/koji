@@ -1036,8 +1036,17 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         q += """AND package.name = %(package)s
         """
     if arch:
-        q += """AND rpminfo.arch = %(arch)s
-        """
+        if isinstance(arch, basestring):
+            q += """AND rpminfo.arch = %(arch)s
+            """
+        else:
+            try:
+                it = iter(arch)
+            except TypeError:
+                raise koji.GenericError, 'invalid arch option: %s' % arch
+            q += """AND rpminfo.arch in (%s)
+            """ % ','.join(["'%s'" % a for a in it])
+
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
     # we can get duplicates if a package is multiply tagged.
