@@ -2256,12 +2256,14 @@ class BuildMavenTask(BaseTaskHandler):
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile, props=self.opts.get('properties'))
 
         pom_extensions = ['.' + ext for ext in session.getArchiveType(type_name='pom')['extensions'].split()]
-        jar_extensions = ['.' + ext for ext in session.getArchiveType(type_name='zip')['extensions'].split()]
+        jar_extensions = ['.' + ext for ext in session.getArchiveType(type_name='jar')['extensions'].split()]
+        zip_extensions = ['.' + ext for ext in session.getArchiveType(type_name='zip')['extensions'].split()]
         logs = ['checkout.log']
         if self.opts.get('patches'):
             logs.append('patches.log')
         poms = []
         jars = []
+        zips = []
 
         for path, dirs, files in os.walk(outputdir):
             # sort the list of files so the first pom found is predictable
@@ -2275,6 +2277,8 @@ class BuildMavenTask(BaseTaskHandler):
                     poms.append(relpath)
                 elif ext in jar_extensions:
                     jars.append(relpath)
+                elif ext in zip_extensions:
+                    zips.append(relpath)
                 elif ext == '.md5' or \
                         ext == '.sha1' or \
                         filename == 'maven-metadata.xml':
@@ -2293,14 +2297,15 @@ class BuildMavenTask(BaseTaskHandler):
         build_sources = maven_label + '-sources.zip'
         os.rename(os.path.join(outputdir, task_sources),
                   os.path.join(outputdir, build_sources))
-        jars[jars.index(task_sources)] = build_sources
+        zips[zips.index(task_sources)] = build_sources
         if self.opts.get('patches'):
             build_patches = maven_label + '-patches.zip'
             os.rename(os.path.join(outputdir, task_patches),
                       os.path.join(outputdir, build_patches))
-            jars[jars.index(task_patches)] = build_patches
+            zips[zips.index(task_patches)] = build_patches
 
-        for filepath in logs + poms + jars:
+        # upload the build output
+        for filepath in logs + poms + jars + zips:
             self.uploadFile(os.path.join(outputdir, filepath),
                             relPath=os.path.dirname(filepath))
 
@@ -2323,7 +2328,8 @@ class BuildMavenTask(BaseTaskHandler):
                 'buildroot_id': buildroot.id,
                 'logs': logs,
                 'poms': poms,
-                'jars': jars}
+                'jars': jars,
+                'zips': zips}
 
 class WrapperRPMTask(BaseTaskHandler):
     """Build a wrapper rpm around jars output from a Maven build.

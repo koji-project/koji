@@ -2944,21 +2944,23 @@ def get_archive_file(archive_id, filename):
     query.values = {'archive_id': archive_id, 'filename': filename}
     return query.executeOne()
 
-def find_maven_archives(maven_info, filename=None, queryOpts=None):
+def find_maven_archives(maven_info, filename=None, build_id=None, queryOpts=None):
     """
     Find information about the Maven archive associated with the
     given Maven info.
 
     If filename is not none, also filter by filename.
+    if build_id is not none, also filter by build_id.
 
     maven_info is a dict that must contain 'group_id', 'artifact_id', and
     'version' fields.
     """
     values = maven_info.copy()
     tables = ('archiveinfo',)
-    columns = ('id', 'type_id', 'archiveinfo.build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
-    aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+    columns = ('archiveinfo.id', 'type_id', 'archivetypes.name', 'archiveinfo.build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+    aliases = ('id', 'type_id', 'type_name', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
     joins = ('maven_builds ON archiveinfo.build_id = maven_builds.build_id',
+             'archivetypes ON archiveinfo.type_id = archivetypes.id',
              'LEFT JOIN maven_archives ON archiveinfo.id = maven_archives.archive_id')
     clauses = ("""
          (maven_builds.group_id = %(group_id)s and
@@ -2972,6 +2974,9 @@ def find_maven_archives(maven_info, filename=None, queryOpts=None):
     if filename:
         clauses += ('archiveinfo.filename = %(filename)s',)
         values['filename'] = filename
+    if build_id:
+        clauses += ('archiveinfo.build_id = %(build_id)i',)
+        values['build_id'] = build_id
     query = QueryProcessor(tables=tables, columns=columns, aliases=aliases,
                            joins=joins, clauses=clauses,
                            values=values,
@@ -3728,34 +3733,39 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     if maveninfo:
         # XXX This means that once we associate Maven metadata with a build, we can no longer
         # associate non-Maven archives with it.  Is this acceptable?
-        if archivetype['name'] == 'zip':
+        mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+        if archivetype['name'] == 'jar':
             pom, pom_info = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
             if pom_info:
                 maveninfo = koji.pom_to_maven_info(pom_info)
-                other_archives = find_maven_archives(maveninfo)
-                if not other_archives:
+                pom_archives = [a for a in find_maven_archives(maveninfo, build_id=build_id) \
+                                    if a['type_name'] == 'pom']
+                if not pom_archives:
                     # the pom file must be imported before any zips/jars can
-                    raise koji.BuildError, 'unknown Maven build: %s' % maveninfo
-            mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-            koji.ensuredir(mavendir)
-            _import_archive_file(filepath, mavendir)
-            _generate_maven_metadata(maveninfo, mavendir)
+                    raise koji.BuildError, 'unknown Maven build: %s' % koji.mavenLabel(maveninfo)
+        elif archivetype['name'] == 'zip':
+            # We associate the zip with the maven info too, since it was generated as part of a Maven build
+            _insert_maven_archive(archive_id, maveninfo)
+            import_zip_archive(archive_id, filepath, buildinfo)
         elif archivetype['name'] == 'pom':
             pom_info = koji.parse_pom(filepath)
             maveninfo = koji.pom_to_maven_info(pom_info)
             _insert_maven_archive(archive_id, maveninfo)
-            mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-            _import_archive_file(filepath, mavendir)
+        else:
+            raise koji.BuildError, 'unsupported archive type: %s' % archivetype['name']
+        # move the file to it's final destination
+        _import_archive_file(filepath, mavendir)
+        if archivetype['name'] in ('jar', 'pom'):
             _generate_maven_metadata(maveninfo, mavendir)
-        else:
-            raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
     else:
-        # XXX A generic archive (not Maven)...should we throw an error here instead?
-        if archivetype['name'] == 'zip':
-            import_zip_archive(archive_id, filepath, buildinfo)
-            _import_archive_file(filepath, koji.pathinfo.archive(buildinfo))
-        else:
-            raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
+        # A generic archive (not Maven)
+        # We don't know where it came from, so throw an error
+        # if archivetype['name'] == 'zip':
+        #     import_zip_archive(archive_id, filepath, buildinfo)
+        #     _import_archive_file(filepath, koji.pathinfo.archive(buildinfo))
+        # else:
+        #     raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
+        raise koji.BuildError, 'only Maven archives are supported at this time'
 
 def _insert_maven_archive(archive_id, mavendata):
     """Associate the Maven data with the given archive"""
@@ -7402,13 +7412,10 @@ class HostExports(object):
         maven_task_id = maven_results['task_id']
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
-        # import the poms
-        for pom_path in maven_results['poms']:
-            import_archive(os.path.join(maven_task_dir, pom_path),
-                           build_info, maven_buildroot_id)
-        # import the jars
-        for jar_path in maven_results['jars']:
-            import_archive(os.path.join(maven_task_dir, jar_path),
+        # import the build output
+        for file_path in maven_results['poms'] + \
+                maven_results['jars'] + maven_results['zips']:
+            import_archive(os.path.join(maven_task_dir, file_path),
                            build_info, maven_buildroot_id)
         # move the logs to their final destination
         for log_path in maven_results['logs']:
