@@ -179,7 +179,11 @@ class Task(object):
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
             q = """SELECT %s FROM task WHERE id=%%(id)i""" % ','.join([f[0] for f in fields])
-            return _singleRow(q, vars(self), [f[1] for f in fields], strict=True)
+            ret = _singleRow(q, vars(self), [f[1] for f in fields], strict=True)
+            if ret['request'].find('<?xml', 0, 10) == -1:
+                #handle older base64 encoded data
+                ret['request'] = base64.decodestring(ret['request'])
+            return ret
         else:
             return None
 
