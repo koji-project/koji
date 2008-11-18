@@ -2390,8 +2390,10 @@ def get_build(buildInfo, strict=False):
       owner_id: ID of the user who kicked off the build
       owner_name: name of the user who kicked off the build
       creation_event_id: id of the create_event
-      creation_time: time the build was created
+      creation_time: time the build was created (text)
+      creation_ts: time the build was created (epoch)
       completion_time: time the build was completed (may be null)
+      completion_ts: time the build was completed (epoch, may be null)
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -2408,6 +2410,8 @@ def get_build(buildInfo, strict=False):
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
+              ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+              ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'))
     query = """SELECT %s
     FROM build
