@@ -5160,7 +5160,10 @@ class RootExports(object):
         """Grant a permission to a user"""
         context.session.assertPerm('admin')
         user_id = get_user(userinfo,strict=True)['id']
-        perm_id = get_perm_id(permission,strict=True)
+        perm = lookup_perm(permission, strict=True)
+        perm_id = perm['id']
+        if perm['name'] in koji.auth.get_user_perms(user_id):
+            raise koji.GenericError, 'user %s already has permission: %s' % (userinfo, perm['name'])
         insert = """INSERT INTO user_perms (user_id, perm_id)
         VALUES (%(user_id)i, %(perm_id)i)"""
         _dml(insert, locals())
