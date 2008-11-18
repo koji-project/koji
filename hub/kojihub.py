@@ -7674,32 +7674,32 @@ class HostExports(object):
 
         if not ignore:
             ignore = []
-        ignore_by_label = dict([(koji.mavenLabel(entry['maven_info']), entry['files']) for entry in ignore])
+        ignore_by_label = {}
+        for entry in ignore:
+            ignore_info = entry['maven_info']
+            ignore_label = koji.mavenLabel(ignore_info)
+            if not ignore_by_label.has_key(ignore_label):
+                ignore_by_label[ignore_label] = {}
+            for fileinfo in entry['files']:
+                ignore_by_label[ignore_label][fileinfo['filename']] = fileinfo
 
         archives = []
         for entry in mavenlist:
             maven_info = entry['maven_info']
             maven_label = koji.mavenLabel(maven_info)
+            ignore_archives = ignore_by_label.get(maven_label, {})
             tag_archives = archives_by_label.get(maven_label, {})
 
             for fileinfo in entry['files']:
+                ignore_archive = ignore_archives.get(fileinfo['filename'])
                 tag_archive = tag_archives.get(fileinfo['filename'])
-                if tag_archive and fileinfo['size'] == tag_archive['size']:
+                if ignore_archive and fileinfo['size'] == ignore_archive['size']:
+                    continue
+                elif tag_archive and fileinfo['size'] == tag_archive['size']:
                     archives.append(tag_archive)
                 else:
-                    # check the ignore list
-                    ignore = False
-                    ignore_archives = ignore_by_label.get(maven_label, [])
-                    for ignore_archive in ignore_archives:
-                        if ignore_archive['filename'] == fileinfo['filename'] and \
-                                ignore_archive['size'] == fileinfo['size']:
-                            ignore = True
-                            break
-                    if ignore:
-                        continue
-                    else:
-                        raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
-                            ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
+                    raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
+                        ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
 
         return br.updateArchiveList(archives, project)
 
