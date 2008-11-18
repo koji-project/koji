@@ -1830,8 +1830,12 @@ def taskLabel(taskInfo):
             extra = taskInfo['request'][1]
     elif method == 'waitrepo':
         if taskInfo.has_key('request'):
-            extra = taskInfo['request'][0]
-    
+            extra = str(taskInfo['request'][0])
+            if len(taskInfo['request']) >= 3:
+                nvrs = taskInfo['request'][2]
+                if isinstance(nvrs, list):
+                    extra += ', ' + ', '.join(nvrs)
+
     if extra:
         return '%s (%s)' % (method, extra)
     else:
