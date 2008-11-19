@@ -3862,7 +3862,7 @@ def handle_move_pkg(options, session, args):
     if _running_in_bg() or options.nowait:
         return
     else:
-        watch_tasks(session,tasks)
+        return watch_tasks(session, tasks)
 
 def handle_untag_pkg(options, session, args):
     "Remove a tag from one or more packages"
