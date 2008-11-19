@@ -764,7 +764,7 @@ def handle_chain_build(options, session, args):
             # quick check that it looks like a N-V-R
             build_level.append(src)
         else:
-            print _('"%s" is not a SCM URL or package N-V-R')
+            print _('"%s" is not a SCM URL or package N-V-R' % src)
             return 1
     if build_level:
         src_list.append(build_level)
