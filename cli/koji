@@ -1869,6 +1869,8 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -1893,6 +1895,16 @@ def anon_handle_list_tagged(options, session, args):
     if options.sigs:
         opts['rpmsigs'] = True
         options.rpms = True
+    if options.event is not None:
+        opts['event'] = options.event
+    if options.repo is not None:
+        repo = session.repoInfo(options.repo)
+        if not repo:
+            print "No such repo: %s" % options.repo
+            return
+        repo['timestr'] = time.asctime(time.localtime(repo['create_ts']))
+        print "Querying at event %(create_event)i (%(tag_name)s/%(timestr)s)" % repo
+        opts['event'] = repo['create_event']
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
