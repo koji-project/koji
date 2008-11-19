@@ -1039,13 +1039,10 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         if isinstance(arch, basestring):
             q += """AND rpminfo.arch = %(arch)s
             """
+        elif isinstance(arch, (list, tuple)):
+            q += """AND rpminfo.arch IN %(arch)s\n"""
         else:
-            try:
-                it = iter(arch)
-            except TypeError:
-                raise koji.GenericError, 'invalid arch option: %s' % arch
-            q += """AND rpminfo.arch in (%s)
-            """ % ','.join(["'%s'" % a for a in it])
+            raise koji.GenericError, 'invalid arch option: %s' % arch
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
