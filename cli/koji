@@ -2307,6 +2307,14 @@ def anon_handle_rpminfo(options, session, args):
         print "Payload: %(payloadhash)s" %info
         print "Size: %(size)s" %info
         print "Build ID: %(build_id)s" %info
+        if info['buildroot_id'] is None:
+            print "No buildroot data available"
+        else:
+            br_info = session.getBuildroot(info['buildroot_id'])
+            print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
+            print "Build Host: %(host_name)s" % br_info
+            print "Build Task: %(task_id)i" % br_info
+
 
 def anon_handle_buildinfo(options, session, args):
     "Print basic information about a build"
