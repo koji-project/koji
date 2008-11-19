@@ -853,6 +853,12 @@ class TaskManager(object):
         for task in tasks:
             # note: tasks are in priority order
             self.logger.debug("task: %r" % task)
+            if self.tasks.has_key(task['id']):
+                # we were running this task, but it apparently has been
+                # freed or reassigned. We can't do anything with it until
+                # updateTasks notices this and cleans up.
+                self.logger.debug("Task %(id)s freed or reassigned", task)
+                continue
             if task['state'] == koji.TASK_STATES['ASSIGNED']:
                 self.logger.debug("task is assigned")
                 if self.host_id == task['host_id']:
