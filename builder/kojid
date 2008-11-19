@@ -1491,7 +1491,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(src)
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target['build_tag'], None, nvrs],
+                                               arglist=[target_info['build_tag_name'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 subtasks.append(task_id)
@@ -1507,7 +1507,7 @@ class ChainBuildTask(BaseTaskHandler):
                     nvrs.append(builds[0]['nvr'])
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target['build_tag'], None, nvrs],
+                                               arglist=[target_info['build_tag_name'], None, nvrs],
                                                label=','.join(nvrs),
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
@@ -2415,15 +2415,15 @@ class WaitrepoTask(BaseTaskHandler):
 
         start = time.time()
 
-        taginfo = session.getTag(tag)
+        taginfo = session.getTag(tag, strict=True)
         targets = session.getBuildTargets(buildTagID=taginfo['id'])
         if not targets:
             raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
 
         if isinstance(newer_than, basestring) and newer_than.lower() == "now":
             newer_than = start
-        if not isinstance(newer_than, (int, long, float)):
-            raise koji.GenericError, "Invalid value for newer_than"
+        if not isinstance(newer_than, (type(None), int, long, float)):
+            raise koji.GenericError, "Invalid value for newer_than: %s" % newer_than
 
         if newer_than and nvrs:
             raise koji.GenericError, "only one of (newer_than, nvrs) may be specified"
