@@ -3858,22 +3858,69 @@ def handle_untag_pkg(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
+    parser.add_option("--non-latest", action="store_true", help=_("untag all versions of the package in this tag except the latest"))
+    parser.add_option("-n", "--test", action="store_true", help=_("test mode"))
+    parser.add_option("-v", "--verbose", action="store_true", help=_("print details"))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     (options, args) = parser.parse_args(args)
-    if len(args) < 2:
+    if options.non_latest and options.force:
+        if len(args) < 1:
+            parser.error(_("Please specify a tag"))
+            assert False
+    elif len(args) < 2:
         parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
         assert False
     activate_session(session)
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Invalid tag: %s" % args[0]))
     if options.all:
-        pkgs = []
+        builds = []
         for pkg in args[1:]:
-            pkgs.extend([x['nvr'] for x in session.listTagged(args[0], package=pkg)])
+            builds.extend(session.listTagged(args[0], package=pkg))
+    elif options.non_latest:
+        if options.force and len(args) == 1:
+            tagged = session.listTagged(args[0])
+        else:
+            tagged = []
+            for pkg in args[1:]:
+                tagged.extend(session.listTagged(args[0], package=pkg))
+        # listTagged orders entries latest first
+        seen_pkg = {}
+        builds = []
+        for binfo in tagged:
+            if not seen_pkg.has_key(binfo['name']):
+                #latest for this package
+                if options.verbose:
+                    print _("Leaving latest build for package %(name)s: %(nvr)s") % binfo
+            else:
+                builds.append(binfo)
+            seen_pkg[binfo['name']] = 1
     else:
-        pkgs = args[1:]
-    for pkg in pkgs:
-        print pkg
-        #XXX trap errors
-        session.untagBuild(args[0], pkg, force=options.force)
+        tagged = session.listTagged(args[0])
+        idx = dict([(b['nvr'], b) for b in tagged])
+        builds = []
+        for nvr in args[1:]:
+            binfo = idx.get(nvr)
+            if binfo:
+                builds.append(binfo)
+            else:
+                # not in tag, see if it even exists
+                binfo = session.getBuild(nvr)
+                if not binfo:
+                    print _("No such build: %s") % nvr
+                else:
+                    print _("Build %s not in tag %s") % (nvr, tag['name'])
+                if not options.force:
+                    sys.exit(1)
+    builds.reverse()
+    for binfo in builds:
+        if options.test:
+            print _("would have untagged %(nvr)s") % binfo
+        else:
+            if options.verbose:
+                print _("untagging %(nvr)s") % binfo
+            session.untagBuild(tag['name'], binfo['nvr'], force=options.force)
 
 def handle_unblock_pkg(options, session, args):
     "[admin] Unblock a package in the listing for tag"
