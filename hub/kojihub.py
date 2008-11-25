@@ -4261,11 +4261,28 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return "%r" % context.opts
 
-    def getLastEvent(self):
+    def getLastEvent(self, before=None):
+        """
+        Get the id and timestamp of the last event recorded in the system.
+        Events are usually created as the result of a configuration change
+        in the database.
+
+        If "before" (int or float) is specified, return the last event
+        that occurred before that time (in seconds since the epoch).
+        If there is no event before the given time, an error will be raised.
+        """
         fields = ('id', 'ts')
-        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
-        ORDER BY id DESC LIMIT 1"""
-        return _singleRow(q, {}, fields, strict=True)
+        values = {}
+        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
+        if before is not None:
+            if not isinstance(before, (int, long, float)):
+                raise koji.GenericError, 'invalid type for before: %s' % type(before)
+            # use the repr() conversion because it retains more precision than the
+            # string conversion
+            q += """ WHERE EXTRACT(EPOCH FROM time) < %(before)r"""
+            values['before'] = before
+        q += """ ORDER BY id DESC LIMIT 1"""
+        return _singleRow(q, values, fields, strict=True)
 
     def makeTask(self,*args,**opts):
         #this is mainly for debugging
