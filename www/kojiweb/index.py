@@ -78,6 +78,7 @@ def _assertLogin(req):
 
 def _initValues(req, title='Build System Info', pageID='summary'):
     values = {}
+    values['siteName'] = req.get_options().get('SiteName', 'Koji')
     values['title'] = title
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
