@@ -5159,6 +5159,8 @@ class RootExports(object):
         context.session.assertPerm('admin')
 
         build = self.getBuild(build, strict=True)
+        if list_rpms(build['id']):
+            raise koji.PreBuildError, 'wrapper rpms for %s have already been built' % koji.buildLabel(build)
         build_target = self.getBuildTarget(target)
         if not build_target:
             raise koji.PreBuildError, 'no such build target: %s' % target
@@ -7461,34 +7463,9 @@ class HostExports(object):
             raise koji.GenericError, 'cannot import wrapper rpms for %s: build state is %s, not complete' % \
                 (koji.buildLabel(build_info), koji.BUILD_STATES[build_info['state']].lower())
 
-        rpms = list_rpms(buildID=build_info['id'])
-        rpmfiles = []
-        for rpm in rpms:
-            # delete rpminfo from the database
-            # this will fail if the rpm has ever been used in a buildroot, which is what we want
-            delete = """DELETE FROM rpmdeps WHERE rpm_id=%(id)i"""
-            _dml(delete, rpm)
-            delete = """DELETE FROM rpmfiles WHERE rpm_id=%(id)i"""
-            _dml(delete, rpm)
-            delete = """DELETE FROM rpmsigs WHERE rpm_id=%(id)i"""
-            _dml(delete, rpm)
-            delete = """DELETE FROM rpminfo WHERE id=%(id)i"""
-            _dml(delete, rpm)
-            rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm))
-            rpmfiles.append(rpm_path)
-
-        for rpm_path in rpmfiles:
-            os.remove(rpm_path)
-            if not os.listdir(os.path.dirname(rpm_path)):
-                # also remove empty directories
-                os.removedirs(os.path.dirname(rpm_path))
-
-        for log in rpm_results['logs']:
-            # remove previously imported build logs too
-            log_path = os.path.join(koji.pathinfo.build_logs(build_info), 'noarch',
-                                    os.path.basename(log))
-            if os.path.exists(log_path):
-                os.remove(log_path)
+        if list_rpms(buildID=build_info['id']):
+            # don't allow overwriting of already-imported wrapper RPMs
+            raise koji.GenericError, 'wrapper rpms for %s have already been imported' % koji.buildLabel(build_info)
 
         _import_wrapper(task.id, build_info, rpm_results)
 
