@@ -480,18 +480,6 @@ def eventCondition(event, table=None):
     else:
         raise koji.GenericError, "Invalid event: %r" % event
 
-def get_last_event():
-    """
-    Get the id and timestamp of the last event that modified the
-    system.  Returns a map containing the following fields:
-      - id
-      - ts
-    """
-    fields = ('id', 'ts')
-    q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
-            ORDER BY id DESC LIMIT 1"""
-    return _singleRow(q, {}, fields, strict=True)
-
 def readGlobalInheritance(event=None):
     c=context.cnx.cursor()
     fields = ('tag_id','parent_id','name','priority','maxdepth','intransitive',
@@ -1061,13 +1049,10 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         if isinstance(arch, basestring):
             q += """AND rpminfo.arch = %(arch)s
             """
+        elif isinstance(arch, (list, tuple)):
+            q += """AND rpminfo.arch IN %(arch)s\n"""
         else:
-            try:
-                it = iter(arch)
-            except TypeError:
-                raise koji.GenericError, 'invalid arch option: %s' % arch
-            q += """AND rpminfo.arch in (%s)
-            """ % ','.join(["'%s'" % a for a in it])
+            raise koji.GenericError, 'invalid arch option: %s' % arch
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
@@ -2601,8 +2586,10 @@ def get_build(buildInfo, strict=False):
       owner_id: ID of the user who kicked off the build
       owner_name: name of the user who kicked off the build
       creation_event_id: id of the create_event
-      creation_time: time the build was created
+      creation_time: time the build was created (text)
+      creation_ts: time the build was created (epoch)
       completion_time: time the build was completed (may be null)
+      completion_ts: time the build was completed (epoch, may be null)
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -2619,6 +2606,8 @@ def get_build(buildInfo, strict=False):
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
+              ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+              ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'))
     query = """SELECT %s
     FROM build
@@ -5197,7 +5186,28 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return "%r" % context.opts
 
-    getLastEvent = staticmethod(get_last_event)
+    def getLastEvent(self, before=None):
+        """
+        Get the id and timestamp of the last event recorded in the system.
+        Events are usually created as the result of a configuration change
+        in the database.
+
+        If "before" (int or float) is specified, return the last event
+        that occurred before that time (in seconds since the epoch).
+        If there is no event before the given time, an error will be raised.
+        """
+        fields = ('id', 'ts')
+        values = {}
+        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
+        if before is not None:
+            if not isinstance(before, (int, long, float)):
+                raise koji.GenericError, 'invalid type for before: %s' % type(before)
+            # use the repr() conversion because it retains more precision than the
+            # string conversion
+            q += """ WHERE EXTRACT(EPOCH FROM time) < %(before)r"""
+            values['before'] = before
+        q += """ ORDER BY id DESC LIMIT 1"""
+        return _singleRow(q, values, fields, strict=True)
 
     def makeTask(self,*args,**opts):
         #this is mainly for debugging
@@ -6093,7 +6103,10 @@ class RootExports(object):
         """Grant a permission to a user"""
         context.session.assertPerm('admin')
         user_id = get_user(userinfo,strict=True)['id']
-        perm_id = get_perm_id(permission,strict=True)
+        perm = lookup_perm(permission, strict=True)
+        perm_id = perm['id']
+        if perm['name'] in koji.auth.get_user_perms(user_id):
+            raise koji.GenericError, 'user %s already has permission: %s' % (userinfo, perm['name'])
         insert = """INSERT INTO user_perms (user_id, perm_id)
         VALUES (%(user_id)i, %(perm_id)i)"""
         _dml(insert, locals())

@@ -119,8 +119,21 @@ class ManagedRepo(object):
 
     def tryDelete(self):
         """Remove the repo from disk, if possible"""
-        #we check just the event age first since it is faster
-        age = time.time() - self.event_ts
+        tag_info = session.getTag(self.tag_id)
+        if not tag_info:
+            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' % 
+                             (self.tag_id, self.repo_id))
+            return False
+        tag_name = tag_info['name']
+        path = pathinfo.repo(self.repo_id, tag_name)
+        try:
+            #also check dir age. We do this because a repo can be created from an older event
+            #and should not be removed based solely on that event's timestamp.
+            mtime = os.stat(path).st_mtime
+        except OSError:
+            self.logger.error("Can't stat repo directory: %s" % path)
+            return True
+        age = time.time() - max(self.event_ts, mtime)
         if age < options.deleted_repo_lifetime:
             #XXX should really be called expired_repo_lifetime
             return False
@@ -133,23 +146,6 @@ class ManagedRepo(object):
             return False
         self.logger.info("Deleted repo %s" % self.repo_id)
         self.state = koji.REPO_DELETED
-        tag_info = session.getTag(self.tag_id)
-        if not tag_info:
-            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' % 
-                             (self.tag_id, self.repo_id))
-            return False
-        tag_name = tag_info['name']
-        path = pathinfo.repo(self.repo_id, tag_name)
-        #also check dir age. We do this because a repo can be created from an older event
-        #and should not be removed based solely on that event's timestamp.
-        try:
-            age = time.time() - os.stat(path).st_mtime
-        except OSError:
-            self.logger.error("Can't stat repo directory: %s" % path)
-            return True
-        if age < options.deleted_repo_lifetime:
-            #XXX should really be called expired_repo_lifetime
-            return False
         safe_rmtree(path, strict=False)
         return True
 

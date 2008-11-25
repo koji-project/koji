@@ -2050,6 +2050,8 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     parser.add_option("--maven", action="store_true", help=_("Show Maven builds only"))
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -2076,6 +2078,16 @@ def anon_handle_list_tagged(options, session, args):
         options.rpms = True
     if options.maven and not options.rpms:
         opts['maven_only'] = True
+    if options.event is not None:
+        opts['event'] = options.event
+    if options.repo is not None:
+        repo = session.repoInfo(options.repo)
+        if not repo:
+            print "No such repo: %s" % options.repo
+            return
+        repo['timestr'] = time.asctime(time.localtime(repo['create_ts']))
+        print "Querying at event %(create_event)i (%(tag_name)s/%(timestr)s)" % repo
+        opts['event'] = repo['create_event']
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
@@ -2491,6 +2503,14 @@ def anon_handle_rpminfo(options, session, args):
         print "Payload: %(payloadhash)s" %info
         print "Size: %(size)s" %info
         print "Build ID: %(build_id)s" %info
+        if info['buildroot_id'] is None:
+            print "No buildroot data available"
+        else:
+            br_info = session.getBuildroot(info['buildroot_id'])
+            print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
+            print "Build Host: %(host_name)s" % br_info
+            print "Build Task: %(task_id)i" % br_info
+
 
 def anon_handle_buildinfo(options, session, args):
     "Print basic information about a build"
@@ -3882,35 +3902,57 @@ def handle_set_pkg_owner_global(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--verbose", action='store_true', help=_("List changes"))
     parser.add_option("--test", action='store_true', help=_("Test mode"))
+    parser.add_option("--old-user", "--from", action="store", help=_("Only change ownership for packages belonging to this user"))
     (options, args) = parser.parse_args(args)
-    if len(args) < 2:
+    if options.old_user:
+        if len(args) < 1:
+            parser.error(_("Please specify an owner"))
+            assert False
+    elif len(args) < 2:
         parser.error(_("Please specify an owner and at least one package"))
         assert False
     activate_session(session)
     owner = args[0]
+    packages = args[1:]
     user = session.getUser(owner)
     if not user:
         print "No such user: %s" % owner
         sys.exit(1)
-    for package in args[1:]:
-        entries = session.listPackages(pkgID=package, with_dups=True)
+    opts = {'with_dups' : True}
+    old_user = None
+    if options.old_user:
+        old_user = session.getUser(options.old_user)
+        if not old_user:
+            print _("No such user: %s") % options.old_user
+            sys.exit(1)
+        opts['userID'] = old_user['id']
+    to_change = []
+    for package in packages:
+        entries = session.listPackages(pkgID=package, **opts)
         if not entries:
             print "No data for package %s" % package
             continue
-        for entry in entries:
-            if user['id'] == entry['owner_id']:
-                if options.verbose:
-                    print "Preserving owner=%s for package %s in tag %s" \
-                            % (user['name'], package,  entry['tag_name'] )
-            else:
-                if options.test:
-                    print "Would have changed owner for %s in tag %s: %s -> %s" \
-                            % (package, entry['tag_name'], entry['owner_name'], user['name'])
-                    continue
-                if options.verbose:
-                    print "Changing owner for %s in tag %s: %s -> %s" \
-                            % (package, entry['tag_name'], entry['owner_name'], user['name'])
-                session.packageListSetOwner(entry['tag_id'], package, user['id'])
+        to_change.extend(entries)
+    if not packages and options.old_user:
+        entries = session.listPackages(**opts)
+        if not entries:
+            print "No data for user %s" % old_user['name']
+            sys.exit(1)
+        to_change.extend(entries)
+    for entry in to_change:
+        if user['id'] == entry['owner_id']:
+            if options.verbose:
+                print "Preserving owner=%s for package %s in tag %s" \
+                        % (user['name'], package,  entry['tag_name'] )
+        else:
+            if options.test:
+                print "Would have changed owner for %s in tag %s: %s -> %s" \
+                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name'])
+                continue
+            if options.verbose:
+                print "Changing owner for %s in tag %s: %s -> %s" \
+                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name'])
+            session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 
 def anon_handle_watch_task(options, session, args):
     "Track progress of particular tasks"
@@ -4042,7 +4084,7 @@ def handle_move_pkg(options, session, args):
     if _running_in_bg() or options.nowait:
         return
     else:
-        watch_tasks(session,tasks)
+        return watch_tasks(session, tasks)
 
 def handle_untag_pkg(options, session, args):
     "Remove a tag from one or more packages"
@@ -4050,22 +4092,69 @@ def handle_untag_pkg(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
+    parser.add_option("--non-latest", action="store_true", help=_("untag all versions of the package in this tag except the latest"))
+    parser.add_option("-n", "--test", action="store_true", help=_("test mode"))
+    parser.add_option("-v", "--verbose", action="store_true", help=_("print details"))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     (options, args) = parser.parse_args(args)
-    if len(args) < 2:
+    if options.non_latest and options.force:
+        if len(args) < 1:
+            parser.error(_("Please specify a tag"))
+            assert False
+    elif len(args) < 2:
         parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
         assert False
     activate_session(session)
+    tag = session.getTag(args[0])
+    if not tag:
+        parser.error(_("Invalid tag: %s" % args[0]))
     if options.all:
-        pkgs = []
+        builds = []
         for pkg in args[1:]:
-            pkgs.extend([x['nvr'] for x in session.listTagged(args[0], package=pkg)])
+            builds.extend(session.listTagged(args[0], package=pkg))
+    elif options.non_latest:
+        if options.force and len(args) == 1:
+            tagged = session.listTagged(args[0])
+        else:
+            tagged = []
+            for pkg in args[1:]:
+                tagged.extend(session.listTagged(args[0], package=pkg))
+        # listTagged orders entries latest first
+        seen_pkg = {}
+        builds = []
+        for binfo in tagged:
+            if not seen_pkg.has_key(binfo['name']):
+                #latest for this package
+                if options.verbose:
+                    print _("Leaving latest build for package %(name)s: %(nvr)s") % binfo
+            else:
+                builds.append(binfo)
+            seen_pkg[binfo['name']] = 1
     else:
-        pkgs = args[1:]
-    for pkg in pkgs:
-        print pkg
-        #XXX trap errors
-        session.untagBuild(args[0], pkg, force=options.force)
+        tagged = session.listTagged(args[0])
+        idx = dict([(b['nvr'], b) for b in tagged])
+        builds = []
+        for nvr in args[1:]:
+            binfo = idx.get(nvr)
+            if binfo:
+                builds.append(binfo)
+            else:
+                # not in tag, see if it even exists
+                binfo = session.getBuild(nvr)
+                if not binfo:
+                    print _("No such build: %s") % nvr
+                else:
+                    print _("Build %s not in tag %s") % (nvr, tag['name'])
+                if not options.force:
+                    sys.exit(1)
+    builds.reverse()
+    for binfo in builds:
+        if options.test:
+            print _("would have untagged %(nvr)s") % binfo
+        else:
+            if options.verbose:
+                print _("untagging %(nvr)s") % binfo
+            session.untagBuild(tag['name'], binfo['nvr'], force=options.force)
 
 def handle_unblock_pkg(options, session, args):
     "[admin] Unblock a package in the listing for tag"
