@@ -4261,6 +4261,23 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return "%r" % context.opts
 
+    def getEvent(self, id):
+        """
+        Get information about the event with the given id.
+
+        A map will be returned with the following keys:
+          - id (integer): id of the event
+          - ts (float): timestamp the event was created, in
+                        seconds since the epoch
+
+        If no event with the given id exists, an error will be raised.
+        """
+        fields = ('id', 'ts')
+        values = {'id': id}
+        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
+                WHERE id = %(id)i"""
+        return _singleRow(q, values, fields, strict=True)
+
     def getLastEvent(self, before=None):
         """
         Get the id and timestamp of the last event recorded in the system.
@@ -4270,6 +4287,13 @@ class RootExports(object):
         If "before" (int or float) is specified, return the last event
         that occurred before that time (in seconds since the epoch).
         If there is no event before the given time, an error will be raised.
+
+        Note that due to differences in precision between the database and python,
+        this method can return an event with a timestamp the same or slightly higher
+        (by a few microseconds) than the value of "before" provided.  Code using this
+        method should check that the timestamp returned is in fact lower than the parameter.
+        When trying to find information about a specific event, the getEvent() method
+        should be used.
         """
         fields = ('id', 'ts')
         values = {}
