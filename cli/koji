@@ -733,7 +733,7 @@ def handle_chain_build(options, session, args):
     # check that the destination tag is in the inheritance tree of the build tag
     # otherwise there is no way that a chain-build can work
     ancestors = session.getFullInheritance(build_target['build_tag'])
-    if dest_tag['id'] not in [ancestor['parent_id'] for ancestor in ancestors]:
+    if dest_tag['id'] not in [build_target['build_tag']] + [ancestor['parent_id'] for ancestor in ancestors]:
         print _("Packages in destination tag %(dest_tag_name)s are not inherited by build tag %(build_tag_name)s" % build_target)
         print _("Target %s is not usable for a chain-build" % build_target['name'])
         return 1
