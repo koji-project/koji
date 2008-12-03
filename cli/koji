@@ -3181,7 +3181,7 @@ def anon_handle_taginfo(options, session, args):
             if parent['maxdepth']:
                 print "    maxdepth: %(maxdepth)s" % parent
             if parent['pkg_filter']:
-                print "    packge filter: %(filter)s" % parent
+                print "    package filter: %(pkg_filter)s" % parent
             print
 
 def handle_add_tag(options, session, args):
