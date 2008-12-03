@@ -170,6 +170,11 @@ def get_options():
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
     
+    #honor topdir
+    if options.topdir:
+        koji.BASEDIR = options.topdir
+        koji.pathinfo.topdir = options.topdir
+
     return options, cmd, args[1:]
 
 def ensure_connection(session):
