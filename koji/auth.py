@@ -294,7 +294,7 @@ class Session(object):
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
         if not user_id:
-            if context.opts.get('LoginCreatesUser', 'yes').lower() in ('yes', 'on', 'true', '1'):
+            if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUserFromKerberos(login_principal)
             else:
                 raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
@@ -378,7 +378,7 @@ class Session(object):
         if result:
             user_id = result[0]
         else:
-            if context.opts.get('LoginCreatesUser', 'yes').lower() in ('yes', 'on', 'true', '1'):
+            if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUser(username)
             else:
                 raise koji.AuthError, 'Unknown user: %s' % username

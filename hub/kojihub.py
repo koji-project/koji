@@ -754,6 +754,8 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
             block = previous['blocked']
         else:
             block = bool(block)
+        if extra_arches is None:
+            extra_arches = previous['extra_arches']
         #see if the data is the same
         changed = False
         for key,value in (('owner_id',owner),

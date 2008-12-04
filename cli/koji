@@ -177,6 +177,11 @@ def get_options():
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
     
+    #honor topdir
+    if options.topdir:
+        koji.BASEDIR = options.topdir
+        koji.pathinfo.topdir = options.topdir
+
     return options, cmd, args[1:]
 
 def ensure_connection(session):
@@ -3372,7 +3377,7 @@ def anon_handle_taginfo(options, session, args):
             if parent['maxdepth']:
                 print "    maxdepth: %(maxdepth)s" % parent
             if parent['pkg_filter']:
-                print "    packge filter: %(filter)s" % parent
+                print "    package filter: %(pkg_filter)s" % parent
             print
 
 def handle_add_tag(options, session, args):
