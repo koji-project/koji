@@ -4862,11 +4862,14 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
             #not have a buildroot.
             #or if the entire build was imported, there will be no buildroots
             rpms = context.handlers.call('listRPMs', buildID=data['build'])
+            archives = list_archives(buildID=data['build'])
+            br_list = [r['buildroot_id'] for r in rpms]
+            br_list.extend([a['buildroot_id'] for a in archives])
             args = self.str.split()[1:]
-            for rpminfo in rpms:
-                if rpminfo['buildroot_id'] is None:
+            for br_id in br_list:
+                if br_id is None:
                     continue
-                tagname = get_buildroot(rpminfo['buildroot_id'])['tag_name']
+                tagname = get_buildroot(br_id)['tag_name']
                 for pattern in args:
                     if fnmatch.fnmatch(tagname, pattern):
                         return True
@@ -4878,14 +4881,17 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
 class ImportedTest(koji.policy.BaseSimpleTest):
     """Check if any part of a build was imported
 
-    This is determined by checking the buildroots of the rpms
-    True if any rpm lacks a buildroot (strict)"""
+    This is determined by checking the buildroots of the rpms and archives
+    True if any of them lack a buildroot (strict)"""
     name = 'imported'
     def run(self, data):
         rpms = context.handlers.call('listRPMs', buildID=data['build'])
         #no test args
         for rpminfo in rpms:
             if rpminfo['buildroot_id'] is None:
+                return True
+        for archive in list_archives(buildID=data['build']):
+            if archive['buildroot_id'] is None:
                 return True
         #otherwise...
         return False
