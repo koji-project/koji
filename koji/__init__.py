@@ -793,7 +793,7 @@ def get_pom_from_jar(filepath):
         if entry.filename.startswith('META-INF/maven/') and \
            os.path.basename(entry.filename) == 'pom.xml':
             if contents != None:
-                raise koji.GenericError, 'duplicate pom.xml found at %s in %s' % \
+                raise GenericError, 'duplicate pom.xml found at %s in %s' % \
                       (entry.filename, filepath)
             else:
                 contents = archive.read(entry.filename)
