@@ -305,7 +305,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id)
 
-    def _new(self, tag, arch, task_id, distribution=None, repo_id=None):
+    def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False):
         """Create a brand new repo"""
         self.task_id = task_id
         self.distribution = distribution
@@ -346,6 +346,8 @@ class BuildRoot(object):
             raise koji.BuildrootError, "failed to get a buildroot id"
         self.id = id
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
+        self.install_group = install_group
+        self.setup_dns = setup_dns
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -363,6 +365,8 @@ class BuildRoot(object):
             if hasattr(options, k):
                 opts[k] = getattr(options, k)
         opts['buildroot_id'] = self.id
+        opts['use_host_resolv'] = self.setup_dns
+        opts['install_group'] = self.install_group
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
@@ -432,18 +436,10 @@ class BuildRoot(object):
                 session._forget()
                 if os.getuid() == 0 and hasattr(options,"mockuser"):
                     self.logger.info('Running mock as %s' % options.mockuser)
-                    try:
-                        uid,gid = pwd.getpwnam(options.mockuser)[2:4]
-                    except KeyError:
-                        #perhaps a uid was specified
-                        try:
-                            uid,gid = pwd.getpwuid(int(options.mockuser))[2:4]
-                        except (TypeError,ValueError,KeyError):
-                            uid = None
+                    uid,gid = pwd.getpwnam(options.mockuser)[2:4]
                     os.setgroups([grp.getgrnam('mock')[2]])
-                    if uid is not None:
-                        os.setregid(gid,gid)
-                        os.setreuid(uid,uid)
+                    os.setregid(gid,gid)
+                    os.setreuid(uid,uid)
                 os.execvp(cmd[0],cmd)
             except:
                 #diediedie
@@ -487,6 +483,17 @@ class BuildRoot(object):
             logfile = 'root.log'
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
+
+    def build_srpm(self, sourcedir):
+        session.host.setBuildRootState(self.id,'BUILDING')
+        chroot_sourcedir = sourcedir[len(self.rootdir()):]
+        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'srpm']
+
+        rv = self.mock(args)
+
+        if rv:
+            self.expire()
+            raise koji.BuildError, "error building srpm, %s" % self._mockResult(rv)
 
     def build(self,srpm,arch=None):
         # run build
@@ -1358,6 +1365,37 @@ class BaseTaskHandler(object):
     def subtask2(self, __taskopts, __method, *args, **kwargs):
         return session.host.subtask2(self.id, __taskopts, __method, *args, **kwargs)
 
+    def find_arch(self, arch, host, tag):
+        """
+        For noarch tasks, find a canonical arch that is supported by both the host and tag.
+        If the arch is anything other than noarch, return it unmodified.
+        """
+        if arch != "noarch":
+            return arch
+
+        # We need a concrete arch. Pick one that:
+        #  a) this host can handle
+        #  b) the build tag can support
+        #  c) is canonical
+        host_arches = host['arches']
+        if not host_arches:
+            raise koji.BuildError, "No arch list for this host: %s" % host['name']
+        tag_arches = tag['arches']
+        if not tag_arches:
+            raise koji.BuildError, "No arch list for tag: %s" % tag['name']
+        # index canonical host arches
+        host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
+        # pick the first suitable match from tag's archlist
+        for tag_arch in tag_arches.split():
+            tag_arch = koji.canonArch(tag_arch)
+            if host_arches.has_key(tag_arch):
+                # we're done
+                return tag_arch
+        else:
+            # no overlap
+            raise koji.BuildError, "host %s (%s) does not support any arches of tag %s (%s)" % \
+                (host['name'], ' '.join(host_arches.keys()), tag['name'], tag_arches)
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
@@ -1586,7 +1624,9 @@ class BuildTask(BaseTaskHandler):
         if opts.get('repo_id') is not None:
             # use of this option is governed by policy
             session.host.assertPolicy('build_from_repo_id', policy_data)
-        srpm = self.getSRPM(src)
+        if not repo_info:
+            repo_info = self.getRepo(build_tag)  #(subtask)
+        srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
         data['task_id'] = self.id
@@ -1613,8 +1653,6 @@ class BuildTask(BaseTaskHandler):
             build_id = session.host.initBuild(data)
             session.host.importChangelog(build_id, srpm)
         #(initBuild raises an exception if there is a conflict)
-        if not repo_info:
-            repo_info = self.getRepo(build_tag)  #(subtask)
         try:
             srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
             if opts.get('scratch'):
@@ -1634,11 +1672,11 @@ class BuildTask(BaseTaskHandler):
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
             self.tagBuild(build_id,dest_tag)
 
-    def getSRPM(self, src):
+    def getSRPM(self, src, build_tag, repo_id):
         """Get srpm from src"""
         if isinstance(src,str):
             if SCM.is_scm_url(src):
-                return self.getSRPMFromSCM(src)
+                return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
                 #assume this is a path under uploads
                 return src
@@ -1646,10 +1684,11 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, 'Invalid source specification: %s' % src
             #XXX - other methods?
 
-    def getSRPMFromSCM(self, url):
+    def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
+        build_tag_info = session.getTag(build_tag, strict=True)
         task_id = session.host.subtask(method='buildSRPMFromSCM',
-                                       arglist=[url],
+                                       arglist=[url, build_tag_info, {'repo_id': repo_id}],
                                        label='srpm',
                                        parent=self.id)
         # wait for subtask to finish
@@ -1810,32 +1849,6 @@ class BuildArchTask(BaseTaskHandler):
         if opts is None:
             opts = {}
 
-        #noarch is funny
-        if arch == "noarch":
-            #we need a buildroot arch. Pick one that:
-            #  a) this host can handle
-            #  b) the build tag can support
-            #  c) is canonical
-            host_arches = session.host.getHost()['arches']
-            if not host_arches:
-                raise koji.BuildError, "No arch list for this host"
-            tag_arches = session.getBuildConfig(root)['arches']
-            if not tag_arches:
-                raise koji.BuildError, "No arch list for tag: %s" % build_tag
-            #index canonical host arches
-            host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
-            #pick the first suitable match from tag's archlist
-            for br_arch in tag_arches.split():
-                br_arch = koji.canonArch(br_arch)
-                if host_arches.has_key(br_arch):
-                    #we're done
-                    break
-            else:
-                #no overlap
-                raise koji.BuildError, "host does not match tag arches: %s (%s)" % (root, tag_arches)
-        else:
-            br_arch = arch
-
         # starting srpm should already have been uploaded by parent
         self.logger.debug("Reading SRPM")
         fn = self.localPath("work/%s" % pkg)
@@ -1859,6 +1872,7 @@ class BuildArchTask(BaseTaskHandler):
             }
         if opts.get('repo_id') is not None:
             rootopts['repo_id'] = opts['repo_id']
+        br_arch = self.find_arch(arch, session.host.getHost(), session.getBuildConfig(root))
         broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
@@ -1959,20 +1973,43 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
-    def handler(self,url):
+    def handler(self, url, build_tag, opts=None):
+        global options
+
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
+        # need DNS in the chroot because "make srpm" may need to contact
+        # a SCM or lookaside cache to retrieve the srpm contents
+        rootopts = {'install_group': 'srpm-build',
+                    'setup_dns': True}
+        if opts.get('repo_id') is not None:
+            rootopts['repo_id'] = opts['repo_id']
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id']))
+        broot = BuildRoot(build_tag['id'], br_arch, self.id, **rootopts)
+
+        self.logger.debug("Initializing buildroot")
+        broot.init()
+
         # Setup files and directories for SRPM creation
-        scmdir = self.workdir + '/scmroot'
-        self.logger.debug(scmdir)
+        scmdir = broot.rootdir() + '/builddir/scmroot'
         koji.ensuredir(scmdir)
-        logfile = self.workdir + "/srpm.log"
+        logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, uploadpath, logfile)
+        # chown the sourcedir and everything under it to the mockuser
+        # so we can build the srpm as non-root
+        uid = pwd.getpwnam(options.mockuser)[2]
+        # rpmbuild seems to complain if it's running in the "mock" group but
+        # files are in a different group
+        gid = grp.getgrnam('mock')[2]
+        for dirpath, dirnames, filenames in os.walk(scmdir):
+            os.chown(dirpath, uid, gid)
+            for filename in filenames:
+                os.chown(os.path.join(dirpath, filename), uid, gid)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
@@ -1986,9 +2023,8 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         self.spec_sanity_checks(spec_file)
 
         #build srpm
-        cmd = ['make', 'srpm']
-        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1):
-            raise koji.BuildError, "Error building SRPM"
+        self.logger.debug("Running srpm build")
+        broot.build_srpm(sourcedir)
 
         srpms = glob.glob('%s/*.src.rpm' % sourcedir)
         if len(srpms) == 0:
@@ -2009,10 +2045,10 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
 
         #upload srpm and return
         self.uploadFile(srpm)
-        return {
-            'srpm' : "%s/%s" % (uploadpath, srpm_name),
-            'log' : "%s/srpm.log" % uploadpath,
-        }
+
+        broot.expire()
+
+        return {'srpm': "%s/%s" % (uploadpath, srpm_name)}
 
 class TagNotificationTask(BaseTaskHandler):
     Methods = ['tagNotification']
@@ -2728,7 +2764,11 @@ class SCM(object):
                 raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
             if not os.path.exists('%s/../common' % sourcedir):
-                os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
+                # find the relative distance from sourcedir/../common to scmdir/common
+                destdir = os.path.split(sourcedir)[0]
+                path_comps = destdir[len(scmdir) + 1:]
+                rel_path = '../' * len(path_comps.split('/'))
+                os.symlink(rel_path + 'common', '%s/../common' % sourcedir)
 
         return sourcedir
 

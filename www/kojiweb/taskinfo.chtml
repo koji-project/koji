@@ -66,12 +66,18 @@
       <th>Parameters</th>
       <td>
         #if $task.method == 'buildSRPMFromSCM'
-        <strong>SCM URL:</strong> $params[0]
+        <strong>SCM URL:</strong> $params[0]<br/>
+        #if $len($params) > 1
+        <strong>Build Tag:</strong>: <a href="taginfo?tagID=$params[1].name">$params[1].name</a><br/>
+        #end if
+        #if $len($params) > 2
+        $printOpts($params[2])
+        #end if
         #elif $task.method == 'buildSRPMFromCVS'
         <strong>CVS URL:</strong> $params[0]
         #elif $task.method == 'buildArch'
         <strong>SRPM:</strong> $params[0]<br/>
-        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.name">$buildTag.name</a><br/>
         <strong>Arch:</strong> $params[2]<br/>
         <strong>Keep SRPM?</strong> #if $params[3] then 'yes' else 'no'#<br/>
         #if $len($params) > 4
