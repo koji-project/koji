@@ -3919,16 +3919,18 @@ def get_notification_recipients(build, tag_id, state):
     emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
+    notify_on_success = context.opts['NotifyOnSuccess']
 
-    # user who submitted the build
-    emails.append('%s@%s' % (build['owner_name'], email_domain))
+    if notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']::
+        # user who submitted the build
+        emails.append('%s@%s' % (build['owner_name'], email_domain))
 
-    if tag_id:
-        packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
-        # owner of the package in this tag, following inheritance
-        emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
-    #FIXME - if tag_id is None, we don't have a good way to get the package owner.
-    #   using all package owners from all tags would be way overkill.
+        if tag_id:
+            packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+            # owner of the package in this tag, following inheritance
+            emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+        #FIXME - if tag_id is None, we don't have a good way to get the package owner.
+        #   using all package owners from all tags would be way overkill.
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
