@@ -261,6 +261,13 @@ class ServerOffline(GenericError):
     """Raised when the server is offline"""
     faultCode = 1014
 
+class MultiCallInProgress(object):
+    """
+    Placeholder class to be returned by method calls when in the process of
+    constructing a multicall.
+    """
+    pass
+
 #A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
@@ -1351,6 +1358,7 @@ class ClientSession(object):
 
         if self.multicall:
             self._calls.append({'methodName': name, 'params': args})
+            return MultiCallInProgress
         else:
             if self.logged_in:
                 sinfo = self.sinfo.copy()
