@@ -958,6 +958,14 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'rpmbuild_timeout': 86400
     }
 
+    files = {}
+    if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
+        # if we're setting up DNS,
+        # also copy /etc/hosts from the host
+        etc_hosts = file('/etc/hosts')
+        files['etc/hosts'] = etc_hosts.read()
+        etc_hosts.close()
+
     config_opts['yum.conf'] = """[main]
 cachedir=/var/cache/yum
 debuglevel=1
@@ -1012,6 +1020,9 @@ baseurl=%(url)s
     parts.append("\n")
     for key, value in macros.iteritems():
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
+    parts.append("\n")
+    for key, value in files.iteritems():
+        parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)
 
