@@ -1420,10 +1420,10 @@ class ClientSession(object):
         error that occurred during the method call."""
         if not self.multicall:
             raise GenericError, 'ClientSession.multicall must be set to True before calling multiCall()'
+        self.multicall = False
         if len(self._calls) == 0:
             return []
 
-        self.multicall = False
         calls = self._calls
         self._calls = []
         ret = self._callMethod('multiCall', (calls,), {})
