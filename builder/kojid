@@ -484,10 +484,20 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
-    def build_srpm(self, sourcedir):
+    def build_srpm(self, specfile, sourcedir):
         session.host.setBuildRootState(self.id,'BUILDING')
         chroot_sourcedir = sourcedir[len(self.rootdir()):]
-        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'srpm']
+        # call "make sources" in the chroot so any required files not stored in
+        # the SCM can be retrieved
+        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
+
+        rv = self.mock(args)
+
+        if rv:
+            self.expire()
+            raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
+
+        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir]
 
         rv = self.mock(args)
 
@@ -1993,7 +2003,9 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         broot.init()
 
         # Setup files and directories for SRPM creation
-        scmdir = broot.rootdir() + '/builddir/scmroot'
+        # We can't put this under the mock homedir because that directory
+        # is completely blown away and recreated on every mock invocation
+        scmdir = broot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
@@ -2024,9 +2036,9 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
 
         #build srpm
         self.logger.debug("Running srpm build")
-        broot.build_srpm(sourcedir)
+        broot.build_srpm(spec_file, sourcedir)
 
-        srpms = glob.glob('%s/*.src.rpm' % sourcedir)
+        srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
         if len(srpms) == 0:
             raise koji.BuildError, "No srpms found in %s" % sourcedir
         elif len(srpms) > 1:
