@@ -383,6 +383,43 @@ CREATE TABLE repo (
 	state INTEGER
 ) WITHOUT OIDS;
 
+-- external yum repos
+create table external_repo (
+	id SERIAL NOT NULL PRIMARY KEY,
+	name TEXT UNIQUE NOT NULL
+);
+-- fake repo id for internal stuff (needed for unique index)
+INSERT INTO external_repo (id, name) VALUES (0, 'INTERNAL');
+
+create table external_repo_config (
+	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
+	url TEXT NOT NULL,
+-- versioned - see earlier description of versioning
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL )
+		OR (active IS NOT NULL AND revoke_event IS NULL )),
+	PRIMARY KEY (create_event, external_repo_id),
+	UNIQUE (external_repo_id, active)
+) WITHOUT OIDS;
+
+create table tag_external_repos (
+	tag_id INTEGER NOT NULL REFERENCES tag(id),
+	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
+	priority INTEGER NOT NULL,
+-- versioned - see earlier description of versioning
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL )
+		OR (active IS NOT NULL AND revoke_event IS NULL )),
+	PRIMARY KEY (create_event, tag_id, priority),
+	UNIQUE (tag_id, priority, active)
+	UNIQUE (tag_id, external_repo_id, active)
+);
 
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (
@@ -522,10 +559,11 @@ CREATE TABLE rpminfo (
 	release TEXT NOT NULL,
 	epoch INTEGER,
 	arch VARCHAR(16) NOT NULL,
+	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	payloadhash TEXT NOT NULL,
 	size INTEGER NOT NULL,
 	buildtime BIGINT NOT NULL,
-	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch)
+	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
 
