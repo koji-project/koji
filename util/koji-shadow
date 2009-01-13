@@ -127,6 +127,11 @@ def get_options():
                       help=_("greylist rules"))
     parser.add_option("--rules-blacklist",
                       help=_("blacklist rules"))
+    parser.add_option("--tag-build", action="store_true", default=False,
+                      help=_("tag sucessful builds into the tag we are building, default is to not tag"))
+    parser.add_option("--arches",
+                      help=_("arches to use when creating tags"))
+
     #parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -602,18 +607,20 @@ class BuildTracker(object):
 
     def newerBuild(self, build, tag):
         #XXX:  secondary arches need a policy to say if we have newer builld localy it will be the substitute
-        if build.epoch is None:
-            build.epoch = 0
         localLatestBuild = session.getLatestBuilds(tag, package=str(build.name))
         if not localLatestBuild == []:
             parentevr = (str(build.epoch), build.version,  build.release)
+            parentnvr = (str(build.name), build.version,  build.release)
             latestevr =  (str(localLatestBuild[0]['epoch']), localLatestBuild[0]['version'], localLatestBuild[0]['release'])
             newestRPM = self.rpmvercmp( parentevr, latestevr)
+            if options.debug:
+                print "remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM)
             if newestRPM == -1:
                 #the local is newer
                 info = session.getBuild("%s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] ))
                 if info:
                     build = LocalBuild(info)
+                    self.substitute_idx[parentnvr] = build
                 return build
         return None
 
@@ -684,12 +691,11 @@ class BuildTracker(object):
                 print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
                 return build
         if options.prefer_new:
-            if build.state != "common":
-                latestBuild = self.newerBuild(build, tag)
-                if latestBuild != None:
-                    build.substitute = latestBuild.nvr
-                    print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
-                    return build
+            latestBuild = self.newerBuild(build, tag)
+            if latestBuild != None:
+                build.substitute = latestBuild.nvr
+                print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
+                return build
         if build.state == "common":
             #we're good
             if build.rebuilt:
@@ -708,7 +714,7 @@ class BuildTracker(object):
         #     before this point
         #
         elif options.import_noarch and build.isNoarch():
-            self.importBuild(build)
+            self.importBuild(build, tag)
         elif build.state == "noroot":
             #Can't rebuild it, this is what substitutions are for
             print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
@@ -747,7 +753,7 @@ class BuildTracker(object):
                 build.order = self.rebuild_order
             build.revised_deps = newdeps
         #scanning takes a long time, might as well start builds if we can
-        self.checkJobs()
+        self.checkJobs(tag)
         self.rebuildMissing()
         if len(self.builds) % 50 == 0:
             self.report()
@@ -804,7 +810,7 @@ class BuildTracker(object):
             session.uploadWrapper(dst, serverdir, blocksize=65536)
         session.importRPM(serverdir, fn)
 
-    def importBuild(self, build):
+    def importBuild(self, build, tag=None):
         '''import a build from remote hub'''
         if not build.srpm:
             print "No srpm for build %s, skipping import" % build.nvr
@@ -827,6 +833,8 @@ class BuildTracker(object):
             fname = os.path.basename(relpath)
             self._importURL(url, fname)
         build.updateState()
+        if options.tag_build and not tag == None:
+            self.tagSuccessful(build.nvr, tag)
         return True
 
     def scan(self):
@@ -1057,11 +1065,10 @@ class BuildTracker(object):
 
     def _print_builds(self, mylist):
         """small helper function for output"""
-        for build_id in mylist:
-            build = self.builds[build_id]
+        for build in mylist:
             print "    %s (%s)" % (build.nvr, build.state)
 
-    def checkJobs(self):
+    def checkJobs(self, tag=None):
         """Check outstanding jobs. Return true if anything changes"""
         ret = False
         for build_id, build in self.state_idx['pending'].items():
@@ -1085,6 +1092,8 @@ class BuildTracker(object):
                 ret = True
             elif state == 'CLOSED':
                 print "Task %i complete (build %s)" % (build.task_id, build.nvr)
+                if options.tag_build and not tag == None:
+                    self.tagSuccessful(build.nvr, tag)
                 build.updateState()
                 ret = True
                 if build.state != 'common':
@@ -1147,7 +1156,7 @@ class BuildTracker(object):
                 break
         return ret
 
-    def runRebuilds(self):
+    def runRebuilds(self, tag=None):
         """Rebuild missing builds"""
         print "Determining rebuild order"
         #using self.state_idx to track build states
@@ -1158,7 +1167,7 @@ class BuildTracker(object):
             if not self.state_idx['missing'] and not self.state_idx['pending']:
                 #we're done
                 break
-            changed1 = self.checkJobs()
+            changed1 = self.checkJobs(tag)
             changed2 = self.rebuildMissing()
             if not changed1 and not changed2:
                 time.sleep(30)
@@ -1166,18 +1175,25 @@ class BuildTracker(object):
             self.report_brief()
         print "Rebuilt %i builds" % (len(self.state_idx['common']) - initial_avail)
 
+    def tagSuccessful(self, nvr, tag):
+        """tag completed builds into final tags"""
+        session.tagBuildBypass(tag, nvr)
+        print "tagged %s to %s" % (nvr, tag)
+
 
 def main(args):
     tracker = BuildTracker()
     #binfo = remote.getBuild(args[0], strict=True)
     #tracker.scanBuild(binfo['id'])
+    tag=None
     if options.build:
         binfo = remote.getBuild(options.build, strict=True)
         tracker.scanBuild(binfo['id'])
     else:
-        tracker.scanTag(args[0])
+        tag = args[0]
+        tracker.scanTag(tag)
     tracker.report()
-    tracker.runRebuilds()
+    tracker.runRebuilds(tag)
 
 
 if __name__ == "__main__":
