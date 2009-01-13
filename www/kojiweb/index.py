@@ -582,7 +582,7 @@ def _sortByExtAndName(a, b):
     bRoot, bExt = os.path.splitext(b)
     return cmp(aExt, bExt) or cmp(aRoot, bRoot)
 
-def getfile(req, taskID, name):
+def getfile(req, taskID, name, offset=None, size=None):
     server = _getServer(req)
     taskID = int(taskID)
 
@@ -596,15 +596,44 @@ def getfile(req, taskID, name):
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
-    req.set_content_length(file_info['st_size'])
 
-    offset = 0
+    file_size = file_info['st_size']
+    if offset is None:
+        offset = 0
+    else:
+        offset = int(offset)
+    if size is None:
+        size = file_size
+    else:
+        size = int(size)
+    if size < 0:
+        size = file_size
+    if offset < 0:
+        # seeking relative to the end of the file
+        if offset < -file_size:
+            offset = -file_size
+        if size > -offset:
+            size = -offset
+    else:
+        if size > (file_size - offset):
+            size = file_size - offset
+
+    req.set_content_length(size)
+
+    remaining = size
     while True:
-        content = server.downloadTaskOutput(taskID, name, offset=offset, size=65536)
+        if remaining <= 0:
+            break
+        chunk_size = 1048576
+        if remaining < chunk_size:
+            chunk_size = remaining
+        content = server.downloadTaskOutput(taskID, name, offset=offset, size=chunk_size)
         if not content:
             break
         req.write(content)
-        offset += len(content)
+        content_length = len(content)
+        offset += content_length
+        remaining -= content_length
 
 def tags(req, start=None, order=None, childID=None):
     values = _initValues(req, 'Tags', 'tags')
