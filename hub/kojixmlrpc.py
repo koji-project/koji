@@ -381,7 +381,7 @@ def load_config(req):
         ['VerbosePolicy', 'boolean', False],
         ['EnableFunctionDebug', 'boolean', False],
 
-        ['MissingPolicyOK', 'boolean', True],
+        ['MissingPolicyOk', 'boolean', True],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'string', False],
