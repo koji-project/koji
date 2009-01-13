@@ -41,6 +41,7 @@ import time
 import urllib2
 import urlgrabber.grabber as grabber
 import xmlrpclib  # for ProtocolError and Fault
+import rpm
 
 # koji.fp.o keeps stalling, probably network errors...
 # better to time out than to stall
@@ -104,6 +105,8 @@ def get_options():
                       help=_("url of local XMLRPC server"))
     parser.add_option("-r", "--remote",
                       help=_("url of remote XMLRPC server"))
+    parser.add_option("--prefer-new", action="store_true", default=False,
+                      help=_("if there is a newer build locally prefer it for deps"))
     parser.add_option("--import-noarch", action="store_true",
                       help=_("import missing noarch builds rather than rebuilding"))
     parser.add_option("--link-imports", action="store_true",
@@ -118,6 +121,12 @@ def get_options():
                       help=_("CA certificate for authentication"))
     parser.add_option("--serverca",
                       help=_("Server CA certificate"))
+    parser.add_option("--rules",
+                      help=_("rules"))
+    parser.add_option("--rules-greylist",
+                      help=_("greylist rules"))
+    parser.add_option("--rules-blacklist",
+                      help=_("blacklist rules"))
     #parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -319,6 +328,10 @@ class TrackedBuild(object):
         self.tracker = tracker
         self.info = remote.getBuild(build_id)
         self.nvr = "%(name)s-%(version)s-%(release)s" % self.info
+        self.name = "%(name)s" % self.info
+        self.epoch = "%(epoch)s" % self.info
+        self.version = "%(version)s" % self.info
+        self.release = "%(release)s" % self.info
         self.srpm = None
         self.rpms = None
         self.children = {}
@@ -573,6 +586,36 @@ class BuildTracker(object):
                     return grey
         return default
 
+    def rpmvercmp (self,  (e1, v1, r1), (e2, v2, r2)):
+        """find out which build is newer"""
+        rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
+        if rc == 1:
+            #first evr wins
+            return 1
+        elif rc == 0:
+            #same evr
+            return 0
+        else:
+            #second evr wins
+            return -1
+
+    def newerBuild(self, build, tag):
+        #XXX:  secondary arches need a policy to say if we have newer builld localy it will be the substitute
+        if build.epoch is None:
+            build.epoch = 0
+        localLatestBuild = session.getLatestBuilds(tag, package=str(build.name))
+        if localLatestBuild:
+            parentevr = (str(build.epoch), build.version,  build.release)
+            latestevr =  (str(localLatestBuild[0]['epoch']), localLatestBuild[0]['version'], localLatestBuild[0]['release'])
+            newestRPM = self.rpmvercmp( parentevr, latestevr)
+            if newestRPM == -1:
+                #the local is newer
+                print "Newer Build: %s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] )
+                info = session.getBuild("%s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] ))
+                if info:
+                    build = LocalBuild(info)
+        return build
+
     def getSubstitute(self, nvr):
         build = self.substitute_idx.get(nvr)
         if not build:
@@ -594,7 +637,7 @@ class BuildTracker(object):
             self.substitute_idx[nvr] = build
         return build
 
-    def scanBuild(self, build_id, from_build=None, depth=0):
+    def scanBuild(self, build_id, from_build=None, depth=0, tag=None):
         """Recursively scan a build and its dependencies"""
         #print build_id
         build = self.builds.get(build_id)
@@ -639,6 +682,13 @@ class BuildTracker(object):
             if depth > 0:
                 print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
                 return build
+        if options.prefer_new:
+            if build.state != "common":
+                latestBuild = self.newerBuild(build, tag)
+                if latestBuild != None:
+                    build.substitute = latestBuild.nvr
+                    print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
+                    return build
         if build.state == "common":
             #we're good
             if build.rebuilt:
@@ -670,11 +720,11 @@ class BuildTracker(object):
             newdeps = []
             #don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
-                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1)
+                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
                 if dep.substitute:
                     dep2 = self.getSubstitute(dep.substitute)
                     if isinstance(dep2, TrackedBuild):
-                        self.scanBuild(dep2.id, from_build=build, depth=depth+1)
+                        self.scanBuild(dep2.id, from_build=build, depth=depth+1, tag=tag)
                     elif dep2 is None:
                         #dep is missing on both local and remote
                         print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
@@ -709,7 +759,7 @@ class BuildTracker(object):
         for build in builds:
             for retry in xrange(10):
                 try:
-                    self.scanBuild(build['id'])
+                    self.scanBuild(build['id'], tag=tag)
                     if options.first_one:
                         return
                 except (socket.timeout, socket.error):
