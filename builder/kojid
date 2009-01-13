@@ -1806,6 +1806,10 @@ class BuildTask(BaseTaskHandler):
             for fn in result['rpms']:
                 rpms.append(fn)
                 brmap[fn] = brootid
+            for fn in result['noarch_rpms']:
+                if not fn in rpms:
+                    rpms.append(fn)
+                    brmap[fn] = brootid
             for fn in result['logs']:
                 logs.setdefault(arch,[]).append(fn)
             if len(result['srpms']) == 1:
@@ -1897,6 +1901,7 @@ class BuildArchTask(BaseTaskHandler):
         rpm_files = []
         srpm_files = []
         log_files = []
+        noarch_rpm_files = []
         unexpected = []
         for f in os.listdir(resultdir):
             # files here should have one of two extensions: .log and .rpm
@@ -1904,11 +1909,14 @@ class BuildArchTask(BaseTaskHandler):
                 log_files.append(f)
             elif f[-8:] == ".src.rpm":
                 srpm_files.append(f)
+            elif f[-11:] == ".noarch.rpm":
+                noarch_rpm_files.append(f)
             elif f[-4:] == ".rpm":
                 rpm_files.append(f)
             else:
                 unexpected.append(f)
         self.logger.debug("rpms: %r" % rpm_files)
+        self.logger.debug("noarch rpms: %r" % noarch_rpm_files)
         self.logger.debug("srpms: %r" % srpm_files)
         self.logger.debug("logs: %r" % log_files)
         self.logger.debug("unexpected: %r" % unexpected)
@@ -1916,6 +1924,8 @@ class BuildArchTask(BaseTaskHandler):
         # upload files to storage server
         uploadpath = broot.getUploadPath()
         for f in rpm_files:
+            self.uploadFile("%s/%s" % (resultdir,f))
+        for f in noarch_rpm_files:
             self.uploadFile("%s/%s" % (resultdir,f))
         self.logger.debug("keep srpm %i %s %s" % (self.id, keep_srpm, opts))
         if keep_srpm:
@@ -1929,7 +1939,14 @@ class BuildArchTask(BaseTaskHandler):
 
             self.logger.debug("uploading %s/%s to %s" % (resultdir,srpm_files[0], uploadpath))
             self.uploadFile("%s/%s" % (resultdir,srpm_files[0]))
-        ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+        if not rpm_files == []:
+            ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+        else:
+            ret['rpms'] = []
+        if not noarch_rpm_files == []:
+            ret['noarch_rpms'] = [ "%s/%s" % (uploadpath,f) for f in noarch_rpm_files ]
+        else:
+            ret['noarch_rpms'] = []
         if keep_srpm:
             ret['srpms'] = [ "%s/%s" % (uploadpath,f) for f in srpm_files ]
         else:
