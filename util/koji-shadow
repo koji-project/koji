@@ -112,6 +112,12 @@ def get_options():
                       help=_("topurl for remote server"))
     parser.add_option("--workpath", default="/tmp/koji-shadow",
                       help=_("location to store work files"))
+    parser.add_option("--auth-cert",
+                      help=_("Certificate for authentication"))
+    parser.add_option("--auth-ca",
+                      help=_("CA certificate for authentication"))
+    parser.add_option("--serverca",
+                      help=_("Server CA certificate"))
     #parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -160,7 +166,10 @@ def get_options():
             ['noauth', None, 'boolean'],
             ['server', None, 'string'],
             ['remote', None, 'string'],
-            ['max_jobs', None, 'int']
+            ['max_jobs', None, 'int'],
+            ['serverca', None, 'string'],
+            ['auth_cert', None, 'string'],
+            ['auth_ca', None, 'string'],
             ]
 
 
@@ -259,6 +268,9 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
+    elif os.path.isfile(options.auth_cert):
+        # authenticate using SSL client cert
+        session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
     elif options.user:
         #authenticate using user/password
         session.login()
@@ -1126,7 +1138,7 @@ if __name__ == "__main__":
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server, session_opts)
     if not options.noauth:
-        session.login()
+        activate_session(session)
     #XXX - sane auth
     #XXX - config!
     remote_opts = {'anon_retry': True}
