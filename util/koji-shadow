@@ -604,17 +604,17 @@ class BuildTracker(object):
         if build.epoch is None:
             build.epoch = 0
         localLatestBuild = session.getLatestBuilds(tag, package=str(build.name))
-        if localLatestBuild:
+        if not localLatestBuild == []:
             parentevr = (str(build.epoch), build.version,  build.release)
             latestevr =  (str(localLatestBuild[0]['epoch']), localLatestBuild[0]['version'], localLatestBuild[0]['release'])
             newestRPM = self.rpmvercmp( parentevr, latestevr)
             if newestRPM == -1:
                 #the local is newer
-                print "Newer Build: %s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] )
                 info = session.getBuild("%s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] ))
                 if info:
                     build = LocalBuild(info)
-        return build
+                return build
+        return None
 
     def getSubstitute(self, nvr):
         build = self.substitute_idx.get(nvr)
