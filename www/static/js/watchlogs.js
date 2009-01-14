@@ -1,45 +1,31 @@
-// Direct jsolait to its install location
-jsolait.libURL ="/koji-static/js/jsolait";
-
-// import modules
-var codecs = importModule("codecs");
-var xmlrpc = importModule("xmlrpc");
-
-// Config variables
-var SERVER_URL = 'http://' + window.location.hostname + '/kojihub';
-var ELEM_ID = 'logs';  // id of the html element where the logs will be
-var MAX_ERRS = 5;  // errors before we just stop
-// if you are testing this script from somewhere that isn't SERVER_URL
-// set TESTING true
-var TESTING = false;
+var MAX_ERRORS = 5;  // errors before we just stop
+var CHUNK_SIZE = 16384;
 
 // General globals
-var server = null;
-var errCount = 0;
-
-// Globals for watch_logs_rec
+var baseURL = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
+var logElement = null;
+var headerElement = null;
+var errorCount = 0;
+var tasks = null;
 var offsets = {};
 var lastlog = "";
 
-function parse_tasklist() {
+var tasksToProcess = null;
+var currentTaskID = null;
+var currentInfo = null;
+var currentLogs = null;
+var currentLog = null;
+
+function parseTasklist() {
     var tasklist = [];
     var queryStr = unescape(window.location.search.substring(1));
     var vars = queryStr.split('&');
     for (var i=0; i<vars.length; i++) {
         if (vars[i].split('=')[0] == 'taskID') {
-            tasklist.push(parseInt(vars[i].split('=')[1],10));
+            tasklist.push(parseInt(vars[i].split('=')[1]));
         }
     }
     return tasklist;
-}
-
-function connect() {
-    try {
-        server = new xmlrpc.ServerProxy(SERVER_URL, ['downloadTaskOutput', 'taskFinished', 'listTaskOutput']);
-    } catch(e) {
-        popup_error(e, "Error setting up server connection:");
-        errCount++;
-    }
 }
 
 function maybeScroll(origHeight) {
@@ -50,116 +36,159 @@ function maybeScroll(origHeight) {
     }
 }
 
-function watch_logs(tasklist) {
-    for (var i=0; i<tasklist.length; i++) {
-        offsets[tasklist[i]] = {};
+function handleStatus(event) {
+    req = event.target;
+    if (req.readyState != 4) {
+	return;
     }
-
-    setTimeout(watch_logs_rec, 1000, tasklist);
-}
-
-function watch_logs_rec(tasklist) {
-    var logElem = document.getElementById(ELEM_ID);
-    var is_finished = false;
-    var task_id = -1;
-    var output = null;
-    var taskoffsets = null;
-    var data = "";
-    var content = "";
-    var log = "";
-    var currlog = "";
-    var docHeight = 0;
-
-    try {
-        if (TESTING) {netscape.security.PrivilegeManager.enablePrivilege("UniversalBrowserRead");}
-    } catch (e) {
-        popup_error(e, "Error getting browser permissions, watching logs may fail: ");
-    }
-
-    for (var i=0; i<tasklist.length; i++) {
-        task_id = tasklist[i]; 
-        
-        try {
-            if (server.taskFinished(task_id)) {
-                tasklist.splice(i,1); // remove tasklist[i] from tasklist
-            }
-        } catch (e) {
-            popup_error(e, "Error checking if task was finished:");
-            errCount++;
-            continue;
-        }
-
-        try {
-            output = server.listTaskOutput(task_id);
-        } catch (e) {
-            popup_error(e, "Error getting a list of outputed files for task:");
-            errCount++;
-            continue;
-        }
-
-        taskoffsets = offsets[task_id];
-
-        for (var j=0; j<output.length; j++) {
-            log = output[j];
-            if (log.slice(-4).toLowerCase() == ".log") {
-                if (!(log in taskoffsets)) {
-                  taskoffsets[log] = 0;
-                }
-
-		do {
-		    try {
-			data = server.downloadTaskOutput(task_id, log, taskoffsets[log], 16384);
-		    } catch(e) {
-			popup_error(e, "Error while fetching log for task:");
-			errCount++;
-			continue;
-		    }
-		    
-		    data = data.replace(/\n/gi, '');
-		    content = data.decode("base64");
-		    taskoffsets[log] += content.length;
-		    
-		    if (content.length > 0) {
-			docHeight = document.height;
-			currlog = task_id + ":" + log;
-			if (currlog != lastlog) {
-			    logElem.appendChild(document.createTextNode("\n==> " + currlog + " <==\n"));
-			    lastlog = currlog;
-			}                    
-			logElem.appendChild(document.createTextNode(content));
-                        maybeScroll(docHeight);
-                    }
-                } while (content.length > 0);
-            }
-        }
-    }
-
-    if (tasklist.length == 0) {
-        docHeight = document.height;
-        logElem.appendChild(document.createTextNode("\n==> Tasks have finished <==\n"));
-        maybeScroll(docHeight);
-    } else if (errCount < MAX_ERRS) {
-        setTimeout(watch_logs_rec, 1000, tasklist);
-    }
-}
-
-function popup_error(e, msg) {
-    var err;
-    if (e.toTraceString) {
-        err = e.toTraceString();
+    if (req.status == 200) {
+	if (req.responseText.length > 0) {
+	    var lines = req.responseText.split("\n");
+	    var line = lines[0];
+	    var data = line.split(":");
+	    // var taskID = parseInt(data[0]);
+	    var state = data[1];
+	    var logs = {};
+	    for (var i = 1; i < lines.length; i++) {
+		data = lines[i].split(":");
+		var filename = data[0];
+		var filesize = parseInt(data[1]);
+		if (filename.indexOf(".log") != -1) {
+		    logs[filename] = filesize;
+		}
+	    }
+	} else {
+	    // task may not have started yet
+	    var state = "UNKNOWN";
+	    var logs = {};
+	}
+	currentInfo = {state: state, logs: logs};
+	if (!(state == "FREE" || state == "OPEN" ||
+	      state == "ASSIGNED" || state == "UNKNOWN")) {
+	    // remove tasks from the task list that are no longer running
+	    for (var i = 0; i < tasks.length; i++) {
+		if (tasks[i] == currentTaskID) {
+		    tasks.splice(i, 1);
+		    break;
+		}
+	    }
+	}
     } else {
-        err = e.message;
+	currentInfo = {state: "UNKNOWN", logs: {}};
+	popupError("Error checking status of task " + currentTaskID + ": " + req.statusText);
     }
-    alert(msg + "\n" + err);
+    currentLogs = [];
+    for (var logname in currentInfo.logs) {
+	currentLogs.push(logname);
+    }
+    processLog();
 }
 
-function main() {
-    var tasklist = parse_tasklist();
-    connect();
-    try {
-        watch_logs(tasklist);
-    } catch(e) {
-        popup_error(e, "Error while watching logs:");
-        errCount++;
+function getStatus() {
+    if (tasksToProcess.length == 0) {
+	if (errorCount > MAX_ERRORS) {
+	    return;
+	} else {
+	    if (headerElement != null) {
+		headerElement.appendChild(document.createTextNode("."));
+	    }
+	    setTimeout(checkTasks, 5000);
+	    return;
+	}
     }
+
+    currentTaskID = tasksToProcess.shift();
+    var req = new XMLHttpRequest();
+    req.open("GET", baseURL + "/taskstatus?taskID=" + currentTaskID, true);
+    req.onreadystatechange = handleStatus;
+    req.send(null);
+}
+
+function checkTasks() {
+    if (tasks.length == 0) {
+	docHeight = document.height;
+        logElement.appendChild(document.createTextNode("\n==> Task has completed <==\n"));
+        maybeScroll(docHeight);
+    } else {
+	tasksToProcess = [];
+	for (var i = 0; i < tasks.length; i++) {
+	    tasksToProcess.push(tasks[i]);
+	}
+	getStatus();
+    }
+}
+
+function processLog() {
+    if (currentLogs.length == 0) {
+	getStatus();
+	return;
+    }
+    currentLog = currentLogs.shift();
+    var taskOffsets = offsets[currentTaskID];
+    if (!(currentLog in taskOffsets)) {
+	taskOffsets[currentLog] = 0;
+    }
+    outputLog();
+}
+
+function outputLog() {
+    var currentOffset = offsets[currentTaskID][currentLog];
+    var currentSize = currentInfo.logs[currentLog];
+    if (currentSize > currentOffset) {
+	var chunkSize = CHUNK_SIZE;
+	if ((currentSize - currentOffset) < chunkSize) {
+	    chunkSize = currentSize - currentOffset;
+	}
+	var req = new XMLHttpRequest();
+	req.open("GET", baseURL + "/getfile?taskID=" + currentTaskID + "&name=" + currentLog +
+		 "&offset=" + currentOffset + "&size=" + chunkSize, true);
+	req.onreadystatechange = handleLog;
+	req.send(null);
+	if (headerElement != null) {
+	    logElement.removeChild(headerElement);
+	    headerElement = null;
+	}
+    } else {
+	processLog();
+    }
+}
+
+function handleLog(event) {
+    req = event.target;
+    if (req.readyState != 4) {
+	return;
+    }
+    if (req.status == 200) {
+	content = req.responseText;
+	offsets[currentTaskID][currentLog] += content.length;
+	if (content.length > 0) {
+	    docHeight = document.height;
+	    currlog = currentTaskID + ":" + currentLog;
+	    if (currlog != lastlog) {
+		logElement.appendChild(document.createTextNode("\n==> " + currlog + " <==\n"));
+		lastlog = currlog;
+	    }
+	    logElement.appendChild(document.createTextNode(content));
+	    maybeScroll(docHeight);
+	}
+    } else {
+	popupError("Error retrieving " + currentLog + " for task " + currentTaskID + ": " + req.statusText);
+    }
+    outputLog();
+}
+
+function popupError(msg) {
+    errorCount++;
+    alert(msg);
+}
+
+function watchLogs(element) {
+    logElement = document.getElementById(element);
+    headerElement = logElement.firstChild;
+    tasks = parseTasklist();
+    for (var i=0; i<tasks.length; i++) {
+        offsets[tasks[i]] = {};
+    }
+
+    setTimeout(checkTasks, 1000);
 }

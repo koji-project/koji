@@ -4444,10 +4444,13 @@ class RootExports(object):
         is a map containing the values of the st_* attributes returned by
         os.stat()."""
         taskDir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID))
+        if stat:
+            ret = {}
+        else:
+            ret = []
         if os.path.isdir(taskDir):
             output = os.listdir(taskDir)
             if stat:
-                ret = {}
                 for filename in output:
                     stat_info = os.stat(os.path.join(taskDir, filename))
                     stat_map = {}
@@ -4455,11 +4458,9 @@ class RootExports(object):
                         if attr.startswith('st_'):
                             stat_map[attr] = getattr(stat_info, attr)
                     ret[filename] = stat_map
-                return ret
             else:
-                return output
-        else:
-            return []
+                ret = output
+        return ret
 
     createTag = staticmethod(create_tag)
     editTag = staticmethod(old_edit_tag)

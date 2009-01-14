@@ -560,6 +560,20 @@ def taskinfo(req, taskID):
     
     return _genHTML(req, 'taskinfo.chtml')
 
+def taskstatus(req, taskID):
+    server = _getServer(req)
+
+    taskID = int(taskID)
+    task = server.getTaskInfo(taskID)
+    if not task:
+        return ''
+    files = server.listTaskOutput(taskID, stat=True)
+    output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
+    for filename, file_stats in files.items():
+        output += '%s:%i\n' % (filename, file_stats['st_size'])
+
+    return output
+
 def resubmittask(req, taskID):
     server = _getServer(req)
     _assertLogin(req)
@@ -1770,20 +1784,25 @@ def search(req, start=None, order='name'):
         return _genHTML(req, 'search.chtml')
 
 def watchlogs(req, taskID):
+    values = _initValues(req)
+    if isinstance(taskID, list):
+        values['tasks'] = ', '.join(taskID)
+    else:
+        values['tasks'] = taskID
+
     html = """
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
   <head>
-    <script type="text/javascript" src="/koji-static/js/jsolait/init.js"></script>
     <script type="text/javascript" src="/koji-static/js/watchlogs.js"></script>
-    <title>Logs for task %i | Koji</title>
+    <title>Logs for task %(tasks)s | %(siteName)s</title>
   </head>
-  <body onload="main()">
+  <body onload="watchLogs('logs')">
     <pre id="logs">
-Loading logs...
+<span>Loading logs for task %(tasks)s...</span>
     </pre>
   </body>
 </html>
-""" % int(taskID)
+""" % values
     return html
