@@ -16,7 +16,9 @@ _sortbyname = kojiweb.util.sortByKeyFunc('name')
 
 def _setUserCookie(req, user):
     options = req.get_options()
-    cookie = mod_python.Cookie.SignedCookie('user', user,
+    # include the current time in the cookie so we can verify that
+    # someone is not using an expired cookie
+    cookie = mod_python.Cookie.SignedCookie('user', user + ':' + str(time.time()),
                                             secret=options['Secret'],
                                             secure=True,
                                             path=os.path.dirname(req.uri),
@@ -36,9 +38,16 @@ def _getUserCookie(req):
                                             secret=options['Secret'])
     if cookies.has_key('user') and \
            (type(cookies['user']) is mod_python.Cookie.SignedCookie):
-        return cookies['user'].value
-    else:
-        return None
+        value =  cookies['user'].value
+        if ':' in value:
+            user, timestamp = value.split(':')
+            timestamp = float(timestamp)
+            if (time.time() - timestamp) < (int(options['LoginTimeout']) * 60 * 60):
+                # cookie is valid and was created more recently than the login
+                # timeout
+                return user
+
+    return None
 
 def _krbLogin(req, session, principal):
     options = req.get_options()
