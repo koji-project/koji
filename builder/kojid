@@ -1806,13 +1806,12 @@ class BuildTask(BaseTaskHandler):
             for fn in result['rpms']:
                 rpms.append(fn)
                 brmap[fn] = brootid
+            existing_rpm = []
             for fn in result['noarch_rpms']:
                 noarch_rpm = fn.split('/')[-1]
-                existing_rpm = []
-                for rpm in rpms:
-                    existing_rpm.append(rpm.split('/')[-1])
                 if noarch_rpm not in existing_rpm:
                     rpms.append(fn)
+                    existing_rpm.append(noarch_rpm))
                     brmap[fn] = brootid
             for fn in result['logs']:
                 logs.setdefault(arch,[]).append(fn)
