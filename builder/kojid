@@ -1811,7 +1811,7 @@ class BuildTask(BaseTaskHandler):
                 noarch_rpm = fn.split('/')[-1]
                 if noarch_rpm not in existing_rpm:
                     rpms.append(fn)
-                    existing_rpm.append(noarch_rpm))
+                    existing_rpm.append(noarch_rpm)
                     brmap[fn] = brootid
             for fn in result['logs']:
                 logs.setdefault(arch,[]).append(fn)
