@@ -171,9 +171,9 @@
       <td class="task$state">$state
       #if $currentUser and ('admin' in $perms or $task.owner == $currentUser.id)
       #if $task.state in ($koji.TASK_STATES.FREE, $koji.TASK_STATES.OPEN, $koji.TASK_STATES.ASSIGNED)
-      <span class="adminLink">(<a href="canceltask?taskID=$task.id">cancel</a>)</span>
+      <span class="adminLink">(<a href="canceltask?taskID=$task.id$util.authToken($self)">cancel</a>)</span>
       #elif $task.state in ($koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and (not $parent)
-      <span class="adminLink">(<a href="resubmittask?taskID=$task.id">resubmit</a>)</span>
+      <span class="adminLink">(<a href="resubmittask?taskID=$task.id$util.authToken($self)">resubmit</a>)</span>
       #end if
       #end if
       </td>

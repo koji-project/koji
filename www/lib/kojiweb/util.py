@@ -316,6 +316,23 @@ def escapeHTML(value):
            replace('<', '&lt;').\
            replace('>', '&gt;')
 
+def authToken(template, first=False, form=False):
+    """Return the current authToken if it exists.
+    If form is True, return it enclosed in a hidden input field.
+    Otherwise, return it in a format suitable for appending to a URL.
+    If first is True, prefix it with ?, otherwise prefix it
+    with &.  If no authToken exists, return an empty string."""
+    token = template.getVar('authToken', default=None)
+    if token != None:
+        if form:
+            return '<input type="hidden" name="a" value="%s"/>' % token
+        if first:
+            return '?a=' + token
+        else:
+            return '&a=' + token
+    else:
+        return ''
+
 def explainError(error):
     """Explain an exception in user-consumable terms
 

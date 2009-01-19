@@ -8,6 +8,7 @@ import Cheetah.Filters
 import Cheetah.Template
 import datetime
 import time
+import md5
 import koji
 import kojiweb.util
 
@@ -49,6 +50,30 @@ def _getUserCookie(req):
 
     return None
 
+def _truncTime():
+    now = datetime.datetime.now()
+    # truncate to the nearest 15 minutes
+    return now.replace(minute=(now.minute / 15 * 15), second=0, microsecond=0)
+
+def _genToken(req, tstamp=None):
+    if hasattr(req, 'currentLogin') and req.currentLogin:
+        user = req.currentLogin
+    else:
+        return ''
+    if tstamp == None:
+        tstamp = _truncTime()
+    return md5.new(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
+
+def _getValidTokens(req):
+    tokens = []
+    now = _truncTime()
+    for delta in (0, 15, 30):
+        token_time = now - datetime.timedelta(minutes=delta)
+        token = _genToken(req, token_time)
+        if token:
+            tokens.append(token)
+    return tokens
+
 def _krbLogin(req, session, principal):
     options = req.get_options()
     wprinc = options['WebPrincipal']
@@ -81,6 +106,19 @@ def _assertLogin(req):
                 raise koji.AuthError, 'could not login using principal: %s' % req.currentLogin
         else:
             raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
+
+        # verify a valid authToken was passed in to avoid CSRF
+        authToken = req.form.get('a', '')
+        validTokens = _getValidTokens(req)
+        if authToken and authToken in validTokens:
+            # we have a token and it's valid
+            pass
+        else:
+            # their authToken is likely expired
+            # send them back to the page that brought them here so they
+            # can re-click the link with a valid authToken
+            _redirectBack(req, page=None, forceSSL=(_getBaseURL(req).startswith('https://')))
+            assert False
     else:
         mod_python.util.redirect(req, 'login')
         assert False
@@ -117,7 +155,8 @@ def _genHTML(req, fileName):
         req._values['currentUser'] = req.currentUser
     else:
         req._values['currentUser'] = None
-        
+    req._values['authToken'] = _genToken(req)
+
     tmpl_class = TEMPLATES.get(fileName)
     if not tmpl_class:
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)

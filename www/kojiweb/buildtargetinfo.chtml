@@ -19,10 +19,10 @@
     </tr>
     #if 'admin' in $perms
     <tr>
-      <th colspan="2"><a href="buildtargetedit?targetID=$target.id">Edit</a></th>
+      <th colspan="2"><a href="buildtargetedit?targetID=$target.id$util.authToken($self)">Edit</a></th>
     </tr>
     <tr>
-      <th colspan="2"><a href="buildtargetdelete?targetID=$target.id">Delete</a></th>
+      <th colspan="2"><a href="buildtargetdelete?targetID=$target.id$util.authToken($self)">Delete</a></th>
     </tr>
     #end if
   </table>

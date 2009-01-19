@@ -168,8 +168,8 @@
       <td>#if $notif.package then $notif.package.name else 'all'#</td>
       <td>#if $notif.tag then $notif.tag.name else 'all'#</td>
       <td>#if $notif.success_only then 'success only' else 'all'#</td>
-      <td><a href="notificationedit?notificationID=$notif.id">edit</a></td>
-      <td><a href="notificationdelete?notificationID=$notif.id">delete</a></td>
+      <td><a href="notificationedit?notificationID=$notif.id$util.authToken($self)">edit</a></td>
+      <td><a href="notificationdelete?notificationID=$notif.id$util.authToken($self)">delete</a></td>
     </tr>
     #end for
     #if $len($notifs) == 0
@@ -180,7 +180,7 @@
   </table>
 
   <br/>
-  <a href="notificationcreate">Add a Notification</a>
+  <a href="notificationcreate$util.authToken($self, first=True)">Add a Notification</a>
   #end if
     
 #include "includes/footer.chtml"

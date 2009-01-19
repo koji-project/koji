@@ -27,9 +27,9 @@
         $util.imageTag($enabled)
         #if 'admin' in $perms
         #if $host.enabled
-        <span class="adminLink">(<a href="disablehost?hostID=$host.id">disable</a>)</span>
+        <span class="adminLink">(<a href="disablehost?hostID=$host.id$util.authToken($self)">disable</a>)</span>
         #else
-        <span class="adminLink">(<a href="enablehost?hostID=$host.id">enable</a>)</span>
+        <span class="adminLink">(<a href="enablehost?hostID=$host.id$util.authToken($self)">enable</a>)</span>
         #end if
         #end if
       </td>

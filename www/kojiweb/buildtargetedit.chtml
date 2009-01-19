@@ -9,6 +9,7 @@
   #end if
 
   <form action="#if $target then 'buildtargetedit' else 'buildtargetcreate'#">
+    $util.authToken($self, form=True)
     #if $target
     <input type="hidden" name="targetID" value="$target.id"/>
     #end if
