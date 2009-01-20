@@ -417,7 +417,7 @@ create table tag_external_repos (
 		(active IS NULL AND revoke_event IS NOT NULL )
 		OR (active IS NOT NULL AND revoke_event IS NULL )),
 	PRIMARY KEY (create_event, tag_id, priority),
-	UNIQUE (tag_id, priority, active)
+	UNIQUE (tag_id, priority, active),
 	UNIQUE (tag_id, external_repo_id, active)
 );
 
