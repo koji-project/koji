@@ -2538,11 +2538,11 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
 
     clauses = [eventCondition(event, table='tag_external_repos'), eventCondition(event, table='external_repo_config')]
     if tag_info:
-        tag = get_tag(tag_info, strict=True)
+        tag = get_tag(tag_info, strict=True, event=event)
         tag_id = tag['id']
         clauses.append('tag.id = %(tag_id)i')
     if repo_info:
-        repo = get_external_repo(repo_info, strict=True)
+        repo = get_external_repo(repo_info, strict=True, event=event)
         repo_id = repo['id']
         clauses.append('external_repo.id = %(repo_id)i')
 
@@ -2568,7 +2568,7 @@ def get_external_repo_list(tag_info, event=None):
     url
     priority
     """
-    tag = get_tag(tag_info, strict=True)
+    tag = get_tag(tag_info, strict=True, event=event)
     tag_list = [tag['id']]
     for parent in readFullInheritance(tag['id'], event):
         tag_list.append(parent['parent_id'])
