@@ -471,7 +471,7 @@ def eventCondition(event, table=None):
     else:
         table += '.'
     if event is None:
-        return """(active = TRUE)"""
+        return """(%(table)sactive = TRUE)""" % locals()
     elif isinstance(event, int) or isinstance(event, long):
         return """(%(table)screate_event <= %(event)d AND ( %(table)srevoke_event IS NULL OR %(event)d < %(table)srevoke_event ))""" \
             % locals()
@@ -1897,6 +1897,7 @@ def tag_changed_since_event(event,taglist):
         'tag_inheritance',
         'tag_config',
         'tag_packages',
+        'tag_external_repos',
         'group_package_listing',
         'group_req_listing',
         'group_config',
@@ -2315,12 +2316,270 @@ def delete_tag(tagInfo):
     _tagDelete('build_target_config', tagID, eventID, 'dest_tag')
     _tagDelete('tag_listing', tagID, eventID)
     _tagDelete('tag_packages', tagID, eventID)
+    _tagDelete('tag_external_repos', tagID, eventID)
     _tagDelete('group_config', tagID, eventID)
     _tagDelete('group_req_listing', tagID, eventID)
     _tagDelete('group_package_listing', tagID, eventID)
     # note: we do not delete the entry in the tag table (we can't actually, it
     # is still referenced by the revoked rows).
     # note: there is no need to do anything with the repo entries that reference tagID
+
+def get_external_repo_id(info, strict=False, create=False):
+    """Get the id for a build target"""
+    return get_id('external_repo', info, strict, create)
+
+def create_external_repo(name, url):
+    """Create a new external repo with the given name and url.
+    Return a map containing the id, name, and url
+    of the new repo."""
+
+    context.session.assertPerm('admin')
+
+    if get_external_repos(info=name):
+        raise koji.GenericError, 'An external repo named "%s" already exists' % name
+
+    id = get_external_repo_id(name, create=True)
+    values = {'id': id, 'name': name, 'url': url}
+    insert = """INSERT INTO external_repo_config (external_repo_id, url) VALUES (%(id)i, %(url)s)"""
+    _dml(insert, values)
+    return values
+
+def get_external_repos(info=None, url=None, event=None, queryOpts=None):
+    """Get a list of external repos.  If info is not None it may be a
+    string (name) or an integer (id).
+    If url is not None, filter the list of repos to those matching the
+    given url."""
+    fields = ['id', 'name', 'url']
+    tables = ['external_repo']
+    joins = ['external_repo_config ON external_repo_id = id']
+    clauses = [eventCondition(event)]
+    if info:
+        if isinstance(info, str):
+            clauses.append('name = %(info)s')
+        elif isinstance(info, (int, long)):
+            clauses.append('id = %(info)i')
+        else:
+            raise koji.GenericError, 'invalid type for lookup: %s' % type(info)
+    if url:
+        clauses.append('url = %(url)s')
+
+    query = QueryProcessor(columns=fields, tables=tables,
+                           joins=joins, clauses=clauses,
+                           values=locals(), opts=queryOpts)
+    return query.execute()
+
+def get_external_repo(info, strict=False, event=None):
+    """Get information about a single external repo.
+    info can either be a string (name) or an integer (id).
+    Returns a map containing the id, name, and url of the
+    repo.  If strict is True and no external repo has the
+    given name or id, raise an error."""
+    repos = get_external_repos(info, event=event)
+    if repos:
+        return repos[0]
+    else:
+        if strict:
+            raise koji.GenericError, 'invalid repo info: %s' % info
+        else:
+            return None
+
+def edit_external_repo(info, name, url):
+    """Edit an existing external repo"""
+
+    context.session.assertPerm('admin')
+
+    repo = get_external_repo(info, strict=True)
+    repo_id = repo['id']
+
+    if name != repo['name']:
+        existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
+                                   locals(), strict=False)
+        if existing_id is not None:
+            raise koji.GenericError, 'name "%s" is already taken by external repo %i' % (name, existing_id)
+
+        rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
+        _dml(rename, locals())
+
+    if url != repo['url']:
+        event_id = _singleValue("SELECT get_event()")
+
+        update = """UPDATE external_repo_config
+        SET active = NULL, revoke_event = %(event_id)i
+        WHERE external_repo_id = %(repo_id)i
+        AND active is true"""
+
+        insert = """INSERT INTO external_repo_config
+        (external_repo_id, url, create_event)
+        VALUES
+        (%(repo_id)i, %(url)s, %(event_id)i)"""
+
+        _dml(update, locals())
+        _dml(insert, locals())
+
+def delete_external_repo(info):
+    """Delete an external repo"""
+
+    context.session.assertPerm('admin')
+
+    repo = get_external_repo(info, strict=True)
+    repo_id = repo['id']
+
+    for tag_repo in get_tag_external_repos(repo_info=repo['id']):
+        remove_external_repo_from_tag(tag_info=tag_repo['tag_id'],
+                                      repo_info=repo_id)
+
+    update = """UPDATE external_repo_config
+    SET active = null, revoke_event = get_event()
+    WHERE external_repo_id = %(repo_id)i
+    AND active = true"""
+
+    _dml(update, locals())
+
+def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
+    """Add an external repo to a tag"""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    tag_repos = get_tag_external_repos(tag_info=tag_id)
+    if [tr for tr in tag_repos if tr['external_repo_id'] == repo_id]:
+        raise koji.GenericError, 'tag %s already associated with external repo %s' % \
+            (tag['name'], repo['name'])
+    if [tr for tr in tag_repos if tr['priority'] == priority]:
+        raise koji.GenericError, 'tag %s already associated with an external repo at priority %i' % \
+            (tag['name'], priority)
+
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        event_id = event
+
+    insert = """INSERT INTO tag_external_repos
+    (tag_id, external_repo_id, priority, create_event)
+    VALUES
+    (%(tag_id)i, %(repo_id)i, %(priority)i, %(event_id)i)"""
+
+    _dml(insert, locals())
+
+def remove_external_repo_from_tag(tag_info, repo_info, event=None):
+    """Remove an external repo from a tag"""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    if not get_tag_external_repos(tag_info=tag_id, repo_info=repo_id):
+        raise koji.GenericError, 'external repo %s not associated with tag %s' % \
+            (repo['name'], tag['name'])
+
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        event_id = event
+
+    update = """UPDATE tag_external_repos
+    SET active = null, revoke_event=%(event_id)i
+    WHERE tag_id = %(tag_id)i AND external_repo_id = %(repo_id)i
+    AND active = true"""
+
+    _dml(update, locals())
+
+def edit_tag_external_repo(tag_info, repo_info, priority):
+    """Edit a tag<->external repo association
+    This allows you to update the priority without removing/adding the repo."""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    tag_repos = get_tag_external_repos(tag_info=tag_id, repo_info=repo_id)
+    if not tag_repos:
+        raise koji.GenericError, 'external repo %s not associated with tag %s' % \
+            (repo['name'], tag['name'])
+    tag_repo = tag_repos[0]
+
+    if priority != tag_repo['priority']:
+        event_id = _singleValue("SELECT get_event()")
+        remove_external_repo_from_tag(tag_id, repo_id, event=event_id)
+        add_external_repo_to_tag(tag_id, repo_id, priority, event=event_id)
+
+def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
+    """
+    Get a list of tag<->external repo associations.  One of tag_info or
+    repo_info must be provided.  Both may be provided.
+    Returns a map containing the following fields:
+
+    tag_id
+    tag_name
+    external_repo_id
+    external_repo_name
+    url
+    priority
+    """
+    if not (tag_info or repo_info):
+        raise koji.GenericError, 'either tag_info or repo_info must be specified'
+
+    tables = ['tag_external_repos']
+    joins = ['tag ON tag_external_repos.tag_id = tag.id',
+             'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
+             'external_repo_config ON external_repo.id = external_repo_config.external_repo_id']
+    columns = ['tag.id', 'tag.name', 'external_repo.id', 'external_repo.name', 'url', 'priority']
+    aliases = ['tag_id', 'tag_name', 'external_repo_id', 'external_repo_name', 'url', 'priority']
+
+    clauses = [eventCondition(event, table='tag_external_repos'), eventCondition(event, table='external_repo_config')]
+    if tag_info:
+        tag = get_tag(tag_info, strict=True)
+        tag_id = tag['id']
+        clauses.append('tag.id = %(tag_id)i')
+    if repo_info:
+        repo = get_external_repo(repo_info, strict=True)
+        repo_id = repo['id']
+        clauses.append('external_repo.id = %(repo_id)i')
+
+    opts = {'order': 'priority'}
+
+    query = QueryProcessor(tables=tables, joins=joins,
+                           columns=columns, aliases=aliases,
+                           clauses=clauses, values=locals(),
+                           opts=opts)
+    return query.execute()
+
+def get_external_repo_list(tag_info, event=None):
+    """
+    Get an ordered list of all external repos associated with the tags in the
+    hierarchy rooted at the specified tag.  External repos will be returned
+    depth-first, and ordered by priority for each tag.  Duplicates will be
+    removed.  Returns a list of maps containing the following fields:
+
+    tag_id
+    tag_name
+    external_repo_id
+    external_repo_name
+    url
+    priority
+    """
+    tag = get_tag(tag_info, strict=True)
+    tag_list = [tag['id']]
+    for parent in readFullInheritance(tag['id'], event):
+        tag_list.append(parent['parent_id'])
+    seen_repos = {}
+    repos = []
+    for tag_id in tag_list:
+        for tag_repo in get_tag_external_repos(tag_info=tag_id, event=event):
+            if not seen_repos.has_key(tag_repo['external_repo_id']):
+                repos.append(tag_repo)
+                seen_repos[tag_repo['external_repo_id']] = 1
+    return repos
 
 def get_user(userInfo=None,strict=False):
     """Return information about a user.  userInfo may be either a str
@@ -4466,6 +4725,26 @@ class RootExports(object):
     editTag = staticmethod(old_edit_tag)
     editTag2 = staticmethod(edit_tag)
     deleteTag = staticmethod(delete_tag)
+
+    createExternalRepo = staticmethod(create_external_repo)
+    listExternalRepos = staticmethod(get_external_repos)
+    getExternalRepo = staticmethod(get_external_repo)
+    editExternalRepo = staticmethod(edit_external_repo)
+    deleteExternalRepo = staticmethod(delete_external_repo)
+
+    def addExternalRepoToTag(self, tag_info, repo_info, priority):
+        """Add an external repo to a tag"""
+        # wrap the local method so we don't expose the event parameter
+        add_external_repo_to_tag(tag_info, repo_info, priority)
+
+    def removeExternalRepoFromTag(self, tag_info, repo_info):
+        """Remove an external repo from a tag"""
+        # wrap the local method so we don't expose the event parameter
+        remove_external_repo_from_tag(tag_info, repo_info)
+
+    editTagExternalRepo = staticmethod(edit_tag_external_repo)
+    getTagExternalRepos = staticmethod(get_tag_external_repos)
+    getExternalRepoList = staticmethod(get_external_repo_list)
 
     importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
