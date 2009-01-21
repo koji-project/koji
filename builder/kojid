@@ -2371,12 +2371,16 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag, event=None):
+    def handler(self, tag, event=None, src=False, debuginfo=False):
         self.uploadpath = self.getUploadDir()
-        tinfo = session.getTag(tag, strict=True)
+        tinfo = session.getTag(tag, strict=True, event=event)
         kwargs = {}
         if event is not None:
             kwargs['event'] = event
+        if src:
+            kwargs['with_src'] = True
+        if debuginfo:
+            kwargs['with_debuginfo'] = True
         repo_id, event_id = session.host.repoInit(tinfo['id'], **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):

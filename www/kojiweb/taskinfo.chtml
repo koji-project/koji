@@ -117,7 +117,10 @@
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
         #elif $task.method == 'newRepo'
-        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>
+        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+        #if $len($params) > 1
+        $printOpts($params[1])
+        #end if
         #elif $task.method == 'prepRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
         #elif $task.method == 'createrepo'

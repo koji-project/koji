@@ -1704,7 +1704,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """
     logger = logging.getLogger("koji.hub.repo_init")
     state = koji.REPO_INIT
-    tinfo = get_tag(tag, strict=True)
+    tinfo = get_tag(tag, strict=True, event=event)
     tag_id = tinfo['id']
     repo_arches = {}
     if tinfo['arches']:
@@ -1731,7 +1731,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     #index the packages by arch
     packages = {}
     for rpminfo in rpms:
-        if rpminfo['name'].endswith('-debuginfo') and not with_debuginfo:
+        if (rpminfo['name'].endswith('-debuginfo') or rpminfo['name'].endswith('-debuginfo-common')) \
+                and not with_debuginfo:
             continue
         arch = rpminfo['arch']
         repoarch = koji.canonArch(arch)
@@ -5583,13 +5584,17 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def newRepo(self, tag, event=None):
+    def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
         context.session.assertPerm('repo')
-        if event:
-            args = koji.encode_args(tag, event=None)
-        else:
-            args = [tag]
+        opts = {}
+        if event is not None:
+            opts['event'] = event
+        if src:
+            opts['src'] = True
+        if debuginfo:
+            opts['debuginfo'] = True
+        args = koji.encode_args(tag, **opts)
         return make_task('newRepo', args, priority=15, channel='createrepo')
 
     def repoExpire(self, repo_id):
@@ -6874,11 +6879,11 @@ class HostExports(object):
             br.assertTask(task_id)
         return br.updateList(rpmlist)
 
-    def repoInit(self, tag, with_src=False, event=None):
+    def repoInit(self, tag, with_src=False, with_debuginfo=False, event=None):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src, event=event)
+        return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""
