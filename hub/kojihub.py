@@ -2180,7 +2180,7 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False):
                 'pkg_filter': ''}
         writeInheritanceData(get_tag(name)['id'],data)
 
-def get_tag(tagInfo,strict=False):
+def get_tag(tagInfo,strict=False,event=None):
     """Get tag information based on the tagInfo.  tagInfo may be either
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
@@ -2201,8 +2201,8 @@ def get_tag(tagInfo,strict=False):
     fields = ('id', 'name', 'perm_id', 'arches', 'locked')
     q = """SELECT %s FROM tag_config
     JOIN tag ON tag_config.tag_id = tag.id
-    WHERE tag_config.active = TRUE
-        AND  """ % ', '.join(fields)
+    WHERE %s
+        AND  """ % (', '.join(fields), eventCondition(event))
     if isinstance(tagInfo, int):
         q += """tag.id = %(tagInfo)i"""
     elif isinstance(tagInfo, str):
