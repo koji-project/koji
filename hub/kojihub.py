@@ -424,7 +424,7 @@ def make_task(method,arglist,**opts):
         opts['label'] = None
         opts['parent'] = None
     #XXX - temporary workaround
-    if method == 'buildArch' and opts['arch'] == 'noarch':
+    if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
         tag = get_tag(arglist[1])
         #get all known arches for the system
