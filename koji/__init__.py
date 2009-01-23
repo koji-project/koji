@@ -693,7 +693,13 @@ def parse_NVR(nvr):
     return ret
 
 def parse_NVRA(nvra):
-    """split N-V-R.A.rpm into dictionary of data"""
+    """split N-V-R.A.rpm into dictionary of data
+
+    also splits off @location suffix"""
+    parts = nvra.split('@', 1)
+    location = None
+    if len(parts) > 1:
+        nvra, location = parts
     if nvra.endswith(".rpm"):
         nvra = nvra[:-4]
     p3 = nvra.rfind(".")
@@ -706,6 +712,8 @@ def parse_NVRA(nvra):
         ret['src'] = True
     else:
         ret['src'] = False
+    if location:
+        ret['location'] = location
     return ret
 
 def canonArch(arch):

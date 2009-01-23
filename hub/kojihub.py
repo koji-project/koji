@@ -42,6 +42,7 @@ import stat
 import sys
 import tempfile
 import time
+import types
 import xmlrpclib
 from koji.context import context
 
@@ -2692,13 +2693,17 @@ def get_build(buildInfo, strict=False):
         ret = dict(zip([pair[1] for pair in fields], result))
         return ret
 
-def get_rpm(rpminfo,strict=False):
+def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
     rpminfo may be any one of the following:
     - a int ID
     - a string N-V-R.A
+    - a string N-V-R.A@location
     - a map containing 'name', 'version', 'release', and 'arch'
+      (and optionally 'location')
+
+    If specified, location should match the name of an external repo
 
     A map will be returned, with the following keys:
     - id
@@ -2712,12 +2717,31 @@ def get_rpm(rpminfo,strict=False):
     - buildtime
     - build_id
     - buildroot_id
+    - external_repo_id
+    - external_repo_name
 
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
+
+    If more than one RPM matches, and multi is True, then a list of results is
+    returned. If multi is False, a single match is returned (an internal one if
+    possible).
     """
-    fields = ('id', 'name', 'version', 'release', 'arch', 'epoch',
-              'payloadhash', 'size', 'buildtime', 'build_id', 'buildroot_id')
+    fields = (
+        ('rpminfo.id', 'id'),
+        ('build_id', 'build_id'),
+        ('buildroot_id', 'buildroot_id'),
+        ('rpminfo.name', 'name'),
+        ('version', 'version'),
+        ('release', 'release'),
+        ('epoch', 'epoch'),
+        ('arch', 'arch'),
+        ('external_repo_id', 'external_repo_id'),
+        ('external_repo.name', 'external_repo_name'),
+        ('payloadhash', 'payloadhash'),
+        ('size', 'size'),
+        ('buildtime', 'buildtime'),
+        )
     # we can look up by id or NVRA
     data = None
     if isinstance(rpminfo,(int,long)):
@@ -2728,20 +2752,43 @@ def get_rpm(rpminfo,strict=False):
         data = rpminfo.copy()
     else:
         raise koji.GenericError, "Invalid argument: %r" % rpminfo
-    q = """SELECT %s FROM rpminfo """ % ','.join(fields)
+    clauses = []
     if data.has_key('id'):
-        q += """WHERE id=%(id)s"""
+        clauses.append("rpminfo.id=%(id)s")
     else:
-        q += """WHERE name=%(name)s AND version=%(version)s
-        AND release=%(release)s AND arch=%(arch)s"""
-    c = context.cnx.cursor()
-    c.execute(q, data)
-    row = c.fetchone()
-    if not row:
+        clauses.append("""rpminfo.name=%(name)s AND version=%(version)s
+        AND release=%(release)s AND arch=%(arch)s""")
+    retry = False
+    if data.has_key('location'):
+        data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
+        clauses.append("""external_repo_id = %(external_repo_id)i""")
+    elif not multi:
+        #try to match internal first, otherwise first matching external
+        retry = True  #if no internal match
+        orig_clauses = list(clauses)  #copy
+        clauses.append("""external_repo_id = 0""")
+
+    joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
+
+    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                           tables=['rpminfo'], joins=joins, clauses=clauses,
+                           values=data)
+    if multi:
+        return query.execute()
+    ret = query.executeOne()
+    if ret:
+        return ret
+    if retry:
+        #at this point we have just an NVRA with no internal match. Open it up to externals
+        query.clauses = orig_clauses
+        ret = query.executeOne()
+    if not ret:
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
-    return dict(zip(fields,row))
+
+    return query.executeOne()
+
 
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
@@ -3234,6 +3281,71 @@ def import_rpm(fn,buildinfo=None,brootid=None):
     rpminfo['id'] = rpminfo_id
     return rpminfo
 
+def add_external_rpm(rpminfo, external_repo, strict=True):
+    """Add an external rpm entry to the rpminfo table
+
+    Differences from import_rpm:
+        - entry will have non-zero external_repo_id
+        - entry will not reference a build
+        - rpm not available to us -- the necessary data is passed in
+        - no entries are added to rpmdeps or rpmfiles
+
+    The rpminfo arg should contain the following fields:
+        - name, version, release, epoch, arch, payloadhash, size, buildtime
+
+    Returns info as get_rpm
+    """
+
+    # [!] Calling function should perform access checks
+
+    #sanity check rpminfo
+    dtypes = (
+        ('name', basestring),
+        ('version', basestring),
+        ('release', basestring),
+        ('epoch', (int, types.NoneType)),
+        ('arch', basestring),
+        ('payloadhash', str),
+        ('size', int),
+        ('buildtime', (int, long)))
+    for field, allowed in dtypes:
+        if not rpminfo.has_key(field):
+            raise koji.GenericError, "%s field missing: %r" % (field, rpminfo)
+        if not isinstance(rpminfo[field], allowed):
+            #this will catch unwanted NULLs
+            raise koji.GenericError, "Invalid value for %s: %r" % (field, rpminfo[field])
+    #TODO: more sanity checks for payloadhash
+
+    #Check to see if we have it
+    data = rpminfo.copy()
+    data['location'] = external_repo
+    previous = get_rpm(data, strict=False)
+    if previous:
+        disp = "%(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % previous
+        if strict:
+            raise koji.GenericError, "external rpm already exists: %s" % disp
+        elif data['payloadhash'] != previous['payloadhash']:
+            raise koji.GenericError, "hash changed for external rpm: %s (%s -> %s)" \
+                    % (disp,  previous['payloadhash'], data['payloadhash'])
+        else:
+            return previous
+
+    #add rpminfo entry
+    rpminfo['external_repo_id'] = get_external_repo_id(external_repo, strict=True)
+    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
+    q = """INSERT INTO rpminfo (id, build_id, buildroot_id,
+            name, version, release, epoch, arch,
+            external_repo_id,
+            payloadhash, size, buildtime)
+    VALUES (%(id)i, NULL, NULL,
+            %(name)s, %(version)s, %(release)s, %(epoch)s, %(arch)s,
+            %(external_repo_id)i,
+            %(payloadhash)s, %(size)i, %(buildtime)i)
+    """
+    _dml(q, rpminfo)
+
+    return get_rpm(rpminfo['id'])
+
 def import_changelog(buildinfo, rpmfile, replace=False):
     """Import the changelog from the given rpm into the build with the
     given ID.  If the build already has changelog info and replace is True,
@@ -3368,6 +3480,9 @@ def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
     #calling function should perform permission checks, if applicable
     rinfo = get_rpm(an_rpm, strict=True)
+    if rinfo['external_repo_id']:
+        raise koji.GenericError, "Not an internal rpm: %s (from %s)" \
+                % (an_rpm, rinfo['external_repo_name'])
     binfo = get_build(rinfo['build_id'])
     builddir = koji.pathinfo.build(binfo)
     if not os.path.isdir(builddir):
@@ -3496,6 +3611,9 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     context.session.assertPerm('sign')
     #XXX - still not sure if this is the right restriction
     rinfo = get_rpm(an_rpm, strict=True)
+    if rinfo['external_repo_id']:
+        raise koji.GenericError, "Not an internal rpm: %s (from %s)" \
+                % (an_rpm, rinfo['external_repo_name'])
     binfo = get_build(rinfo['build_id'])
     nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
     builddir = koji.pathinfo.build(binfo)
@@ -4780,6 +4898,13 @@ class RootExports(object):
         import_rpm_file(fn,rpminfo['build'],rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
 
+    def addExternalRPM(self, rpminfo, external_repo, strict=True):
+        """Import an external RPM
+
+        This call is mainly for testing. Normal access will be through
+        a host call"""
+        context.session.assertPerm('admin')
+        add_external_rpm(rpminfo, external_repo, strict=strict)
 
     def tagBuildBypass(self,tag,build,force=False):
         """Tag a build without running post checks or notifications
@@ -5262,6 +5387,8 @@ class RootExports(object):
         - buildtime
         - build_id
         - buildroot_id
+        - external_repo_id
+        - external_repo_name
 
         If componentBuildrootID is specified, two additional keys will be included:
         - component_buildroot_id
@@ -5275,8 +5402,11 @@ class RootExports(object):
                   ('rpminfo.arch', 'arch'),
                   ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
                   ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
-                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id')]
-        joins = []
+                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
+                  ('rpminfo.external_repo_id', 'external_repo_id'),
+                  ('external_repo.name', 'external_repo_name'),
+                 ]
+        joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
         clauses = []
 
         if buildID != None:
@@ -6313,13 +6443,24 @@ class BuildRoot(object):
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
         brootid = self.id
-        fields = ('rpm_id','is_update','name','version','release','epoch',
-                  'arch','build_id')
-        q = """SELECT %s FROM buildroot_listing
-        JOIN rpminfo on rpm_id = rpminfo.id
-        WHERE buildroot_listing.buildroot_id = %%(brootid)s
-        """ % ','.join(fields)
-        return _multiRow(q,locals(),fields)
+        fields = (
+            ('rpm_id', 'rpm_id'),
+            ('is_update', 'is_update'),
+            ('rpminfo.name', 'name'),
+            ('version', 'version'),
+            ('release', 'release'),
+            ('epoch', 'epoch'),
+            ('arch', 'arch'),
+            ('build_id', 'build_id'),
+            ('external_repo_id', 'external_repo_id'),
+            ('external_repo.name', 'external_repo_name'),
+            )
+        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                        tables=['buildroot_listing'],
+                        joins=["rpminfo ON rpm_id = rpminfo.id"],
+                        clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
+                        values=locals())
+        return query.execute()
 
     def _setList(self,rpmlist,update=False):
         """Set or update the list of rpms in a buildroot"""
