@@ -3268,9 +3268,11 @@ def import_rpm(fn,buildinfo=None,brootid=None):
     rpminfo['brootid'] = brootid
     q = """INSERT INTO rpminfo (name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
+            external_repo_id,
             size,payloadhash)
     VALUES (%(name)s,%(version)s,%(release)s,%(epoch)s,
             %(build_id)s,%(arch)s,%(buildtime)s,%(brootid)s,
+            0,
             %(size)s,%(payloadhash)s)
     """
     _dml(q, rpminfo)
