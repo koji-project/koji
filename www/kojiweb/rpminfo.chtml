@@ -11,10 +11,18 @@
       <th>ID</th><td>$rpm.id</td>
     </tr>
     <tr>
+      #if $build
       <th>Name</th><td><a href="packageinfo?packageID=$build.package_id">$rpm.name</a></td>
+      #else
+      <th>Name</th><td>$rpm.name</td>
+      #end if
     </tr>
     <tr>
+      #if $build
       <th>Version</th><td><a href="buildinfo?buildID=$build.id">$rpm.version</a></td>
+      #else
+      <th>Version</th><td>$rpm.version</td>
+      #end if
     </tr>
     <tr>
       <th>Release</th><td>$rpm.release</td>
@@ -25,6 +33,11 @@
     <tr>
       <th>Arch</th><td>$rpm.arch</td>
     </tr>
+    #if $rpm.external_repo_id
+    <tr>
+      <th>External Repository</th><td>$rpm.external_repo_name</td>
+    </tr>
+    #end if
     <tr>
       <th>Size</th><td>$rpm.size</td>
     </tr>
@@ -39,6 +52,7 @@
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
     </tr>
     #end if
+    #if $rpm.external_repo_id == 0
     <tr>
       <th>Provides</th>
       <td class="container">
@@ -144,6 +158,7 @@
         #end if
       </td>
     </tr>
+    #end if
     <tr>
       <th>Component&nbsp;of</th>
       <td class="container">

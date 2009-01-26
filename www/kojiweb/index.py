@@ -1138,18 +1138,21 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         epochStr = '%s:' % rpm['epoch']
     values['title'] = values['title'] % epochStr
 
-    build = server.getBuild(rpm['build_id'])
+    build = None
+    if rpm['build_id'] != None:
+        build = server.getBuild(rpm['build_id'])
     builtInRoot = None
     if rpm['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
-    requires = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
-    requires.sort(_sortbyname)
-    provides = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
-    provides.sort(_sortbyname)
-    obsoletes = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
-    obsoletes.sort(_sortbyname)
-    conflicts = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
-    conflicts.sort(_sortbyname)
+    if rpm['external_repo_id'] == 0:
+        values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
+        values['requires'].sort(_sortbyname)
+        values['provides'] = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
+        values['provides'].sort(_sortbyname)
+        values['obsoletes'] = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
+        values['obsoletes'].sort(_sortbyname)
+        values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
+        values['conflicts'].sort(_sortbyname)
     buildroots = server.listBuildroots(rpmID=rpm['id'])
     buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
 
@@ -1157,10 +1160,6 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
     values['rpm'] = rpm
     values['build'] = build
     values['builtInRoot'] = builtInRoot
-    values['requires'] = requires
-    values['provides'] = provides
-    values['obsoletes'] = obsoletes
-    values['conflicts'] = conflicts
     values['buildroots'] = buildroots
     
     files = kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],

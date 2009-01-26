@@ -1018,7 +1018,7 @@ def handle_import(options, session, args):
     def do_import(path, data):
         rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
         prev = session.getRPM(rinfo)
-        if prev:
+        if prev and not prev.get('external_repo_id', 0):
             if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
                 print _("RPM already imported: %s") % path
             else:
@@ -1164,6 +1164,9 @@ def handle_import_sig(options, session, args):
         rinfo = session.getRPM(data)
         if not rinfo:
             print "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data
+            continue
+        if rinfo.get('external_repo_id'):
+            print "Skipping external rpm:  %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" %rpminfo
             continue
         sighdr = koji.rip_rpm_sighdr(path)
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
@@ -1639,6 +1642,9 @@ def handle_list_signed(options, session, args):
         rpm_idx[rinfo['id']] = rinfo
         if rinfo is None:
             parser.error(_("No such RPM: %s") % options.rpm)
+        if rinfo.get('external_repo_id'):
+            print "External rpm:  %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" %rpminfo
+            sys.exit(1)
         qopts['rpm_id'] = rinfo['id']
     if options.build:
         binfo = session.getBuild(options.build)
@@ -2297,21 +2303,28 @@ def anon_handle_rpminfo(options, session, args):
             info['epoch'] = ""
         else:
             info['epoch'] = str(info['epoch']) + ":"
-        buildinfo = session.getBuild(info['build_id'])
-        buildinfo['name'] = buildinfo['package_name']
-        buildinfo['arch'] = 'src'
-        if buildinfo['epoch'] is None:
-            buildinfo['epoch'] = ""
-        else:
-            buildinfo['epoch'] = str(buildinfo['epoch']) + ":"
+        if not info.get('external_repo_id', 0):
+            buildinfo = session.getBuild(info['build_id'])
+            buildinfo['name'] = buildinfo['package_name']
+            buildinfo['arch'] = 'src'
+            if buildinfo['epoch'] is None:
+                buildinfo['epoch'] = ""
+            else:
+                buildinfo['epoch'] = str(buildinfo['epoch']) + ":"
         print "RPM: %(epoch)s%(name)s-%(version)s-%(release)s.%(arch)s [%(id)d]" %info
-        print "RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info))
-        print "SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo
-        print "SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo))
-        print "Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime']))
+        if info.get('external_repo_id'):
+            repo = session.getExternalRepo(info['external_repo_id'])
+            print "External Repository: %(name)s [%(id)i]" % repo
+            print "External Repository url: %(url)s" % repo
+        else:
+            print "RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info))
+            print "SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo
+            print "SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo))
+            print "Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime']))
         print "Payload: %(payloadhash)s" %info
         print "Size: %(size)s" %info
-        print "Build ID: %(build_id)s" %info
+        if not info.get('external_repo_id', 0):
+            print "Build ID: %(build_id)s" %info
         if info['buildroot_id'] is None:
             print "No buildroot data available"
         else:
