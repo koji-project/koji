@@ -2423,7 +2423,7 @@ class NewRepoTask(BaseTaskHandler):
 class CreaterepoTask(BaseTaskHandler):
 
     Methods = ['createrepo']
-    _taskWeight = 0.5
+    _taskWeight = 1.5
 
     def handler(self, repo_id, arch, oldrepo, external_repos=None):
         #arch is the arch of the repo, not the task
