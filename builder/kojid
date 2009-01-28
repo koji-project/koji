@@ -1697,7 +1697,7 @@ class BuildTask(BaseTaskHandler):
     def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
         task_id = session.host.subtask(method='buildSRPMFromSCM',
-                                       arglist=[url, build_tag, repo_id],
+                                       arglist=[url, build_tag, {'repo_id': repo_id}],
                                        label='srpm',
                                        parent=self.id)
         # wait for subtask to finish
@@ -2002,12 +2002,18 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
-    def handler(self, url, build_tag, repo_id):
+    def handler(self, url, build_tag, opts=None):
         global options
 
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
+
+        if not opts:
+            opts = {}
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
 
         repo_info = session.repoInfo(repo_id, strict=True)
         event_id = repo_info['create_event']
