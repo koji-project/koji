@@ -1,3 +1,4 @@
+#import koji
 #from kojiweb import util
 #import time
 #import urllib
@@ -33,6 +34,14 @@
     <tr>
       <th>Arch</th><td>$rpm.arch</td>
     </tr>
+    <tr>
+      <th>Build Time</th><td>$time.strftime('%Y-%m-%d %H:%M:%S', $time.gmtime($rpm.buildtime)) GMT</td>
+    </tr>
+    #if $build and $build.state == $koji.BUILD_STATES.DELETED
+    <tr>
+      <th>State</th><td class="deleted">deleted</td>
+    </tr>
+    #end if
     #if $rpm.external_repo_id
     <tr>
       <th>External Repository</th><td>$rpm.external_repo_name</td>
@@ -43,9 +52,6 @@
     </tr>
     <tr>
       <th>Payload Hash</th><td>$rpm.payloadhash</td>
-    </tr>
-    <tr>
-      <th>Build Time</th><td>$time.strftime('%Y-%m-%d %H:%M:%S', $time.gmtime($rpm.buildtime)) GMT</td>
     </tr>
     #if $builtInRoot
     <tr>
@@ -154,7 +160,7 @@
           #end for
         </table>
         #else
-        No files
+        No Files
         #end if
       </td>
     </tr>
