@@ -557,6 +557,10 @@ def taskinfo(req, taskID):
     if task['method'] == 'buildArch':
         buildTag = server.getTag(params[1])
         values['buildTag'] = buildTag
+    elif task['method'] == 'buildSRPMFromSCM':
+        if len(params) > 1:
+            buildTag = server.getTag(params[1])
+            values['buildTag'] = buildTag
     elif task['method'] == 'tagBuild':
         destTag = server.getTag(params[0])
         build = server.getBuild(params[1])

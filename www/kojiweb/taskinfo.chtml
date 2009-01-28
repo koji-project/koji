@@ -68,10 +68,10 @@
         #if $task.method == 'buildSRPMFromSCM'
         <strong>SCM URL:</strong> $params[0]<br/>
         #if $len($params) > 1
-        <strong>Build Tag:</strong>: <a href="taginfo?tagID=$params[1].name">$params[1].name</a><br/>
+        <strong>Build Tag:</strong>: <a href="taginfo?tagID=$buildTag.name">$buildTag.name</a><br/>
         #end if
         #if $len($params) > 2
-        $printOpts($params[2])
+        <strong>Repo ID:</strong>: $params[2]<br/>
         #end if
         #elif $task.method == 'buildSRPMFromCVS'
         <strong>CVS URL:</strong> $params[0]
@@ -129,7 +129,10 @@
         #set $oldrepo = $params[2]
         #if $oldrepo
         <strong>Old Repo ID:</strong> $oldrepo.id<br/>
-        <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)
+        <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
+        #end if
+        #if $len($params) > 3
+        <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
         #end if
         #elif $task.method == 'dependantTask'
         <strong>Dependant Tasks:</strong><br/>

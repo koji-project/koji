@@ -1696,9 +1696,8 @@ class BuildTask(BaseTaskHandler):
 
     def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
-        build_tag_info = session.getTag(build_tag, strict=True)
         task_id = session.host.subtask(method='buildSRPMFromSCM',
-                                       arglist=[url, build_tag_info, {'repo_id': repo_id}],
+                                       arglist=[url, build_tag, repo_id],
                                        label='srpm',
                                        parent=self.id)
         # wait for subtask to finish
@@ -2003,19 +2002,22 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
-    def handler(self, url, build_tag, opts=None):
+    def handler(self, url, build_tag, repo_id):
         global options
 
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+        build_tag = session.getTag(build_tag, strict=True, event=event_id)
+
         # need DNS in the chroot because "make srpm" may need to contact
         # a SCM or lookaside cache to retrieve the srpm contents
         rootopts = {'install_group': 'srpm-build',
-                    'setup_dns': True}
-        if opts.get('repo_id') is not None:
-            rootopts['repo_id'] = opts['repo_id']
+                    'setup_dns': True,
+                    'repo_id': repo_info['id']}
         br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id']))
         broot = BuildRoot(build_tag['id'], br_arch, self.id, **rootopts)
 
@@ -2392,9 +2394,13 @@ class NewRepoTask(BaseTaskHandler):
         #see if we can find a previous repo to update from
         oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
         subtasks = {}
+        external_repos = session.getExternalRepoList(tinfo['id'], event=event)
         for arch in arches:
+            arglist = [repo_id, arch, oldrepo]
+            if external_repos:
+                arglist.append(external_repos)
             subtasks[arch] = session.host.subtask(method='createrepo',
-                                                  arglist=[repo_id, arch, oldrepo],
+                                                  arglist=arglist,
                                                   label=arch,
                                                   parent=self.id,
                                                   arch='noarch')
@@ -2413,62 +2419,100 @@ class NewRepoTask(BaseTaskHandler):
 class CreaterepoTask(BaseTaskHandler):
 
     Methods = ['createrepo']
-    #XXX - set weight?
     _taskWeight = 0.5
 
-    def handler(self, repo_id, arch, oldrepo):
+    def handler(self, repo_id, arch, oldrepo, external_repos=None):
         #arch is the arch of the repo, not the task
-        rinfo = session.repoInfo(repo_id)
+        rinfo = session.repoInfo(repo_id, strict=True)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
-        pathinfo = koji.PathInfo(options.topdir)
-        toprepodir = pathinfo.repo(repo_id, rinfo['tag_name'])
-        repodir = "%s/%s" % (toprepodir, arch)
+        self.pathinfo = koji.PathInfo(options.topdir)
+        toprepodir = self.pathinfo.repo(repo_id, rinfo['tag_name'])
+        self.repodir = '%s/%s' % (toprepodir, arch)
+        if not os.path.isdir(self.repodir):
+            raise koji.GenericError, "Repo directory missing: %s" % self.repodir
         groupdata = os.path.join(toprepodir, 'groups', 'comps.xml')
-        if not os.path.isdir(repodir):
-            raise koji.GenericError, "Repo directory missing: %s" % repodir
         #set up our output dir
-        outdir = "%s/repo" % self.workdir
-        datadir = "%s/repodata" % outdir
-        koji.ensuredir(outdir)
-        pkglist = os.path.join(repodir, 'pkglist')
-        pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
+        self.outdir = '%s/repo' % self.workdir
+        self.datadir = '%s/repodata' % self.outdir
+        pkglist = os.path.join(self.repodir, 'pkglist')
+        if os.path.getsize(pkglist) > 0:
+            # don't call createrepo with an empty pkglist or it'll
+            # add every Koji-managed rpm to the repodata
+            self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
+
+        external_repos = session.getExternalRepoList(rinfo['tag_id'], event=rinfo['create_event'])
+        if external_repos:
+            self.merge_repos(external_repos, arch, groupdata)
+
+        uploadpath = self.getUploadDir()
+        files = []
+        for f in os.listdir(self.datadir):
+            files.append(f)
+            session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
+
+        return [uploadpath, files]
+
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
+        koji.ensuredir(self.outdir)
+        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-i', pkglist, '-u', options.pkgurl]
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
         if oldrepo:
-            oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
-            olddatadir = "%s/%s/repodata" % (oldpath, arch)
+            oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+            olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
                 self.logger.warn("old repodata is missing: %s" % olddatadir)
             else:
-                koji.ensuredir(datadir)
-                os.system('cp -a %s/* %s' % (olddatadir, datadir))
+                shutil.copytree(olddatadir, self.datadir)
+                oldorigins = os.path.join(self.datadir, 'pkgorigins.gz')
+                if os.path.isfile(oldorigins):
+                    # remove any previous origins file and rely on mergerepos
+                    # to rewrite it (if we have external repos to merge)
+                    os.unlink(oldorigins)
                 cmd.append('--update')
                 if options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
+        pkgdir = os.path.join(self.pathinfo.topdir, 'packages/')
         cmd.append(pkgdir)
 
-        logfile = "%s/createrepo.log" % self.workdir
-        uploadpath = self.getUploadDir()
-        #log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None):
-        status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
+        logfile = '%s/createrepo.log' % self.workdir
+        status = log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not _isSuccess(status):
-            raise koji.GenericError, "failed to create repo: %s" \
+            raise koji.GenericError, 'failed to create repo: %s' \
                     % _parseStatus(status, ' '.join(cmd))
 
-        files = []
-        for f in os.listdir(datadir):
-            if f.endswith('.xml') or f.endswith('.xml.gz') or f.endswith('.sqlite.bz2'):
-                files.append(f)
-                session.uploadWrapper("%s/%s" % (datadir, f), uploadpath, f)
+    def merge_repos(self, external_repos, arch, groupdata):
+        repos = []
+        if os.path.isdir(self.datadir):
+            localdir = '%s/localrepo' % self.workdir
+            os.rename(self.outdir, localdir)
+            koji.ensuredir(self.outdir)
+            repos.append('file://' + localdir + '/')
 
-        return [uploadpath, files]
-        
+        for repo in external_repos:
+            ext_url = repo['url']
+            # substitute $arch in the url with the arch of the repo we're generating
+            ext_url = ext_url.replace('$arch', arch)
+            repos.append(ext_url)
+
+        blocklist = self.repodir + '/blocklist'
+        cmd = ['/usr/libexec/kojid/mergerepos', '-a', arch, '-b', blocklist, '-o', self.outdir]
+        if os.path.isfile(groupdata):
+            cmd.extend(['-g', groupdata])
+        for repo in repos:
+            cmd.extend(['-r', repo])
+
+        logfile = '%s/mergerepo.log' % self.workdir
+        status = log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
+        if not _isSuccess(status):
+            raise koji.GenericError, 'failed to merge repos: %s' \
+                % _parseStatus(status, ' '.join(cmd))
+
 class WaitrepoTask(BaseTaskHandler):
 
     Methods = ['waitrepo']

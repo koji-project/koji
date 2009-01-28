@@ -135,6 +135,8 @@ rm -rf $RPM_BUILD_ROOT
 %files builder
 %defattr(-,root,root)
 %{_sbindir}/kojid
+%dir %{_libexecdir}/kojid
+%{_libexecdir}/kojid/mergerepos
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
 %dir %{_sysconfdir}/kojid

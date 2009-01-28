@@ -1,0 +1,199 @@
+#!/usr/bin/python
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+# Copyright 2009 Red Hat, Inc.
+# Written by Mike Bonnet <mikeb@redhat.com>
+
+# Merge repos using rules specific to Koji
+# Largely borrowed from the mergerepo script included in createrepo and
+# written by Seth Vidal
+
+import createrepo
+import os.path
+import rpmUtils.miscutils
+import shutil
+import sys
+import tempfile
+import yum
+from optparse import OptionParser
+
+def parse_args(args):
+    """Parse our opts/args"""
+    usage = """
+    mergerepos: take 2 or more repositories and merge their metadata into a new repo using Koji semantics
+              
+    mergerepos --repo=url --repo=url --outputdir=/some/path"""
+    
+    parser = OptionParser(version = "mergerepos 0.1", usage=usage)
+    # query options
+    parser.add_option("-r", "--repo", dest="repos", default=[], action="append",
+                      help="repo url")
+    parser.add_option("-g", "--groupfile", default=None,
+                      help="path to groupfile to include in metadata")
+    parser.add_option("-a", "--arch", dest="arches", default=[], action="append",
+                      help="List of arches to include in the repo")
+    parser.add_option("-b", "--blocked", default=None,
+                      help="A file containing a list of srpm names to exclude from the merged repo")
+    parser.add_option("-o", "--outputdir", default=None, 
+                      help="Location to create the repository")
+    (opts, argsleft) = parser.parse_args(args)
+
+    if len(opts.repos) < 1:
+        parser.print_usage()
+        sys.exit(1)
+
+    # always include noarch
+    if not 'noarch' in opts.arches:
+        opts.arches.append('noarch')
+
+    if not opts.outputdir:
+        parser.error('You must specify an outputdir with -o')
+        sys.exit(1)
+
+    return opts
+
+class RepoMerge():
+    def __init__(self, repolist, arches, groupfile, blocked, outputdir):
+        self.repolist = repolist
+        self.outputdir = outputdir
+        self.mdconf = createrepo.MetaDataConfig()
+        self.mdconf.database = True
+        self.mdconf.verbose = True
+        self.mdconf.changelog_limit = 3
+        self.yumbase = yum.YumBase()
+        self.yumbase._getConfig('/dev/null', init_plugins=False, debuglevel=2)
+        self.yumbase.conf.cachedir = tempfile.mkdtemp()
+        self.yumbase.conf.cache = 0
+        self.archlist = arches
+        self.mdconf.groupfile = groupfile
+        self.blocked = blocked
+
+    def close(self):
+        if self.yumbase is not None:
+            cachedir = self.yumbase.conf.cachedir
+            self.yumbase.close()
+            self.yumbase = None
+            self.mdconf = None
+            if os.path.isdir(cachedir):
+                shutil.rmtree(cachedir)
+
+    def __del__(self):
+        self.close()
+
+    def merge_repos(self):
+        self.yumbase.repos.disableRepo('*')
+        # add our repos and give them a merge rank in the order they appear in
+        # in the repolist
+        count = 0
+        for r in self.repolist:
+            count +=1
+            rid = 'repo%s' % count
+            print >> sys.stderr, 'Adding repo: ' + r
+            n = self.yumbase.add_enable_repo(rid, baseurls=[r])
+            n._merge_rank = count
+
+        #setup our sacks
+        self.yumbase._getSacks(archlist=self.archlist)
+
+        self.sort_and_filter()
+
+    def sort_and_filter(self):
+        """
+        For each package object, check if the srpm name has ever been seen before.
+        If is has not, keep the package.  If it has, check if the srpm name was first seen
+        in the same repo as the current package.  If so, keep the package (it's probably a subpackage
+        of the same build).  If not, delete the package from the package sack.
+        Note that this does allow an external repo to contain multiple versions of the same package,
+        and they will all end up in the repo, but the yum client will ensure that only the latest is
+        installed.
+
+        If the srpm name appears in the blocked package list, any packages generated from the srpm
+        will be deleted from the package sack as well.
+
+        This method will also generate a file called "pkgorigins" and add it to the repo metadata.  This
+        is a tab-separated map of package E:N-V-R.A to repo URL (as specified on the command-line).  This
+        allows a package to be tracked back to its origin, even if the location field in the repodata does
+        not match the original repo location.
+        """
+        # sort the repos by _merge_rank
+        # lowest number is the highest rank (1st place, 2nd place, etc.)
+        repos = self.yumbase.repos.listEnabled()
+        repos.sort(key=lambda o: o._merge_rank)
+
+        seen_srpms = {}
+
+        pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
+        origins = file(pkgorigins, 'w')
+
+        for repo in repos:
+            for pkg in repo.sack:
+                srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
+                if seen_srpms.has_key(srpm_name):
+                    # We've seen a package created from this srpm before.
+                    # Check if that package was also from this repo, in
+                    # which case it's likely just another subpackage from
+                    # the same build.
+                    if seen_srpms[srpm_name] == pkg.repoid:
+                        origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
+                    else:
+                        repo.sack.delPackage(pkg)
+                elif self.blocked.has_key(srpm_name):
+                    print >> sys.stderr, 'Removing blocked package: %s' % pkg
+                    repo.sack.delPackage(pkg)
+                else:
+                    seen_srpms[srpm_name] = pkg.repoid
+                    origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
+
+        origins.close()
+        self.mdconf.additional_metadata['origin'] = pkgorigins
+
+    def write_metadata(self):
+        self.mdconf.pkglist = self.yumbase.pkgSack
+        self.mdconf.directory = self.outputdir
+        # clean out what was there
+        if os.path.exists(self.mdconf.directory + '/repodata'):
+            shutil.rmtree(self.mdconf.directory + '/repodata')
+
+        if not os.path.exists(self.mdconf.directory):
+            os.makedirs(self.mdconf.directory)
+
+        mdgen = createrepo.MetaDataGenerator(config_obj=self.mdconf)
+        mdgen.doPkgMetadata()
+        mdgen.doRepoMetadata()
+        mdgen.doFinalMove()
+
+def main(args):
+    """main"""
+    opts = parse_args(args)
+
+    if opts.blocked:
+        blocked_fo = file(opts.blocked)
+        blocked_list = blocked_fo.readlines()
+        blocked_fo.close()
+        blocked = dict([(b.strip(), 1) for b in blocked_list])
+    else:
+        blocked = {}
+
+    merge = RepoMerge(opts.repos, opts.arches, opts.groupfile, blocked, opts.outputdir)
+
+    try:
+        merge.merge_repos()
+        merge.write_metadata()
+    finally:
+        merge.close()
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -1722,9 +1722,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     q = """INSERT INTO repo(id, create_event, tag_id, state)
     VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
     _dml(q,locals())
-    # no need to pass explicit event, since this is all one transaction
-    rpms, builds = readTaggedRPMS(tag_id, event=None, inherit=True, latest=True)
-    groups = readTagGroups(tag_id, event=None, inherit=True)
+    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=True)
+    groups = readTagGroups(tag_id, event=event_id, inherit=True)
+    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values() \
+                  if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  #should not already exist
     #index builds
@@ -1784,6 +1785,32 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             for rpminfo in packages.get('src',[]):
                 pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         pkglist.close()
+        #write list of blocked packages
+        blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
+        logger.info("Creating blocked list for %s" % arch)
+        for pkg in blocks:
+            blocklist.write(pkg['package_name'])
+            blocklist.write('\n')
+        blocklist.close()
+
+    # if using an external repo, make sure we've created a directory and pkglist for
+    # every arch in the taglist, or any packages of that arch in the external repo
+    # won't be processed
+    if get_external_repo_list(tinfo['id'], event=event_id):
+        for arch in repo_arches:
+            pkglist = os.path.join(repodir, arch, 'pkglist')
+            if not os.path.exists(pkglist):
+                logger.info("Creating missing package list for %s" % arch)
+                koji.ensuredir(os.path.dirname(pkglist))
+                pkglist_fo = file(pkglist, 'w')
+                pkglist_fo.close()
+                blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
+                logger.info("Creating missing blocked list for %s" % arch)
+                for pkg in blocks:
+                    blocklist.write(pkg['package_name'])
+                    blocklist.write('\n')
+                blocklist.close()
+
     return [repo_id, event_id]
 
 def repo_set_state(repo_id, state, check=True):
