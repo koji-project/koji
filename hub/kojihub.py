@@ -6484,7 +6484,7 @@ class BuildRoot(object):
             )
         query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                         tables=['buildroot_listing'],
-                        joins=["rpminfo ON rpm_id = rpminfo.id"],
+                        joins=["rpminfo ON rpm_id = rpminfo.id", "external_repo ON external_repo_id = external_repo.id"],
                         clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
                         values=locals())
         return query.execute()
