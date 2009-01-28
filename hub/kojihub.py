@@ -5627,13 +5627,13 @@ class RootExports(object):
             #still might be blocked
             return not pkgs[pkg_id]['blocked']
 
-    def getPackageConfig(self,tag,pkg):
+    def getPackageConfig(self,tag,pkg,event=None):
         """Get config for package in tag"""
         tag_id = get_tag_id(tag,strict=False)
         pkg_id = get_package_id(pkg,strict=False)
         if pkg_id is None or tag_id is None:
             return None
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, event=event)
         return pkgs.get(pkg_id,None)
 
     getUser = staticmethod(get_user)
@@ -5702,17 +5702,17 @@ class RootExports(object):
                                values=locals(), opts=queryOpts)
         return query.execute()
 
-    def getBuildConfig(self,tag):
+    def getBuildConfig(self,tag,event=None):
         """Return build configuration associated with a tag"""
-        taginfo = get_tag(tag,strict=True)
+        taginfo = get_tag(tag,strict=True,event=event)
         arches = taginfo['arches']
         if arches is None:
             #follow inheritance for arches
-            order = readFullInheritance(taginfo['id'])
+            order = readFullInheritance(taginfo['id'],event=event)
             for link in order:
                 if link['noconfig']:
                     continue
-                arches = get_tag(link['parent_id'])['arches']
+                arches = get_tag(link['parent_id'],strict=True,event=event)['arches']
                 if arches is not None:
                     taginfo['arches'] = arches
                     break
@@ -5790,10 +5790,10 @@ class RootExports(object):
     deleteBuildTarget = staticmethod(delete_build_target)
     getBuildTargets = staticmethod(get_build_targets)
 
-    def getBuildTarget(self, info):
+    def getBuildTarget(self, info, event=None):
         """Return the build target with the given name or ID.
         If there is no matching build target, return None."""
-        targets = get_build_targets(info=info)
+        targets = get_build_targets(info=info, event=event)
         if len(targets) == 1:
             return targets[0]
         else:

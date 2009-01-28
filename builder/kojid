@@ -301,44 +301,41 @@ class BuildRoot(object):
         self.tag_id = data['tag_id']
         self.tag_name = data['tag_name']
         self.repoid = data['repo_id']
+        self.repo_info = session.repoInfo(self.repoid, strict=True)
+        self.event_id = self.repo_info['create_event']
         self.br_arch = data['arch']
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
-        self.config = session.getBuildConfig(self.tag_id)
+        self.config = session.getBuildConfig(self.tag_id, event=self.event_id)
 
     def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False):
         """Create a brand new repo"""
+        if not repo_id:
+            raise koji.BuildrootError, "A repo id must be provided"
+        repo_info = session.repoInfo(repo_id, strict=True)
+        self.repo_info = repo_info
+        self.repoid = self.repo_info['id']
+        self.event_id = self.repo_info['create_event']
         self.task_id = task_id
         self.distribution = distribution
         if not self.distribution:
             # Provide a default if the srpm did not contain a 'distribution' header,
             # e.g. if it was built by hand
             self.distribution = 'Unknown'
-        self.config = session.getBuildConfig(tag)
+        self.config = session.getBuildConfig(tag, event=self.event_id)
         if not self.config:
             raise koji.BuildrootError("Could not get config info for tag: %s" % tag)
         self.tag_id = self.config['id']
         self.tag_name = self.config['name']
-        if repo_id is None:
-            #use current active repo for tag, waiting if necessary
-            while 1:
-                repo_info = session.getRepo(self.tag_id)
-                if repo_info and repo_info['state'] == koji.REPO_READY:
-                    break
-                self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
-                time.sleep(30)
-        else:
-            repo_info = session.repoInfo(repo_id)
-            if self.config['id'] != repo_info['tag_id']:
-                raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
-                        % (self.config['name'], repo_info['tag_name'])
-            repo_state = koji.REPO_STATES[repo_info['state']]
-            if repo_state == 'EXPIRED':
-                # This should be ok. Expired repos are still intact, just not
-                # up-to-date (which may be the point in some cases).
-                self.logger.info("Requested repo (%i) is no longer current" % repo_id)
-            elif repo_state != 'READY':
-                raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
-        self.repoid = repo_info['id']
+        if self.config['id'] != repo_info['tag_id']:
+            raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
+                    % (self.config['name'], repo_info['tag_name'])
+        repo_state = koji.REPO_STATES[repo_info['state']]
+        if repo_state == 'EXPIRED':
+            # This should be ok. Expired repos are still intact, just not
+            # up-to-date (which may be the point in some cases).
+            self.logger.info("Requested repo (%i) is no longer current" % repo_id)
+        elif repo_state != 'READY':
+            raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
         self.br_arch = koji.canonArch(arch)
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
         id = session.host.newBuildRoot(self.repoid, self.br_arch, task_id=task_id)
@@ -1586,13 +1583,15 @@ class BuildTask(BaseTaskHandler):
             repo_state = koji.REPO_STATES[repo_info['state']]
             if repo_state not in ('READY', 'EXPIRED'):
                 raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
+            self.event_id = repo_info['create_event']
         else:
             repo_info = None
             #we'll wait for a repo later (self.getRepo)
+            self.event_id = None
         task_info = session.getTaskInfo(self.id)
         target_info = None
         if target:
-            target_info = session.getBuildTarget(target)
+            target_info = session.getBuildTarget(target, event=self.event_id)
         if target_info:
             dest_tag = target_info['dest_tag']
             build_tag = target_info['build_tag']
@@ -1612,7 +1611,7 @@ class BuildTask(BaseTaskHandler):
                 self.opts['skip_tag'] = True
                 dest_tag = build_tag
             else:
-                taginfo = session.getTag(target)
+                taginfo = session.getTag(target, event=self.event_id)
                 if not taginfo:
                     raise koji.GenericError, 'neither tag nor target: %s' % target
                 dest_tag = taginfo['id']
@@ -1636,18 +1635,19 @@ class BuildTask(BaseTaskHandler):
             session.host.assertPolicy('build_from_repo_id', policy_data)
         if not repo_info:
             repo_info = self.getRepo(build_tag)  #(subtask)
+            self.event_id = repo_info['create_event']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
         data['task_id'] = self.id
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)
-        pkg_cfg = session.getPackageConfig(dest_tag,data['name'])
+        pkg_cfg = session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
         self.logger.debug("%r" % pkg_cfg)
         if pkg_cfg is not None:
             extra_arches = pkg_cfg.get('extra_arches')
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
-            dest_cfg = session.getPackageConfig(dest_tag,data['name'])
+            dest_cfg = session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
             # Make sure package is on the list for this tag
             if dest_cfg is None:
                 raise koji.BuildError, "package %s not in list for tag %s" \
@@ -1719,7 +1719,7 @@ class BuildTask(BaseTaskHandler):
 
     def getArchList(self, build_tag, h, extra=None):
         # get list of arches to build for
-        buildconfig = session.getBuildConfig(build_tag)
+        buildconfig = session.getBuildConfig(build_tag, event=self.event_id)
         arches = buildconfig['arches']
         if not arches:
             #XXX - need to handle this better
@@ -1864,6 +1864,11 @@ class BuildArchTask(BaseTaskHandler):
         ret = {}
         if opts is None:
             opts = {}
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
 
         # starting srpm should already have been uploaded by parent
         self.logger.debug("Reading SRPM")
@@ -1885,10 +1890,9 @@ class BuildArchTask(BaseTaskHandler):
 
         rootopts = {
             'distribution' : h[rpm.RPMTAG_DISTRIBUTION],
+            'repo_id': repo_id
             }
-        if opts.get('repo_id') is not None:
-            rootopts['repo_id'] = opts['repo_id']
-        br_arch = self.find_arch(arch, session.host.getHost(), session.getBuildConfig(root))
+        br_arch = self.find_arch(arch, session.host.getHost(), session.getBuildConfig(root, event=event_id))
         broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
@@ -2009,7 +2013,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
-        if not opts:
+        if opts is None:
             opts = {}
         repo_id = opts.get('repo_id')
         if not repo_id:
@@ -2023,7 +2027,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         # a SCM or lookaside cache to retrieve the srpm contents
         rootopts = {'install_group': 'srpm-build',
                     'setup_dns': True,
-                    'repo_id': repo_info['id']}
+                    'repo_id': repo_id}
         br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id']))
         broot = BuildRoot(build_tag['id'], br_arch, self.id, **rootopts)
 
