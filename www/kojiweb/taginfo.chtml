@@ -88,6 +88,20 @@
       <td colspan="2"><a href="tags?childID=$tag.id">Add parent</a></td>
     </tr>
     #end if
+    #if $external_repos
+    <tr>
+      <th>External&nbsp;repos</th>
+      <td>
+	#for $external_repo in $external_repos
+	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_name">$external_repo.external_repo_name</a>
+	#if $external_repo.tag_id != $tag.id
+	<span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_name">$external_repo.tag_name</a>)</span>
+	#end if
+	<br/>
+	#end for
+      </td>
+    </tr>
+    #end if
     <tr>
       <th>Repo&nbsp;created</th><td>#if $repo then $util.formatTimeRSS($repo.creation_time) else ''#</td>
     </tr>

@@ -789,7 +789,7 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
     numBuilds = server.count('listTagged', tag=tag['id'], inherit=True)
     values['numPackages'] = numPackages
     values['numBuilds'] = numBuilds
-    
+
     inheritance = server.getFullInheritance(tag['id'])
     tagsByChild = {}
     for parent in inheritance:
@@ -811,7 +811,8 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
     values['destTargets'] = destTargets
     values['all'] = all
     values['repo'] = server.getRepo(tag['id'], state=koji.REPO_READY)
-    
+    values['external_repos'] = server.getExternalRepoList(tag['id'])
+
     child = None
     if childID != None:
         child = server.getTag(int(childID), strict=True)
@@ -974,6 +975,21 @@ def tagparent(req, tagID, parentID, action):
         raise koji.GenericError, 'unknown action: %s' % action
 
     mod_python.util.redirect(req, 'taginfo?tagID=%i' % tag['id'])
+
+def externalrepoinfo(req, extrepoID):
+    values = _initValues(req, 'External Repo Info', 'tags')
+    server = _getServer(req)
+
+    if extrepoID.isdigit():
+        extrepoID = int(extrepoID)
+    extRepo = server.getExternalRepo(extrepoID, strict=True)
+    repoTags = server.getTagExternalRepos(repo_info=extRepo['id'])
+
+    values['title'] = extRepo['name'] + ' | External Repo Info'
+    values['extRepo'] = extRepo
+    values['repoTags'] = repoTags
+
+    return _genHTML(req, 'externalrepoinfo.chtml')
 
 def buildinfo(req, buildID):
     values = _initValues(req, 'Build Info', 'builds')

@@ -425,3 +425,7 @@ span#loginInfo {
     font-weight: bold;
     margin: 5px;
 }
+
+.smaller {
+    font-size: smaller;
+}
