@@ -1989,7 +1989,7 @@ class TagBuildTask(BaseTaskHandler):
 class BuildSRPMFromSCMTask(BaseTaskHandler):
 
     Methods = ['buildSRPMFromSCM']
-    _taskWeight = 0.75
+    _taskWeight = 1.0
 
     def spec_sanity_checks(self, filename):
         spec = open(filename).read()
