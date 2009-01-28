@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for external repo <a href="externalrepoinfo?extrepoID=$extRepo.name">$extRepo.name</a></h4>
+  <h4>Information for external repo <a href="externalrepoinfo?extrepoID=$extRepo.id">$extRepo.name</a></h4>
 
   <table>
     <tr>
@@ -19,7 +19,7 @@
       <td>
 	#if $len($repoTags)
 	#for $tag in $repoTags
-	<a href="taginfo?tagID=$tag.tag_name">$tag.tag_name</a><br/>
+	<a href="taginfo?tagID=$tag.tag_id">$tag.tag_name</a><br/>
 	#end for
 	#else
 	No tags
