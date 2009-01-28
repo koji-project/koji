@@ -34,9 +34,9 @@ def parse_args(args):
     """Parse our opts/args"""
     usage = """
     mergerepos: take 2 or more repositories and merge their metadata into a new repo using Koji semantics
-              
+
     mergerepos --repo=url --repo=url --outputdir=/some/path"""
-    
+
     parser = OptionParser(version = "mergerepos 0.1", usage=usage)
     # query options
     parser.add_option("-r", "--repo", dest="repos", default=[], action="append",
@@ -47,7 +47,7 @@ def parse_args(args):
                       help="List of arches to include in the repo")
     parser.add_option("-b", "--blocked", default=None,
                       help="A file containing a list of srpm names to exclude from the merged repo")
-    parser.add_option("-o", "--outputdir", default=None, 
+    parser.add_option("-o", "--outputdir", default=None,
                       help="Location to create the repository")
     (opts, argsleft) = parser.parse_args(args)
 
