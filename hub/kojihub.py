@@ -4305,6 +4305,39 @@ SELECT %(col_str)s
                 return None
         return results
 
+def _applyQueryOpts(results, queryOpts):
+    """
+    Apply queryOpts to results in the same way QueryProcessor would.
+    results is a list of maps.
+    queryOpts is a map which may contain the following fields:
+      countOnly
+      order
+      offset
+      limit
+
+    Note: asList is supported by QueryProcessor but not by this method.
+    We don't know the original query order, and so don't have a way to
+    return a useful list.  asList should be handled by the caller.
+    """
+    if queryOpts is None:
+        queryOpts = {}
+    if queryOpts.get('order'):
+        order = queryOpts['order']
+        reverse = False
+        if order.startswith('-'):
+            order = order[1:]
+            reverse = True
+        results.sort(key=lambda o: o[order])
+        if reverse:
+            results.reverse()
+    if queryOpts.get('offset'):
+        results = results[queryOpts['offset']:]
+    if queryOpts.get('limit'):
+        results = results[:queryOpts['limit']]
+    if queryOpts.get('countOnly'):
+        return len(results)
+    else:
+        return results
 
 #
 # Policy Test Handlers
@@ -5501,16 +5534,33 @@ class RootExports(object):
         If there is no RPM with the given ID, or the RPM has no dependency information,
         return None.
         """
-        fields = (('dep_name', 'name'), ('dep_version', 'version'),
-                  ('dep_flags', 'flags'), ('dep_type', 'type'))
-        clauses = ['rpm_id = %(rpmID)i']
-        if depType != None:
-            clauses.append('dep_type = %(depType)i')
+        if queryOpts is None:
+            queryOpts = {}
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return []
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return []
 
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmdeps'], clauses=clauses,
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+        results = []
+
+        for dep_name in ['REQUIRE','PROVIDE','CONFLICT','OBSOLETE']:
+            dep_id = getattr(koji, 'DEP_' + dep_name)
+            if depType is None or depType == dep_id:
+                fields = koji.get_header_fields(rpm_path, [dep_name + 'NAME',
+                                                           dep_name + 'VERSION',
+                                                           dep_name + 'FLAGS'])
+                for (name, version, flags) in zip(fields[dep_name + 'NAME'],
+                                                  fields[dep_name + 'VERSION'],
+                                                  fields[dep_name + 'FLAGS']):
+                    if queryOpts.get('asList'):
+                        results.append([name, version, flags, dep_id])
+                    else:
+                        results.append({'name': name, 'version': version, 'flags': flags, 'type': dep_id})
+
+        return _applyQueryOpts(results, queryOpts)
 
     def listRPMFiles(self, rpmID, queryOpts=None):
         """List files associated with the RPM with the given ID.  A list of maps
@@ -5521,24 +5571,59 @@ class RootExports(object):
         - flags
 
         If there is no RPM with the given ID, or that RPM contains no files,
-        and empty list will be returned."""
-        fields = (('filename', 'name'), ('filemd5', 'md5'),
-                  ('filesize', 'size'), ('fileflags', 'flags'))
+        an empty list will be returned."""
+        if queryOpts is None:
+            queryOpts = {}
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return []
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return []
 
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmfiles'], clauses=['rpm_id = %(rpmID)i'],
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+        results = []
+        fields = koji.get_header_fields(rpm_path, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+
+        for (name, md5, size, flags) in zip(fields['filenames'], fields['filemd5s'],
+                                           fields['filesizes'], fields['fileflags']):
+            if queryOpts.get('asList'):
+                results.append([name, md5, size, flags])
+            else:
+                results.append({'name': name, 'md5': md5, 'size': size, 'flags': flags})
+
+        return _applyQueryOpts(results, queryOpts)
 
     def getRPMFile(self, rpmID, filename):
-        """Get info about the file in the given RPM with the given filename."""
-        fields = (('rpm_id', 'rpm_id'), ('filename', 'name'), ('filemd5', 'md5'),
-                  ('filesize', 'size'), ('fileflags', 'flags'))
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmfiles'],
-                               clauses=['rpm_id = %(rpmID)i and filename = %(filename)s'],
-                               values=locals())
-        return query.executeOne()
+        """
+        Get info about the file in the given RPM with the given filename.
+        A map will be returned with the following keys:
+        - rpm_id
+        - name
+        - md5
+        - size
+        - flags
+
+        If no such file exists, an empty map will be returned.
+        """
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return {}
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return {}
+
+        results = []
+        fields = koji.get_header_fields(rpm_path, ('filenames', 'filemd5s', 'filesizes', 'fileflags'))
+
+        i = 0
+        for name in fields['filenames']:
+            if name == filename:
+                return {'rpm_id': rpm_info['id'], 'name': name, 'md5': fields['filemd5s'][i],
+                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i]}
+            i += 1
+        return {}
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
     writeSignedRPM = staticmethod(write_signed_rpm)
@@ -6333,8 +6418,7 @@ class RootExports(object):
                      'target': 'build_target',
                      'user': 'users',
                      'host': 'host',
-                     'rpm': 'rpminfo',
-                     'file': 'rpmfiles'}
+                     'rpm': 'rpminfo'}
 
     def search(self, terms, type, matchType, queryOpts=None):
         """Search for an item in the database matching "terms".
@@ -6347,6 +6431,9 @@ class RootExports(object):
         list will be returned."""
         if not terms:
             raise koji.GenericError, 'empty search terms'
+        if type == 'file':
+            # searching by filename is no longer supported
+            return _applyQueryOpts([], queryOpts)
         table = self._searchTables.get(type)
         if not table:
             raise koji.GenericError, 'unknown search type: %s' % type
