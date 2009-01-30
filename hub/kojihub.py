@@ -2412,7 +2412,7 @@ def get_external_repo(info, strict=False, event=None):
         else:
             return None
 
-def edit_external_repo(info, name, url):
+def edit_external_repo(info, name=None, url=None):
     """Edit an existing external repo"""
 
     context.session.assertPerm('admin')
@@ -2420,7 +2420,7 @@ def edit_external_repo(info, name, url):
     repo = get_external_repo(info, strict=True)
     repo_id = repo['id']
 
-    if name != repo['name']:
+    if name and name != repo['name']:
         existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
                                    locals(), strict=False)
         if existing_id is not None:
@@ -2429,7 +2429,7 @@ def edit_external_repo(info, name, url):
         rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
         _dml(rename, locals())
 
-    if url != repo['url']:
+    if url and url != repo['url']:
         event_id = _singleValue("SELECT get_event()")
 
         update = """UPDATE external_repo_config
