@@ -29,6 +29,7 @@ except ImportError:
 import ConfigParser
 import base64
 import koji
+import koji.util
 import fnmatch
 import md5
 import os
@@ -1881,6 +1882,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -1906,16 +1908,11 @@ def anon_handle_list_tagged(options, session, args):
     if options.sigs:
         opts['rpmsigs'] = True
         options.rpms = True
-    if options.event is not None:
-        opts['event'] = options.event
-    if options.repo is not None:
-        repo = session.repoInfo(options.repo)
-        if not repo:
-            print "No such repo: %s" % options.repo
-            return
-        repo['timestr'] = time.asctime(time.localtime(repo['create_ts']))
-        print "Querying at event %(create_event)i (%(tag_name)s/%(timestr)s)" % repo
-        opts['event'] = repo['create_event']
+    event = koji.util.eventFromOpts(session, options)
+    if event:
+        opts['event'] = event['id']
+        event['timestr'] = time.asctime(time.localtime(event['ts']))
+        print "Querying at event %(id)i (%(timestr)s)" % event
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
@@ -3177,6 +3174,11 @@ def anon_handle_taginfo(options, session, args):
             print "Targets that build from this tag:"
             for target in build_targets:
                 print "  %s" % target['name']
+        external_repos = session.getTagExternalRepos(tag_info=info['id'])
+        if external_repos:
+            print "External repos:"
+            for rinfo in external_repos:
+                print "  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo
         print "Inheritance:"
         for parent in session.getInheritanceData(tag):
             flags = ''
@@ -3569,6 +3571,202 @@ def anon_handle_show_groups(options, session, args):
         print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
     else:
         pprint.pprint(groups)
+
+def anon_handle_list_external_repos(options, session, args):
+    "List external repos"
+    usage = _("usage: %prog list-external-repos [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--url",  help=_("Select by url"))
+    parser.add_option("--name",  help=_("Select by name"))
+    parser.add_option("--id", type="int", help=_("Select by id"))
+    parser.add_option("--tag", help=_("Select by tag"))
+    parser.add_option("--used", action='store_true', help=_("List which tags use the repo(s)"))
+    parser.add_option("--inherit", action='store_true', help=_("Follow tag inheritance when selecting by tag"))
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("Query at event"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("Query at timestamp"))
+    parser.add_option("--repo", type='int', metavar="REPO#",
+                            help=_("Query at event corresponding to (nonexternal) repo"))
+    parser.add_option("--quiet", action="store_true", default=options.quiet,
+                      help=_("Do not display the column headers"))
+    (options, args) = parser.parse_args(args)
+    if len(args) > 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+    opts = {}
+    event = koji.util.eventFromOpts(session, options)
+    if event:
+        opts['event'] = event['id']
+        event['timestr'] = time.asctime(time.localtime(event['ts']))
+        print "Querying at event %(id)i (%(timestr)s)" % event
+    if options.tag:
+        format = "tag"
+        opts['tag_info'] = options.tag
+        opts['repo_info'] = options.id or options.name or None
+        if opts['repo_info']:
+            if options.inherit:
+                parser.error(_("Can't select by repo when using --inherit"))
+                assert False
+        if options.inherit:
+            del opts['repo_info']
+            data = session.getExternalRepoList(**opts)
+            format = "multitag"
+        else:
+            data = session.getTagExternalRepos(**opts)
+    elif options.used:
+        format = "multitag"
+        opts['repo_info'] = options.id or options.name or None
+        data = session.getTagExternalRepos(**opts)
+    else:
+        format = "basic"
+        opts['info'] = options.id or options.name or None
+        opts['url'] = options.url or None
+        data = session.listExternalRepos (**opts)
+
+    # There are three different output formats
+    #  1) Listing just repo data (name, url)
+    #  2) Listing repo data for a tag (priority, name, url)
+    #  3) Listing repo data for multiple tags (tag, priority, name, url)
+    if format == "basic":
+        format = "%(name)-25s %(url)s"
+        header1 = "%-25s %s" % ("External repo name", "URL")
+        header2 = "%s %s" % ("-"*25, "-"*40)
+    elif format == "tag":
+        format = "%(priority)-3i %(external_repo_name)-25s %(url)s"
+        header1 = "%-3s %-25s %s" % ("Pri", "External repo name", "URL")
+        header2 = "%s %s %s" % ("-"*3, "-"*25, "-"*40)
+    elif format == "multitag":
+        format = "%(tag_name)-20s %(priority)-3i %(external_repo_name)s"
+        header1 = "%-20s %-3s %s" % ("Tag", "Pri", "External repo name")
+        header2 = "%s %s %s" % ("-"*20, "-"*3, "-"*25)
+    if not options.quiet:
+        print header1
+        print header2
+    for rinfo in data:
+        print format % rinfo
+
+def _pick_external_repo_priority(session, tag):
+    """pick priority after current ones, leaving space for later insertions"""
+    repolist = session.getTagExternalRepos(tag_info=tag)
+    #ordered by priority
+    if not repolist:
+        priority = 5
+    else:
+        priority = (repolist[-1]['priority'] + 7) / 5 * 5
+        #at least 3 higher than current max and a multiple of 5
+    return priority
+
+def _parse_tagpri(tagpri):
+    parts = tagpri.rsplit('::', 1)
+    tag = parts[0]
+    if len(parts) == 1:
+        return tag, None
+    elif parts[1] in ('auto', '-1'):
+        return tag, None
+    else:
+        try:
+            pri = int(parts[1])
+        except ValueError:
+            raise koji.GenericError, "Invalid priority: %s" % parts[1]
+        return tag, pri
+
+def handle_add_external_repo(options, session, args):
+    "[admin] Create an external repo and/or add one to a tag"
+    usage = _("usage: %prog add-external-repo [options] name [url]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("-t", "--tag", action="append", metavar="TAG",
+                      help=_("Also add repo to tag. Use tag::N to set priority"))
+    parser.add_option("-p", "--priority", type='int',
+                      help=_("Set priority (when adding to tag)"))
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+    if len(args) == 1:
+        name = args[0]
+        rinfo = session.getExternalRepo(name, strict=True)
+        if not options.tag:
+            parser.error(_("A url is required to create an external repo entry"))
+    elif len(args) == 2:
+        name, url = args
+        rinfo = session.createExternalRepo(name, url)
+        print "Created external repo %(id)i" % rinfo
+    else:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    if options.tag:
+        for tagpri in options.tag:
+            tag, priority = _parse_tagpri(tagpri)
+            if priority is None:
+                if options.priority is not None:
+                    priority = options.priority
+                else:
+                    priority = _pick_external_repo_priority(session, tag)
+            session.addExternalRepoToTag(tag, rinfo['name'], priority)
+            print "Added external repo %s to to tag %s (priority %i)" \
+                    % (rinfo['name'], options.tag, priority)
+
+def handle_edit_external_repo(options, session, args):
+    "[admin] Edit data for an external repo"
+    usage = _("usage: %prog edit-external-repo name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--url",  help=_("Change the url"))
+    parser.add_option("--name",  help=_("Change the name"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Incorrect number of arguments"))
+        parser.error(_("This command takes no arguments"))
+        assert False
+    opts = {}
+    if options.url:
+        opts['url'] = options.url
+    if options.name:
+        opts['name'] = options.name
+    if not opts:
+        parser.error(_("No changes specified"))
+    activate_session(session)
+    session.editExternalRepo(args[0], **opts)
+
+def handle_remove_external_repo(options, session, args):
+    "[admin] Remove an external repo from a tag or tags, or remove entirely"
+    usage = _("usage: %prog remove-external-repo repo [tag ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--alltags", action="store_true", help=_("Do not cancel subtasks"))
+    parser.add_option("--force", action='store_true', help=_("Force action"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    repo = args[0]
+    tags = args[1:]
+    delete = not bool(tags)
+    data = session.getTagExternalRepos(repo_info=repo)
+    current_tags = [d['tag_name'] for d in data]
+    if options.alltags:
+        delete = False
+        if tags:
+            parser.error(_("Do not specify tags when using --alltags"))
+            assert False
+        if not current_tags:
+            print _("External repo %s not associated with any tags") % repo
+            sys.exit(0)
+        tags = current_tags
+    if delete:
+        #removing entirely
+        if current_tags and not options.force:
+            print _("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags))
+            print _("Use --force to remove anyway")
+            sys.exit(1)
+        session.deleteExternalRepo(args[0])
+    else:
+        for tag in tags:
+            if not tag in current_tags:
+                print _("External repo %s not associated with tag %s") % (repo, tag)
+                continue
+            session.removeExternalRepoFromTag(tag, repo)
 
 def handle_free_task(options, session, args):
     "[admin] Free a task"
@@ -4178,7 +4376,7 @@ def list_commands(show_admin=False):
             if not show_admin:
                 continue
             desc = desc[8:]
-        print "        %-20s %s" % (alias, desc)
+        print "        %-25s %s" % (alias, desc)
     print _('(Type "koji --help" for help about global options')
     print _(' or "koji <command> --help" for help about a particular command\'s options')
     print _(' or "koji help --admin" for help about privileged administrative commands.)')

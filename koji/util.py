@@ -64,3 +64,25 @@ def printList(l):
         ret += ', and '
         ret += l[-1]
         return ret
+
+def eventFromOpts(session, opts):
+    """Determine event id from standard cli options
+
+    Standard options are:
+        event: an event id (int)
+        ts: an event timestamp (int)
+        repo: pull event from given repo
+    """
+    event_id = getattr(opts, 'event')
+    if event_id:
+        return session.getEvent(event_id)
+    ts = getattr(opts, 'ts')
+    if ts:
+        return session.getLastEvent(before=ts)
+    repo = getattr(opts, 'repo')
+    if repo:
+        rinfo = session.repoInfo(repo)
+        if rinfo:
+            return {'id' : rinfo['create_event'],
+                    'ts' : rinfo['create_ts'] }
+    return None
