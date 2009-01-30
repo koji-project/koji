@@ -2544,10 +2544,9 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
 
 def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     """
-    Get a list of tag<->external repo associations.  One of tag_info or
-    repo_info must be provided.  Both may be provided.
-    Returns a map containing the following fields:
+    Get a list of tag<->external repo associations.
 
+    Returns a map containing the following fields:
     tag_id
     tag_name
     external_repo_id
@@ -2555,9 +2554,6 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     url
     priority
     """
-    if not (tag_info or repo_info):
-        raise koji.GenericError, 'either tag_info or repo_info must be specified'
-
     tables = ['tag_external_repos']
     joins = ['tag ON tag_external_repos.tag_id = tag.id',
              'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
