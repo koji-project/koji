@@ -5532,11 +5532,11 @@ class RootExports(object):
             queryOpts = {}
         rpm_info = get_rpm(rpmID)
         if not rpm_info or not rpm_info['build_id']:
-            return []
+            return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
         rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
-            return []
+            return _applyQueryOpts([], queryOpts)
 
         results = []
 
@@ -5570,11 +5570,11 @@ class RootExports(object):
             queryOpts = {}
         rpm_info = get_rpm(rpmID)
         if not rpm_info or not rpm_info['build_id']:
-            return []
+            return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
         rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
-            return []
+            return _applyQueryOpts([], queryOpts)
 
         results = []
         fields = koji.get_header_fields(rpm_path, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
