@@ -312,6 +312,7 @@ def escapeHTML(value):
     if not value:
         return value
 
+    value = koji.fixEncoding(value)
     return value.replace('&', '&amp;').\
            replace('<', '&lt;').\
            replace('>', '&gt;')
