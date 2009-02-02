@@ -1173,6 +1173,8 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         values['obsoletes'].sort(_sortbyname)
         values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
         values['conflicts'].sort(_sortbyname)
+        headers = server.getRPMHeaders(rpm['id'], 'summary', 'description')
+        values.update(headers)
     buildroots = server.listBuildroots(rpmID=rpm['id'])
     buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
 

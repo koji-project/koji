@@ -34,6 +34,14 @@
     <tr>
       <th>Arch</th><td>$rpm.arch</td>
     </tr>
+    #if $rpm.external_repo_id == 0
+    <tr>
+      <th>Summary</th><td class="rpmheader"><pre>$util.escapeHTML($summary)</pre></td>
+    </tr>
+    <tr>
+      <th>Description</th><td class="rpmheader"><pre>$util.escapeHTML($description)</pre></td>
+    </tr>
+    #end if
     <tr>
       <th>Build Time</th><td>$time.strftime('%Y-%m-%d %H:%M:%S', $time.gmtime($rpm.buildtime)) GMT</td>
     </tr>
