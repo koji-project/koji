@@ -3733,7 +3733,7 @@ def handle_remove_external_repo(options, session, args):
     usage = _("usage: %prog remove-external-repo repo [tag ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--alltags", action="store_true", help=_("Do not cancel subtasks"))
+    parser.add_option("--alltags", action="store_true", help=_("Remove from all tags"))
     parser.add_option("--force", action='store_true', help=_("Force action"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
