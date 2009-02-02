@@ -5619,6 +5619,24 @@ class RootExports(object):
             i += 1
         return {}
 
+    def getRPMHeaders(self, rpmID, *headers):
+        """
+        Get the requested headers from the rpm.  Header names are case-insensitive.
+        If a header is requested that does not exist an exception will be raised.
+        Returns a map of header names to values.  If the specified ID does not
+        is not valid or the rpm does not exist on the file system, an empty map
+        will be returned.
+        """
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return {}
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return {}
+
+        return koji.get_header_fields(rpm_path, headers)
+
     queryRPMSigs = staticmethod(query_rpm_sigs)
     writeSignedRPM = staticmethod(write_signed_rpm)
 
