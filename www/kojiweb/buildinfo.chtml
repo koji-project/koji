@@ -25,12 +25,12 @@
     </tr>
     #if $summary
     <tr>
-      <th>Summary</th><td class="rpmheader"><pre>$util.escapeHTML($summary)</pre></td>
+      <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>
     </tr>
     #end if
     #if $description
     <tr>
-      <th>Description</th><td class="rpmheader"><pre>$util.escapeHTML($description)</pre></td>
+      <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
     </tr>
     #end if
     <tr>
@@ -130,11 +130,7 @@
     #if $changelog
     <tr>
       <th>Changelog</th>
-      <td class="changelog">
-<pre>
-#echo $util.escapeHTML($koji.util.formatChangelog($changelog))
-</pre>
-      </td>
+      <td class="changelog">$util.escapeHTML($koji.util.formatChangelog($changelog))</td>
     </tr>
     #end if
   </table>
