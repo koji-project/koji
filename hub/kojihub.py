@@ -1760,10 +1760,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.write(comps)
     fo.close()
 
-    # commit the transaction now so we don't hold locks in the database while we're creating
-    # links on the filesystem (which can take a long time)
-    context.cnx.commit()
-    
     #link packages
     for arch in packages.iterkeys():
         if arch in ['src','noarch']:
