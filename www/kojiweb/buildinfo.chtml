@@ -23,6 +23,16 @@
     <tr>
       <th>Epoch</th><td>$build.epoch</td>
     </tr>
+    #if $summary
+    <tr>
+      <th>Summary</th><td class="rpmheader"><pre>$util.escapeHTML($summary)</pre></td>
+    </tr>
+    #end if
+    #if $description
+    <tr>
+      <th>Description</th><td class="rpmheader"><pre>$util.escapeHTML($description)</pre></td>
+    </tr>
+    #end if
     <tr>
       <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
     </tr>

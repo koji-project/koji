@@ -1015,6 +1015,15 @@ def buildinfo(req, buildID):
         else:
             rpmsByArch.setdefault(canon_arch, []).append(rpm)
 
+    if rpmsByArch.has_key('src'):
+        srpm = rpmsByArch['src'][0]
+        headers = server.getRPMHeaders(srpm['id'], 'summary', 'description')
+        values['summary'] = headers.get('summary')
+        values['description'] = headers.get('description')
+    else:
+        values['summary'] = None
+        values['description'] = None
+
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
     else:
