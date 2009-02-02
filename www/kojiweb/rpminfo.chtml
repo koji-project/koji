@@ -163,7 +163,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$util.escapeHTML($file.name)</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>
