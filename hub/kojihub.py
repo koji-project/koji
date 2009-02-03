@@ -22,6 +22,7 @@
 #       Cristian Balint <cbalint@redhat.com>
 
 import base64
+import calendar
 import koji
 import koji.auth
 import koji.db
@@ -3010,47 +3011,6 @@ def list_channels(hostID=None):
         WHERE host_channels.host_id = %(hostID)i"""
     return _multiRow(query, locals(), fields)
 
-def get_changelog_entries(buildID, author=None, before=None, after=None, queryOpts=None):
-    """Get changelog entries for the build with the given ID.
-
-    - author: only return changelogs with a matching author
-    - before: only return changelogs from before the given date
-              (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
-    - after: only return changelogs from after the given date
-             (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
-    - queryOpts: query options used by the QueryProcessor
-
-    If "order" is not specified in queryOpts, results will be returned in reverse chronological
-    order.
-
-    Results will be returned as a list of maps with 'date', 'author', and 'text' keys.
-    If there are no results, an empty list will be returned.
-    """
-    fields = ('id', 'date', 'author', 'text')
-
-    if not queryOpts:
-        queryOpts = {}
-    if not queryOpts.has_key('order'):
-        # newest entries will be inserted first, because of
-        # the way entries are sorted in the spec file
-        queryOpts['order'] = 'id'
-
-    clauses = ['changelogs.build_id = %(buildID)i']
-    if author:
-        clauses.append('changelogs.author = %(author)s')
-    if before:
-        if isinstance(before, datetime.datetime):
-            before = str(before)
-        clauses.append('changelogs.date < %(before)s')
-    if after:
-        if isinstance(after, datetime.datetime):
-            after = str(after)
-        clauses.append('changelogs.date > %(after)s')
-
-    query = QueryProcessor(columns=fields, tables=('changelogs',),
-                           clauses=clauses, values=locals(), opts=queryOpts)
-    return query.execute()
-
 def new_package(name,strict=True):
     c = context.cnx.cursor()
     # TODO - table lock?
@@ -3111,9 +3071,6 @@ def new_build(data):
             WHERE id = %(id)i"""
             data['id'] = id
             _dml(update, data)
-            # delete any now-obsolete changelogs
-            delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
-            _dml(delete, data)
             return id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
             % (id, st_desc, data)
@@ -3296,9 +3253,6 @@ def import_rpm(fn,buildinfo=None,brootid=None):
         """
         _dml(q, locals())
 
-    # - add changelog entries, if not already present
-    import_changelog(buildinfo, fn)
-
     rpminfo['id'] = rpminfo_id
     return rpminfo
 
@@ -3366,38 +3320,6 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
     _dml(q, rpminfo)
 
     return get_rpm(rpminfo['id'])
-
-def import_changelog(buildinfo, rpmfile, replace=False):
-    """Import the changelog from the given rpm into the build with the
-    given ID.  If the build already has changelog info and replace is True,
-    the existing info is cleared and the changelog info from the rpm is imported.
-    If replace is False, nothing is done."""
-    hdr = koji.get_rpm_header(rpmfile)
-
-    build_id = buildinfo['id']
-
-    if len(get_changelog_entries(buildID=build_id)) != 0:
-        # the changelog for this build has already been imported
-        if replace:
-            delete = """DELETE FROM changelogs WHERE build_id=%(build_id)i"""
-            _dml(delete, locals())
-        else:
-            return
-
-    cltimelist = hdr['CHANGELOGTIME']
-    # If there is exactly one changelog entry, CHANGELOGTIME is returned as
-    # an int, instead of a list.
-    if isinstance(cltimelist, int):
-        cltimelist = [cltimelist]
-    for cltime, clauthor, cltext in zip(cltimelist, hdr['CHANGELOGNAME'],
-                                        hdr['CHANGELOGTEXT']):
-        cltime = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-        clauthor = koji.fixEncoding(clauthor)
-        cltext = koji.fixEncoding(cltext)
-        q = """INSERT INTO changelogs (build_id, date, author, text) VALUES
-        (%(build_id)d, %(cltime)s, %(clauthor)s, %(cltext)s)
-        """
-        _dml(q, locals())
 
 def import_build_log(fn, buildinfo, subdir=None):
     """Move a logfile related to a build to the right place"""
@@ -3851,7 +3773,6 @@ def _delete_build(binfo):
     # build-related data:
     #   build   KEEP (marked deleted)
     #   task ??
-    #   changelogs  DELETE
     #   tag_listing REVOKE (versioned) (but should ideally be empty anyway)
     #   rpminfo KEEP
     #           buildroot_listing KEEP (but should ideally be empty anyway)
@@ -3869,8 +3790,6 @@ def _delete_build(binfo):
         _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
-    delete = """DELETE FROM changelogs WHERE build_id=%(build_id)i"""
-    _dml(delete, locals())
     event_id = _singleValue("SELECT get_event()")
     update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
     WHERE active = TRUE AND build_id=%(build_id)i"""
@@ -3917,8 +3836,6 @@ def reset_build(build):
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
     delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
@@ -5193,7 +5110,84 @@ class RootExports(object):
         return query.execute()
 
     getBuild = staticmethod(get_build)
-    getChangelogEntries = staticmethod(get_changelog_entries)
+
+    def getChangelogEntries(self, buildID, author=None, before=None, after=None, queryOpts=None):
+        """Get changelog entries for the build with the given ID.
+
+        - author: only return changelogs with a matching author
+        - before: only return changelogs from before the given date (in UTC)
+                  (a datetime object, a string in the 'YYYY-MM-DD HH24:MI:SS format, or integer seconds
+                   since the epoch)
+        - after: only return changelogs from after the given date (in UTC)
+                 (a datetime object, a string in the 'YYYY-MM-DD HH24:MI:SS format, or integer seconds
+                  since the epoch)
+        - queryOpts: query options used by the QueryProcessor
+
+        If "order" is not specified in queryOpts, results will be returned in reverse chronological
+        order.
+
+        Results will be returned as a list of maps with 'date', 'author', and 'text' keys.
+        If there are no results, an empty list will be returned.
+        """
+        if queryOpts is None:
+            queryOpts = {}
+        if queryOpts.get('order') in ('date', '-date'):
+            # use a numeric sort on the timestamp instead of an alphabetic sort on the
+            # date string
+            queryOpts['order'] = queryOpts['order'].replace('date', 'date_ts')
+        build_info = get_build(buildID)
+        if not build_info:
+            return _applyQueryOpts([], queryOpts)
+        srpms = self.listRPMs(buildID=build_info['id'], arches='src')
+        if not srpms:
+            return _applyQueryOpts([], queryOpts)
+        srpm_info = srpms[0]
+        srpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(srpm_info))
+        if not os.path.exists(srpm_path):
+            return _applyQueryOpts([], queryOpts)
+
+        if before:
+            if isinstance(before, datetime.datetime):
+                before = calendar.timegm(before.utctimetuple())
+            elif isinstance(before, (str, unicode)):
+                before = koji.util.parseTime(before)
+            elif isinstance(before, (int, long)):
+                pass
+            else:
+                raise koji.GenericError, 'invalid type for before: %s' % type(before)
+
+        if after:
+            if isinstance(after, datetime.datetime):
+                after = calendar.timegm(after.utctimetuple())
+            elif isinstance(after, (str, unicode)):
+                after = koji.util.parseTime(after)
+            elif isinstance(after, (int, long)):
+                pass
+            else:
+                raise koji.GenericError, 'invalid type for after: %s' % type(after)
+
+        results = []
+
+        fields = koji.get_header_fields(srpm_path, ['changelogtime', 'changelogname', 'changelogtext'])
+        for (cltime, clname, cltext) in zip(fields['changelogtime'], fields['changelogname'],
+                                            fields['changelogtext']):
+            cldate = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
+            clname = koji.fixEncoding(clname)
+            cltext = koji.fixEncoding(cltext)
+
+            if author and author != clname:
+                continue
+            if before and not cltime < before:
+                continue
+            if after and not cltime > after:
+                continue
+
+            if queryOpts.get('asList'):
+                results.append([cldate, clname, cltext])
+            else:
+                results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
+
+        return _applyQueryOpts(results, queryOpts)
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
@@ -7072,28 +7066,6 @@ class HostExports(object):
         host = Host()
         host.verify()
         tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg)
-
-    def importChangelog(self, buildID, rpmfile):
-        """Import the changelog for the given build
-
-        The changelog data is pulled from the rpm provided.
-        rpmfile must be a path relative to the 'work' dir.
-        If the build already has changelog information, the existing
-        changelog information is cleared and the changelog from the
-        given rpm is imported."""
-        host = Host()
-        host.verify()
-
-        build = get_build(buildID, strict=True)
-        taskID = build['task_id']
-        if not taskID:
-            raise koji.GenericError, 'no task for build %i' % build['id']
-
-        task = Task(taskID)
-        task.assertHost(host.id)
-
-        rpmfile = '%s/%s' % (koji.pathinfo.work(), rpmfile)
-        import_changelog(build, rpmfile, replace=True)
 
     def checkPolicy(self, name, data, default='deny', strict=False):
         host = Host()

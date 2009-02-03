@@ -1656,7 +1656,6 @@ class BuildTask(BaseTaskHandler):
         if not self.opts.get('scratch'):
             #scratch builds do not get imported
             build_id = session.host.initBuild(data)
-            session.host.importChangelog(build_id, srpm)
         #(initBuild raises an exception if there is a conflict)
         try:
             srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])

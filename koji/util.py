@@ -14,6 +14,8 @@
 #    License along with this software; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import calendar
+import re
 import time
 import koji
 
@@ -31,6 +33,29 @@ def formatChangelog(entries):
 """ % (_changelogDate(entry['date']), entry['author'], entry['text'])
 
     return result
+
+DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')
+TIME_RE = re.compile(r'(\d+):(\d+):(\d+)')
+
+def parseTime(val):
+    """
+    Parse a string time in either "YYYY-MM-DD HH24:MI:SS" or "YYYY-MM-DD"
+    format into floating-point seconds since the epoch.  If the time portion
+    is not specified, it will be padded with zeros.  The string time is treated
+    as UTC.  If the time string cannot be parsed into a valid date, None will be
+    returned.
+    """
+    result = DATE_RE.search(val)
+    if not result:
+        return None
+    else:
+        date = [int(r) for r in result.groups()]
+    time = [0, 0, 0]
+    rest = val[result.end():].strip()
+    result = TIME_RE.search(rest)
+    if result:
+        time = [int(r) for r in result.groups()]
+    return calendar.timegm(date + time + [0, 0, 0])
 
 def checkForBuilds(session, tag, builds, event):
     """Check that the builds existed in tag at the time of the event."""
