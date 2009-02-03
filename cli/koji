@@ -3170,7 +3170,7 @@ def anon_handle_taginfo(options, session, args):
                 print "  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']])
         if build_targets:
             print "This tag is a buildroot for one or more targets"
-            print "Current repo: %s" % repos[target['build_tag']]
+            print "Current repo: %s" % repos[info['id']]
             print "Targets that build from this tag:"
             for target in build_targets:
                 print "  %s" % target['name']
