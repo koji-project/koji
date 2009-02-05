@@ -127,6 +127,8 @@ def get_options():
                       help=_("greylist rules"))
     parser.add_option("--rules-blacklist",
                       help=_("blacklist rules"))
+    parser.add_option("--rules-ignorelist",
+                      help=_("Rules list of packages to ignore"))
     parser.add_option("--tag-build", action="store_true", default=False,
                       help=_("tag sucessful builds into the tag we are building, default is to not tag"))
     parser.add_option("--arches",
@@ -156,7 +158,7 @@ def get_options():
             if not opt.dest:
                 continue
             name = opt.dest
-            alias = ('global', name)
+            alias = ('main', name)
             if config.has_option(*alias):
                 print "Using option %s from config file" % (alias,)
                 if opt.action in ('store_true', 'store_false'):
@@ -168,6 +170,7 @@ def get_options():
                 elif opt.type in ('float'):
                     setattr(defaults, name, config.getfloat(*alias))
                 else:
+                    print config.get(*alias)
                     setattr(defaults, name, config.get(*alias))
         #config file options without a cmdline equivalent
         otheropts = [
@@ -557,6 +560,7 @@ class BuildTracker(object):
         self.blacklist = None
         self.whitelist = None
         self.greylist = None
+        self.ignorelist = [] 
         self.substitute_idx = {}
         self.substitutions = {}
         if options.config.has_option('rules', 'whitelist'):
@@ -565,6 +569,8 @@ class BuildTracker(object):
             self.blacklist = options.config.get('rules', 'blacklist').split()
         if options.config.has_option('rules', 'greylist'):
             self.greylist = options.config.get('rules', 'greylist').split()
+        if options.config.has_option('rules', 'ignorelist'):
+            self.ignorelist = options.config.get('rules', 'ignorelist').split()
         if options.config.has_option('rules', 'substitutions'):
             #At present this is a simple multi-line format
             #one substitution per line
@@ -687,6 +693,10 @@ class BuildTracker(object):
         else:
             tail = ""
         head = " " * depth
+        if build.name in self.ignorelist:
+            print "%sIgnored Build: %s%s" % (head, build.nvr, tail)
+            build.setState('ignore')
+            return build
         check = self.checkFilter(build, grey=None)
         if check is None:
             #greylisted builds are ok as deps, but not primary builds
@@ -745,29 +755,32 @@ class BuildTracker(object):
             #don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
                 dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
-                if dep.substitute:
-                    dep2 = self.getSubstitute(dep.substitute)
-                    if isinstance(dep2, TrackedBuild):
-                        self.scanBuild(dep2.id, from_build=build, depth=depth+1, tag=tag)
-                    elif dep2 is None:
-                        #dep is missing on both local and remote
-                        print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
-                        #no point in continuing
-                        break
-                    #otherwise dep2 should be LocalBuild instance
-                    newdeps.append(dep2)
-                elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
-                    #no point in continuing
-                    build.setState('brokendeps')
-                    print "%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state)
-                    newdeps = None
+                if dep.name in self.ignorelist:
                     break
                 else:
-                    newdeps.append(dep)
-                # set rebuild order as we go
-                # we do this /after/ the recursion, so our deps have a lower order number
-                self.rebuild_order += 1
-                build.order = self.rebuild_order
+                    if dep.substitute:
+                        dep2 = self.getSubstitute(dep.substitute)
+                        if isinstance(dep2, TrackedBuild):
+                            self.scanBuild(dep2.id, from_build=build, depth=depth+1, tag=tag)
+                        elif dep2 is None:
+                            #dep is missing on both local and remote
+                            print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
+                            #no point in continuing
+                            break
+                        #otherwise dep2 should be LocalBuild instance
+                        newdeps.append(dep2)
+                    elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
+                        #no point in continuing
+                        build.setState('brokendeps')
+                        print "%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state)
+                        newdeps = None
+                        break
+                    else:
+                        newdeps.append(dep)
+                    # set rebuild order as we go
+                    # we do this /after/ the recursion, so our deps have a lower order number
+                    self.rebuild_order += 1
+                    build.order = self.rebuild_order
             build.revised_deps = newdeps
         #scanning takes a long time, might as well start builds if we can
         self.checkJobs(tag)
