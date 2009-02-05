@@ -560,7 +560,7 @@ class BuildTracker(object):
         self.blacklist = None
         self.whitelist = None
         self.greylist = None
-        self.ignorelist = [] 
+        self.ignorelist = []
         self.substitute_idx = {}
         self.substitutions = {}
         if options.config.has_option('rules', 'whitelist'):
