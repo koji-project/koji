@@ -6595,7 +6595,13 @@ class BuildRoot(object):
         VALUES (%(brootid)s,%(rpm_id)s,%(update)s)"""
         rpm_ids = []
         for an_rpm in rpmlist:
-            rpm_id = get_rpm(an_rpm, strict=True)['id']
+            location = an_rpm.get('location')
+            if location:
+                data = add_external_rpm(an_rpm, location, strict=False)
+                #will add if missing, compare if not
+            else:
+                data = get_rpm(an_rpm, strict=True)
+            rpm_id = data['id']
             if update and current.has_key(rpm_id):
                 #ignore duplicate packages for updates
                 continue

@@ -53,7 +53,9 @@ import urlparse
 import xmlrpclib
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
+from gzip import GzipFile
 from optparse import OptionParser
+from StringIO import StringIO
 from xmlrpclib import Fault
 
 # our private modules
@@ -519,8 +521,19 @@ class BuildRoot(object):
             - version
             - release
             - epoch
+            - arch
+            - payloadhash
+            - size
+            - buildtime
         """
-        fields = ('name','version','release','epoch','arch')
+        fields = ('name',
+                  'version',
+                  'release',
+                  'epoch',
+                  'arch',
+                  'sigmd5',
+                  'size',
+                  'buildtime')
         rpm.addMacro("_dbpath", "%s/var/lib/rpm" % self.rootdir())
         ret = []
         try:
@@ -531,10 +544,60 @@ class BuildRoot(object):
                 if pkg['name'] == 'buildsys-build':
                     #XXX config
                     continue
+                pkg['payloadhash'] = koji.hex_string(pkg['sigmd5'])
+                del pkg['sigmd5']
                 ret.append(pkg)
         finally:
             rpm.delMacro("_dbpath")
+        self.markExternalRPMs(ret)
         return ret
+
+    def markExternalRPMs(self, rpmlist):
+        """Check rpms against pkgorigins and add external repo data to the external ones
+
+        Modifies rpmlist in place. No return
+        """
+        external_repos = session.getExternalRepoList(self.repo_info['tag_id'],
+                                    event=self.repo_info['create_event'])
+        if not external_repos:
+            #nothing to do
+            return
+        #index external repos by expanded url
+        erepo_idx = {}
+        for erepo in external_repos:
+            # substitute $arch in the url with the arch of the repo we're generating
+            ext_url = erepo['url'].replace('$arch', self.br_arch)
+            erepo_idx[ext_url] = erepo
+        pathinfo = koji.PathInfo(topdir='')
+        #XXX - cheap hack to get relative paths
+        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
+        relpath = os.path.join(repodir, self.br_arch, 'repodata', 'pkgorigins.gz')
+        opts = dict([(k, getattr(options, k)) for k in 'topurl','topdir'])
+        fo = koji.openRemoteFile(relpath, **opts)
+        #at this point we know there were external repos at the create event,
+        #so there should be an origins file.
+        origin_idx = {}
+        #GzipFile doesn't play nice with urlopen, so we have the following
+        fo2 = GzipFile(fileobj=StringIO(fo.read()), mode='r')
+        fo.close()
+        for line in fo2:
+            parts=line.split(None, 2)
+            if len(parts) < 2:
+                continue
+            #first field is formated by yum as [e:]n-v-r.a
+            nvra = "%(name)s-%(version)s-%(release)s" %  koji.parse_NVRA(parts[0])
+            origin_idx[nvra] = parts[1]
+        fo2.close()
+        for rpm_info in rpmlist:
+            key = "%(name)s-%(version)s-%(release)s" % rpm_info
+            ext_url = origin_idx.get(key)
+            if not ext_url:
+                continue
+            erepo = erepo_idx.get(ext_url)
+            if not erepo:
+                raise koji.BuildError, "Unknown rpm origin for %s: %s" % (key, ext_url)
+            rpm_info['external_repo'] = erepo
+            rpm_info['location'] = erepo['external_repo_id']
 
     def scrub(self):
         "Non-mock implementation of clean"
