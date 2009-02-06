@@ -2960,6 +2960,11 @@ def get_options():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
 
+    #honor topdir
+    if options.topdir:
+        koji.BASEDIR = options.topdir
+        koji.pathinfo.topdir = options.topdir
+
     #make sure workdir exists
     if not os.path.exists(options.workdir):
         koji.ensuredir(options.workdir)
