@@ -3921,7 +3921,7 @@ def get_notification_recipients(build, tag_id, state):
     email_domain = context.opts['EmailDomain']
     notify_on_success = context.opts['NotifyOnSuccess']
 
-    if notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']::
+    if notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']:
         # user who submitted the build
         emails.append('%s@%s' % (build['owner_name'], email_domain))
 
