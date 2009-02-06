@@ -1693,7 +1693,7 @@ class BuildTask(BaseTaskHandler):
             session.host.assertPolicy('build_from_repo_id', policy_data)
         if not repo_info:
             repo_info = self.getRepo(build_tag)  #(subtask)
-            self.event_id = repo_info['create_event']
+            self.event_id = session.getLastEvent()['id']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
