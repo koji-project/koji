@@ -107,7 +107,7 @@ class Rpmdiff:
             self.__comparePRCOs(old, new, tag)
 
         # compare the files
-            
+
         old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
         new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
         files = list(set(itertools.chain(old_files_dict.iterkeys(),
@@ -178,9 +178,9 @@ class Rpmdiff:
         n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
 
         if name == 'PROVIDES': # filter our self provide
-            oldNV = (old['name'], rpm.RPMSENSE_EQUAL, 
+            oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
                      "%s-%s" % (old['version'], old['release']))
-            newNV = (new['name'], rpm.RPMSENSE_EQUAL, 
+            newNV = (new['name'], rpm.RPMSENSE_EQUAL,
                      "%s-%s" % (new['version'], new['release']))
             o = [entry for entry in o if entry != oldNV]
             n = [entry for entry in n if entry != newNV]
