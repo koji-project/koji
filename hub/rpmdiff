@@ -1,0 +1,247 @@
+#!/usr/bin/python
+#
+# Copyright (C) 2006 Mandriva; 2009 Red Hat, Inc.
+# Authors: Frederic Lepied, Florian Festi
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Library General Public License as published by
+# the Free Software Foundation; version 2 only
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+#
+# You should have received a copy of the GNU Library General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+# This library and program is heavily based on rpmdiff from the rpmlint package
+# It was modified to be used as standalone library for the Koji project.
+
+import rpm
+import os
+import itertools
+
+import sys, getopt
+
+
+class Rpmdiff:
+
+    # constants
+
+    TAGS = ( rpm.RPMTAG_NAME, rpm.RPMTAG_SUMMARY,
+             rpm.RPMTAG_DESCRIPTION, rpm.RPMTAG_GROUP,
+             rpm.RPMTAG_LICENSE, rpm.RPMTAG_URL,
+             rpm.RPMTAG_PREIN, rpm.RPMTAG_POSTIN,
+             rpm.RPMTAG_PREUN, rpm.RPMTAG_POSTUN)
+
+    PRCO = ( 'REQUIRES', 'PROVIDES', 'CONFLICTS', 'OBSOLETES')
+
+    #{fname : (size, mode, mtime, flags, dev, inode,
+    #          nlink, state, vflags, user, group, digest)}
+    __FILEIDX = [ ['S', 0],
+                  ['M', 1],
+                  ['5', 11],
+                  ['D', 4],
+                  ['N', 6],
+                  ['L', 7],
+                  ['V', 8],
+                  ['U', 9],
+                  ['G', 10],
+                  ['F', 3],
+                  ['T', 2] ]
+
+    try:
+        if rpm.RPMSENSE_SCRIPT_PRE:
+            PREREQ_FLAG=rpm.RPMSENSE_PREREQ|rpm.RPMSENSE_SCRIPT_PRE|\
+                rpm.RPMSENSE_SCRIPT_POST|rpm.RPMSENSE_SCRIPT_PREUN|\
+                rpm.RPMSENSE_SCRIPT_POSTUN
+    except AttributeError:
+        try:
+            PREREQ_FLAG=rpm.RPMSENSE_PREREQ
+        except:
+            #(proyvind): This seems ugly, but then again so does
+            #            this whole check as well.
+            PREREQ_FLAG=False
+
+    DEPFORMAT = '%-11s%s %s %s %s'
+    FORMAT = '%-11s%s'
+
+    ADDED   = 'added'
+    REMOVED = 'removed'
+
+    # code starts here
+
+    def __init__(self, old, new, ignore=None):
+        self.result = []
+        self.ignore = ignore
+        if self.ignore is None:
+            self.ignore = []
+
+        FILEIDX = self.__FILEIDX
+        for tag in self.ignore:
+            for entry in FILEIDX:
+                if tag == entry[0]:
+                    entry[1] = None
+                    break
+
+        old = self.__load_pkg(old)
+        new = self.__load_pkg(new)
+
+        # Compare single tags
+        for tag in self.TAGS:
+            old_tag = old[tag]
+            new_tag = new[tag]
+            if old_tag != new_tag:
+                tagname = rpm.tagnames[tag]
+                if old_tag == None:
+                    self.__add(self.FORMAT, (self.ADDED, tagname))
+                elif new_tag == None:
+                    self.__add(self.FORMAT, (self.REMOVED, tagname))
+                else:
+                    self.__add(self.FORMAT, ('S.5.....', tagname))
+
+        # compare Provides, Requires, ...
+        for  tag in self.PRCO:
+            self.__comparePRCOs(old, new, tag)
+
+        # compare the files
+            
+        old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
+        new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
+        files = list(set(itertools.chain(old_files_dict.iterkeys(),
+                                         new_files_dict.iterkeys())))
+        files.sort()
+
+        for f in files:
+            diff = 0
+
+            old_file = old_files_dict.get(f)
+            new_file = new_files_dict.get(f)
+
+            if not old_file:
+                self.__add(self.FORMAT, (self.ADDED, f))
+            elif not new_file:
+                self.__add(self.FORMAT, (self.REMOVED, f))
+            else:
+                format = ''
+                for entry in FILEIDX:
+                    if entry[1] != None and \
+                            old_file[entry[1]] != new_file[entry[1]]:
+                        format = format + entry[0]
+                        diff = 1
+                    else:
+                        format = format + '.'
+                if diff:
+                    self.__add(self.FORMAT, (format, f))
+
+    # return a report of the differences
+    def textdiff(self):
+        return '\n'.join((format % data for format, data in self.result))
+
+    # do the two rpms differ
+    def differs(self):
+        return bool(self.result)
+
+    # add one differing item
+    def __add(self, format, data):
+        self.result.append((format, data))
+
+    # load a package from a file or from the installed ones
+    def __load_pkg(self, filename):
+        ts = rpm.ts()
+        f = os.open(filename, os.O_RDONLY)
+        hdr = ts.hdrFromFdno(f)
+        os.close(f)
+        return hdr
+
+    # output the right string according to RPMSENSE_* const
+    def sense2str(self, sense):
+        s = ""
+        for tag, char in ((rpm.RPMSENSE_LESS, "<"),
+                          (rpm.RPMSENSE_GREATER, ">"),
+                          (rpm.RPMSENSE_EQUAL, "=")):
+            if sense & tag:
+                s += char
+        return s
+
+    # compare Provides, Requires, Conflicts, Obsoletes
+    def __comparePRCOs(self, old, new, name):
+        oldflags = old[name[:-1]+'FLAGS']
+        newflags = new[name[:-1]+'FLAGS']
+        # fix buggy rpm binding not returning list for single entries
+        if not isinstance(oldflags, list): oldflags = [ oldflags ]
+        if not isinstance(newflags, list): newflags = [ newflags ]
+
+        o = zip(old[name], oldflags, old[name[:-1]+'VERSION'])
+        n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
+
+        if name == 'PROVIDES': # filter our self provide
+            oldNV = (old['name'], rpm.RPMSENSE_EQUAL, 
+                     "%s-%s" % (old['version'], old['release']))
+            newNV = (new['name'], rpm.RPMSENSE_EQUAL, 
+                     "%s-%s" % (new['version'], new['release']))
+            o = [entry for entry in o if entry != oldNV]
+            n = [entry for entry in n if entry != newNV]
+
+        for oldentry in o:
+            if not oldentry in n:
+                if name == 'REQUIRES' and oldentry[1] & self.PREREQ_FLAG:
+                    tagname = 'PREREQ'
+                else:
+                    tagname = name
+                self.__add(self.DEPFORMAT,
+                           (self.REMOVED, tagname, oldentry[0],
+                            self.sense2str(oldentry[1]), oldentry[2]))
+        for newentry in n:
+            if not newentry in o:
+                if name == 'REQUIRES' and newentry[1] & self.PREREQ_FLAG:
+                    tagname = 'PREREQ'
+                else:
+                    tagname = name
+                self.__add(self.DEPFORMAT,
+                           (self.ADDED, tagname, newentry[0],
+                            self.sense2str(newentry[1]), newentry[2]))
+
+    def __fileIteratorToDict(self, fi):
+        result = {}
+        for filedata in fi:
+            result[filedata[0]] = filedata[1:]
+        return result
+
+def _usage(exit=1):
+    print "Usage: %s [<options>] <old package> <new package>" % sys.argv[0]
+    print "Options:"
+    print "  -h, --help            Output this message and exit"
+    print "  -i, --ignore          Tag to ignore when calculating differences"
+    print "                          (may be used multiple times)"
+    print "                        Valid values are: SM5DNLVUGFT"
+    sys.exit(exit)
+
+def main():
+
+    ignore_tags = []
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
+    except getopt.GetoptError, e:
+        print "Error: %s" % e
+        _usage()
+
+    for option, argument in opts:
+        if option in ("-h", "--help"):
+            _usage(0)
+        if option in ("-i", "--ignore"):
+            ignore_tags.append(argument)
+
+    if len(args) != 2:
+        _usage()
+
+    d = Rpmdiff(args[0], args[1], ignore=ignore_tags)
+    print d.textdiff()
+    sys.exit(int(d.differs()))
+
+if __name__ == '__main__':
+    main()
+
+# rpmdiff ends here

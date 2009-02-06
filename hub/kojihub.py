@@ -36,6 +36,7 @@ import fnmatch
 import md5
 import os
 import pgdb
+import popen2
 import random
 import re
 import rpm
@@ -3086,6 +3087,33 @@ def new_build(data):
     q="""SELECT currval('build_id_seq')"""
     return _singleValue(q)
 
+def check_noarch_rpms(basepath, rpms):
+    """
+    If rpms contains any noarch rpms with identical names,
+    run rpmdiff against the duplicate rpms.
+    Return the list of rpms with any duplicate entries removed (only
+    the first entry will be retained).
+    """
+    result = []
+    noarch_rpms = {}
+    for relpath in rpms:
+        if relpath.endswith('.noarch.rpm'):
+            filename = os.path.basename(relpath)
+            if noarch_rpms.has_key(filename):
+                # duplicate found, add it to the duplicate list
+                # but not the result list
+                noarch_rpms[filename].append(relpath)
+            else:
+                noarch_rpms[filename] = [relpath]
+                result.append(relpath)
+        else:
+            result.append(relpath)
+
+    for noarch_list in noarch_rpms.values():
+        rpmdiff(basepath, noarch_list)
+
+    return result
+
 def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None):
     """Import a build into the database (single transaction)
 
@@ -3105,6 +3133,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         fn = "%s/%s" % (uploadpath,relpath)
         if not os.path.exists(fn):
             raise koji.GenericError, "no such file: %s" % fn
+
+    rpms = check_noarch_rpms(uploadpath, rpms)
 
     #verify buildroot ids from brmap
     found = {}
@@ -4532,6 +4562,27 @@ def assert_policy(name, data, default='deny'):
     """
     check_policy(name, data, default=default, strict=True)
 
+def rpmdiff(basepath, rpmlist):
+    "Diff the first rpm in the list against the rest of the rpms."
+    if len(rpmlist) < 2:
+        return
+    first_rpm = rpmlist[0]
+    for other_rpm in rpmlist[1:]:
+        # ignore differences in file size, md5sum, and mtime
+        # (files may have been generated at build time and contain
+        #  embedded dates or other insignificant differences)
+        proc = popen2.Popen4(['/usr/libexec/koji-hub/rpmdiff',
+                              '--ignore', 'S', '--ignore', '5',
+                              '--ignore', 'T',
+                              os.path.join(basepath, first_rpm),
+                              os.path.join(basepath, other_rpm)])
+        proc.tochild.close()
+        output = proc.fromchild.read()
+        status = proc.wait()
+        if os.WIFSIGNALED(status) or \
+                (os.WEXITSTATUS(status) != 0):
+            raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
+                (os.path.basename(first_rpm), output)
 
 #
 # XMLRPC Methods
@@ -6955,6 +7006,9 @@ class HostExports(object):
             fn = "%s/%s" % (uploadpath,relpath)
             if not os.path.exists(fn):
                 raise koji.GenericError, "no such file: %s" % fn
+
+        rpms = check_noarch_rpms(uploadpath, rpms)
+
         #figure out storage location
         #  <scratchdir>/<username>/task_<id>
         scratchdir = koji.pathinfo.scratch()
