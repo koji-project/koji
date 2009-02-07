@@ -56,7 +56,7 @@
       <td class="$stateName">$stateName
       #if $build.state == $koji.BUILD_STATES.BUILDING
       #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
-      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id">cancel</a>)</span>
+      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id$util.authToken($self)">cancel</a>)</span>
       #end if
       #end if
       </td>
