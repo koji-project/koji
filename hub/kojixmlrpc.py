@@ -371,6 +371,7 @@ def load_config(req):
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
+        ['NotifyOnSuccess', 'boolean', True],
         ['DisableNotifications', 'boolean', False],
 
         ['Plugins', 'string', ''],
