@@ -1705,12 +1705,11 @@ class BuildTask(BaseTaskHandler):
         if pkg_cfg is not None:
             extra_arches = pkg_cfg.get('extra_arches')
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
-            dest_cfg = session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
             # Make sure package is on the list for this tag
-            if dest_cfg is None:
+            if pkg_cfg is None:
                 raise koji.BuildError, "package %s not in list for tag %s" \
                         % (data['name'], target_info['dest_tag_name'])
-            elif dest_cfg['blocked']:
+            elif pkg_cfg['blocked']:
                 raise koji.BuildError, "package %s is blocked for tag %s" \
                         % (data['name'], target_info['dest_tag_name'])
             # TODO - more pre tests
