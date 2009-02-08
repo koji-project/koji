@@ -107,7 +107,11 @@
             <th>$arch</th>
             <td>
               #if $task
+              #if $arch == 'noarch'
+              (<a href="$downloadBase/$nvrpath/data/logs/$noarch_log_dest/">build logs</a>)
+              #else
               (<a href="$downloadBase/$nvrpath/data/logs/$arch/">build logs</a>)
+              #end if
               #end if
             </td>
           </tr>

@@ -1024,8 +1024,25 @@ def buildinfo(req, buildID):
         values['summary'] = None
         values['description'] = None
 
+    noarch_log_dest = 'noarch'
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
+        if rpmsByArch.has_key('noarch') and \
+                [a for a in rpmsByArch.keys() if a not in ('noarch', 'src')]:
+            # This build has noarch and other-arch packages, indicating either
+            # noarch in extra-arches (kernel) or noarch subpackages.
+            # Point the log link to the arch of the buildArch task that the first
+            # noarch package came from.  This will be correct in both the
+            # extra-arches case (noarch) and the subpackage case (one of the other
+            # arches).  If noarch extra-arches and noarch subpackages are mixed in
+            # same build, this will become incorrect.
+            noarch_rpm = rpmsByArch['noarch'][0]
+            if noarch_rpm['buildroot_id']:
+                noarch_buildroot = server.getBuildroot(noarch_rpm['buildroot_id'])
+                if noarch_buildroot:
+                    noarch_task = server.getTaskInfo(noarch_buildroot['task_id'], request=True)
+                    if noarch_task:
+                        noarch_log_dest = noarch_task['request'][2]
     else:
         task = None
 
@@ -1034,6 +1051,7 @@ def buildinfo(req, buildID):
     values['rpmsByArch'] = rpmsByArch
     values['debuginfoByArch'] = debuginfoByArch
     values['task'] = task
+    values['noarch_log_dest'] = noarch_log_dest
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
