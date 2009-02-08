@@ -1043,9 +1043,7 @@ def buildinfo(req, buildID):
         avgDuration = server.getAverageBuildDuration(build['package_id'])
         if avgDuration != None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
-            startTime = datetime.datetime.fromtimestamp(
-                time.mktime(time.strptime(koji.formatTime(build['creation_time']), '%Y-%m-%d %H:%M:%S'))
-                )
+            startTime = datetime.datetime.fromtimestamp(build['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
         else:
             values['estCompletion'] = None
