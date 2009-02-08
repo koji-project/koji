@@ -2380,7 +2380,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     tables = ['external_repo']
     joins = ['external_repo_config ON external_repo_id = id']
     clauses = [eventCondition(event)]
-    if info:
+    if info is not None:
         if isinstance(info, str):
             clauses.append('name = %(info)s')
         elif isinstance(info, (int, long)):
