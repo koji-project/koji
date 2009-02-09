@@ -146,16 +146,25 @@ class RepoMerge():
                     # Check if that package was also from this repo, in
                     # which case it's likely just another subpackage from
                     # the same build.
-                    if seen_srpms[srpm_name] == pkg.repoid:
-                        origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
-                    else:
+                    if seen_srpms[srpm_name] != pkg.repoid:
+                        # Package has been superceded by a package
+                        # from a higher priority repo
                         repo.sack.delPackage(pkg)
+                        continue
                 elif self.blocked.has_key(srpm_name):
                     print >> sys.stderr, 'Removing blocked package: %s' % pkg
                     repo.sack.delPackage(pkg)
-                else:
-                    seen_srpms[srpm_name] = pkg.repoid
-                    origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
+                    continue
+
+                seen_srpms[srpm_name] = pkg.repoid
+                origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
+                # XXX hack: ensure the package attributes are utf-8-encoded
+                # strs so yum doesn't choke when generating the XML.
+                # We need to re-encode pkgId because it is used in the value of
+                # pkg.checksum
+                for attr in ('pkgId', 'name', 'arch', 'epoch', 'ver', 'rel'):
+                    if hasattr(pkg, attr):
+                        setattr(pkg, attr, yum.misc.to_utf8(getattr(pkg, attr)))
 
         origins.close()
         self.mdconf.additional_metadata['origin'] = pkgorigins
