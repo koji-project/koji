@@ -36,11 +36,11 @@ import fnmatch
 import md5
 import os
 import pgdb
-import popen2
 import random
 import re
 import rpm
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -4571,13 +4571,15 @@ def rpmdiff(basepath, rpmlist):
         # ignore differences in file size, md5sum, and mtime
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
-        proc = popen2.Popen4(['/usr/libexec/koji-hub/rpmdiff',
-                              '--ignore', 'S', '--ignore', '5',
-                              '--ignore', 'T',
-                              os.path.join(basepath, first_rpm),
-                              os.path.join(basepath, other_rpm)])
-        proc.tochild.close()
-        output = proc.fromchild.read()
+        args = ['/usr/libexec/koji-hub/rpmdiff',
+                '--ignore', 'S', '--ignore', '5',
+                '--ignore', 'T',
+                os.path.join(basepath, first_rpm),
+                os.path.join(basepath, other_rpm)]
+        proc = subprocess.Popen(args,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                close_fds=True)
+        output = proc.communicate()[0]
         status = proc.wait()
         if os.WIFSIGNALED(status) or \
                 (os.WEXITSTATUS(status) != 0):
