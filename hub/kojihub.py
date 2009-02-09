@@ -1734,6 +1734,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     builds = dict([[build['build_id'],build] for build in builds])
     #index the packages by arch
     packages = {}
+    for repoarch in repo_arches:
+        packages.setdefault(repoarch, [])
     for rpminfo in rpms:
         if (rpminfo['name'].endswith('-debuginfo') or rpminfo['name'].endswith('-debuginfo-common')) \
                 and not with_debuginfo:
