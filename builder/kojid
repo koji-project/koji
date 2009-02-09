@@ -1105,13 +1105,9 @@ class TaskManager(object):
         if not os.path.exists(br_path):
             self.logger.error("No such directory: %s" % br_path)
             raise IOError, "No such directory: %s" % br_path
-        cmd = "df -P %s" % br_path
-        fd = os.popen(cmd)
-        output = fd.readlines()
-        fd.close()
-        df_fields = ['filesystem','total','used','available','capacity','mountpoint']
-        data = dict(zip(df_fields,output[1].split()))
-        availableMB = int(data['available']) / 1024
+        fs_stat = os.statvfs(br_path)
+        available = fs_stat.f_bavail * fs_stat.f_bsize
+        availableMB = available / 1024 / 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < options.minspace:
             self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, options.minspace)
