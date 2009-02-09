@@ -1,17 +1,25 @@
 #import koji
 #from kojiweb import util
 
-#attr _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited']
+#attr _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited', 'latest']
 
 #include "includes/header.chtml"
 
-  <h4>#if $state != None then $util.stateName($state).capitalize() else ''# Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
+  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
 
   <table class="data-list">
     <tr>
       <td colspan="#if $tag then '6' else '5'#">
         <table class="nested">
         <tr><td>
+        #if $tag
+        <strong>Latest</strong>:
+        </td><td>
+        <select name="latest" class="filterlist" onchange="javascript: window.location = 'builds?latest=' + this.value + '$util.passthrough_except($self, 'latest')';">
+          <option value="1" #if $latest then 'selected="selected"' else ''#>yes</option>
+          <option value="0" #if not $latest then 'selected="selected"' else ''#>no</option>
+        </select>
+        #else
         <strong>State</strong>:
         </td><td>
         <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough_except($self, 'state')';">
@@ -20,6 +28,7 @@
           <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
           #end for
         </select>
+        #end if
         </td><td>
         <strong>Built by</strong>:
         </td><td>

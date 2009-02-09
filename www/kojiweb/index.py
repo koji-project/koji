@@ -1070,7 +1070,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1'):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1'):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
@@ -1114,14 +1114,21 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['prefix'] = prefix
     
     values['order'] = order
-    inherited = int(inherited)
-    values['inherited'] = inherited
+
+    if tag:
+        inherited = int(inherited)
+        values['inherited'] = inherited
+        latest = int(latest)
+        values['latest'] = latest
+    else:
+        values['inherited'] = None
+        values['latest'] = None
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
         builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
                                                                                 'owner': (user and user['name'] or None),
-                                                                                'inherit': bool(inherited), 'prefix': prefix},
+                                                                                'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
         builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
