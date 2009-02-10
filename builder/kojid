@@ -598,7 +598,7 @@ class BuildRoot(object):
                 raise koji.BuildError, "No origin for %s" % key
             erepo = erepo_idx.get(ext_url)
             if not erepo:
-                if ext_url.endswith(localtail):
+                if ext_url.startswith('file://') and ext_url.endswith(localtail):
                     # internal rpm
                     continue
                 raise koji.BuildError, "Unknown origin for %s: %s" % (key, ext_url)
