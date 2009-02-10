@@ -5539,7 +5539,7 @@ class RootExports(object):
         - type
 
         If there is no RPM with the given ID, or the RPM has no dependency information,
-        return None.
+        an empty list will be returned.
         """
         if queryOpts is None:
             queryOpts = {}
@@ -5636,7 +5636,7 @@ class RootExports(object):
         """
         Get the requested headers from the rpm.  Header names are case-insensitive.
         If a header is requested that does not exist an exception will be raised.
-        Returns a map of header names to values.  If the specified ID does not
+        Returns a map of header names to values.  If the specified ID
         is not valid or the rpm does not exist on the file system, an empty map
         will be returned.
         """
