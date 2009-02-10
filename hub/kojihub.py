@@ -3242,50 +3242,23 @@ def import_rpm(fn,buildinfo=None,brootid=None):
                     % (fn,basename,srpmname)
 
     #add rpminfo entry
+    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
     rpminfo['build'] = buildinfo
     rpminfo['build_id'] = buildinfo['id']
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
     rpminfo['brootid'] = brootid
-    q = """INSERT INTO rpminfo (name,version,release,epoch,
+    q = """INSERT INTO rpminfo (id,name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
             external_repo_id,
             size,payloadhash)
-    VALUES (%(name)s,%(version)s,%(release)s,%(epoch)s,
+    VALUES (%(id)i,%(name)s,%(version)s,%(release)s,%(epoch)s,
             %(build_id)s,%(arch)s,%(buildtime)s,%(brootid)s,
             0,
             %(size)s,%(payloadhash)s)
     """
     _dml(q, rpminfo)
 
-    #get rpminfo id
-    rpminfo_id = _singleValue("""SELECT currval('rpminfo_id_seq')""")
-
-    # - add rpmdeps entries
-    for type in ['REQUIRE','PROVIDE','CONFLICT','OBSOLETE']:
-        dep_type = getattr(koji, "DEP_" + type)
-        key_n = getattr(rpm, "RPMTAG_" + type + "NAME")
-        key_f = getattr(rpm, "RPMTAG_" + type + "FLAGS")
-        key_v = getattr(rpm, "RPMTAG_" + type + "VERSION")
-        for (dep_name,dep_flags,dep_version) in zip(hdr[key_n],hdr[key_f],hdr[key_v]):
-            #log_error("%r" %[dep_name,dep_flags,dep_version])
-            q = """INSERT INTO rpmdeps (rpm_id,dep_name,dep_flags,dep_version,dep_type)
-            VALUES (%(rpminfo_id)d,%(dep_name)s,%(dep_flags)d,%(dep_version)s,%(dep_type)d)
-            """
-            #log_error(koji.db._quoteparams(q,locals()))
-            _dml(q, locals())
-
-    # - add rpmfiles entries
-    for (filename,filesize,filemd5,fileflags) in \
-            zip(hdr[rpm.RPMTAG_FILENAMES],hdr[rpm.RPMTAG_FILESIZES],
-                hdr[rpm.RPMTAG_FILEMD5S],hdr[rpm.RPMTAG_FILEFLAGS]):
-        filename = koji.fixEncoding(filename)
-        q = """INSERT INTO rpmfiles (rpm_id,filename,filesize,filemd5,fileflags)
-        VALUES (%(rpminfo_id)d,%(filename)s,%(filesize)d,%(filemd5)s,%(fileflags)d)
-        """
-        _dml(q, locals())
-
-    rpminfo['id'] = rpminfo_id
     return rpminfo
 
 def add_external_rpm(rpminfo, external_repo, strict=True):
@@ -3295,7 +3268,6 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         - entry will have non-zero external_repo_id
         - entry will not reference a build
         - rpm not available to us -- the necessary data is passed in
-        - no entries are added to rpmdeps or rpmfiles
 
     The rpminfo arg should contain the following fields:
         - name, version, release, epoch, arch, payloadhash, size, buildtime
@@ -3809,17 +3781,11 @@ def _delete_build(binfo):
     #   rpminfo KEEP
     #           buildroot_listing KEEP (but should ideally be empty anyway)
     #           rpmsigs DELETE
-    #           rpmdeps DELETE
-    #           rpmfiles DELETE
     #   files on disk: DELETE
     build_id = binfo['id']
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
     rpm_ids = _fetchMulti(q, locals())
     for (rpm_id,) in rpm_ids:
-        delete = """DELETE FROM rpmdeps WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM rpmfiles WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
     event_id = _singleValue("SELECT get_event()")
@@ -3843,7 +3809,7 @@ def reset_build(build):
     WARNING: this function is potentially destructive. use with care.
     nulls task_id
     sets state to CANCELED
-    clears data in rpminfo, rpmdeps, rpmfiles
+    clears data in rpminfo
     removes rpminfo entries from any buildroot_listings [!]
     remove files related to the build
 
@@ -3859,10 +3825,6 @@ def reset_build(build):
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
     for (rpm_id,) in ids:
-        delete = """DELETE FROM rpmdeps WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM rpmfiles WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
