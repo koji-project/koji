@@ -1080,7 +1080,9 @@ class TaskManager(object):
         - expire session
         """
         # clean up stray children of tasks
-        ch_killed = self._killGroup(task_id)
+        ch_killed = self._killGroup(task_id, signal.SIGINT)
+        if not ch_killed:
+            ch_killed = self._killGroup(task_id)
         if not ch_killed:
             ch_killed = self._killGroup(task_id, signal.SIGKILL, timeout=2)
         #expire the task's subsession
