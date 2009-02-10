@@ -2809,9 +2809,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
-
-    return query.executeOne()
-
+    return ret
 
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
@@ -5524,9 +5522,7 @@ class RootExports(object):
             build = self.findBuildID(build)
         return self.listRPMs(buildID=build)
 
-    def getRPM(self, rpmID):
-        """Get information about the RPM with the given ID."""
-        return get_rpm(rpmID)
+    getRPM = staticmethod(get_rpm)
 
     def getRPMDeps(self, rpmID, depType=None, queryOpts=None):
         """Return dependency information about the RPM with the given ID.
