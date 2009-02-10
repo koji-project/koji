@@ -52,7 +52,7 @@
     #end if
     #if $rpm.external_repo_id
     <tr>
-      <th>External Repository</th><td>$rpm.external_repo_name</td>
+      <th>External Repository</th><td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$rpm.external_repo_name</a></td>
     </tr>
     #end if
     <tr>
