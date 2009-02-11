@@ -5366,11 +5366,14 @@ class RootExports(object):
             tag = get_tag_id(tag,strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event,inherit=True,latest=True, rpmsigs=rpmsigs)
 
-    def getAverageBuildDuration(self, packageID):
-        """Get the average duration of a build of a package with
-        the given ID.  Returns a floating-point value indicating the
+    def getAverageBuildDuration(self, package):
+        """Get the average duration of a build of the given package.
+        Returns a floating-point value indicating the
         average number of seconds the package took to build.  If the package
         has never been built, return None."""
+        packageID = get_package_id(package)
+        if not packageID:
+            return None
         st_complete = koji.BUILD_STATES['COMPLETE']
         query = """SELECT EXTRACT(epoch FROM avg(build.completion_time - events.time))
                      FROM build

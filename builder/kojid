@@ -1917,9 +1917,22 @@ class BuildArchTask(BaseTaskHandler):
     Methods = ['buildArch']
 
     def weight(self):
-        # XXX - this one needs to figure the weight from the package to be
-        # built
         return 1.5
+
+    def updateWeight(self, name):
+        """
+        Update the weight of this task based on the package we're building.
+        weight is scaled from a minimum of 1.5 to a maximum of 6, based on
+        the average duration of a build of this package.
+        """
+        avg = session.getAverageBuildDuration(name)
+        if not avg:
+            return
+        # increase the task weight by 0.75 for every hour of build duration
+        adj = (avg / 4800.0)
+        # cap the adjustment at +4.5
+        weight = self.weight() + min(4.5, adj)
+        session.host.setTaskWeight(self.id, weight)
 
     def srpm_sanity_checks(self, filename):
         header = koji.get_rpm_header(filename)
@@ -1961,6 +1974,8 @@ class BuildArchTask(BaseTaskHandler):
         # might have been built outside of the build system
         # if not h[rpm.RPMTAG_DISTRIBUTION]:
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
+
+        self.updateWeight(name)
 
         rootopts = {
             'repo_id': repo_id
