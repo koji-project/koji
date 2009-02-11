@@ -1112,7 +1112,7 @@ class TaskManager(object):
         children = self._childPIDs(pid)
         if children:
             # send SIGINT once to let mock mock try to clean up
-            self._killChildren(task_id, children, sig=signal.SIGINT, pause=2.0)
+            self._killChildren(task_id, children, sig=signal.SIGINT, pause=3.0)
         if children:
             self._killChildren(task_id, children)
         if children:
