@@ -437,3 +437,7 @@ span#loginInfo {
     font-size: medium;
     white-space: pre;
 }
+
+.error {
+    color: red;
+}

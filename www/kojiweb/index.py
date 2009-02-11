@@ -414,6 +414,18 @@ def hello(req):
 def showSession(req):
     return _getServer(req).showSession()
 
+# All Tasks
+_TASKS = ['build',
+          'buildSRPMFromSCM',
+          'buildArch',
+          'chainbuild',
+          'waitrepo',
+          'tagBuild',
+          'newRepo',
+          'createrepo',
+          'buildNotification',
+          'tagNotification',
+          'dependantTask']
 # Tasks that can exist without a parent
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
 # Tasks that can have children
@@ -436,6 +448,13 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
         values['ownerObj'] = None
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
+
+    if method in _TASKS:
+        opts['method'] = method
+    else:
+        method = 'all'
+    values['method'] = method
+    values['alltasks'] = _TASKS
 
     treeEnabled = True
     if hostID or (method not in ['all'] + _PARENT_TASKS):
@@ -461,10 +480,6 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
     else:
         treeDisplay = False
     values['treeDisplay'] = treeDisplay
-
-    if method != 'all':
-        opts['method'] = method
-    values['method'] = method
 
     if view in ('tree', 'toplevel'):
         opts['parent'] = None
@@ -721,6 +736,8 @@ def tags(req, start=None, order=None, childID=None):
     
     return _genHTML(req, 'tags.chtml')
 
+_PREFIX_CHARS = [chr(char) for char in range(48, 58) + range(97, 123)]
+
 def packages(req, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
     values = _initValues(req, 'Packages', 'packages')
     server = _getServer(req)
@@ -738,7 +755,9 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
     values['user'] = user
     values['order'] = order
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
     inherited = int(inherited)
     values['inherited'] = inherited
@@ -747,7 +766,7 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
                                             kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
                                             start=start, dataName='packages', prefix='package', order=order)
     
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
     
     return _genHTML(req, 'packages.chtml')
 
@@ -1110,7 +1129,9 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['state'] = state
 
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
     
     values['order'] = order
@@ -1135,7 +1156,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
                                                                                'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
     
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
 
     return _genHTML(req, 'builds.chtml')
 
@@ -1144,7 +1165,9 @@ def users(req, order='name', start=None, prefix=None):
     server = _getServer(req)
 
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
 
     values['order'] = order
@@ -1152,7 +1175,7 @@ def users(req, order='name', start=None, prefix=None):
     users = kojiweb.util.paginateMethod(server, values, 'listUsers', kw={'prefix': prefix},
                                         start=start, dataName='users', prefix='user', order=order)
 
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
     
     return _genHTML(req, 'users.chtml')
 
@@ -1848,10 +1871,15 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'host': 'hostinfo?hostID=%(id)i',
              'rpm': 'rpminfo?rpmID=%(id)i',
              'file': 'fileinfo?rpmID=%(id)i&filename=%(name)s'}
-             
+
+_VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
+_VALID_SEARCH_SYMS = r"""@.,_/\()%+-*?|[]^$"""
+_VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
+
 def search(req, start=None, order='name'):
     values = _initValues(req, 'Search', 'search')
     server = _getServer(req)
+    values['error'] = None
 
     form = req.form
     if form.has_key('terms') and form['terms']:
@@ -1862,12 +1890,19 @@ def search(req, start=None, order='name'):
         values['type'] = type
         values['match'] = match
 
+        if not _VALID_SEARCH_RE.match(terms):
+            values['error'] = 'Invalid search terms<br/>' + \
+                'Search terms may contain only these characters: ' + \
+                _VALID_SEARCH_CHARS + _VALID_SEARCH_SYMS
+            return _genHTML(req, 'search.chtml')
+
         if match == 'regexp':
             try:
                 re.compile(terms)
             except:
-                raise koji.GenericError, 'invalid regular expression: %s' % terms
-        
+                values['error'] = 'Invalid regular expression'
+                return _genHTML(req, 'search.chtml')
+
         infoURL = _infoURLs.get(type)
         if not infoURL:
             raise koji.GenericError, 'unknown search type: %s' % type

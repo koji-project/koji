@@ -7,6 +7,9 @@
   <form action="search">
     <table>
       <tr>
+        #if $error
+        <tr><td colspan="3" class="error">$error</td></tr>
+        #end if
         <th>Search</th>
         <td><input type="text" name="terms"/></td>
         <td>
@@ -26,7 +29,7 @@
         <td colspan="2">
           <input type="radio" name="match" value="glob" id="radioglob" checked="checked"/><abbr title="? will match any single character, * will match any sequence of zero or more characters" id="abbrglob">glob</abbr>
           <input type="radio" name="match" value="regexp" id="radioregexp"/><abbr title="full POSIX regular expressions" id="abbrregexp">regexp</abbr>
-	  <input type="radio" name="match" value="exact" id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
+          <input type="radio" name="match" value="exact" id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
         </td>
       </tr>
       <tr>
