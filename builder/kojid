@@ -986,34 +986,36 @@ class TaskManager(object):
         Return True if the process is successfully killed in
         the given timeout, False otherwise.
         """
+        self.logger.info('Checking "%s" (pid %i, taskID %i)...' % (cmd, pid, task_id))
+        execname = cmd.split()[0]
         signaled = False
         t = 0.0
         while True:
             status = self._getStat(pid)
             if status and status[1] == cmd and status[2] != 'Z':
-                self.logger.info('"%s" (pid %i, taskID %i) is running' % (cmd, pid, task_id))
+                self.logger.info('%s (pid %i, taskID %i) is running' % (execname, pid, task_id))
             else:
                 if signaled:
-                    self.logger.info('"%s" (pid %i, taskID %i) was killed' % (cmd, pid, task_id))
+                    self.logger.info('%s (pid %i, taskID %i) was killed by signal %i' % (execname, pid, task_id, sig))
                 else:
-                    self.logger.info('"%s" (pid %i, taskID %i) exited' % (cmd, pid, task_id))
+                    self.logger.info('%s (pid %i, taskID %i) exited' % (execname, pid, task_id))
                 return True
 
             if t >= timeout:
-                self.logger.warn('Failed to kill "%s" (pid %i, taskID %i) with signal %i' %
-                                 (cmd, pid, task_id, sig))
+                self.logger.warn('Failed to kill %s (pid %i, taskID %i) with signal %i' %
+                                 (execname, pid, task_id, sig))
                 return False
 
             try:
                 os.kill(pid, sig)
             except OSError, e:
                 # process probably went away, we'll find out on the next iteration
-                self.logger.info('Error sending signal %i to "%s" (pid %i, taskID %i): %s' %
-                                 (sig, cmd, pid, task_id, e))
+                self.logger.info('Error sending signal %i to %s (pid %i, taskID %i): %s' %
+                                 (sig, execname, pid, task_id, e))
             else:
                 signaled = True
-                self.logger.info('Sent signal %i to "%s" (pid %i, taskID %i)' %
-                                 (sig, cmd, pid, task_id))
+                self.logger.info('Sent signal %i to %s (pid %i, taskID %i)' %
+                                 (sig, execname, pid, task_id))
 
             time.sleep(pause)
             t += pause
