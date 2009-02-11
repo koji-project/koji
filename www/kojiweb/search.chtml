@@ -10,7 +10,7 @@
         <th>Search</th>
         <td><input type="text" name="terms"/></td>
         <td>
-          <select name="type" onchange="javascript: if (this.options[this.selectedIndex].value == 'file') { document.getElementById('radioexact').checked = true; document.getElementById('radioglob').disabled = true; document.getElementById('abbrglob').style.color = 'gray'; document.getElementById('radioregexp').disabled = true; document.getElementById('abbrregexp').style.color = 'gray'; } else { document.getElementById('radioglob').disabled = false; document.getElementById('abbrglob').style.color = 'black'; document.getElementById('radioregexp').disabled = false; document.getElementById('abbrregexp').style.color = 'black'; }">
+          <select name="type">
             <option value="package">Packages</option>
             <option value="build">Builds</option>
             <option value="tag">Tags</option>
@@ -18,7 +18,6 @@
             <option value="user">Users</option>
             <option value="host">Hosts</option>
             <option value="rpm">RPMs</option>
-            <option value="file">Files</option>
           </select>
         </td>
       </tr>
