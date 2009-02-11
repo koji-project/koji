@@ -1173,7 +1173,7 @@ class TaskManager(object):
             return False
         if self.task_load > hostdata['capacity']:
             self.status = "Over capacity"
-            self.logger.info("Task load (%.1f) exceeds capacity (%.1f)" % (self.task_load, hostdata['capacity']))
+            self.logger.info("Task load (%.2f) exceeds capacity (%.2f)" % (self.task_load, hostdata['capacity']))
             return False
         if len(self.tasks) >= options.maxjobs:
             # This serves as a backup to the capacity check and prevents
