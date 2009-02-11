@@ -263,7 +263,7 @@
       <th>Priority</th><td>$task.priority</td>
     </tr>
     <tr>
-      <th>Weight</th><td>$task.weight</td>
+      <th>Weight</th><td>#echo '%.2f' % $task.weight#</td>
     </tr>
     <tr>
       <th>Result</th>
