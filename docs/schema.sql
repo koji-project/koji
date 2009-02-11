@@ -7,8 +7,6 @@ DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
 
-DROP TABLE rpmfiles;
-DROP TABLE rpmdeps;
 DROP TABLE rpminfo;
 
 DROP TABLE group_package_listing;
@@ -269,17 +267,6 @@ CREATE TABLE build (
 
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
 CREATE INDEX build_completion ON build(completion_time);
-
-CREATE TABLE changelogs (
-	id SERIAL NOT NULL PRIMARY KEY,
-        build_id INTEGER NOT NULL REFERENCES build (id),
-        date TIMESTAMP NOT NULL,
-        author TEXT NOT NULL,
-        text TEXT
-) WITHOUT OIDS;
-
-CREATE INDEX changelogs_by_date on changelogs (date);
-CREATE INDEX changelogs_by_build on changelogs (build_id);
 
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
@@ -584,32 +571,6 @@ CREATE TABLE buildroot_listing (
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
 
--- this table holds the requires, provides, obsoletes, and conflicts
--- for an rpminfo entry
-CREATE TABLE rpmdeps (
-	pkey SERIAL NOT NULL PRIMARY KEY,
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo (id),
-	dep_name TEXT NOT NULL,
-	dep_version TEXT,
-	dep_flags INTEGER,
-	dep_type INTEGER NOT NULL
-) WITHOUT OIDS;
-
-CREATE INDEX rpmdeps_by_rpm_id ON rpmdeps (rpm_id);
-CREATE INDEX rpmdeps_by_depssolve ON rpmdeps (dep_type, dep_name, dep_flags, dep_version);
-
-CREATE TABLE rpmfiles (
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo (id),
-	filename TEXT NOT NULL,
-	filemd5 VARCHAR(32) NOT NULL,
-	filesize INTEGER NOT NULL,
-	fileflags INTEGER NOT NULL,
-	PRIMARY KEY (filename, rpm_id)
-) WITHOUT OIDS;
-
-CREATE INDEX rpmfiles_by_rpm_id ON rpmfiles (rpm_id);
-CREATE INDEX rpmfiles_by_filename ON rpmfiles (filename);
-
 CREATE TABLE log_messages (
     id SERIAL NOT NULL PRIMARY KEY,
     message TEXT NOT NULL,
@@ -631,8 +592,7 @@ CREATE TABLE build_notifications (
 
 GRANT SELECT ON build, package, task, tag,
 tag_listing, tag_config, tag_inheritance, tag_packages,
-rpminfo, rpmdeps,
-rpmfiles TO PUBLIC;
+rpminfo TO PUBLIC;
 
 -- example code to add initial admins
 -- insert into users (name, usertype, status, krb_principal) values ('admin', 0, 0, 'admin@EXAMPLE.COM');
