@@ -1481,10 +1481,15 @@ class BaseTaskHandler(object):
         # index canonical tag arches
         tag_arches = set([koji.canonArch(a) for a in tag_arches.split()])
         # find the intersection of host and tag arches
-        common_arches = host_arches & tag_arches
+        common_arches = list(host_arches & tag_arches)
         if common_arches:
             # pick one of the common arches randomly
-            return random.choice(list(common_arches))
+            # need to re-seed the prng or we'll get the same arch every time,
+            # because we just forked from a common parent
+            random.seed()
+            arch = random.choice(common_arches)
+            self.logger.info('Valid arches: %s, using: %s' % (' '.join(common_arches), arch))
+            return arch
         else:
             # no overlap
             raise koji.BuildError, "host %s (%s) does not support any arches of tag %s (%s)" % \
