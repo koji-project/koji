@@ -42,7 +42,7 @@ koji-hub is the XMLRPC interface to the koji database
 Summary: Koji RPM builder daemon
 Group: Applications/System
 Requires: %{name} = %{version}-%{release}
-Requires: mock >= 0.8.7
+Requires: mock >= 0.9.14
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
