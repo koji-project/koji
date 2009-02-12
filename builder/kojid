@@ -2109,7 +2109,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         rootopts = {'install_group': 'srpm-build',
                     'setup_dns': True,
                     'repo_id': repo_id}
-        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id']))
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
         broot = BuildRoot(build_tag['id'], br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
