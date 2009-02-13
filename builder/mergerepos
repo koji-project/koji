@@ -186,6 +186,11 @@ class RepoMerge():
                 for attr in ('pkgId', 'name', 'arch', 'epoch', 'ver', 'rel'):
                     if hasattr(pkg, attr):
                         setattr(pkg, attr, yum.misc.to_utf8(getattr(pkg, attr)))
+                # Also ensure that summary and description aren't None
+                if getattr(pkg, 'summary', None) is None:
+                    pkg.summary = ''
+                if getattr(pkg, 'description', None) is None:
+                    pkg.description = ''
 
         origins.close()
         self.mdconf.additional_metadata['origin'] = pkgorigins
