@@ -86,7 +86,7 @@ def parse_args(args):
 
     return opts
 
-class RepoMerge():
+class RepoMerge(object):
     def __init__(self, repolist, arches, groupfile, blocked, outputdir):
         self.repolist = repolist
         self.outputdir = outputdir
