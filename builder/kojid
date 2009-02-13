@@ -2724,6 +2724,8 @@ class SCM(object):
         The exact format of each attribute is SCM-specific, but the structure of the url
         must conform to the template above, or an error will be raised.
         """
+        self.logger = logging.getLogger('koji.build.SCM')
+
         if not SCM.is_scm_url(url):
             raise koji.GenericError, 'Invalid SCM URL: %s' % url
 
