@@ -436,6 +436,7 @@ def make_task(method,arglist,**opts):
         tagarches = tag['arches'].split()
         for a in fullarches:
             if a not in tagarches:
+                random.seed()
                 opts['arch'] = koji.canonArch(random.choice(tagarches))
                 break
 
