@@ -1158,18 +1158,21 @@ def handle_import_sig(options, session, args):
             parser.error(_("No such file: %s") % path)
     activate_session(session)
     for path in args:
-        data = koji.get_header_fields(path, ('name','version','release','arch','siggpg','sourcepackage'))
+        data = koji.get_header_fields(path, ('name','version','release','arch','siggpg','sigpgp','sourcepackage'))
         if data['sourcepackage']:
             data['arch'] = 'src'
         sigkey = data['siggpg']
+        if sigkey is None:
+            sigkey = data['sigpgp']
         if not sigkey:
             sigkey = ""
             if not options.with_unsigned:
                 print _("Skipping unsigned package: %s" % path)
                 continue
         else:
-            sigkey = koji.hex_string(sigkey[13:17])
+            sigkey = koji.get_sigpacket_key_id(sigkey)
         del data['siggpg']
+        del data['sigpgp']
         rinfo = session.getRPM(data)
         if not rinfo:
             print "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data

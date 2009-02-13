@@ -3438,6 +3438,8 @@ def add_rpm_sig(an_rpm, sighdr):
     if sigmd5 == rinfo['payloadhash']:
         # note: payloadhash is a misnomer, that field is populated with sigmd5.
         sigkey = rawhdr.get(koji.RPM_SIGTAG_GPG)
+        if sigkey is None:
+            sigkey = rawhdr.get(koji.RPM_SIGTAG_PGP)
     else:
         # In older rpms, this field in the signature header does not actually match
         # sigmd5 (I think rpmlib pulls it from SIGTAG_GPG). Anyway, this
@@ -3455,7 +3457,7 @@ def add_rpm_sig(an_rpm, sighdr):
         sigkey = ''
         #we use the sigkey='' to represent unsigned in the db (so that uniqueness works)
     else:
-        sigkey = koji.hex_string(sigkey[13:17])
+        sigkey = koji.get_sigpacket_key_id(sigkey)
     sighash = md5_constructor(sighdr).hexdigest()
     rpm_id = rinfo['id']
     # - db entry
@@ -3502,7 +3504,10 @@ def _scan_sighdr(sighdr, fn):
     #(we have no payload, so verifies would fail otherwise)
     hdr = ts.hdrFromFdno(outp.fileno())
     outp.close()
-    return hdr[rpm.RPMTAG_SIGMD5], hdr[rpm.RPMTAG_SIGGPG]
+    sig = hdr[rpm.RPMTAG_SIGGPG]
+    if sig is None:
+        sig = hdr[rpm.RPMTAG_SIGPGP]
+    return hdr[rpm.RPMTAG_SIGMD5], sig
 
 def check_rpm_sig(an_rpm, sigkey, sighdr):
     #verify that the provided signature header matches the key and rpm
@@ -3531,9 +3536,11 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         raise
     raw_key = hdr[rpm.RPMTAG_SIGGPG]
     if raw_key is None:
+        raw_key = hdr[rpm.RPMTAG_SIGPGP]
+    if raw_key is None:
         found_key = None
     else:
-        found_key = koji.hex_string(raw_key[13:17])
+        found_key = koji.get_sigpacket_key_id(raw_key)
     if sigkey != found_key:
         raise koji.GenericError, "Signature key mismatch: got %s, expected %s" \
                               % (found_key, sigkey)
