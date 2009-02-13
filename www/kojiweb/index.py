@@ -966,11 +966,10 @@ def buildinfo(req, buildID):
     rpmsByArch = {}
     debuginfoByArch = {}
     for rpm in rpms:
-        canon_arch = koji.canonArch(rpm['arch'])
         if rpm['name'].endswith('-debuginfo') or rpm['name'].endswith('-debuginfo-common'):
-            debuginfoByArch.setdefault(canon_arch, []).append(rpm)
+            debuginfoByArch.setdefault(rpm['arch'], []).append(rpm)
         else:
-            rpmsByArch.setdefault(canon_arch, []).append(rpm)
+            rpmsByArch.setdefault(rpm['arch'], []).append(rpm)
 
     if rpmsByArch.has_key('src'):
         srpm = rpmsByArch['src'][0]
