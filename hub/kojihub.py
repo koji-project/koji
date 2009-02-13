@@ -5853,7 +5853,10 @@ class RootExports(object):
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
-        context.session.assertPerm('repo')
+        if context.session.hasPerm('regen-repo'):
+            pass
+        else:
+            context.session.assertPerm('repo')
         opts = {}
         if event is not None:
             opts['event'] = event
@@ -5900,14 +5903,17 @@ class RootExports(object):
     deleteBuildTarget = staticmethod(delete_build_target)
     getBuildTargets = staticmethod(get_build_targets)
 
-    def getBuildTarget(self, info, event=None):
+    def getBuildTarget(self, info, event=None, strict=False):
         """Return the build target with the given name or ID.
         If there is no matching build target, return None."""
         targets = get_build_targets(info=info, event=event)
         if len(targets) == 1:
             return targets[0]
         else:
-            return None
+            if strict:
+                raise koji.GenericError, 'No matching build target found: %s' % info
+            else:
+                return None
 
     def taskFinished(self,taskId):
         task = Task(taskId)
