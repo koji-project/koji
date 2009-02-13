@@ -2604,7 +2604,7 @@ class CreaterepoTask(BaseTaskHandler):
         for repo in repos:
             cmd.extend(['-r', repo])
 
-        logfile = '%s/mergerepo.log' % self.workdir
+        logfile = '%s/mergerepos.log' % self.workdir
         status = log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not _isSuccess(status):
             raise koji.GenericError, 'failed to merge repos: %s' \
