@@ -11,6 +11,9 @@ import time
 import md5
 import koji
 import kojiweb.util
+from kojiweb.util import _initValues
+from kojiweb.util import _genHTML
+from kojiweb.util import _getValidTokens
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = kojiweb.util.sortByKeyFunc('name')
@@ -49,30 +52,6 @@ def _getUserCookie(req):
                 return user
 
     return None
-
-def _truncTime():
-    now = datetime.datetime.now()
-    # truncate to the nearest 15 minutes
-    return now.replace(minute=(now.minute / 15 * 15), second=0, microsecond=0)
-
-def _genToken(req, tstamp=None):
-    if hasattr(req, 'currentLogin') and req.currentLogin:
-        user = req.currentLogin
-    else:
-        return ''
-    if tstamp == None:
-        tstamp = _truncTime()
-    return md5.new(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
-
-def _getValidTokens(req):
-    tokens = []
-    now = _truncTime()
-    for delta in (0, 15, 30):
-        token_time = now - datetime.timedelta(minutes=delta)
-        token = _genToken(req, token_time)
-        if token:
-            tokens.append(token)
-    return tokens
 
 def _krbLogin(req, session, principal):
     options = req.get_options()
@@ -122,47 +101,6 @@ def _assertLogin(req):
     else:
         mod_python.util.redirect(req, 'login')
         assert False
-
-def _initValues(req, title='Build System Info', pageID='summary'):
-    values = {}
-    values['siteName'] = req.get_options().get('SiteName', 'Koji')
-    values['title'] = title
-    values['pageID'] = pageID
-    values['currentDate'] = str(datetime.datetime.now())
-    
-    req._values = values
-
-    return values
-
-# Escape ampersands so the output can be valid XHTML
-class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
-    def filter(self, *args, **kw):
-        result = super(XHTMLFilter, self).filter(*args, **kw)
-        result = result.replace('&', '&amp;')
-        result = result.replace('&amp;nbsp;', '&nbsp;')
-        result = result.replace('&amp;lt;', '&lt;')
-        result = result.replace('&amp;gt;', '&gt;')
-        return result
-
-TEMPLATES = {}
-
-def _genHTML(req, fileName):
-    reqdir = os.path.dirname(req.filename)
-    if os.getcwd() != reqdir:
-        os.chdir(reqdir)
-
-    if hasattr(req, 'currentUser'):
-        req._values['currentUser'] = req.currentUser
-    else:
-        req._values['currentUser'] = None
-    req._values['authToken'] = _genToken(req)
-
-    tmpl_class = TEMPLATES.get(fileName)
-    if not tmpl_class:
-        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
-        TEMPLATES[fileName] = tmpl_class
-    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
-    return str(tmpl_inst)
 
 def _getServer(req):
     serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
