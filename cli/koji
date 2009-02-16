@@ -1162,7 +1162,7 @@ def handle_import_sig(options, session, args):
         if data['sourcepackage']:
             data['arch'] = 'src'
         sigkey = data['siggpg']
-        if sigkey is None:
+        if not sigkey:
             sigkey = data['sigpgp']
         if not sigkey:
             sigkey = ""

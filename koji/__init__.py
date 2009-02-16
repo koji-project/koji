@@ -705,9 +705,9 @@ def get_sighdr_key(sighdr):
     """Parse the sighdr and return the sigkey"""
     rh = RawHeader(sighdr)
     sig = rh.get(RPM_SIGTAG_GPG)
-    if sig is None:
+    if not sig:
         sig = rh.get(RPM_SIGTAG_PGP)
-    if sig is None:
+    if not sig:
         return None
     else:
         return get_sigpacket_key_id(sig)

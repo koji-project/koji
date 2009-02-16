@@ -3438,7 +3438,7 @@ def add_rpm_sig(an_rpm, sighdr):
     if sigmd5 == rinfo['payloadhash']:
         # note: payloadhash is a misnomer, that field is populated with sigmd5.
         sigkey = rawhdr.get(koji.RPM_SIGTAG_GPG)
-        if sigkey is None:
+        if not sigkey:
             sigkey = rawhdr.get(koji.RPM_SIGTAG_PGP)
     else:
         # In older rpms, this field in the signature header does not actually match
@@ -3453,7 +3453,7 @@ def add_rpm_sig(an_rpm, sighdr):
         if sigmd5 != rinfo['payloadhash']:
             nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
             raise koji.GenericError, "wrong md5 for %s: %s" % (nvra, sigmd5)
-    if sigkey is None:
+    if not sigkey:
         sigkey = ''
         #we use the sigkey='' to represent unsigned in the db (so that uniqueness works)
     else:
@@ -3505,7 +3505,7 @@ def _scan_sighdr(sighdr, fn):
     hdr = ts.hdrFromFdno(outp.fileno())
     outp.close()
     sig = hdr[rpm.RPMTAG_SIGGPG]
-    if sig is None:
+    if not sig:
         sig = hdr[rpm.RPMTAG_SIGPGP]
     return hdr[rpm.RPMTAG_SIGMD5], sig
 
@@ -3535,9 +3535,9 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
             pass
         raise
     raw_key = hdr[rpm.RPMTAG_SIGGPG]
-    if raw_key is None:
+    if not raw_key:
         raw_key = hdr[rpm.RPMTAG_SIGPGP]
-    if raw_key is None:
+    if not raw_key:
         found_key = None
     else:
         found_key = koji.get_sigpacket_key_id(raw_key)
