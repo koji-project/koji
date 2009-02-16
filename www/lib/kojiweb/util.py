@@ -73,7 +73,7 @@ def _genToken(req, tstamp=None):
         return ''
     if tstamp == None:
         tstamp = _truncTime()
-    return md5_constructor.new(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
+    return md5_constructor(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
 
 def _getValidTokens(req):
     tokens = []

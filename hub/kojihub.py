@@ -3456,7 +3456,7 @@ def add_rpm_sig(an_rpm, sighdr):
         #we use the sigkey='' to represent unsigned in the db (so that uniqueness works)
     else:
         sigkey = koji.hex_string(sigkey[13:17])
-    sighash = md5_constructor.new(sighdr).hexdigest()
+    sighash = md5_constructor(sighdr).hexdigest()
     rpm_id = rinfo['id']
     # - db entry
     q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
@@ -4702,7 +4702,7 @@ class RootExports(object):
             if size is not None:
                 if size != len(contents): return False
             if md5sum is not None:
-                if md5sum != md5_constructor.new(contents).hexdigest():
+                if md5sum != md5_constructor(contents).hexdigest():
                     return False
         uploadpath = koji.pathinfo.work()
         #XXX - have an incoming dir and move after upload complete
@@ -4762,7 +4762,7 @@ class RootExports(object):
                         fcntl.lockf(fd, fcntl.LOCK_UN)
                 if md5sum is not None:
                     #check final md5sum
-                    sum = md5_constructor.new()
+                    sum = md5_constructor()
                     fcntl.lockf(fd, fcntl.LOCK_SH|fcntl.LOCK_NB)
                     try:
                         # log_error("checking md5sum")
