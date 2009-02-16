@@ -1185,10 +1185,11 @@ class TaskManager(object):
             # checkSpace() does its own logging
             return False
         loadavgs = os.getloadavg()
-        #XXX - this value is pretty arbitrary, maybe it make it
-        # a function of the number of cpus?
-        if loadavgs[0] > 8.0:
-            self.status = "Load average > 8.0"
+        # this likely treats HT processors the same as real ones
+        # but that's fine, it's a conservative test
+        maxload = 4.0 * os.sysconf('SC_NPROCESSORS_ONLN')
+        if loadavgs[0] > maxload:
+            self.status = "Load average %.2f > %.2f" % (loadavgs[0], maxload)
             self.logger.info(self.status)
             return False
         #XXX - add more checks
