@@ -5278,6 +5278,7 @@ class RootExports(object):
         return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs,owner=owner)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
+                   createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, queryOpts=None):
         """List package builds.
         If packageID is specified, restrict the results to builds of the specified package.
@@ -5286,10 +5287,12 @@ class RootExports(object):
            restrict the results to builds with a non-null taskID.
         If prefix is specified, restrict the results to builds whose package name starts with that
         prefix.
+        If createdBefore and/or createdAfter are specified, restrict the results to builds whose
+        creation_time is before and/or after the given time.
         If completeBefore and/or completeAfter are specified, restrict the results to builds whose
-        completion_time is before and/or after the given time.  The time may be specified as a floating
-        point value indicating seconds since the Epoch (as returned by time.time()) or as a string in
-        ISO format ('YYYY-MM-DD HH24:MI:SS').
+        completion_time is before and/or after the given time.
+        The time may be specified as a floating point value indicating seconds since the Epoch (as
+        returned by time.time()) or as a string in ISO format ('YYYY-MM-DD HH24:MI:SS').
         One or more of packageID, userID, and taskID may be specified.
 
         Returns a list of maps.  Each map contains the following keys:
@@ -5337,6 +5340,14 @@ class RootExports(object):
             clauses.append("package.name ilike %(prefix)s || '%%'")
         if state != None:
             clauses.append('build.state = %(state)i')
+        if createdBefore:
+            if not isinstance(createdBefore, str):
+                createdBefore = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
+            clauses.append('events.time < %(createdBefore)s')
+        if createdAfter:
+            if not isinstance(createdAfter, str):
+                createdAfter = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
+            clauses.append('events.time > %(createdAfter)s')
         if completeBefore:
             if not isinstance(completeBefore, str):
                 completeBefore = datetime.datetime.fromtimestamp(completeBefore).isoformat(' ')
