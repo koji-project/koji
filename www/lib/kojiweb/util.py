@@ -1,7 +1,7 @@
 import Cheetah.Template
 import datetime
 import koji
-import md5
+from koji.util import md5_constructor
 import os
 import time
 #a bunch of exception classes that explainError needs

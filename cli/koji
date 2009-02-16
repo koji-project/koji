@@ -31,7 +31,7 @@ import base64
 import koji
 import koji.util
 import fnmatch
-import md5
+from koji.util import md5_constructor
 import os
 import re
 import pprint

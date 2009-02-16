@@ -33,7 +33,7 @@ import errno
 import glob
 import logging
 import logging.handlers
-import md5
+from koji.util import md5_constructor
 import os
 import pprint
 import pwd

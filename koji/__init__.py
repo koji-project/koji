@@ -31,7 +31,7 @@ import datetime
 from fnmatch import fnmatch
 import logging
 import logging.handlers
-import md5
+from koji.util import md5_constructor
 import os
 import os.path
 import pwd

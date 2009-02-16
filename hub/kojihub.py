@@ -33,7 +33,7 @@ import logging
 import logging.handlers
 import fcntl
 import fnmatch
-import md5
+from koji.util import md5_constructor
 import os
 import pgdb
 import random
