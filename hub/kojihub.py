@@ -5573,7 +5573,9 @@ class RootExports(object):
         """List files associated with the RPM with the given ID.  A list of maps
         will be returned, each with the following keys:
         - name
-        - md5
+        - digest
+        - md5 (alias for digest)
+        - digest_algo
         - size
         - flags
 
@@ -5590,14 +5592,17 @@ class RootExports(object):
             return _applyQueryOpts([], queryOpts)
 
         results = []
-        fields = koji.get_header_fields(rpm_path, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        hdr = koji.get_rpm_header(rpm_path)
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        digest_algo = koji.util.filedigestAlgo(hdr)
 
-        for (name, md5, size, flags) in zip(fields['filenames'], fields['filemd5s'],
+        for (name, digest, size, flags) in zip(fields['filenames'], fields['filemd5s'],
                                            fields['filesizes'], fields['fileflags']):
             if queryOpts.get('asList'):
-                results.append([name, md5, size, flags])
+                results.append([name, digest, size, flags, digest_algo])
             else:
-                results.append({'name': name, 'md5': md5, 'size': size, 'flags': flags})
+                results.append({'name': name, 'digest': digest, 'digest_algo': digest_algo,
+                                'md5': digest, 'size': size, 'flags': flags})
 
         return _applyQueryOpts(results, queryOpts)
 
@@ -5607,7 +5612,9 @@ class RootExports(object):
         A map will be returned with the following keys:
         - rpm_id
         - name
-        - md5
+        - digest
+        - md5 (alias for digest)
+        - digest_algo
         - size
         - flags
 
@@ -5621,13 +5628,16 @@ class RootExports(object):
         if not os.path.exists(rpm_path):
             return {}
 
-        results = []
-        fields = koji.get_header_fields(rpm_path, ('filenames', 'filemd5s', 'filesizes', 'fileflags'))
+        hdr = koji.get_rpm_header(rpm_path)
+        # use filemd5s for backward compatibility
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        digest_algo = koji.util.filedigestAlgo(hdr)
 
         i = 0
         for name in fields['filenames']:
             if name == filename:
-                return {'rpm_id': rpm_info['id'], 'name': name, 'md5': fields['filemd5s'][i],
+                return {'rpm_id': rpm_info['id'], 'name': name, 'digest': fields['filemd5s'][i],
+                        'digest_algo': digest_algo, 'md5': fields['filemd5s'][i],
                         'size': fields['filesizes'][i], 'flags': fields['fileflags'][i]}
             i += 1
         return {}

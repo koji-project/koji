@@ -116,3 +116,20 @@ def eventFromOpts(session, opts):
             return {'id' : rinfo['create_event'],
                     'ts' : rinfo['create_ts'] }
     return None
+
+def filedigestAlgo(hdr):
+    """
+    Get the file digest algorithm used in hdr.
+    If there is no algorithm flag in the header,
+    default to md5.  If the flag contains an unknown,
+    non-None value, return 'unknown'.
+    """
+    # need to use the header ID hard-coded into Koji so we're not dependent on the
+    # version of rpm installed on the hub
+    digest_algo_id = hdr[koji.RPM_TAG_FILEDIGESTALGO]
+    if not digest_algo_id:
+        # certain versions of rpm return an empty list instead of None
+        # for missing header fields
+        digest_algo_id = None
+    digest_algo = koji.RPM_FILEDIGESTALGO_IDS.get(digest_algo_id, 'unknown')
+    return digest_algo.lower()

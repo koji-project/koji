@@ -59,8 +59,22 @@ def _(args):
 
 RPM_HEADER_MAGIC = '\x8e\xad\xe8'
 RPM_TAG_HEADERSIGNATURES = 62
+RPM_TAG_FILEDIGESTALGO = 5011
 RPM_SIGTAG_MD5 = 1004
 RPM_SIGTAG_GPG = 1005
+
+RPM_FILEDIGESTALGO_IDS = {
+    # Taken from RFC 4880
+    # A missing algo ID means md5
+    None: 'MD5',
+    1:    'MD5',
+    2:    'SHA1',
+    3:    'RIPEMD160',
+    8:    'SHA256',
+    9:    'SHA384',
+    10:   'SHA512',
+    11:   'SHA224'
+    }
 
 class Enum(dict):
     """A simple class to track our enumerated constants
