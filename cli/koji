@@ -1173,7 +1173,7 @@ def handle_import_sig(options, session, args):
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
         assert len(previous) <= 1
         if previous:
-            sighash = md5.new(sighdr).hexdigest()
+            sighash = md5_constructor.new(sighdr).hexdigest()
             if previous[0]['sighash'] == sighash:
                 print _("Signature already imported: %s") % path
                 continue

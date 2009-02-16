@@ -1467,7 +1467,7 @@ class ClientSession(object):
         fo = file(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        md5sum = md5.new()
+        md5sum = md5_constructor.new()
         debug = self.opts.get('debug',False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
@@ -1484,7 +1484,7 @@ class ClientSession(object):
                 sz = ofs
             else:
                 offset = ofs
-                digest = md5.new(contents).hexdigest()
+                digest = md5_constructor.new(contents).hexdigest()
                 sz = size
             del contents
             tries = 0

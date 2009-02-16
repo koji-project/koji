@@ -245,7 +245,7 @@ def incrementalUpload(fname, fd, path, retries=5, logger=None):
             break
         
         data = base64.encodestring(contents)
-        digest = md5.new(contents).hexdigest()
+        digest = md5_constructor.new(contents).hexdigest()
         del contents
         
         tries = 0
