@@ -8,7 +8,6 @@ import Cheetah.Filters
 import Cheetah.Template
 import datetime
 import time
-from koji.util import md5_constructor
 import koji
 import kojiweb.util
 from kojiweb.util import _initValues
