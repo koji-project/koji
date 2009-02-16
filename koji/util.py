@@ -20,9 +20,9 @@ import time
 import koji
 
 try:
-    from hashlib import md5 as md5_constructor
+    from hashlib import md5 as md5_constructor
 except ImportError:
-    from md5 import new as md5_constructor
+    from md5 import new as md5_constructor
 
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
