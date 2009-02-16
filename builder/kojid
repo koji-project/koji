@@ -1184,6 +1184,13 @@ class TaskManager(object):
         if not self.checkSpace():
             # checkSpace() does its own logging
             return False
+        loadavgs = os.getloadavg()
+        #XXX - this value is pretty arbitrary, maybe it make it
+        # a function of the number of cpus?
+        if loadavgs[0] > 8.0:
+            self.status = "Load average > 8.0"
+            self.logger.info(self.status)
+            return False
         #XXX - add more checks
         return True
 
