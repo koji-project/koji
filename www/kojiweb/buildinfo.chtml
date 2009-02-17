@@ -37,6 +37,17 @@
       <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
     </tr>
     <tr>
+      #set $stateName = $util.stateName($build.state)
+      <th>State</th>
+      <td class="$stateName">$stateName
+      #if $build.state == $koji.BUILD_STATES.BUILDING
+      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
+      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id$util.authToken($self)">cancel</a>)</span>
+      #end if
+      #end if
+      </td>
+    </tr>
+    <tr>
       <th>Started</th><td>$util.formatTimeLong($build.creation_time)</td>
     </tr>
     #if $build.state == $koji.BUILD_STATES.BUILDING
@@ -50,17 +61,6 @@
       <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
     </tr>
     #end if
-    <tr>
-      #set $stateName = $util.stateName($build.state)
-      <th>State</th>
-      <td class="$stateName">$stateName
-      #if $build.state == $koji.BUILD_STATES.BUILDING
-      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
-      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id$util.authToken($self)">cancel</a>)</span>
-      #end if
-      #end if
-      </td>
-    </tr>
     #if $task
     <tr>
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
