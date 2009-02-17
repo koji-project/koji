@@ -1832,7 +1832,7 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'file': 'fileinfo?rpmID=%(id)i&filename=%(name)s'}
 
 _VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
-_VALID_SEARCH_SYMS = r"""@.,_/\()%+-*?|[]^$"""
+_VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
 _VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
 
 def search(req, start=None, order='name'):
