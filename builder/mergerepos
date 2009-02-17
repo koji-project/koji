@@ -95,7 +95,13 @@ class RepoMerge(object):
         self.mdconf.verbose = True
         self.mdconf.changelog_limit = 3
         self.yumbase = yum.YumBase()
-        self.yumbase._getConfig('/dev/null', init_plugins=False, debuglevel=2)
+        if hasattr(self.yumbase, 'preconf'):
+            self.yumbase.preconf.fn = '/dev/null'
+            self.yumbase.preconf.init_plugins = False
+            self.yumbase.preconf.debuglevel = 2
+            self.yumbase._getConfig()
+        else:
+            self.yumbase._getConfig('/dev/null', init_plugins=False, debuglevel=2)
         self.yumbase.conf.cachedir = tempfile.mkdtemp()
         self.yumbase.conf.cache = 0
         self.archlist = arches
