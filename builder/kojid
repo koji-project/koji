@@ -854,7 +854,7 @@ class TaskManager(object):
         for id, pid in self.pids.items():
             if self._waitTask(id, pid):
                 # the subprocess handles most everything, we just need to clear things out
-                if self.cleanupTask(id):
+                if self.cleanupTask(id, wait=False):
                     del self.pids[id]
                 if self.tasks.has_key(id):
                     del self.tasks[id]
@@ -974,7 +974,7 @@ class TaskManager(object):
                 raise
             #otherwise assume the process is gone
             self.logger.info("%s: %s" % (prefix, e))
-            return False
+            return True
         if childpid != 0:
             self.logger.info(_parseStatus(status, prefix))
             return True
@@ -1098,7 +1098,7 @@ class TaskManager(object):
             if self._doKill(task_id, childpid, cmd, sig, timeout, pause):
                 children.remove((childpid, cmd))
 
-    def cleanupTask(self, task_id):
+    def cleanupTask(self, task_id, wait=True):
         """Clean up after task
 
         - kill children
@@ -1128,7 +1128,12 @@ class TaskManager(object):
             except:
                 #not much we can do about it
                 pass
-        return len(children) == 0
+        if wait:
+            return self._waitTask(task_id, pid)
+        else:
+            # task has already been waited on, and we've cleaned
+            # up as much as we can
+            return True
 
     def checkSpace(self):
         """See if we have enough space to accept another job"""
