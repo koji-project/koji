@@ -972,12 +972,10 @@ def buildinfo(req, buildID):
 
     if rpmsByArch.has_key('src'):
         srpm = rpmsByArch['src'][0]
-        headers = server.getRPMHeaders(srpm['id'], 'summary', 'description')
-        values['summary'] = headers.get('summary')
-        values['description'] = headers.get('description')
-    else:
-        values['summary'] = None
-        values['description'] = None
+        headers = server.getRPMHeaders(srpm['id'], headers=['summary', 'description'])
+        values['summary'] = koji.fixEncoding(headers.get('summary'))
+        values['description'] = koji.fixEncoding(headers.get('description'))
+        values['changelog'] = server.getChangelogEntries(build['id'])
 
     noarch_log_dest = 'noarch'
     if build['task_id']:
@@ -998,6 +996,28 @@ def buildinfo(req, buildID):
                     noarch_task = server.getTaskInfo(noarch_buildroot['task_id'], request=True)
                     if noarch_task:
                         noarch_log_dest = noarch_task['request'][2]
+
+        # get the summary, description, and changelogs from the built srpm
+        # if the build is not yet complete
+        if build['state'] != koji.BUILD_STATES['COMPLETE']:
+            srpm_tasks = server.listTasks(opts={'parent': task['id'], 'method': 'buildSRPMFromSCM'})
+            if srpm_tasks:
+                srpm_task = srpm_tasks[0]
+                if srpm_task['state'] == koji.TASK_STATES['CLOSED']:
+                    srpm_path = None
+                    for output in server.listTaskOutput(srpm_task['id']):
+                        if output.endswith('.src.rpm'):
+                            srpm_path = output
+                            break
+                    if srpm_path:
+                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'], filepath=srpm_path,
+                                                            headers=['summary', 'description'])
+                        if srpm_headers:
+                            values['summary'] = koji.fixEncoding(srpm_headers['summary'])
+                            values['description'] = koji.fixEncoding(srpm_headers['description'])
+                        changelog = server.getChangelogEntries(taskID=srpm_task['id'], filepath=srpm_path)
+                        if changelog:
+                            values['changelog'] = changelog
     else:
         task = None
 
@@ -1011,7 +1031,10 @@ def buildinfo(req, buildID):
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
         values['perms'] = []
-    values['changelog'] = server.getChangelogEntries(build['id'])
+    for field in ['summary', 'description', 'changelog']:
+        if not values.has_key(field):
+            values[field] = None
+
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
         if avgDuration != None:
@@ -1164,9 +1187,9 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         values['obsoletes'].sort(_sortbyname)
         values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
         values['conflicts'].sort(_sortbyname)
-        headers = server.getRPMHeaders(rpm['id'], 'summary', 'description')
-        values['summary'] = headers.get('summary')
-        values['description'] = headers.get('description')
+        headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description'])
+        values['summary'] = koji.fixEncoding(headers.get('summary'))
+        values['description'] = koji.fixEncoding(headers.get('description'))
     buildroots = server.listBuildroots(rpmID=rpm['id'])
     buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
 
