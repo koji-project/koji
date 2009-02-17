@@ -463,7 +463,7 @@ class RawHeader(object):
 
     def version(self):
         #fourth byte is the version
-        return ord(data[3])
+        return ord(self.header[3])
 
     def _index(self):
         # read two 4-byte integers which tell us
