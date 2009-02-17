@@ -434,7 +434,7 @@ def handle_add_group(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) < 2:
+    if len(args) != 2:
         parser.error(_("Please specify a tag name and a group name"))
         assert False
     tag = args[0]
@@ -443,7 +443,7 @@ def handle_add_group(options, session, args):
     activate_session(session)
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
-        return
+        return 1
 
     dsttag = session.getTag(tag)
     if not dsttag:
@@ -471,7 +471,8 @@ def handle_add_host(options, session, args):
     activate_session(session)
     id = session.getHost(host)
     if id:
-        print "%s is already in the database, skipping" % host
+        print "%s is already in the database" % host
+        return 1
     else:
         id = session.addHost(host, args[1:])
         if id:
@@ -553,11 +554,14 @@ def handle_add_pkg(options, session, args):
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
+    ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if not package_id is None:
             print "Package %s already exists in tag %s" % (package, tag)
-            return 1
+            ret = 1
+    if ret:
+        return ret
     if options.extra_arches:
         opts['extra_arches'] = ' '.join(options.extra_arches.replace(',',' ').split())
     for package in args[1:]:
@@ -578,11 +582,14 @@ def handle_block_pkg(options, session, args):
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
+    ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if package_id is None:
             print "Package %s doesn't exist in tag %s" % (package, tag)
-            return 1
+            ret = 1
+    if ret:
+        return ret
     for package in args[1:]:
         #really should implement multicall...
         session.packageListBlock(tag,package)
@@ -769,7 +776,7 @@ def handle_chain_build(options, session, args):
         src_list.append(build_level)
 
     if len(src_list) < 2:
-        parser.error(_('you must specify at least one dependency between builds with : (colon)\nif there are no dependencies, use the build command instead'))
+        parser.error(_('You must specify at least one dependency between builds with : (colon)\nIf there are no dependencies, use the build command instead'))
 
     priority = None
     if build_opts.background:
@@ -796,20 +803,21 @@ def handle_resubmit(options, session, args):
             help=_("An alias for --nowait"))
     parser.add_option("--quiet", action="store_true", help=_("Do not print the task information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
-    if len(args) < 1:
-        parser.error(_("Please specify a task ID"))
+    if len(args) != 1:
+        parser.error(_("Please specify a single task ID"))
         assert False
     activate_session(session)
-    taskID = args[0]
+    taskID = int(args[0])
     if not options.quiet:
         print "Resubmitting the following task:"
-        _printTaskInfo(session, int(taskID), 0, False, True)
-    newID = session.resubmitTask(int(taskID))
+        _printTaskInfo(session, taskID, 0, False, True)
+    newID = session.resubmitTask(taskID)
     print "Resubmitted task %s as new task %s" % (taskID, newID)
     if _running_in_bg() or options.nowait:
         return
     else:
-        watch_tasks(session,[newID])
+        session.logout()
+        return watch_tasks(session,[newID])
 
 def handle_call(options, session, args):
     "[admin] Execute an arbitrary XML-RPC call"
@@ -865,7 +873,7 @@ def anon_handle_mock_config(options, session, args):
     parser.add_option("-o", metavar="FILE", dest="ofile", help=_("Output to a file"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
-        parser.error(_("Please specify and name for your buildroot"))
+        parser.error(_("Please specify a name for your buildroot"))
         assert False
     activate_session(session)
     name = args[0]
@@ -891,17 +899,17 @@ def anon_handle_mock_config(options, session, args):
         broots = session.listBuildroots(taskID=task_id)
         if not broots:
             print _("No buildroots for task %s (or no such task)") % options.task
-            sys.exit(1)
+            return 1
         if len(broots) > 1:
             print _("Multiple buildroots found: %s" % [br['id'] for br in broots])
-        brootinfo = broots[0]
+        brootinfo = broots[-1]
         opts['repoid'] = brootinfo['repo_id']
         opts['tag_name'] = brootinfo['tag_name']
         arch = brootinfo['arch']
     elif options.tag:
         if not options.arch:
             print _("Please specify an arch")
-            sys.exit(1)
+            return 1
         tag = session.getTag(options.tag)
         if not tag:
             parser.error(_("Invalid tag: %s" % options.tag))
@@ -909,12 +917,12 @@ def anon_handle_mock_config(options, session, args):
         config = session.getBuildConfig(tag['id'])
         if not config:
             print _("Could not get config info for tag: %(name)s") % tag
-            sys.exit(1)
+            return 1
         opts['tag_name'] = tag['name']
         repo = session.getRepo(config['id'])
         if not repo:
             print _("Could not get a repo for tag: %(name)s") % tag
-            sys.exit(1)
+            return 1
         opts['repoid'] = repo['id']
     else:
         parser.error(_("Please specify one of: --tag, --task, --buildroot"))
@@ -1566,11 +1574,13 @@ def handle_list_permissions(options, session, args):
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            raise koji.GenericError("%s can not be found" % options.user)
+            print "User %s does not exist" % options.user
+            return 1
         perms = session.getUserPerms(user['id'])
     else:
         perms = [p['name'] for p in session.getAllPerms()]
-    print perms
+    for perm in perms:
+        print perm
 
 def handle_add_user(options, session, args):
     "[admin] Add a user"
@@ -1645,7 +1655,7 @@ def handle_list_signed(options, session, args):
             parser.error(_("No such RPM: %s") % options.rpm)
         if rinfo.get('external_repo_id'):
             print "External rpm:  %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" %rpminfo
-            sys.exit(1)
+            return 1
         qopts['rpm_id'] = rinfo['id']
     if options.build:
         binfo = session.getBuild(options.build)
@@ -1720,28 +1730,23 @@ def handle_grant_permission(options, session, args):
     usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--list", action="store_true", help=_("List possible permissions"))
     (options, args) = parser.parse_args(args)
-    if not options.list and len(args) < 2:
+    if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
         assert False
     activate_session(session)
     perms = dict([(p['name'], p['id']) for p in session.getAllPerms()])
-    if options.list:
-        for p in perms.keys():
-            print p
-        return
     perm_id = perms.get(args[0], None)
     if perm_id is None:
         print "No such permission: %s" % args[0]
-        sys.exit(1)
+        return 1
     names = args[1:]
     users = []
     for n in names:
         user = session.getUser(n)
         if user is None:
             print "No such user: %s" % n
-            sys.exit(1)
+            return 1
         users.append(user)
     for user in users:
         session.grantPermission(user['id'], perm_id)
@@ -1965,7 +1970,6 @@ def anon_handle_list_buildroot(options, session, args):
         parser.error(_("Incorrect number of arguments"))
         assert False
     activate_session(session)
-    package = None
     buildrootID = int(args[0])
     opts = {}
     if options.built:
@@ -2069,18 +2073,18 @@ def anon_handle_list_groups(options, session, args):
 
 def handle_add_group_pkg(options, session, args):
     "[admin] Add a package to a group's package listing"
-    usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg>")
+    usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+    if len(args) < 3:
+        parser.error(_("You must specify a tag name, group name, and one or more package names"))
         assert False
     tag = args[0]
     group = args[1]
-    pkg = args[2]
     activate_session(session)
-    session.groupPackageListAdd(tag, group, pkg)
+    for pkg in args[2:]:
+        session.groupPackageListAdd(tag, group, pkg)
 
 def handle_block_group_pkg(options, session, args):
     "[admin] Block a package from a group's package listing"
@@ -2089,7 +2093,7 @@ def handle_block_group_pkg(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
-        parser.error(_("This command takes at least three arguments"))
+        parser.error(_("You must specify a tag name, group name, and one or more package names"))
         assert False
     tag = args[0]
     group = args[1]
@@ -2099,18 +2103,18 @@ def handle_block_group_pkg(options, session, args):
 
 def handle_unblock_group_pkg(options, session, args):
     "[admin] Unblock a package from a group's package listing"
-    usage = _("usage: %prog unblock-group-pkg [options] <tag> <group> <pkg>")
+    usage = _("usage: %prog unblock-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+    if len(args) < 3:
+        parser.error(_("You must specify a tag name, group name, and one or more package names"))
         assert False
     tag = args[0]
     group = args[1]
-    pkg = args[2]
     activate_session(session)
-    session.groupPackageListUnblock(tag, group, pkg)
+    for pkg in args[2:]:
+        session.groupPackageListUnblock(tag, group, pkg)
 
 def handle_add_group_req(options, session, args):
     "[admin] Add a group to a group's required list"
@@ -2119,7 +2123,7 @@ def handle_add_group_req(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+        parser.error(_("You must specify a tag name and two group names"))
         assert False
     tag = args[0]
     group = args[1]
@@ -2134,7 +2138,7 @@ def handle_block_group_req(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+        parser.error(_("You must specify a tag name and two group names"))
         assert False
     tag = args[0]
     group = args[1]
@@ -2149,7 +2153,7 @@ def handle_unblock_group_req(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
-        parser.error(_("This command takes three arguments"))
+        parser.error(_("You must specify a tag name and two group names"))
         assert False
     tag = args[0]
     group = args[1]
@@ -2370,10 +2374,10 @@ def anon_handle_buildinfo(options, session, args):
         for rpm in rpms:
             print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
         if options.changelog:
-            print "Changelog:"
-            for entry in session.getChangelogEntries(info['id']):
-                print ("* %s %s" % (time.strftime('%a %b %d %Y', time.strptime(entry['date'], '%Y-%m-%d %H:%M:%S')), entry['author'])).encode('utf-8')
-                print entry['text'].encode('utf-8')
+            changelog = session.getChangelogEntries(info['id'])
+            if changelog:
+                print "Changelog:"
+                print koji.util.formatChangelog(changelog)
 
 def handle_clone_tag(options, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
@@ -2870,9 +2874,6 @@ def anon_handle_list_tags(options, session, args):
     parser.add_option("--build", help=_("Show tags associated with a build"))
     parser.add_option("--package", help=_("Show tags associated with a package"))
     (options, args) = parser.parse_args(args)
-    #if len(args) != 0:
-    #    parser.error(_("This command takes no arguments"))
-    #    assert False
     activate_session(session)
 
     pkginfo = {}
@@ -2920,7 +2921,7 @@ def anon_handle_list_tags(options, session, args):
 
 def anon_handle_list_tag_history(options, session, args):
     "Print a history of tag operations"
-    usage = _("usage: %prog list-tag-history [options] [pattern]")
+    usage = _("usage: %prog list-tag-history [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--debug", action="store_true")
@@ -3023,6 +3024,8 @@ def _parseTaskParams(session, method, task_id):
         if oldrepo:
             lines.append("Old Repo ID: %i" % oldrepo['id'])
             lines.append("Old Repo Creation: %s" % koji.formatTimeLong(oldrepo['creation_time']))
+        if len(params) > 3:
+            lines.append("External Repos: %s" % ', '.join([ext['external_repo_name'] for ext in params[3]]))
     elif method == 'tagNotification':
         destTag = session.getTag(params[2])
         srcTag = None
@@ -3054,7 +3057,23 @@ def _parseTaskParams(session, method, task_id):
                     if not key == '__starstar':
                         lines.append("    %s: %s" % (key, subopts[key]))
             lines.append("")
-    
+    elif method == 'chainbuild':
+        lines.append("Build Groups:")
+        group_num = 0
+        for group_list in params[0]:
+            group_num += 1
+            lines.append("  %i: %s" % (group_num, ', '.join(group_list)))
+        lines.append("Build Target: %s" % params[1])
+        for key in params[2].keys():
+            if not key == '__starstar':
+                lines.append("%s: %s" % (key, params[2][key]))
+    elif method == 'waitrepo':
+        lines.append("Build Target: %s" % params[0])
+        if params[1]:
+            lines.append("Newer Than: %s" % params[1])
+        if params[2]:
+            lines.append("NVRs: %s" % ', '.join(params[2]))
+
     return lines
 
 def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
@@ -3115,21 +3134,21 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
 
 def anon_handle_taskinfo(options, session, args):
     """Show information about a task"""
-    usage = _("usage: %prog taskinfo [options] task_id")
+    usage = _("usage: %prog taskinfo [options] taskID [taskID...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--recurse", action="store_true", help=_("Show children of this task as well"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("This command takes exctly one argument: a task ID"))
+    if len(args) < 1:
+        parser.error(_("You must specify at least one task ID"))
         assert False
 
     activate_session(session)
 
-    task_id = int(args[0])
-
-    _printTaskInfo(session, task_id, 0, options.recurse, options.verbose)
+    for arg in args:
+        task_id = int(arg)
+        _printTaskInfo(session, task_id, 0, options.recurse, options.verbose)
 
 def anon_handle_taginfo(options, session, args):
     "Print basic information about a tag"
@@ -3752,14 +3771,14 @@ def handle_remove_external_repo(options, session, args):
             assert False
         if not current_tags:
             print _("External repo %s not associated with any tags") % repo
-            sys.exit(0)
+            return 0
         tags = current_tags
     if delete:
         #removing entirely
         if current_tags and not options.force:
             print _("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags))
             print _("Use --force to remove anyway")
-            sys.exit(1)
+            return 1
         session.deleteExternalRepo(args[0])
     else:
         for tag in tags:
@@ -3919,14 +3938,14 @@ def handle_set_pkg_owner_global(options, session, args):
     user = session.getUser(owner)
     if not user:
         print "No such user: %s" % owner
-        sys.exit(1)
+        return 1
     opts = {'with_dups' : True}
     old_user = None
     if options.old_user:
         old_user = session.getUser(options.old_user)
         if not old_user:
-            print _("No such user: %s") % options.old_user
-            sys.exit(1)
+            print "No such user: %s" % options.old_user
+            return 1
         opts['userID'] = old_user['id']
     to_change = []
     for package in packages:
@@ -3939,7 +3958,7 @@ def handle_set_pkg_owner_global(options, session, args):
         entries = session.listPackages(**opts)
         if not entries:
             print "No data for user %s" % old_user['name']
-            sys.exit(1)
+            return 1
         to_change.extend(entries)
     for entry in to_change:
         if user['id'] == entry['owner_id']:
@@ -3972,7 +3991,7 @@ def anon_handle_watch_task(options, session, args):
     if not tasks:
         parser.error(_("at least one task id must be specified"))
 
-    watch_tasks(session,tasks)
+    return watch_tasks(session, tasks)
 
 def anon_handle_watch_logs(options, session, args):
     "Watch logs in realtime"
@@ -4017,8 +4036,11 @@ def handle_make_task(options, session, args):
                                arglist=map(arg_filter,args[1:]),
                                opts=taskopts)
     print "Created task id %d" % task_id
-    if options.watch:
-        watch_tasks(session,[task_id])
+    if _running_in_bg() or not options.watch:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session, [task_id])
 
 def handle_tag_pkg(options, session, args):
     "Apply a tag to one or more packages"
@@ -4041,7 +4063,8 @@ def handle_tag_pkg(options, session, args):
     if _running_in_bg() or options.nowait:
         return
     else:
-        watch_tasks(session,tasks)
+        session.logout()
+        return watch_tasks(session,tasks)
 
 def handle_move_pkg(options, session, args):
     "'Move' one or more packages between tags"
@@ -4086,6 +4109,7 @@ def handle_move_pkg(options, session, args):
     if _running_in_bg() or options.nowait:
         return
     else:
+        session.logout()
         return watch_tasks(session, tasks)
 
 def handle_untag_pkg(options, session, args):
@@ -4148,7 +4172,7 @@ def handle_untag_pkg(options, session, args):
                 else:
                     print _("Build %s not in tag %s") % (nvr, tag['name'])
                 if not options.force:
-                    sys.exit(1)
+                    return 1
     builds.reverse()
     for binfo in builds:
         if options.test:
