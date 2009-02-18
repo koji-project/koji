@@ -99,7 +99,6 @@ class RepoMerge(object):
             self.yumbase.preconf.fn = '/dev/null'
             self.yumbase.preconf.init_plugins = False
             self.yumbase.preconf.debuglevel = 2
-            self.yumbase._getConfig()
         else:
             self.yumbase._getConfig('/dev/null', init_plugins=False, debuglevel=2)
         self.yumbase.conf.cachedir = tempfile.mkdtemp()
