@@ -42,7 +42,7 @@ EXPAND_ARCHES = {
     'sparc': ['sparcv8', 'sparcv9', 'sparcv9v', 'sparcv9v2'],
     'alpha': ['alphaev4', 'alphaev45', 'alphaev5', 'alphaev56',
               'alphapca56', 'alphaev6', 'alphaev67', 'alphaev68', 'alphaev7'],
-    'arm': ['armv5tel', 'armv5tejl', 'armv61'],
+    'arm': ['armv5tel', 'armv5tejl', 'armv6l','armv7l'],
     'sh4': ['sh4a']
     }
 
