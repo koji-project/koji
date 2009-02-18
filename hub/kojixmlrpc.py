@@ -365,7 +365,7 @@ def load_config(req):
         ['ProxyPrincipals', 'string', None],
         ['HostPrincipalFormat', 'string', None],
 
-        ['DNUsernameComponent', 'string', None],
+        ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', None],
 
         ['LoginCreatesUser', 'boolean', True],
