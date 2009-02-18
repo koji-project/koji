@@ -78,6 +78,8 @@ test-tarball:
 tarball: clean
 	@git archive --format=tar --prefix=$(NAME)-$(VERSION)/ HEAD |bzip2 > $(NAME)-$(VERSION).tar.bz2
 
+sources: tarball
+
 srpm: tarball
 	$(RPM_WITH_DIRS) $(DIST_DEFINES) -bs $(SPECFILE)
 
