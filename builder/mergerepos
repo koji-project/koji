@@ -91,6 +91,8 @@ class RepoMerge(object):
         self.repolist = repolist
         self.outputdir = outputdir
         self.mdconf = createrepo.MetaDataConfig()
+        # explicitly request sha1 for backward compatibility with older yum
+        self.mdconf.sumtype = 'sha1'
         self.mdconf.database = True
         self.mdconf.verbose = True
         self.mdconf.changelog_limit = 3
