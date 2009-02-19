@@ -2369,6 +2369,9 @@ def create_external_repo(name, url):
         raise koji.GenericError, 'An external repo named "%s" already exists' % name
 
     id = get_external_repo_id(name, create=True)
+    if not url.endswith('/'):
+        # Ensure the url always ends with /
+        url += '/'
     values = {'id': id, 'name': name, 'url': url}
     insert = """INSERT INTO external_repo_config (external_repo_id, url) VALUES (%(id)i, %(url)s)"""
     _dml(insert, values)
@@ -2431,6 +2434,9 @@ def edit_external_repo(info, name=None, url=None):
         _dml(rename, locals())
 
     if url and url != repo['url']:
+        if not url.endswith('/'):
+            # Ensure the url always ends with /
+            url += '/'
         event_id = _singleValue("SELECT get_event()")
 
         update = """UPDATE external_repo_config
