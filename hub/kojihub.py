@@ -429,15 +429,15 @@ def make_task(method,arglist,**opts):
     if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
         tag = get_tag(arglist[1])
-        #get all known arches for the system
-        fullarches = get_all_arches()
         if not tag['arches']:
             raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
-        tagarches = tag['arches'].split()
-        for a in fullarches:
+        # canonicalize tagarches, since get_all_arches() is canonical but
+        # non-canonical arches may be set in tag['arches']
+        tagarches = [koji.canonArch(a) for a in tag['arches'].split()]
+        for a in get_all_arches():
             if a not in tagarches:
                 random.seed()
-                opts['arch'] = koji.canonArch(random.choice(tagarches))
+                opts['arch'] = random.choice(tagarches)
                 break
 
     # encode xmlrpc request
