@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.3.0
+Version: 1.3.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -176,6 +176,12 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Feb 20 2009 Mike McLean <mikem at redhat.com> 1.3.1-1
+- external repo urls rewritten to end with /
+- add schema file for upgrades from 1.2.x to 1.3
+- explicitly request sha1 for backward compatibility with older yum
+- fix up sparc arch handling
+
 * Wed Feb 18 2009 Mike McLean <mikem at redhat.com> 1.3.0-1
 - support for external repos
 - support for noarch subpackages
