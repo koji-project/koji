@@ -548,7 +548,7 @@ CREATE TABLE rpminfo (
 	arch VARCHAR(16) NOT NULL,
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	payloadhash TEXT NOT NULL,
-	size INTEGER NOT NULL,
+	size BIGINT NOT NULL,
 	buildtime BIGINT NOT NULL,
 	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;

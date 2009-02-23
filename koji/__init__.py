@@ -1586,7 +1586,12 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path,name,sz,digest,offset))
-                if self.callMethod('uploadFile', path, name, sz, digest, offset, data):
+                if offset > 2147483647:
+                    #work around xmlrpc limitation, server will convert back
+                    offsethack = str(offset)
+                else:
+                    offsethack = offset
+                if self.callMethod('uploadFile', path, name, sz, digest, offsethack, data):
                     break
                 if tries <= retries:
                     tries += 1
