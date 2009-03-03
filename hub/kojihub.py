@@ -3886,8 +3886,8 @@ def _get_build_target(task_id):
     task = Task(task_id)
     request = task.getRequest()
     # request is (path-to-srpm, build-target-name, map-of-other-options)
-    ret = get_build_targets(request[1])
-    if ret:
+    if request[1]:
+        ret = get_build_targets(request[1])
         return ret[0]
     else:
         return None
