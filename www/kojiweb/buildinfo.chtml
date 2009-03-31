@@ -34,8 +34,29 @@
       <th>Maven&nbsp;version</th><td>$mavenbuild.version</td>
     </tr>
     #end if
+    #if $summary
+    <tr>
+      <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>
+    </tr>
+    #end if
+    #if $description
+    <tr>
+      <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
+    </tr>
+    #end if
     <tr>
       <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+    </tr>
+    <tr>
+      #set $stateName = $util.stateName($build.state)
+      <th>State</th>
+      <td class="$stateName">$stateName
+      #if $build.state == $koji.BUILD_STATES.BUILDING
+      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
+      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id$util.authToken($self)">cancel</a>)</span>
+      #end if
+      #end if
+      </td>
     </tr>
     <tr>
       <th>Started</th><td>$util.formatTimeLong($build.creation_time)</td>
@@ -51,17 +72,6 @@
       <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
     </tr>
     #end if
-    <tr>
-      #set $stateName = $util.stateName($build.state)
-      <th>State</th>
-      <td class="$stateName">$stateName
-      #if $build.state == $koji.BUILD_STATES.BUILDING
-      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
-      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id">cancel</a>)</span>
-      #end if
-      #end if
-      </td>
-    </tr>
     #if $task
     <tr>
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
@@ -108,7 +118,11 @@
             <th>$arch</th>
             <td>
               #if $task
+              #if $arch == 'noarch'
+              (<a href="$downloadBase/$nvrpath/data/logs/$noarch_log_dest/">build logs</a>)
+              #else
               (<a href="$downloadBase/$nvrpath/data/logs/$arch/">build logs</a>)
+              #end if
               #end if
             </td>
           </tr>
@@ -164,11 +178,7 @@
     #if $changelog
     <tr>
       <th>Changelog</th>
-      <td class="changelog">
-<pre>
-#echo $util.escapeHTML($koji.util.formatChangelog($changelog))
-</pre>
-      </td>
+      <td class="changelog">$util.escapeHTML($koji.util.formatChangelog($changelog))</td>
     </tr>
     #end if
   </table>

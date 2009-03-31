@@ -10,13 +10,18 @@ import datetime
 import time
 import koji
 import kojiweb.util
+from kojiweb.util import _initValues
+from kojiweb.util import _genHTML
+from kojiweb.util import _getValidTokens
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = kojiweb.util.sortByKeyFunc('name')
 
 def _setUserCookie(req, user):
     options = req.get_options()
-    cookie = mod_python.Cookie.SignedCookie('user', user,
+    # include the current time in the cookie so we can verify that
+    # someone is not using an expired cookie
+    cookie = mod_python.Cookie.SignedCookie('user', user + ':' + str(time.time()),
                                             secret=options['Secret'],
                                             secure=True,
                                             path=os.path.dirname(req.uri),
@@ -36,9 +41,16 @@ def _getUserCookie(req):
                                             secret=options['Secret'])
     if cookies.has_key('user') and \
            (type(cookies['user']) is mod_python.Cookie.SignedCookie):
-        return cookies['user'].value
-    else:
-        return None
+        value =  cookies['user'].value
+        if ':' in value:
+            user, timestamp = value.split(':')
+            timestamp = float(timestamp)
+            if (time.time() - timestamp) < (int(options['LoginTimeout']) * 60 * 60):
+                # cookie is valid and was created more recently than the login
+                # timeout
+                return user
+
+    return None
 
 def _krbLogin(req, session, principal):
     options = req.get_options()
@@ -72,49 +84,22 @@ def _assertLogin(req):
                 raise koji.AuthError, 'could not login using principal: %s' % req.currentLogin
         else:
             raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
+
+        # verify a valid authToken was passed in to avoid CSRF
+        authToken = req.form.get('a', '')
+        validTokens = _getValidTokens(req)
+        if authToken and authToken in validTokens:
+            # we have a token and it's valid
+            pass
+        else:
+            # their authToken is likely expired
+            # send them back to the page that brought them here so they
+            # can re-click the link with a valid authToken
+            _redirectBack(req, page=None, forceSSL=(_getBaseURL(req).startswith('https://')))
+            assert False
     else:
         mod_python.util.redirect(req, 'login')
         assert False
-
-def _initValues(req, title='Build System Info', pageID='summary'):
-    values = {}
-    values['siteName'] = req.get_options().get('SiteName', 'Koji')
-    values['title'] = title
-    values['pageID'] = pageID
-    values['currentDate'] = str(datetime.datetime.now())
-    
-    req._values = values
-
-    return values
-
-# Escape ampersands so the output can be valid XHTML
-class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
-    def filter(self, *args, **kw):
-        result = super(XHTMLFilter, self).filter(*args, **kw)
-        result = result.replace('&', '&amp;')
-        result = result.replace('&amp;nbsp;', '&nbsp;')
-        result = result.replace('&amp;lt;', '&lt;')
-        result = result.replace('&amp;gt;', '&gt;')
-        return result
-
-TEMPLATES = {}
-
-def _genHTML(req, fileName):
-    reqdir = os.path.dirname(req.filename)
-    if os.getcwd() != reqdir:
-        os.chdir(reqdir)
-
-    if hasattr(req, 'currentUser'):
-        req._values['currentUser'] = req.currentUser
-    else:
-        req._values['currentUser'] = None
-        
-    tmpl_class = TEMPLATES.get(fileName)
-    if not tmpl_class:
-        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
-        TEMPLATES[fileName] = tmpl_class
-    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
-    return str(tmpl_inst)
 
 def _getServer(req):
     serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
@@ -366,6 +351,18 @@ def hello(req):
 def showSession(req):
     return _getServer(req).showSession()
 
+# All Tasks
+_TASKS = ['build',
+          'buildSRPMFromSCM',
+          'buildArch',
+          'chainbuild',
+          'waitrepo',
+          'tagBuild',
+          'newRepo',
+          'createrepo',
+          'buildNotification',
+          'tagNotification',
+          'dependantTask']
 # Tasks that can exist without a parent
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
 # Tasks that can have children
@@ -388,6 +385,13 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
         values['ownerObj'] = None
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
+
+    if method in _TASKS:
+        opts['method'] = method
+    else:
+        method = 'all'
+    values['method'] = method
+    values['alltasks'] = _TASKS
 
     treeEnabled = True
     if hostID or (method not in ['all'] + _PARENT_TASKS):
@@ -413,10 +417,6 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
     else:
         treeDisplay = False
     values['treeDisplay'] = treeDisplay
-
-    if method != 'all':
-        opts['method'] = method
-    values['method'] = method
 
     if view in ('tree', 'toplevel'):
         opts['parent'] = None
@@ -512,6 +512,10 @@ def taskinfo(req, taskID):
     elif task['method'] == 'buildMaven':
         buildTag = params[1]
         values['buildTag'] = buildTag
+    elif task['method'] == 'buildSRPMFromSCM':
+        if len(params) > 1:
+            buildTag = server.getTag(params[1])
+            values['buildTag'] = buildTag
     elif task['method'] == 'tagBuild':
         destTag = server.getTag(params[0])
         build = server.getBuild(params[1])
@@ -569,6 +573,20 @@ def taskinfo(req, taskID):
     
     return _genHTML(req, 'taskinfo.chtml')
 
+def taskstatus(req, taskID):
+    server = _getServer(req)
+
+    taskID = int(taskID)
+    task = server.getTaskInfo(taskID)
+    if not task:
+        return ''
+    files = server.listTaskOutput(taskID, stat=True)
+    output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
+    for filename, file_stats in files.items():
+        output += '%s:%i\n' % (filename, file_stats['st_size'])
+
+    return output
+
 def resubmittask(req, taskID):
     server = _getServer(req)
     _assertLogin(req)
@@ -591,7 +609,7 @@ def _sortByExtAndName(a, b):
     bRoot, bExt = os.path.splitext(b)
     return cmp(aExt, bExt) or cmp(aRoot, bRoot)
 
-def getfile(req, taskID, name):
+def getfile(req, taskID, name, offset=None, size=None):
     server = _getServer(req)
     taskID = int(taskID)
 
@@ -605,15 +623,44 @@ def getfile(req, taskID, name):
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
-    req.set_content_length(file_info['st_size'])
 
-    offset = 0
+    file_size = file_info['st_size']
+    if offset is None:
+        offset = 0
+    else:
+        offset = int(offset)
+    if size is None:
+        size = file_size
+    else:
+        size = int(size)
+    if size < 0:
+        size = file_size
+    if offset < 0:
+        # seeking relative to the end of the file
+        if offset < -file_size:
+            offset = -file_size
+        if size > -offset:
+            size = -offset
+    else:
+        if size > (file_size - offset):
+            size = file_size - offset
+
+    req.set_content_length(size)
+
+    remaining = size
     while True:
-        content = server.downloadTaskOutput(taskID, name, offset=offset, size=65536)
+        if remaining <= 0:
+            break
+        chunk_size = 1048576
+        if remaining < chunk_size:
+            chunk_size = remaining
+        content = server.downloadTaskOutput(taskID, name, offset=offset, size=chunk_size)
         if not content:
             break
         req.write(content)
-        offset += len(content)
+        content_length = len(content)
+        offset += content_length
+        remaining -= content_length
 
 def tags(req, start=None, order=None, childID=None):
     values = _initValues(req, 'Tags', 'tags')
@@ -635,6 +682,8 @@ def tags(req, start=None, order=None, childID=None):
     
     return _genHTML(req, 'tags.chtml')
 
+_PREFIX_CHARS = [chr(char) for char in range(48, 58) + range(97, 123)]
+
 def packages(req, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
     values = _initValues(req, 'Packages', 'packages')
     server = _getServer(req)
@@ -652,7 +701,9 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
     values['user'] = user
     values['order'] = order
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
     inherited = int(inherited)
     values['inherited'] = inherited
@@ -661,7 +712,7 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
                                             kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
                                             start=start, dataName='packages', prefix='package', order=order)
     
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
     
     return _genHTML(req, 'packages.chtml')
 
@@ -703,7 +754,7 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
     numBuilds = server.count('listTagged', tag=tag['id'], inherit=True)
     values['numPackages'] = numPackages
     values['numBuilds'] = numBuilds
-    
+
     inheritance = server.getFullInheritance(tag['id'])
     tagsByChild = {}
     for parent in inheritance:
@@ -725,7 +776,8 @@ def taginfo(req, tagID, all='0', packageOrder='package_name', packageStart=None,
     values['destTargets'] = destTargets
     values['all'] = all
     values['repo'] = server.getRepo(tag['id'], state=koji.REPO_READY)
-    
+    values['external_repos'] = server.getExternalRepoList(tag['id'])
+
     child = None
     if childID != None:
         child = server.getTag(int(childID), strict=True)
@@ -881,6 +933,21 @@ def tagparent(req, tagID, parentID, action):
 
     mod_python.util.redirect(req, 'taginfo?tagID=%i' % tag['id'])
 
+def externalrepoinfo(req, extrepoID):
+    values = _initValues(req, 'External Repo Info', 'tags')
+    server = _getServer(req)
+
+    if extrepoID.isdigit():
+        extrepoID = int(extrepoID)
+    extRepo = server.getExternalRepo(extrepoID, strict=True)
+    repoTags = server.getTagExternalRepos(repo_info=extRepo['id'])
+
+    values['title'] = extRepo['name'] + ' | External Repo Info'
+    values['extRepo'] = extRepo
+    values['repoTags'] = repoTags
+
+    return _genHTML(req, 'externalrepoinfo.chtml')
+
 def buildinfo(req, buildID):
     values = _initValues(req, 'Build Info', 'builds')
     server = _getServer(req)
@@ -904,14 +971,59 @@ def buildinfo(req, buildID):
     rpmsByArch = {}
     debuginfoByArch = {}
     for rpm in rpms:
-        canon_arch = koji.canonArch(rpm['arch'])
         if rpm['name'].endswith('-debuginfo') or rpm['name'].endswith('-debuginfo-common'):
-            debuginfoByArch.setdefault(canon_arch, []).append(rpm)
+            debuginfoByArch.setdefault(rpm['arch'], []).append(rpm)
         else:
-            rpmsByArch.setdefault(canon_arch, []).append(rpm)
+            rpmsByArch.setdefault(rpm['arch'], []).append(rpm)
 
+    if rpmsByArch.has_key('src'):
+        srpm = rpmsByArch['src'][0]
+        headers = server.getRPMHeaders(srpm['id'], headers=['summary', 'description'])
+        values['summary'] = koji.fixEncoding(headers.get('summary'))
+        values['description'] = koji.fixEncoding(headers.get('description'))
+        values['changelog'] = server.getChangelogEntries(build['id'])
+
+    noarch_log_dest = 'noarch'
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
+        if rpmsByArch.has_key('noarch') and \
+                [a for a in rpmsByArch.keys() if a not in ('noarch', 'src')]:
+            # This build has noarch and other-arch packages, indicating either
+            # noarch in extra-arches (kernel) or noarch subpackages.
+            # Point the log link to the arch of the buildArch task that the first
+            # noarch package came from.  This will be correct in both the
+            # extra-arches case (noarch) and the subpackage case (one of the other
+            # arches).  If noarch extra-arches and noarch subpackages are mixed in
+            # same build, this will become incorrect.
+            noarch_rpm = rpmsByArch['noarch'][0]
+            if noarch_rpm['buildroot_id']:
+                noarch_buildroot = server.getBuildroot(noarch_rpm['buildroot_id'])
+                if noarch_buildroot:
+                    noarch_task = server.getTaskInfo(noarch_buildroot['task_id'], request=True)
+                    if noarch_task:
+                        noarch_log_dest = noarch_task['request'][2]
+
+        # get the summary, description, and changelogs from the built srpm
+        # if the build is not yet complete
+        if build['state'] != koji.BUILD_STATES['COMPLETE']:
+            srpm_tasks = server.listTasks(opts={'parent': task['id'], 'method': 'buildSRPMFromSCM'})
+            if srpm_tasks:
+                srpm_task = srpm_tasks[0]
+                if srpm_task['state'] == koji.TASK_STATES['CLOSED']:
+                    srpm_path = None
+                    for output in server.listTaskOutput(srpm_task['id']):
+                        if output.endswith('.src.rpm'):
+                            srpm_path = output
+                            break
+                    if srpm_path:
+                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'], filepath=srpm_path,
+                                                            headers=['summary', 'description'])
+                        if srpm_headers:
+                            values['summary'] = koji.fixEncoding(srpm_headers['summary'])
+                            values['description'] = koji.fixEncoding(srpm_headers['description'])
+                        changelog = server.getChangelogEntries(taskID=srpm_task['id'], filepath=srpm_path)
+                        if changelog:
+                            values['changelog'] = changelog
     else:
         task = None
 
@@ -924,19 +1036,20 @@ def buildinfo(req, buildID):
     values['archives'] = archives
     values['archivesByExt'] = archivesByExt
     
+    values['noarch_log_dest'] = noarch_log_dest
     if req.currentUser:
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
         values['perms'] = []
-    
-    values['changelog'] = server.getChangelogEntries(build['id'])
+    for field in ['summary', 'description', 'changelog']:
+        if not values.has_key(field):
+            values[field] = None
+
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
         if avgDuration != None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
-            startTime = datetime.datetime.fromtimestamp(
-                time.mktime(time.strptime(koji.formatTime(build['creation_time']), '%Y-%m-%d %H:%M:%S'))
-                )
+            startTime = datetime.datetime.fromtimestamp(build['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
         else:
             values['estCompletion'] = None
@@ -947,7 +1060,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', mavenonly='0'):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1', mavenonly='0'):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
@@ -987,21 +1100,30 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['state'] = state
 
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
     
     values['order'] = order
-    inherited = int(inherited)
-    values['inherited'] = inherited
     mavenonly = int(mavenonly)
     values['mavenonly'] = mavenonly
+
+    if tag:
+        inherited = int(inherited)
+        values['inherited'] = inherited
+        latest = int(latest)
+        values['latest'] = latest
+    else:
+        values['inherited'] = None
+        values['latest'] = None
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
         builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
                                                                                 'owner': (user and user['name'] or None),
                                                                                 'maven_only': bool(mavenonly),
-                                                                                'inherit': bool(inherited), 'prefix': prefix},
+                                                                                'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
         builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
@@ -1009,7 +1131,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
                                                                                'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
     
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
 
     return _genHTML(req, 'builds.chtml')
 
@@ -1018,7 +1140,9 @@ def users(req, order='name', start=None, prefix=None):
     server = _getServer(req)
 
     if prefix:
-        prefix = prefix.lower()
+        prefix = prefix.lower()[0]
+    if prefix not in _PREFIX_CHARS:
+        prefix = None
     values['prefix'] = prefix
 
     values['order'] = order
@@ -1026,7 +1150,7 @@ def users(req, order='name', start=None, prefix=None):
     users = kojiweb.util.paginateMethod(server, values, 'listUsers', kw={'prefix': prefix},
                                         start=start, dataName='users', prefix='user', order=order)
 
-    values['chars'] = [chr(char) for char in range(48, 58) + range(97, 123)]
+    values['chars'] = _PREFIX_CHARS
     
     return _genHTML(req, 'users.chtml')
 
@@ -1064,18 +1188,24 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         epochStr = '%s:' % rpm['epoch']
     values['title'] = values['title'] % epochStr
 
-    build = server.getBuild(rpm['build_id'])
+    build = None
+    if rpm['build_id'] != None:
+        build = server.getBuild(rpm['build_id'])
     builtInRoot = None
     if rpm['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
-    requires = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
-    requires.sort(_sortbyname)
-    provides = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
-    provides.sort(_sortbyname)
-    obsoletes = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
-    obsoletes.sort(_sortbyname)
-    conflicts = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
-    conflicts.sort(_sortbyname)
+    if rpm['external_repo_id'] == 0:
+        values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
+        values['requires'].sort(_sortbyname)
+        values['provides'] = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
+        values['provides'].sort(_sortbyname)
+        values['obsoletes'] = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
+        values['obsoletes'].sort(_sortbyname)
+        values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
+        values['conflicts'].sort(_sortbyname)
+        headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description'])
+        values['summary'] = koji.fixEncoding(headers.get('summary'))
+        values['description'] = koji.fixEncoding(headers.get('description'))
     buildroots = server.listBuildroots(rpmID=rpm['id'])
     buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
 
@@ -1083,10 +1213,6 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
     values['rpm'] = rpm
     values['build'] = build
     values['builtInRoot'] = builtInRoot
-    values['requires'] = requires
-    values['provides'] = provides
-    values['obsoletes'] = obsoletes
-    values['conflicts'] = conflicts
     values['buildroots'] = buildroots
     
     files = kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],
@@ -1788,12 +1914,16 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'target': 'buildtargetinfo?targetID=%(id)i',
              'user': 'userinfo?userID=%(id)i',
              'host': 'hostinfo?hostID=%(id)i',
-             'rpm': 'rpminfo?rpmID=%(id)i',
-             'file': 'fileinfo?rpmID=%(id)i&filename=%(name)s'}
-             
+             'rpm': 'rpminfo?rpmID=%(id)i'}
+
+_VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
+_VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
+_VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
+
 def search(req, start=None, order='name'):
     values = _initValues(req, 'Search', 'search')
     server = _getServer(req)
+    values['error'] = None
 
     form = req.form
     if form.has_key('terms') and form['terms']:
@@ -1804,12 +1934,19 @@ def search(req, start=None, order='name'):
         values['type'] = type
         values['match'] = match
 
+        if not _VALID_SEARCH_RE.match(terms):
+            values['error'] = 'Invalid search terms<br/>' + \
+                'Search terms may contain only these characters: ' + \
+                _VALID_SEARCH_CHARS + _VALID_SEARCH_SYMS
+            return _genHTML(req, 'search.chtml')
+
         if match == 'regexp':
             try:
                 re.compile(terms)
             except:
-                raise koji.GenericError, 'invalid regular expression: %s' % terms
-        
+                values['error'] = 'Invalid regular expression'
+                return _genHTML(req, 'search.chtml')
+
         infoURL = _infoURLs.get(type)
         if not infoURL:
             raise koji.GenericError, 'unknown search type: %s' % type
@@ -1828,20 +1965,25 @@ def search(req, start=None, order='name'):
         return _genHTML(req, 'search.chtml')
 
 def watchlogs(req, taskID):
+    values = _initValues(req)
+    if isinstance(taskID, list):
+        values['tasks'] = ', '.join(taskID)
+    else:
+        values['tasks'] = taskID
+
     html = """
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
   <head>
-    <script type="text/javascript" src="/koji-static/js/jsolait/init.js"></script>
     <script type="text/javascript" src="/koji-static/js/watchlogs.js"></script>
-    <title>Logs for task %i | Koji</title>
+    <title>Logs for task %(tasks)s | %(siteName)s</title>
   </head>
-  <body onload="main()">
+  <body onload="watchLogs('logs')">
     <pre id="logs">
-Loading logs...
+<span>Loading logs for task %(tasks)s...</span>
     </pre>
   </body>
 </html>
-""" % int(taskID)
+""" % values
     return html

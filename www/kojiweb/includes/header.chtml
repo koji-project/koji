@@ -54,7 +54,6 @@
               <option value="user">Users</option>
               <option value="host">Hosts</option>
               <option value="rpm">RPMs</option>
-              <option value="file">Files</option>
             </select>
             <input type="text" name="terms"/>
             <input type="submit" value="Search"/>

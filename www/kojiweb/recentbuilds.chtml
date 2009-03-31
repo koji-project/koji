@@ -22,7 +22,7 @@
 
 <rss version="2.0">
   <channel>
-    <title>Koji: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
+    <title>$siteName: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
     <link>$linkURL()</link>
     <description>
       A list of the most recent builds
@@ -35,7 +35,7 @@
       #if $user
       by user $user.name
       #end if
-      in the Koji Build System.  The list is sorted in reverse chronological order by build completion time.
+      in the $siteName Build System.  The list is sorted in reverse chronological order by build completion time.
     </description>
     <pubDate>$util.formatTimeRSS($currentDate)</pubDate>
     #for $build in $builds

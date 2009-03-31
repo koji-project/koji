@@ -7,7 +7,7 @@
   <table>
     #if $child and 'admin' in $perms
     <tr>
-      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add">Add $tag.name as parent of $child.name</a></th>
+      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add$util.authToken($self)">Add $tag.name as parent of $child.name</a></th>
     </tr>
     #end if
     <tr>
@@ -60,7 +60,7 @@
               <span class="treeLabel">
                 <a href="taginfo?tagID=$parent.parent_id">$parent.name</a>
                 #if $depth == 1 and 'admin' in $perms
-                <span class="treeLink">(<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=edit">edit</a>) (<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=remove">remove</a>)</span>
+                <span class="treeLink">(<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=edit$util.authToken($self)">edit</a>) (<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=remove$util.authToken($self)">remove</a>)</span>
                 #end if
               </span>
             </span>
@@ -92,6 +92,20 @@
     #if 'admin' in $perms
     <tr>
       <td colspan="2"><a href="tags?childID=$tag.id">Add parent</a></td>
+    </tr>
+    #end if
+    #if $external_repos
+    <tr>
+      <th>External&nbsp;repos</th>
+      <td>
+	#for $external_repo in $external_repos
+	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$external_repo.external_repo_name</a>
+	#if $external_repo.tag_id != $tag.id
+	<span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_id">$external_repo.tag_name</a>)</span>
+	#end if
+	<br/>
+	#end for
+      </td>
     </tr>
     #end if
     <tr>
@@ -131,10 +145,10 @@
     </tr>
     #if 'admin' in $perms
     <tr>
-      <td colspan="2"><a href="tagedit?tagID=$tag.id">Edit tag</a></td>
+      <td colspan="2"><a href="tagedit?tagID=$tag.id$util.authToken($self)">Edit tag</a></td>
     </tr>
     <tr>
-      <td colspan="2"><a href="tagdelete?tagID=$tag.id">Delete tag</a></td>
+      <td colspan="2"><a href="tagdelete?tagID=$tag.id$util.authToken($self)">Delete tag</a></td>
     </tr>
     #end if
   </table>

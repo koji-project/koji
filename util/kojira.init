@@ -2,7 +2,7 @@
 #
 # kojira       Start/Stop kojira
 #
-# chkconfig: 345 99 99
+# chkconfig: - 99 99
 # description: koji repo administrator
 # processname: kojira
 

@@ -1,3 +1,4 @@
+#import koji
 #from kojiweb import util
 #import time
 #import urllib
@@ -11,10 +12,18 @@
       <th>ID</th><td>$rpm.id</td>
     </tr>
     <tr>
+      #if $build
       <th>Name</th><td><a href="packageinfo?packageID=$build.package_id">$rpm.name</a></td>
+      #else
+      <th>Name</th><td>$rpm.name</td>
+      #end if
     </tr>
     <tr>
+      #if $build
       <th>Version</th><td><a href="buildinfo?buildID=$build.id">$rpm.version</a></td>
+      #else
+      <th>Version</th><td>$rpm.version</td>
+      #end if
     </tr>
     <tr>
       <th>Release</th><td>$rpm.release</td>
@@ -25,20 +34,39 @@
     <tr>
       <th>Arch</th><td>$rpm.arch</td>
     </tr>
+    #if $rpm.external_repo_id == 0
+    <tr>
+      <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>
+    </tr>
+    <tr>
+      <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
+    </tr>
+    #end if
+    <tr>
+      <th>Build Time</th><td>$time.strftime('%Y-%m-%d %H:%M:%S', $time.gmtime($rpm.buildtime)) GMT</td>
+    </tr>
+    #if $build and $build.state == $koji.BUILD_STATES.DELETED
+    <tr>
+      <th>State</th><td class="deleted">deleted</td>
+    </tr>
+    #end if
+    #if $rpm.external_repo_id
+    <tr>
+      <th>External Repository</th><td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$rpm.external_repo_name</a></td>
+    </tr>
+    #end if
     <tr>
       <th>Size</th><td>$rpm.size</td>
     </tr>
     <tr>
       <th>Payload Hash</th><td>$rpm.payloadhash</td>
     </tr>
-    <tr>
-      <th>Build Time</th><td>$time.strftime('%Y-%m-%d %H:%M:%S', $time.gmtime($rpm.buildtime)) GMT</td>
-    </tr>
     #if $builtInRoot
     <tr>
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
     </tr>
     #end if
+    #if $rpm.external_repo_id == 0
     <tr>
       <th>Provides</th>
       <td class="container">
@@ -135,15 +163,16 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$util.escapeHTML($file.name)</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>
         #else
-        No files
+        No Files
         #end if
       </td>
     </tr>
+    #end if
     <tr>
       <th>Component&nbsp;of</th>
       <td class="container">

@@ -408,7 +408,9 @@ abbr {
 }
 
 .changelog {
+    font-family: monospace;
     font-size: medium;
+    white-space: pre;
 }
 
 #headerHelp {
@@ -424,4 +426,18 @@ span#loginInfo {
     float: right;
     font-weight: bold;
     margin: 5px;
+}
+
+.smaller {
+    font-size: smaller;
+}
+
+.rpmheader {
+    font-family: monospace;
+    font-size: medium;
+    white-space: pre;
+}
+
+.error {
+    color: red;
 }

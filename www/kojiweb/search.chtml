@@ -7,10 +7,13 @@
   <form action="search">
     <table>
       <tr>
+        #if $error
+        <tr><td colspan="3" class="error">$error</td></tr>
+        #end if
         <th>Search</th>
         <td><input type="text" name="terms"/></td>
         <td>
-          <select name="type" onchange="javascript: if (this.options[this.selectedIndex].value == 'file') { document.getElementById('radioexact').checked = true; document.getElementById('radioglob').disabled = true; document.getElementById('abbrglob').style.color = 'gray'; document.getElementById('radioregexp').disabled = true; document.getElementById('abbrregexp').style.color = 'gray'; } else { document.getElementById('radioglob').disabled = false; document.getElementById('abbrglob').style.color = 'black'; document.getElementById('radioregexp').disabled = false; document.getElementById('abbrregexp').style.color = 'black'; }">
+          <select name="type">
             <option value="package">Packages</option>
             <option value="build">Builds</option>
             <option value="tag">Tags</option>
@@ -18,7 +21,6 @@
             <option value="user">Users</option>
             <option value="host">Hosts</option>
             <option value="rpm">RPMs</option>
-            <option value="file">Files</option>
           </select>
         </td>
       </tr>
@@ -27,7 +29,7 @@
         <td colspan="2">
           <input type="radio" name="match" value="glob" id="radioglob" checked="checked"/><abbr title="? will match any single character, * will match any sequence of zero or more characters" id="abbrglob">glob</abbr>
           <input type="radio" name="match" value="regexp" id="radioregexp"/><abbr title="full POSIX regular expressions" id="abbrregexp">regexp</abbr>
-	  <input type="radio" name="match" value="exact" id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
+          <input type="radio" name="match" value="exact" id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
         </td>
       </tr>
       <tr>

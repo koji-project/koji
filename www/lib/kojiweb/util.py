@@ -1,5 +1,9 @@
-import time
+import Cheetah.Template
+import datetime
 import koji
+from koji.util import md5_constructor
+import os
+import time
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from socket import sslerror as socket_sslerror
@@ -14,6 +18,72 @@ try:
     from OpenSSL.SSL import Error as SSL_Error
 except:
     SSL_Error = NoSuchException
+
+
+def _initValues(req, title='Build System Info', pageID='summary'):
+    values = {}
+    values['siteName'] = req.get_options().get('SiteName', 'Koji')
+    values['title'] = title
+    values['pageID'] = pageID
+    values['currentDate'] = str(datetime.datetime.now())
+
+    req._values = values
+
+    return values
+
+# Escape ampersands so the output can be valid XHTML
+class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
+    def filter(self, *args, **kw):
+        result = super(XHTMLFilter, self).filter(*args, **kw)
+        result = result.replace('&', '&amp;')
+        result = result.replace('&amp;nbsp;', '&nbsp;')
+        result = result.replace('&amp;lt;', '&lt;')
+        result = result.replace('&amp;gt;', '&gt;')
+        return result
+
+TEMPLATES = {}
+
+def _genHTML(req, fileName):
+    reqdir = os.path.dirname(req.filename)
+    if os.getcwd() != reqdir:
+        os.chdir(reqdir)
+
+    if hasattr(req, 'currentUser'):
+        req._values['currentUser'] = req.currentUser
+    else:
+        req._values['currentUser'] = None
+    req._values['authToken'] = _genToken(req)
+
+    tmpl_class = TEMPLATES.get(fileName)
+    if not tmpl_class:
+        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
+        TEMPLATES[fileName] = tmpl_class
+    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
+    return str(tmpl_inst)
+
+def _truncTime():
+    now = datetime.datetime.now()
+    # truncate to the nearest 15 minutes
+    return now.replace(minute=(now.minute / 15 * 15), second=0, microsecond=0)
+
+def _genToken(req, tstamp=None):
+    if hasattr(req, 'currentLogin') and req.currentLogin:
+        user = req.currentLogin
+    else:
+        return ''
+    if tstamp == None:
+        tstamp = _truncTime()
+    return md5_constructor(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
+
+def _getValidTokens(req):
+    tokens = []
+    now = _truncTime()
+    for delta in (0, 15, 30):
+        token_time = now - datetime.timedelta(minutes=delta)
+        token = _genToken(req, token_time)
+        if token:
+            tokens.append(token)
+    return tokens
 
 def toggleOrder(template, sortKey, orderVar='order'):
     """
@@ -312,9 +382,27 @@ def escapeHTML(value):
     if not value:
         return value
 
+    value = koji.fixEncoding(value)
     return value.replace('&', '&amp;').\
            replace('<', '&lt;').\
            replace('>', '&gt;')
+
+def authToken(template, first=False, form=False):
+    """Return the current authToken if it exists.
+    If form is True, return it enclosed in a hidden input field.
+    Otherwise, return it in a format suitable for appending to a URL.
+    If first is True, prefix it with ?, otherwise prefix it
+    with &.  If no authToken exists, return an empty string."""
+    token = template.getVar('authToken', default=None)
+    if token != None:
+        if form:
+            return '<input type="hidden" name="a" value="%s"/>' % token
+        if first:
+            return '?a=' + token
+        else:
+            return '&a=' + token
+    else:
+        return ''
 
 def explainError(error):
     """Explain an exception in user-consumable terms

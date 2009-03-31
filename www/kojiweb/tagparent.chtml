@@ -9,6 +9,7 @@
   #end if
 
   <form action="tagparent">
+    $util.authToken($self, form=True)
     <input type="hidden" name="action" value="#if $inheritanceData then 'edit' else 'add'#"/>
     <table>
       <tr>

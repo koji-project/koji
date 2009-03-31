@@ -9,6 +9,7 @@
   #end if
 
   <form action="#if $notif then 'notificationedit' else 'notificationcreate'#">
+    $util.authToken($self, form=True)
     #if $notif
     <input type="hidden" name="notificationID" value="$notif.id"/>
     #end if

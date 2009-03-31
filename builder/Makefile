@@ -1,6 +1,7 @@
 
 SUBDIRS = lib
 BINFILES = kojid
+LIBEXECFILES = mergerepos
 PYFILES = $(wildcard *.py)
 
 _default:
@@ -20,6 +21,9 @@ install:
 
 	mkdir -p $(DESTDIR)/usr/sbin
 	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+
+	mkdir -p $(DESTDIR)/usr/libexec/kojid
+	install -p -m 755 $(LIBEXECFILES) $(DESTDIR)/usr/libexec/kojid
 
 	mkdir -p $(DESTDIR)/etc/mock/koji
 	mkdir -p $(DESTDIR)/etc/rc.d/init.d

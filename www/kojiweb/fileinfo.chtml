@@ -9,7 +9,7 @@
       <th>Name</th><td>$file.name</td>
     </tr>
     <tr>
-      <th>MD5 Sum</th><td>$file.md5</td>
+      <th>Digest ($file.digest_algo)</th><td>$file.digest</td>
     </tr>
     <tr>
       <th>Size</th><td>$file.size</td>

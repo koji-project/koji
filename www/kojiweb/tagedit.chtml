@@ -9,6 +9,7 @@
   #end if
 
   <form action="#if $tag then 'tagedit' else 'tagcreate'#">
+    $util.authToken($self, form=True)
     <table>
       <tr>
         <th>Name</th>

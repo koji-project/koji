@@ -33,11 +33,12 @@ import errno
 import glob
 import logging
 import logging.handlers
-import md5
+from koji.util import md5_constructor
 import os
 import pprint
 import pwd
 import grp
+import random
 import re
 import rpm
 import shutil
@@ -55,7 +56,9 @@ import zipfile
 import Cheetah.Template
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
+from gzip import GzipFile
 from optparse import OptionParser
+from StringIO import StringIO
 from xmlrpclib import Fault
 
 # our private modules
@@ -244,7 +247,7 @@ def incrementalUpload(fname, fd, path, retries=5, logger=None):
             break
         
         data = base64.encodestring(contents)
-        digest = md5.new(contents).hexdigest()
+        digest = md5_constructor(contents).hexdigest()
         del contents
         
         tries = 0
@@ -303,44 +306,36 @@ class BuildRoot(object):
         self.tag_id = data['tag_id']
         self.tag_name = data['tag_name']
         self.repoid = data['repo_id']
+        self.repo_info = session.repoInfo(self.repoid, strict=True)
+        self.event_id = self.repo_info['create_event']
         self.br_arch = data['arch']
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
-        self.config = session.getBuildConfig(self.tag_id)
+        self.config = session.getBuildConfig(self.tag_id, event=self.event_id)
 
     def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False):
         """Create a brand new repo"""
+        if not repo_id:
+            raise koji.BuildrootError, "A repo id must be provided"
+        repo_info = session.repoInfo(repo_id, strict=True)
+        self.repo_info = repo_info
+        self.repoid = self.repo_info['id']
+        self.event_id = self.repo_info['create_event']
         self.task_id = task_id
-        self.distribution = distribution
-        if not self.distribution:
-            # Provide a default if the srpm did not contain a 'distribution' header,
-            # e.g. if it was built by hand
-            self.distribution = 'Unknown'
-        self.config = session.getBuildConfig(tag)
+        self.config = session.getBuildConfig(tag, event=self.event_id)
         if not self.config:
             raise koji.BuildrootError("Could not get config info for tag: %s" % tag)
         self.tag_id = self.config['id']
         self.tag_name = self.config['name']
-        if repo_id is None:
-            #use current active repo for tag, waiting if necessary
-            while 1:
-                repo_info = session.getRepo(self.tag_id)
-                if repo_info and repo_info['state'] == koji.REPO_READY:
-                    break
-                self.logger.debug("Waiting for repo to be created %s" % self.tag_name)
-                time.sleep(30)
-        else:
-            repo_info = session.repoInfo(repo_id)
-            if self.config['id'] != repo_info['tag_id']:
-                raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
-                        % (self.config['name'], repo_info['tag_name'])
-            repo_state = koji.REPO_STATES[repo_info['state']]
-            if repo_state == 'EXPIRED':
-                # This should be ok. Expired repos are still intact, just not
-                # up-to-date (which may be the point in some cases).
-                self.logger.info("Requested repo (%i) is no longer current" % repo_id)
-            elif repo_state != 'READY':
-                raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
-        self.repoid = repo_info['id']
+        if self.config['id'] != repo_info['tag_id']:
+            raise koji.BuildrootError, "tag/repo mismatch: %s vs %s" \
+                    % (self.config['name'], repo_info['tag_name'])
+        repo_state = koji.REPO_STATES[repo_info['state']]
+        if repo_state == 'EXPIRED':
+            # This should be ok. Expired repos are still intact, just not
+            # up-to-date (which may be the point in some cases).
+            self.logger.info("Requested repo (%i) is no longer current" % repo_id)
+        elif repo_state != 'READY':
+            raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
         self.br_arch = koji.canonArch(arch)
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
         id = session.host.newBuildRoot(self.repoid, self.br_arch, task_id=task_id)
@@ -360,10 +355,10 @@ class BuildRoot(object):
         self.mockcfg = "koji/%s" % self.name
 
         opts = {}
-        for k in ('repoid', 'tag_name', 'distribution'):
+        for k in ('repoid', 'tag_name'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'mockhost'):
+        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'distribution', 'mockhost'):
             if hasattr(options, k):
                 opts[k] = getattr(options, k)
         opts['buildroot_id'] = self.id
@@ -496,18 +491,10 @@ class BuildRoot(object):
                 session._forget()
                 if os.getuid() == 0 and hasattr(options,"mockuser"):
                     self.logger.info('Running mock as %s' % options.mockuser)
-                    try:
-                        uid,gid = pwd.getpwnam(options.mockuser)[2:4]
-                    except KeyError:
-                        #perhaps a uid was specified
-                        try:
-                            uid,gid = pwd.getpwuid(int(options.mockuser))[2:4]
-                        except (TypeError,ValueError,KeyError):
-                            uid = None
+                    uid,gid = pwd.getpwnam(options.mockuser)[2:4]
                     os.setgroups([grp.getgrnam('mock')[2]])
-                    if uid is not None:
-                        os.setregid(gid,gid)
-                        os.setreuid(uid,uid)
+                    os.setregid(gid,gid)
+                    os.setreuid(uid,uid)
                 os.execvp(cmd[0],cmd)
             except:
                 #diediedie
@@ -554,6 +541,27 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
+    def build_srpm(self, specfile, sourcedir):
+        session.host.setBuildRootState(self.id,'BUILDING')
+        chroot_sourcedir = sourcedir[len(self.rootdir()):]
+        # call "make sources" in the chroot so any required files not stored in
+        # the SCM can be retrieved
+        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
+
+        rv = self.mock(args)
+
+        if rv:
+            self.expire()
+            raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
+
+        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir]
+
+        rv = self.mock(args)
+
+        if rv:
+            self.expire()
+            raise koji.BuildError, "error building srpm, %s" % self._mockResult(rv)
+
     def build(self,srpm,arch=None):
         # run build
         session.host.setBuildRootState(self.id,'BUILDING')
@@ -576,8 +584,19 @@ class BuildRoot(object):
             - version
             - release
             - epoch
+            - arch
+            - payloadhash
+            - size
+            - buildtime
         """
-        fields = ('name','version','release','epoch','arch')
+        fields = ('name',
+                  'version',
+                  'release',
+                  'epoch',
+                  'arch',
+                  'sigmd5',
+                  'size',
+                  'buildtime')
         rpm.addMacro("_dbpath", "%s/var/lib/rpm" % self.rootdir())
         ret = []
         try:
@@ -588,9 +607,12 @@ class BuildRoot(object):
                 if pkg['name'] == 'buildsys-build':
                     #XXX config
                     continue
+                pkg['payloadhash'] = koji.hex_string(pkg['sigmd5'])
+                del pkg['sigmd5']
                 ret.append(pkg)
         finally:
             rpm.delMacro("_dbpath")
+        self.markExternalRPMs(ret)
         return ret
 
     def getMavenPackageList(self, repodir):
@@ -664,10 +686,58 @@ class BuildRoot(object):
         "Non-mock implementation of clean"
         raise koji.FunctionDeprecated, "no longer needed and deprecated. use clean()"
 
-    def clean(self):
-        """Remove the buildroot and associated mock config"""
-        self.mock(['--clean'])
-        raise koji.GenericError, "dangerous and deprecated. use scrub()"
+    def markExternalRPMs(self, rpmlist):
+        """Check rpms against pkgorigins and add external repo data to the external ones
+
+        Modifies rpmlist in place. No return
+        """
+        external_repos = session.getExternalRepoList(self.repo_info['tag_id'],
+                                    event=self.repo_info['create_event'])
+        if not external_repos:
+            #nothing to do
+            return
+        #index external repos by expanded url
+        erepo_idx = {}
+        for erepo in external_repos:
+            # substitute $arch in the url with the arch of the repo we're generating
+            ext_url = erepo['url'].replace('$arch', self.br_arch)
+            erepo_idx[ext_url] = erepo
+        pathinfo = koji.PathInfo(topdir='')
+        #XXX - cheap hack to get relative paths
+        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
+        relpath = os.path.join(repodir, self.br_arch, 'repodata', 'pkgorigins.gz')
+        opts = dict([(k, getattr(options, k)) for k in 'topurl','topdir'])
+        fo = koji.openRemoteFile(relpath, **opts)
+        #at this point we know there were external repos at the create event,
+        #so there should be an origins file.
+        origin_idx = {}
+        #GzipFile doesn't play nice with urlopen, so we have the following
+        fo2 = GzipFile(fileobj=StringIO(fo.read()), mode='r')
+        fo.close()
+        for line in fo2:
+            parts=line.split(None, 2)
+            if len(parts) < 2:
+                continue
+            #first field is formated by yum as [e:]n-v-r.a
+            nvra = "%(name)s-%(version)s-%(release)s" %  koji.parse_NVRA(parts[0])
+            origin_idx[nvra] = parts[1]
+        fo2.close()
+        # mergerepo starts from a local repo in the task workdir, so internal
+        # rpms have an odd-looking origin that we need to look for
+        localtail = '/repo_%s_premerge/' % self.repo_info['id']
+        for rpm_info in rpmlist:
+            key = "%(name)s-%(version)s-%(release)s" % rpm_info
+            ext_url = origin_idx.get(key)
+            if not ext_url:
+                raise koji.BuildError, "No origin for %s" % key
+            erepo = erepo_idx.get(ext_url)
+            if not erepo:
+                if ext_url.startswith('file://') and ext_url.endswith(localtail):
+                    # internal rpm
+                    continue
+                raise koji.BuildError, "Unknown origin for %s: %s" % (key, ext_url)
+            rpm_info['external_repo'] = erepo
+            rpm_info['location'] = erepo['external_repo_id']
 
     def resultdir(self):
         global options
@@ -914,11 +984,10 @@ class TaskManager(object):
             #about). This will happen after a daemon restart, for example.
             self.logger.info("freeing stale tasks: %r" % stale)
             session.host.freeTasks(stale)
-        w_opts = os.WNOHANG
         for id, pid in self.pids.items():
             if self._waitTask(id, pid):
                 # the subprocess handles most everything, we just need to clear things out
-                if self.cleanupTask(id):
+                if self.cleanupTask(id, wait=False):
                     del self.pids[id]
                 if self.tasks.has_key(id):
                     del self.tasks[id]
@@ -1038,115 +1107,150 @@ class TaskManager(object):
                 raise
             #otherwise assume the process is gone
             self.logger.info("%s: %s" % (prefix, e))
-            return False
+            return True
         if childpid != 0:
             self.logger.info(_parseStatus(status, prefix))
             return True
         return False
 
-    def _killGroup(self, task_id, sig=signal.SIGTERM, timeout=5):
-        """Kill process group with signal, keep trying within timeout
-
-        Returns True if successful, False if not
+    def _doKill(self, task_id, pid, cmd, sig, timeout, pause):
         """
-        pid = self.pids.get(task_id)
-        if not pid:
-            raise koji.GenericError, "No pid for task %i" % task_id
-        pgrps = self._childPGIDs(pid)
-        success = True
-        for pgrp in pgrps[::-1]:
-            # iterate in reverse order so processes whose children are killed might have
-            # a chance to cleanup before they're killed
-            success &= self._doKillGroup(task_id, pgrp, sig, timeout)
-        return success
-
-    def _doKillGroup(self, task_id, pgrp, sig=signal.SIGTERM, timeout=5):
-        """Kill the process group with the given process group ID.  Return True if the
-        group is successfully killed in the given timeout, False otherwise."""
-        incr = 1.0
+        Kill the process with the given process ID.
+        Return True if the process is successfully killed in
+        the given timeout, False otherwise.
+        """
+        self.logger.info('Checking "%s" (pid %i, taskID %i)...' % (cmd, pid, task_id))
+        execname = cmd.split()[0]
+        signaled = False
         t = 0.0
-        while t < timeout:
-            try:
-                pid, rv = os.waitpid(-pgrp, os.WNOHANG)
-                while pid != 0:
-                    self.logger.info(_parseStatus(rv, 'process %i' % pid))
-                    pid, rv = os.waitpid(-pgrp, os.WNOHANG)
-            except OSError, e:
-                # means there are no processes in that process group
-                self.logger.debug("Task %i (pgrp %i): %s" % (task_id, pgrp, e))
-                if t == 0.0:
-                    self.logger.info("Task %i (pgrp %i) exited" % (task_id, pgrp))
+        while True:
+            status = self._getStat(pid)
+            if status and status[1] == cmd and status[2] != 'Z':
+                self.logger.info('%s (pid %i, taskID %i) is running' % (execname, pid, task_id))
+            else:
+                if signaled:
+                    self.logger.info('%s (pid %i, taskID %i) was killed by signal %i' % (execname, pid, task_id, sig))
                 else:
-                    self.logger.info("Killed task %i (pgrp %i)" % (task_id, pgrp))
+                    self.logger.info('%s (pid %i, taskID %i) exited' % (execname, pid, task_id))
                 return True
-            else:
-                self.logger.info("Task %i (pgrp %i) exists" % (task_id, pgrp))
-            
-            try:
-                os.killpg(pgrp, sig)
-            except OSError, e:
-                # shouldn't happen
-                self.logger.warn("Task %i (pgrp %i): %s" % (task_id, pgrp, e))
-                continue
-            else:
-                self.logger.info("Sent signal %i to task %i (pgrp %i)" % (sig, task_id, pgrp))
-            
-            time.sleep(incr)
-            t += incr
-        self.logger.warn("Failed to kill task %i (pgrp %i)" % (task_id, pgrp))
-        return False
 
-    def _childPGIDs(self, pid):
+            if t >= timeout:
+                self.logger.warn('Failed to kill %s (pid %i, taskID %i) with signal %i' %
+                                 (execname, pid, task_id, sig))
+                return False
+
+            try:
+                os.kill(pid, sig)
+            except OSError, e:
+                # process probably went away, we'll find out on the next iteration
+                self.logger.info('Error sending signal %i to %s (pid %i, taskID %i): %s' %
+                                 (sig, execname, pid, task_id, e))
+            else:
+                signaled = True
+                self.logger.info('Sent signal %i to %s (pid %i, taskID %i)' %
+                                 (sig, execname, pid, task_id))
+
+            time.sleep(pause)
+            t += pause
+
+    def _getStat(self, pid):
+        """
+        Get the stat info for the given pid.
+        Return a list of all the fields in /proc/<pid>/stat.
+        The second entry will contain the full command-line instead of
+        just the command name.
+        If the process does not exist, return None.
+        """
+        try:
+            proc_path = '/proc/%i/stat' % pid
+            if not os.path.isfile(proc_path):
+                return None
+            proc_file = file(proc_path)
+            procstats = [not field.isdigit() and field or int(field) for field in proc_file.read().split()]
+            proc_file.close()
+
+            cmd_path = '/proc/%i/cmdline' % pid
+            if not os.path.isfile(cmd_path):
+                return None
+            cmd_file = file(cmd_path)
+            procstats[1] = cmd_file.read().replace('\0', ' ').strip()
+            cmd_file.close()
+            if not procstats[1]:
+                return None
+
+            return procstats
+        except IOError, e:
+            # process may have already gone away
+            return None
+
+    def _childPIDs(self, pid):
         """Recursively get the children of the process with the given ID.
-        Return a list containing the process group IDs of the children
-        in depth-first order, without duplicates."""
+        Return a list containing the process IDs of the children
+        in breadth-first order, without duplicates."""
         statsByPPID = {}
-        pgids = []
+        pidcmd = None
         for procdir in os.listdir('/proc'):
             if not procdir.isdigit():
                 continue
-            try:
-                procfile = file('/proc/%s/stat' % procdir)
-                procstats = [not field.isdigit() and field or int(field) for field in procfile.read().split()]
-                procfile.close()
-                if not statsByPPID.has_key(procstats[3]):
-                    statsByPPID[procstats[3]] = []
-                statsByPPID[procstats[3]].append(procstats)
-                if procstats[0] == pid:
-                    # put the pgid of the top-level process into the list
-                    pgids.append(procstats[4])
-            except:
-                # We expect IOErrors, because files in /proc may disappear between the listdir() and read().
-                # Nothing we can do about it, just move on.
+            procid = int(procdir)
+            procstats = self._getStat(procid)
+            if not procstats:
                 continue
+            statsByPPID.setdefault(procstats[3], []).append(procstats)
+            if procid == pid:
+                pidcmd = procstats[1]
 
-        if not pgids:
-            # assume the pid and pgid of the forked task are the same
-            pgids.append(pid)
-        pids = [pid]
-        while pids:
-            for ppid in pids[:]:
+        pids = []
+        if pidcmd:
+            # only append the pid if it still exists
+            pids.append((pid, pidcmd))
+
+        parents = [pid]
+        while parents:
+            for ppid in parents[:]:
                 for procstats in statsByPPID.get(ppid, []):
-                    # get the /proc entries with ppid as their parent, and append their pgid to the list,
+                    # get the /proc entries with ppid as their parent, and append their pid to the list,
                     # then recheck for their children
-                    # pid is the 0th field, ppid is the 3rd field, pgid is the 4th field
-                    if procstats[4] not in pgids:
-                        pgids.append(procstats[4])
-                    pids.append(procstats[0])
-                pids.remove(ppid)
+                    # pid is the 0th field, ppid is the 3rd field
+                    pids.append((procstats[0], procstats[1]))
+                    parents.append(procstats[0])
+                parents.remove(ppid)
 
-        return pgids
+        return pids
 
-    def cleanupTask(self, task_id):
+    def _killChildren(self, task_id, children, sig=signal.SIGTERM, timeout=2.0, pause=1.0):
+        """
+        Kill child processes of the given task, as specified in the children list,
+        by sending sig.
+        Retry every pause seconds, within timeout.
+        Remove successfully killed processes from the "children" list.
+        """
+        for childpid, cmd in children[::-1]:
+            # iterate in reverse order so processes whose children are killed might have
+            # a chance to cleanup before they're killed
+            if self._doKill(task_id, childpid, cmd, sig, timeout, pause):
+                children.remove((childpid, cmd))
+
+    def cleanupTask(self, task_id, wait=True):
         """Clean up after task
 
         - kill children
         - expire session
+
+        Return True if all children were successfully killed, False otherwise.
         """
-        # clean up stray children of tasks
-        ch_killed = self._killGroup(task_id)
-        if not ch_killed:
-            ch_killed = self._killGroup(task_id, signal.SIGKILL, timeout=2)
+        pid = self.pids.get(task_id)
+        if not pid:
+            raise koji.GenericError, "No pid for task %i" % task_id
+        children = self._childPIDs(pid)
+        if children:
+            # send SIGINT once to let mock mock try to clean up
+            self._killChildren(task_id, children, sig=signal.SIGINT, pause=3.0)
+        if children:
+            self._killChildren(task_id, children)
+        if children:
+            self._killChildren(task_id, children, sig=signal.SIGKILL, timeout=3.0)
+
         #expire the task's subsession
         session_id = self.subsessions.get(task_id)
         if session_id:
@@ -1157,7 +1261,12 @@ class TaskManager(object):
             except:
                 #not much we can do about it
                 pass
-        return ch_killed
+        if wait:
+            return self._waitTask(task_id, pid)
+        else:
+            # task has already been waited on, and we've cleaned
+            # up as much as we can
+            return True
 
     def checkSpace(self):
         """See if we have enough space to accept another job"""
@@ -1166,13 +1275,9 @@ class TaskManager(object):
         if not os.path.exists(br_path):
             self.logger.error("No such directory: %s" % br_path)
             raise IOError, "No such directory: %s" % br_path
-        cmd = "df -P %s" % br_path
-        fd = os.popen(cmd)
-        output = fd.readlines()
-        fd.close()
-        df_fields = ['filesystem','total','used','available','capacity','mountpoint']
-        data = dict(zip(df_fields,output[1].split()))
-        availableMB = int(data['available']) / 1024
+        fs_stat = os.statvfs(br_path)
+        available = fs_stat.f_bavail * fs_stat.f_bsize
+        availableMB = available / 1024 / 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < options.minspace:
             self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, options.minspace)
@@ -1206,7 +1311,7 @@ class TaskManager(object):
             return False
         if self.task_load > hostdata['capacity']:
             self.status = "Over capacity"
-            self.logger.info("Task load (%.1f) exceeds capacity (%.1f)" % (self.task_load, hostdata['capacity']))
+            self.logger.info("Task load (%.2f) exceeds capacity (%.2f)" % (self.task_load, hostdata['capacity']))
             return False
         if len(self.tasks) >= options.maxjobs:
             # This serves as a backup to the capacity check and prevents
@@ -1216,6 +1321,14 @@ class TaskManager(object):
             return False
         if not self.checkSpace():
             # checkSpace() does its own logging
+            return False
+        loadavgs = os.getloadavg()
+        # this likely treats HT processors the same as real ones
+        # but that's fine, it's a conservative test
+        maxload = 4.0 * os.sysconf('SC_NPROCESSORS_ONLN')
+        if loadavgs[0] > maxload:
+            self.status = "Load average %.2f > %.2f" % (loadavgs[0], maxload)
+            self.logger.info(self.status)
             return False
         #XXX - add more checks
         return True
@@ -1507,6 +1620,43 @@ class BaseTaskHandler(object):
     def subtask2(self, __taskopts, __method, *args, **kwargs):
         return session.host.subtask2(self.id, __taskopts, __method, *args, **kwargs)
 
+    def find_arch(self, arch, host, tag):
+        """
+        For noarch tasks, find a canonical arch that is supported by both the host and tag.
+        If the arch is anything other than noarch, return it unmodified.
+        """
+        if arch != "noarch":
+            return arch
+
+        # We need a concrete arch. Pick one that:
+        #  a) this host can handle
+        #  b) the build tag can support
+        #  c) is canonical
+        host_arches = host['arches']
+        if not host_arches:
+            raise koji.BuildError, "No arch list for this host: %s" % host['name']
+        tag_arches = tag['arches']
+        if not tag_arches:
+            raise koji.BuildError, "No arch list for tag: %s" % tag['name']
+        # index canonical host arches
+        host_arches = set([koji.canonArch(a) for a in host_arches.split()])
+        # index canonical tag arches
+        tag_arches = set([koji.canonArch(a) for a in tag_arches.split()])
+        # find the intersection of host and tag arches
+        common_arches = list(host_arches & tag_arches)
+        if common_arches:
+            # pick one of the common arches randomly
+            # need to re-seed the prng or we'll get the same arch every time,
+            # because we just forked from a common parent
+            random.seed()
+            arch = random.choice(common_arches)
+            self.logger.info('Valid arches: %s, using: %s' % (' '.join(common_arches), arch))
+            return arch
+        else:
+            # no overlap
+            raise koji.BuildError, "host %s (%s) does not support any arches of tag %s (%s)" % \
+                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches))
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
@@ -1687,13 +1837,15 @@ class BuildTask(BaseTaskHandler):
             repo_state = koji.REPO_STATES[repo_info['state']]
             if repo_state not in ('READY', 'EXPIRED'):
                 raise koji.BuildError, 'Bad repo: %s (%s)' % (repo_info['id'], repo_state)
+            self.event_id = repo_info['create_event']
         else:
             repo_info = None
             #we'll wait for a repo later (self.getRepo)
+            self.event_id = None
         task_info = session.getTaskInfo(self.id)
         target_info = None
         if target:
-            target_info = session.getBuildTarget(target)
+            target_info = session.getBuildTarget(target, event=self.event_id)
         if target_info:
             dest_tag = target_info['dest_tag']
             build_tag = target_info['build_tag']
@@ -1713,7 +1865,7 @@ class BuildTask(BaseTaskHandler):
                 self.opts['skip_tag'] = True
                 dest_tag = build_tag
             else:
-                taginfo = session.getTag(target)
+                taginfo = session.getTag(target, event=self.event_id)
                 if not taginfo:
                     raise koji.GenericError, 'neither tag nor target: %s' % target
                 dest_tag = taginfo['id']
@@ -1735,23 +1887,25 @@ class BuildTask(BaseTaskHandler):
         if opts.get('repo_id') is not None:
             # use of this option is governed by policy
             session.host.assertPolicy('build_from_repo_id', policy_data)
-        srpm = self.getSRPM(src)
+        if not repo_info:
+            repo_info = self.getRepo(build_tag)  #(subtask)
+            self.event_id = session.getLastEvent()['id']
+        srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
         data['task_id'] = self.id
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)
-        pkg_cfg = session.getPackageConfig(dest_tag,data['name'])
+        pkg_cfg = session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
         self.logger.debug("%r" % pkg_cfg)
         if pkg_cfg is not None:
             extra_arches = pkg_cfg.get('extra_arches')
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
-            dest_cfg = session.getPackageConfig(dest_tag,data['name'])
             # Make sure package is on the list for this tag
-            if dest_cfg is None:
+            if pkg_cfg is None:
                 raise koji.BuildError, "package %s not in list for tag %s" \
                         % (data['name'], target_info['dest_tag_name'])
-            elif dest_cfg['blocked']:
+            elif pkg_cfg['blocked']:
                 raise koji.BuildError, "package %s is blocked for tag %s" \
                         % (data['name'], target_info['dest_tag_name'])
             # TODO - more pre tests
@@ -1760,10 +1914,7 @@ class BuildTask(BaseTaskHandler):
         if not self.opts.get('scratch'):
             #scratch builds do not get imported
             build_id = session.host.initBuild(data)
-            session.host.importChangelog(build_id, srpm)
         #(initBuild raises an exception if there is a conflict)
-        if not repo_info:
-            repo_info = self.getRepo(build_tag)  #(subtask)
         try:
             srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
             if opts.get('scratch'):
@@ -1783,11 +1934,11 @@ class BuildTask(BaseTaskHandler):
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
             self.tagBuild(build_id,dest_tag)
 
-    def getSRPM(self, src):
+    def getSRPM(self, src, build_tag, repo_id):
         """Get srpm from src"""
         if isinstance(src,str):
             if SCM.is_scm_url(src):
-                return self.getSRPMFromSCM(src)
+                return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
                 #assume this is a path under uploads
                 return src
@@ -1795,10 +1946,10 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError, 'Invalid source specification: %s' % src
             #XXX - other methods?
 
-    def getSRPMFromSCM(self, url):
+    def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
         task_id = session.host.subtask(method='buildSRPMFromSCM',
-                                       arglist=[url],
+                                       arglist=[url, build_tag, {'repo_id': repo_id}],
                                        label='srpm',
                                        parent=self.id)
         # wait for subtask to finish
@@ -1820,7 +1971,7 @@ class BuildTask(BaseTaskHandler):
 
     def getArchList(self, build_tag, h, extra=None):
         # get list of arches to build for
-        buildconfig = session.getBuildConfig(build_tag)
+        buildconfig = session.getBuildConfig(build_tag, event=self.event_id)
         arches = buildconfig['arches']
         if not arches:
             #XXX - need to handle this better
@@ -1908,7 +2059,7 @@ class BuildTask(BaseTaskHandler):
                 brmap[fn] = brootid
             for fn in result['logs']:
                 logs.setdefault(arch,[]).append(fn)
-            if len(result['srpms']) == 1:
+            if result['srpms']:
                 if built_srpm:
                     raise koji.BuildError, "multiple builds returned a srpm.  task %i" % self.id
                 else:
@@ -1937,9 +2088,22 @@ class BuildArchTask(BaseTaskHandler):
     Methods = ['buildArch']
 
     def weight(self):
-        # XXX - this one needs to figure the weight from the package to be
-        # built
         return 1.5
+
+    def updateWeight(self, name):
+        """
+        Update the weight of this task based on the package we're building.
+        weight is scaled from a minimum of 1.5 to a maximum of 6, based on
+        the average duration of a build of this package.
+        """
+        avg = session.getAverageBuildDuration(name)
+        if not avg:
+            return
+        # increase the task weight by 0.75 for every hour of build duration
+        adj = (avg / 4800.0)
+        # cap the adjustment at +4.5
+        weight = self.weight() + min(4.5, adj)
+        session.host.setTaskWeight(self.id, weight)
 
     def srpm_sanity_checks(self, filename):
         header = koji.get_rpm_header(filename)
@@ -1958,32 +2122,11 @@ class BuildArchTask(BaseTaskHandler):
         ret = {}
         if opts is None:
             opts = {}
-
-        #noarch is funny
-        if arch == "noarch":
-            #we need a buildroot arch. Pick one that:
-            #  a) this host can handle
-            #  b) the build tag can support
-            #  c) is canonical
-            host_arches = session.host.getHost()['arches']
-            if not host_arches:
-                raise koji.BuildError, "No arch list for this host"
-            tag_arches = session.getBuildConfig(root)['arches']
-            if not tag_arches:
-                raise koji.BuildError, "No arch list for tag: %s" % build_tag
-            #index canonical host arches
-            host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
-            #pick the first suitable match from tag's archlist
-            for br_arch in tag_arches.split():
-                br_arch = koji.canonArch(br_arch)
-                if host_arches.has_key(br_arch):
-                    #we're done
-                    break
-            else:
-                #no overlap
-                raise koji.BuildError, "host does not match tag arches: %s (%s)" % (root, tag_arches)
-        else:
-            br_arch = arch
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
 
         # starting srpm should already have been uploaded by parent
         self.logger.debug("Reading SRPM")
@@ -2003,11 +2146,12 @@ class BuildArchTask(BaseTaskHandler):
         # if not h[rpm.RPMTAG_DISTRIBUTION]:
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
 
+        self.updateWeight(name)
+
         rootopts = {
-            'distribution' : h[rpm.RPMTAG_DISTRIBUTION],
+            'repo_id': repo_id
             }
-        if opts.get('repo_id') is not None:
-            rootopts['repo_id'] = opts['repo_id']
+        br_arch = self.find_arch(arch, session.host.getHost(), session.getBuildConfig(root, event=event_id))
         broot = BuildRoot(root, br_arch, self.id, **rootopts)
 
         self.logger.debug("Initializing buildroot")
@@ -2054,7 +2198,10 @@ class BuildArchTask(BaseTaskHandler):
 
             self.logger.debug("uploading %s/%s to %s" % (resultdir,srpm_files[0], uploadpath))
             self.uploadFile("%s/%s" % (resultdir,srpm_files[0]))
-        ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+        if rpm_files:
+            ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+        else:
+            ret['rpms'] = []
         if keep_srpm:
             ret['srpms'] = [ "%s/%s" % (uploadpath,f) for f in srpm_files ]
         else:
@@ -2065,7 +2212,6 @@ class BuildArchTask(BaseTaskHandler):
 
         broot.expire()
         #Let TaskManager clean up
-        #broot.scrub()
 
         return ret
 
@@ -2574,7 +2720,7 @@ class TagBuildTask(BaseTaskHandler):
 class BuildSRPMFromSCMTask(BaseTaskHandler):
 
     Methods = ['buildSRPMFromSCM']
-    _taskWeight = 0.75
+    _taskWeight = 1.0
 
     def spec_sanity_checks(self, filename):
         spec = open(filename).read()
@@ -2585,20 +2731,54 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
-    def handler(self,url):
+    def handler(self, url, build_tag, opts=None):
+        global options
+
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
+        if opts is None:
+            opts = {}
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
+
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+        build_tag = session.getTag(build_tag, strict=True, event=event_id)
+
+        # need DNS in the chroot because "make srpm" may need to contact
+        # a SCM or lookaside cache to retrieve the srpm contents
+        rootopts = {'install_group': 'srpm-build',
+                    'setup_dns': True,
+                    'repo_id': repo_id}
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+        broot = BuildRoot(build_tag['id'], br_arch, self.id, **rootopts)
+
+        self.logger.debug("Initializing buildroot")
+        broot.init()
+
         # Setup files and directories for SRPM creation
-        scmdir = self.workdir + '/scmroot'
-        self.logger.debug(scmdir)
+        # We can't put this under the mock homedir because that directory
+        # is completely blown away and recreated on every mock invocation
+        scmdir = broot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
-        logfile = self.workdir + "/srpm.log"
+        logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, uploadpath, logfile)
+        # chown the sourcedir and everything under it to the mockuser
+        # so we can build the srpm as non-root
+        uid = pwd.getpwnam(options.mockuser)[2]
+        # rpmbuild seems to complain if it's running in the "mock" group but
+        # files are in a different group
+        gid = grp.getgrnam('mock')[2]
+        for dirpath, dirnames, filenames in os.walk(scmdir):
+            os.chown(dirpath, uid, gid)
+            for filename in filenames:
+                os.chown(os.path.join(dirpath, filename), uid, gid)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
@@ -2612,11 +2792,10 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         self.spec_sanity_checks(spec_file)
 
         #build srpm
-        cmd = ['make', 'srpm']
-        if log_output(cmd[0], cmd, logfile, uploadpath, cwd=sourcedir, logerror=1, append=1):
-            raise koji.BuildError, "Error building SRPM"
+        self.logger.debug("Running srpm build")
+        broot.build_srpm(spec_file, sourcedir)
 
-        srpms = glob.glob('%s/*.src.rpm' % sourcedir)
+        srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
         if len(srpms) == 0:
             raise koji.BuildError, "No srpms found in %s" % sourcedir
         elif len(srpms) > 1:
@@ -2635,10 +2814,10 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
 
         #upload srpm and return
         self.uploadFile(srpm)
-        return {
-            'srpm' : "%s/%s" % (uploadpath, srpm_name),
-            'log' : "%s/srpm.log" % uploadpath,
-        }
+
+        broot.expire()
+
+        return {'srpm': "%s/%s" % (uploadpath, srpm_name)}
 
 class TagNotificationTask(BaseTaskHandler):
     Methods = ['tagNotification']
@@ -2929,12 +3108,16 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag, event=None):
+    def handler(self, tag, event=None, src=False, debuginfo=False):
         self.uploadpath = self.getUploadDir()
-        tinfo = session.getTag(tag, strict=True)
+        tinfo = session.getTag(tag, strict=True, event=event)
         kwargs = {}
         if event is not None:
             kwargs['event'] = event
+        if src:
+            kwargs['with_src'] = True
+        if debuginfo:
+            kwargs['with_debuginfo'] = True
         repo_id, event_id = session.host.repoInit(tinfo['id'], **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
@@ -2946,9 +3129,13 @@ class NewRepoTask(BaseTaskHandler):
         #see if we can find a previous repo to update from
         oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
         subtasks = {}
+        external_repos = session.getExternalRepoList(tinfo['id'], event=event)
         for arch in arches:
+            arglist = [repo_id, arch, oldrepo]
+            if external_repos:
+                arglist.append(external_repos)
             subtasks[arch] = session.host.subtask(method='createrepo',
-                                                  arglist=[repo_id, arch, oldrepo],
+                                                  arglist=arglist,
                                                   label=arch,
                                                   parent=self.id,
                                                   arch='noarch')
@@ -2967,62 +3154,101 @@ class NewRepoTask(BaseTaskHandler):
 class CreaterepoTask(BaseTaskHandler):
 
     Methods = ['createrepo']
-    #XXX - set weight?
-    _taskWeight = 0.5
+    _taskWeight = 1.5
 
-    def handler(self, repo_id, arch, oldrepo):
+    def handler(self, repo_id, arch, oldrepo, external_repos=None):
         #arch is the arch of the repo, not the task
-        rinfo = session.repoInfo(repo_id)
+        rinfo = session.repoInfo(repo_id, strict=True)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
-        pathinfo = koji.PathInfo(options.topdir)
-        toprepodir = pathinfo.repo(repo_id, rinfo['tag_name'])
-        repodir = "%s/%s" % (toprepodir, arch)
+        self.repo_id = rinfo['id']
+        self.pathinfo = koji.PathInfo(options.topdir)
+        toprepodir = self.pathinfo.repo(repo_id, rinfo['tag_name'])
+        self.repodir = '%s/%s' % (toprepodir, arch)
+        if not os.path.isdir(self.repodir):
+            raise koji.GenericError, "Repo directory missing: %s" % self.repodir
         groupdata = os.path.join(toprepodir, 'groups', 'comps.xml')
-        if not os.path.isdir(repodir):
-            raise koji.GenericError, "Repo directory missing: %s" % repodir
         #set up our output dir
-        outdir = "%s/repo" % self.workdir
-        datadir = "%s/repodata" % outdir
-        koji.ensuredir(outdir)
-        pkglist = os.path.join(repodir, 'pkglist')
-        pkgdir = os.path.join(pathinfo.topdir, 'packages/')
-        cmd = ['/usr/bin/createrepo', '-vd', '--outputdir', outdir, '-i', pkglist, '-u', options.pkgurl]
+        self.outdir = '%s/repo' % self.workdir
+        self.datadir = '%s/repodata' % self.outdir
+        pkglist = os.path.join(self.repodir, 'pkglist')
+        if os.path.getsize(pkglist) > 0:
+            # don't call createrepo with an empty pkglist or it'll
+            # add every Koji-managed rpm to the repodata
+            self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
+
+        external_repos = session.getExternalRepoList(rinfo['tag_id'], event=rinfo['create_event'])
+        if external_repos:
+            self.merge_repos(external_repos, arch, groupdata)
+
+        uploadpath = self.getUploadDir()
+        files = []
+        for f in os.listdir(self.datadir):
+            files.append(f)
+            session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
+
+        return [uploadpath, files]
+
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
+        koji.ensuredir(self.outdir)
+        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-i', pkglist, '-u', options.pkgurl]
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
-        if oldrepo:
-            oldpath = pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
-            olddatadir = "%s/%s/repodata" % (oldpath, arch)
+        if oldrepo and options.createrepo_update:
+            oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+            olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
                 self.logger.warn("old repodata is missing: %s" % olddatadir)
             else:
-                koji.ensuredir(datadir)
-                os.system('cp -a %s/* %s' % (olddatadir, datadir))
+                shutil.copytree(olddatadir, self.datadir)
+                oldorigins = os.path.join(self.datadir, 'pkgorigins.gz')
+                if os.path.isfile(oldorigins):
+                    # remove any previous origins file and rely on mergerepos
+                    # to rewrite it (if we have external repos to merge)
+                    os.unlink(oldorigins)
                 cmd.append('--update')
                 if options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
+        pkgdir = os.path.join(self.pathinfo.topdir, 'packages/')
         cmd.append(pkgdir)
 
-        logfile = "%s/createrepo.log" % self.workdir
-        uploadpath = self.getUploadDir()
-        #log_output(path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None):
-        status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True)
+        logfile = '%s/createrepo.log' % self.workdir
+        status = log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not _isSuccess(status):
-            raise koji.GenericError, "failed to create repo: %s" \
+            raise koji.GenericError, 'failed to create repo: %s' \
                     % _parseStatus(status, ' '.join(cmd))
 
-        files = []
-        for f in os.listdir(datadir):
-            if f.endswith('.xml') or f.endswith('.xml.gz') or f.endswith('.sqlite.bz2'):
-                files.append(f)
-                session.uploadWrapper("%s/%s" % (datadir, f), uploadpath, f)
+    def merge_repos(self, external_repos, arch, groupdata):
+        repos = []
+        if os.path.isdir(self.datadir):
+            localdir = '%s/repo_%s_premerge' % (self.workdir, self.repo_id)
+            os.rename(self.outdir, localdir)
+            koji.ensuredir(self.outdir)
+            repos.append('file://' + localdir + '/')
 
-        return [uploadpath, files]
-        
+        for repo in external_repos:
+            ext_url = repo['url']
+            # substitute $arch in the url with the arch of the repo we're generating
+            ext_url = ext_url.replace('$arch', arch)
+            repos.append(ext_url)
+
+        blocklist = self.repodir + '/blocklist'
+        cmd = ['/usr/libexec/kojid/mergerepos', '-a', arch, '-b', blocklist, '-o', self.outdir]
+        if os.path.isfile(groupdata):
+            cmd.extend(['-g', groupdata])
+        for repo in repos:
+            cmd.extend(['-r', repo])
+
+        logfile = '%s/mergerepos.log' % self.workdir
+        status = log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
+        if not _isSuccess(status):
+            raise koji.GenericError, 'failed to merge repos: %s' \
+                % _parseStatus(status, ' '.join(cmd))
+
 class WaitrepoTask(BaseTaskHandler):
 
     Methods = ['waitrepo']
@@ -3356,7 +3582,11 @@ class SCM(object):
                 raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
                     (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
             if not os.path.exists('%s/../common' % sourcedir):
-                os.symlink('%s/common' % scmdir, '%s/../common' % sourcedir)
+                # find the relative distance from sourcedir/../common to scmdir/common
+                destdir = os.path.split(sourcedir)[0]
+                path_comps = destdir[len(scmdir) + 1:]
+                rel_path = '../' * len(path_comps.split('/'))
+                os.symlink(rel_path + 'common', '%s/../common' % sourcedir)
 
         return sourcedir
 
@@ -3425,6 +3655,7 @@ def get_options():
                 'mockuser': 'kojibuilder',
                 'packager': 'Koji',
                 'vendor': 'Koji',
+                'distribution': 'Koji',
                 'mockhost': 'koji-linux-gnu',
                 'smtphost': 'example.com',
                 'from_addr': 'Koji Build System <buildsys@example.com>',
@@ -3439,6 +3670,7 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'createrepo_skip_stat': True,
+                'createrepo_update': True,
                 'pkgurl': None,
                 'allowed_scms': '',
                 'cert': '/etc/kojid/client.crt',
@@ -3452,7 +3684,7 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'createrepo_skip_stat']:
+            elif name in ['offline_retry', 'createrepo_skip_stat', 'createrepo_update']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -3463,6 +3695,11 @@ def get_options():
     for name, value in defaults.items():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
+
+    #honor topdir
+    if options.topdir:
+        koji.BASEDIR = options.topdir
+        koji.pathinfo.topdir = options.topdir
 
     #make sure workdir exists
     if not os.path.exists(options.workdir):

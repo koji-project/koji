@@ -31,7 +31,7 @@ import datetime
 from fnmatch import fnmatch
 import logging
 import logging.handlers
-import md5
+from koji.util import md5_constructor
 import os
 import os.path
 import pwd
@@ -40,6 +40,7 @@ import re
 import rpm
 import signal
 import socket
+import struct
 import tempfile
 import time
 import traceback
@@ -63,8 +64,23 @@ def _(args):
 
 RPM_HEADER_MAGIC = '\x8e\xad\xe8'
 RPM_TAG_HEADERSIGNATURES = 62
+RPM_TAG_FILEDIGESTALGO = 5011
+RPM_SIGTAG_PGP = 1002
 RPM_SIGTAG_MD5 = 1004
 RPM_SIGTAG_GPG = 1005
+
+RPM_FILEDIGESTALGO_IDS = {
+    # Taken from RFC 4880
+    # A missing algo ID means md5
+    None: 'MD5',
+    1:    'MD5',
+    2:    'SHA1',
+    3:    'RIPEMD160',
+    8:    'SHA256',
+    9:    'SHA384',
+    10:   'SHA512',
+    11:   'SHA224'
+    }
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -265,6 +281,13 @@ class ServerOffline(GenericError):
     """Raised when the server is offline"""
     faultCode = 1014
 
+class MultiCallInProgress(object):
+    """
+    Placeholder class to be returned by method calls when in the process of
+    constructing a multicall.
+    """
+    pass
+
 #A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
@@ -444,7 +467,7 @@ class RawHeader(object):
 
     def version(self):
         #fourth byte is the version
-        return ord(data[3])
+        return ord(self.header[3])
 
     def _index(self):
         # read two 4-byte integers which tell us
@@ -606,13 +629,92 @@ def rip_rpm_hdr(src):
     fo.close()
     return hdr
 
+def __parse_packet_header(pgp_packet):
+    """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
+    byte0 = ord(pgp_packet[0])
+    if (byte0 & 0x80) == 0:
+        raise ValueError, 'Not an OpenPGP packet'
+    if (byte0 & 0x40) == 0:
+        tag = (byte0 & 0x3C) >> 2
+        len_type = byte0 & 0x03
+        if len_type == 3:
+            offset = 1
+            length = len(pgp_packet) - offset
+        else:
+            (fmt, offset) = { 0:('>B', 2), 1:('>H', 3), 2:('>I', 5) }[len_type]
+            length = struct.unpack(fmt, pgp_packet[1:offset])[0]
+    else:
+        tag = byte0 & 0x3F
+        byte1 = ord(pgp_packet[1])
+        if byte1 < 192:
+            length = byte1
+            offset = 2
+        elif byte1 < 224:
+            length = ((byte1 - 192) << 8) + ord(pgp_packet[2]) + 192
+            offset = 3
+        elif byte1 == 255:
+            length = struct.unpack('>I', pgp_packet[2:6])[0]
+            offset = 6
+        else:
+            # Who the ... would use partial body lengths in a signature packet?
+            raise NotImplementedError, \
+                'OpenPGP packet with partial body lengths'
+    if len(pgp_packet) != offset + length:
+        raise ValueError, 'Invalid OpenPGP packet length'
+    return (tag, pgp_packet[offset:])
+
+def __subpacket_key_ids(subs):
+    """Parse v4 signature subpackets and return a list of issuer key IDs"""
+    res = []
+    while len(subs) > 0:
+        byte0 = ord(subs[0])
+        if byte0 < 192:
+            length = byte0
+            off = 1
+        elif byte0 < 255:
+            length = ((byte0 - 192) << 8) + ord(subs[1]) + 192
+            off = 2
+        else:
+            length = struct.unpack('>I', subs[1:5])[0]
+            off = 5
+        if ord(subs[off]) == 16:
+            res.append(subs[off+1 : off+length])
+        subs = subs[off+length:]
+    return res
+
+def get_sigpacket_key_id(sigpacket):
+    """Return ID of the key used to create sigpacket as a hexadecimal string"""
+    (tag, sigpacket) = __parse_packet_header(sigpacket)
+    if tag != 2:
+        raise ValueError, 'Not a signature packet'
+    if ord(sigpacket[0]) == 0x03:
+        key_id = sigpacket[11:15]
+    elif ord(sigpacket[0]) == 0x04:
+        sub_len = struct.unpack('>H', sigpacket[4:6])[0]
+        off = 6 + sub_len
+        key_ids = __subpacket_key_ids(sigpacket[6:off])
+        sub_len = struct.unpack('>H', sigpacket[off : off+2])[0]
+        off += 2
+        key_ids += __subpacket_key_ids(sigpacket[off : off+sub_len])
+        if len(key_ids) != 1:
+            raise NotImplementedError, \
+                'Unexpected number of key IDs: %s' % len(key_ids)
+        key_id = key_ids[0][-4:]
+    else:
+        raise NotImplementedError, \
+            'Unknown PGP signature packet version %s' % ord(sigpacket[0])
+    return hex_string(key_id)
+
 def get_sighdr_key(sighdr):
     """Parse the sighdr and return the sigkey"""
-    sig = RawHeader(sighdr).get(RPM_SIGTAG_GPG)
-    if sig is None:
+    rh = RawHeader(sighdr)
+    sig = rh.get(RPM_SIGTAG_GPG)
+    if not sig:
+        sig = rh.get(RPM_SIGTAG_PGP)
+    if not sig:
         return None
     else:
-        return hex_string(sig[13:17])
+        return get_sigpacket_key_id(sig)
 
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     """Write a copy of an rpm with signature header spliced in"""
@@ -690,7 +792,13 @@ def parse_NVR(nvr):
     return ret
 
 def parse_NVRA(nvra):
-    """split N-V-R.A.rpm into dictionary of data"""
+    """split N-V-R.A.rpm into dictionary of data
+
+    also splits off @location suffix"""
+    parts = nvra.split('@', 1)
+    location = None
+    if len(parts) > 1:
+        nvra, location = parts
     if nvra.endswith(".rpm"):
         nvra = nvra[:-4]
     p3 = nvra.rfind(".")
@@ -703,6 +811,8 @@ def parse_NVRA(nvra):
         ret['src'] = True
     else:
         ret['src'] = False
+    if location:
+        ret['location'] = location
     return ret
 
 def canonArch(arch):
@@ -1087,6 +1197,14 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'rpmbuild_timeout': 86400
     }
 
+    files = {}
+    if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
+        # if we're setting up DNS,
+        # also copy /etc/hosts from the host
+        etc_hosts = file('/etc/hosts')
+        files['etc/hosts'] = etc_hosts.read()
+        etc_hosts.close()
+
     config_opts['yum.conf'] = """[main]
 cachedir=/var/cache/yum
 debuglevel=1
@@ -1141,6 +1259,9 @@ baseurl=%(url)s
     parts.append("\n")
     for key, value in macros.iteritems():
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
+    parts.append("\n")
+    for key, value in files.iteritems():
+        parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)
 
@@ -1494,6 +1615,7 @@ class ClientSession(object):
 
         if self.multicall:
             self._calls.append({'methodName': name, 'params': args})
+            return MultiCallInProgress
         else:
             if self.logged_in:
                 sinfo = self.sinfo.copy()
@@ -1563,10 +1685,10 @@ class ClientSession(object):
         error that occurred during the method call."""
         if not self.multicall:
             raise GenericError, 'ClientSession.multicall must be set to True before calling multiCall()'
+        self.multicall = False
         if len(self._calls) == 0:
             return []
 
-        self.multicall = False
         calls = self._calls
         self._calls = []
         ret = self._callMethod('multiCall', (calls,), {})
@@ -1594,7 +1716,7 @@ class ClientSession(object):
         fo = file(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        md5sum = md5.new()
+        md5sum = md5_constructor()
         debug = self.opts.get('debug',False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
@@ -1611,14 +1733,19 @@ class ClientSession(object):
                 sz = ofs
             else:
                 offset = ofs
-                digest = md5.new(contents).hexdigest()
+                digest = md5_constructor(contents).hexdigest()
                 sz = size
             del contents
             tries = 0
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path,name,sz,digest,offset))
-                if self.callMethod('uploadFile', path, name, sz, digest, offset, data):
+                if offset > 2147483647:
+                    #work around xmlrpc limitation, server will convert back
+                    offsethack = str(offset)
+                else:
+                    offsethack = offset
+                if self.callMethod('uploadFile', path, name, sz, digest, offsethack, data):
                     break
                 if tries <= retries:
                     tries += 1

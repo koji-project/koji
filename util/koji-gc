@@ -124,6 +124,8 @@ def get_options():
                       help=_("Process only packages matching PATTERN"))
     parser.add_option("--bypass-locks", metavar="PATTERN", action="append",
                       help=_("Bypass locks for tags matching PATTERN"))
+    parser.add_option("--purge", action="store_true", default=False,
+                      help=_("When pruning, attempt to delete the builds that are untagged"))
     parser.add_option("--trashcan-tag", default='trashcan', metavar="TAG",
                       help=_("specify an alternate trashcan tag"))
     parser.add_option("--weburl", default="http://localhost/koji", metavar="URL",
@@ -375,7 +377,7 @@ def activate_session(session):
             else:
                 session.krb_login(proxyuser=options.runas)
         except krbV.Krb5Error, e:
-            error(_("Kerberos authentication failed: '%s' (%s)") % (e.message, e.err_code))
+            error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
         except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
@@ -808,7 +810,10 @@ def get_build_sigs(build):
     return keys.keys()
 
 def handle_prune():
-    """Untag old builds according to policy"""
+    """Untag old builds according to policy
+
+    If purge is True, will also attempt to delete the pruned builds afterwards
+    """
     #read policy
     if not options.config or not options.config.has_option('prune', 'policy'):
         print "Skipping prune step. No policies available."
@@ -823,6 +828,7 @@ def handle_prune():
     #get tags
     tags = [(t['name'], t) for t in session.listTags()]
     tags.sort()
+    untagged = {}
     for tagname, taginfo in tags:
         if tagname == options.trashcan_tag:
             if options.debug:
@@ -896,15 +902,45 @@ def handle_prune():
                 if action == 'untag':
                     if options.test:
                         print "Would have untagged %s from %s" % (nvr, tagname)
+                        untagged[nvr] = entry
                     else:
                         print "Untagging build %s from %s"  % (nvr, tagname)
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
+                            untagged[nvr] = entry
                         except (xmlrpclib.Fault, koji.GenericError), e:
                             print "Warning: untag operation failed: %s" % e
                             pass
                 # if action == 'keep' do nothing
+    if options.purge and untagged:
+        print "Attempting to purge %i builds" % len(untagged)
+        if options.test:
+            # we didn't actually untag, so we can't easily check which builds
+            # would have been deleted
+            print "Test mode. Skipping deletes."
+            untagged = {}
+        for nvr in untagged:
+            build_id = untagged[nvr]['build_id']
+            tags = [t['name'] for t in  session.listTags(build_id)]
+            if tags:
+                #still tagged somewhere
+                print "Skipping %s, still tagged: %s" % (nvr, tags)
+                continue
+            keys = get_build_sigs(build_id)
+            #yes, could cache from above, but this is safer.
+            #build could have been signed during run.
+            if protected_sig(keys):
+                print "Skipping %s, signatures: %s" % (nvr, keys)
+                continue
 
+            if not options.test:
+                print "Deleting untagged build: %s"  % nvr
+                try:
+                    session.deleteBuild(build_id, strict=False)
+                except (xmlrpclib.Fault, koji.GenericError), e:
+                    print "Warning: deletion failed: %s" % e
+                    #server issue
+                    pass
 
 if __name__ == "__main__":
 

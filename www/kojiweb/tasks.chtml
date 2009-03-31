@@ -78,19 +78,9 @@ All
         </td><td>
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
           <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
-          <option value="build" #if $method == 'build' then 'selected="selected"' else ''#>build</option>
-          <option value="buildSRPMFromSCM" #if $method == 'buildSRPMFromSCM' then 'selected="selected"' else ''#>buildSRPMFromSCM</option>
-          <option value="buildSRPMFromCVS" #if $method == 'buildSRPMFromCVS' then 'selected="selected"' else ''#>buildSRPMFromCVS</option>
-          <option value="buildArch" #if $method == 'buildArch' then 'selected="selected"' else ''#>buildArch</option>
-          <option value="buildNotification" #if $method == 'buildNotification' then 'selected="selected"' else ''#>buildNotification</option>
-          <option value="tagBuild" #if $method == 'tagBuild' then 'selected="selected"' else ''#>tagBuild</option>
-          <option value="tagNotification" #if $method == 'tagNotification' then 'selected="selected"' else ''#>tagNotification</option>
-          <option value="newRepo" #if $method == 'newRepo' then 'selected="selected"' else ''#>newRepo</option>
-          <option value="prepRepo" #if $method == 'prepRepo' then 'selected="selected"' else ''#>prepRepo</option>
-          <option value="createrepo" #if $method == 'createrepo' then 'selected="selected"' else ''#>createrepo</option>
-          <option value="dependantTask" #if $method == 'dependantTask' then 'selected="selected"' else ''#>dependantTask</option>
-          <option value="chainbuild" #if $method == 'chainbuild' then 'selected="selected"' else ''#>chainbuild</option>
-          <option value="waitrepo" #if $method == 'waitrepo' then 'selected="selected"' else ''#>waitrepo</option>
+          #for $task_type in $alltasks
+          <option value="$task_type" #if $method == $task_type then 'selected="selected"' else ''#>$task_type</option>
+          #end for
         </select>
         </td><td>
         <strong>View</strong>:

@@ -70,7 +70,7 @@
   
   #if 'admin' in $perms
   <br/>
-  <a href="buildtargetcreate">Create new Build Target</a>
+  <a href="buildtargetcreate$util.authToken($self, first=True)">Create new Build Target</a>
   #end if
 
 #include "includes/footer.chtml"

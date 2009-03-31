@@ -41,6 +41,7 @@ import time
 import urllib2
 import urlgrabber.grabber as grabber
 import xmlrpclib  # for ProtocolError and Fault
+import rpm
 
 # koji.fp.o keeps stalling, probably network errors...
 # better to time out than to stall
@@ -104,6 +105,8 @@ def get_options():
                       help=_("url of local XMLRPC server"))
     parser.add_option("-r", "--remote",
                       help=_("url of remote XMLRPC server"))
+    parser.add_option("--prefer-new", action="store_true", default=False,
+                      help=_("if there is a newer build locally prefer it for deps"))
     parser.add_option("--import-noarch", action="store_true",
                       help=_("import missing noarch builds rather than rebuilding"))
     parser.add_option("--link-imports", action="store_true",
@@ -112,6 +115,25 @@ def get_options():
                       help=_("topurl for remote server"))
     parser.add_option("--workpath", default="/tmp/koji-shadow",
                       help=_("location to store work files"))
+    parser.add_option("--auth-cert",
+                      help=_("Certificate for authentication"))
+    parser.add_option("--auth-ca",
+                      help=_("CA certificate for authentication"))
+    parser.add_option("--serverca",
+                      help=_("Server CA certificate"))
+    parser.add_option("--rules",
+                      help=_("rules"))
+    parser.add_option("--rules-greylist",
+                      help=_("greylist rules"))
+    parser.add_option("--rules-blacklist",
+                      help=_("blacklist rules"))
+    parser.add_option("--rules-ignorelist",
+                      help=_("Rules list of packages to ignore"))
+    parser.add_option("--tag-build", action="store_true", default=False,
+                      help=_("tag sucessful builds into the tag we are building, default is to not tag"))
+    parser.add_option("--arches",
+                      help=_("arches to use when creating tags"))
+
     #parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -136,7 +158,7 @@ def get_options():
             if not opt.dest:
                 continue
             name = opt.dest
-            alias = ('global', name)
+            alias = ('main', name)
             if config.has_option(*alias):
                 print "Using option %s from config file" % (alias,)
                 if opt.action in ('store_true', 'store_false'):
@@ -148,6 +170,7 @@ def get_options():
                 elif opt.type in ('float'):
                     setattr(defaults, name, config.getfloat(*alias))
                 else:
+                    print config.get(*alias)
                     setattr(defaults, name, config.get(*alias))
         #config file options without a cmdline equivalent
         otheropts = [
@@ -160,7 +183,11 @@ def get_options():
             ['noauth', None, 'boolean'],
             ['server', None, 'string'],
             ['remote', None, 'string'],
-            ['max_jobs', None, 'int']
+            ['max_jobs', None, 'int'],
+            ['serverca', None, 'string'],
+            ['auth_cert', None, 'string'],
+            ['auth_ca', None, 'string'],
+            ['arches', None, 'string'],
             ]
 
 
@@ -259,6 +286,9 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
+    elif os.path.isfile(options.auth_cert):
+        # authenticate using SSL client cert
+        session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
     elif options.user:
         #authenticate using user/password
         session.login()
@@ -307,6 +337,10 @@ class TrackedBuild(object):
         self.tracker = tracker
         self.info = remote.getBuild(build_id)
         self.nvr = "%(name)s-%(version)s-%(release)s" % self.info
+        self.name = "%(name)s" % self.info
+        self.epoch = "%(epoch)s" % self.info
+        self.version = "%(version)s" % self.info
+        self.release = "%(release)s" % self.info
         self.srpm = None
         self.rpms = None
         self.children = {}
@@ -446,18 +480,35 @@ class TrackedBuild(object):
         builds = {}     #track which builds we need for a rebuild
         bases = {}       #track base install for buildroots
         tags = {}       #track buildroot tag(s)
+        remote.multicall = True
+        unpack = []
         for br_id in buildroots:
             if seen.has_key(br_id):
                 continue
             seen[br_id] = 1
-            br_info = remote.getBuildroot(br_id, strict=True)
-            tags.setdefault(br_info['tag_name'], 0)
-            tags[br_info['tag_name']] += 1
+            #br_info = remote.getBuildroot(br_id, strict=True)
+            remote.getBuildroot(br_id, strict=True)
+            unpack.append(('br_info', br_id))
+            #tags.setdefault(br_info['tag_name'], 0)
+            #tags[br_info['tag_name']] += 1
             #print "."
-            for rinfo in remote.listRPMs(componentBuildrootID=br_id):
-                builds[rinfo['build_id']] = 1
-                if not rinfo['is_update']:
-                    bases.setdefault(rinfo['name'], {})[br_id] = 1
+            remote.listRPMs(componentBuildrootID=br_id)
+            unpack.append(('rpmlist', br_id))
+            #for rinfo in remote.listRPMs(componentBuildrootID=br_id):
+            #    builds[rinfo['build_id']] = 1
+            #    if not rinfo['is_update']:
+            #        bases.setdefault(rinfo['name'], {})[br_id] = 1
+        for (dtype, br_id), data in zip(unpack, remote.multiCall()):
+            if dtype == 'br_info':
+                [br_info] = data
+                tags.setdefault(br_info['tag_name'], 0)
+                tags[br_info['tag_name']] += 1
+            elif dtype == 'rpmlist':
+                [rpmlist] = data
+                for rinfo in rpmlist:
+                    builds[rinfo['build_id']] = 1
+                    if not rinfo['is_update']:
+                        bases.setdefault(rinfo['name'], {})[br_id] = 1
         # we want to record the intersection of the base sets
         # XXX - this makes some assumptions about homogeneity that, while reasonable,
         #       are not strictly required of the db.
@@ -509,6 +560,7 @@ class BuildTracker(object):
         self.blacklist = None
         self.whitelist = None
         self.greylist = None
+        self.ignorelist = []
         self.substitute_idx = {}
         self.substitutions = {}
         if options.config.has_option('rules', 'whitelist'):
@@ -517,6 +569,8 @@ class BuildTracker(object):
             self.blacklist = options.config.get('rules', 'blacklist').split()
         if options.config.has_option('rules', 'greylist'):
             self.greylist = options.config.get('rules', 'greylist').split()
+        if options.config.has_option('rules', 'ignorelist'):
+            self.ignorelist = options.config.get('rules', 'ignorelist').split()
         if options.config.has_option('rules', 'substitutions'):
             #At present this is a simple multi-line format
             #one substitution per line
@@ -561,6 +615,38 @@ class BuildTracker(object):
                     return grey
         return default
 
+    def rpmvercmp (self,  (e1, v1, r1), (e2, v2, r2)):
+        """find out which build is newer"""
+        rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
+        if rc == 1:
+            #first evr wins
+            return 1
+        elif rc == 0:
+            #same evr
+            return 0
+        else:
+            #second evr wins
+            return -1
+
+    def newerBuild(self, build, tag):
+        #XXX:  secondary arches need a policy to say if we have newer builld localy it will be the substitute
+        localLatestBuild = session.getLatestBuilds(tag, package=str(build.name))
+        if not localLatestBuild == []:
+            parentevr = (str(build.epoch), build.version,  build.release)
+            parentnvr = (str(build.name), build.version,  build.release)
+            latestevr =  (str(localLatestBuild[0]['epoch']), localLatestBuild[0]['version'], localLatestBuild[0]['release'])
+            newestRPM = self.rpmvercmp( parentevr, latestevr)
+            if options.debug:
+                print "remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM)
+            if newestRPM == -1:
+                #the local is newer
+                info = session.getBuild("%s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] ))
+                if info:
+                    build = LocalBuild(info)
+                    self.substitute_idx[parentnvr] = build
+                return build
+        return None
+
     def getSubstitute(self, nvr):
         build = self.substitute_idx.get(nvr)
         if not build:
@@ -582,7 +668,7 @@ class BuildTracker(object):
             self.substitute_idx[nvr] = build
         return build
 
-    def scanBuild(self, build_id, from_build=None, depth=0):
+    def scanBuild(self, build_id, from_build=None, depth=0, tag=None):
         """Recursively scan a build and its dependencies"""
         #print build_id
         build = self.builds.get(build_id)
@@ -607,6 +693,10 @@ class BuildTracker(object):
         else:
             tail = ""
         head = " " * depth
+        if build.name in self.ignorelist:
+            print "%sIgnored Build: %s%s" % (head, build.nvr, tail)
+            build.setState('ignore')
+            return build
         check = self.checkFilter(build, grey=None)
         if check is None:
             #greylisted builds are ok as deps, but not primary builds
@@ -627,6 +717,12 @@ class BuildTracker(object):
             if depth > 0:
                 print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
                 return build
+        if options.prefer_new:
+            latestBuild = self.newerBuild(build, tag)
+            if latestBuild != None:
+                build.substitute = latestBuild.nvr
+                print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
+                return build
         if build.state == "common":
             #we're good
             if build.rebuilt:
@@ -645,7 +741,7 @@ class BuildTracker(object):
         #     before this point
         #
         elif options.import_noarch and build.isNoarch():
-            self.importBuild(build)
+            self.importBuild(build, tag)
         elif build.state == "noroot":
             #Can't rebuild it, this is what substitutions are for
             print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
@@ -658,33 +754,36 @@ class BuildTracker(object):
             newdeps = []
             #don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
-                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1)
-                if dep.substitute:
-                    dep2 = self.getSubstitute(dep.substitute)
-                    if isinstance(dep2, TrackedBuild):
-                        self.scanBuild(dep2.id, from_build=build, depth=depth+1)
-                    elif dep2 is None:
-                        #dep is missing on both local and remote
-                        print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
-                        #no point in continuing
-                        break
-                    #otherwise dep2 should be LocalBuild instance
-                    newdeps.append(dep2)
-                elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
-                    #no point in continuing
-                    build.setState('brokendeps')
-                    print "%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state)
-                    newdeps = None
+                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
+                if dep.name in self.ignorelist:
                     break
                 else:
-                    newdeps.append(dep)
-                # set rebuild order as we go
-                # we do this /after/ the recursion, so our deps have a lower order number
-                self.rebuild_order += 1
-                build.order = self.rebuild_order
+                    if dep.substitute:
+                        dep2 = self.getSubstitute(dep.substitute)
+                        if isinstance(dep2, TrackedBuild):
+                            self.scanBuild(dep2.id, from_build=build, depth=depth+1, tag=tag)
+                        elif dep2 is None:
+                            #dep is missing on both local and remote
+                            print "%sSubstitute dep unavailable: %s" % (head, dep2.nvr)
+                            #no point in continuing
+                            break
+                        #otherwise dep2 should be LocalBuild instance
+                        newdeps.append(dep2)
+                    elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
+                        #no point in continuing
+                        build.setState('brokendeps')
+                        print "%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state)
+                        newdeps = None
+                        break
+                    else:
+                        newdeps.append(dep)
+                    # set rebuild order as we go
+                    # we do this /after/ the recursion, so our deps have a lower order number
+                    self.rebuild_order += 1
+                    build.order = self.rebuild_order
             build.revised_deps = newdeps
         #scanning takes a long time, might as well start builds if we can
-        self.checkJobs()
+        self.checkJobs(tag)
         self.rebuildMissing()
         if len(self.builds) % 50 == 0:
             self.report()
@@ -697,7 +796,7 @@ class BuildTracker(object):
         for build in builds:
             for retry in xrange(10):
                 try:
-                    self.scanBuild(build['id'])
+                    self.scanBuild(build['id'], tag=tag)
                     if options.first_one:
                         return
                 except (socket.timeout, socket.error):
@@ -741,7 +840,7 @@ class BuildTracker(object):
             session.uploadWrapper(dst, serverdir, blocksize=65536)
         session.importRPM(serverdir, fn)
 
-    def importBuild(self, build):
+    def importBuild(self, build, tag=None):
         '''import a build from remote hub'''
         if not build.srpm:
             print "No srpm for build %s, skipping import" % build.nvr
@@ -764,6 +863,8 @@ class BuildTracker(object):
             fname = os.path.basename(relpath)
             self._importURL(url, fname)
         build.updateState()
+        if options.tag_build and not tag == None:
+            self.tagSuccessful(build.nvr, tag)
         return True
 
     def scan(self):
@@ -807,7 +908,7 @@ class BuildTracker(object):
                 if data['name'] == 'admin':
                     perm_id = data['id']
                     break
-            session.createTag(our_tag, perm=perm_id, arches='i386 ppc ppc64 x86_64')
+            session.createTag(our_tag, perm=perm_id, arches=options.arches)
             taginfo = session.getTag(our_tag, strict=True)
             #we don't need a target, we trigger our own repo creation and
             #pass that repo_id to the build call
@@ -994,11 +1095,10 @@ class BuildTracker(object):
 
     def _print_builds(self, mylist):
         """small helper function for output"""
-        for build_id in mylist:
-            build = self.builds[build_id]
+        for build in mylist:
             print "    %s (%s)" % (build.nvr, build.state)
 
-    def checkJobs(self):
+    def checkJobs(self, tag=None):
         """Check outstanding jobs. Return true if anything changes"""
         ret = False
         for build_id, build in self.state_idx['pending'].items():
@@ -1022,6 +1122,8 @@ class BuildTracker(object):
                 ret = True
             elif state == 'CLOSED':
                 print "Task %i complete (build %s)" % (build.task_id, build.nvr)
+                if options.tag_build and not tag == None:
+                    self.tagSuccessful(build.nvr, tag)
                 build.updateState()
                 ret = True
                 if build.state != 'common':
@@ -1084,7 +1186,7 @@ class BuildTracker(object):
                 break
         return ret
 
-    def runRebuilds(self):
+    def runRebuilds(self, tag=None):
         """Rebuild missing builds"""
         print "Determining rebuild order"
         #using self.state_idx to track build states
@@ -1095,7 +1197,7 @@ class BuildTracker(object):
             if not self.state_idx['missing'] and not self.state_idx['pending']:
                 #we're done
                 break
-            changed1 = self.checkJobs()
+            changed1 = self.checkJobs(tag)
             changed2 = self.rebuildMissing()
             if not changed1 and not changed2:
                 time.sleep(30)
@@ -1103,18 +1205,25 @@ class BuildTracker(object):
             self.report_brief()
         print "Rebuilt %i builds" % (len(self.state_idx['common']) - initial_avail)
 
+    def tagSuccessful(self, nvr, tag):
+        """tag completed builds into final tags"""
+        session.tagBuildBypass(tag, nvr)
+        print "tagged %s to %s" % (nvr, tag)
+
 
 def main(args):
     tracker = BuildTracker()
     #binfo = remote.getBuild(args[0], strict=True)
     #tracker.scanBuild(binfo['id'])
+    tag=None
     if options.build:
         binfo = remote.getBuild(options.build, strict=True)
         tracker.scanBuild(binfo['id'])
     else:
-        tracker.scanTag(args[0])
+        tag = args[0]
+        tracker.scanTag(tag)
     tracker.report()
-    tracker.runRebuilds()
+    tracker.runRebuilds(tag)
 
 
 if __name__ == "__main__":
@@ -1126,7 +1235,7 @@ if __name__ == "__main__":
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server, session_opts)
     if not options.noauth:
-        session.login()
+        activate_session(session)
     #XXX - sane auth
     #XXX - config!
     remote_opts = {'anon_retry': True}

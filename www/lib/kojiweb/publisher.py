@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 #This is a wrapper around mod_python.publisher so that we can trap some exceptions
-from  index import _initValues
-from  index import _genHTML
 import koji
-import kojiweb.util
 import mod_python.publisher
 import sys
 import traceback
+import util
+from  util import _initValues
+from  util import _genHTML
 
 old_publish_object = mod_python.publisher.publish_object
 
@@ -25,7 +25,7 @@ def publish_object(req, object):
             values = _initValues(req, 'Error', 'error')
         values['etype'] = etype
         values['exception'] = e
-        values['explanation'], values['debug_level'] = kojiweb.util.explainError(e)
+        values['explanation'], values['debug_level'] = util.explainError(e)
         values['tb_short'] = ''.join(traceback.format_exception_only(etype, e))
         if int(req.get_config().get("PythonDebug", 0)):
             values['tb_long'] = ''.join(traceback.format_exception(*sys.exc_info()))

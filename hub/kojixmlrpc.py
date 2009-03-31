@@ -365,12 +365,13 @@ def load_config(req):
         ['ProxyPrincipals', 'string', None],
         ['HostPrincipalFormat', 'string', None],
 
-        ['DNUsernameComponent', 'string', None],
+        ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', None],
 
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
+        ['NotifyOnSuccess', 'boolean', True],
         ['DisableNotifications', 'boolean', False],
 
         ['Plugins', 'string', ''],
@@ -381,7 +382,7 @@ def load_config(req):
         ['VerbosePolicy', 'boolean', False],
         ['EnableFunctionDebug', 'boolean', False],
 
-        ['MissingPolicyOK', 'boolean', True],
+        ['MissingPolicyOk', 'boolean', True],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'string', False],

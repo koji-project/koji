@@ -1,5 +1,6 @@
 PYTHON=python
 PACKAGE = $(shell basename `pwd`)
+LIBEXECFILES = rpmdiff
 PYFILES = $(wildcard *.py)
 PYVER := $(shell $(PYTHON) -c 'import sys; print "%.3s" %(sys.version)')
 PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print sys.prefix')
@@ -21,6 +22,9 @@ install:
 		echo "ERROR: A destdir is required"; \
 		exit 1; \
 	fi
+
+	mkdir -p $(DESTDIR)/usr/libexec/koji-hub
+	install -p -m 755 $(LIBEXECFILES) $(DESTDIR)/usr/libexec/koji-hub
 
 	mkdir -p $(DESTDIR)/etc/httpd/conf.d
 	install -p -m 644 httpd.conf $(DESTDIR)/etc/httpd/conf.d/kojihub.conf

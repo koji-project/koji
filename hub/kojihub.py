@@ -22,6 +22,7 @@
 #       Cristian Balint <cbalint@redhat.com>
 
 import base64
+import calendar
 import koji
 import koji.auth
 import koji.db
@@ -32,7 +33,7 @@ import logging
 import logging.handlers
 import fcntl
 import fnmatch
-import md5
+from koji.util import md5_constructor
 import os
 import pgdb
 import random
@@ -40,9 +41,11 @@ import re
 import rpm
 import sha
 import stat
+import subprocess
 import sys
 import tempfile
 import time
+import types
 import xmlrpclib
 import zipfile
 from koji.context import context
@@ -425,17 +428,18 @@ def make_task(method,arglist,**opts):
         opts['label'] = None
         opts['parent'] = None
     #XXX - temporary workaround
-    if method == 'buildArch' and opts['arch'] == 'noarch':
+    if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
         tag = get_tag(arglist[1])
-        #get all known arches for the system
-        fullarches = get_all_arches()
         if not tag['arches']:
             raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
-        tagarches = tag['arches'].split()
-        for a in fullarches:
+        # canonicalize tagarches, since get_all_arches() is canonical but
+        # non-canonical arches may be set in tag['arches']
+        tagarches = [koji.canonArch(a) for a in tag['arches'].split()]
+        for a in get_all_arches():
             if a not in tagarches:
-                opts['arch'] = koji.canonArch(random.choice(tagarches))
+                random.seed()
+                opts['arch'] = random.choice(tagarches)
                 break
 
     # encode xmlrpc request
@@ -473,7 +477,7 @@ def eventCondition(event, table=None):
     else:
         table += '.'
     if event is None:
-        return """(active = TRUE)"""
+        return """(%(table)sactive = TRUE)""" % locals()
     elif isinstance(event, int) or isinstance(event, long):
         return """(%(table)screate_event <= %(event)d AND ( %(table)srevoke_event IS NULL OR %(event)d < %(table)srevoke_event ))""" \
             % locals()
@@ -1832,7 +1836,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """
     logger = logging.getLogger("koji.hub.repo_init")
     state = koji.REPO_INIT
-    tinfo = get_tag(tag, strict=True)
+    tinfo = get_tag(tag, strict=True, event=event)
     tag_id = tinfo['id']
     repo_arches = {}
     if tinfo['arches']:
@@ -1853,14 +1857,19 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     # it is possible to see the results of other committed transactions
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=True)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
+    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values() \
+                  if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  #should not already exist
     #index builds
     builds = dict([[build['build_id'],build] for build in builds])
     #index the packages by arch
     packages = {}
+    for repoarch in repo_arches:
+        packages.setdefault(repoarch, [])
     for rpminfo in rpms:
-        if rpminfo['name'].endswith('-debuginfo') and not with_debuginfo:
+        if (rpminfo['name'].endswith('-debuginfo') or rpminfo['name'].endswith('-debuginfo-common')) \
+                and not with_debuginfo:
             continue
         arch = rpminfo['arch']
         repoarch = koji.canonArch(arch)
@@ -1888,10 +1897,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     if tinfo['maven_support']:
         maven_builds = dict([(build['id'], build) for build in maven_tag_packages(tinfo, event_id)])
-
-    # commit the transaction now so we don't hold locks in the database while we're creating
-    # links on the filesystem (which can take a long time)
-    context.cnx.commit()
     
     #link packages
     for arch in packages.iterkeys():
@@ -1914,6 +1919,31 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             for rpminfo in packages.get('src',[]):
                 pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
         pkglist.close()
+        #write list of blocked packages
+        blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
+        logger.info("Creating blocked list for %s" % arch)
+        for pkg in blocks:
+            blocklist.write(pkg['package_name'])
+            blocklist.write('\n')
+        blocklist.close()
+
+    # if using an external repo, make sure we've created a directory and pkglist for
+    # every arch in the taglist, or any packages of that arch in the external repo
+    # won't be processed
+    if get_external_repo_list(tinfo['id'], event=event_id):
+        for arch in repo_arches:
+            pkglist = os.path.join(repodir, arch, 'pkglist')
+            if not os.path.exists(pkglist):
+                logger.info("Creating missing package list for %s" % arch)
+                koji.ensuredir(os.path.dirname(pkglist))
+                pkglist_fo = file(pkglist, 'w')
+                pkglist_fo.close()
+                blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
+                logger.info("Creating missing blocked list for %s" % arch)
+                for pkg in blocks:
+                    blocklist.write(pkg['package_name'])
+                    blocklist.write('\n')
+                blocklist.close()
 
     if tinfo['maven_support']:
         artifact_dirs = {}
@@ -2092,6 +2122,7 @@ def tag_changed_since_event(event,taglist):
         'tag_inheritance',
         'tag_config',
         'tag_packages',
+        'tag_external_repos',
         'group_package_listing',
         'group_req_listing',
         'group_config',
@@ -2373,7 +2404,7 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
 
     return tag_id
 
-def get_tag(tagInfo,strict=False):
+def get_tag(tagInfo,strict=False,event=None):
     """Get tag information based on the tagInfo.  tagInfo may be either
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
@@ -2396,8 +2427,8 @@ def get_tag(tagInfo,strict=False):
     fields = ('id', 'name', 'perm_id', 'arches', 'locked', 'maven_support', 'maven_include_all')
     q = """SELECT %s FROM tag_config
     JOIN tag ON tag_config.tag_id = tag.id
-    WHERE tag_config.active = TRUE
-        AND  """ % ', '.join(fields)
+    WHERE %s
+        AND  """ % (', '.join(fields), eventCondition(event))
     if isinstance(tagInfo, int):
         q += """tag.id = %(tagInfo)i"""
     elif isinstance(tagInfo, str):
@@ -2514,12 +2545,272 @@ def delete_tag(tagInfo):
     _tagDelete('build_target_config', tagID, eventID, 'dest_tag')
     _tagDelete('tag_listing', tagID, eventID)
     _tagDelete('tag_packages', tagID, eventID)
+    _tagDelete('tag_external_repos', tagID, eventID)
     _tagDelete('group_config', tagID, eventID)
     _tagDelete('group_req_listing', tagID, eventID)
     _tagDelete('group_package_listing', tagID, eventID)
     # note: we do not delete the entry in the tag table (we can't actually, it
     # is still referenced by the revoked rows).
     # note: there is no need to do anything with the repo entries that reference tagID
+
+def get_external_repo_id(info, strict=False, create=False):
+    """Get the id for a build target"""
+    return get_id('external_repo', info, strict, create)
+
+def create_external_repo(name, url):
+    """Create a new external repo with the given name and url.
+    Return a map containing the id, name, and url
+    of the new repo."""
+
+    context.session.assertPerm('admin')
+
+    if get_external_repos(info=name):
+        raise koji.GenericError, 'An external repo named "%s" already exists' % name
+
+    id = get_external_repo_id(name, create=True)
+    if not url.endswith('/'):
+        # Ensure the url always ends with /
+        url += '/'
+    values = {'id': id, 'name': name, 'url': url}
+    insert = """INSERT INTO external_repo_config (external_repo_id, url) VALUES (%(id)i, %(url)s)"""
+    _dml(insert, values)
+    return values
+
+def get_external_repos(info=None, url=None, event=None, queryOpts=None):
+    """Get a list of external repos.  If info is not None it may be a
+    string (name) or an integer (id).
+    If url is not None, filter the list of repos to those matching the
+    given url."""
+    fields = ['id', 'name', 'url']
+    tables = ['external_repo']
+    joins = ['external_repo_config ON external_repo_id = id']
+    clauses = [eventCondition(event)]
+    if info is not None:
+        if isinstance(info, str):
+            clauses.append('name = %(info)s')
+        elif isinstance(info, (int, long)):
+            clauses.append('id = %(info)i')
+        else:
+            raise koji.GenericError, 'invalid type for lookup: %s' % type(info)
+    if url:
+        clauses.append('url = %(url)s')
+
+    query = QueryProcessor(columns=fields, tables=tables,
+                           joins=joins, clauses=clauses,
+                           values=locals(), opts=queryOpts)
+    return query.execute()
+
+def get_external_repo(info, strict=False, event=None):
+    """Get information about a single external repo.
+    info can either be a string (name) or an integer (id).
+    Returns a map containing the id, name, and url of the
+    repo.  If strict is True and no external repo has the
+    given name or id, raise an error."""
+    repos = get_external_repos(info, event=event)
+    if repos:
+        return repos[0]
+    else:
+        if strict:
+            raise koji.GenericError, 'invalid repo info: %s' % info
+        else:
+            return None
+
+def edit_external_repo(info, name=None, url=None):
+    """Edit an existing external repo"""
+
+    context.session.assertPerm('admin')
+
+    repo = get_external_repo(info, strict=True)
+    repo_id = repo['id']
+
+    if name and name != repo['name']:
+        existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
+                                   locals(), strict=False)
+        if existing_id is not None:
+            raise koji.GenericError, 'name "%s" is already taken by external repo %i' % (name, existing_id)
+
+        rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
+        _dml(rename, locals())
+
+    if url and url != repo['url']:
+        if not url.endswith('/'):
+            # Ensure the url always ends with /
+            url += '/'
+        event_id = _singleValue("SELECT get_event()")
+
+        update = """UPDATE external_repo_config
+        SET active = NULL, revoke_event = %(event_id)i
+        WHERE external_repo_id = %(repo_id)i
+        AND active is true"""
+
+        insert = """INSERT INTO external_repo_config
+        (external_repo_id, url, create_event)
+        VALUES
+        (%(repo_id)i, %(url)s, %(event_id)i)"""
+
+        _dml(update, locals())
+        _dml(insert, locals())
+
+def delete_external_repo(info):
+    """Delete an external repo"""
+
+    context.session.assertPerm('admin')
+
+    repo = get_external_repo(info, strict=True)
+    repo_id = repo['id']
+
+    for tag_repo in get_tag_external_repos(repo_info=repo['id']):
+        remove_external_repo_from_tag(tag_info=tag_repo['tag_id'],
+                                      repo_info=repo_id)
+
+    update = """UPDATE external_repo_config
+    SET active = null, revoke_event = get_event()
+    WHERE external_repo_id = %(repo_id)i
+    AND active = true"""
+
+    _dml(update, locals())
+
+def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
+    """Add an external repo to a tag"""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    tag_repos = get_tag_external_repos(tag_info=tag_id)
+    if [tr for tr in tag_repos if tr['external_repo_id'] == repo_id]:
+        raise koji.GenericError, 'tag %s already associated with external repo %s' % \
+            (tag['name'], repo['name'])
+    if [tr for tr in tag_repos if tr['priority'] == priority]:
+        raise koji.GenericError, 'tag %s already associated with an external repo at priority %i' % \
+            (tag['name'], priority)
+
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        event_id = event
+
+    insert = """INSERT INTO tag_external_repos
+    (tag_id, external_repo_id, priority, create_event)
+    VALUES
+    (%(tag_id)i, %(repo_id)i, %(priority)i, %(event_id)i)"""
+
+    _dml(insert, locals())
+
+def remove_external_repo_from_tag(tag_info, repo_info, event=None):
+    """Remove an external repo from a tag"""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    if not get_tag_external_repos(tag_info=tag_id, repo_info=repo_id):
+        raise koji.GenericError, 'external repo %s not associated with tag %s' % \
+            (repo['name'], tag['name'])
+
+    if event is None:
+        event_id = _singleValue("SELECT get_event()")
+    else:
+        event_id = event
+
+    update = """UPDATE tag_external_repos
+    SET active = null, revoke_event=%(event_id)i
+    WHERE tag_id = %(tag_id)i AND external_repo_id = %(repo_id)i
+    AND active = true"""
+
+    _dml(update, locals())
+
+def edit_tag_external_repo(tag_info, repo_info, priority):
+    """Edit a tag<->external repo association
+    This allows you to update the priority without removing/adding the repo."""
+
+    context.session.assertPerm('admin')
+
+    tag = get_tag(tag_info, strict=True)
+    tag_id = tag['id']
+    repo = get_external_repo(repo_info, strict=True)
+    repo_id = repo['id']
+
+    tag_repos = get_tag_external_repos(tag_info=tag_id, repo_info=repo_id)
+    if not tag_repos:
+        raise koji.GenericError, 'external repo %s not associated with tag %s' % \
+            (repo['name'], tag['name'])
+    tag_repo = tag_repos[0]
+
+    if priority != tag_repo['priority']:
+        event_id = _singleValue("SELECT get_event()")
+        remove_external_repo_from_tag(tag_id, repo_id, event=event_id)
+        add_external_repo_to_tag(tag_id, repo_id, priority, event=event_id)
+
+def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
+    """
+    Get a list of tag<->external repo associations.
+
+    Returns a map containing the following fields:
+    tag_id
+    tag_name
+    external_repo_id
+    external_repo_name
+    url
+    priority
+    """
+    tables = ['tag_external_repos']
+    joins = ['tag ON tag_external_repos.tag_id = tag.id',
+             'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
+             'external_repo_config ON external_repo.id = external_repo_config.external_repo_id']
+    columns = ['tag.id', 'tag.name', 'external_repo.id', 'external_repo.name', 'url', 'priority']
+    aliases = ['tag_id', 'tag_name', 'external_repo_id', 'external_repo_name', 'url', 'priority']
+
+    clauses = [eventCondition(event, table='tag_external_repos'), eventCondition(event, table='external_repo_config')]
+    if tag_info:
+        tag = get_tag(tag_info, strict=True, event=event)
+        tag_id = tag['id']
+        clauses.append('tag.id = %(tag_id)i')
+    if repo_info:
+        repo = get_external_repo(repo_info, strict=True, event=event)
+        repo_id = repo['id']
+        clauses.append('external_repo.id = %(repo_id)i')
+
+    opts = {'order': 'priority'}
+
+    query = QueryProcessor(tables=tables, joins=joins,
+                           columns=columns, aliases=aliases,
+                           clauses=clauses, values=locals(),
+                           opts=opts)
+    return query.execute()
+
+def get_external_repo_list(tag_info, event=None):
+    """
+    Get an ordered list of all external repos associated with the tags in the
+    hierarchy rooted at the specified tag.  External repos will be returned
+    depth-first, and ordered by priority for each tag.  Duplicates will be
+    removed.  Returns a list of maps containing the following fields:
+
+    tag_id
+    tag_name
+    external_repo_id
+    external_repo_name
+    url
+    priority
+    """
+    tag = get_tag(tag_info, strict=True, event=event)
+    tag_list = [tag['id']]
+    for parent in readFullInheritance(tag['id'], event):
+        tag_list.append(parent['parent_id'])
+    seen_repos = {}
+    repos = []
+    for tag_id in tag_list:
+        for tag_repo in get_tag_external_repos(tag_info=tag_id, event=event):
+            if not seen_repos.has_key(tag_repo['external_repo_id']):
+                repos.append(tag_repo)
+                seen_repos[tag_repo['external_repo_id']] = 1
+    return repos
 
 def get_user(userInfo=None,strict=False):
     """Return information about a user.  userInfo may be either a str
@@ -2631,13 +2922,17 @@ def get_build(buildInfo, strict=False):
         ret = dict(zip([pair[1] for pair in fields], result))
         return ret
 
-def get_rpm(rpminfo,strict=False):
+def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
     rpminfo may be any one of the following:
     - a int ID
     - a string N-V-R.A
+    - a string N-V-R.A@location
     - a map containing 'name', 'version', 'release', and 'arch'
+      (and optionally 'location')
+
+    If specified, location should match the name of an external repo
 
     A map will be returned, with the following keys:
     - id
@@ -2651,12 +2946,31 @@ def get_rpm(rpminfo,strict=False):
     - buildtime
     - build_id
     - buildroot_id
+    - external_repo_id
+    - external_repo_name
 
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
+
+    If more than one RPM matches, and multi is True, then a list of results is
+    returned. If multi is False, a single match is returned (an internal one if
+    possible).
     """
-    fields = ('id', 'name', 'version', 'release', 'arch', 'epoch',
-              'payloadhash', 'size', 'buildtime', 'build_id', 'buildroot_id')
+    fields = (
+        ('rpminfo.id', 'id'),
+        ('build_id', 'build_id'),
+        ('buildroot_id', 'buildroot_id'),
+        ('rpminfo.name', 'name'),
+        ('version', 'version'),
+        ('release', 'release'),
+        ('epoch', 'epoch'),
+        ('arch', 'arch'),
+        ('external_repo_id', 'external_repo_id'),
+        ('external_repo.name', 'external_repo_name'),
+        ('payloadhash', 'payloadhash'),
+        ('size', 'size'),
+        ('buildtime', 'buildtime'),
+        )
     # we can look up by id or NVRA
     data = None
     if isinstance(rpminfo,(int,long)):
@@ -2667,20 +2981,41 @@ def get_rpm(rpminfo,strict=False):
         data = rpminfo.copy()
     else:
         raise koji.GenericError, "Invalid argument: %r" % rpminfo
-    q = """SELECT %s FROM rpminfo """ % ','.join(fields)
+    clauses = []
     if data.has_key('id'):
-        q += """WHERE id=%(id)s"""
+        clauses.append("rpminfo.id=%(id)s")
     else:
-        q += """WHERE name=%(name)s AND version=%(version)s
-        AND release=%(release)s AND arch=%(arch)s"""
-    c = context.cnx.cursor()
-    c.execute(q, data)
-    row = c.fetchone()
-    if not row:
+        clauses.append("""rpminfo.name=%(name)s AND version=%(version)s
+        AND release=%(release)s AND arch=%(arch)s""")
+    retry = False
+    if data.has_key('location'):
+        data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
+        clauses.append("""external_repo_id = %(external_repo_id)i""")
+    elif not multi:
+        #try to match internal first, otherwise first matching external
+        retry = True  #if no internal match
+        orig_clauses = list(clauses)  #copy
+        clauses.append("""external_repo_id = 0""")
+
+    joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
+
+    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                           tables=['rpminfo'], joins=joins, clauses=clauses,
+                           values=data)
+    if multi:
+        return query.execute()
+    ret = query.executeOne()
+    if ret:
+        return ret
+    if retry:
+        #at this point we have just an NVRA with no internal match. Open it up to externals
+        query.clauses = orig_clauses
+        ret = query.executeOne()
+    if not ret:
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
-    return dict(zip(fields,row))
+    return ret
 
 def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
     """List RPMS.  If buildID and/or buildrootID are specified,
@@ -2702,6 +3037,8 @@ def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=
     - buildtime
     - build_id
     - buildroot_id
+    - external_repo_id
+    - external_repo_name
 
     If componentBuildrootID is specified, two additional keys will be included:
     - component_buildroot_id
@@ -2715,8 +3052,11 @@ def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=
               ('rpminfo.arch', 'arch'),
               ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
               ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
-              ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id')]
-    joins = []
+              ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
+              ('rpminfo.external_repo_id', 'external_repo_id'),
+              ('external_repo.name', 'external_repo_name'),
+             ]
+    joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
 
     if buildID != None:
@@ -3192,47 +3532,6 @@ def list_channels(hostID=None):
         WHERE host_channels.host_id = %(hostID)i"""
     return _multiRow(query, locals(), fields)
 
-def get_changelog_entries(buildID, author=None, before=None, after=None, queryOpts=None):
-    """Get changelog entries for the build with the given ID.
-
-    - author: only return changelogs with a matching author
-    - before: only return changelogs from before the given date
-              (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
-    - after: only return changelogs from after the given date
-             (a datetime object or a string in the 'YYYY-MM-DD HH24:MI:SS format)
-    - queryOpts: query options used by the QueryProcessor
-
-    If "order" is not specified in queryOpts, results will be returned in reverse chronological
-    order.
-
-    Results will be returned as a list of maps with 'date', 'author', and 'text' keys.
-    If there are no results, an empty list will be returned.
-    """
-    fields = ('id', 'date', 'author', 'text')
-
-    if not queryOpts:
-        queryOpts = {}
-    if not queryOpts.has_key('order'):
-        # newest entries will be inserted first, because of
-        # the way entries are sorted in the spec file
-        queryOpts['order'] = 'id'
-
-    clauses = ['changelogs.build_id = %(buildID)i']
-    if author:
-        clauses.append('changelogs.author = %(author)s')
-    if before:
-        if isinstance(before, datetime.datetime):
-            before = str(before)
-        clauses.append('changelogs.date < %(before)s')
-    if after:
-        if isinstance(after, datetime.datetime):
-            after = str(after)
-        clauses.append('changelogs.date > %(after)s')
-
-    query = QueryProcessor(columns=fields, tables=('changelogs',),
-                           clauses=clauses, values=locals(), opts=queryOpts)
-    return query.execute()
-
 def new_package(name,strict=True):
     c = context.cnx.cursor()
     # TODO - table lock?
@@ -3293,9 +3592,6 @@ def new_build(data):
             WHERE id = %(id)i"""
             data['id'] = id
             _dml(update, data)
-            # delete any now-obsolete changelogs
-            delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
-            _dml(delete, data)
             return id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
             % (id, st_desc, data)
@@ -3310,6 +3606,33 @@ def new_build(data):
     #return build_id
     q="""SELECT currval('build_id_seq')"""
     return _singleValue(q)
+
+def check_noarch_rpms(basepath, rpms):
+    """
+    If rpms contains any noarch rpms with identical names,
+    run rpmdiff against the duplicate rpms.
+    Return the list of rpms with any duplicate entries removed (only
+    the first entry will be retained).
+    """
+    result = []
+    noarch_rpms = {}
+    for relpath in rpms:
+        if relpath.endswith('.noarch.rpm'):
+            filename = os.path.basename(relpath)
+            if noarch_rpms.has_key(filename):
+                # duplicate found, add it to the duplicate list
+                # but not the result list
+                noarch_rpms[filename].append(relpath)
+            else:
+                noarch_rpms[filename] = [relpath]
+                result.append(relpath)
+        else:
+            result.append(relpath)
+
+    for noarch_list in noarch_rpms.values():
+        rpmdiff(basepath, noarch_list)
+
+    return result
 
 def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None):
     """Import a build into the database (single transaction)
@@ -3330,6 +3653,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         fn = "%s/%s" % (uploadpath,relpath)
         if not os.path.exists(fn):
             raise koji.GenericError, "no such file: %s" % fn
+
+    rpms = check_noarch_rpms(uploadpath, rpms)
 
     #verify buildroot ids from brmap
     found = {}
@@ -3435,84 +3760,88 @@ def import_rpm(fn,buildinfo=None,brootid=None):
                     % (fn,basename,srpmname)
 
     #add rpminfo entry
+    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
     rpminfo['build'] = buildinfo
     rpminfo['build_id'] = buildinfo['id']
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
     rpminfo['brootid'] = brootid
-    q = """INSERT INTO rpminfo (name,version,release,epoch,
+    q = """INSERT INTO rpminfo (id,name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
+            external_repo_id,
             size,payloadhash)
-    VALUES (%(name)s,%(version)s,%(release)s,%(epoch)s,
+    VALUES (%(id)i,%(name)s,%(version)s,%(release)s,%(epoch)s,
             %(build_id)s,%(arch)s,%(buildtime)s,%(brootid)s,
+            0,
             %(size)s,%(payloadhash)s)
     """
     _dml(q, rpminfo)
 
-    #get rpminfo id
-    rpminfo_id = _singleValue("""SELECT currval('rpminfo_id_seq')""")
-
-    # - add rpmdeps entries
-    for type in ['REQUIRE','PROVIDE','CONFLICT','OBSOLETE']:
-        dep_type = getattr(koji, "DEP_" + type)
-        key_n = getattr(rpm, "RPMTAG_" + type + "NAME")
-        key_f = getattr(rpm, "RPMTAG_" + type + "FLAGS")
-        key_v = getattr(rpm, "RPMTAG_" + type + "VERSION")
-        for (dep_name,dep_flags,dep_version) in zip(hdr[key_n],hdr[key_f],hdr[key_v]):
-            #log_error("%r" %[dep_name,dep_flags,dep_version])
-            q = """INSERT INTO rpmdeps (rpm_id,dep_name,dep_flags,dep_version,dep_type)
-            VALUES (%(rpminfo_id)d,%(dep_name)s,%(dep_flags)d,%(dep_version)s,%(dep_type)d)
-            """
-            #log_error(koji.db._quoteparams(q,locals()))
-            _dml(q, locals())
-
-    # - add rpmfiles entries
-    for (filename,filesize,filemd5,fileflags) in \
-            zip(hdr[rpm.RPMTAG_FILENAMES],hdr[rpm.RPMTAG_FILESIZES],
-                hdr[rpm.RPMTAG_FILEMD5S],hdr[rpm.RPMTAG_FILEFLAGS]):
-        filename = koji.fixEncoding(filename)
-        q = """INSERT INTO rpmfiles (rpm_id,filename,filesize,filemd5,fileflags)
-        VALUES (%(rpminfo_id)d,%(filename)s,%(filesize)d,%(filemd5)s,%(fileflags)d)
-        """
-        _dml(q, locals())
-
-    # - add changelog entries, if not already present
-    import_changelog(buildinfo, fn)
-
-    rpminfo['id'] = rpminfo_id
     return rpminfo
 
-def import_changelog(buildinfo, rpmfile, replace=False):
-    """Import the changelog from the given rpm into the build with the
-    given ID.  If the build already has changelog info and replace is True,
-    the existing info is cleared and the changelog info from the rpm is imported.
-    If replace is False, nothing is done."""
-    hdr = koji.get_rpm_header(rpmfile)
+def add_external_rpm(rpminfo, external_repo, strict=True):
+    """Add an external rpm entry to the rpminfo table
 
-    build_id = buildinfo['id']
+    Differences from import_rpm:
+        - entry will have non-zero external_repo_id
+        - entry will not reference a build
+        - rpm not available to us -- the necessary data is passed in
 
-    if len(get_changelog_entries(buildID=build_id)) != 0:
-        # the changelog for this build has already been imported
-        if replace:
-            delete = """DELETE FROM changelogs WHERE build_id=%(build_id)i"""
-            _dml(delete, locals())
+    The rpminfo arg should contain the following fields:
+        - name, version, release, epoch, arch, payloadhash, size, buildtime
+
+    Returns info as get_rpm
+    """
+
+    # [!] Calling function should perform access checks
+
+    #sanity check rpminfo
+    dtypes = (
+        ('name', basestring),
+        ('version', basestring),
+        ('release', basestring),
+        ('epoch', (int, types.NoneType)),
+        ('arch', basestring),
+        ('payloadhash', str),
+        ('size', int),
+        ('buildtime', (int, long)))
+    for field, allowed in dtypes:
+        if not rpminfo.has_key(field):
+            raise koji.GenericError, "%s field missing: %r" % (field, rpminfo)
+        if not isinstance(rpminfo[field], allowed):
+            #this will catch unwanted NULLs
+            raise koji.GenericError, "Invalid value for %s: %r" % (field, rpminfo[field])
+    #TODO: more sanity checks for payloadhash
+
+    #Check to see if we have it
+    data = rpminfo.copy()
+    data['location'] = external_repo
+    previous = get_rpm(data, strict=False)
+    if previous:
+        disp = "%(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % previous
+        if strict:
+            raise koji.GenericError, "external rpm already exists: %s" % disp
+        elif data['payloadhash'] != previous['payloadhash']:
+            raise koji.GenericError, "hash changed for external rpm: %s (%s -> %s)" \
+                    % (disp,  previous['payloadhash'], data['payloadhash'])
         else:
-            return
+            return previous
 
-    cltimelist = hdr['CHANGELOGTIME']
-    # If there is exactly one changelog entry, CHANGELOGTIME is returned as
-    # an int, instead of a list.
-    if isinstance(cltimelist, int):
-        cltimelist = [cltimelist]
-    for cltime, clauthor, cltext in zip(cltimelist, hdr['CHANGELOGNAME'],
-                                        hdr['CHANGELOGTEXT']):
-        cltime = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-        clauthor = koji.fixEncoding(clauthor)
-        cltext = koji.fixEncoding(cltext)
-        q = """INSERT INTO changelogs (build_id, date, author, text) VALUES
-        (%(build_id)d, %(cltime)s, %(clauthor)s, %(cltext)s)
-        """
-        _dml(q, locals())
+    #add rpminfo entry
+    rpminfo['external_repo_id'] = get_external_repo_id(external_repo, strict=True)
+    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
+    q = """INSERT INTO rpminfo (id, build_id, buildroot_id,
+            name, version, release, epoch, arch,
+            external_repo_id,
+            payloadhash, size, buildtime)
+    VALUES (%(id)i, NULL, NULL,
+            %(name)s, %(version)s, %(release)s, %(epoch)s, %(arch)s,
+            %(external_repo_id)i,
+            %(payloadhash)s, %(size)i, %(buildtime)i)
+    """
+    _dml(q, rpminfo)
+
+    return get_rpm(rpminfo['id'])
 
 def import_build_log(fn, buildinfo, subdir=None):
     """Move a logfile related to a build to the right place"""
@@ -3878,6 +4207,9 @@ def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
     #calling function should perform permission checks, if applicable
     rinfo = get_rpm(an_rpm, strict=True)
+    if rinfo['external_repo_id']:
+        raise koji.GenericError, "Not an internal rpm: %s (from %s)" \
+                % (an_rpm, rinfo['external_repo_name'])
     binfo = get_build(rinfo['build_id'])
     builddir = koji.pathinfo.build(binfo)
     if not os.path.isdir(builddir):
@@ -3887,6 +4219,8 @@ def add_rpm_sig(an_rpm, sighdr):
     if sigmd5 == rinfo['payloadhash']:
         # note: payloadhash is a misnomer, that field is populated with sigmd5.
         sigkey = rawhdr.get(koji.RPM_SIGTAG_GPG)
+        if not sigkey:
+            sigkey = rawhdr.get(koji.RPM_SIGTAG_PGP)
     else:
         # In older rpms, this field in the signature header does not actually match
         # sigmd5 (I think rpmlib pulls it from SIGTAG_GPG). Anyway, this
@@ -3900,12 +4234,12 @@ def add_rpm_sig(an_rpm, sighdr):
         if sigmd5 != rinfo['payloadhash']:
             nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
             raise koji.GenericError, "wrong md5 for %s: %s" % (nvra, sigmd5)
-    if sigkey is None:
+    if not sigkey:
         sigkey = ''
         #we use the sigkey='' to represent unsigned in the db (so that uniqueness works)
     else:
-        sigkey = koji.hex_string(sigkey[13:17])
-    sighash = md5.new(sighdr).hexdigest()
+        sigkey = koji.get_sigpacket_key_id(sigkey)
+    sighash = md5_constructor(sighdr).hexdigest()
     rpm_id = rinfo['id']
     # - db entry
     q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
@@ -3951,7 +4285,10 @@ def _scan_sighdr(sighdr, fn):
     #(we have no payload, so verifies would fail otherwise)
     hdr = ts.hdrFromFdno(outp.fileno())
     outp.close()
-    return hdr[rpm.RPMTAG_SIGMD5], hdr[rpm.RPMTAG_SIGGPG]
+    sig = hdr[rpm.RPMTAG_SIGGPG]
+    if not sig:
+        sig = hdr[rpm.RPMTAG_SIGPGP]
+    return hdr[rpm.RPMTAG_SIGMD5], sig
 
 def check_rpm_sig(an_rpm, sigkey, sighdr):
     #verify that the provided signature header matches the key and rpm
@@ -3979,10 +4316,12 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
             pass
         raise
     raw_key = hdr[rpm.RPMTAG_SIGGPG]
-    if raw_key is None:
+    if not raw_key:
+        raw_key = hdr[rpm.RPMTAG_SIGPGP]
+    if not raw_key:
         found_key = None
     else:
-        found_key = koji.hex_string(raw_key[13:17])
+        found_key = koji.get_sigpacket_key_id(raw_key)
     if sigkey != found_key:
         raise koji.GenericError, "Signature key mismatch: got %s, expected %s" \
                               % (found_key, sigkey)
@@ -4006,6 +4345,9 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     context.session.assertPerm('sign')
     #XXX - still not sure if this is the right restriction
     rinfo = get_rpm(an_rpm, strict=True)
+    if rinfo['external_repo_id']:
+        raise koji.GenericError, "Not an internal rpm: %s (from %s)" \
+                % (an_rpm, rinfo['external_repo_name'])
     binfo = get_build(rinfo['build_id'])
     nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
     builddir = koji.pathinfo.build(binfo)
@@ -4269,13 +4611,10 @@ def _delete_build(binfo):
     #   build   KEEP (marked deleted)
     #   maven_builds KEEP
     #   task ??
-    #   changelogs  DELETE
     #   tag_listing REVOKE (versioned) (but should ideally be empty anyway)
     #   rpminfo KEEP
     #           buildroot_listing KEEP (but should ideally be empty anyway)
     #           rpmsigs DELETE
-    #           rpmdeps DELETE
-    #           rpmfiles DELETE
     #   archiveinfo KEEP
     #               buildroot_archives KEEP (but should ideally be empty anyway)
     #               archivefiles DELETE
@@ -4284,10 +4623,6 @@ def _delete_build(binfo):
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
     rpm_ids = _fetchMulti(q, locals())
     for (rpm_id,) in rpm_ids:
-        delete = """DELETE FROM rpmdeps WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM rpmfiles WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
     q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
@@ -4295,8 +4630,6 @@ def _delete_build(binfo):
     for (archive_id,) in archive_ids:
         delete = """DELETE FROM archivefiles WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
-    delete = """DELETE FROM changelogs WHERE build_id=%(build_id)i"""
-    _dml(delete, locals())
     event_id = _singleValue("SELECT get_event()")
     update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
     WHERE active = TRUE AND build_id=%(build_id)i"""
@@ -4330,7 +4663,7 @@ def reset_build(build):
     WARNING: this function is potentially destructive. use with care.
     nulls task_id
     sets state to CANCELED
-    clears data in rpminfo, rpmdeps, rpmfiles
+    clears data in rpminfo
     removes rpminfo entries from any buildroot_listings [!]
     clears data in archiveinfo, archivefiles, maven_info
     removes archiveinfo entries from buildroot_archives
@@ -4349,10 +4682,6 @@ def reset_build(build):
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
     for (rpm_id,) in ids:
-        delete = """DELETE FROM rpmdeps WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM rpmfiles WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
@@ -4369,8 +4698,6 @@ def reset_build(build):
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
     delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM changelogs WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
@@ -4430,8 +4757,8 @@ def _get_build_target(task_id):
     task = Task(task_id)
     request = task.getRequest()
     # request is (path-to-srpm, build-target-name, map-of-other-options)
-    ret = get_build_targets(request[1])
-    if ret:
+    if request[1]:
+        ret = get_build_targets(request[1])
         return ret[0]
     else:
         return None
@@ -4469,18 +4796,20 @@ def get_notification_recipients(build, tag_id, state):
     emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
+    notify_on_success = context.opts['NotifyOnSuccess']
 
-    # user who submitted the build
-    emails.append('%s@%s' % (build['owner_name'], email_domain))
+    if notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']:
+        # user who submitted the build
+        emails.append('%s@%s' % (build['owner_name'], email_domain))
 
-    if tag_id:
-        packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
-        # owner of the package in this tag, following inheritance
-        package_info = packages.get(package_id)
-        if package_info:
-            emails.append('%s@%s' % (package_info['owner_name'], email_domain))
-    #FIXME - if tag_id is None, we don't have a good way to get the package owner.
-    #   using all package owners from all tags would be way overkill.
+        if tag_id:
+            packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
+            # owner of the package in this tag, following inheritance
+            package_info = packages.get(package_id)
+            if package_info:
+                emails.append('%s@%s' % (package_info['owner_name'], email_domain))
+        #FIXME - if tag_id is None, we don't have a good way to get the package owner.
+        #   using all package owners from all tags would be way overkill.
 
     emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
     return emails_uniq
@@ -4768,6 +5097,39 @@ SELECT %(col_str)s
                 return None
         return results
 
+def _applyQueryOpts(results, queryOpts):
+    """
+    Apply queryOpts to results in the same way QueryProcessor would.
+    results is a list of maps.
+    queryOpts is a map which may contain the following fields:
+      countOnly
+      order
+      offset
+      limit
+
+    Note: asList is supported by QueryProcessor but not by this method.
+    We don't know the original query order, and so don't have a way to
+    return a useful list.  asList should be handled by the caller.
+    """
+    if queryOpts is None:
+        queryOpts = {}
+    if queryOpts.get('order'):
+        order = queryOpts['order']
+        reverse = False
+        if order.startswith('-'):
+            order = order[1:]
+            reverse = True
+        results.sort(key=lambda o: o[order])
+        if reverse:
+            results.reverse()
+    if queryOpts.get('offset'):
+        results = results[queryOpts['offset']:]
+    if queryOpts.get('limit'):
+        results = results[:queryOpts['limit']]
+    if queryOpts.get('countOnly'):
+        return len(results)
+    else:
+        return results
 
 #
 # Policy Test Handlers
@@ -5055,6 +5417,29 @@ def assert_policy(name, data, default='deny'):
     """
     check_policy(name, data, default=default, strict=True)
 
+def rpmdiff(basepath, rpmlist):
+    "Diff the first rpm in the list against the rest of the rpms."
+    if len(rpmlist) < 2:
+        return
+    first_rpm = rpmlist[0]
+    for other_rpm in rpmlist[1:]:
+        # ignore differences in file size, md5sum, and mtime
+        # (files may have been generated at build time and contain
+        #  embedded dates or other insignificant differences)
+        args = ['/usr/libexec/koji-hub/rpmdiff',
+                '--ignore', 'S', '--ignore', '5',
+                '--ignore', 'T',
+                os.path.join(basepath, first_rpm),
+                os.path.join(basepath, other_rpm)]
+        proc = subprocess.Popen(args,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                close_fds=True)
+        output = proc.communicate()[0]
+        status = proc.wait()
+        if os.WIFSIGNALED(status) or \
+                (os.WEXITSTATUS(status) != 0):
+            raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
+                (os.path.basename(first_rpm), output)
 
 #
 # XMLRPC Methods
@@ -5262,11 +5647,13 @@ class RootExports(object):
             raise koji.GenericError, 'you must be logged-in to upload a file'
         contents = base64.decodestring(data)
         del data
+        if not isinstance(offset, (int, long)):
+            offset = int(offset)
         if offset != -1:
             if size is not None:
                 if size != len(contents): return False
             if md5sum is not None:
-                if md5sum != md5.new(contents).hexdigest():
+                if md5sum != md5_constructor(contents).hexdigest():
                     return False
         uploadpath = koji.pathinfo.work()
         #XXX - have an incoming dir and move after upload complete
@@ -5326,7 +5713,7 @@ class RootExports(object):
                         fcntl.lockf(fd, fcntl.LOCK_UN)
                 if md5sum is not None:
                     #check final md5sum
-                    sum = md5.new()
+                    sum = md5_constructor()
                     fcntl.lockf(fd, fcntl.LOCK_SH|fcntl.LOCK_NB)
                     try:
                         # log_error("checking md5sum")
@@ -5405,6 +5792,26 @@ class RootExports(object):
     editTag2 = staticmethod(edit_tag)
     deleteTag = staticmethod(delete_tag)
 
+    createExternalRepo = staticmethod(create_external_repo)
+    listExternalRepos = staticmethod(get_external_repos)
+    getExternalRepo = staticmethod(get_external_repo)
+    editExternalRepo = staticmethod(edit_external_repo)
+    deleteExternalRepo = staticmethod(delete_external_repo)
+
+    def addExternalRepoToTag(self, tag_info, repo_info, priority):
+        """Add an external repo to a tag"""
+        # wrap the local method so we don't expose the event parameter
+        add_external_repo_to_tag(tag_info, repo_info, priority)
+
+    def removeExternalRepoFromTag(self, tag_info, repo_info):
+        """Remove an external repo from a tag"""
+        # wrap the local method so we don't expose the event parameter
+        remove_external_repo_from_tag(tag_info, repo_info)
+
+    editTagExternalRepo = staticmethod(edit_tag_external_repo)
+    getTagExternalRepos = staticmethod(get_tag_external_repos)
+    getExternalRepoList = staticmethod(get_external_repo_list)
+
     importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
 
@@ -5466,6 +5873,13 @@ class RootExports(object):
         import_rpm_file(fn,rpminfo['build'],rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
 
+    def addExternalRPM(self, rpminfo, external_repo, strict=True):
+        """Import an external RPM
+
+        This call is mainly for testing. Normal access will be through
+        a host call"""
+        context.session.assertPerm('admin')
+        add_external_rpm(rpminfo, external_repo, strict=strict)
 
     def tagBuildBypass(self,tag,build,force=False):
         """Tag a build without running post checks or notifications
@@ -5709,6 +6123,97 @@ class RootExports(object):
     getArchiveFile = staticmethod(get_archive_file)
     getChangelogEntries = staticmethod(get_changelog_entries)
 
+    def getChangelogEntries(self, buildID=None, taskID=None, filepath=None, author=None, before=None, after=None, queryOpts=None):
+        """Get changelog entries for the build with the given ID,
+           or for the rpm generated by the given task at the given path
+
+        - author: only return changelogs with a matching author
+        - before: only return changelogs from before the given date (in UTC)
+                  (a datetime object, a string in the 'YYYY-MM-DD HH24:MI:SS format, or integer seconds
+                   since the epoch)
+        - after: only return changelogs from after the given date (in UTC)
+                 (a datetime object, a string in the 'YYYY-MM-DD HH24:MI:SS format, or integer seconds
+                  since the epoch)
+        - queryOpts: query options used by the QueryProcessor
+
+        If "order" is not specified in queryOpts, results will be returned in reverse chronological
+        order.
+
+        Results will be returned as a list of maps with 'date', 'author', and 'text' keys.
+        If there are no results, an empty list will be returned.
+        """
+        if queryOpts is None:
+            queryOpts = {}
+        if queryOpts.get('order') in ('date', '-date'):
+            # use a numeric sort on the timestamp instead of an alphabetic sort on the
+            # date string
+            queryOpts['order'] = queryOpts['order'].replace('date', 'date_ts')
+        if buildID:
+            build_info = get_build(buildID)
+            if not build_info:
+                return _applyQueryOpts([], queryOpts)
+            srpms = self.listRPMs(buildID=build_info['id'], arches='src')
+            if not srpms:
+                return _applyQueryOpts([], queryOpts)
+            srpm_info = srpms[0]
+            srpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(srpm_info))
+        elif taskID:
+            if not filepath:
+                raise koji.GenericError, 'filepath must be spcified with taskID'
+            if filepath.startswith('/') or '../' in filepath:
+                raise koji.GenericError, 'invalid filepath: %s' % filepath
+            srpm_path = os.path.join(koji.pathinfo.work(),
+                                     koji.pathinfo.taskrelpath(taskID),
+                                     filepath)
+        else:
+            raise koji.GenericError, 'either buildID or taskID and filepath must be specified'
+
+        if not os.path.exists(srpm_path):
+            return _applyQueryOpts([], queryOpts)
+
+        if before:
+            if isinstance(before, datetime.datetime):
+                before = calendar.timegm(before.utctimetuple())
+            elif isinstance(before, (str, unicode)):
+                before = koji.util.parseTime(before)
+            elif isinstance(before, (int, long)):
+                pass
+            else:
+                raise koji.GenericError, 'invalid type for before: %s' % type(before)
+
+        if after:
+            if isinstance(after, datetime.datetime):
+                after = calendar.timegm(after.utctimetuple())
+            elif isinstance(after, (str, unicode)):
+                after = koji.util.parseTime(after)
+            elif isinstance(after, (int, long)):
+                pass
+            else:
+                raise koji.GenericError, 'invalid type for after: %s' % type(after)
+
+        results = []
+
+        fields = koji.get_header_fields(srpm_path, ['changelogtime', 'changelogname', 'changelogtext'])
+        for (cltime, clname, cltext) in zip(fields['changelogtime'], fields['changelogname'],
+                                            fields['changelogtext']):
+            cldate = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
+            clname = koji.fixEncoding(clname)
+            cltext = koji.fixEncoding(cltext)
+
+            if author and author != clname:
+                continue
+            if before and not cltime < before:
+                continue
+            if after and not cltime > after:
+                continue
+
+            if queryOpts.get('asList'):
+                results.append([cldate, clname, cltext])
+            else:
+                results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
+
+        return _applyQueryOpts(results, queryOpts)
+
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
 
@@ -5786,6 +6291,7 @@ class RootExports(object):
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, maven_only=maven_only)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
+                   createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, mavenOnly=False, queryOpts=None):
         """List package builds.
         If packageID is specified, restrict the results to builds of the specified package.
@@ -5794,10 +6300,12 @@ class RootExports(object):
            restrict the results to builds with a non-null taskID.
         If prefix is specified, restrict the results to builds whose package name starts with that
         prefix.
+        If createdBefore and/or createdAfter are specified, restrict the results to builds whose
+        creation_time is before and/or after the given time.
         If completeBefore and/or completeAfter are specified, restrict the results to builds whose
-        completion_time is before and/or after the given time.  The time may be specified as a floating
-        point value indicating seconds since the Epoch (as returned by time.time()) or as a string in
-        ISO format ('YYYY-MM-DD HH24:MI:SS').
+        completion_time is before and/or after the given time.
+        The time may be specified as a floating point value indicating seconds since the Epoch (as
+        returned by time.time()) or as a string in ISO format ('YYYY-MM-DD HH24:MI:SS').
         If mavenOnly is true, only list builds with associated Maven metadata.
         One or more of packageID, userID, and taskID may be specified.
 
@@ -5852,6 +6360,14 @@ class RootExports(object):
             clauses.append("package.name ilike %(prefix)s || '%%'")
         if state != None:
             clauses.append('build.state = %(state)i')
+        if createdBefore:
+            if not isinstance(createdBefore, str):
+                createdBefore = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
+            clauses.append('events.time < %(createdBefore)s')
+        if createdAfter:
+            if not isinstance(createdAfter, str):
+                createdAfter = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
+            clauses.append('events.time > %(createdAfter)s')
         if completeBefore:
             if not isinstance(completeBefore, str):
                 completeBefore = datetime.datetime.fromtimestamp(completeBefore).isoformat(' ')
@@ -5887,11 +6403,14 @@ class RootExports(object):
             tag = get_tag_id(tag,strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event,inherit=True,latest=True, rpmsigs=rpmsigs)
 
-    def getAverageBuildDuration(self, packageID):
-        """Get the average duration of a build of a package with
-        the given ID.  Returns a floating-point value indicating the
+    def getAverageBuildDuration(self, package):
+        """Get the average duration of a build of the given package.
+        Returns a floating-point value indicating the
         average number of seconds the package took to build.  If the package
         has never been built, return None."""
+        packageID = get_package_id(package)
+        if not packageID:
+            return None
         st_complete = koji.BUILD_STATES['COMPLETE']
         query = """SELECT EXTRACT(epoch FROM avg(build.completion_time - events.time))
                      FROM build
@@ -5977,9 +6496,7 @@ class RootExports(object):
             build = self.findBuildID(build)
         return self.listRPMs(buildID=build)
 
-    def getRPM(self, rpmID):
-        """Get information about the RPM with the given ID."""
-        return get_rpm(rpmID)
+    getRPM = staticmethod(get_rpm)
 
     def getRPMDeps(self, rpmID, depType=None, queryOpts=None):
         """Return dependency information about the RPM with the given ID.
@@ -5992,46 +6509,139 @@ class RootExports(object):
         - type
 
         If there is no RPM with the given ID, or the RPM has no dependency information,
-        return None.
+        an empty list will be returned.
         """
-        fields = (('dep_name', 'name'), ('dep_version', 'version'),
-                  ('dep_flags', 'flags'), ('dep_type', 'type'))
-        clauses = ['rpm_id = %(rpmID)i']
-        if depType != None:
-            clauses.append('dep_type = %(depType)i')
+        if queryOpts is None:
+            queryOpts = {}
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return _applyQueryOpts([], queryOpts)
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return _applyQueryOpts([], queryOpts)
 
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmdeps'], clauses=clauses,
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+        results = []
+
+        for dep_name in ['REQUIRE','PROVIDE','CONFLICT','OBSOLETE']:
+            dep_id = getattr(koji, 'DEP_' + dep_name)
+            if depType is None or depType == dep_id:
+                fields = koji.get_header_fields(rpm_path, [dep_name + 'NAME',
+                                                           dep_name + 'VERSION',
+                                                           dep_name + 'FLAGS'])
+                for (name, version, flags) in zip(fields[dep_name + 'NAME'],
+                                                  fields[dep_name + 'VERSION'],
+                                                  fields[dep_name + 'FLAGS']):
+                    if queryOpts.get('asList'):
+                        results.append([name, version, flags, dep_id])
+                    else:
+                        results.append({'name': name, 'version': version, 'flags': flags, 'type': dep_id})
+
+        return _applyQueryOpts(results, queryOpts)
 
     def listRPMFiles(self, rpmID, queryOpts=None):
         """List files associated with the RPM with the given ID.  A list of maps
         will be returned, each with the following keys:
         - name
-        - md5
+        - digest
+        - md5 (alias for digest)
+        - digest_algo
         - size
         - flags
 
         If there is no RPM with the given ID, or that RPM contains no files,
-        and empty list will be returned."""
-        fields = (('filename', 'name'), ('filemd5', 'md5'),
-                  ('filesize', 'size'), ('fileflags', 'flags'))
+        an empty list will be returned."""
+        if queryOpts is None:
+            queryOpts = {}
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return _applyQueryOpts([], queryOpts)
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return _applyQueryOpts([], queryOpts)
 
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmfiles'], clauses=['rpm_id = %(rpmID)i'],
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+        results = []
+        hdr = koji.get_rpm_header(rpm_path)
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        digest_algo = koji.util.filedigestAlgo(hdr)
+
+        for (name, digest, size, flags) in zip(fields['filenames'], fields['filemd5s'],
+                                           fields['filesizes'], fields['fileflags']):
+            if queryOpts.get('asList'):
+                results.append([name, digest, size, flags, digest_algo])
+            else:
+                results.append({'name': name, 'digest': digest, 'digest_algo': digest_algo,
+                                'md5': digest, 'size': size, 'flags': flags})
+
+        return _applyQueryOpts(results, queryOpts)
 
     def getRPMFile(self, rpmID, filename):
-        """Get info about the file in the given RPM with the given filename."""
-        fields = (('rpm_id', 'rpm_id'), ('filename', 'name'), ('filemd5', 'md5'),
-                  ('filesize', 'size'), ('fileflags', 'flags'))
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpmfiles'],
-                               clauses=['rpm_id = %(rpmID)i and filename = %(filename)s'],
-                               values=locals())
-        return query.executeOne()
+        """
+        Get info about the file in the given RPM with the given filename.
+        A map will be returned with the following keys:
+        - rpm_id
+        - name
+        - digest
+        - md5 (alias for digest)
+        - digest_algo
+        - size
+        - flags
+
+        If no such file exists, an empty map will be returned.
+        """
+        rpm_info = get_rpm(rpmID)
+        if not rpm_info or not rpm_info['build_id']:
+            return {}
+        build_info = get_build(rpm_info['build_id'])
+        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        if not os.path.exists(rpm_path):
+            return {}
+
+        hdr = koji.get_rpm_header(rpm_path)
+        # use filemd5s for backward compatibility
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        digest_algo = koji.util.filedigestAlgo(hdr)
+
+        i = 0
+        for name in fields['filenames']:
+            if name == filename:
+                return {'rpm_id': rpm_info['id'], 'name': name, 'digest': fields['filemd5s'][i],
+                        'digest_algo': digest_algo, 'md5': fields['filemd5s'][i],
+                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i]}
+            i += 1
+        return {}
+
+    def getRPMHeaders(self, rpmID=None, taskID=None, filepath=None, headers=None):
+        """
+        Get the requested headers from the rpm.  Header names are case-insensitive.
+        If a header is requested that does not exist an exception will be raised.
+        Returns a map of header names to values.  If the specified ID
+        is not valid or the rpm does not exist on the file system, an empty map
+        will be returned.
+        """
+        if not headers:
+            headers = []
+        if rpmID:
+            rpm_info = get_rpm(rpmID)
+            if not rpm_info or not rpm_info['build_id']:
+                return {}
+            build_info = get_build(rpm_info['build_id'])
+            rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+            if not os.path.exists(rpm_path):
+                return {}
+        elif taskID:
+            if not filepath:
+                raise koji.GenericError, 'filepath must be specified with taskID'
+            if filepath.startswith('/') or '../' in filepath:
+                raise koji.GenericError, 'invalid filepath: %s' % filepath
+            rpm_path = os.path.join(koji.pathinfo.work(),
+                                    koji.pathinfo.taskrelpath(taskID),
+                                    filepath)
+        else:
+            raise koji.GenericError, 'either rpmID or taskID and filepath must be specified'
+
+        return koji.get_header_fields(rpm_path, headers)
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
     writeSignedRPM = staticmethod(write_signed_rpm)
@@ -6120,13 +6730,13 @@ class RootExports(object):
             #still might be blocked
             return not pkgs[pkg_id]['blocked']
 
-    def getPackageConfig(self,tag,pkg):
+    def getPackageConfig(self,tag,pkg,event=None):
         """Get config for package in tag"""
         tag_id = get_tag_id(tag,strict=False)
         pkg_id = get_package_id(pkg,strict=False)
         if pkg_id is None or tag_id is None:
             return None
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, event=event)
         return pkgs.get(pkg_id,None)
 
     getUser = staticmethod(get_user)
@@ -6195,17 +6805,17 @@ class RootExports(object):
                                values=locals(), opts=queryOpts)
         return query.execute()
 
-    def getBuildConfig(self,tag):
+    def getBuildConfig(self,tag,event=None):
         """Return build configuration associated with a tag"""
-        taginfo = get_tag(tag,strict=True)
+        taginfo = get_tag(tag,strict=True,event=event)
         arches = taginfo['arches']
         if arches is None:
             #follow inheritance for arches
-            order = readFullInheritance(taginfo['id'])
+            order = readFullInheritance(taginfo['id'],event=event)
             for link in order:
                 if link['noconfig']:
                     continue
-                arches = get_tag(link['parent_id'])['arches']
+                arches = get_tag(link['parent_id'],strict=True,event=event)['arches']
                 if arches is not None:
                     taginfo['arches'] = arches
                     break
@@ -6234,13 +6844,20 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def newRepo(self, tag, event=None):
+    def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
-        context.session.assertPerm('repo')
-        if event:
-            args = koji.encode_args(tag, event=None)
+        if context.session.hasPerm('regen-repo'):
+            pass
         else:
-            args = [tag]
+            context.session.assertPerm('repo')
+        opts = {}
+        if event is not None:
+            opts['event'] = event
+        if src:
+            opts['src'] = True
+        if debuginfo:
+            opts['debuginfo'] = True
+        args = koji.encode_args(tag, **opts)
         return make_task('newRepo', args, priority=15, channel='createrepo')
 
     def repoExpire(self, repo_id):
@@ -6263,8 +6880,8 @@ class RootExports(object):
 
     def debugFunction(self, name, *args, **kwargs):
         # This is potentially dangerous, so it must be explicitly enabled
-        allowed = context.opts.get('EnableFunctionDebug','no')
-        if allowed != 'yes':
+        allowed = context.opts.get('EnableFunctionDebug', False)
+        if not allowed:
             raise koji.ActionNotAllowed, 'This call is not enabled'
         context.session.assertPerm('admin')
         func = globals().get(name)
@@ -6279,14 +6896,17 @@ class RootExports(object):
     deleteBuildTarget = staticmethod(delete_build_target)
     getBuildTargets = staticmethod(get_build_targets)
 
-    def getBuildTarget(self, info):
+    def getBuildTarget(self, info, event=None, strict=False):
         """Return the build target with the given name or ID.
         If there is no matching build target, return None."""
-        targets = get_build_targets(info=info)
+        targets = get_build_targets(info=info, event=event)
         if len(targets) == 1:
             return targets[0]
         else:
-            return None
+            if strict:
+                raise koji.GenericError, 'No matching build target found: %s' % info
+            else:
+                return None
 
     def taskFinished(self,taskId):
         task = Task(taskId)
@@ -6822,8 +7442,7 @@ class RootExports(object):
                      'target': 'build_target',
                      'user': 'users',
                      'host': 'host',
-                     'rpm': 'rpminfo',
-                     'file': 'rpmfiles'}
+                     'rpm': 'rpminfo'}
 
     def search(self, terms, type, matchType, queryOpts=None):
         """Search for an item in the database matching "terms".
@@ -6836,6 +7455,9 @@ class RootExports(object):
         list will be returned."""
         if not terms:
             raise koji.GenericError, 'empty search terms'
+        if type == 'file':
+            # searching by filename is no longer supported
+            return _applyQueryOpts([], queryOpts)
         table = self._searchTables.get(type)
         if not table:
             raise koji.GenericError, 'unknown search type: %s' % type
@@ -6959,13 +7581,24 @@ class BuildRoot(object):
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
         brootid = self.id
-        fields = ('rpm_id','is_update','name','version','release','epoch',
-                  'arch','build_id')
-        q = """SELECT %s FROM buildroot_listing
-        JOIN rpminfo on rpm_id = rpminfo.id
-        WHERE buildroot_listing.buildroot_id = %%(brootid)s
-        """ % ','.join(fields)
-        return _multiRow(q,locals(),fields)
+        fields = (
+            ('rpm_id', 'rpm_id'),
+            ('is_update', 'is_update'),
+            ('rpminfo.name', 'name'),
+            ('version', 'version'),
+            ('release', 'release'),
+            ('epoch', 'epoch'),
+            ('arch', 'arch'),
+            ('build_id', 'build_id'),
+            ('external_repo_id', 'external_repo_id'),
+            ('external_repo.name', 'external_repo_name'),
+            )
+        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                        tables=['buildroot_listing'],
+                        joins=["rpminfo ON rpm_id = rpminfo.id", "external_repo ON external_repo_id = external_repo.id"],
+                        clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
+                        values=locals())
+        return query.execute()
 
     def _setList(self,rpmlist,update=False):
         """Set or update the list of rpms in a buildroot"""
@@ -6978,7 +7611,13 @@ class BuildRoot(object):
         VALUES (%(brootid)s,%(rpm_id)s,%(update)s)"""
         rpm_ids = []
         for an_rpm in rpmlist:
-            rpm_id = get_rpm(an_rpm, strict=True)['id']
+            location = an_rpm.get('location')
+            if location:
+                data = add_external_rpm(an_rpm, location, strict=False)
+                #will add if missing, compare if not
+            else:
+                data = get_rpm(an_rpm, strict=True)
+            rpm_id = data['id']
             if update and current.has_key(rpm_id):
                 #ignore duplicate packages for updates
                 continue
@@ -7365,6 +8004,9 @@ class HostExports(object):
             fn = "%s/%s" % (uploadpath,relpath)
             if not os.path.exists(fn):
                 raise koji.GenericError, "no such file: %s" % fn
+
+        rpms = check_noarch_rpms(uploadpath, rpms)
+
         #figure out storage location
         #  <scratchdir>/<username>/task_<id>
         scratchdir = koji.pathinfo.scratch()
@@ -7582,28 +8224,6 @@ class HostExports(object):
         host.verify()
         tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg)
 
-    def importChangelog(self, buildID, rpmfile):
-        """Import the changelog for the given build
-
-        The changelog data is pulled from the rpm provided.
-        rpmfile must be a path relative to the 'work' dir.
-        If the build already has changelog information, the existing
-        changelog information is cleared and the changelog from the
-        given rpm is imported."""
-        host = Host()
-        host.verify()
-
-        build = get_build(buildID, strict=True)
-        taskID = build['task_id']
-        if not taskID:
-            raise koji.GenericError, 'no task for build %i' % build['id']
-
-        task = Task(taskID)
-        task.assertHost(host.id)
-
-        rpmfile = '%s/%s' % (koji.pathinfo.work(), rpmfile)
-        import_changelog(build, rpmfile, replace=True)
-
     def checkPolicy(self, name, data, default='deny', strict=False):
         host = Host()
         host.verify()
@@ -7725,11 +8345,11 @@ class HostExports(object):
 
         return br.updateArchiveList(archives, project)
 
-    def repoInit(self, tag, with_src=False, event=None):
+    def repoInit(self, tag, with_src=False, with_debuginfo=False, event=None):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src, event=event)
+        return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""

@@ -8,9 +8,10 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.2.6
+Version: 1.3.1
 Release: %{release}%{?dist}
-License: LGPLv2
+License: LGPLv2 and GPLv2+
+# koji.ssl libs (from plague) are GPLv2+
 Summary: Build system tools
 Group: Applications/System
 URL: http://fedorahosted.org/koji
@@ -30,6 +31,8 @@ contains shared libraries and the command-line interface.
 %package hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
+License: LGPLv2 and GPLv2
+# rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: mod_python
 Requires: postgresql-python
@@ -41,8 +44,10 @@ koji-hub is the XMLRPC interface to the koji database
 %package builder
 Summary: Koji RPM builder daemon
 Group: Applications/System
+License: LGPLv2 and GPLv2+
+#mergerepos (from createrepo) is GPLv2+
 Requires: %{name} = %{version}-%{release}
-Requires: mock >= 0.8.7
+Requires: mock >= 0.9.14
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
@@ -68,6 +73,7 @@ tasks that come through the Koji system.
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
+License: LGPLv2
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
 
@@ -77,6 +83,7 @@ Utilities for the Koji system
 %package web
 Summary: Koji Web UI
 Group: Applications/Internet
+License: LGPLv2
 Requires: httpd
 Requires: mod_python
 Requires: mod_auth_kerb
@@ -110,6 +117,8 @@ rm -rf $RPM_BUILD_ROOT
 %files hub
 %defattr(-,root,root)
 %{_datadir}/koji-hub
+%dir %{_libexecdir}/koji-hub
+%{_libexecdir}/koji-hub/rpmdiff
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 %config(noreplace) /etc/koji-hub/hub.conf
 
@@ -136,6 +145,8 @@ rm -rf $RPM_BUILD_ROOT
 %files builder
 %defattr(-,root,root)
 %{_sbindir}/kojid
+%dir %{_libexecdir}/kojid
+%{_libexecdir}/kojid/mergerepos
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
 %dir %{_sysconfdir}/kojid
@@ -166,6 +177,25 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Feb 20 2009 Mike McLean <mikem at redhat.com> 1.3.1-1
+- external repo urls rewritten to end with /
+- add schema file for upgrades from 1.2.x to 1.3
+- explicitly request sha1 for backward compatibility with older yum
+- fix up sparc arch handling
+
+* Wed Feb 18 2009 Mike McLean <mikem at redhat.com> 1.3.0-1
+- support for external repos
+- support for noarch subpackages
+- support rpms with different signatures and file digests
+- hub configuration file
+- drop huge tables from database
+- build srpms in chroots
+- hub policies
+- limited plugin support
+- limited web ui theming
+- many miscellaneous enhancements and bugfixes
+- license fields changed to reflect code additions
+
 * Mon Aug 25 2008 Mike McLean <mikem@redhat.com> 1.2.6-1
 - fix testbuild conditional [downstream]
 - fix license tag [downstream]

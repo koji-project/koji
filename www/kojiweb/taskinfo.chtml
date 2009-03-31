@@ -70,12 +70,18 @@ $value
       <th>Parameters</th>
       <td>
         #if $task.method == 'buildSRPMFromSCM'
-        <strong>SCM URL:</strong> $params[0]
+        <strong>SCM URL:</strong> $params[0]<br/>
+        #if $len($params) > 1
+        <strong>Build Tag:</strong>: <a href="taginfo?tagID=$buildTag.name">$buildTag.name</a><br/>
+        #end if
+        #if $len($params) > 2
+        $printOpts($params[2])
+        #end if
         #elif $task.method == 'buildSRPMFromCVS'
         <strong>CVS URL:</strong> $params[0]
         #elif $task.method == 'buildArch'
         <strong>SRPM:</strong> $params[0]<br/>
-        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.name">$buildTag.name</a><br/>
         <strong>Arch:</strong> $params[2]<br/>
         <strong>Keep SRPM?</strong> #if $params[3] then 'yes' else 'no'#<br/>
         #if $len($params) > 4
@@ -134,7 +140,10 @@ $value
 	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a>
 	#end if
         #elif $task.method == 'newRepo'
-        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a>
+        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+        #if $len($params) > 1
+        $printOpts($params[1])
+        #end if
         #elif $task.method == 'prepRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
         #elif $task.method == 'createrepo'
@@ -143,7 +152,10 @@ $value
         #set $oldrepo = $params[2]
         #if $oldrepo
         <strong>Old Repo ID:</strong> $oldrepo.id<br/>
-        <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)
+        <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
+        #end if
+        #if $len($params) > 3
+        <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
         #end if
         #elif $task.method == 'dependantTask'
         <strong>Dependant Tasks:</strong><br/>
@@ -188,9 +200,9 @@ $value
       <td class="task$state">$state
       #if $currentUser and ('admin' in $perms or $task.owner == $currentUser.id)
       #if $task.state in ($koji.TASK_STATES.FREE, $koji.TASK_STATES.OPEN, $koji.TASK_STATES.ASSIGNED)
-      <span class="adminLink">(<a href="canceltask?taskID=$task.id">cancel</a>)</span>
+      <span class="adminLink">(<a href="canceltask?taskID=$task.id$util.authToken($self)">cancel</a>)</span>
       #elif $task.state in ($koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and (not $parent)
-      <span class="adminLink">(<a href="resubmittask?taskID=$task.id">resubmit</a>)</span>
+      <span class="adminLink">(<a href="resubmittask?taskID=$task.id$util.authToken($self)">resubmit</a>)</span>
       #end if
       #end if
       </td>
@@ -274,19 +286,19 @@ $value
       <th>Priority</th><td>$task.priority</td>
     </tr>
     <tr>
-      <th>Weight</th><td>$task.weight</td>
+      <th>Weight</th><td>#echo '%.2f' % $task.weight#</td>
     </tr>
     <tr>
       <th>Result</th>
       <td>
         #if $excClass
-          #if $hasattr($result, 'faultString')
           <pre>
+          #if $hasattr($result, 'faultString')
 $cgi.escape($result.faultString.strip())
-          </pre>
           #else
-          ${excClass.__name__}: $cgi.escape($str($result))
+${excClass.__name__}: $cgi.escape($str($result))
           #end if
+          </pre>
         #elif $isinstance($result, dict)
         $printMap($result)
         #else

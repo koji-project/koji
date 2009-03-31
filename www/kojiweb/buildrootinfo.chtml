@@ -22,10 +22,6 @@
       <th>State</th><td>$util.imageTag($util.brStateName($buildroot.state))</td>
     </tr>
     <tr>
-      #set $clean = $buildroot.dirtyness and 'yes' or 'no'
-      <th>Clean?</th><td class="$clean">$util.imageTag($clean)</td>
-    </tr>
-    <tr>
       <th>Created</th><td>$util.formatTimeLong($buildroot.create_event_time)</td>
     </tr>
     <tr>

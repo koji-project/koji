@@ -6,7 +6,6 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
-	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \
@@ -17,5 +16,3 @@ install:
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
 	install -p -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
-
-	cp -r jsolait $(DESTDIR)/$(SERVERDIR)
