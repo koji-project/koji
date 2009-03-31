@@ -6121,7 +6121,6 @@ class RootExports(object):
     getMavenArchive = staticmethod(get_maven_archive)
     listArchiveFiles = staticmethod(list_archive_files)
     getArchiveFile = staticmethod(get_archive_file)
-    getChangelogEntries = staticmethod(get_changelog_entries)
 
     def getChangelogEntries(self, buildID=None, taskID=None, filepath=None, author=None, before=None, after=None, queryOpts=None):
         """Get changelog entries for the build with the given ID,
