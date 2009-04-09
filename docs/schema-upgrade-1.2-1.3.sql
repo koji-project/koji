@@ -53,3 +53,4 @@ GRANT SELECT ON external_repo, external_repo_config, tag_external_repos TO PUBLI
 -- DROP TABLE rpmfiles;                                                                     
 -- DROP TABLE rpmdeps;  
 -- DROP TABLE changelogs;
+-- DROP TABLE archivefiles;

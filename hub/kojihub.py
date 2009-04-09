@@ -3249,14 +3249,27 @@ def get_maven_archive(archive_id):
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     return _singleRow(select, locals(), fields)
 
-def _get_archive_file_query(queryOpts):
-    tables = ('archivefiles',)
-    columns = ('archive_id', 'filename', 'size', 'md5sum')
-    aliases = ('archive_id', 'name', 'size', 'md5')
-    clauses = ('archive_id = %(archive_id)i',)
-    return QueryProcessor(tables=tables, columns=columns,
-                          aliases=aliases, clauses=clauses,
-                          opts=queryOpts)
+def _get_zipfile_list(archive_id, zippath):
+    """
+    Get a list of the entries in the zipfile located at zippath.
+    Return a list of dicts, one per entry in the zipfile.  Each dict contains:
+     - archive_id
+     - name
+     - size
+    If the file does not exist, return an empty list.
+    """
+    result = []
+    if not os.path.exists(zippath):
+        return result
+    archive = zipfile.ZipFile(zippath, 'r')
+    for entry in archive.infolist():
+        filename = koji.fixEncoding(entry.filename)
+        size = entry.file_size
+        result.append({'archive_id': archive_id,
+                       'name': filename,
+                       'size': size})
+    archive.close()
+    return result
 
 def list_archive_files(archive_id, queryOpts=None):
     """
@@ -3265,12 +3278,21 @@ def list_archive_files(archive_id, queryOpts=None):
 
     archive_id: id of the archive the file is contained in (integer)
     name: name of the file (string)
-    md5: md5sum of the file (string)
     size: uncompressed size of the file (integer)
     """
-    query = _get_archive_file_query(queryOpts)
-    query.values = {'archive_id': archive_id}
-    return query.execute()
+    archive_info = get_archive(archive_id)
+    maven_info = get_maven_archive(archive_id)
+    if not (archive_info and maven_info):
+        # XXX support other archive types, when they exist
+        return _applyQueryOpts([], queryOpts)
+
+    build_info = get_build(archive_info['build_id'])
+    if not build_info:
+        return _applyQueryOpts([], queryOpts)
+
+    file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
+                             archive_info['filename'])
+    return _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
 
 def get_archive_file(archive_id, filename):
     """
@@ -3280,13 +3302,14 @@ def get_archive_file(archive_id, filename):
 
     archive_id: id of the archive the file is contained in (integer)
     name: name of the file (string)
-    md5: md5sum of the file (string)
     size: uncompressed size of the file (integer)
     """
-    query = _get_archive_file_query(None)
-    query.clauses += ('filename = %(filename)s',)
-    query.values = {'archive_id': archive_id, 'filename': filename}
-    return query.executeOne()
+    files = list_archive_files(archive_id)
+    for file_info in files:
+        if file_info['name'] == filename:
+            return file_info
+    else:
+        return None
 
 def find_maven_archives(maven_info, filename=None, build_id=None, queryOpts=None):
     """
@@ -4079,7 +4102,6 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
         elif archivetype['name'] == 'zip':
             # We associate the zip with the maven info too, since it was generated as part of a Maven build
             _insert_maven_archive(archive_id, maveninfo)
-            import_zip_archive(archive_id, filepath, buildinfo)
         elif archivetype['name'] == 'pom':
             pom_info = koji.parse_pom(filepath)
             maveninfo = koji.pom_to_maven_info(pom_info)
@@ -4093,11 +4115,6 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     else:
         # A generic archive (not Maven)
         # We don't know where it came from, so throw an error
-        # if archivetype['name'] == 'zip':
-        #     import_zip_archive(archive_id, filepath, buildinfo)
-        #     _import_archive_file(filepath, koji.pathinfo.archive(buildinfo))
-        # else:
-        #     raise koji.GenericError, 'unsupported archive type: %s' % archivetype['name']
         raise koji.BuildError, 'only Maven archives are supported at this time'
 
 def _insert_maven_archive(archive_id, mavendata):
@@ -4121,29 +4138,8 @@ def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
         pom_info = koji.parse_pom(contents=pom)
         maveninfo = koji.pom_to_maven_info(pom_info)
     _insert_maven_archive(archive_id, maveninfo)
-    import_zip_archive(archive_id, filepath, buildinfo)
 
     return pom, pom_info
-
-def import_zip_archive(archive_id, filepath, buildinfo):
-    """
-    Import information about the file entries in the zip file.
-    """
-    archive = zipfile.ZipFile(filepath, 'r')
-    for entry in archive.infolist():
-        filename = koji.fixEncoding(entry.filename)
-        size = entry.file_size
-        if size > 0:
-            m = md5.new()
-            m.update(archive.read(entry.filename))
-            md5sum = m.hexdigest()
-        else:
-            md5sum = None
-        insert = """INSERT INTO archivefiles (archive_id, filename, size, md5sum)
-        VALUES
-        (%(archive_id)i, %(filename)s, %(size)i, %(md5sum)s)"""
-        _dml(insert, locals())
-    archive.close()
 
 def _import_archive_file(filepath, destdir):
     """
@@ -4617,18 +4613,12 @@ def _delete_build(binfo):
     #           rpmsigs DELETE
     #   archiveinfo KEEP
     #               buildroot_archives KEEP (but should ideally be empty anyway)
-    #               archivefiles DELETE
     #   files on disk: DELETE
     build_id = binfo['id']
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
     rpm_ids = _fetchMulti(q, locals())
     for (rpm_id,) in rpm_ids:
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-    q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
-    archive_ids = _fetchMulti(q, locals())
-    for (archive_id,) in archive_ids:
-        delete = """DELETE FROM archivefiles WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
     event_id = _singleValue("SELECT get_event()")
     update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
@@ -4665,7 +4655,7 @@ def reset_build(build):
     sets state to CANCELED
     clears data in rpminfo
     removes rpminfo entries from any buildroot_listings [!]
-    clears data in archiveinfo, archivefiles, maven_info
+    clears data in archiveinfo, maven_info
     removes archiveinfo entries from buildroot_archives
     remove files related to the build
 
@@ -4692,8 +4682,6 @@ def reset_build(build):
     ids = _fetchMulti(q, binfo)
     for (archive_id,) in ids:
         delete = """DELETE FROM maven_archives WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM archivefiles WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())

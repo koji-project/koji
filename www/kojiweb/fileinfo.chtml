@@ -2,15 +2,21 @@
 #import urllib
 
 #include "includes/header.chtml"
+  #if $rpm
   <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></h4>
+  #elif $archive
+  <h4>Information for file <a href="fileinfo?archiveID=$archive.id&amp;filename=$urllib.quote($file.name)">$file.name</a></h4>
+  #end if
 
   <table>
     <tr>
       <th>Name</th><td>$file.name</td>
     </tr>
+    #if $rpm
     <tr>
       <th>Digest ($file.digest_algo)</th><td>$file.digest</td>
     </tr>
+    #end if
     <tr>
       <th>Size</th><td>$file.size</td>
     </tr>

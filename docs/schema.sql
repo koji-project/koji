@@ -659,13 +659,4 @@ CREATE TABLE buildroot_archives (
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);
 
-CREATE TABLE archivefiles (
-	archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
-	filename TEXT NOT NULL,
-	size INTEGER NOT NULL,
-	md5sum TEXT,
-	PRIMARY KEY (archive_id, filename)
-) WITHOUT OIDS;
-CREATE INDEX archivefiles_by_filename on archivefiles (filename);
-
 COMMIT WORK;
