@@ -2232,7 +2232,15 @@ class MavenTask(BaseTaskHandler):
         dest_tag = session.getTag(target_info['dest_tag'], strict=True)
         build_tag = session.getTag(target_info['build_tag'], strict=True)
 
-        build_opts = {}
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            repo = session.getRepo(build_tag['id'])
+            if repo:
+                repo_id = repo['id']
+            else:
+                raise koji.BuildError, 'no repo for tag %s' % build_tag['name']
+
+        build_opts = {'repo_id': repo_id}
         if opts.get('properties'):
             build_opts['properties'] = opts['properties']
         if opts.get('patches'):
@@ -2266,7 +2274,7 @@ class MavenTask(BaseTaskHandler):
             rpm_results = None
             spec_url = self.opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, build_tag, build_info)
+                rpm_results = self.buildWrapperRPM(spec_url, build_tag, build_info, repo_id)
 
             if not self.opts.get('scratch'):
                 session.host.completeMavenBuild(self.id, self.build_id, maven_results, rpm_results)
@@ -2288,9 +2296,9 @@ class MavenTask(BaseTaskHandler):
                                                arch='noarch')
             self.wait(tag_task_id)
 
-    def buildWrapperRPM(self, spec_url, build_tag, build):
+    def buildWrapperRPM(self, spec_url, build_tag, build, repo_id):
         task = session.getTaskInfo(self.build_task_id)
-        arglist = [spec_url, build_tag, build, task]
+        arglist = [spec_url, build_tag, build, task, {'repo_id': repo_id}]
 
         rpm_task_id = session.host.subtask(method='wrapperRPM',
                                            arglist=arglist,
@@ -2326,11 +2334,14 @@ class BuildMavenTask(BaseTaskHandler):
         scm = SCM(url)
         scm.assert_allowed(options.allowed_scms)
 
-        host = session.host.getHost()
-        if not host['arches']:
-            raise koji.BuildError, 'No arch list for host: %s' % host['name']
-        br_arch = host['arches'].split()[0]
-        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True)
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, 'A repo_id must be provided'
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id)
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
@@ -2507,7 +2518,10 @@ class WrapperRPMTask(BaseTaskHandler):
                 raise koji.BuildError, 'srpm header "%s" does not match build info: srpm: %s, build: %s' % \
                     (field, srpminfo[field], build[field])
 
-    def handler(self, spec_url, build_tag, build, task):
+    def handler(self, spec_url, build_tag, build, task, opts=None):
+        if not opts:
+            opts = {}
+
         values = {}
 
         artifacts = {}
@@ -2635,11 +2649,15 @@ class WrapperRPMTask(BaseTaskHandler):
         if build:
             self.check_srpm(srpm, build)
 
-        host = session.host.getHost()
-        if not host['arches']:
-            raise koji.BuildError, 'no arch list for host: %s' % host['name']
-        br_arch = host['arches'].split()[0]
-        buildroot = BuildRoot(build_tag['id'], br_arch, self.id)
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
+
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, repo_id=repo_id)
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 

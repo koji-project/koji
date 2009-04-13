@@ -34,6 +34,7 @@ import logging.handlers
 import fcntl
 import fnmatch
 from koji.util import md5_constructor
+from koji.util import sha1_constructor
 import os
 import pgdb
 import random
@@ -4068,7 +4069,7 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     build_id = buildinfo['id']
     size = os.path.getsize(filepath)
     archivefp = file(filepath)
-    m = md5.new()
+    m = md5_constructor()
     while True:
         contents = archivefp.read(8192)
         if not contents:
@@ -4184,10 +4185,10 @@ def _generate_maven_metadata(maveninfo, mavendir, contents=None):
             continue
         if not os.path.isfile('%s/%s' % (mavendir, mavenfile)):
             continue
-        for ext, summodule in (('.md5', md5), ('.sha1', sha)):
+        for ext, sum_constr in (('.md5', md5_constructor), ('.sha1', sha1_constructor)):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
-                sum = summodule.new()
+                sum = sum_constr()
                 fobj = file('%s/%s' % (mavendir, mavenfile))
                 while True:
                     content = fobj.read(8192)

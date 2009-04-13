@@ -23,6 +23,10 @@ try:
     from hashlib import md5 as md5_constructor
 except ImportError:
     from md5 import new as md5_constructor
+try:
+    from hashlib import sha1 as sha1_constructor
+except ImportError:
+    from sha1 import new as sha1_constructor
 
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))

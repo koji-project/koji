@@ -137,8 +137,11 @@ $value
 	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
 	#end if
 	#if $params[3]
-	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a>
+	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a><br/>
 	#end if
+        #if $len($params) > 4
+        $printOpts($params[4])
+        #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $len($params) > 1
