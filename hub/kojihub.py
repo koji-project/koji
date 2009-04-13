@@ -5536,13 +5536,16 @@ class RootExports(object):
         if not build_target:
             raise koji.PreBuildError, 'no such build target: %s' % target
         build_tag = self.getTag(build_target['build_tag'], strict=True)
+        repo_info = self.getRepo(build_tag['id'])
+        if not repo_info:
+            raise koji.PreBuildError, 'no repo for tag: %s' % build_tag['name']
 
         taskOpts = {}
         if priority:
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         taskOpts['channel'] = channel
 
-        return make_task('wrapperRPM', [url, build_tag, build, None], **taskOpts)
+        return make_task('wrapperRPM', [url, build_tag, build, None, {'repo_id': repo_info['id']}], **taskOpts)
 
     def hello(self,*args):
         return "Hello World"
