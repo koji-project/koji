@@ -3217,7 +3217,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     return QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           clauses=clauses, values=values, opts=queryOpts).execute()
 
-def get_archive(archive_id):
+def get_archive(archive_id, strict=False):
     """
     Get information about the archive with the given ID.  Returns a map
     containing the following keys:
@@ -3233,7 +3233,7 @@ def get_archive(archive_id):
     fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
     select = """SELECT %s FROM archiveinfo
     WHERE id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields)
+    return _singleRow(select, locals(), fields, strict=strict)
 
 def get_maven_archive(archive_id):
     """
@@ -3281,7 +3281,13 @@ def list_archive_files(archive_id, queryOpts=None):
     name: name of the file (string)
     size: uncompressed size of the file (integer)
     """
-    archive_info = get_archive(archive_id)
+    archive_info = get_archive(archive_id, strict=True)
+
+    archive_type = get_archive_type(type_id=archive_info['type_id'], strict=True)
+    if not archive_type['name'] in ('zip', 'jar'):
+        # XXX support other archive types
+        return _applyQueryOpts([], queryOpts)
+
     maven_info = get_maven_archive(archive_id)
     if not (archive_info and maven_info):
         # XXX support other archive types, when they exist
