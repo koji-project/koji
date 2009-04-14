@@ -541,18 +541,20 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
-    def build_srpm(self, specfile, sourcedir):
+    def build_srpm(self, specfile, sourcedir, make_sources=True):
         session.host.setBuildRootState(self.id,'BUILDING')
-        chroot_sourcedir = sourcedir[len(self.rootdir()):]
-        # call "make sources" in the chroot so any required files not stored in
-        # the SCM can be retrieved
-        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
 
-        rv = self.mock(args)
+        if make_sources:
+            chroot_sourcedir = sourcedir[len(self.rootdir()):]
+            # call "make sources" in the chroot so any required files not stored in
+            # the SCM can be retrieved
+            args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
 
-        if rv:
-            self.expire()
-            raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
+            rv = self.mock(args)
+
+            if rv:
+                self.expire()
+                raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
 
         args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir]
 
@@ -2509,6 +2511,15 @@ class WrapperRPMTask(BaseTaskHandler):
         for field in fields:
             tgt[field] = src.get(field)
 
+    def spec_sanity_checks(self, filename):
+        spec = open(filename).read()
+        for tag in ("Packager", "Distribution", "Vendor"):
+            if re.match("%s:" % tag, spec, re.M):
+                raise koji.BuildError, "%s is not allowed to be set in spec file" % tag
+        for tag in ("packager", "distribution", "vendor"):
+            if re.match("%%define\s+%s\s+" % tag, spec, re.M):
+                raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
+
     def check_srpm(self, srpm, build):
         """Basic sanity check that the SRPM E:N-V-R matches the build"""
         fields = ['name', 'version', 'release', 'epoch']
@@ -2588,8 +2599,20 @@ class WrapperRPMTask(BaseTaskHandler):
         scm = SCM(spec_url)
         scm.assert_allowed(options.allowed_scms)
 
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError, "A repo id must be provided"
+
+        repo_info = session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='wrapper-rpm-build', repo_id=repo_id)
+        self.logger.debug("Initializing buildroot")
+        buildroot.init()
+
         logfile = os.path.join(self.workdir, 'checkout.log')
-        scmdir = os.path.join(self.workdir, 'scmroot')
+        scmdir = buildroot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
         specdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
 
@@ -2619,26 +2642,14 @@ class WrapperRPMTask(BaseTaskHandler):
         specfd.write(contents)
         specfd.close()
 
-        builddir = os.path.join(self.workdir, 'build')
-        koji.ensuredir(builddir)
-        outputdir = os.path.join(self.workdir, 'output')
-        koji.ensuredir(outputdir)
+        # Run spec file sanity checks.  Any failures will throw a BuildError
+        self.spec_sanity_checks(specfile)
 
-        cmd = ['/usr/bin/rpmbuild',
-               '--define', '_topdir %s' % self.workdir,
-               '--define', '_sourcedir %s' % specdir,
-               '--define', '_specdir %s' % specdir,
-               '--define', '_builddir %s' % builddir,
-               '--define', '_srcrpmdir %s' % outputdir,
-               '--define', '_rpmdir %s' % outputdir,
-               '--nodeps', '-bs', specfile]
+        #build srpm
+        self.logger.debug("Running srpm build")
+        buildroot.build_srpm(specfile, specdir, make_sources=False)
 
-        logfile = os.path.join(self.workdir, 'rpmbuild.log')
-
-        if log_output(cmd[0], cmd, logfile, self.getUploadDir(), logerror=1, cwd=self.workdir):
-            raise koji.BuildError, 'error running rpmbuild'
-
-        srpms = glob.glob('%s/*.src.rpm' % outputdir)
+        srpms = glob.glob('%s/*.src.rpm' % buildroot.resultdir())
         if len(srpms) == 0:
             raise koji.BuildError, 'no srpms found in %s' % outputdir
         elif len(srpms) > 1:
@@ -2646,27 +2657,18 @@ class WrapperRPMTask(BaseTaskHandler):
         else:
             srpm = srpms[0]
 
+        shutil.move(srpm, self.workdir)
+        srpm = os.path.join(self.workdir, os.path.basename(srpm))
+
         if build:
             self.check_srpm(srpm, build)
-
-        repo_id = opts.get('repo_id')
-        if not repo_id:
-            raise koji.BuildError, "A repo id must be provided"
-
-        repo_info = session.repoInfo(repo_id, strict=True)
-        event_id = repo_info['create_event']
-        br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
-
-        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, repo_id=repo_id)
-        self.logger.debug("Initializing buildroot")
-        buildroot.init()
 
         buildroot.build(srpm)
 
         resultdir = buildroot.resultdir()
         srpm = None
         rpms = []
-        logs = ['checkout.log', 'rpmbuild.log']
+        logs = ['checkout.log']
 
         for filename in os.listdir(resultdir):
             if filename.endswith('.src.rpm'):
