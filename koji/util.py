@@ -26,7 +26,7 @@ except ImportError:
 try:
     from hashlib import sha1 as sha1_constructor
 except ImportError:
-    from sha1 import new as sha1_constructor
+    from sha import new as sha1_constructor
 
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
