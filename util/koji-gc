@@ -851,7 +851,8 @@ def handle_prune():
         #get builds
         history = session.tagHistory(tag=tagname)
         if not history:
-            print "No history for %s" % tagname
+            if options.debug:
+                print "No history for %s" % tagname
             continue
         history = [(h['create_ts'], h) for h in history if h['active']]
         history.sort()
