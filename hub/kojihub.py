@@ -216,6 +216,21 @@ class Task(object):
         q = """UPDATE task SET weight=%(weight)s WHERE id = %(task_id)s"""
         _dml(q,locals())
 
+    def setPriority(self, priority, recurse=False):
+        """Set priority for task"""
+        task_id = self.id
+        priority = int(priority)
+
+        # access checks should be performed by calling function
+        q = """UPDATE task SET priority=%(priority)s WHERE id = %(task_id)s"""
+        _dml(q,locals())
+
+        if recurse:
+            """Change priority of child tasks"""
+            q = """SELECT id FROM task WHERE parent = %(task_id)s"""
+            for (child_id,) in _fetchMulti(q, locals()):
+                Task(child_id).setPriority(priority, recurse=True)
+
     def _close(self,result,state):
         """Mark task closed and set response
 
@@ -5286,6 +5301,12 @@ class RootExports(object):
             if not context.session.hasPerm('admin'):
                 raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
+
+    def setTaskPriority(self, task_id, priority, recurse=True):
+        """Set task priority"""
+        context.session.assertPerm('admin')
+        task = Task(task_id)
+        task.setPriority(priority, recurse=recurse)
 
     def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None):
         """List builds tagged with tag"""
