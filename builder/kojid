@@ -384,9 +384,12 @@ class BuildRoot(object):
             uploadpath = self.getUploadPath()
             logs = {}
 
-            while True:
+            finished = False
+            while not finished:
                 time.sleep(1)
                 status = os.waitpid(pid, os.WNOHANG)
+                if status[0] != 0:
+                    finished = True
 
                 try:
                     results = os.listdir(resultdir)
@@ -418,12 +421,11 @@ class BuildRoot(object):
                         continue
 
                     incrementalUpload(fname, fd, uploadpath, self.logger)
-
-                if status[0] != 0:
-                    for (fname, (fd, inode, size)) in logs.items():
-                        if fd:
-                            fd.close()
-                    return status[1]
+            #clean up and return exit status of command
+            for (fname, (fd, inode, size)) in logs.items():
+                if fd:
+                    fd.close()
+            return status[1]
 
         else:
             #in no case should exceptions propagate past here
