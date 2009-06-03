@@ -31,12 +31,10 @@ import koji.policy
 import datetime
 import errno
 import logging
-import logging.handlers
 import fcntl
 import fnmatch
 from koji.util import md5_constructor
 import os
-import pgdb
 import random
 import re
 import rpm
@@ -49,12 +47,15 @@ import types
 import xmlrpclib
 from koji.context import context
 
+
+logger = logging.getLogger('koji.hub')
+
 def log_error(msg):
     if hasattr(context,'req'):
         context.req.log_error(msg)
     else:
         sys.stderr.write(msg + "\n")
-    logging.getLogger('koji.hub').error(msg)
+    logger.error(msg)
 
 
 class Task(object):

@@ -21,6 +21,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 
+import logging
 import sys
 import pgdb
 import time
@@ -41,9 +42,8 @@ _DBopts = None
 _DBconn = context.ThreadLocal()
 
 class DBWrapper:
-    def __init__(self, cnx, debug=False):
+    def __init__(self, cnx):
         self.cnx = cnx
-        self.debug = debug
 
     def __getattr__(self, key):
         if not self.cnx:
@@ -53,7 +53,7 @@ class DBWrapper:
     def cursor(self, *args, **kw):
         if not self.cnx:
             raise StandardError, 'connection is closed'
-        return CursorWrapper(self.cnx.cursor(*args, **kw),self.debug)
+        return CursorWrapper(self.cnx.cursor(*args, **kw))
 
     def close(self):
         # Rollback any uncommitted changes and clear the connection so
@@ -67,21 +67,17 @@ class DBWrapper:
 
 
 class CursorWrapper:
-    def __init__(self, cursor, debug=False):
+    def __init__(self, cursor):
         self.cursor = cursor
-        self.debug = debug
+        self.logger = logging.getLogger('koji.db')
 
     def __getattr__(self, key):
         return getattr(self.cursor, key)
 
     def _timed_call(self, method, args, kwargs):
-        if self.debug:
-            start = time.time()
+        start = time.time()
         ret = getattr(self.cursor,method)(*args,**kwargs)
-        if self.debug:
-            sys.stderr.write("%s operation completed in %.4f seconds\n" %
-                            (method, time.time() - start))
-            sys.stderr.flush()
+        self.logger.debug("%s operation completed in %.4f seconds", method, time.time() - start)
         return ret
 
     def fetchone(self,*args,**kwargs):
@@ -91,16 +87,13 @@ class CursorWrapper:
         return self._timed_call('fetchall',args,kwargs)
 
     def execute(self, operation, parameters=()):
-        if self.debug:
-            sys.stderr.write(_quoteparams(operation,parameters))
-            sys.stderr.write("\n")
-            sys.stderr.flush()
+        debug = self.logger.isEnabledFor(logging.DEBUG)
+        if debug:
+            self.logger.debug(_quoteparams(operation,parameters))
             start = time.time()
         ret = self.cursor.execute(operation, parameters)
-        if self.debug:
-            sys.stderr.write("Execute operation completed in %.4f seconds\n" %
-                            (time.time() - start))
-            sys.stderr.flush()
+        if debug:
+            self.logger.debug("Execute operation completed in %.4f seconds\n", time.time() - start)
         return ret
 
 
@@ -117,7 +110,7 @@ def setDBopts(**opts):
 def getDBopts():
     return _DBopts
 
-def connect(debug=False):
+def connect():
     global _DBconn
     if hasattr(_DBconn, 'conn'):
         # Make sure the previous transaction has been
@@ -132,7 +125,7 @@ def connect(debug=False):
             # BEGIN will be a harmless no-op, though there may be a warning.
             conn.cursor().execute('BEGIN')
             conn.rollback()
-            return DBWrapper(conn, debug)
+            return DBWrapper(conn)
         except pgdb.Error:
             del _DBconn.conn
     #create a fresh connection
@@ -144,7 +137,7 @@ def connect(debug=False):
     # return conn
     _DBconn.conn = conn
 
-    return DBWrapper(conn, debug)
+    return DBWrapper(conn)
 
 if __name__ == "__main__":
     setDBopts( database = "test", user = "test")

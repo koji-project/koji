@@ -21,6 +21,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from ConfigParser import ConfigParser
+import logging
 import sys
 import time
 import traceback
@@ -234,11 +235,9 @@ class ModXMLRPCRequestHandler(object):
             sys.stderr.flush()
             response = dumps(Fault(faultCode, faultString))
 
-        if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Returning %d bytes after %f seconds\n" %
-                             (len(response),time.time() - start))
-            sys.stderr.flush()
-        
+        logger.debug("Returning %d bytes after %f seconds\n", len(response),
+                        time.time() - start)
+
         return response
 
     def _dispatch(self,method,params):
@@ -262,21 +261,20 @@ class ModXMLRPCRequestHandler(object):
         params,opts = koji.decode_args(*params)
 
         if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Handling method %s for session %s (#%s)\n" \
-                             % (method, context.session.id, context.session.callnum))
+            logger.debug("Handling method %s for session %s (#%s)",
+                            method, context.session.id, context.session.callnum)
             if method != 'uploadFile':
-                sys.stderr.write("Params: %s\n" % pprint.pformat(params))
-                sys.stderr.write("Opts: %s\n" % pprint.pformat(opts))
+                logger.debug("Params: %s\n", pprint.pformat(params))
+                logger.debug("Opts: %s\n", pprint.pformat(opts))
             start = time.time()
-            
+
         ret = func(*params,**opts)
 
         if _opt_bool(context.opts, 'KojiDebug'):
-            sys.stderr.write("Completed method %s for session %s (#%s): %f seconds\n"
-                             % (method, context.session.id, context.session.callnum,
-                                time.time()-start))
-            sys.stderr.flush()
-        
+            logger.debug("Completed method %s for session %s (#%s): %f seconds",
+                            method, context.session.id, context.session.callnum,
+                            time.time()-start)
+
         return ret
 
     def multiCall(self, calls):
@@ -439,15 +437,14 @@ def load_plugins(opts):
         return
     tracker = koji.plugin.PluginTracker(path=opts['PluginPath'].split(':'))
     for name in opts['Plugins'].split():
-        sys.stderr.write('Loading plugin: %s\n' % name)
+        logger.info('Loading plugin: %s\n', name)
         try:
             tracker.load(name)
         except Exception:
-            sys.stderr.write(''.join(traceback.format_exception(*sys.exc_info())))
+            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
             #make this non-fatal, but set ServerOffline
             opts['ServerOffline'] = True
             opts['OfflineMessage'] = 'configuration error'
-        sys.stderr.flush()
     return tracker
 
 _default_policies = {
@@ -493,6 +490,40 @@ def get_policy(opts, plugins):
     return policy
 
 
+class HubFormatter(logging.Formatter):
+    """Support some koji specific fields in the format string"""
+
+    def format(self, record):
+        record.method = getattr(context, 'method', None)
+        if hasattr(context, 'session'):
+            record.user_id = context.session.user_id
+            record.session_id = context.session.id
+            record.callnum = context.session.callnum
+            record.user_name = context.session.user_data.get('name')
+        else:
+            record.user_id = None
+            record.session_id = None
+            record.callnum = None
+            record.user_name = None
+        return logging.Formatter.format(self, record)
+
+
+def setup_logging(opts):
+    #TODO - more robust config
+    global logger
+    logger = logging.getLogger("koji")
+    if opts.get('KojiDebug'):
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    #for now, just stderr logging (stderr goes to httpd logs)
+    #koji.add_stderr_logger("koji")
+    handler = logging.StreamHandler()
+    handler.setFormatter(HubFormatter('%(asctime)s [%(levelname)s] (%(method)s, %(user_name)s) %(name)s: %(message)s'))
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+
+
 #
 # mod_python handler
 #
@@ -506,6 +537,7 @@ def handler(req, profiling=False):
     if firstcall:
         firstcall = False
         opts = load_config(req)
+        setup_logging(opts)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
@@ -543,7 +575,7 @@ def handler(req, profiling=False):
                                   password = opts.get("DBPass",None),
                                   host = opts.get("DBHost", None))
             try:
-                context.cnx = koji.db.connect(_opt_bool(opts, 'KojiDebug'))
+                context.cnx = koji.db.connect()
             except Exception:
                 offline_reply(req, msg="database outage")
                 return apache.OK
