@@ -7324,7 +7324,7 @@ class HostExports(object):
         try:
             if os.path.lexists(latestrepolink):
                 os.unlink(latestrepolink)
-            os.symlink(repodir, latestrepolink)
+            os.symlink(str(repo_id), latestrepolink)
         except OSError:
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
