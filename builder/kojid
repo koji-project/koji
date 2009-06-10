@@ -395,8 +395,6 @@ class BuildRoot(object):
             raise koji.BuildError, 'either topurl or topdir must be specified in the config file'
         localrepo = localrepodir[len(self.rootdir()):]
 
-        # XXX This should actually use <mirrorOf>*</mirrorOf>, but that's not
-        # supported until Maven 2.0.5, which is not available in Fedora yet
         settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
@@ -408,19 +406,7 @@ class BuildRoot(object):
       <id>koji-maven-repo-%(tag_name)s-%(repo_id)i</id>
       <name>Koji-managed Maven repository (%(tag_name)s-%(repo_id)i)</name>
       <url>%(repourl)s</url>
-      <mirrorOf>central</mirrorOf>
-    </mirror>
-    <mirror>
-      <id>koji-jboss-repo-%(tag_name)s-%(repo_id)i</id>
-      <name>Koji-managed JBoss repository (%(tag_name)s-%(repo_id)i)</name>
-      <url>%(repourl)s</url>
-      <mirrorOf>jboss</mirrorOf>
-    </mirror>
-    <mirror>
-      <id>koji-jboss-org-repo-%(tag_name)s-%(repo_id)i</id>
-      <name>Koji-managed JBoss repository (%(tag_name)s-%(repo_id)i)</name>
-      <url>%(repourl)s</url>
-      <mirrorOf>repository.jboss.org</mirrorOf>
+      <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>
 </settings>
