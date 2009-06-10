@@ -819,6 +819,9 @@ def handle_maven_build(options, session, args):
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
+    parser.add_option("--profile", action="append",
+                      dest="profiles", metavar="PROFILE", default=[],
+                      help=_("Enable a profile for the Maven build"))
     parser.add_option("--property", action="append",
                       dest="properties", metavar="NAME=VALUE", default=[],
                       help=_("Pass a system property to the Maven build"))
@@ -841,7 +844,7 @@ def handle_maven_build(options, session, args):
         parser.error(_("Invalid SCM URL: %s" % source))
         assert False
     opts = {}
-    for key in ('skip_tag', 'scratch', 'specfile', 'patches'):
+    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'profiles'):
         val = getattr(build_opts, key)
         if val:
             opts[key] = val

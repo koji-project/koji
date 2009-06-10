@@ -642,10 +642,12 @@ class BuildRoot(object):
 
         return packages
 
-    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None):
+    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None, profiles=None):
         session.host.setBuildRootState(self.id, 'BUILDING')
         cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
                '/usr/bin/mvn', '-s', settingsfile]
+        if profiles:
+            cmd.append('-P%s' % ','.join(profiles))
         if props:
             for name, value in props.items():
                 cmd.append('-D%s=%s' % (name, value))
@@ -2229,6 +2231,8 @@ class MavenTask(BaseTaskHandler):
                 raise koji.BuildError, 'no repo for tag %s' % build_tag['name']
 
         build_opts = {'repo_id': repo_id}
+        if opts.get('profiles'):
+            build_opts['profiles'] = opts['profiles']
         if opts.get('properties'):
             build_opts['properties'] = opts['properties']
         if opts.get('patches'):
@@ -2411,7 +2415,8 @@ class BuildMavenTask(BaseTaskHandler):
         settingsfile = '/maven/settings.xml'
         buildroot.writeMavenSettings(repodir, settingsfile)
 
-        buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile, props=self.opts.get('properties'))
+        buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile,
+                             props=self.opts.get('properties'), profiles=self.opts.get('profiles'))
 
         pom_extensions = ['.' + ext for ext in session.getArchiveType(type_name='pom')['extensions'].split()]
         jar_extensions = ['.' + ext for ext in session.getArchiveType(type_name='jar')['extensions'].split()]
