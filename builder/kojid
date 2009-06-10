@@ -622,7 +622,7 @@ class BuildRoot(object):
                 elif fnmatch(repofile, 'maven-metadata*.xml'):
                     # Maven throws these metadata files around all over the place, ignore them
                     continue
-                elif fnmatch(repofile, 'koji-task*.zip'):
+                elif relpath == '' and (fnmatch(repofile, '*-sources.zip') or fnmatch(repofile, '*-patches.zip')):
                     # special-case the archives of the sources and patches, since we drop them in
                     # root of the output directory
                     continue
@@ -632,7 +632,7 @@ class BuildRoot(object):
             if maven_files:
                 path_comps = relpath.split('/')
                 if len(path_comps) < 3:
-                    raise koji.BuildrootError, 'Files found in unexpected path in local Maven repo: %s, files: %s' % \
+                    raise koji.BuildrootError, 'files found in unexpected path in local Maven repo, directory: %s, files: %s' % \
                         (relpath, ', '.join([f['filename'] for f in maven_files]))
                 # extract the Maven info from the path within the local repo
                 maven_info = {'version': path_comps[-1],
