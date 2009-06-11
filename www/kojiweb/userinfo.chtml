@@ -12,7 +12,7 @@
       <th>ID</th><td>$user.id</td>
     </tr>
     <tr>
-      <th>Tasks</th><td><a href="tasks?owner=$user.id">view</a></td>
+      <th>Tasks</th><td><a href="tasks?owner=$user.name&state=all">$taskCount</a></td>
     </tr>
     <tr>
       <th id="packagelist">Packages</th>

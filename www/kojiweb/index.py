@@ -680,14 +680,16 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
     server = _getServer(req)
     tag = None
     if tagID != None:
-        tagID = int(tagID)
-        tag = server.getTag(tagID)
+        if tagID.isdigit():
+            tagID = int(tagID)
+        tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
     user = None
     if userID != None:
-        userID = int(userID)
-        user = server.getUser(userID)
+        if userID.isdigit():
+            userID = int(userID)
+        user = server.getUser(userID, strict=True)
     values['userID'] = userID
     values['user'] = user
     values['order'] = order
@@ -1150,7 +1152,8 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
 
     values['user'] = user
     values['userID'] = userID
-    
+    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None}, queryOpts={'countOnly': True})
+
     packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                             start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
     
