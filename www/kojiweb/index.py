@@ -1238,13 +1238,23 @@ def cancelbuild(req, buildID):
 
     mod_python.util.redirect(req, 'buildinfo?buildID=%i' % build['id'])
 
-def hosts(req, start=None, order='name'):
+def hosts(req, state='enabled', start=None, order='name'):
     values = _initValues(req, 'Hosts', 'hosts')
     server = _getServer(req)
 
     values['order'] = order
 
-    hosts = server.listHosts()
+    args = {}
+
+    if state == 'enabled':
+        args['enabled'] = True
+    elif state == 'disabled':
+        args['enabled'] = False
+    else:
+        state = 'all'
+    values['state'] = state
+
+    hosts = server.listHosts(**args)
     
     server.multicall = True
     for host in hosts:

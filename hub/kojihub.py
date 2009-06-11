@@ -6239,9 +6239,15 @@ class RootExports(object):
             joins.append('host_channels on host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
         if ready != None:
-            clauses.append('ready is %s' % ready)
+            if ready:
+                clauses.append('ready is true')
+            else:
+                clauses.append('ready is false')
         if enabled != None:
-            clauses.append('enabled is %s' % enabled)
+            if enabled:
+                clauses.append('enabled is true')
+            else:
+                clauses.append('enabled is false')
         if userID != None:
             clauses.append('user_id = %(userID)i')
 
