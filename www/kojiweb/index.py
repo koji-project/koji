@@ -1159,7 +1159,7 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
     
     return _genHTML(req, 'userinfo.chtml')
 
-def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
+def rpminfo(req, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
     values = _initValues(req, 'RPM Info', 'builds')
     server = _getServer(req)
 
@@ -1190,8 +1190,9 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
-    buildroots = server.listBuildroots(rpmID=rpm['id'])
-    buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'rpmID': rpm['id']},
+                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+                                             order=buildrootOrder)
 
     values['rpmID'] = rpmID
     values['rpm'] = rpm
