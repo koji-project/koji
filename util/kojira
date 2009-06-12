@@ -76,6 +76,7 @@ class ManagedRepo(object):
         self.event_ts = data['create_ts']
         self.tag_id = data['tag_id']
         self.state = data['state']
+        self.first_seen = time.time()
         order = session.getFullInheritance(self.tag_id, event=self.event_id)
         #order may contain same tag more than once
         tags = {self.tag_id : 1}
@@ -114,7 +115,10 @@ class ManagedRepo(object):
         #XXX - config
         if self.state != koji.REPO_INIT:
             return False
-        age = time.time() - self.event_ts
+        age = time.time() - max(self.event_ts, self.first_seen)
+        #the first_seen timestamp is also factored in because a repo can be
+        #created from an older event and should not be expired based solely on
+        #that event's timestamp.
         return age > timeout
 
     def tryDelete(self):
