@@ -1224,7 +1224,7 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', 
 
     return _genHTML(req, 'rpminfo.chtml')
 
-def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
+def archiveinfo(req, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
     values = _initValues(req, 'Archive Info', 'builds')
     server = _getServer(req)
 
@@ -1238,8 +1238,9 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None):
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
     files = kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
                                         start=fileStart, dataName='files', prefix='file', order=fileOrder)
-    buildroots = server.listBuildroots(archiveID=archive['id'])
-    buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'archiveID': archive['id']},
+                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+                                             order=buildrootOrder)
 
     values['title'] = archive['filename'] + ' | Archive Info'
 
