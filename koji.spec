@@ -1,6 +1,6 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 1
+%define baserelease 2
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if "x%{?testbuild}" == "x1"
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
@@ -177,6 +177,11 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Fri Jun 12 2009 Mike Bonnet <mikeb@redhat.com> - 1.3.1-2
+- use <mirrorOf>*</mirrorOf> now that Maven 2.0.8 is available in the buildroots
+- retrieve Maven info for a build from the top-level pom.xml in the source tree
+- allow specifying one or more Maven profiles to be used during a build
+
 * Fri Feb 20 2009 Mike McLean <mikem at redhat.com> 1.3.1-1
 - external repo urls rewritten to end with /
 - add schema file for upgrades from 1.2.x to 1.3
