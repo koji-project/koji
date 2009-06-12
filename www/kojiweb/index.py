@@ -689,14 +689,16 @@ def packages(req, tagID=None, userID=None, order='package_name', start=None, pre
     server = _getServer(req)
     tag = None
     if tagID != None:
-        tagID = int(tagID)
-        tag = server.getTag(tagID)
+        if tagID.isdigit():
+            tagID = int(tagID)
+        tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
     user = None
     if userID != None:
-        userID = int(userID)
-        user = server.getUser(userID)
+        if userID.isdigit():
+            userID = int(userID)
+        user = server.getUser(userID, strict=True)
     values['userID'] = userID
     values['user'] = user
     values['order'] = order
@@ -1166,7 +1168,8 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
 
     values['user'] = user
     values['userID'] = userID
-    
+    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None}, queryOpts={'countOnly': True})
+
     packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                             start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
     
@@ -1175,7 +1178,7 @@ def userinfo(req, userID, packageOrder='package_name', packageStart=None, buildO
     
     return _genHTML(req, 'userinfo.chtml')
 
-def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
+def rpminfo(req, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
     values = _initValues(req, 'RPM Info', 'builds')
     server = _getServer(req)
 
@@ -1206,8 +1209,9 @@ def rpminfo(req, rpmID, fileOrder='name', fileStart=None):
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
-    buildroots = server.listBuildroots(rpmID=rpm['id'])
-    buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'rpmID': rpm['id']},
+                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+                                             order=buildrootOrder)
 
     values['rpmID'] = rpmID
     values['rpm'] = rpm
@@ -1298,13 +1302,23 @@ def cancelbuild(req, buildID):
 
     mod_python.util.redirect(req, 'buildinfo?buildID=%i' % build['id'])
 
-def hosts(req, start=None, order='name'):
+def hosts(req, state='enabled', start=None, order='name'):
     values = _initValues(req, 'Hosts', 'hosts')
     server = _getServer(req)
 
     values['order'] = order
 
-    hosts = server.listHosts()
+    args = {}
+
+    if state == 'enabled':
+        args['enabled'] = True
+    elif state == 'disabled':
+        args['enabled'] = False
+    else:
+        state = 'all'
+    values['state'] = state
+
+    hosts = server.listHosts(**args)
     
     server.multicall = True
     for host in hosts:

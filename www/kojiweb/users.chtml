@@ -55,10 +55,10 @@
       #for $user in $users
         <tr class="$util.rowToggle($self)">
           <td>$user.id</td>
-          <td><a href="userinfo?userID=$user.id">$user.name</a></td>
-          <td><a href="packages?userID=$user.id">view</a></td>
-          <td><a href="builds?userID=$user.id">view</a></td>
-          <td><a href="tasks?owner=$user.id">view</a></td>
+          <td><a href="userinfo?userID=$user.name">$user.name</a></td>
+          <td><a href="packages?userID=$user.name">view</a></td>
+          <td><a href="builds?userID=$user.name">view</a></td>
+          <td><a href="tasks?owner=$user.name">view</a></td>
         </tr>
       #end for
     #else

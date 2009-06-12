@@ -4063,6 +4063,27 @@ def handle_cancel(options, session, args):
     for build in blist:
         session.cancelBuild(build)
 
+def handle_set_task_priority(options, session, args):
+    "[admin] Set task priority"
+    usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task-id> [task-id]...")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--priority", type="int", help=_("New priority"))
+    parser.add_option("--recurse", action="store_true", default=False, help=_("Change priority of child tasks as well"))
+    (options, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("You must specify at least one task id"))
+        assert False
+
+    if options.priority is None:
+        parser.error(_("You must specify --priority"))
+        assert False
+
+    activate_session(session)
+
+    for task_id in args:
+        session.setTaskPriority(task_id, options.priority, options.recurse)
+
 def handle_list_tasks(options, session, args):
     "Print the list of tasks"
     usage = _("usage: %prog list-tasks [options]")

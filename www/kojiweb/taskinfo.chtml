@@ -313,7 +313,11 @@ ${excClass.__name__}: $cgi.escape($str($result))
       <th>Output</th>
       <td>
         #for $filename in $output
-        <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a><br/>
+        <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a>
+           #if $filename.endswith('.log')
+           (<a href="getfile?taskID=$task.id&name=$urllib.quote($filename)&offset=-2000">tail</a>)
+           #end if
+        <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
             $task.method in ('buildSRPMFromSCM', 'buildArch', 'buildMaven', 'wrapperRPM', 'createrepo')

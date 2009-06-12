@@ -219,6 +219,21 @@ class Task(object):
         q = """UPDATE task SET weight=%(weight)s WHERE id = %(task_id)s"""
         _dml(q,locals())
 
+    def setPriority(self, priority, recurse=False):
+        """Set priority for task"""
+        task_id = self.id
+        priority = int(priority)
+
+        # access checks should be performed by calling function
+        q = """UPDATE task SET priority=%(priority)s WHERE id = %(task_id)s"""
+        _dml(q,locals())
+
+        if recurse:
+            """Change priority of child tasks"""
+            q = """SELECT id FROM task WHERE parent = %(task_id)s"""
+            for (child_id,) in _fetchMulti(q, locals()):
+                Task(child_id).setPriority(priority, recurse=True)
+
     def _close(self,result,state):
         """Mark task closed and set response
 
@@ -3472,7 +3487,7 @@ def get_channel(channelInfo, strict=False):
     return _singleRow(query, locals(), fields, strict)
 
 
-def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=None, taskID=None, buildrootID=None):
+def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=None, taskID=None, buildrootID=None, queryOpts=None):
     """Return a list of matching buildroots
 
     Optional args:
@@ -3493,14 +3508,13 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('EXTRACT(EPOCH FROM retire_events.time)','retire_ts'),
               ('repo_create.id', 'repo_create_event_id'), ('repo_create.time', 'repo_create_event_time')]
 
-    query = """SELECT %s FROM buildroot
-    JOIN host ON host.id = buildroot.host_id
-    JOIN repo ON repo.id = buildroot.repo_id
-    JOIN tag ON tag.id = repo.tag_id
-    JOIN events AS create_events ON create_events.id = buildroot.create_event
-    LEFT OUTER JOIN events AS retire_events ON buildroot.retire_event = retire_events.id
-    JOIN events AS repo_create ON repo_create.id = repo.create_event
-    """
+    tables = ['buildroot']
+    joins=['host ON host.id = buildroot.host_id',
+           'repo ON repo.id = buildroot.repo_id',
+           'tag ON tag.id = repo.tag_id',
+           'events AS create_events ON create_events.id = buildroot.create_event',
+           'LEFT OUTER JOIN events AS retire_events ON buildroot.retire_event = retire_events.id',
+           'events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
     if buildrootID != None:
@@ -3518,24 +3532,19 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         else:
             clauses.append('buildroot.state = %(state)i')
     if rpmID != None:
-        query += """JOIN buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id
-        """
+        joins.append('buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
         clauses.append('buildroot_listing.rpm_id = %(rpmID)i')
     if archiveID != None:
-        query += """JOIN buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id
-        """
+        joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
     if taskID != None:
         clauses.append('buildroot.task_id = %(taskID)i')
 
-    query = query % ', '.join([pair[0] for pair in fields])
-
-    if len(clauses) > 0:
-        query += 'WHERE ' + ' AND '.join(clauses)
-
-    return _multiRow(query, locals(), [pair[1] for pair in fields])
-
+    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                           tables=tables, joins=joins, clauses=clauses, values=locals(),
+                           opts=queryOpts)
+    return query.execute()
 
 def get_buildroot(buildrootID, strict=False):
     """Return information about a buildroot.  buildrootID must be an int ID."""
@@ -6263,6 +6272,12 @@ class RootExports(object):
                 raise koji.ActionNotAllowed, 'Cannot cancel task, not owner'
         task.cancelChildren()
 
+    def setTaskPriority(self, task_id, priority, recurse=True):
+        """Set task priority"""
+        context.session.assertPerm('admin')
+        task = Task(task_id)
+        task.setPriority(priority, recurse=recurse)
+
     def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None,maven_only=False):
         """List builds tagged with tag"""
         if not isinstance(tag,int):
@@ -7146,9 +7161,15 @@ class RootExports(object):
             joins.append('host_channels on host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
         if ready != None:
-            clauses.append('ready is %s' % ready)
+            if ready:
+                clauses.append('ready is true')
+            else:
+                clauses.append('ready is false')
         if enabled != None:
-            clauses.append('enabled is %s' % enabled)
+            if enabled:
+                clauses.append('enabled is true')
+            else:
+                clauses.append('enabled is false')
         if userID != None:
             clauses.append('user_id = %(userID)i')
 
