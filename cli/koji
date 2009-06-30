@@ -2231,6 +2231,9 @@ def anon_handle_list_pkgs(options, session, args):
     parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -2261,6 +2264,11 @@ def anon_handle_list_pkgs(options, session, args):
         opts['with_dups'] = options.show_dups
     else:
         opts['with_dups'] = True
+    event = koji.util.eventFromOpts(session, options)
+    if event:
+        opts['event'] = event['id']
+        event['timestr'] = time.asctime(time.localtime(event['ts']))
+        print "Querying at event %(id)i (%(timestr)s)" % event
     data = session.listPackages(**opts)
     if not data:
         print "(no matching packages)"

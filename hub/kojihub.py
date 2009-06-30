@@ -5752,7 +5752,7 @@ class RootExports(object):
 
     getPackage = staticmethod(lookup_package)
 
-    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False):
+    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False, event=None):
         """List if tagID and/or userID is specified, limit the
         list to packages belonging to the given user or with the
         given tag.
@@ -5784,7 +5784,8 @@ class RootExports(object):
             if pkgID is not None:
                 pkgID = get_package_id(pkgID,strict=True)
             result_list = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
-                                          inherit=inherited, with_dups=with_dups).values()
+                                          inherit=inherited, with_dups=with_dups,
+                                          event=event).values()
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
