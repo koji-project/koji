@@ -349,6 +349,20 @@ def decode_args(*args):
             args = args[:-1]
     return args,opts
 
+def encode_int(n):
+    """If n is too large for a 32bit signed, convert it to a string"""
+    if n <= 2147483647:
+        return n
+    #else
+    return str(n)
+
+def decode_int(n):
+    """If n is not an integer, attempt to convert it"""
+    if isinstance(n, (int, long)):
+        return n
+    #else
+    return int(n)
+
 #commonly used functions
 
 def safe_xmlrpc_loads(s):
@@ -1586,12 +1600,7 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path,name,sz,digest,offset))
-                if offset > 2147483647:
-                    #work around xmlrpc limitation, server will convert back
-                    offsethack = str(offset)
-                else:
-                    offsethack = offset
-                if self.callMethod('uploadFile', path, name, sz, digest, offsethack, data):
+                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data):
                     break
                 if tries <= retries:
                     tries += 1

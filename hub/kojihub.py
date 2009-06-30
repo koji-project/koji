@@ -4721,8 +4721,9 @@ class RootExports(object):
             raise koji.GenericError, 'you must be logged-in to upload a file'
         contents = base64.decodestring(data)
         del data
-        if not isinstance(offset, (int, long)):
-            offset = int(offset)
+        # we will accept offset and size as strings to work around xmlrpc limits
+        offset = koji.decode_int(offset)
+        size = koji.decode_int(size)
         if offset != -1:
             if size is not None:
                 if size != len(contents): return False
