@@ -3040,6 +3040,7 @@ def get_options():
                 'krb_principal': None,
                 'host_principal_format': 'compile/%s@EXAMPLE.COM',
                 'keytab': '/etc/kojid/kojid.keytab',
+                'ccache': '/var/tmp/kojid.ccache',
                 'server': None,
                 'user': None,
                 'password': None,
@@ -3145,7 +3146,8 @@ if __name__ == "__main__":
             krb_principal = options.host_principal_format % socket.getfqdn()
         try:
             session.krb_login(principal=krb_principal,
-                              keytab=options.keytab)
+                              keytab=options.keytab,
+                              ccache=options.ccache)
         except krbV.Krb5Error, e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.message, e.err_code))
         except socket.error, e:

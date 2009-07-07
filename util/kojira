@@ -438,6 +438,7 @@ def get_options():
                 'logfile': '/var/log/kojira.log',
                 'principal': None,
                 'keytab': None,
+                'ccache': '/var/tmp/kojira.ccache',
                 'retry_interval': 60,
                 'max_retries': 120,
                 'offline_retry': True,
@@ -521,7 +522,7 @@ if  __name__ == "__main__":
         # authenticate using user/password
         session.login()
     elif sys.modules.has_key('krbV') and options.principal and options.keytab:
-        session.krb_login(options.principal, options.keytab)
+        session.krb_login(options.principal, options.keytab, options.ccache)
     #get an exclusive session
     try:
         session.exclusiveSession(force=options.force_lock)
