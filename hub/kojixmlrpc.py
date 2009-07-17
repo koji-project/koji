@@ -384,6 +384,9 @@ def load_config(req):
         ['VerbosePolicy', 'boolean', False],
         ['EnableFunctionDebug', 'boolean', False],
 
+        ['LogLevel', 'string', 'WARNING'],
+        ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s %(name)s: %(message)s'],
+
         ['MissingPolicyOk', 'boolean', True],
 
         ['LockOut', 'boolean', False],
@@ -512,14 +515,40 @@ def setup_logging(opts):
     #TODO - more robust config
     global logger
     logger = logging.getLogger("koji")
+    #determine log level
+    level = opts['LogLevel']
+    valid_levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+    # the config value can be a single level name or a series of
+    # logger:level names pairs. processed in order found
+    default = None
+    for part in level.split():
+        pair = part.split(':', 1)
+        if len(pair) == 2:
+            name, level = pair
+        else:
+            name = 'koji'
+            level = part
+            default = level
+        if level not in valid_levels:
+            raise koji.GenericError, "Invalid log level: %s" % level
+        #all our loggers start with koji
+        if name == '':
+            name = 'koji'
+            default = level
+        elif name.startswith('.'):
+            name = 'koji' + name
+        elif not name.startswith('koji'):
+            name = 'koji.' + name
+        logging.getLogger(name).setLevel(level)
+    # if KojiDebug is set, force main log level to DEBUG
     if opts.get('KojiDebug'):
         logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+    elif default is None:
+        #LogLevel did not configure a default level
+        logger.setLevel(logging.WARNING)
     #for now, just stderr logging (stderr goes to httpd logs)
-    #koji.add_stderr_logger("koji")
     handler = logging.StreamHandler()
-    handler.setFormatter(HubFormatter('%(asctime)s [%(levelname)s] (%(method)s, %(user_name)s) %(name)s: %(message)s'))
+    handler.setFormatter(HubFormatter(opts['LogFormat']))
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
