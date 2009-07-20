@@ -4347,6 +4347,7 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     """
     name = 'buildtag'
     def run(self, data):
+        args = self.str.split()[1:]
         if data.has_key('build_tag'):
             tagname = get_tag(data['build_tag'])
             for pattern in args:
@@ -4361,7 +4362,6 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
             #not have a buildroot.
             #or if the entire build was imported, there will be no buildroots
             rpms = context.handlers.call('listRPMs', buildID=data['build'])
-            args = self.str.split()[1:]
             for rpminfo in rpms:
                 if rpminfo['buildroot_id'] is None:
                     continue
