@@ -40,6 +40,7 @@ from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
 
+
 def _opt_bool(opts, name):
     """Convert option into a boolean if necessary
 
@@ -184,6 +185,7 @@ class ModXMLRPCRequestHandler(object):
     def __init__(self, handlers):
         self.traceback = False
         self.handlers = handlers  #expecting HandlerRegistry instance
+        self.logger = logging.getLogger('koji.xmlrpc')
 
     def _get_handler(self, name):
         # just a wrapper so we can handle multicall ourselves
@@ -230,9 +232,7 @@ class ModXMLRPCRequestHandler(object):
                     faultString = koji.format_exc_plus()
                 else:
                     faultString = "%s: %s" % (e_class,e)
-            sys.stderr.write(tb_str)
-            sys.stderr.write('\n')
-            sys.stderr.flush()
+            self.logger.warning(tb_str)
             response = dumps(Fault(faultCode, faultString))
 
         logger.debug("Returning %d bytes after %f seconds\n", len(response),
@@ -260,18 +260,18 @@ class ModXMLRPCRequestHandler(object):
         # handle named parameters
         params,opts = koji.decode_args(*params)
 
-        if _opt_bool(context.opts, 'KojiDebug'):
-            logger.debug("Handling method %s for session %s (#%s)",
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug("Handling method %s for session %s (#%s)",
                             method, context.session.id, context.session.callnum)
             if method != 'uploadFile':
-                logger.debug("Params: %s\n", pprint.pformat(params))
-                logger.debug("Opts: %s\n", pprint.pformat(opts))
+                self.logger.debug("Params: %s\n", pprint.pformat(params))
+                self.logger.debug("Opts: %s\n", pprint.pformat(opts))
             start = time.time()
 
         ret = func(*params,**opts)
 
-        if _opt_bool(context.opts, 'KojiDebug'):
-            logger.debug("Completed method %s for session %s (#%s): %f seconds",
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug("Completed method %s for session %s (#%s): %f seconds",
                             method, context.session.id, context.session.callnum,
                             time.time()-start)
 
@@ -314,6 +314,26 @@ class ModXMLRPCRequestHandler(object):
         req.content_type = "text/xml"
         req.set_content_length(len(response))
         req.write(response)
+        self.logger.debug("Returning %d bytes after %f seconds\n", len(response),
+                        time.time() - start)
+
+
+
+def dump_req(req):
+    data = [
+        "request: %s\n" % req.the_request,
+        "uri: %s\n" % req.uri,
+        "args: %s\n" % req.args,
+        "protocol: %s\n" % req.protocol,
+        "method: %s\n" % req.method,
+        "https: %s\n" % req.is_https(),
+        "auth_name: %s\n" % req.auth_name(),
+        "auth_type: %s\n" % req.auth_type(),
+        "headers:\n%s\n" % pprint.pformat(req.headers_in),
+    ]
+    for part in data:
+        sys.stderr.write(part)
+    sys.stderr.flush()
 
 
 def offline_reply(req, msg=None):
@@ -438,6 +458,7 @@ def load_plugins(opts):
     """Load plugins specified by our configuration"""
     if not opts['Plugins']:
         return
+    logger = logging.getLogger('koji.plugins')
     tracker = koji.plugin.PluginTracker(path=opts['PluginPath'].split(':'))
     for name in opts['Plugins'].split():
         logger.info('Loading plugin: %s\n', name)
@@ -512,9 +533,6 @@ class HubFormatter(logging.Formatter):
 
 
 def setup_logging(opts):
-    #TODO - more robust config
-    global logger
-    logger = logging.getLogger("koji")
     #determine log level
     level = opts['LogLevel']
     valid_levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
@@ -539,7 +557,9 @@ def setup_logging(opts):
             name = 'koji' + name
         elif not name.startswith('koji'):
             name = 'koji.' + name
-        logging.getLogger(name).setLevel(level)
+        level_code = logging._levelNames[level]
+        logging.getLogger(name).setLevel(level_code)
+    logger = logging.getLogger("koji")
     # if KojiDebug is set, force main log level to DEBUG
     if opts.get('KojiDebug'):
         logger.setLevel(logging.DEBUG)
