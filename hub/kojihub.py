@@ -5214,6 +5214,7 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     """
     name = 'buildtag'
     def run(self, data):
+        args = self.str.split()[1:]
         if data.has_key('build_tag'):
             tagname = get_tag(data['build_tag'])
             for pattern in args:
@@ -5231,7 +5232,6 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
             archives = list_archives(buildID=data['build'])
             br_list = [r['buildroot_id'] for r in rpms]
             br_list.extend([a['buildroot_id'] for a in archives])
-            args = self.str.split()[1:]
             for br_id in br_list:
                 if br_id is None:
                     continue
