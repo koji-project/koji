@@ -1715,47 +1715,53 @@ class ChainBuildTask(BaseTaskHandler):
     _taskWeight = 0.1
 
     def handler(self, srcs, target, opts=None):
+        """Run a chain build
+
+            target and opts are passed on to the build tasks
+            srcs is a list of "build levels"
+            each build level is a list of strings, each string may be one of:
+                - a build src (SCM url only)
+                - an n-v-r
+            each build level is processed in order
+            successive levels are only started once the previous levels have completed
+            and gotten into the repo.
+        """
         if opts.get('scratch'):
             raise koji.BuildError, "--scratch is not allowed with chain-builds"
         target_info = session.getBuildTarget(target)
         if not target_info:
             raise koji.GenericError, 'unknown build target: %s' % target
-        for build_level in srcs:
-            subtasks = []
-            build_tasks = []
+        nvrs = []
+        for n_src, build_level in enumerate(srcs):
+            #if there are any nvrs to wait on, do so
+            if nvrs:
+                task_id = session.host.subtask(method='waitrepo',
+                                               arglist=[target_info['build_tag_name'], None, nvrs],
+                                               label="wait %i" % n_src,
+                                               parent=self.id)
+                self.wait(task_id, all=True, failany=True)
             nvrs = []
+            #kick off the builds for this level
+            build_tasks = []
             for src in build_level:
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
-                                                   label=src,
+                                                   label="build %i" % n_src,
                                                    parent=self.id)
                     build_tasks.append(task_id)
-                    subtasks.append(task_id)
                 else:
                     nvrs.append(src)
-            if nvrs:
-                task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target_info['build_tag_name'], None, nvrs],
-                                               label=','.join(nvrs),
-                                               parent=self.id)
-                subtasks.append(task_id)
-            if not subtasks:
-                continue
-            self.wait(subtasks, all=True, failany=True)
-            if srcs[-1] == build_level:
-                continue
-            nvrs = []
+                    #next pass will wait for these
+            if build_tasks:
+                #the level could have been all nvrs
+                self.wait(build_tasks, all=True, failany=True)
+            #see what builds we created in this batch so the next pass can wait for them also
             for build_task in build_tasks:
                 builds = session.listBuilds(taskID=build_task)
                 if builds:
                     nvrs.append(builds[0]['nvr'])
-            if nvrs:
-                task_id = session.host.subtask(method='waitrepo',
-                                               arglist=[target_info['build_tag_name'], None, nvrs],
-                                               label=','.join(nvrs),
-                                               parent=self.id)
-                self.wait(task_id, all=True, failany=True)
+
 
 class BuildTask(BaseTaskHandler):
 

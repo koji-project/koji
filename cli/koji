@@ -797,9 +797,7 @@ def handle_chain_build(options, session, args):
     build_target = session.getBuildTarget(target)
     if not build_target:
         parser.error(_("Unknown build target: %s" % target))
-    dest_tag = session.getTag(build_target['dest_tag'])
-    if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+    dest_tag = session.getTag(build_target['dest_tag'], strict=True)
     if dest_tag['locked']:
         parser.error(_("Destination tag %s is locked" % dest_tag['name']))
 
