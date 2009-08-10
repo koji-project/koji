@@ -83,6 +83,13 @@ p#footer a {
     text-decoration: none;
 }
 
+#PoweredByKojiLogo {
+    /* Used only for the powered by koji icon */
+    float: right;
+    border: 0px;
+    height: 20px;
+}
+
 .hide {
     display: none;
 }
