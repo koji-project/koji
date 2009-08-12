@@ -1204,6 +1204,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         etc_hosts = file('/etc/hosts')
         files['etc/hosts'] = etc_hosts.read()
         etc_hosts.close()
+    if opts.get('maven_opts', False):
+        files['etc/mavenrc'] = 'MAVEN_OPTS="%s"\n' % opts['maven_opts']
 
     config_opts['yum.conf'] = """[main]
 cachedir=/var/cache/yum

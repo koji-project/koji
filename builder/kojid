@@ -312,7 +312,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id, event=self.event_id)
 
-    def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False):
+    def _new(self, tag, arch, task_id, distribution=None, repo_id=None, install_group='build', setup_dns=False, maven_opts=None):
         """Create a brand new repo"""
         if not repo_id:
             raise koji.BuildrootError, "A repo id must be provided"
@@ -345,6 +345,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.install_group = install_group
         self.setup_dns = setup_dns
+        self.maven_opts = maven_opts
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -364,6 +365,7 @@ class BuildRoot(object):
         opts['buildroot_id'] = self.id
         opts['use_host_resolv'] = self.setup_dns
         opts['install_group'] = self.install_group
+        opts['maven_opts'] = self.maven_opts
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
@@ -2335,7 +2337,8 @@ class BuildMavenTask(BaseTaskHandler):
         event_id = repo_info['create_event']
 
         br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
-        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id)
+        buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id,
+                              maven_opts='-Xmx1024m')
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
