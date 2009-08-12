@@ -4024,7 +4024,7 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
         ext = '%s.%s' % tuple(parts[-2:])
     select = r"""SELECT id, name, description, extensions FROM archivetypes
     WHERE extensions ~ E'\\m%s\\M'""" % ext
-    results = _multiRow(select, locals(), ('id', 'name', 'extensions'))
+    results = _multiRow(select, locals(), ('id', 'name', 'description', 'extensions'))
     if len(results) == 0:
         if strict:
             raise koji.GenericError, 'unsupported file extension: %s' % ext
