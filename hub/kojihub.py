@@ -7155,7 +7155,7 @@ class RootExports(object):
             # matching 'ppc64'
             if not (isinstance(arches, list) or isinstance(arches, tuple)):
                 arches = [arches]
-            archClause = [r"""arches ~ '\\m%s\\M'""" % arch for arch in arches]
+            archClause = [r"""arches ~ E'\\m%s\\M'""" % arch for arch in arches]
             clauses.append('(' + ' OR '.join(archClause) + ')')
         if channelID != None:
             joins.append('host_channels on host.id = host_channels.host_id')
