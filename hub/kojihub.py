@@ -2993,7 +2993,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, taskID=Non
         else:
             clauses.append('buildroot.state = %(state)i')
     if rpmID != None:
-        joins.append('buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
+        joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
         clauses.append('buildroot_listing.rpm_id = %(rpmID)i')
     if taskID != None:
