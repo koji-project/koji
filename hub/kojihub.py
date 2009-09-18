@@ -1768,9 +1768,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             continue
         build = builds[rpminfo['build_id']]
         rpminfo['path'] = "%s/%s" % (koji.pathinfo.build(build), koji.pathinfo.rpm(rpminfo))
-        if not os.path.exists(rpminfo['path']):
-            logger.warn("Error: no such file: %(path)s" % rpminfo)
-            continue
         packages.setdefault(repoarch,[]).append(rpminfo)
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
