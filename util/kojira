@@ -183,6 +183,7 @@ class RepoManager(object):
     def __init__(self):
         self.repos = {}
         self.tasks = {}
+        self.tag_use_stats = {}
         self.logger = logging.getLogger("koji.repo.manager")
 
     def printState(self):
@@ -263,6 +264,59 @@ class RepoManager(object):
                         safe_rmtree(repodir, strict=False)
                         pass
 
+    def tagUseStats(self, tag_id):
+        stats = self.tag_use_stats.get(tag_id)
+        now = time.time()
+        if stats and now - stats['ts'] < 3600:
+            #use the cache
+            return stats
+        data = session.listBuildroots(tagID=tag_id,
+                    queryOpts={'order': '-create_event_id', 'limit' : 100})
+        #XXX magic number (limit)
+        stats = {'data': data, 'ts': now}
+        recent = [x for x in data if now - x['create_ts'] < 3600 * 24]
+        #XXX magic number
+        stats ['n_recent'] = len(recent)
+        self.tag_use_stats[tag_id] = stats
+        self.logger.debug("tag %s recent use count: %i" % (tag_id, len(recent)))
+        return stats
+
+    def adjustRegenOrder(self, data):
+        """Adjust repo regen order
+
+        data is list of (ts, tag_id) entries
+        We sort the tags by two factors
+            - age of current repo (passed in via data)
+            - last use in a buildroot (via tagUseStats)
+        Having and older repo or a higher use count give the repo
+        a higher priority for regen. The formula attempts to keep
+        the last use factor from overpowering, so that very old repos
+        still get regen priority.
+        """
+        if not data:
+            ret = data[:]  #copy
+            ret.sort()
+            return ret
+        data = [(ts, tag_id, self.tagUseStats(tag_id)) for ts, tag_id in data]
+        max_n = max([s['n_recent'] for ts,tag,s in data])
+        if max_n == 0:
+            ret = [(ts,tag) for ts,tag,s in data]
+            ret.sort()
+            return ret
+        #XXX - need to make sure our times aren't far off, otherwise this
+        # adjustment could have the opposite of the desired effect
+        now = time.time()
+        ret = []
+        for ts, tag_id, stats in data:
+            #normalize use count
+            adj = stats ['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
+            ret.append(((now-ts)*adj, tag_id))
+            #so a day old unused repo gets about the regen same priority as a
+            #2.4-hour-old, very popular repo
+        ret.sort()
+        ret.reverse()
+        return ret
+
     def updateRepos(self):
         #check on tasks
         for tag_id, task_id in self.tasks.items():
@@ -324,7 +378,8 @@ class RepoManager(object):
                 if repo.event_ts > ts:
                     ts = repo.event_ts
             regen.append((ts, tag_id))
-        regen.sort()
+        #factor in tag use stats
+        regen = self.adjustRegenOrder(regen)
         self.logger.debug("order: %s", regen)
         # i.e. tags with oldest (or no) repos get precedence
         for ts, tag_id in regen:
