@@ -41,21 +41,6 @@ from kojihub import HostExports
 from koji.context import context
 
 
-def _opt_bool(opts, name):
-    """Convert option into a boolean if necessary
-
-    For strings, the following values
-    will be considered True (case-insensitive):
-        yes, on, true, 1
-    Any other strings will be considered False."""
-    val = opts.get(name, False)
-    if isinstance(val, bool):
-        return val
-    elif isinstance(val, basestring):
-        if val.lower() in ('yes', 'on', 'true', '1'):
-            return True
-    return False
-
 class HandlerRegistry(object):
     """Track handlers for RPC calls"""
 
@@ -218,7 +203,7 @@ class ModXMLRPCRequestHandler(object):
             tb_type = context.opts.get('KojiTraceback',None)
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             if issubclass(e_class, koji.GenericError):
-                if _opt_bool(context.opts, 'KojiDebug'):
+                if context.opts.get('KojiDebug'):
                     if tb_type == "extended":
                         faultString = koji.format_exc_plus()
                     else:
@@ -235,9 +220,6 @@ class ModXMLRPCRequestHandler(object):
             self.logger.warning(tb_str)
             response = dumps(Fault(faultCode, faultString))
 
-        logger.debug("Returning %d bytes after %f seconds\n", len(response),
-                        time.time() - start)
-
         return response
 
     def _dispatch(self,method,params):
@@ -253,7 +235,7 @@ class ModXMLRPCRequestHandler(object):
                 #might be ok, depending on method
                 if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
                     raise
-            if _opt_bool(context.opts, 'LockOut') and \
+            if context.opts.get('LockOut') and \
                    method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
                 if not context.session.hasPerm('admin'):
                     raise koji.ServerOffline, "Server disabled for maintenance"
@@ -304,6 +286,7 @@ class ModXMLRPCRequestHandler(object):
     def handle_request(self,req):
         """Handle a single XML-RPC request"""
 
+        start = time.time()
         # XMLRPC uses POST only. Reject anything else
         if req.method != 'POST':
             req.allow_methods(['POST'],1)
@@ -410,7 +393,7 @@ def load_config(req):
         ['MissingPolicyOk', 'boolean', True],
 
         ['LockOut', 'boolean', False],
-        ['ServerOffline', 'string', False],
+        ['ServerOffline', 'boolean', False],
         ['OfflineMessage', 'string', None],
     ]
     opts = {}
@@ -610,7 +593,7 @@ def handler(req, profiling=False):
         _profiling_req = None
     else:
         try:
-            if _opt_bool(opts, 'ServerOffline'):
+            if opts.get('ServerOffline'):
                 offline_reply(req, msg=opts.get("OfflineMessage", None))
                 return apache.OK
             context._threadclear()
