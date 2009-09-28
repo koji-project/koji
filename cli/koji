@@ -3830,8 +3830,6 @@ def handle_spin_livecd(options, session, args):
         help=_("Run the livecd creation task at a lower priority"))
     parser.add_option("--isoname",
         help=_("Use a custom name for the iso file"))
-    parser.add_option("--topurl",
-        help=_("Specify a topurl, override that which is in kojid.conf"))
     parser.add_option("--scmurl",
         help=_("The SCM URL to the kickstart file"))
     parser.add_option("--scratch", action="store_true",
@@ -3890,7 +3888,6 @@ def handle_spin_livecd(options, session, args):
     livecd_opts['scmurl'] = task_options.scmurl
     livecd_opts['isoname'] = task_options.isoname
     livecd_opts['scratch'] = task_options.scratch
-    livecd_opts['topurl'] = task_options.topurl
     livecd_opts['repo'] = task_options.repo
 
     # finally, create the task. Flow continues in kojihub::livecd.

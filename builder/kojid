@@ -2259,26 +2259,23 @@ class LiveCDTask(BaseTaskHandler):
                    baseurl=user_repo, name='koji_override_%s' % index))
                 index += 1
         else:
-            if opts['topurl']:
-                topurl = opts['topurl']
-            else:
-                topurl = getattr(options, 'topurl')
+            topurl = getattr(options, 'topurl')
             if not topurl:
-                raise koji.GenericError, 'topurl needs to be defined!'
+                raise koji.LiveCDError, 'topurl must be defined in kojid.conf'
             path_info = koji.PathInfo(topdir=topurl)
             repopath = path_info.repo(repo_info['id'],
-                                     target_info['build_tag_name'])
+                                      target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, arch)
             self.logger.debug('BASEURL: %s' % baseurl)
             ks.handler.repo.repoList.append(ksrepo.F8_RepoData(
-                baseurl=baseurl, name='koji'))
+                    baseurl=baseurl, name='koji'))
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
         kskoji = os.path.join(tmpchroot, 'koji.ks')
         kspath = os.path.join(broot.rootdir(), kskoji[1:])
         outfile = open(kspath, 'w')
-        outfile.write(ks.handler.__str__())
+        outfile.write(str(ks.handler))
         outfile.close()
 
         # put the new ksfile in the output directory
