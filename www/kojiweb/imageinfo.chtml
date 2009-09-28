@@ -1,0 +1,62 @@
+#import koji
+#import koji.util
+#from os.path import basename
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+<h4>Information for image <a href="imageinfo?imageID=$image.id">$image.filename</a></h4>
+
+<table>
+  <tr>
+    <th>Image ID</th><td>$image.id</td>
+  </tr>
+  <tr>
+    <th>Build Root ID</th><td><a href="buildrootinfo?buildrootID=$image.br_id">$image.br_id</a></td>
+  </tr>
+  <tr>
+    <th>File Name</th><td>$image.filename</a></td>
+  </tr>
+  <tr>
+    <th>File Size</th><td>$image.filesize bytes</td>
+ </tr>
+  <tr>
+    <th>Media Type</th><td>$image.mediatype</td>
+  </tr>
+  <tr>
+    #if $len($image.hash) == 32
+      <th>Hash (MD5)</th><td>$image.hash</td>
+    #elif $len($image.hash) == 40
+      <th>Hash (SHA1)</th><td>$image.hash</td>
+    #elif $len($image.hash) == 64
+      <th>Hash (SHA256)</th><td>$image.hash</td>
+    #elif $len($image.hash) == 96
+      <th>Hash (SHA384)</th><td>$image.hash</td>
+    #elif $len($image.hash) == 128
+      <th>Hash (SHA512)</th><td>$image.hash</td>
+    #else
+      <th>Hash </th><td>$image.hash</td>
+    #end if
+  </tr>
+  <tr>
+    <th>Task ID</th><td><a href="taskinfo?taskID=$image.task_id">$image.task_id</a></td>
+  </tr>
+  <tr>
+    <th>Output</th>
+  </tr>
+  <tr>
+    <td>
+      #for $ofile in $logs
+        &nbsp;&nbsp;&nbsp;&nbsp;<a href="$ofile">$basename($ofile)</a><br/>
+      #end for
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2"><a href="rpmlist?imageID=$image.id&amp;type=image" title="RPMs that where installed into the LiveCD">Included RPMs</a></th>
+  </tr>
+  <tr>
+    <th colspan="2"><a href="$imageURL">Download Image</a></th>
+  </tr>
+</table>
+
+#include "includes/footer.chtml"
