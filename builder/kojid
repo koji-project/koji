@@ -384,9 +384,12 @@ class BuildRoot(object):
             uploadpath = self.getUploadPath()
             logs = {}
 
-            while True:
+            finished = False
+            while not finished:
                 time.sleep(1)
                 status = os.waitpid(pid, os.WNOHANG)
+                if status[0] != 0:
+                    finished = True
 
                 try:
                     results = os.listdir(resultdir)
@@ -418,12 +421,11 @@ class BuildRoot(object):
                         continue
 
                     incrementalUpload(fname, fd, uploadpath, self.logger)
-
-                if status[0] != 0:
-                    for (fname, (fd, inode, size)) in logs.items():
-                        if fd:
-                            fd.close()
-                    return status[1]
+            #clean up and return exit status of command
+            for (fname, (fd, inode, size)) in logs.items():
+                if fd:
+                    fd.close()
+            return status[1]
 
         else:
             #in no case should exceptions propagate past here
@@ -3038,6 +3040,7 @@ def get_options():
                 'krb_principal': None,
                 'host_principal_format': 'compile/%s@EXAMPLE.COM',
                 'keytab': '/etc/kojid/kojid.keytab',
+                'ccache': '/var/tmp/kojid.ccache',
                 'server': None,
                 'user': None,
                 'password': None,
@@ -3143,7 +3146,8 @@ if __name__ == "__main__":
             krb_principal = options.host_principal_format % socket.getfqdn()
         try:
             session.krb_login(principal=krb_principal,
-                              keytab=options.keytab)
+                              keytab=options.keytab,
+                              ccache=options.ccache)
         except krbV.Krb5Error, e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.message, e.err_code))
         except socket.error, e:

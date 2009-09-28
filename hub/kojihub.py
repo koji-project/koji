@@ -1768,9 +1768,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             continue
         build = builds[rpminfo['build_id']]
         rpminfo['path'] = "%s/%s" % (koji.pathinfo.build(build), koji.pathinfo.rpm(rpminfo))
-        if not os.path.exists(rpminfo['path']):
-            logger.warn("Error: no such file: %(path)s" % rpminfo)
-            continue
         packages.setdefault(repoarch,[]).append(rpminfo)
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
@@ -5755,7 +5752,7 @@ class RootExports(object):
 
     getPackage = staticmethod(lookup_package)
 
-    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False):
+    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False, event=None):
         """List if tagID and/or userID is specified, limit the
         list to packages belonging to the given user or with the
         given tag.
@@ -5787,7 +5784,8 @@ class RootExports(object):
             if pkgID is not None:
                 pkgID = get_package_id(pkgID,strict=True)
             result_list = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
-                                          inherit=inherited, with_dups=with_dups).values()
+                                          inherit=inherited, with_dups=with_dups,
+                                          event=event).values()
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -7327,7 +7325,7 @@ class HostExports(object):
         try:
             if os.path.lexists(latestrepolink):
                 os.unlink(latestrepolink)
-            os.symlink(repodir, latestrepolink)
+            os.symlink(str(repo_id), latestrepolink)
         except OSError:
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
