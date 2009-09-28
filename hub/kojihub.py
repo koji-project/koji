@@ -4707,9 +4707,7 @@ class RootExports(object):
         Create a live CD image using a kickstart file and group package list.
         """
 
-        if not context.session.hasPerm('livecd'):
-            raise koji.ActionNotAllowed, \
-                'You must have the "livecd" permission to run this task!'
+        context.session.assertPerm('livecd')
 
         taskOpts = {}
         taskOpts['arch'] = arch
