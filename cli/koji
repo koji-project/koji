@@ -3817,7 +3817,7 @@ def handle_spin_livecd(options, session, args):
     """[admin] Create a live CD image given a kickstart file"""
 
     # Usage & option parsing.
-    usage = _("usage: %prog spin-livecd [options] <arch> <target> " +
+    usage = _("usage: %prog spin-livecd [options] <target> <arch> " +
               "<kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
@@ -3861,13 +3861,10 @@ def handle_spin_livecd(options, session, args):
     else:
         callback = _progress_callback
 
-    # Set the architecture
-    arch = koji.canonArch(args[0])
-
     # We do some early sanity checking of the given target.
     # Kojid gets these values again later on, but we check now as a convenience
     # for the user.
-    target = args[1]
+    target = args[0]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
         parser.error(_("Unknown build target: %s" % target))
@@ -3875,6 +3872,9 @@ def handle_spin_livecd(options, session, args):
     if not dest_tag:
         parser.error(_("Unknown destination tag: %s" %
                        tmp_target['dest_tag_name']))
+
+    # Set the architecture
+    arch = koji.canonArch(args[1])
 
     # Upload the KS file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
