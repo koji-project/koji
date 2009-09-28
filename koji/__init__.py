@@ -1352,12 +1352,20 @@ class PathInfo(object):
         return self.topdir + ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
     def mavenbuild(self, build, maveninfo):
-        """Return the directory where a maven build belongs"""
+        """Return the directory where the Maven build exists in the global store (/mnt/koji/maven2)"""
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
         release = build['release']
         return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
+
+    def mavenrepo(self, build, maveninfo):
+        """Return the directory where the Maven artifact exists in the per-tag Maven repo
+        (/mnt/koji/repos/tag-name/repo-id/maven2/)"""
+        group_path = maveninfo['group_id'].replace('.', '/')
+        artifact_id = maveninfo['artifact_id']
+        version = maveninfo['version']
+        return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s" % locals())
 
     def archive(self, build):
         """Return the directory where the archive belongs"""

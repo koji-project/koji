@@ -1960,48 +1960,41 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     if tinfo['maven_support']:
         artifact_dirs = {}
-        seen = {}
         for build in maven_builds.itervalues():
-            maven_info = {'group_id': build['maven_group_id'],
-                          'artifact_id': build['maven_artifact_id'],
-                          'version': build['maven_version']}
-            _populate_maven_repodir(build, maven_info, repodir, artifact_dirs)
-            seen[koji.mavenLabel(maven_info)] = True
-            # also need to check for archives created by the same build but with a different
-            # (group_id, artifact_id, version)
+            build_maven_info = {'group_id': build['maven_group_id'],
+                                'artifact_id': build['maven_artifact_id'],
+                                'version': build['maven_version']}
             for archive_info in list_archives(buildID=build['id'], type='maven'):
-                if archive_info['group_id'] != maven_info['group_id'] or \
-                        archive_info['artifact_id'] != maven_info['artifact_id'] or \
-                        archive_info['version'] != maven_info['version']:
-                    if not seen.get(koji.mavenLabel(archive_info)):
-                        # multiple archives may have the same maven info, so filter out duplicates
-                        _populate_maven_repodir(build, archive_info, repodir, artifact_dirs)
-                        seen[koji.mavenLabel(archive_info)] = True
+                _populate_maven_repodir(build, build_maven_info, archive_info, repodir, artifact_dirs)
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     return [repo_id, event_id]
 
-def _populate_maven_repodir(buildinfo, maveninfo, repodir, artifact_dirs):
+def _populate_maven_repodir(buildinfo, maveninfo, archiveinfo, repodir, artifact_dirs):
     maven_pi = koji.PathInfo(topdir=repodir)
     srcdir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-    if not os.path.isdir(srcdir):
-        # srcdir doesn't exist, so there's nothing to do
-        return
-    # trim the release from the Maven storage dir structure
-    destdir = os.path.dirname(maven_pi.mavenbuild(buildinfo, maveninfo))
-    koji.ensuredir(os.path.dirname(destdir))
-    if not os.path.exists(destdir):
-        os.symlink(srcdir, destdir)
-        artifact_dirs.setdefault(os.path.dirname(destdir), []).append(maveninfo)
+    destdir = maven_pi.mavenrepo(buildinfo, archiveinfo)
+    koji.ensuredir(destdir)
+    filename = archiveinfo['filename']
+    # assume all artifacts we import have .md5 and .sha1 files associated with them in the global repo
+    for suffix in ('', '.md5', '.sha1'):
+        try:
+            os.symlink(os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix))
+        except:
+            log_error('Error linking %s to %s' % (os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix)))
+            raise
+    artifact_dirs.setdefault(os.path.dirname(destdir), {})[(archiveinfo['group_id'],
+                                                            archiveinfo['artifact_id'],
+                                                            archiveinfo['version'])] = 1
 
-def _write_maven_repo_metadata(destdir, artifacts):
+def _write_maven_repo_metadata(destdir, artifact_dict):
     # Sort the list so that the highest version number comes last.
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
-    artifacts.sort(cmp=lambda a, b: rpm.labelCompare((a['group_id'], a['artifact_id'], a['version']),
-                                                     (b['group_id'], b['artifact_id'], b['version'])))
-    artifactinfo = artifacts[-1]
+    artifacts = artifact_dict.keys()
+    artifacts.sort(cmp=lambda a, b: rpm.labelCompare(a, b))
+    artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
 <metadata>
@@ -2013,8 +2006,8 @@ def _write_maven_repo_metadata(destdir, artifacts):
     <versions>
 """
     for artifact in artifacts:
-        contents += """      <version>%(version)s</version>
-""" % artifact
+        contents += """      <version>%s</version>
+""" % artifact[2]
     contents += """    </versions>
     <lastUpdated>%(timestamp)s</lastUpdated>
   </versioning>
@@ -4123,8 +4116,7 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
             raise koji.BuildError, 'unsupported archive type: %s' % archivetype['name']
         # move the file to it's final destination
         _import_archive_file(filepath, mavendir)
-        if archivetype['name'] in ('jar', 'pom'):
-            _generate_maven_metadata(maveninfo, mavendir)
+        _generate_maven_metadata(maveninfo, mavendir)
     else:
         # A generic archive (not Maven)
         # We don't know where it came from, so throw an error
