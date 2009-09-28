@@ -1830,6 +1830,10 @@ def taskLabel(taskInfo):
                 nvrs = taskInfo['request'][2]
                 if isinstance(nvrs, list):
                     extra += ', ' + ', '.join(nvrs)
+    elif method == 'createLiveCD':
+        if taskInfo.has_key('request'):
+            arch, target, ksfile = taskInfo['request'][:3]
+            extra = '%s, %s, %s' % (target, arch, os.path.basename(ksfile))
 
     if extra:
         return '%s (%s)' % (method, extra)
