@@ -58,6 +58,11 @@ from gzip import GzipFile
 from optparse import OptionParser
 from StringIO import StringIO
 from xmlrpclib import Fault
+import pykickstart.parser as ksparser
+import pykickstart.version as ksversion
+import pykickstart.commands.repo as ksrepo
+import hashlib
+import iso9660 # from pycdio
 
 # our private modules
 sys.path.insert(0, '/usr/share/koji-builder/lib')
@@ -310,7 +315,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = session.getBuildConfig(self.tag_id, event=self.event_id)
 
-    def _new(self, tag, arch, task_id, repo_id=None, install_group='build', setup_dns=False):
+    def _new(self, tag, arch, task_id, repo_id=None, install_group='build', setup_dns=False, bind_opts=None):
         """Create a brand new repo"""
         if not repo_id:
             raise koji.BuildrootError, "A repo id must be provided"
@@ -343,6 +348,7 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.install_group = install_group
         self.setup_dns = setup_dns
+        self.bind_opts = bind_opts
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -362,6 +368,7 @@ class BuildRoot(object):
         opts['buildroot_id'] = self.id
         opts['use_host_resolv'] = self.setup_dns
         opts['install_group'] = self.install_group
+        opts['bind_opts'] = self.bind_opts
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
@@ -1451,6 +1458,64 @@ class BaseTaskHandler(object):
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             session.uploadWrapper(filename, self.getUploadDir(), remoteName)
 
+    def genImageManifest(self, image, manifile):
+        """
+        Using iso9660 from pycdio, get the file manifest of the given image,
+        and save it to the text file manifile.
+        """
+        fd = open(manifile, 'w')
+        if not fd:
+            raise koji.GenericError, \
+                'Unable to open manifest file (%s) for writing!' % manifile
+        iso = iso9660.ISO9660.IFS(source=image)
+        if not iso.is_open():
+            raise koji.GenericError, \
+                'Could not open %s as an ISO-9660 image!' % image
+
+        # image metadata
+        id = iso.get_application_id()
+        if id is not None: fd.write("Application ID: %s\n" % id)
+        id = iso.get_preparer_id()
+        if id is not None: fd.write("Preparer ID: %s\n" % id)
+        id = iso.get_publisher_id()
+        if id is not None: fd.write("Publisher ID: %s\n" % id)
+        id = iso.get_system_id()
+        if id is not None: fd.write("System ID: %s\n" % id)
+        id = iso.get_volume_id()
+        if id is not None: fd.write("Volume ID: %s\n" % id)
+        id = iso.get_volumeset_id()
+        if id is not None: fd.write("Volumeset ID: %s\n" % id)
+
+        fd.write('\nSize(bytes)  File Name\n')
+        manifest = self.listImageDir(iso, '/')
+        for a_file in manifest:
+            fd.write(a_file)
+        fd.close()
+        iso.close()
+
+    def listImageDir(self, iso, path):
+        """
+        Helper function called recursively by getImageManifest. Returns a
+        listing of files/directories at the given path in an iso image obj.
+        """
+        manifest = []
+        file_stats = iso.readdir(path)
+        for stat in file_stats:
+
+            filename = stat[0]
+            size = stat[2]
+            is_dir = stat[4]
+            if filename == "." or filename == "..": continue
+
+            if is_dir == 1:
+                manifest.append("%-10d   %s\n" % (size, os.path.join(path,
+                    iso9660.name_translate(filename))))
+            else:
+                 manifest.extend(self.listImageDir(iso,
+                     os.path.join(path, filename)))
+
+        return manifest
+
     def localPath(self, relpath):
         """Return a local path to a remote file.
 
@@ -2094,7 +2159,245 @@ class TagBuildTask(BaseTaskHandler):
             exctype, value = sys.exc_info()[:2]
             session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
-            
+
+# LiveCDTask begins with a mock chroot, and then installs livecd-tools into it
+# via the livecd-build group. livecd-creator is then executed in the chroot
+# to create the LiveCD image.
+#
+class LiveCDTask(BaseTaskHandler):
+
+    Methods = ['createLiveCD']
+    _taskWeight = 1.5
+
+    def handler(self, arch, target, ksfile, opts=None):
+
+        global options
+        target_info = session.getBuildTarget(target)
+        build_tag = target_info['build_tag']
+        repo_info = session.getRepo(build_tag)
+
+        # Here we configure mock to bind mount a set of /dev directories
+        # so livecd-creator can use them.
+        # We use mknod to create the loopN device files later, but if we
+        # wanted to have mock do that work, our bind_opts variable would have
+        # this additional dictionary:
+        #	{ 'files' : {
+        #		'/dev/loop0' : '/dev/loop0',
+        #		'/dev/loop1' : '/dev/loop1',
+        #		'/dev/loop2' : '/dev/loop2',
+        #		'/dev/loop3' : '/dev/loop3',
+        #		'/dev/loop4' : '/dev/loop4',
+        #		'/dev/loop5' : '/dev/loop5',
+        #		'/dev/loop6' : '/dev/loop6',
+        #		'/dev/loop7' : '/dev/loop7'}}
+        bind_opts = {'dirs' : {
+                         '/dev/pts' : '/dev/pts',
+                         '/dev/mapper' : '/dev/mapper',
+                         '/selinux' : '/selinux'}
+                     }
+        rootopts = {'install_group': 'livecd-build',
+                    'setup_dns': True,
+                    'repo_id': repo_info['id'],
+                    'bind_opts' : bind_opts}
+
+        broot = BuildRoot(build_tag, arch, self.id, **rootopts)
+
+        # create the mock chroot
+        self.logger.debug("Initializing buildroot")
+        broot.init()
+
+        # Note that if the KS file existed locally, then "ksfile" is a relative
+        # path to it in the /mnt/koji/work directory. If not, then it is still
+        # the parameter the user passed in initially, and we assume it is a
+        # relative path in a remote scm. The user should have passed in an scm
+        # url with --scmurl.
+        tmpchroot = '/tmp'
+        scmdir = os.path.join(broot.rootdir(), tmpchroot[1:])
+        koji.ensuredir(scmdir)
+        self.logger.debug("ksfile = %s" % ksfile)
+        if opts['scmurl']:
+            scm = SCM(opts['scmurl'])
+            scm.assert_allowed(options.allowed_scms)
+            logfile = os.path.join(self.workdir, 'checkout.log')
+            scmsrcdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
+            kspath = os.path.join(scmsrcdir, ksfile)
+        else:
+            kspath = self.localPath("work/%s" % ksfile)
+
+        # XXX: If the ks file came from a local path and has %include
+        #      macros, livecd-creator will fail because the included
+        #      kickstarts were not copied into the chroot. For now we
+        #      require users to flatten their kickstart file if submitting
+        #      the task with a local path.
+        #
+        #      Note that if an SCM URL was used instead, %include macros
+        #      may not be a problem if the included kickstarts are present
+        #      in the repository we checked out.
+
+        # Now we do some kickstart manipulation. If the user passed in a repo
+        # url with --repo, then we substitute that in for the repo(s) specified
+        # in the kickstart file. If --repo wasn't specified, then we use the
+        # repo associated with the target passed in initially.
+        self.uploadFile(kspath) # upload the original ks file
+        version = ksversion.makeVersion()
+        ks = ksparser.KickstartParser(version)
+        try:
+            ks.readKickstart(kspath)
+        except IOError, (err, msg):
+            raise koji.LiveCDError("Failed to read kickstart file "
+                                   "'%s' : %s" % (ksfile, msg))
+        except kserrors.KickstartError, e:
+            raise koji.LiveCDError("Failed to parse kickstart file "
+                                    "'%s' : %s" % (ksfile, e))
+
+        ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        if opts['repo']:
+            user_repos = opts['repo'].split(',')
+            index = 0
+            for user_repo in user_repos:
+                ks.handler.repo.repoList.append(ksrepo.F8_RepoData(
+                   baseurl=user_repo, name='koji_override_%s' % index))
+                index += 1
+        else:
+            if opts['topurl']:
+                topurl = opts['topurl']
+            else:
+                topurl = getattr(options, 'topurl')
+            if not topurl:
+                raise koji.GenericError, 'topurl needs to be defined!'
+            path_info = koji.PathInfo(topdir=topurl)
+            repopath = path_info.repo(repo_info['id'],
+                                     target_info['build_tag_name'])
+            baseurl = '%s/%s' % (repopath, arch)
+            self.logger.debug('BASEURL: %s' % baseurl)
+            ks.handler.repo.repoList.append(ksrepo.F8_RepoData(
+                baseurl=baseurl, name='koji'))
+
+        # Write out the new ks file. Note that things may not be in the same
+        # order and comments in the original ks file may be lost.
+        kskoji = os.path.join(tmpchroot, 'koji.ks')
+        kspath = os.path.join(broot.rootdir(), kskoji[1:])
+        outfile = open(kspath, 'w')
+        outfile.write(ks.handler.__str__())
+        outfile.close()
+
+        # put the new ksfile in the output directory
+        if not os.path.exists(kspath):
+            raise koji.LiveCDError, "KS file missing: %s" % kspath
+        self.uploadFile(kspath)
+
+        cachedir = os.path.join(tmpchroot, 'koji-livecd')   # arbitrary
+        livecd_log = os.path.join(tmpchroot, 'livecd.log')  # path in chroot
+
+        # Create the loopback devices we need
+        mknod_cmd = 'for i in `seq 0 7`; do mknod /dev/loop$i b 7 $i; done'
+        rv = broot.mock(['--chroot', mknod_cmd])
+        if rv:
+            broot.expire()
+            raise koji.LiveCDError, \
+                "Could not create loopback device files! %S" % rv
+
+        # Run livecd-creator
+        livecd_cmd = '/usr/bin/livecd-creator -c %s -d -v --logfile=%s --cache=%s' % (kskoji, livecd_log, cachedir)
+
+        # run the livecd-creator command
+        rv = broot.mock(['--chroot', livecd_cmd])
+        self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
+        if rv:
+            broot.expire()
+            raise koji.LiveCDError, \
+                "livecd-creator command failed, see livecd.log or root.log"
+
+        # Find the resultant iso
+        files = os.listdir(broot.rootdir())
+        isofile = None
+        for afile in files:
+            if '.iso' in afile:
+                isofile = afile
+                break
+        if not isofile:
+            raise koji.LiveCDError, 'could not find iso file in chroot'
+
+        isosrc = os.path.join(broot.rootdir(), isofile)
+        try:
+            filesize = os.path.getsize(isosrc)
+        except OSError:
+            self.logger.error('Could not find the ISO. Did livecd-creator ' +
+                              'complete without errors?')
+            raise koji.LiveCDError, 'missing image file: %s' % isosrc
+
+        # if filesize is greater than a 32-bit signed integer's range, the
+        # python XMLRPC module will break.
+        if filesize > 2147483647:
+            filesize = str(filesize)
+
+        # copy the iso out of the chroot. If we were given an isoname, this is
+        # where the renaming happens.
+        self.logger.debug('uploading image: %s' % isosrc)
+        if opts['isoname']:
+            isofile = opts['isoname']
+            if not isofile.endswith('.iso'):
+                isofile += '.iso'
+        self.uploadFile(isosrc, remoteName=isofile)
+
+        # Generate the file manifest of the image
+        manifest = os.path.join(broot.resultdir(), 'manifest.log')
+        self.genImageManifest(isosrc, manifest)
+        self.uploadFile(manifest)
+
+        if not opts['scratch']:
+            # Read the rpm header information from the yum cache livecd-creator
+            # used. We assume it was empty to start.
+            #
+            # LiveCD creator would have thrown an error if no repo was
+            # specified, so we assume the ones we parse are ok.
+            repos = os.listdir(os.path.join(broot.rootdir(), cachedir[1:]))
+            if len(repos) == 0:
+                raise koji.LiveCDError, 'No repos found in yum cache!'
+
+            hdrlist = []
+            fields = ['name', 'version', 'release', 'epoch', 'arch', \
+                      'buildtime', 'sigmd5']
+            for repo in repos:
+                pkgpath = os.path.join(broot.rootdir(), cachedir[1:], repo,
+                                       'packages')
+                pkgs = os.listdir(pkgpath)
+                for pkg in pkgs:
+                    pkgfile = os.path.join(pkgpath, pkg)
+                    hdr = koji.get_header_fields(pkgfile, fields)
+                    hdr['size'] = os.path.getsize(pkgfile)
+                    hdr['payloadhash'] = koji.hex_string(hdr['sigmd5'])
+                    del hdr['sigmd5']
+                    hdrlist.append(hdr)
+
+            # get a unique hash of the image file
+            sha256sum = hashlib.sha256()
+            image_fo = file(isosrc, 'r')
+            while True:
+                data = image_fo.read(1048576)
+                sha256sum.update(data)
+                if not len(data):
+                    break
+
+            hash = sha256sum.hexdigest()
+            self.logger.debug('digest: %s' % hash)
+
+            # Import info about the image into the database, unless this is a
+            # scratch image.
+            broot.markExternalRPMs(hdrlist)
+            image_id = session.importImage(self.id, isofile, filesize,
+                                           'LiveCD ISO', hash, hdrlist)
+
+        broot.expire()
+        if opts['scratch']:
+            return 'Scratch image created: %s' % \
+                   os.path.join(koji.pathinfo.work(),
+                                koji.pathinfo.taskrelpath(self.id), isofile)
+        else:
+            return 'Created image: %s' % \
+                   os.path.join(koji.pathinfo.imageFinalPath(),
+                                koji.pathinfo.livecdRelPath(image_id), isofile)
+
 class BuildSRPMFromSCMTask(BaseTaskHandler):
 
     Methods = ['buildSRPMFromSCM']

@@ -277,6 +277,10 @@ class ServerOffline(GenericError):
     """Raised when the server is offline"""
     faultCode = 1014
 
+class LiveCDError(GenericError):
+    """Raised when LiveCD Image creation fails"""
+    faultCode = 1015
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of
@@ -1082,6 +1086,10 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'rpmbuild_timeout': 86400
     }
 
+    # bind_opts are used to mount parts (or all of) /dev if needed.
+    # See kojid::LiveCDTask for a look at this option in action.
+    bind_opts = opts.get('bind_opts')
+
     files = {}
     if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
         # if we're setting up DNS,
@@ -1142,6 +1150,15 @@ baseurl=%(url)s
     for key, value in plugin_conf.iteritems():
         parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
+
+    if bind_opts:
+        # This line is REQUIRED for mock to work if bind_opts defined.
+        parts.append("config_opts['internal_dev_setup'] = False\n")
+        for key in bind_opts.keys():
+            for mnt_src, mnt_dest in bind_opts.get(key).iteritems():
+                parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
+        parts.append("\n")
+
     for key, value in macros.iteritems():
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
@@ -1245,6 +1262,14 @@ class PathInfo(object):
     def taskrelpath(self, task_id):
         """Return the relative path for the task work directory"""
         return "tasks/%s/%s" % (task_id % 10000, task_id)
+
+    def livecdRelPath(self, image_id):
+        """Return the relative path for the livecd image directory"""
+        return os.path.join('livecd', str(image_id % 10000), str(image_id))
+
+    def imageFinalPath(self):
+        """Return the absolute path to where completed images can be found"""
+        return os.path.join(self.topdir, 'images')
 
     def work(self):
         """Return the work dir"""

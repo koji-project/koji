@@ -362,9 +362,10 @@ _TASKS = ['build',
           'createrepo',
           'buildNotification',
           'tagNotification',
-          'dependantTask']
+          'dependantTask',
+          'createLiveCD']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD']
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'newRepo']
 
@@ -509,6 +510,12 @@ def taskinfo(req, taskID):
     if task['method'] == 'buildArch':
         buildTag = server.getTag(params[1])
         values['buildTag'] = buildTag
+    elif task['method'] == 'createLiveCD':
+        # 'arch' is param[0], which is already mentioned later in the page.
+        values['target'] = params[1]
+        values['kickstart'] = os.path.basename(params[2])
+        values['opts'] = params[3]
+        values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:
             buildTag = server.getTag(params[1])
@@ -564,6 +571,24 @@ def taskinfo(req, taskID):
     
     return _genHTML(req, 'taskinfo.chtml')
 
+def imageinfo(req, imageID):
+    """Do some prep work and generate the imageinfo page for kojiweb."""
+    server = _getServer(req)
+    values = _initValues(req, 'Image Information')
+    imageURL = req.get_options().get('KojiImagesURL', 'http://localhost/images')
+    values['image'] = server.getImageInfo(imageID=imageID)
+    urlrelpath = koji.pathinfo.livecdRelPath(values['image']['id'])
+    filelist = []
+    for ofile in os.listdir(values['image']['path']):
+        relpath = os.path.join(urlrelpath, ofile)
+        if relpath.endswith('.iso'):
+            values['imageURL'] = imageURL + '/' + relpath
+        else:
+            filelist.append(imageURL + '/' + relpath)
+
+    values['logs'] = filelist
+    return _genHTML(req, 'imageinfo.chtml')
+
 def taskstatus(req, taskID):
     server = _getServer(req)
 
@@ -614,8 +639,11 @@ def getfile(req, taskID, name, offset=None, size=None):
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
+    elif name.endswith('.iso'):
+        req.content_type = 'application/octetstream'
+        req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
 
-    file_size = file_info['st_size']
+    file_size = int(file_info['st_size'])
     if offset is None:
         offset = 0
     else:
@@ -1370,26 +1398,51 @@ def buildrootinfo(req, buildrootID, builtStart=None, builtOrder=None, componentS
     
     return _genHTML(req, 'buildrootinfo.chtml')
 
-def rpmlist(req, buildrootID, type, start=None, order='nvr'):
+def rpmlist(req, type, buildrootID=None, imageID=None, start=None, order='nvr'):
+    """
+    rpmlist requires a buildrootID OR an imageID to be passed in. From one
+    of these values it will paginate a list of rpms included in the
+    corresponding object. (buildroot or image)
+    """
+
     values = _initValues(req, 'RPM List', 'hosts')
     server = _getServer(req)
 
-    buildrootID = int(buildrootID)
-    buildroot = server.getBuildroot(buildrootID)
-    if buildroot == None:
-        raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
+    if buildrootID != None:
+        buildrootID = int(buildrootID)
+        buildroot = server.getBuildroot(buildrootID)
+        values['buildroot'] = buildroot
+        if buildroot == None:
+            raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
-    rpms = None
-    if type == 'component':
-        rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs', kw={'componentBuildrootID': buildroot['id']},
-                                           start=start, dataName='rpms', prefix='rpm', order=order)
-    elif type == 'built':
-        rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs', kw={'buildrootID': buildroot['id']},
-                                           start=start, dataName='rpms', prefix='rpm', order=order)
+        rpms = None
+        if type == 'component':
+            rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                   kw={'componentBuildrootID': buildroot['id']},
+                   start=start, dataName='rpms', prefix='rpm', order=order)
+        elif type == 'built':
+            rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                   kw={'buildrootID': buildroot['id']},
+                   start=start, dataName='rpms', prefix='rpm', order=order)
+        else:
+            raise koji.GenericError, 'unrecognized type of rpmlist'
 
-    values['buildroot'] = buildroot
+    elif imageID != None:
+
+        values['image'] = server.getImageInfo(imageID=imageID)
+        # If/When future image types are supported, add elifs here if needed.
+        if type == 'image':
+            rpms =  kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                    kw={'imageID': imageID}, \
+                    start=start, dataName='rpms', prefix='rpm', order=order)
+        else:
+            raise koji.GenericError, 'unrecognized type of image rpmlist'
+
+    else:
+        # It is an error if neither buildrootID and imageID are defined.
+        raise koji.GenericError, 'Both buildrootID and imageID are None'
+
     values['type'] = type
-
     values['order'] = order
 
     return _genHTML(req, 'rpmlist.chtml')

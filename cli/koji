@@ -3811,6 +3811,100 @@ def handle_remove_external_repo(options, session, args):
                 continue
             session.removeExternalRepoFromTag(tag, repo)
 
+# This handler is for spinning livecd images
+#
+def handle_spin_livecd(options, session, args):
+    """Create a live CD image given a kickstart file"""
+
+    # Usage & option parsing.
+    usage = _("usage: %prog spin-livecd [options] <arch> <target> " +
+              "<kickstart-file>")
+    usage += _("\n(Specify the --help global option for a list of other " +
+               "help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--nowait", action="store_true",
+        help=_("Don't wait on livecd creation"))
+    parser.add_option("--noprogress", action="store_true",
+        help=_("Do not display progress of the upload"))
+    parser.add_option("--background", action="store_true",
+        help=_("Run the livecd creation task at a lower priority"))
+    parser.add_option("--isoname",
+        help=_("Use a custom name for the iso file"))
+    parser.add_option("--topurl",
+        help=_("Specify a topurl, override that which is in kojid.conf"))
+    parser.add_option("--scmurl",
+        help=_("The SCM URL to the kickstart file"))
+    parser.add_option("--scratch", action="store_true",
+        help=_("Create a scratch LiveCD image."))
+    parser.add_option("--repo",
+        help=_("Specify a comma-separated list of repos that will override\n" +
+               "the repo used to install RPMs in the LiveCD image. The \n" +
+               "repo associated with the target is the default."))
+    (task_options, args) = parser.parse_args(args)
+
+    # Make sure the target and kickstart is specified.
+    if len(args) != 3:
+        parser.error(_("Three arguments are required: an architecture, " +
+                       "a build target, and a relative \npath to a " +
+                       "kickstart file ."))
+        assert False
+
+    activate_session(session)
+
+    # Set the task's priority. Users can only lower it with --background.
+    priority = None
+    if task_options.background:
+        # relative to koji.PRIO_DEFAULT; higher means a "lower" priority.
+        priority = 5
+    if _running_in_bg() or task_options.noprogress:
+        callback = None
+    else:
+        callback = _progress_callback
+
+    # Set the architecture
+    arch = koji.canonArch(args[0])
+
+    # We do some early sanity checking of the given target.
+    # Kojid gets these values again later on, but we check now as a convenience
+    # for the user.
+    target = args[1]
+    tmp_target = session.getBuildTarget(target)
+    if not tmp_target:
+        parser.error(_("Unknown build target: %s" % target))
+    dest_tag = session.getTag(tmp_target['dest_tag'])
+    if not dest_tag:
+        parser.error(_("Unknown destination tag: %s" %
+                       tmp_target['dest_tag_name']))
+
+    # Upload the KS file to the staging area.
+    # If it's a URL, it's kojid's job to go get it when it does the checkout.
+    ksfile = args[2]
+
+    if not task_options.scmurl:
+        serverdir = _unique_path('cli-livecd')
+        session.uploadWrapper(ksfile, serverdir, callback=callback)
+        ksfile = os.path.join(serverdir, os.path.basename(ksfile))
+        print
+
+    livecd_opts = {}
+    livecd_opts['scmurl'] = task_options.scmurl
+    livecd_opts['isoname'] = task_options.isoname
+    livecd_opts['scratch'] = task_options.scratch
+    livecd_opts['topurl'] = task_options.topurl
+    livecd_opts['repo'] = task_options.repo
+
+    # finally, create the task. Flow continues in kojihub::livecd.
+    task_id = session.livecd(arch, target, ksfile, opts=livecd_opts,
+                             priority=priority)
+
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if _running_in_bg() or task_options.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session,[task_id])
+
 def handle_free_task(options, session, args):
     "[admin] Free a task"
     usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")

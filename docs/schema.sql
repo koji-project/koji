@@ -6,8 +6,10 @@ DROP TABLE build_notifications;
 DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
+DROP TABLE imageinfo_listing;
 
 DROP TABLE rpminfo;
+DROP TABLE imageinfo;
 
 DROP TABLE group_package_listing;
 DROP TABLE group_req_listing;
@@ -97,6 +99,7 @@ CREATE TABLE permissions (
 INSERT INTO permissions (name) VALUES ('admin');
 INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
+INSERT INTO permissions (name) VALUES ('livecd');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
@@ -421,6 +424,16 @@ CREATE TABLE buildroot (
 	dirtyness INTEGER
 ) WITHOUT OIDS;
 
+-- track spun images (livecds, installation, VMs...)
+CREATE TABLE imageinfo (
+	id SERIAL NOT NULL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES task(id),
+	filename TEXT NOT NULL,
+	filesize BIGINT NOT NULL,
+	hash TEXT NOT NULL,
+	mediatype VARCHAR(16) NOT NULL
+) WITHOUT OIDS;
+
 -- this table associates tags with builds.  an entry here tags a package
 CREATE TABLE tag_listing (
 	build_id INTEGER NOT NULL REFERENCES build (id),
@@ -570,6 +583,13 @@ CREATE TABLE buildroot_listing (
 	UNIQUE (buildroot_id,rpm_id)
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
+
+-- tracks the contents of an image
+CREATE TABLE imageinfo_listing (
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	image_id INTEGER NOT NULL REFERENCES imageinfo(id),
+	UNIQUE (rpm_id, image_id)
+) WITHOUT OIDS;
 
 CREATE TABLE log_messages (
     id SERIAL NOT NULL PRIMARY KEY,

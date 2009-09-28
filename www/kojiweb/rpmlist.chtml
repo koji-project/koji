@@ -2,19 +2,39 @@
 
 #include "includes/header.chtml"
 
+#def getID()
+  #if $type == 'image'
+imageID=$image.id #slurp
+  #else
+buildrootID=$buildroot.id #slurp
+  #end if
+#end def
+
+#def getColspan()
+  #if $type == 'component'
+"colspan=3"
+  #elif $type == 'image'
+"colspan=2"
+  #else
+"colspan=1"
+  #end if
+#end def
+
   #if $type == 'component'
   <h4>Component RPMs of buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  #elif $type == 'image'
+  <h4>RPMs installed in <a href="imageinfo?imageID=$image.id">$image.filename</a></h4>
   #else
   <h4>RPMs built in buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
   #end if
 
   <table class="data-list">
     <tr>
-      <td class="paginate" colspan="#if $type == 'component' then '3' else '1'#">
+      <td class="paginate" $getColspan()>
         #if $len($rpmPages) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'rpmlist?buildrootID=$buildroot.id&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
+          <select onchange="javascript: window.location = 'rpmlist?$getID()&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $rpmPages
             <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -22,21 +42,23 @@
         </form>
         #end if
         #if $rpmStart > 0
-        <a href="rpmlist?buildrootID=$buildroot.id&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        <a href="rpmlist?$getID()&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
         #end if
         #if $totalRpms != 0
         <strong>RPMs #echo $rpmStart + 1 # through #echo $rpmStart + $rpmCount # of $totalRpms</strong>
         #end if
         #if $rpmStart + $rpmCount < $totalRpms
-        <a href="rpmlist?buildrootID=$buildroot.id&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        <a href="rpmlist?$getID()&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="rpmlist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'nvr')$util.passthrough($self, 'type')">NVR</a> $util.sortImage($self, 'nvr')</th>
+      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'nvr')$util.passthrough($self, 'type')">NVR</a> $util.sortImage($self, 'nvr')</th>
       #if $type == 'component'
-      <th><a href="rpmlist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'external_repo_name')$util.passthrough($self, 'type')">Origin</a> $util.sortImage($self, 'external_repo_name')</th>
-      <th><a href="rpmlist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'is_update')$util.passthrough($self, 'type')">Update?</a> $util.sortImage($self, 'is_update')</th>
+      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'external_repo_name')$util.passthrough($self, 'type')">Origin</a> $util.sortImage($self, 'external_repo_name')</th>
+      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'is_update')$util.passthrough($self, 'type')">Update?</a> $util.sortImage($self, 'is_update')</th>
+      #elif $type == 'image'
+      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'external_repo_name')$util.passthrough($self, 'type')">Origin</a> $util.sortImage($self, 'external_repo_name')</th>
       #end if
     </tr>
     #if $len($rpms) > 0
@@ -44,12 +66,10 @@
     <tr class="$util.rowToggle($self)">
       #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
       <td><a href="rpminfo?rpmID=$rpm.id">$rpm.name-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</a></td>
-      #if $type == 'component'
       #if $rpm.external_repo_id == 0
       <td>internal</td>
       #else
       <td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$rpm.external_repo_name</a></td>
-      #end if
       #end if
       #if $type == 'component'
       #set $update = $rpm.is_update and 'yes' or 'no'
@@ -67,7 +87,7 @@
         #if $len($rpmPages) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'rpmlist?buildrootID=$buildroot.id&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
+          <select onchange="javascript: window.location = 'rpmlist?$getID()&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $rpmPages
             <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -75,13 +95,13 @@
         </form>
         #end if
         #if $rpmStart > 0
-        <a href="rpmlist?buildrootID=$buildroot.id&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        <a href="rpmlist?$getID()&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
         #end if
         #if $totalRpms != 0
         <strong>RPMs #echo $rpmStart + 1 # through #echo $rpmStart + $rpmCount # of $totalRpms</strong>
         #end if
         #if $rpmStart + $rpmCount < $totalRpms
-        <a href="rpmlist?buildrootID=$buildroot.id&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        <a href="rpmlist?$getID()&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>

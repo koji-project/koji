@@ -116,6 +116,10 @@
         <strong>Source:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
+        #elif $task.method == 'createLiveCD'
+        <strong>Target:</strong> $target<br/>
+        <strong>Kickstart File:</strong> $kickstart<br/>
+        $printOpts($opts)
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $len($params) > 1
@@ -236,6 +240,18 @@
       </td>
     </tr>
     #end if
+    #if $task.method == 'createLiveCD'
+    <tr>
+      <th>Image Information</th>
+      <td>
+        #if $image
+        <a href="imageinfo?imageID=$image.id">$image.filename</a><br/>
+        #elif $opts.scratch
+        Scratch image, no information will be saved.<br/>
+        #end if
+      </td>
+    </tr>
+   #end if
     <tr>
       <th>Parent</th>
       <td>
