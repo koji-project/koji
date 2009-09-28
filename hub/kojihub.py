@@ -4709,7 +4709,7 @@ class RootExports(object):
 
         context.session.assertPerm('livecd')
 
-        taskOpts = {}
+        taskOpts = {'channel': 'livecd'}
         taskOpts['arch'] = arch
         if priority:
             if priority < 0:

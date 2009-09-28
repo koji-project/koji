@@ -170,6 +170,7 @@ CREATE TABLE channels (
 -- create default channel
 INSERT INTO channels (name) VALUES ('default');
 INSERT INTO channels (name) VALUES ('createrepo');
+INSERT INTO channels (name) VALUES ('livecd');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also
