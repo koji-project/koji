@@ -3814,7 +3814,7 @@ def handle_remove_external_repo(options, session, args):
 # This handler is for spinning livecd images
 #
 def handle_spin_livecd(options, session, args):
-    """Create a live CD image given a kickstart file"""
+    """[admin] Create a live CD image given a kickstart file"""
 
     # Usage & option parsing.
     usage = _("usage: %prog spin-livecd [options] <arch> <target> " +
