@@ -511,10 +511,6 @@ def taskinfo(req, taskID):
         buildTag = server.getTag(params[1])
         values['buildTag'] = buildTag
     elif task['method'] == 'createLiveCD':
-        # 'arch' is param[0], which is already mentioned later in the page.
-        values['target'] = params[1]
-        values['kickstart'] = os.path.basename(params[2])
-        values['opts'] = params[3]
         values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:
@@ -599,7 +595,7 @@ def taskstatus(req, taskID):
     files = server.listTaskOutput(taskID, stat=True)
     output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
     for filename, file_stats in files.items():
-        output += '%s:%i\n' % (filename, file_stats['st_size'])
+        output += '%s:%s\n' % (filename, file_stats['st_size'])
 
     return output
 

@@ -117,9 +117,12 @@
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
         #elif $task.method == 'createLiveCD'
-        <strong>Target:</strong> $target<br/>
-        <strong>Kickstart File:</strong> $kickstart<br/>
-        $printOpts($opts)
+        <strong>Arch:</strong> $params[0]<br/>
+        <strong>Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        <strong>Kickstart File:</strong> $params[2]<br/>
+        #if $len($params) > 3
+        $printOpts($params[3])
+        #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $len($params) > 1
@@ -240,18 +243,14 @@
       </td>
     </tr>
     #end if
-    #if $task.method == 'createLiveCD'
+    #if $task.method == 'createLiveCD' and $image
     <tr>
       <th>Image Information</th>
       <td>
-        #if $image
         <a href="imageinfo?imageID=$image.id">$image.filename</a><br/>
-        #elif $opts.scratch
-        Scratch image, no information will be saved.<br/>
-        #end if
       </td>
     </tr>
-   #end if
+    #end if
     <tr>
       <th>Parent</th>
       <td>

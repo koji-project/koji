@@ -3885,10 +3885,9 @@ def handle_spin_livecd(options, session, args):
         print
 
     livecd_opts = {}
-    livecd_opts['scmurl'] = task_options.scmurl
-    livecd_opts['isoname'] = task_options.isoname
-    livecd_opts['scratch'] = task_options.scratch
-    livecd_opts['repo'] = task_options.repo
+    for opt in ['scratch', 'scmurl', 'isoname', 'repo']:
+        if getattr(task_options, opt):
+            livecd_opts[opt] = getattr(task_options, opt)
 
     # finally, create the task. Flow continues in kojihub::livecd.
     task_id = session.livecd(arch, target, ksfile, opts=livecd_opts,

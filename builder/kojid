@@ -2170,6 +2170,8 @@ class LiveCDTask(BaseTaskHandler):
     _taskWeight = 1.5
 
     def handler(self, arch, target, ksfile, opts=None):
+        if not opts:
+            opts = {}
 
         global options
         target_info = session.getBuildTarget(target)
@@ -2215,7 +2217,7 @@ class LiveCDTask(BaseTaskHandler):
         scmdir = os.path.join(broot.rootdir(), tmpchroot[1:])
         koji.ensuredir(scmdir)
         self.logger.debug("ksfile = %s" % ksfile)
-        if opts['scmurl']:
+        if opts.get('scmurl'):
             scm = SCM(opts['scmurl'])
             scm.assert_allowed(options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout.log')
@@ -2251,7 +2253,7 @@ class LiveCDTask(BaseTaskHandler):
                                     "'%s' : %s" % (ksfile, e))
 
         ks.handler.repo.repoList = [] # delete whatever the ks file told us
-        if opts['repo']:
+        if opts.get('repo'):
             user_repos = opts['repo'].split(',')
             index = 0
             for user_repo in user_repos:
@@ -2331,7 +2333,7 @@ class LiveCDTask(BaseTaskHandler):
         # copy the iso out of the chroot. If we were given an isoname, this is
         # where the renaming happens.
         self.logger.debug('uploading image: %s' % isosrc)
-        if opts['isoname']:
+        if opts.get('isoname'):
             isofile = opts['isoname']
             if not isofile.endswith('.iso'):
                 isofile += '.iso'
@@ -2342,7 +2344,7 @@ class LiveCDTask(BaseTaskHandler):
         self.genImageManifest(isosrc, manifest)
         self.uploadFile(manifest)
 
-        if not opts['scratch']:
+        if not opts.get('scratch'):
             # Read the rpm header information from the yum cache livecd-creator
             # used. We assume it was empty to start.
             #
@@ -2386,7 +2388,7 @@ class LiveCDTask(BaseTaskHandler):
                                            'LiveCD ISO', hash, hdrlist)
 
         broot.expire()
-        if opts['scratch']:
+        if opts.get('scratch'):
             return 'Scratch image created: %s' % \
                    os.path.join(koji.pathinfo.work(),
                                 koji.pathinfo.taskrelpath(self.id), isofile)
