@@ -245,7 +245,7 @@
     #end if
     #if $task.method == 'createLiveCD' and $image
     <tr>
-      <th>Image Information</th>
+      <th>Image</th>
       <td>
         <a href="imageinfo?imageID=$image.id">$image.filename</a><br/>
       </td>

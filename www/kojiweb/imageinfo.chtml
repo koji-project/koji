@@ -9,45 +9,43 @@
 
 <table>
   <tr>
-    <th>Image ID</th><td>$image.id</td>
-  </tr>
-  <tr>
-    <th>Build Root ID</th><td><a href="buildrootinfo?buildrootID=$image.br_id">$image.br_id</a></td>
+    <th>ID</th><td>$image.id</td>
   </tr>
   <tr>
     <th>File Name</th><td>$image.filename</a></td>
   </tr>
   <tr>
-    <th>File Size</th><td>$image.filesize bytes</td>
- </tr>
+    <th>File Size</th><td>$image.filesize</td>
+  </tr>
   <tr>
     <th>Media Type</th><td>$image.mediatype</td>
   </tr>
   <tr>
     #if $len($image.hash) == 32
-      <th>Hash (MD5)</th><td>$image.hash</td>
+      <th>Digest (md5)</th><td>$image.hash</td>
     #elif $len($image.hash) == 40
-      <th>Hash (SHA1)</th><td>$image.hash</td>
+      <th>Digest (sha1)</th><td>$image.hash</td>
     #elif $len($image.hash) == 64
-      <th>Hash (SHA256)</th><td>$image.hash</td>
+      <th>Digest (sha256)</th><td>$image.hash</td>
     #elif $len($image.hash) == 96
-      <th>Hash (SHA384)</th><td>$image.hash</td>
+      <th>Digest (sha384)</th><td>$image.hash</td>
     #elif $len($image.hash) == 128
-      <th>Hash (SHA512)</th><td>$image.hash</td>
+      <th>Digest (sha512)</th><td>$image.hash</td>
     #else
       <th>Hash </th><td>$image.hash</td>
     #end if
   </tr>
   <tr>
-    <th>Task ID</th><td><a href="taskinfo?taskID=$image.task_id">$image.task_id</a></td>
+    <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
+  </tr>
+  <tr>
+    <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$buildroot.id">/var/lib/mock/$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
   </tr>
   <tr>
     <th>Output</th>
-  </tr>
-  <tr>
     <td>
       #for $ofile in $logs
-        &nbsp;&nbsp;&nbsp;&nbsp;<a href="$ofile">$basename($ofile)</a><br/>
+      <a href="$ofile">$basename($ofile)</a><br/>
       #end for
     </td>
   </tr>

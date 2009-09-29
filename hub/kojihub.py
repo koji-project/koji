@@ -4735,12 +4735,12 @@ class RootExports(object):
         fields = ['imageinfo.id', 'filename', 'filesize', 'mediatype',
                   'imageinfo.task_id', 'buildroot.id', 'hash']
         aliases = ['id', 'filename', 'filesize', 'mediatype', 'task_id',
-                 'br_id', 'hash']
+                   'br_id', 'hash']
         joins = ['buildroot ON imageinfo.task_id = buildroot.task_id']
         if imageID:
-            clauses = ['imageinfo.id = %(imageID)s']
+            clauses = ['imageinfo.id = %(imageID)i']
         elif taskID:
-            clauses = ['imageinfo.task_id = %(taskID)s']
+            clauses = ['imageinfo.task_id = %(taskID)i']
 
         query = QueryProcessor(columns=fields, tables=tables, clauses=clauses,
                                values=locals(), joins=joins, aliases=aliases)
@@ -4750,10 +4750,9 @@ class RootExports(object):
         if ret:
             ret['path'] = os.path.join(koji.pathinfo.imageFinalPath(),
                 koji.pathinfo.livecdRelPath(ret['id']))
-            # Again we're covering for huge filesizes. XMLRPC will complain if
-            # numbers exceed signed 32-bit integer ranges.
-            if ret['filesize'] > 2147483647:
-                ret['filesize'] = str(ret['filesize'])
+            # Always return filesize as a string instead of an int so XMLRPC doesn't
+            # complain about 32-bit overflow
+            ret['filesize'] = str(ret['filesize'])
         return ret
 
     # Called from kojid::LiveCDTask

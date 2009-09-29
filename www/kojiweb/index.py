@@ -572,8 +572,13 @@ def imageinfo(req, imageID):
     server = _getServer(req)
     values = _initValues(req, 'Image Information')
     imageURL = req.get_options().get('KojiImagesURL', 'http://localhost/images')
-    values['image'] = server.getImageInfo(imageID=imageID)
-    urlrelpath = koji.pathinfo.livecdRelPath(values['image']['id'])
+    imageID = int(imageID)
+    image = server.getImageInfo(imageID=imageID)
+    values['image'] = image
+    values['title'] = image['filename'] + ' | Image Information'
+    urlrelpath = koji.pathinfo.livecdRelPath(image['id'])
+    values['buildroot'] = server.getBuildroot(image['br_id'])
+    values['task'] = server.getTaskInfo(image['task_id'], request=True)
     filelist = []
     for ofile in os.listdir(values['image']['path']):
         relpath = os.path.join(urlrelpath, ofile)
@@ -1424,7 +1429,7 @@ def rpmlist(req, type, buildrootID=None, imageID=None, start=None, order='nvr'):
             raise koji.GenericError, 'unrecognized type of rpmlist'
 
     elif imageID != None:
-
+        imageID = int(imageID)
         values['image'] = server.getImageInfo(imageID=imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
