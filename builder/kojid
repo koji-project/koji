@@ -2333,8 +2333,7 @@ class LiveCDTask(BaseTaskHandler):
 
         # if filesize is greater than a 32-bit signed integer's range, the
         # python XMLRPC module will break.
-        if filesize > 2147483647:
-            filesize = str(filesize)
+        filesize = str(filesize)
 
         # copy the iso out of the chroot. If we were given an isoname, this is
         # where the renaming happens.
@@ -2390,8 +2389,8 @@ class LiveCDTask(BaseTaskHandler):
             # Import info about the image into the database, unless this is a
             # scratch image.
             broot.markExternalRPMs(hdrlist)
-            image_id = session.importImage(self.id, isofile, filesize,
-                                           'LiveCD ISO', hash, hdrlist)
+            image_id = session.host.importImage(self.id, isofile, filesize,
+                                                'LiveCD ISO', hash, hdrlist)
 
         if opts.get('scratch'):
             return 'Scratch image created: %s' % \

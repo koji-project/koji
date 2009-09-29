@@ -4598,7 +4598,7 @@ def importImageInternal(task_id, filename, filesize, mediatype, hash, rpmlist):
     _dml(q, imageinfo)
 
     q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
-           VALUES (%(id)i,%(rpminfo)i)"""
+           VALUES (%(image_id)i,%(rpm_id)i)"""
 
     rpm_ids = []
     for an_rpm in rpmlist:
@@ -4607,14 +4607,13 @@ def importImageInternal(task_id, filename, filesize, mediatype, hash, rpmlist):
             data = add_external_rpm(an_rpm, location, strict=False)
         else:
             data = get_rpm(an_rpm, strict=True)
-        rpm_id = data['id']
-        rpm_ids.append(rpm_id)
+        rpm_ids.append(data['id'])
 
+    image_id = imageinfo['id']
     for rpm_id in rpm_ids:
-        imageinfo['rpminfo'] = rpm_id
-        _dml(q, imageinfo)
+        _dml(q, locals())
 
-    return imageinfo['id']
+    return image_id
 
 def moveImageResults(task_id, image_id):
     """
@@ -4754,13 +4753,6 @@ class RootExports(object):
             # complain about 32-bit overflow
             ret['filesize'] = str(ret['filesize'])
         return ret
-
-    # Called from kojid::LiveCDTask
-    def importImage(self, task_id, filename, filesize, mediatype, hash, rpmlist):
-        image_id = importImageInternal(task_id, filename, filesize, mediatype,
-                                       hash, rpmlist)
-        moveImageResults(task_id, image_id)
-        return image_id
 
     def hello(self,*args):
         return "Hello World"
@@ -7321,6 +7313,13 @@ class HostExports(object):
         if fromtag:
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
+
+    # Called from kojid::LiveCDTask
+    def importImage(self, task_id, filename, filesize, mediatype, hash, rpmlist):
+        image_id = importImageInternal(task_id, filename, filesize, mediatype,
+                                       hash, rpmlist)
+        moveImageResults(task_id, image_id)
+        return image_id
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.
