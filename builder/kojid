@@ -59,8 +59,7 @@ from optparse import OptionParser
 from StringIO import StringIO
 from xmlrpclib import Fault
 import pykickstart.parser as ksparser
-import pykickstart.version as ksversion
-import pykickstart.commands.repo as ksrepo
+import pykickstart.handlers.control as kscontrol
 import hashlib
 import iso9660 # from pycdio
 
@@ -2241,8 +2240,10 @@ class LiveCDTask(BaseTaskHandler):
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
         self.uploadFile(kspath) # upload the original ks file
-        version = ksversion.makeVersion()
+        version = ksparser.makeVersion()
         ks = ksparser.KickstartParser(version)
+        repo_class = kscontrol.dataMap[ks.version]['RepoData']
+
         try:
             ks.readKickstart(kspath)
         except IOError, (err, msg):
@@ -2257,8 +2258,8 @@ class LiveCDTask(BaseTaskHandler):
             user_repos = opts['repo'].split(',')
             index = 0
             for user_repo in user_repos:
-                ks.handler.repo.repoList.append(ksrepo.F8_RepoData(
-                   baseurl=user_repo, name='koji_override_%s' % index))
+                ks.handler.repo.repoList.append(repo_class(baseurl=user_repo,
+                                                           name='koji-override-%i' % index))
                 index += 1
         else:
             topurl = getattr(options, 'topurl')
@@ -2269,8 +2270,9 @@ class LiveCDTask(BaseTaskHandler):
                                       target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, arch)
             self.logger.debug('BASEURL: %s' % baseurl)
-            ks.handler.repo.repoList.append(ksrepo.F8_RepoData(
-                    baseurl=baseurl, name='koji'))
+            ks.handler.repo.repoList.append(repo_class(baseurl=baseurl,
+                                                       name='koji-%s-%i' % (target_info['build_tag_name'],
+                                                                            repo_info['id'])))
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
