@@ -3830,8 +3830,8 @@ def handle_spin_livecd(options, session, args):
         help=_("Run the livecd creation task at a lower priority"))
     parser.add_option("--isoname",
         help=_("Use a custom name for the iso file"))
-    parser.add_option("--scmurl",
-        help=_("The SCM URL to the kickstart file"))
+    parser.add_option("--ksurl",
+        help=_("The URL to the SCM containing the kickstart file"))
     parser.add_option("--scratch", action="store_true",
         help=_("Create a scratch LiveCD image."))
     parser.add_option("--repo",
@@ -3878,14 +3878,14 @@ def handle_spin_livecd(options, session, args):
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
     ksfile = args[2]
 
-    if not task_options.scmurl:
+    if not task_options.ksurl:
         serverdir = _unique_path('cli-livecd')
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
     livecd_opts = {}
-    for opt in ['scratch', 'scmurl', 'isoname', 'repo']:
+    for opt in ['scratch', 'ksurl', 'isoname', 'repo']:
         if getattr(task_options, opt):
             livecd_opts[opt] = getattr(task_options, opt)
 

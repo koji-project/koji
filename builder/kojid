@@ -2212,13 +2212,13 @@ class LiveCDTask(BaseTaskHandler):
         # path to it in the /mnt/koji/work directory. If not, then it is still
         # the parameter the user passed in initially, and we assume it is a
         # relative path in a remote scm. The user should have passed in an scm
-        # url with --scmurl.
+        # url with --ksurl.
         tmpchroot = '/tmp'
         scmdir = os.path.join(broot.rootdir(), tmpchroot[1:])
         koji.ensuredir(scmdir)
         self.logger.debug("ksfile = %s" % ksfile)
-        if opts.get('scmurl'):
-            scm = SCM(opts['scmurl'])
+        if opts.get('ksurl'):
+            scm = SCM(opts['ksurl'])
             scm.assert_allowed(options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout.log')
             scmsrcdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
