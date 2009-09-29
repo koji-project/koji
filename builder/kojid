@@ -2174,7 +2174,7 @@ class LiveCDTask(BaseTaskHandler):
             opts = {}
 
         global options
-        target_info = session.getBuildTarget(target)
+        target_info = session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
         repo_info = session.getRepo(build_tag)
 
@@ -2289,35 +2289,41 @@ class LiveCDTask(BaseTaskHandler):
         livecd_log = os.path.join(tmpchroot, 'livecd.log')  # path in chroot
 
         # Create the loopback devices we need
-        mknod_cmd = 'for i in `seq 0 7`; do mknod /dev/loop$i b 7 $i; done'
+        mknod_cmd = 'for i in $(seq 0 7); do mknod /dev/loop$i b 7 $i; done'
         rv = broot.mock(['--chroot', mknod_cmd])
         if rv:
             broot.expire()
             raise koji.LiveCDError, \
-                "Could not create loopback device files! %S" % rv
+                "Could not create loopback device files: %s" % _parseStatus(rv, '"%s"' % mknod_cmd)
 
         # Run livecd-creator
-        livecd_cmd = '/usr/bin/livecd-creator -c %s -d -v --logfile=%s --cache=%s' % (kskoji, livecd_log, cachedir)
+        livecd_cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v', '--logfile', livecd_log,
+                      '--cache', cachedir]
 
         # run the livecd-creator command
-        rv = broot.mock(['--chroot', livecd_cmd])
+        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + livecd_cmd)
         self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
+        broot.expire()
         if rv:
-            broot.expire()
             raise koji.LiveCDError, \
-                "livecd-creator command failed, see livecd.log or root.log"
+                "Could not create LiveCD: %s" % _parseStatus(rv, 'livecd-creator') + \
+                "; see root.log or livecd.log for more information"
 
         # Find the resultant iso
-        files = os.listdir(broot.rootdir())
+        # The cwd of the livecd-creator process is /tmp in the chroot, so that's
+        # where it writes the .iso
+        files = os.listdir(os.path.join(broot.rootdir(), 'tmp'))
         isofile = None
         for afile in files:
-            if '.iso' in afile:
-                isofile = afile
-                break
+            if afile.endswith('.iso'):
+                if not isofile:
+                    isofile = afile
+                else:
+                    raise koji.LiveCDError, 'multiple .iso files found: %s and %s' % (isofile, afile)
         if not isofile:
             raise koji.LiveCDError, 'could not find iso file in chroot'
 
-        isosrc = os.path.join(broot.rootdir(), isofile)
+        isosrc = os.path.join(broot.rootdir(), 'tmp', isofile)
         try:
             filesize = os.path.getsize(isosrc)
         except OSError:
@@ -2387,7 +2393,6 @@ class LiveCDTask(BaseTaskHandler):
             image_id = session.importImage(self.id, isofile, filesize,
                                            'LiveCD ISO', hash, hdrlist)
 
-        broot.expire()
         if opts.get('scratch'):
             return 'Scratch image created: %s' % \
                    os.path.join(koji.pathinfo.work(),
