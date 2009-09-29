@@ -2274,7 +2274,7 @@ class LiveCDTask(BaseTaskHandler):
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
-        kskoji = os.path.join(tmpchroot, 'koji.ks')
+        kskoji = os.path.join(tmpchroot, 'koji-livecd-%s-%i.ks' % (target_info['build_tag_name'], self.id))
         kspath = os.path.join(broot.rootdir(), kskoji[1:])
         outfile = open(kspath, 'w')
         outfile.write(str(ks.handler))
