@@ -431,9 +431,11 @@ CREATE TABLE imageinfo (
         task_id INTEGER NOT NULL REFERENCES task(id),
 	filename TEXT NOT NULL,
 	filesize BIGINT NOT NULL,
+	arch VARCHAR(16) NOT NULL,
 	hash TEXT NOT NULL,
 	mediatype VARCHAR(16) NOT NULL
 ) WITHOUT OIDS;
+CREATE INDEX imageinfo_task_id on imageinfo(task_id);
 
 -- this table associates tags with builds.  an entry here tags a package
 CREATE TABLE tag_listing (
@@ -587,10 +589,11 @@ CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
 
 -- tracks the contents of an image
 CREATE TABLE imageinfo_listing (
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
 	image_id INTEGER NOT NULL REFERENCES imageinfo(id),
-	UNIQUE (rpm_id, image_id)
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	UNIQUE (image_id, rpm_id)
 ) WITHOUT OIDS;
+CREATE INDEX imageinfo_listing_rpms on imageinfo_listing(rpm_id);
 
 CREATE TABLE log_messages (
     id SERIAL NOT NULL PRIMARY KEY,

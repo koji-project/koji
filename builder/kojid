@@ -2389,7 +2389,7 @@ class LiveCDTask(BaseTaskHandler):
             # Import info about the image into the database, unless this is a
             # scratch image.
             broot.markExternalRPMs(hdrlist)
-            image_id = session.host.importImage(self.id, isofile, filesize,
+            image_id = session.host.importImage(self.id, isofile, filesize, arch,
                                                 'LiveCD ISO', hash, hdrlist)
 
         if opts.get('scratch'):

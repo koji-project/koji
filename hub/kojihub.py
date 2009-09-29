@@ -4569,7 +4569,7 @@ def rpmdiff(basepath, rpmlist):
             raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
                 (os.path.basename(first_rpm), output)
 
-def importImageInternal(task_id, filename, filesize, mediatype, hash, rpmlist):
+def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpmlist):
     """
     Import image info and the listing into the database, and move an image
     to the final resting place. The filesize may be reported as a string if it
@@ -4588,12 +4588,13 @@ def importImageInternal(task_id, filename, filesize, mediatype, hash, rpmlist):
     imageinfo['taskid'] = task_id
     imageinfo['filename'] = filename
     imageinfo['filesize'] = int(filesize)
+    imageinfo['arch'] = arch
     imageinfo['mediatype'] = mediatype
     imageinfo['hash'] = hash
     q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
-           mediatype,hash)
+           arch,mediatype,hash)
            VALUES (%(id)i,%(taskid)i,%(filename)s,%(filesize)i,
-           %(mediatype)s,%(hash)s)
+           %(arch)s,%(mediatype)s,%(hash)s)
         """
     _dml(q, imageinfo)
 
@@ -4615,7 +4616,7 @@ def importImageInternal(task_id, filename, filesize, mediatype, hash, rpmlist):
 
     return image_id
 
-def moveImageResults(task_id, image_id):
+def moveImageResults(task_id, image_id, arch):
     """
     Move the image file from the work/task directory into its more
     permanent resting place. This shouldn't be called for scratch images.
@@ -4624,23 +4625,28 @@ def moveImageResults(task_id, image_id):
                                koji.pathinfo.taskrelpath(task_id))
     final_path = os.path.join(koji.pathinfo.imageFinalPath(),
                               koji.pathinfo.livecdRelPath(image_id))
-    src_files = os.listdir(source_path)
-    if os.path.exists(final_path):
-        raise koji.GenericError("Error moving LiveCD image: the final " +
-                                "destination already exists!")
+    log_path = os.path.join(final_path, 'data', 'logs', arch)
+    if os.path.exists(final_path) or os.path.exists(log_path):
+        raise koji.GenericError, "Error moving LiveCD image: the final " + \
+            "destination already exists!"
     koji.ensuredir(final_path)
+    koji.ensuredir(log_path)
 
+    src_files = os.listdir(source_path)
     got_iso = False
     for fname in src_files:
-        if '.iso' in fname: got_iso = True
+        if fname.endswith('.iso'):
+            got_iso = True
+            dest_path = final_path
+        else:
+            dest_path = log_path
         os.rename(os.path.join(source_path, fname),
-                  os.path.join(final_path, fname))
-        os.symlink(os.path.join(final_path, fname),
+                  os.path.join(dest_path, fname))
+        os.symlink(os.path.join(dest_path, fname),
                    os.path.join(source_path, fname))
 
     if not got_iso:
-        raise koji.GenericError(
-              "Could not move the iso to the final destination!")
+        raise koji.GenericError, "Could not move the iso to the final destination!"
 
 #
 # XMLRPC Methods
@@ -4723,7 +4729,7 @@ class RootExports(object):
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
     #
-    def getImageInfo(self, imageID=None, taskID=None):
+    def getImageInfo(self, imageID=None, taskID=None, strict=False):
         """
         Return the row from imageinfo given an image_id OR build_root_id.
         It is an error if neither are specified, and image_id takes precedence.
@@ -4731,24 +4737,30 @@ class RootExports(object):
         integer limit.
         """
         tables = ['imageinfo']
-        fields = ['imageinfo.id', 'filename', 'filesize', 'mediatype',
+        fields = ['imageinfo.id', 'filename', 'filesize', 'imageinfo.arch', 'mediatype',
                   'imageinfo.task_id', 'buildroot.id', 'hash']
-        aliases = ['id', 'filename', 'filesize', 'mediatype', 'task_id',
+        aliases = ['id', 'filename', 'filesize', 'arch', 'mediatype', 'task_id',
                    'br_id', 'hash']
         joins = ['buildroot ON imageinfo.task_id = buildroot.task_id']
         if imageID:
             clauses = ['imageinfo.id = %(imageID)i']
         elif taskID:
             clauses = ['imageinfo.task_id = %(taskID)i']
+        else:
+            raise koji.GenericError, 'either imageID or taskID must be specified'
 
         query = QueryProcessor(columns=fields, tables=tables, clauses=clauses,
                                values=locals(), joins=joins, aliases=aliases)
         ret = query.executeOne()
 
+        if strict and not ret:
+            if imageID:
+                raise koji.GenericError, 'no image with ID: %i' % imageID
+            else:
+                raise koji.GenericError, 'no image for task ID: %i' % taskID
+
         # additional tweaking
         if ret:
-            ret['path'] = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.livecdRelPath(ret['id']))
             # Always return filesize as a string instead of an int so XMLRPC doesn't
             # complain about 32-bit overflow
             ret['filesize'] = str(ret['filesize'])
@@ -5675,7 +5687,7 @@ class RootExports(object):
 
         # image specific constraints
         if imageID != None:
-           clauses.append('imageinfo_listing.image_id = %(imageID)s')
+           clauses.append('imageinfo_listing.image_id = %(imageID)i')
            joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
 
         if hostID != None:
@@ -7315,10 +7327,10 @@ class HostExports(object):
         _tag_build(tag,build,user_id=user_id,force=force)
 
     # Called from kojid::LiveCDTask
-    def importImage(self, task_id, filename, filesize, mediatype, hash, rpmlist):
-        image_id = importImageInternal(task_id, filename, filesize, mediatype,
+    def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+        image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
                                        hash, rpmlist)
-        moveImageResults(task_id, image_id)
+        moveImageResults(task_id, image_id, arch)
         return image_id
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):

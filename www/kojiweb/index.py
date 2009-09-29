@@ -573,21 +573,12 @@ def imageinfo(req, imageID):
     values = _initValues(req, 'Image Information')
     imageURL = req.get_options().get('KojiImagesURL', 'http://localhost/images')
     imageID = int(imageID)
-    image = server.getImageInfo(imageID=imageID)
+    image = server.getImageInfo(imageID=imageID, strict=True)
     values['image'] = image
     values['title'] = image['filename'] + ' | Image Information'
-    urlrelpath = koji.pathinfo.livecdRelPath(image['id'])
-    values['buildroot'] = server.getBuildroot(image['br_id'])
+    values['buildroot'] = server.getBuildroot(image['br_id'], strict=True)
     values['task'] = server.getTaskInfo(image['task_id'], request=True)
-    filelist = []
-    for ofile in os.listdir(values['image']['path']):
-        relpath = os.path.join(urlrelpath, ofile)
-        if relpath.endswith('.iso'):
-            values['imageURL'] = imageURL + '/' + relpath
-        else:
-            filelist.append(imageURL + '/' + relpath)
-
-    values['logs'] = filelist
+    values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
     return _genHTML(req, 'imageinfo.chtml')
 
 def taskstatus(req, taskID):
