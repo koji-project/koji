@@ -3830,8 +3830,10 @@ def handle_spin_livecd(options, session, args):
         help=_("Run the livecd creation task at a lower priority"))
     parser.add_option("--isoname",
         help=_("Use a custom name for the iso file"))
-    parser.add_option("--ksurl",
+    parser.add_option("--ksurl", metavar="SCMURL",
         help=_("The URL to the SCM containing the kickstart file"))
+    parser.add_option("--ksversion", metavar="VERSION",
+        help=_("The syntax version used in the kickstart file"))
     parser.add_option("--scratch", action="store_true",
         help=_("Create a scratch LiveCD image."))
     parser.add_option("--repo",
@@ -3885,7 +3887,7 @@ def handle_spin_livecd(options, session, args):
         print
 
     livecd_opts = {}
-    for opt in ['scratch', 'ksurl', 'isoname', 'repo']:
+    for opt in ['scratch', 'ksurl', 'ksversion', 'isoname', 'repo']:
         if getattr(task_options, opt):
             livecd_opts[opt] = getattr(task_options, opt)
 

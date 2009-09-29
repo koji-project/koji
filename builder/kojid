@@ -2240,7 +2240,10 @@ class LiveCDTask(BaseTaskHandler):
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
         self.uploadFile(kspath) # upload the original ks file
-        version = ksparser.makeVersion()
+        if opts.get('ksversion'):
+            version = ksparser.makeVersion(ksparser.stringToVersion(opts['ksversion']))
+        else:
+            version = ksparser.makeVersion()
         ks = ksparser.KickstartParser(version)
         repo_class = kscontrol.dataMap[ks.version]['RepoData']
 
