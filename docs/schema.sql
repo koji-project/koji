@@ -433,7 +433,7 @@ CREATE TABLE imageinfo (
 	filesize BIGINT NOT NULL,
 	arch VARCHAR(16) NOT NULL,
 	hash TEXT NOT NULL,
-	mediatype VARCHAR(16) NOT NULL
+	mediatype TEXT NOT NULL
 ) WITHOUT OIDS;
 CREATE INDEX imageinfo_task_id on imageinfo(task_id);
 
