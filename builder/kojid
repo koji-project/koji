@@ -1500,18 +1500,27 @@ class BaseTaskHandler(object):
         manifest = []
         file_stats = iso.readdir(path)
         for stat in file_stats:
-
             filename = stat[0]
             size = stat[2]
-            is_dir = stat[4]
-            if filename == "." or filename == "..": continue
+            is_dir = stat[4] == 2
 
-            if is_dir == 1:
-                manifest.append("%-10d   %s\n" % (size, os.path.join(path,
-                    iso9660.name_translate(filename))))
+            if filename == '..':
+                continue
+            elif filename == '.':
+                # path should always end in a trailing /
+                filepath = path
             else:
-                 manifest.extend(self.listImageDir(iso,
-                     os.path.join(path, filename)))
+                filepath = path + filename
+                # identify directories with a trailing /
+                if is_dir:
+                    filepath += '/'
+
+            if is_dir and filename != '.':
+                # recurse into subdirectories
+                manifest.extend(self.listImageDir(iso, filepath))
+            else:
+                # output information for the current directory and files
+                manifest.append("%-10d   %s\n" % (size, filepath))
 
         return manifest
 
