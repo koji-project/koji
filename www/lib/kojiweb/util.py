@@ -46,6 +46,7 @@ class XHTMLFilter(DecodeUTF8):
     def filter(self, *args, **kw):
         result = super(XHTMLFilter, self).filter(*args, **kw)
         result = result.replace('&', '&amp;')
+        result = result.replace('&amp;amp;', '&amp;')
         result = result.replace('&amp;nbsp;', '&nbsp;')
         result = result.replace('&amp;lt;', '&lt;')
         result = result.replace('&amp;gt;', '&gt;')
