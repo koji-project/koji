@@ -4107,11 +4107,15 @@ def get_notification_recipients(build, tag_id, state):
         if tag_id:
             packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
             # owner of the package in this tag, following inheritance
-            emails.append('%s@%s' % (packages[package_id]['owner_name'], email_domain))
+            pkgdata = packages.get(package_id)
+            # If the package list has changed very recently it is possible we
+            # will get no result.
+            if pkgdata and not pkgdata['blocked']:
+                emails.append('%s@%s' % (pkgdata['owner_name'], email_domain))
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
-    emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
+    emails_uniq = dict([(x,1) for x in emails]).keys()
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
