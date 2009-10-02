@@ -31,11 +31,22 @@ def _initValues(req, title='Build System Info', pageID='summary'):
 
     return values
 
+class DecodeUTF8(Cheetah.Filters.Filter):
+    def filter(self, *args, **kw):
+        """Convert all strs to unicode objects"""
+        result = super(DecodeUTF8, self).filter(*args, **kw)
+        if isinstance(result, unicode):
+            pass
+        else:
+            result = result.decode('utf-8', 'replace')
+        return result
+
 # Escape ampersands so the output can be valid XHTML
-class XHTMLFilter(Cheetah.Filters.EncodeUnicode):
+class XHTMLFilter(DecodeUTF8):
     def filter(self, *args, **kw):
         result = super(XHTMLFilter, self).filter(*args, **kw)
         result = result.replace('&', '&amp;')
+        result = result.replace('&amp;amp;', '&amp;')
         result = result.replace('&amp;nbsp;', '&nbsp;')
         result = result.replace('&amp;lt;', '&lt;')
         result = result.replace('&amp;gt;', '&gt;')
@@ -59,7 +70,7 @@ def _genHTML(req, fileName):
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
     tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
-    return str(tmpl_inst)
+    return tmpl_inst.respond().encode('utf-8', 'replace')
 
 def _truncTime():
     now = datetime.datetime.now()

@@ -3522,7 +3522,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         else:
             clauses.append('buildroot.state = %(state)i')
     if rpmID != None:
-        joins.append('buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
+        joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
         clauses.append('buildroot_listing.rpm_id = %(rpmID)i')
     if archiveID != None:
@@ -5434,6 +5434,85 @@ def rpmdiff(basepath, rpmlist):
             raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
                 (os.path.basename(first_rpm), output)
 
+def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+    """
+    Import image info and the listing into the database, and move an image
+    to the final resting place. The filesize may be reported as a string if it
+    exceeds the 32-bit signed integer limit. This function will convert it if
+    need be. Not called for scratch images.
+    """
+
+    #sanity checks
+    host = Host()
+    host.verify()
+    task = Task(task_id)
+    task.assertHost(host.id)
+
+    imageinfo = {}
+    imageinfo['id'] = _singleValue("""SELECT nextval('imageinfo_id_seq')""")
+    imageinfo['taskid'] = task_id
+    imageinfo['filename'] = filename
+    imageinfo['filesize'] = int(filesize)
+    imageinfo['arch'] = arch
+    imageinfo['mediatype'] = mediatype
+    imageinfo['hash'] = hash
+    q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
+           arch,mediatype,hash)
+           VALUES (%(id)i,%(taskid)i,%(filename)s,%(filesize)i,
+           %(arch)s,%(mediatype)s,%(hash)s)
+        """
+    _dml(q, imageinfo)
+
+    q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
+           VALUES (%(image_id)i,%(rpm_id)i)"""
+
+    rpm_ids = []
+    for an_rpm in rpmlist:
+        location = an_rpm.get('location')
+        if location:
+            data = add_external_rpm(an_rpm, location, strict=False)
+        else:
+            data = get_rpm(an_rpm, strict=True)
+        rpm_ids.append(data['id'])
+
+    image_id = imageinfo['id']
+    for rpm_id in rpm_ids:
+        _dml(q, locals())
+
+    return image_id
+
+def moveImageResults(task_id, image_id, arch):
+    """
+    Move the image file from the work/task directory into its more
+    permanent resting place. This shouldn't be called for scratch images.
+    """
+    source_path = os.path.join(koji.pathinfo.work(),
+                               koji.pathinfo.taskrelpath(task_id))
+    final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                              koji.pathinfo.livecdRelPath(image_id))
+    log_path = os.path.join(final_path, 'data', 'logs', arch)
+    if os.path.exists(final_path) or os.path.exists(log_path):
+        raise koji.GenericError, "Error moving LiveCD image: the final " + \
+            "destination already exists!"
+    koji.ensuredir(final_path)
+    koji.ensuredir(log_path)
+
+    src_files = os.listdir(source_path)
+    got_iso = False
+    for fname in src_files:
+        if fname.endswith('.iso'):
+            got_iso = True
+            dest_path = final_path
+        else:
+            dest_path = log_path
+        os.rename(os.path.join(source_path, fname),
+                  os.path.join(dest_path, fname))
+        os.symlink(os.path.join(dest_path, fname),
+                   os.path.join(source_path, fname))
+
+    if not got_iso:
+        raise koji.GenericError, "Could not move the iso to the final destination!"
+
 #
 # XMLRPC Methods
 #
@@ -5550,6 +5629,67 @@ class RootExports(object):
         taskOpts['channel'] = channel
 
         return make_task('wrapperRPM', [url, build_tag, build, None, {'repo_id': repo_info['id']}], **taskOpts)
+
+    # Create the livecd task. Called from handle_spin_livecd in the client.
+    #
+    def livecd (self, arch, target, ksfile, opts=None, priority=None):
+        """
+        Create a live CD image using a kickstart file and group package list.
+        """
+
+        context.session.assertPerm('livecd')
+
+        taskOpts = {'channel': 'livecd'}
+        taskOpts['arch'] = arch
+        if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed, \
+                               'only admins may create high-priority tasks'
+
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+
+        return make_task('createLiveCD', [arch, target, ksfile, opts],
+                         **taskOpts)
+
+    # Database access to get imageinfo values. Used in parts of kojiweb.
+    #
+    def getImageInfo(self, imageID=None, taskID=None, strict=False):
+        """
+        Return the row from imageinfo given an image_id OR build_root_id.
+        It is an error if neither are specified, and image_id takes precedence.
+        Filesize will be reported as a string if it exceeds the 32-bit signed
+        integer limit.
+        """
+        tables = ['imageinfo']
+        fields = ['imageinfo.id', 'filename', 'filesize', 'imageinfo.arch', 'mediatype',
+                  'imageinfo.task_id', 'buildroot.id', 'hash']
+        aliases = ['id', 'filename', 'filesize', 'arch', 'mediatype', 'task_id',
+                   'br_id', 'hash']
+        joins = ['buildroot ON imageinfo.task_id = buildroot.task_id']
+        if imageID:
+            clauses = ['imageinfo.id = %(imageID)i']
+        elif taskID:
+            clauses = ['imageinfo.task_id = %(taskID)i']
+        else:
+            raise koji.GenericError, 'either imageID or taskID must be specified'
+
+        query = QueryProcessor(columns=fields, tables=tables, clauses=clauses,
+                               values=locals(), joins=joins, aliases=aliases)
+        ret = query.executeOne()
+
+        if strict and not ret:
+            if imageID:
+                raise koji.GenericError, 'no image with ID: %i' % imageID
+            else:
+                raise koji.GenericError, 'no image for task ID: %i' % taskID
+
+        # additional tweaking
+        if ret:
+            # Always return filesize as a string instead of an int so XMLRPC doesn't
+            # complain about 32-bit overflow
+            ret['filesize'] = str(ret['filesize'])
+        return ret
 
     def hello(self,*args):
         return "Hello World"
@@ -5777,7 +5917,11 @@ class RootExports(object):
                     stat_map = {}
                     for attr in dir(stat_info):
                         if attr.startswith('st_'):
-                            stat_map[attr] = getattr(stat_info, attr)
+                            if attr == 'st_size':
+                                stat_map[attr] = str(getattr(stat_info, attr))
+                            else:
+                                stat_map[attr] = getattr(stat_info, attr)
+
                     result[relfilename] = stat_map
                 else:
                     result.append(relfilename)
@@ -6474,7 +6618,79 @@ class RootExports(object):
                 mapping[int(key)] = mapping[key]
         return readFullInheritance(tag,event,reverse,stops,jumps)
 
-    listRPMs = staticmethod(list_rpms)
+    def listRPMs(self, buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
+        """List RPMS.  If buildID, imageID and/or buildrootID are specified,
+        restrict the list of RPMs to only those RPMs that are part of that
+        build, or were built in that buildroot.  If componentBuildrootID is specified,
+        restrict the list to only those RPMs that will get pulled into that buildroot
+        when it is used to build another package.  A list of maps is returned, each map
+        containing the following keys:
+
+        - id
+        - name
+        - version
+        - release
+        - nvr (synthesized for sorting purposes)
+        - arch
+        - epoch
+        - payloadhash
+        - size
+        - buildtime
+        - build_id
+        - buildroot_id
+        - external_repo_id
+        - external_repo_name
+
+        If componentBuildrootID is specified, two additional keys will be included:
+        - component_buildroot_id
+        - is_update
+
+        If no build has the given ID, or the build generated no RPMs,
+        an empty list is returned."""
+        fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
+                  ('rpminfo.release', 'release'),
+                  ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
+                  ('rpminfo.arch', 'arch'),
+                  ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
+                  ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
+                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
+                  ('rpminfo.external_repo_id', 'external_repo_id'),
+                  ('external_repo.name', 'external_repo_name'),
+                 ]
+        joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
+        clauses = []
+
+        if buildID != None:
+            clauses.append('rpminfo.build_id = %(buildID)i')
+        if buildrootID != None:
+            clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
+        if componentBuildrootID != None:
+            fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
+                           'component_buildroot_id'))
+            fields.append(('buildroot_listing.is_update', 'is_update'))
+            joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
+            clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
+
+        # image specific constraints
+        if imageID != None:
+           clauses.append('imageinfo_listing.image_id = %(imageID)i')
+           joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
+
+        if hostID != None:
+            joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
+            clauses.append('buildroot.host_id = %(hostID)i')
+        if arches != None:
+            if isinstance(arches, list) or isinstance(arches, tuple):
+                clauses.append('rpminfo.arch IN %(arches)s')
+            elif isinstance(arches, str):
+                clauses.append('rpminfo.arch = %(arches)s')
+            else:
+                raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
+
+        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                               tables=['rpminfo'], joins=joins, clauses=clauses,
+                               values=locals(), opts=queryOpts)
+        return query.execute()
 
     def listBuildRPMs(self,build):
         """Get information about all the RPMs generated by the build with the given
@@ -8225,6 +8441,13 @@ class HostExports(object):
         if fromtag:
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
+
+    # Called from kojid::LiveCDTask
+    def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+        image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
+                                       hash, rpmlist)
+        moveImageResults(task_id, image_id, arch)
+        return image_id
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.

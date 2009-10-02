@@ -142,6 +142,13 @@ $value
         #if $len($params) > 4
         $printOpts($params[4])
         #end if
+        #elif $task.method == 'createLiveCD'
+        <strong>Arch:</strong> $params[0]<br/>
+        <strong>Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        <strong>Kickstart File:</strong> $params[2]<br/>
+        #if $len($params) > 3
+        $printOpts($params[3])
+        #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $len($params) > 1
@@ -262,6 +269,14 @@ $value
       </td>
     </tr>
     #end if
+    #if $task.method == 'createLiveCD' and $image
+    <tr>
+      <th>Image</th>
+      <td>
+        <a href="imageinfo?imageID=$image.id">$image.filename</a><br/>
+      </td>
+    </tr>
+    #end if
     <tr>
       <th>Parent</th>
       <td>
@@ -320,7 +335,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'buildMaven', 'wrapperRPM', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'buildMaven', 'wrapperRPM', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if

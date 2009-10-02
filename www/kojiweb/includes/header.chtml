@@ -1,3 +1,4 @@
+#encoding utf-8
 #import koji
 #import random
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -5,25 +6,25 @@
 
 #def greeting()
 #set $greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
-                  'bonjour',
-                  'hallo',
-                  'ciao',
-                  'hola',
-                  'olá',
-                  'dobrý den',
-                  'zdravstvuite',
-                  'góðan daginn',
-                  'hej',
-                  'grüezi',
-                  'céad míle fáilte',
-                  'hylô',
-                  'bună ziua',
-                  'jó napot',
-                  'dobre dan',
-                  '你好',
-                  'こんにちは',
-                  'नमस्कार',
-                  '안녕하세요')
+                   'bonjour',
+                   'hallo',
+                   'ciao',
+                   'hola',
+                  u'olá',
+                  u'dobrý den',
+                  u'zdravstvuite',
+                  u'góðan daginn',
+                   'hej',
+                  u'grüezi',
+                  u'céad míle fáilte',
+                  u'hylô',
+                  u'bună ziua',
+                  u'jó napot',
+                   'dobre dan',
+                  u'你好',
+                  u'こんにちは',
+                  u'नमस्कार',
+                  u'안녕하세요')
 #echo $random.choice($greetings)##slurp
 #end def
 

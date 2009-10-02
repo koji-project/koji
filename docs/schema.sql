@@ -6,8 +6,10 @@ DROP TABLE build_notifications;
 DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
+DROP TABLE imageinfo_listing;
 
 DROP TABLE rpminfo;
+DROP TABLE imageinfo;
 
 DROP TABLE group_package_listing;
 DROP TABLE group_req_listing;
@@ -97,6 +99,7 @@ CREATE TABLE permissions (
 INSERT INTO permissions (name) VALUES ('admin');
 INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
+INSERT INTO permissions (name) VALUES ('livecd');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
@@ -168,6 +171,7 @@ CREATE TABLE channels (
 INSERT INTO channels (name) VALUES ('default');
 INSERT INTO channels (name) VALUES ('createrepo');
 INSERT INTO channels (name) VALUES ('maven');
+INSERT INTO channels (name) VALUES ('livecd');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also
@@ -424,6 +428,18 @@ CREATE TABLE buildroot (
 	dirtyness INTEGER
 ) WITHOUT OIDS;
 
+-- track spun images (livecds, installation, VMs...)
+CREATE TABLE imageinfo (
+	id SERIAL NOT NULL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES task(id),
+	filename TEXT NOT NULL,
+	filesize BIGINT NOT NULL,
+	arch VARCHAR(16) NOT NULL,
+	hash TEXT NOT NULL,
+	mediatype TEXT NOT NULL
+) WITHOUT OIDS;
+CREATE INDEX imageinfo_task_id on imageinfo(task_id);
+
 -- this table associates tags with builds.  an entry here tags a package
 CREATE TABLE tag_listing (
 	build_id INTEGER NOT NULL REFERENCES build (id),
@@ -573,6 +589,14 @@ CREATE TABLE buildroot_listing (
 	UNIQUE (buildroot_id,rpm_id)
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
+
+-- tracks the contents of an image
+CREATE TABLE imageinfo_listing (
+	image_id INTEGER NOT NULL REFERENCES imageinfo(id),
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	UNIQUE (image_id, rpm_id)
+) WITHOUT OIDS;
+CREATE INDEX imageinfo_listing_rpms on imageinfo_listing(rpm_id);
 
 CREATE TABLE log_messages (
     id SERIAL NOT NULL PRIMARY KEY,
