@@ -632,7 +632,7 @@ def getfile(req, taskID, name, offset=None, size=None):
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
     elif name.endswith('.iso'):
-        req.content_type = 'application/octetstream'
+        req.content_type = 'application/octet-stream'
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
 
     file_size = int(file_info['st_size'])
