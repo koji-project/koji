@@ -5986,6 +5986,19 @@ class RootExports(object):
         VALUES (%(user_id)i, %(perm_id)i)"""
         _dml(insert, locals())
 
+    def revokePermission(self, userinfo, permission):
+        """Revoke a permission from a user"""
+        context.session.assertPerm('admin')
+        user_id = get_user(userinfo, strict=True)['id']
+        perm = lookup_perm(permission, strict=True)
+        perm_id = perm['id']
+        if perm['name'] not in koji.auth.get_user_perms(user_id):
+            raise koji.GenericError, 'user %s does not have permission: %s' % (userinfo, perm['name'])
+        update = """UPDATE user_perms
+        SET active = NULL, revoke_event = get_event()
+        WHERE user_id = %(user_id)i and perm_id = %(perm_id)i"""
+        _dml(update, locals())
+
     def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
         context.session.assertPerm('admin')

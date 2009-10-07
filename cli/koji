@@ -1738,21 +1738,39 @@ def handle_grant_permission(options, session, args):
         parser.error(_("Please specify a permission and at least one user"))
         assert False
     activate_session(session)
-    perms = dict([(p['name'], p['id']) for p in session.getAllPerms()])
-    perm_id = perms.get(args[0], None)
-    if perm_id is None:
-        print "No such permission: %s" % args[0]
-        return 1
+    perm = args[0]
     names = args[1:]
     users = []
     for n in names:
         user = session.getUser(n)
         if user is None:
-            print "No such user: %s" % n
-            return 1
+            parser.error(_("No such user: %s" % n))
+            assert False
         users.append(user)
     for user in users:
-        session.grantPermission(user['id'], perm_id)
+        session.grantPermission(user['name'], perm)
+
+def handle_revoke_permission(options, session, args):
+    "[admin] Revoke a permission from a user"
+    usage = _("usage: %prog revoke-permission <permission> <user> [<user> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify a permission and at least one user"))
+        assert False
+    activate_session(session)
+    perm = args[0]
+    names = args[1:]
+    users = []
+    for n in names:
+        user = session.getUser(n)
+        if user is None:
+            parser.error(_("No such user: %s" % n))
+            assert False
+        users.append(user)
+    for user in users:
+        session.revokePermission(user['name'], perm)
 
 def anon_handle_latest_pkg(options, session, args):
     "Print the latest packages for a tag"
