@@ -60,8 +60,11 @@ class DBWrapper:
         # this DBWrapper is no longer usable after close()
         if not self.cnx:
             raise StandardError, 'connection is closed'
-        self.cnx.rollback()
+        self.cnx.cursor().execute('ROLLBACK')
+        #We do this rather than cnx.rollback to avoid opening a new transaction
+        #If our connection gets recycled cnx.rollback will be called then.
         self.cnx = None
+
 
 class CursorWrapper:
     def __init__(self, cursor, debug=False):
