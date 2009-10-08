@@ -281,6 +281,14 @@ class LiveCDError(GenericError):
     """Raised when LiveCD Image creation fails"""
     faultCode = 1015
 
+class PluginError(GenericError):
+    """Raised when there is an error with a plugin"""
+    faultCode = 1016
+
+class CallbackError(PluginError):
+    """Raised when there is an error executing a callback"""
+    faultCode = 1017
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of

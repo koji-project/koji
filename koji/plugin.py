@@ -20,8 +20,34 @@
 
 import imp
 import koji
+import logging
 import sys
+import traceback
 
+# set this up for use by the plugins
+# we want log output to go to Apache's error_log
+logger = logging.getLogger('koji.plugin')
+logger.addHandler(logging.StreamHandler(sys.stderr))
+logger.setLevel(logging.INFO)
+
+# the available callback hooks and a list
+# of functions to be called for each event
+callbacks = {
+    'prePackageAdd':          [],
+    'postPackageAdd':         [],
+    'preTaskStateChange':     [],
+    'postTaskStateChange':    [],
+    'preBuildStateChange':    [],
+    'postBuildStateChange':   [],
+    'preImport':              [],
+    'portImport':             [],
+    'preTag':                 [],
+    'postTag':                [],
+    'preUntag':               [],
+    'postUntag':              [],
+    'preDelete':              [],
+    'postDelete':             []
+    }
 
 class PluginTracker(object):
 
@@ -41,11 +67,11 @@ class PluginTracker(object):
             #(no '.' -- it causes problems)
             mod_name = self.prefix + name
         if sys.modules.has_key(mod_name) and not reload:
-            raise koji.GenericError, 'module name conflict: %s' % mod_name
+            raise koji.PluginError, 'module name conflict: %s' % mod_name
         if path is None:
             path = self.searchpath
         if path is None:
-            raise koji.GenericError, "empty module search path"
+            raise koji.PluginError, "empty module search path"
         file, pathname, description = imp.find_module(name, self.pathlist(path))
         try:
             plugin = imp.load_module(mod_name, file, pathname, description)
@@ -101,3 +127,44 @@ def export_in(module, alias=None):
         setattr(f, 'export_alias', alias)
         return f
     return dec
+
+def callback(*cbtypes):
+    """A decorator that indicates a function is a callback.
+    cbtypes is a list of callback types to register for.  Valid
+    callback types are listed in the plugin module.
+
+    Intended to be used by plugins.
+    """
+    def dec(f):
+        setattr(f, 'callbacks', cbtypes)
+        return f
+    return dec
+
+def ignore_error(f):
+    """a decorator that marks a callback as ok to fail
+
+    intended to be used by plugins
+    """
+    setattr(f, 'failure_is_an_option', True)
+    return f
+
+def register_callback(cbtype, func):
+    if not cbtype in callbacks:
+        raise koji.PluginError, '"%s" is not a valid callback type' % cbtype
+    if not callable(func):
+        raise koji.PluginError, '%s is not callable' % getattr(func, '__name__', 'function')
+    callbacks[cbtype].append(func)
+
+def run_callbacks(cbtype, *args, **kws):
+    if not cbtype in callbacks:
+        raise koji.PluginError, '"%s" is not a valid callback type' % cbtype
+    for func in callbacks[cbtype]:
+        try:
+            func(cbtype, *args, **kws)
+        except:
+            tb = ''.join(traceback.format_exception(*sys.exc_info()))
+            msg = 'Error running %s callback from %s: %s' % (cbtype, func.__module__, tb)
+            if getattr(func, 'failure_is_an_option', False):
+                logging.getLogger('koji.plugin').warn('%s: %s' % (msg, tb))
+            else:
+                raise koji.CallbackError, msg

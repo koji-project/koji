@@ -26,6 +26,7 @@ import calendar
 import koji
 import koji.auth
 import koji.db
+import koji.plugin
 import koji.policy
 import datetime
 import errno
@@ -130,6 +131,9 @@ class Task(object):
         """Attempt to associate the task for host, either to assign or open
 
         returns True if successful, False otherwise"""
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
+        self.runCallbacks('preTaskStateChange', info, 'host_id', host_id)
         #we use row-level locks to keep things sane
         #note the SELECT...FOR UPDATE
         task_id = self.id
@@ -166,6 +170,8 @@ class Task(object):
         q = """UPDATE task SET state=%(state)s,host_id=%(host_id)s
         WHERE id=%(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
+        self.runCallbacks('postTaskStateChange', info, 'host_id', host_id)
         return True
 
     def assign(self,host_id,force=False):
@@ -192,6 +198,9 @@ class Task(object):
 
     def free(self):
         """Free a task"""
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('preTaskStateChange', info, 'host_id', None)
         task_id = self.id
         # access checks should be performed by calling function
         query = """SELECT state FROM task WHERE id = %(id)i FOR UPDATE"""
@@ -207,23 +216,31 @@ class Task(object):
         q = """UPDATE task SET state=%(newstate)s,host_id=%(newhost)s
         WHERE id=%(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('postTaskStateChange', info, 'host_id', None)
         return True
 
     def setWeight(self,weight):
         """Set weight for task"""
         task_id = self.id
+        weight = float(weight)
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'weight', weight)
         # access checks should be performed by calling function
         q = """UPDATE task SET weight=%(weight)s WHERE id = %(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'weight', weight)
 
     def setPriority(self, priority, recurse=False):
         """Set priority for task"""
         task_id = self.id
         priority = int(priority)
-
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'priority', priority)
         # access checks should be performed by calling function
         q = """UPDATE task SET priority=%(priority)s WHERE id = %(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'priority', priority)
 
         if recurse:
             """Change priority of child tasks"""
@@ -237,11 +254,18 @@ class Task(object):
         Returns True if successful, False if not"""
         task_id = self.id
         # access checks should be performed by calling function
-        st_closed = koji.TASK_STATES['CLOSED']
+        # this is an approximation, and will be different than what is in the database
+        # the actual value should be retrieved from the 'new' value of the post callback
+        now = time.time()
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', state)
+        self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
         update = """UPDATE task SET result = %(result)s, state = %(state)s, completion_time = NOW()
         WHERE id = %(task_id)d
         """
         _dml(update,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', state)
+        self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
 
     def close(self,result):
         # access checks should be performed by calling function
@@ -272,6 +296,10 @@ class Task(object):
         successfully canceled, or if it was already canceled, False if it is
         closed."""
         # access checks should be performed by calling function
+        now = time.time()
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
+        self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
         task_id = self.id
         q = """SELECT state FROM task WHERE id = %(task_id)s FOR UPDATE"""
         state = _singleValue(q,locals())
@@ -285,6 +313,8 @@ class Task(object):
         update = """UPDATE task SET state = %(st_canceled)i, completion_time = NOW()
         WHERE id = %(task_id)i"""
         _dml(update, locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
+        self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
         #cancel associated builds (only if state is 'BUILDING')
         #since we check build state, we avoid loops with cancel_build on our end
         b_building = koji.BUILD_STATES['BUILDING']
@@ -399,6 +429,22 @@ class Task(object):
                 task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
+    def runCallbacks(self, cbtype, old_info, attr, new_val):
+        if cbtype.startswith('pre'):
+            info = old_info
+        elif cbtype.startswith('post'):
+            info = self.getInfo(request=True)
+            new_val = info[attr]
+        else:
+            raise koji.GenericError, 'unknown callback type: %s' % cbtype
+        old_val = old_info[attr]
+        if attr == 'state':
+            # state is passed in as an integer, but we want to use the string
+            old_val = koji.TASK_STATES[old_val]
+            new_val = koji.TASK_STATES[new_val]
+        koji.plugin.run_callbacks(cbtype, attribute=attr, old=old_val, new=new_val,
+                                  info=info)
+
 def make_task(method,arglist,**opts):
     """Create a task
 
@@ -460,6 +506,7 @@ def make_task(method,arglist,**opts):
                                       allow_none=1)
     opts['state'] = koji.TASK_STATES['FREE']
     opts['method'] = method
+    koji.plugin.run_callbacks('preTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     # stick it in the database
     q = """
     INSERT INTO task (state,owner,method,request,priority,
@@ -470,6 +517,8 @@ def make_task(method,arglist,**opts):
     _dml(q,opts)
     q = """SELECT currval('task_id_seq')"""
     task_id = _singleValue(q, {})
+    opts['id'] = task_id
+    koji.plugin.run_callbacks('postTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     return task_id
 
 def mktask(__taskopts,__method,*args,**opts):
