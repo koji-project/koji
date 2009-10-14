@@ -756,7 +756,8 @@ class BuildTracker(object):
             for dep_id in build.deps:
                 dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
                 if dep.name in self.ignorelist:
-                    break
+                    # we are not done dep solving yet.  but we dont want this dep in our buildroot
+                    continue
                 else:
                     if dep.substitute:
                         dep2 = self.getSubstitute(dep.substitute)
