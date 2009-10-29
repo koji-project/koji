@@ -131,6 +131,8 @@ def get_options():
                       help=_("Rules: list of packages to ignore"))
     parser.add_option("--rules-includelist",
                       help=_("Rules: list of packages to always include"))
+    parser.add_option("--rules-protectlist",
+                      help=_("Rules: list of package names to never replace"))
     parser.add_option("--tag-build", action="store_true", default=False,
                       help=_("tag sucessful builds into the tag we are building, default is to not tag"))
     parser.add_option("--arches",
@@ -564,6 +566,7 @@ class BuildTracker(object):
         self.greylist = None
         self.ignorelist = []
         self.includelist = []
+        self.protectlist = []
         self.substitute_idx = {}
         self.substitutions = {}
         if options.config.has_option('rules', 'whitelist'):
@@ -576,6 +579,8 @@ class BuildTracker(object):
             self.ignorelist = options.config.get('rules', 'ignorelist').split()
         if options.config.has_option('rules', 'includelist'):
             self.includelist = options.config.get('rules', 'includelist').split()
+        if options.config.has_option('rules', 'protectlist'):
+            self.protectlist = options.config.get('rules', 'protectlist').split()
         if options.config.has_option('rules', 'substitutions'):
             #At present this is a simple multi-line format
             #one substitution per line
@@ -715,19 +720,23 @@ class BuildTracker(object):
             print "%sBlocked build %s%s" % (head, build.nvr, tail)
             build.setState('blocked')
             return build
-        #check to see if a substition applies
-        replace = self.substitutions.get(build.nvr)
-        if replace:
-            build.substitute = replace
-            if depth > 0:
-                print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
-                return build
-        if options.prefer_new and not options.build:
-            latestBuild = self.newerBuild(build, tag)
-            if latestBuild != None:
-                build.substitute = latestBuild.nvr
-                print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
-                return build
+        #make sure we dont have the build name protected
+        if build.name not in self.protectlist:
+            #check to see if a substition applies
+            replace = self.substitutions.get(build.nvr)
+            if replace:
+                build.substitute = replace
+                if depth > 0:
+                    print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
+                    return build
+            if options.prefer_new and not options.build:
+                latestBuild = self.newerBuild(build, tag)
+                if latestBuild != None:
+                    build.substitute = latestBuild.nvr
+                    print "%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr)
+                    return build
+        else:
+            print "%sProtected Build: %s" % (head, build.nvr)
         if build.state == "common":
             #we're good
             if build.rebuilt:
