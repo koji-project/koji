@@ -128,7 +128,9 @@ def get_options():
     parser.add_option("--rules-blacklist",
                       help=_("blacklist rules"))
     parser.add_option("--rules-ignorelist",
-                      help=_("Rules list of packages to ignore"))
+                      help=_("Rules: list of packages to ignore"))
+    parser.add_option("--rules-includelist",
+                      help=_("Rules: list of packages to always include"))
     parser.add_option("--tag-build", action="store_true", default=False,
                       help=_("tag sucessful builds into the tag we are building, default is to not tag"))
     parser.add_option("--arches",
@@ -561,6 +563,7 @@ class BuildTracker(object):
         self.whitelist = None
         self.greylist = None
         self.ignorelist = []
+        self.includelist = []
         self.substitute_idx = {}
         self.substitutions = {}
         if options.config.has_option('rules', 'whitelist'):
@@ -571,6 +574,8 @@ class BuildTracker(object):
             self.greylist = options.config.get('rules', 'greylist').split()
         if options.config.has_option('rules', 'ignorelist'):
             self.ignorelist = options.config.get('rules', 'ignorelist').split()
+        if options.config.has_option('rules', 'includelist'):
+            self.includelist = options.config.get('rules', 'includelist').split()
         if options.config.has_option('rules', 'substitutions'):
             #At present this is a simple multi-line format
             #one substitution per line
@@ -752,6 +757,16 @@ class BuildTracker(object):
             #scan its deps
             print "%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail)
             newdeps = []
+            # include extra local builds as deps.
+            if self.includelist:
+                for dep in self.includelist:
+                    info = session.getBuild(dep)
+                    if info:
+                        print "%s Adding local Dep %s%s" % (head, dep, tail)
+                        extradep = LocalBuild(info)
+                        newdeps.append(extradep)
+                    else:
+                        print "%s Warning: could not find build for %s" % (head, dep)
             #don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
                 dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
