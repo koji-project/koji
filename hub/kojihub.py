@@ -3308,13 +3308,13 @@ def list_archive_files(archive_id, queryOpts=None):
         # XXX support other archive types
         return _applyQueryOpts([], queryOpts)
 
-    maven_info = get_maven_archive(archive_id)
-    if not (archive_info and maven_info):
-        # XXX support other archive types, when they exist
-        return _applyQueryOpts([], queryOpts)
-
     build_info = get_build(archive_info['build_id'])
     if not build_info:
+        return _applyQueryOpts([], queryOpts)
+
+    maven_info = get_maven_build(build_info['id'])
+    if not maven_info:
+        # XXX support other archive types, when they exist
         return _applyQueryOpts([], queryOpts)
 
     file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
