@@ -805,10 +805,16 @@ def handle_maven_build(options, session, args):
     usage = _("usage: %prog maven-build [options] target URL")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--specfile", action="store", metavar="URL",
-                      help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--patches", action="store", metavar="URL",
                       help=_("SCM URL of a directory containing patches to apply to the sources before building"))
+    parser.add_option("--profile", action="append",
+                      dest="profiles", metavar="PROFILE", default=[],
+                      help=_("Enable a profile for the Maven build"))
+    parser.add_option("-D", "--property", action="append",
+                      dest="properties", metavar="NAME=VALUE", default=[],
+                      help=_("Pass a system property to the Maven build"))
+    parser.add_option("--specfile", action="store", metavar="URL",
+                      help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
@@ -819,12 +825,6 @@ def handle_maven_build(options, session, args):
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
-    parser.add_option("--profile", action="append",
-                      dest="profiles", metavar="PROFILE", default=[],
-                      help=_("Enable a profile for the Maven build"))
-    parser.add_option("--property", action="append",
-                      dest="properties", metavar="NAME=VALUE", default=[],
-                      help=_("Pass a system property to the Maven build"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Exactly two arguments (a build target and a SCM URL) are required"))
