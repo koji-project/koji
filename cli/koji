@@ -1932,7 +1932,7 @@ def anon_handle_latest_pkg(options, session, args):
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
-    parser.add_option("--maven", action="store_true", default=False, help=_("Show Maven builds only"))
+    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -1964,9 +1964,9 @@ def anon_handle_latest_pkg(options, session, args):
             else:
                 fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         else:
-            data = session.getLatestBuilds(args[0], package=pkg, maven_only=options.maven)
+            data = session.getLatestBuilds(args[0], package=pkg, type=options.type)
             if options.paths:
-                if options.maven:
+                if options.type == 'maven':
                     for x in data:
                         x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
                                                             'artifact_id': x['maven_artifact_id'],
@@ -1977,12 +1977,12 @@ def anon_handle_latest_pkg(options, session, args):
                         x['path'] = pathinfo.build(x)
                     fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
             else:
-                if options.maven:
+                if options.type == 'maven':
                     fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
                 else:
                     fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
             if not options.quiet:
-                if options.maven:
+                if options.type == 'maven':
                     print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
                     print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
                 else:
@@ -2072,7 +2072,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
-    parser.add_option("--maven", action="store_true", help=_("Show Maven builds only"))
+    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
     parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
@@ -2100,8 +2100,7 @@ def anon_handle_list_tagged(options, session, args):
     if options.sigs:
         opts['rpmsigs'] = True
         options.rpms = True
-    if options.maven and not options.rpms:
-        opts['maven_only'] = True
+    opts['type'] = options.type
     event = koji.util.eventFromOpts(session, options)
     if event:
         opts['event'] = event['id']
@@ -2132,7 +2131,7 @@ def anon_handle_list_tagged(options, session, args):
     else:
         data = session.listTagged(tag, **opts)
         if options.paths:
-            if options.maven:
+            if options.type == 'maven':
                 for x in data:
                     x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
                                                         'artifact_id': x['maven_artifact_id'],
@@ -2143,12 +2142,12 @@ def anon_handle_list_tagged(options, session, args):
                     x['path'] = pathinfo.build(x)
                 fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
         else:
-            if options.maven:
+            if options.type == 'maven':
                 fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
             else:
                 fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
         if not options.quiet:
-            if options.maven:
+            if options.type == 'maven':
                 print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
                 print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
             else:

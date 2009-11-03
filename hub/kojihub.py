@@ -941,12 +941,15 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None,maven_only=False):
+def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None,type=None):
     """Returns a list of builds for specified tag
 
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=True to get only the latest build per package
+
+    If type is not None, restrict the list to builds of the given type.  Currently the only
+    supported type is 'maven'.
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
@@ -972,11 +975,15 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     st_complete = koji.BUILD_STATES['COMPLETE']
 
     maven_join = ''
-    if maven_only:
+    if type is None:
+        pass
+    elif type == 'maven':
         maven_join = 'JOIN maven_builds on maven_builds.build_id = tag_listing.build_id'
         fields.extend([('maven_builds.group_id', 'maven_group_id'),
                        ('maven_builds.artifact_id', 'maven_artifact_id'),
                        ('maven_builds.version', 'maven_version')])
+    else:
+        raise koji.GenericError, 'unsupported build type: %s' % type
 
     q="""SELECT %s
     FROM tag_listing
@@ -1021,12 +1028,15 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
 
     return builds
 
-def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False,owner=None):
+def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest=True,rpmsigs=False,owner=None,type=None):
     """Returns a list of rpms for specified tag
 
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=False to get all tagged RPMS (not just from the latest builds)
+
+    If type is not None, restrict the list to rpms from builds of the given type.  Currently the only
+    supported type is 'maven'.
     """
     taglist = [tag]
     if inherit:
@@ -1034,7 +1044,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         #   (however, it is fairly quick)
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
 
-    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, owner=owner)
+    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
     #index builds
     build_idx = dict([(b['build_id'],b) for b in builds])
 
@@ -1106,13 +1116,15 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
             rpms.append(rpminfo)
     return [rpms,builds]
 
-def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, maven_only=False):
+def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, type=None):
     """Returns a list of archives for specified tag
 
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=False to get all tagged archives (not just from the latest builds)
-    set maven_only=True to only retrieve archives with associated Maven metadata
+
+    If type is not None, restrict the listing to archives of the given type.  Currently
+    the only supported type is 'maven'.
     """
     taglist = [tag]
     if inherit:
@@ -1120,8 +1132,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
         #   (however, it is fairly quick)
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
 
-    # If maven_only is true, we require that both the build *and* the archive have Maven metadata
-    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, maven_only=maven_only)
+    # If type == 'maven', we require that both the build *and* the archive have Maven metadata
+    builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
     #index builds
     build_idx = dict([(b['build_id'],b) for b in builds])
 
@@ -1141,11 +1153,15 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
         joins.append('build ON archiveinfo.build_id = build.id')
         joins.append('package ON build.pkg_id = package.id')
         clauses.append('package.name = %(package)s')
-    if maven_only:
+    if type is None:
+        pass
+    elif type == 'maven':
         joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
         fields.extend([('maven_archives.group_id', 'maven_group_id'),
                        ('maven_archives.artifact_id', 'maven_artifact_id'),
                        ('maven_archives.version', 'maven_version')])
+    else:
+        raise koji.GenericError, 'unsupported archive type: %s' % type
 
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
                            columns=[pair[0] for pair in fields],
@@ -1815,7 +1831,7 @@ def maven_tag_packages(taginfo, event_id):
 
     tag_id = taginfo['id']
     # Get the latest Maven builds using the normal build resolution logic
-    builds = readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, maven_only=True)
+    builds = readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, type='maven')
 
     taglist = [tag_id]
     taglist += [t['parent_id'] for t in readFullInheritance(tag_id, event=event_id)]
@@ -1825,7 +1841,7 @@ def maven_tag_packages(taginfo, event_id):
         maven_tag = get_tag(maven_tag_id, strict=True)
         if maven_tag['maven_include_all']:
             logger.info('Including all packages in %s' % maven_tag['name'])
-            builds.extend(readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, maven_only=True))
+            builds.extend(readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, type='maven'))
 
     seen = {}
     results = []
@@ -3091,13 +3107,11 @@ def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=
                            values=locals(), opts=queryOpts)
     return query.execute()
 
-def get_maven_build(buildInfo=None, mavenInfo=None, strict=False):
+def get_maven_build(buildInfo, strict=False):
     """
     Retrieve Maven-specific information about a build.
-    Either buildInfo or mavenInfo must be provided.
     buildInfo can be either a string (n-v-r) or an integer
-    (build ID).  mavenInfo must be a map containing 'group_id',
-    'artifact_id', and 'version.
+    (build ID).
     Returns a map containing the following keys:
 
     build_id: id of the build (integer)
@@ -3107,28 +3121,19 @@ def get_maven_build(buildInfo=None, mavenInfo=None, strict=False):
     """
     fields = ('build_id', 'group_id', 'artifact_id', 'version')
 
-    if buildInfo:
-        build_id = find_build_id(buildInfo)
-        if not build_id:
-            if strict:
-                raise koji.GenericError, 'No matching build found: %s' % buildInfo
-            else:
-                return None
-        query = """SELECT %s
-        FROM maven_builds
-        WHERE build_id = %%(build_id)i""" % ', '.join(fields)
-        return _singleRow(query, locals(), fields, strict)
-    elif mavenInfo:
-        query = """SELECT %s
-        FROM maven_builds
-        WHERE group_id = %%(group_id)s AND artifact_id = %%(artifact_id)s
-          AND version = %%(version)s""" % ', '.join(fields)
-        return _singleRow(query, mavenInfo, fields, strict)
-    else:
-        raise koji.GenericError, 'either buildInfo or mavenInfo must be specified'
+    build_id = find_build_id(buildInfo)
+    if not build_id:
+        if strict:
+            raise koji.GenericError, 'No matching build found: %s' % buildInfo
+        else:
+            return None
+    query = """SELECT %s
+    FROM maven_builds
+    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
+    return _singleRow(query, locals(), fields, strict)
 
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
-                  filename=None, size=None, md5sum=None, queryOpts=None):
+                  filename=None, size=None, md5sum=None, typeInfo=None, queryOpts=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -3167,6 +3172,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     group_id: Maven groupId (string)
     artifact_id: Maven artifactId (string)
     version: Maven version (string)
+
+    typeInfo is a dict that can be used to filter the output by type-specific info.
+    For the 'maven' type, this dict may contain one or more of group_id, artifact_id, or version,
+      and the output will be restricted to archives with matching attributes.
 
     If there are no archives matching the selection criteria,
     an empty list is returned.
@@ -3216,6 +3225,12 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
         columns.extend(['maven_archives.group_id', 'maven_archives.artifact_id', 'maven_archives.version'])
         aliases.extend(['group_id', 'artifact_id', 'version'])
+
+        if typeInfo:
+            for key in ('group_id', 'artifact_id', 'version'):
+                if typeInfo.has_key(key):
+                    clauses.append('maven_archives.%s = %%(%s)s' % (key, key))
+                    values[key] = typeInfo[key]
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
@@ -3322,45 +3337,6 @@ def get_archive_file(archive_id, filename):
             return file_info
     else:
         return None
-
-def find_maven_archives(maven_info, filename=None, build_id=None, queryOpts=None):
-    """
-    Find information about the Maven archive associated with the
-    given Maven info.
-
-    If filename is not none, also filter by filename.
-    if build_id is not none, also filter by build_id.
-
-    maven_info is a dict that must contain 'group_id', 'artifact_id', and
-    'version' fields.
-    """
-    values = maven_info.copy()
-    tables = ('archiveinfo',)
-    columns = ('archiveinfo.id', 'type_id', 'archivetypes.name', 'archiveinfo.build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
-    aliases = ('id', 'type_id', 'type_name', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
-    joins = ('maven_builds ON archiveinfo.build_id = maven_builds.build_id',
-             'archivetypes ON archiveinfo.type_id = archivetypes.id',
-             'LEFT JOIN maven_archives ON archiveinfo.id = maven_archives.archive_id')
-    clauses = ("""
-         (maven_builds.group_id = %(group_id)s and
-          maven_builds.artifact_id = %(artifact_id)s and
-          maven_builds.version = %(version)s)
-        OR
-         (maven_archives.group_id = %(group_id)s and
-          maven_archives.artifact_id = %(artifact_id)s and
-          maven_archives.version = %(version)s)
- """,)
-    if filename:
-        clauses += ('archiveinfo.filename = %(filename)s',)
-        values['filename'] = filename
-    if build_id:
-        clauses += ('archiveinfo.build_id = %(build_id)i',)
-        values['build_id'] = build_id
-    query = QueryProcessor(tables=tables, columns=columns, aliases=aliases,
-                           joins=joins, clauses=clauses,
-                           values=values,
-                           opts=queryOpts)
-    return query.execute()
 
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
@@ -4100,7 +4076,7 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
             pom, pom_info = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
             if pom_info:
                 maveninfo = koji.pom_to_maven_info(pom_info)
-                pom_archives = [a for a in find_maven_archives(maveninfo, build_id=build_id) \
+                pom_archives = [a for a in list_archives(buildID=build_id, type='maven', typeInfo=maveninfo) \
                                     if a['type_name'] == 'pom']
                 if not pom_archives:
                     # the pom file must be imported before any zips/jars can
@@ -4640,7 +4616,7 @@ def _delete_build(binfo):
     archivedir = koji.pathinfo.archive(binfo)
     if os.path.exists(archivedir):
         dirs_to_clear.append(archivedir)
-    maven_info = get_maven_build(buildInfo=build_id)
+    maven_info = get_maven_build(build_id)
     if maven_info:
         mavendir = koji.pathinfo.mavenbuild(binfo, maven_info)
         if os.path.exists(mavendir):
@@ -6412,38 +6388,39 @@ class RootExports(object):
         task = Task(task_id)
         task.setPriority(priority, recurse=recurse)
 
-    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None,maven_only=False):
+    def listTagged(self,tag,event=None,inherit=False,prefix=None,latest=False,package=None,owner=None,type=None):
         """List builds tagged with tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,owner=owner,maven_only=maven_only)
+        results = readTaggedBuilds(tag,event,inherit=inherit,latest=latest,package=package,owner=owner,type=type)
         if prefix:
             prefix = prefix.lower()
             results = [build for build in results if build['package_name'].lower().startswith(prefix)]
         return results
 
-    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False,owner=None):
+    def listTaggedRPMS(self,tag,event=None,inherit=False,latest=False,package=None,arch=None,rpmsigs=False,owner=None,type=None):
         """List rpms and builds within tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs,owner=owner)
+        return readTaggedRPMS(tag,event=event,inherit=inherit,latest=latest,package=package,arch=arch,rpmsigs=rpmsigs,owner=owner,type=type)
 
-    def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, maven_only=False):
+    def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
         if not isinstance(tag, int):
             tag = get_tag_id(tag,strict=True)
-        return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, maven_only=maven_only)
+        return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    createdBefore=None, createdAfter=None,
-                   completeBefore=None, completeAfter=None, mavenOnly=False, queryOpts=None):
+                   completeBefore=None, completeAfter=None, type=None, typeInfo=None, queryOpts=None):
         """List package builds.
         If packageID is specified, restrict the results to builds of the specified package.
         If userID is specified, restrict the results to builds owned by the given user.
         If taskID is specfied, restrict the results to builds with the given task ID.  If taskID is -1,
            restrict the results to builds with a non-null taskID.
+        One or more of packageID, userID, and taskID may be specified.
         If prefix is specified, restrict the results to builds whose package name starts with that
         prefix.
         If createdBefore and/or createdAfter are specified, restrict the results to builds whose
@@ -6452,8 +6429,12 @@ class RootExports(object):
         completion_time is before and/or after the given time.
         The time may be specified as a floating point value indicating seconds since the Epoch (as
         returned by time.time()) or as a string in ISO format ('YYYY-MM-DD HH24:MI:SS').
-        If mavenOnly is true, only list builds with associated Maven metadata.
-        One or more of packageID, userID, and taskID may be specified.
+        If type is not None, only list builds of the associated type.  Currently the only supported type is 'maven'.
+        if typeInfo is not None, only list builds with matching type-specific info.  Must be used in conjunction with
+           the type parameter.
+             Currently the only supported type is 'maven', and typeInfo is a dict containing
+             one or more of group_id, artifact_id, and/or version.  Output will be restricted to builds with
+             matching Maven metadata.
 
         Returns a list of maps.  Each map contains the following keys:
 
@@ -6473,7 +6454,7 @@ class RootExports(object):
           - completion_time
           - task_id
 
-        If mavenOnly is true, each map will also contain the following keys:
+        If type == 'maven', each map will also contain the following keys:
 
           - maven_group_id
           - maven_artifact_id
@@ -6522,11 +6503,25 @@ class RootExports(object):
             if not isinstance(completeAfter, str):
                 completeAfter = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
             clauses.append('build.completion_time > %(completeAfter)s')
-        if mavenOnly:
+        if type is None:
+            pass
+        elif type == 'maven':
             joins.append('maven_builds ON build.id = maven_builds.build_id')
             fields.extend([('maven_builds.group_id', 'maven_group_id'),
                            ('maven_builds.artifact_id', 'maven_artifact_id'),
                            ('maven_builds.version', 'maven_version')])
+            if typeInfo:
+                if typeInfo.has_key('group_id'):
+                    clauses.append('maven_builds.group_id = %(group_id)s')
+                    group_id = typeInfo['group_id']
+                if typeInfo.has_key('artifact_id'):
+                    clauses.append('maven_builds.artifact_id = %(artifact_id)s')
+                    artifact_id = typeInfo['artifact_id']
+                if typeInfo.has_key('version'):
+                    clauses.append('maven_builds.version = %(version)s')
+                    version = typeInfo['version']
+        else:
+            raise koji.GenericError, 'unsupported build type: %s' % type
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
@@ -6535,19 +6530,19 @@ class RootExports(object):
 
         return query.execute()
 
-    def getLatestBuilds(self,tag,event=None,package=None,maven_only=False):
+    def getLatestBuilds(self,tag,event=None,package=None,type=None):
         """List latest builds for tag (inheritance enabled)"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedBuilds(tag,event,inherit=True,latest=True,package=package,maven_only=maven_only)
+        return readTaggedBuilds(tag,event,inherit=True,latest=True,package=package,type=type)
 
-    def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False):
+    def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readTaggedRPMS(tag, package=package, arch=arch, event=event,inherit=True,latest=True, rpmsigs=rpmsigs)
+        return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
 
     def getAverageBuildDuration(self, package):
         """Get the average duration of a build of the given package.

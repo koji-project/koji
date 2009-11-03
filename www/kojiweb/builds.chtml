@@ -1,11 +1,11 @@
 #import koji
 #from kojiweb import util
 
-#attr _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited', 'latest', 'mavenonly']
+#attr _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited', 'latest', 'type']
 
 #include "includes/header.chtml"
 
-  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''##if $mavenonly then 'Maven ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
+  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''##if $type == 'maven' then 'Maven ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
 
   <table class="data-list">
     <tr>
@@ -45,9 +45,9 @@
         <tr><td>
         <strong>Type</strong>:
         </td><td>
-        <select name="mavenonly" class="filterlist" onchange="javascript: window.location='builds?mavenonly=' + this.value + '$util.passthrough_except($self, 'mavenonly')';">
-          <option value="0" #if not $mavenonly then 'selected="selected"' else ''#>all</option>
-          <option value="1" #if $mavenonly then 'selected="selected"' else ''#>Maven</option>
+        <select name="type" class="filterlist" onchange="javascript: window.location='builds?type=' + this.value + '$util.passthrough_except($self, 'type')';">
+          <option value="all" #if not $type then 'selected="selected"' else ''#>all</option>
+          <option value="maven" #if $type == 'maven' then 'selected="selected"' else ''#>Maven</option>
         </select>
         </td>
         #if $tag

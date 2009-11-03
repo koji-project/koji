@@ -1082,7 +1082,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1', mavenonly='0'):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1', type=None):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
@@ -1128,8 +1128,13 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
     values['prefix'] = prefix
     
     values['order'] = order
-    mavenonly = int(mavenonly)
-    values['mavenonly'] = mavenonly
+    if type == 'maven':
+        pass
+    elif type == 'all':
+        type = None
+    else:
+        type = None
+    values['type'] = type
 
     if tag:
         inherited = int(inherited)
@@ -1144,12 +1149,12 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-com
         # don't need to consider 'state' here, since only completed builds would be tagged
         builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
                                                                                 'owner': (user and user['name'] or None),
-                                                                                'maven_only': bool(mavenonly),
+                                                                                'type': type,
                                                                                 'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
                                               start=start, dataName='builds', prefix='build', order=order)
     else:
         builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
-                                                                               'mavenOnly': bool(mavenonly),
+                                                                               'type': type,
                                                                                'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
     
