@@ -1078,7 +1078,6 @@ def buildinfo(req, buildID):
 
     values['downloadBase'] = req.get_options().get('KojiPackagesURL', 'http://localhost/packages')
     values['mavenBase'] = req.get_options().get('KojiMavenURL', 'http://localhost/maven2')
-    values['archiveBase'] = req.get_options().get('KojiArchiveURL', 'http://localhost/archives')
 
     return _genHTML(req, 'buildinfo.chtml')
 
