@@ -879,6 +879,13 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.tag_content = ''
         self.tag_stack.pop()
 
+    def reset(self):
+        self.tag_stack = []
+        self.tag_content = None
+        self.values.clear()
+
+ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
+
 def parse_pom(path=None, contents=None):
     """
     Parse the Maven .pom file return a map containing information
@@ -903,48 +910,25 @@ def parse_pom(path=None, contents=None):
     # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
     
     contents = fixEncoding(contents)
-    xml.sax.parseString(contents, handler)
+
+    try:
+        xml.sax.parseString(contents, handler)
+    except xml.sax.SAXParseException:
+        # likely an undefined entity reference, so lets try replacing
+        # any entity refs we can find and see if we get something parseable
+        handler.reset()
+        contents = ENTITY_RE.sub('?', contents)
+        xml.sax.parseString(contents, handler)
 
     for field in fields:
         if field not in values.keys():
             raise GenericError, 'could not extract %s from POM: %s' % (field, (path or '<contents>'))
     return values
 
-def get_pom_from_jar(filepath):
-    """
-    Get the contents of the pom.xml file stored under the META-INF/maven
-    directory.  If no pom.xml exists there, return None.
-    """
-    contents = None
-    archive = zipfile.ZipFile(filepath, 'r')
-    for entry in archive.infolist():
-        if entry.filename.startswith('META-INF/maven/') and \
-           os.path.basename(entry.filename) == 'pom.xml':
-            if contents != None:
-                raise GenericError, 'duplicate pom.xml found at %s in %s' % \
-                      (entry.filename, filepath)
-            else:
-                contents = archive.read(entry.filename)
-    archive.close()
-    return contents
-
-def pom_to_nvr(pominfo):
-    """
-    Convert the output of parsing a POM into a NVR-compatible format.
-    The pom-to-nvr mapping is as follows:
-    - name: groupId + '-' + artifactId
-    - version: version.replace('-', '_')
-    - release: None
-    - epoch: None
-    """
-    maveninfo = pom_to_maven_info(pominfo)
-    nvr = maven_info_to_nvr(maveninfo)
-    return nvr
-
 def pom_to_maven_info(pominfo):
     """
     Convert the output of parsing a POM into a format compatible
-    with the output of getMavenBuild.
+    with Koji.
     The mapping is as follows:
     - groupId: group_id
     - artifactId: artifact_id
@@ -958,7 +942,6 @@ def pom_to_maven_info(pominfo):
 def maven_info_to_nvr(maveninfo):
     """
     Convert the maveninfo to NVR-compatible format.
-    Uses the same mapping as pom_to_nvr().
     The release cannot be determined from Maven metadata, and will
     be set to None.
     """

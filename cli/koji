@@ -1835,53 +1835,49 @@ def handle_import_archive(options, session, args):
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
-    parser.add_option("--pom", help=_("POM file to use when auto-creating a Maven build"), metavar="FILE")
+    parser.add_option("--type", help=_("The type of archive we're importing.  Currently supported types: maven"))
+    parser.add_option("--type-info", help=_("Type-specific information to associate with the archives.  "
+                                            "For Maven archives this should be a local path to a .pom file."))
     (suboptions, args) = parser.parse_args(args)
 
-    if not len(args) > 0:
-        parser.error(_("You must specify a build ID or N-V-R"))
+    if not len(args) > 1:
+        parser.error(_("You must specify a build ID or N-V-R and an archive to import"))
         assert False
 
     activate_session(session)
 
-    if not session.hasPerm('admin'):
-        print _("This action requires admin privileges")
-        return 1
+    if not suboptions.type:
+        parser.error(_("You must specify an archive type"))
+        assert False
+    if suboptions.type == 'maven':
+        if not (session.hasPerm('maven-import') or session.hasPerm('admin')):
+            parser.error(_("This action requires the maven-import privilege"))
+            assert False
+        if not suboptions.type_info:
+            parser.error(_("--type-info must point to a .pom file when importing Maven archives"))
+            assert False
+        pom_info = koji.parse_pom(suboptions.type_info)
+        maven_info = koji.pom_to_maven_info(pom_info)
+        suboptions.type_info = maven_info
+    else:
+        parser.error(_("Unsupported archive type: %s" % suboptions.type))
+        assert False
 
     needs_create = False
 
     buildinfo = session.getBuild(arg_filter(args[0]))
     if not buildinfo:
-        if suboptions.create_build:
-            needs_create = True
+        buildinfo = koji.parse_NVR(args[0])
+        if buildinfo['epoch'] == '':
+            buildinfo['epoch'] = None
         else:
-            print _("Could not find information for build: %s" % args[0])
-            return 1
-
-    maveninfo = None
-    if buildinfo:
-        maveninfo = session.getMavenBuild(buildinfo)
-    if not maveninfo:
-        if suboptions.pom:
-            if not suboptions.create_build:
-                print _("Could not find Maven information for build: %s" % args[0])
-                return 1
-            else:
-                needs_create = True
-
-    if needs_create:
-        if not buildinfo:
-            buildinfo = koji.parse_NVR(args[0])
-            if buildinfo['epoch'] == '':
-                buildinfo['epoch'] = None
-            else:
-                buildinfo['epoch'] = int(buildinfo['epoch'])
-        if suboptions.pom:
-            pom_info = koji.parse_pom(suboptions.pom)
-            maven_info = koji.pom_to_maven_info(pom_info)
-            session.createMavenBuild(buildinfo, maven_info)
+            buildinfo['epoch'] = int(buildinfo['epoch'])
+        if suboptions.type == 'maven':
+            # --type-info should point to a local .pom file
+            session.createMavenBuild(buildinfo, suboptions.type_info)
         else:
-            session.createEmptyBuild(**buildinfo)
+            # should get caught above
+            assert False
 
     for filepath in args[1:]:
         filename = os.path.basename(filepath)
@@ -1894,7 +1890,7 @@ def handle_import_archive(options, session, args):
         session.uploadWrapper(filepath, serverdir, callback=callback, blocksize=65536)
         print
         serverpath = "%s/%s" % (serverdir, filename)
-        session.importArchive(serverpath, buildinfo)
+        session.importArchive(serverpath, buildinfo, suboptions.type, suboptions.type_info)
         print "Imported: %s" % filename
 
 def handle_grant_permission(options, session, args):

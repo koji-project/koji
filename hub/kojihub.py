@@ -3981,26 +3981,24 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
         raise koji.GenericError, 'one of filename, type_name, or type_id must be specified'
 
     parts = filename.split('.')
-    if len(parts) < 2:
-        raise koji.GenericError, '%s does not have an extension, unable to determine file type' \
-              % filename
-    ext = parts[-1]
-    # special-case .tar.*
-    if len(parts) > 2 and parts[-2] == 'tar':
-        ext = '%s.%s' % tuple(parts[-2:])
-    select = r"""SELECT id, name, description, extensions FROM archivetypes
-    WHERE extensions ~ E'\\m%s\\M'""" % ext
-    results = _multiRow(select, locals(), ('id', 'name', 'description', 'extensions'))
-    if len(results) == 0:
+
+    for start in range(len(parts)-1, -1, -1):
+        ext = '.'.join(parts[start:])
+
+        select = r"""SELECT id, name, description, extensions FROM archivetypes
+                      WHERE extensions ~ E'\\m%s\\M'""" % ext
+        results = _multiRow(select, locals(), ('id', 'name', 'description', 'extensions'))
+
+        if len(results) == 1:
+            return results[0]
+        elif len(results) > 1:
+            # this should never happen, and is a misconfiguration in the database
+            raise koji.GenericError, 'multiple matches for file extension: %s' % ext
+    else:
         if strict:
             raise koji.GenericError, 'unsupported file extension: %s' % ext
         else:
             return None
-    elif len(results) > 1:
-        # this should never happen, and is a misconfiguration in the database
-        raise koji.GenericError, 'multiple matches for file extension: %s' % ext
-    else:
-        return results[0]
 
 def new_maven_build(build, maven_info):
     """
@@ -4032,13 +4030,15 @@ def new_maven_build(build, maven_info):
                     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
         _dml(insert, maven_info)
 
-def import_archive(filepath, buildinfo, buildroot_id=None):
+def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
 
     filepath: full path to the archive file
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
+    type: type of the archive being imported.  Currently supported archive types: maven
+    typeInfo: dict of type-specific information
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     """
     if not os.path.exists(filepath):
@@ -4067,36 +4067,24 @@ def import_archive(filepath, buildinfo, buildroot_id=None):
     (%(archive_id)i, %(type_id)i, %(build_id)i, %(buildroot_id)s, %(filename)s, %(size)i, %(md5sum)s)"""
     _dml(insert, locals())
 
-    maveninfo = get_maven_build(buildinfo)
-    if maveninfo:
-        # XXX This means that once we associate Maven metadata with a build, we can no longer
-        # associate non-Maven archives with it.  Is this acceptable?
+    if type == 'maven':
+        maveninfo = get_maven_build(buildinfo, strict=True)
         mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-        if archivetype['name'] == 'jar':
-            pom, pom_info = import_maven_archive(archive_id, filepath, buildinfo, maveninfo)
-            if pom_info:
-                maveninfo = koji.pom_to_maven_info(pom_info)
-                pom_archives = [a for a in list_archives(buildID=build_id, type='maven', typeInfo=maveninfo) \
-                                    if a['type_name'] == 'pom']
-                if not pom_archives:
-                    # the pom file must be imported before any zips/jars can
-                    raise koji.BuildError, 'unknown Maven build: %s' % koji.mavenLabel(maveninfo)
-        elif archivetype['name'] == 'zip':
-            # We associate the zip with the maven info too, since it was generated as part of a Maven build
-            _insert_maven_archive(archive_id, maveninfo)
-        elif archivetype['name'] == 'pom':
+
+        if archivetype['name'] == 'pom':
             pom_info = koji.parse_pom(filepath)
-            maveninfo = koji.pom_to_maven_info(pom_info)
-            _insert_maven_archive(archive_id, maveninfo)
-        else:
-            raise koji.BuildError, 'unsupported archive type: %s' % archivetype['name']
+            pom_maveninfo = koji.pom_to_maven_info(pom_info)
+            # sanity check: Maven info from pom must match the user-supplied typeInfo
+            if koji.mavenLabel(pom_maveninfo) != koji.mavenLabel(typeInfo):
+                raise koji.BuildError, 'Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' % \
+                    (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo))
+
+        _insert_maven_archive(archive_id, typeInfo)
         # move the file to it's final destination
         _import_archive_file(filepath, mavendir)
         _generate_maven_metadata(maveninfo, mavendir)
     else:
-        # A generic archive (not Maven)
-        # We don't know where it came from, so throw an error
-        raise koji.BuildError, 'only Maven archives are supported at this time'
+        raise koji.BuildError, 'unsupported archive type: %s' % type
 
 def _insert_maven_archive(archive_id, mavendata):
     """Associate the Maven data with the given archive"""
@@ -4105,22 +4093,6 @@ def _insert_maven_archive(archive_id, mavendata):
     insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
         VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
     _dml(insert, mavendata)
-
-def import_maven_archive(archive_id, filepath, buildinfo, maveninfo):
-    """
-    Import information about the file entries in the zip file.
-    The zip file (includes jars, wars, ears, etc.) must have been built
-    by Maven, and contain a pom.xml file under the META-INF/maven directory.
-    """
-    pom = koji.get_pom_from_jar(filepath)
-    pom_info = None
-    if pom:
-        # Some Maven-generated jars will not contain a pom.xml file (like -source and -javadoc jars)
-        pom_info = koji.parse_pom(contents=pom)
-        maveninfo = koji.pom_to_maven_info(pom_info)
-    _insert_maven_archive(archive_id, maveninfo)
-
-    return pom, pom_info
 
 def _import_archive_file(filepath, destdir):
     """
@@ -5932,7 +5904,7 @@ class RootExports(object):
     importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
 
-    def importArchive(self, filepath, buildinfo):
+    def importArchive(self, filepath, buildinfo, type, typeInfo):
         """
         Import an archive file and associate it with a build.  The archive can
         be any non-rpm filetype supported by Koji.
@@ -5940,11 +5912,16 @@ class RootExports(object):
         filepath: path to the archive file (relative to the Koji workdir)
         buildinfo: information about the build to associate the archive with
                    May be a string (NVR), integer (buildID), or dict (containing keys: name, version, release)
+        type: type of the archive being imported.  Currently supported archive types: maven
+        typeInfo: dict of type-specific information
         """
-        context.session.assertPerm('admin')
-        buildinfo = get_build(buildinfo, strict=True)
-        fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
-        import_archive(fullpath, buildinfo)
+        if type == 'maven':
+            context.session.assertPerm('maven-import')
+            buildinfo = get_build(buildinfo, strict=True)
+            fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
+            import_archive(fullpath, buildinfo, type, typeInfo)
+        else:
+            koji.GenericError, 'unsupported archive type: %s' % type
 
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
@@ -8297,7 +8274,7 @@ class HostExports(object):
                                clauses=['name = %(name)s', 'version = %(version)s',
                                         'state = %(state)s'],
                                values=values,
-                               opts={'order': '-build.id'})
+                               opts={'order': '-build.id', 'limit': 1})
         result = query.executeOne()
         release = None
         if result:
@@ -8330,15 +8307,35 @@ class HostExports(object):
         task.assertHost(host.id)
 
         build_info = get_build(build_id, strict=True)
+        maven_info = get_maven_build(build_id, strict=True)
 
         maven_task_id = maven_results['task_id']
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
         # import the build output
-        for file_path in maven_results['poms'] + \
-                maven_results['jars'] + maven_results['zips']:
-            import_archive(os.path.join(maven_task_dir, file_path),
-                           build_info, maven_buildroot_id)
+        for relpath, files in maven_results['files'].iteritems():
+            dir_maven_info = maven_info
+            poms = [f for f in files if f.endswith('.pom')]
+            if len(poms) == 0:
+                pass
+            elif len(poms) == 1:
+                # This directory has a .pom file, so get the Maven group_id, 
+                # artifact_id, and version from it and associate those with
+                # the artifacts in this directory
+                pom_path = os.path.join(maven_task_dir, relpath, poms[0])
+                pom_info = koji.parse_pom(pom_path)
+                dir_maven_info = koji.pom_to_maven_info(pom_info)
+            else:
+                raise koji.BuildError, 'multiple .pom files in %s: %s' % (relpath, ', '.join(poms))
+
+            for filename in files:
+                archivetype = get_archive_type(filename)
+                if not archivetype:
+                    # Unknown archive type, skip it
+                    continue
+                filepath = os.path.join(maven_task_dir, relpath, filename)
+                import_archive(filepath, build_info, 'maven', dir_maven_info, maven_buildroot_id)
+
         # move the logs to their final destination
         for log_path in maven_results['logs']:
             import_build_log(os.path.join(maven_task_dir, log_path),

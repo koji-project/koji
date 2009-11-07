@@ -2498,40 +2498,35 @@ class BuildMavenTask(BaseTaskHandler):
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile,
                              props=self.opts.get('properties'), profiles=self.opts.get('profiles'))
 
-        pom_extensions = ['.' + ext for ext in session.getArchiveType(type_name='pom')['extensions'].split()]
-        jar_extensions = ['.' + ext for ext in session.getArchiveType(type_name='jar')['extensions'].split()]
-        zip_extensions = ['.' + ext for ext in session.getArchiveType(type_name='zip')['extensions'].split()]
         logs = ['checkout.log']
         if self.opts.get('patches'):
             logs.append('patches.log')
-        poms = []
-        jars = []
-        zips = []
+        output_files = {}
 
         for path, dirs, files in os.walk(outputdir):
+            if not files:
+                continue
+            reldir = path[len(outputdir) + 1:]
             for filename in files:
-                relpath = os.path.join(path[len(outputdir) + 1:], filename)
                 root, ext = os.path.splitext(filename)
                 if ext == '.log':
-                    logs.append(relpath)
-                elif ext in pom_extensions:
-                    poms.append(relpath)
-                elif ext in jar_extensions:
-                    jars.append(relpath)
-                elif ext in zip_extensions:
-                    zips.append(relpath)
+                    logs.append(os.path.join(reldir, filename))
                 elif ext == '.md5' or \
                         ext == '.sha1' or \
                         filename == 'maven-metadata.xml':
                     # metadata, we'll recreate that ourselves
                     pass
                 else:
-                    raise koji.BuildError, 'unknown file type: %s' % filename
+                    output_files.setdefault(reldir, []).append(filename)
 
         # upload the build output
-        for filepath in logs + poms + jars + zips:
+        for filepath in logs:
             self.uploadFile(os.path.join(outputdir, filepath),
                             relPath=os.path.dirname(filepath))
+        for relpath, files in output_files.iteritems():
+            for filename in files:
+                self.uploadFile(os.path.join(outputdir, relpath, filename),
+                                relPath=relpath)
 
         # Should only find log files in the mock result directory.
         # Don't upload these log files, they've already been streamed
@@ -2551,9 +2546,7 @@ class BuildMavenTask(BaseTaskHandler):
         return {'maven_info': maven_info,
                 'buildroot_id': buildroot.id,
                 'logs': logs,
-                'poms': poms,
-                'jars': jars,
-                'zips': zips}
+                'files': output_files}
 
 class WrapperRPMTask(BaseTaskHandler):
     """Build a wrapper rpm around jars output from a Maven build.
@@ -2607,10 +2600,12 @@ class WrapperRPMTask(BaseTaskHandler):
                     continue
                 artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.task(task['id']), artifact_name))
         else:
-            # called as a top-level task to create or replace wrapper rpms on an existing build
+            # called as a top-level task to create wrapper rpms for an existing build
             # verify that the build is complete
             if not build['state'] == koji.BUILD_STATES['COMPLETE']:
                 raise koji.BuildError, 'cannot call wrapperRPM on a build that did not complete successfully'
+
+            maven_info = session.getMavenBuild(build['id'], strict=True)
 
             # get the list of files from the build instead of the task, because the task output directory may
             # have already been cleaned up
@@ -2622,7 +2617,7 @@ class WrapperRPMTask(BaseTaskHandler):
                 if ext == '.log':
                     # listArchives() should never return .log files, but we check for completeness
                     continue
-                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.mavenbuild(build, artifact), artifact_name))
+                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.mavenbuild(build, maven_info), artifact_name))
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
@@ -2639,19 +2634,18 @@ class WrapperRPMTask(BaseTaskHandler):
         if build:
             self.copy_fields(build, values, 'epoch', 'name', 'version', 'release')
         else:
-            # Get the pom info from the first jar that has a pom and convert it to build format
+            # Get the pom info from the first pom and convert it to build format
             # so we can use it as substitution variables in the template.
-            # If no jar has a pom, populate the values dict with empty placeholders.  If the spec file 
+            # If there are no poms, populate the values dict with empty placeholders.  If the spec file 
             # doesn't require these variables, it should work.  If it does, then the rpmbuild will 
             # likely fail.
-            for jar in artifacts.get('.jar', []):
-                pom = koji.get_pom_from_jar(jar)
-                if pom:
-                    pom_info = koji.parse_pom(contents=pom)
-                    pom_nvr = koji.pom_to_nvr(pom_info)
-                    pom_nvr['release'] = 'scratch'
-                    self.copy_fields(pom_nvr, values, 'epoch', 'name', 'version', 'release')
-                    break
+            poms = artifacts.get('.pom', [])
+            if poms:
+                pom_info = koji.parse_pom(poms[0])
+                maven_info = koji.pom_to_maven_info(pom_info)
+                maven_nvr = koji.maven_info_to_nvr(maven_info)
+                maven_nvr['release'] = '0.scratch'
+                self.copy_fields(pom_nvr, values, 'epoch', 'name', 'version', 'release')
             else:
                 values.update({'epoch': None, 'name': '', 'version': '', 'release': ''})
 

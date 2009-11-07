@@ -9,7 +9,7 @@
   #elif $isinstance($value, list) 
 $sep.join([$str($val) for $val in $value]) 
   #elif $isinstance($value, dict)
-$sep.join(['%s=%s' % ($n, $v) for $n, $v in $value.items()])
+$sep.join(['%s=%s' % (($n == '' and "''" or $n), $v) for $n, $v in $value.items()])
   #else 
 $value
   #end if
