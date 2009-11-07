@@ -44,6 +44,7 @@ import sha
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import types
@@ -3285,10 +3286,39 @@ def _get_zipfile_list(archive_id, zippath):
     archive = zipfile.ZipFile(zippath, 'r')
     for entry in archive.infolist():
         filename = koji.fixEncoding(entry.filename)
-        size = entry.file_size
         result.append({'archive_id': archive_id,
                        'name': filename,
-                       'size': size})
+                       'size': entry.file_size,
+                       'mtime': int(time.mktime(entry.date_time + (0, 0, -1)))})
+    archive.close()
+    return result
+
+def _get_tarball_list(archive_id, tarpath):
+    """
+    Get a list of the entries in the tarball located at tarpath.
+    Return a list of dicts, one per entry in the tarball.  Each dict contains:
+     - archive_id
+     - name
+     - size
+     - mtime
+     - mode
+     - user
+     - group
+    If the file does not exist, return an empty list.
+    """
+    result = []
+    if not os.path.exists(tarpath):
+        return result
+    archive = tarfile.open(tarpath, 'r')
+    for entry in archive:
+        filename = koji.fixEncoding(entry.name)
+        result.append({'archive_id': archive_id,
+                       'name': filename,
+                       'size': entry.size,
+                       'mtime': entry.mtime,
+                       'mode': entry.mode,
+                       'user': entry.uname,
+                       'group': entry.gname})
     archive.close()
     return result
 
@@ -3304,14 +3334,7 @@ def list_archive_files(archive_id, queryOpts=None):
     archive_info = get_archive(archive_id, strict=True)
 
     archive_type = get_archive_type(type_id=archive_info['type_id'], strict=True)
-    if not archive_type['name'] in ('zip', 'jar'):
-        # XXX support other archive types
-        return _applyQueryOpts([], queryOpts)
-
-    build_info = get_build(archive_info['build_id'])
-    if not build_info:
-        return _applyQueryOpts([], queryOpts)
-
+    build_info = get_build(archive_info['build_id'], strict=True)
     maven_info = get_maven_build(build_info['id'])
     if not maven_info:
         # XXX support other archive types, when they exist
@@ -3319,7 +3342,14 @@ def list_archive_files(archive_id, queryOpts=None):
 
     file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
                              archive_info['filename'])
-    return _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
+
+    if archive_type['name'] in ('zip', 'jar'):
+        return _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
+    elif archive_type['name'] == 'tar':
+        return _applyQueryOpts(_get_tarball_list(archive_id, file_path), queryOpts)
+    else:
+        # XXX support other archive types
+        return _applyQueryOpts([], queryOpts)
 
 def get_archive_file(archive_id, filename):
     """
@@ -3955,6 +3985,12 @@ def _import_wrapper(task_id, build_info, rpm_results):
         # assume we're only importing noarch packages
         import_build_log(os.path.join(rpm_task_dir, log),
                          build_info, subdir='noarch')
+
+def get_archive_types():
+    """Return a list of all supported archivetypes"""
+    select = """SELECT id, name, description, extensions FROM archivetypes
+    ORDER BY id"""
+    return _multiRow(select, {}, ('id', 'name', 'description', 'extensions'))
 
 def _get_archive_type_by_name(name, strict=True):
     select = """SELECT id, name, description, extensions FROM archivetypes
@@ -6209,6 +6245,7 @@ class RootExports(object):
 
     getBuild = staticmethod(get_build)
     getMavenBuild = staticmethod(get_maven_build)
+    getArchiveTypes = staticmethod(get_archive_types)
     getArchiveType = staticmethod(get_archive_type)
     listArchives = staticmethod(list_archives)
     getArchive = staticmethod(get_archive)

@@ -3,6 +3,7 @@ import datetime
 import koji
 from koji.util import md5_constructor
 import os
+import stat
 import time
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
@@ -348,6 +349,35 @@ def formatDep(name, version, flags):
             if version:
                 s = "%s %s" %(s, version)
     return s
+
+def formatMode(mode):
+    """Format a numeric mode into a ls-like string describing the access mode."""
+    if stat.S_ISREG(mode):
+        result = '-'
+    elif stat.S_ISDIR(mode):
+        result = 'd'
+    elif stat.S_ISCHR(mode):
+        result = 'c'
+    elif stat.S_ISBLK(mode):
+        result = 'b'
+    elif stat.S_ISFIFO(mode):
+        result = 'p'
+    elif stat.S_ISLNK(mode):
+        result = 'l'
+    elif stat.S_ISSOCK(mode):
+        result = 's'
+    else:
+        # What is it?  Show it like a regular file.
+        result = '-'
+
+    for x in ('USR', 'GRP', 'OTH'):
+        for y in ('R', 'W', 'X'):
+            if mode & getattr(stat, 'S_I' + y + x):
+                result += y.lower()
+            else:
+                result += '-'
+
+    return result
 
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';

@@ -652,6 +652,7 @@ CREATE TABLE archivetypes (
 insert into archivetypes (name, description, extensions) values ('jar', 'Jar files', 'jar war rar ear');
 insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives', 'zip');
 insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management files', 'pom');
+insert into archivetypes (name, description, extensions) values ('tar', 'Tar files', 'tar tar.gz tar.bz2');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
