@@ -1800,6 +1800,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     logger = logging.getLogger("koji.hub.repo_init")
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True, event=event)
+    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
+                              event=event, repo_id=None)
     tag_id = tinfo['id']
     repo_arches = {}
     if tinfo['arches']:
@@ -1900,6 +1902,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                     blocklist.write('\n')
                 blocklist.close()
 
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
+                              event=event, repo_id=repo_id)
     return [repo_id, event_id]
 
 def repo_set_state(repo_id, state, check=True):
@@ -7588,6 +7592,7 @@ class HostExports(object):
         host = Host()
         host.verify()
         rinfo = repo_info(repo_id, strict=True)
+        koji.plugin.run_callbacks('preRepoDone', repo=rinfo, data=data, expire=expire)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
@@ -7607,6 +7612,7 @@ class HostExports(object):
                 os.unlink(src)
         if expire:
             repo_expire(repo_id)
+            koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
             return
         #else:
         repo_ready(repo_id)
@@ -7621,7 +7627,7 @@ class HostExports(object):
         except OSError:
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
-
+        koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
     def isEnabled(self):
         host = Host()
