@@ -38,7 +38,7 @@
     #end if
     #if $file.has_key('mode') and $file.mode
     <tr>
-      <th>Mode</th><td>$util.formatMode($file.mode)</td>
+      <th>Mode</th><td class="rpmheader">$util.formatMode($file.mode)</td>
     </tr>
     #end if
     #if $rpm
