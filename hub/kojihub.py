@@ -1201,6 +1201,12 @@ def _tag_build(tag,build,user_id=None,force=False):
     """
     tag = get_tag(tag, strict=True)
     build = get_build(build, strict=True)
+    if user_id:
+        user = get_user(user_id, strict=True)
+    else:
+        # use the user associated with the current session
+        user = get_user(context.session.user_id, strict=True)
+    koji.plugin.run_callbacks('preTag', tag=tag, build=build, user=user, force=force)
     tag_id = tag['id']
     build_id = build['id']
     nvr = "%(name)s-%(version)s-%(release)s" % build
@@ -1232,6 +1238,7 @@ def _tag_build(tag,build,user_id=None,force=False):
     q = """INSERT INTO tag_listing(tag_id,build_id,active,create_event)
     VALUES(%(tag_id)i,%(build_id)i,TRUE,%(event_id)i)"""
     _dml(q,locals())
+    koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
 
 def _untag_build(tag,build,user_id=None,strict=True,force=False):
     """Untag a build
@@ -1244,6 +1251,12 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     """
     tag = get_tag(tag, strict=True)
     build = get_build(build, strict=True)
+    if user_id:
+        user = get_user(user_id, strict=True)
+    else:
+        # use the user associated with the current session
+        user = get_user(context.session.user_id, strict=True)
+    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id,user_id=user_id,force=force)
@@ -1255,6 +1268,7 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr,tag['name'])
+    koji.plugin.run_callbacks('postUntag', tag=tag, build=build, user=user, force=force, strict=strict)
 
 # tag-group operations
 #       add
