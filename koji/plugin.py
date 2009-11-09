@@ -40,7 +40,7 @@ callbacks = {
     'preBuildStateChange':    [],
     'postBuildStateChange':   [],
     'preImport':              [],
-    'portImport':             [],
+    'postImport':             [],
     'preTag':                 [],
     'postTag':                [],
     'preUntag':               [],
