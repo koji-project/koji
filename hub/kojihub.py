@@ -3208,6 +3208,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     """
     if brmap is None:
         brmap = {}
+    koji.plugin.run_callbacks('preImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
+                              task_id=task_id, build_id=build_id, build=None, logs=logs)
     uploadpath = koji.pathinfo.work()
     #verify files exist
     for relpath in [srpm] + rpms:
@@ -3235,6 +3237,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
     if build_id is None:
         build_id = new_build(build)
+        binfo = get_build(build_id, strict=True)
     else:
         #build_id was passed in - sanity check
         binfo = get_build(build_id, strict=True)
@@ -3265,6 +3268,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             for relpath in files:
                 fn = "%s/%s" % (uploadpath,relpath)
                 import_build_log(fn, build, subdir=key)
+    koji.plugin.run_callbacks('postImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
+                              task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return build
 
 def import_rpm(fn,buildinfo=None,brootid=None):
@@ -3329,6 +3334,9 @@ def import_rpm(fn,buildinfo=None,brootid=None):
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
     rpminfo['brootid'] = brootid
+
+    koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo)
+
     q = """INSERT INTO rpminfo (id,name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
             external_repo_id,
@@ -3339,6 +3347,8 @@ def import_rpm(fn,buildinfo=None,brootid=None):
             %(size)s,%(payloadhash)s)
     """
     _dml(q, rpminfo)
+
+    koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo)
 
     return rpminfo
 
@@ -3486,6 +3496,7 @@ def import_build_in_place(build):
                 raise koji.GenericError, "srpm mismatch for %s: %s (expected %s)" \
                         % (fn,sourcerpm,srpmname)
             rpms.append(fn)
+    koji.plugin.run_callbacks('preImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
     # actually import
     buildinfo = None
     if srpm is not None:
@@ -3504,6 +3515,7 @@ def import_build_in_place(build):
     WHERE id=%(build_id)i"""
     _dml(update,locals())
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
+    koji.plugin.run_callbacks('postImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
     return build_id
 
 def add_rpm_sig(an_rpm, sighdr):
@@ -4658,15 +4670,18 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     """
     imageinfo = {}
     imageinfo['id'] = _singleValue("""SELECT nextval('imageinfo_id_seq')""")
-    imageinfo['taskid'] = task_id
+    imageinfo['task_id'] = task_id
     imageinfo['filename'] = filename
     imageinfo['filesize'] = int(filesize)
     imageinfo['arch'] = arch
     imageinfo['mediatype'] = mediatype
     imageinfo['hash'] = hash
+
+    koji.plugin.run_callbacks('preImport', type='image', image=imageinfo)
+
     q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
            arch,mediatype,hash)
-           VALUES (%(id)i,%(taskid)i,%(filename)s,%(filesize)i,
+           VALUES (%(id)i,%(task_id)i,%(filename)s,%(filesize)i,
            %(arch)s,%(mediatype)s,%(hash)s)
         """
     _dml(q, imageinfo)
@@ -4686,6 +4701,8 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     image_id = imageinfo['id']
     for rpm_id in rpm_ids:
         _dml(q, locals())
+
+    koji.plugin.run_callbacks('postImport', type='image', image=imageinfo)
 
     return image_id
 
@@ -7427,6 +7444,8 @@ class HostExports(object):
 
     # Called from kojid::LiveCDTask
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+        """Import a built image, populating the database with metadata and moving the image
+        to its final location."""
         host = Host()
         host.verify()
         task = Task(task_id)
