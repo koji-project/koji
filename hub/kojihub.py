@@ -798,6 +798,13 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
     pkg_id = pkg['id']
     if owner is not None:
         owner = get_user(owner,strict=True)['id']
+    action = 'add'
+    if update:
+        action = 'update'
+    elif bool(block):
+        action = 'block'
+    koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches, force=force, update=update)
     # first check to see if package is:
     #   already present (via inheritance)
     #   blocked
@@ -841,6 +848,8 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
         else:
             raise koji.GenericError, "owner not specified"
     _pkglist_add(tag_id,pkg_id,owner,block,extra_arches)
+    koji.plugin.run_callbacks('postPackageListChange', action=action, tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches, force=force, update=update)
 
 def pkglist_remove(taginfo,pkginfo,force=False):
     """Remove package from the list for tag
@@ -852,9 +861,11 @@ def pkglist_remove(taginfo,pkginfo,force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
-    tag_id = get_tag_id(taginfo, strict=True)
-    pkg_id = get_package_id(pkginfo, strict=True)
-    _pkglist_remove(tag_id,pkg_id)
+    tag = get_tag(taginfo, strict=True)
+    pkg = lookup_package(pkginfo, strict=True)
+    koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
+    _pkglist_remove(tag['id'],pkg['id'])
+    koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
 
 def pkglist_block(taginfo,pkginfo):
     """Block the package in tag"""
@@ -868,6 +879,7 @@ def pkglist_unblock(taginfo,pkginfo):
     the blocking entry is simply removed"""
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
+    koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg)
     tag_id = tag['id']
     pkg_id = pkg['id']
     pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
@@ -890,6 +902,7 @@ def pkglist_unblock(taginfo,pkginfo):
         if not pkglist.has_key(pkg_id) or pkglist[pkg_id]['blocked']:
             _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'],
                          event_id)
+    koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
 
 def pkglist_setowner(taginfo,pkginfo,owner,force=False):
     """Set the owner for package in tag"""

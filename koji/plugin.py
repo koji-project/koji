@@ -33,8 +33,8 @@ logger.setLevel(logging.INFO)
 # the available callback hooks and a list
 # of functions to be called for each event
 callbacks = {
-    'prePackageAdd':          [],
-    'postPackageAdd':         [],
+    'prePackageListChange':   [],
+    'postPackageListChange':  [],
     'preTaskStateChange':     [],
     'postTaskStateChange':    [],
     'preBuildStateChange':    [],
