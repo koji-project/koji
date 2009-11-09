@@ -44,9 +44,7 @@ callbacks = {
     'preTag':                 [],
     'postTag':                [],
     'preUntag':               [],
-    'postUntag':              [],
-    'preDelete':              [],
-    'postDelete':             []
+    'postUntag':              []
     }
 
 class PluginTracker(object):
