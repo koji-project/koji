@@ -4656,13 +4656,6 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     exceeds the 32-bit signed integer limit. This function will convert it if
     need be. Not called for scratch images.
     """
-
-    #sanity checks
-    host = Host()
-    host.verify()
-    task = Task(task_id)
-    task.assertHost(host.id)
-
     imageinfo = {}
     imageinfo['id'] = _singleValue("""SELECT nextval('imageinfo_id_seq')""")
     imageinfo['taskid'] = task_id
@@ -7434,6 +7427,10 @@ class HostExports(object):
 
     # Called from kojid::LiveCDTask
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
         image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
                                        hash, rpmlist)
         moveImageResults(task_id, image_id, arch)
