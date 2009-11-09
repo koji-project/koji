@@ -5844,16 +5844,20 @@ class RootExports(object):
 
         results = []
         hdr = koji.get_rpm_header(rpm_path)
-        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags',
+                                              'fileusername', 'filegroupname', 'filemtimes', 'filemodes'])
         digest_algo = koji.util.filedigestAlgo(hdr)
 
-        for (name, digest, size, flags) in zip(fields['filenames'], fields['filemd5s'],
-                                           fields['filesizes'], fields['fileflags']):
+        for (name, digest, size, flags, user, group, mtime, mode) in zip(fields['filenames'], fields['filemd5s'],
+                                                                         fields['filesizes'], fields['fileflags'],
+                                                                         fields['fileusername'], fields['filegroupname'],
+                                                                         fields['filemtimes'], fields['filemodes']):
             if queryOpts.get('asList'):
-                results.append([name, digest, size, flags, digest_algo])
+                results.append([name, digest, size, flags, digest_algo, user, group, mtime, mode])
             else:
                 results.append({'name': name, 'digest': digest, 'digest_algo': digest_algo,
-                                'md5': digest, 'size': size, 'flags': flags})
+                                'md5': digest, 'size': size, 'flags': flags,
+                                'user': user, 'group': group, 'mtime': mtime, 'mode': mode})
 
         return _applyQueryOpts(results, queryOpts)
 
@@ -5881,7 +5885,8 @@ class RootExports(object):
 
         hdr = koji.get_rpm_header(rpm_path)
         # use filemd5s for backward compatibility
-        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags',
+                                              'fileusername', 'filegroupname', 'filemtimes', 'filemodes'])
         digest_algo = koji.util.filedigestAlgo(hdr)
 
         i = 0
@@ -5889,7 +5894,9 @@ class RootExports(object):
             if name == filename:
                 return {'rpm_id': rpm_info['id'], 'name': name, 'digest': fields['filemd5s'][i],
                         'digest_algo': digest_algo, 'md5': fields['filemd5s'][i],
-                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i]}
+                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i],
+                        'user': fields['fileusername'][i], 'group': fields['filegroupname'][i],
+                        'mtime': fields['filemtimes'][i], 'mode': fields['filemodes'][i]}
             i += 1
         return {}
 

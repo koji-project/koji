@@ -1,5 +1,6 @@
 #from kojiweb import util
 #import urllib
+#import datetime
 
 #include "includes/header.chtml"
   <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></h4>
@@ -14,6 +15,26 @@
     <tr>
       <th>Size</th><td>$file.size</td>
     </tr>
+    #if $file.has_key('mtime') and $file.mtime
+    <tr>
+      <th>Modification time</th><td>$util.formatTimeLong($datetime.datetime.fromtimestamp($file.mtime))</td>
+    </tr>
+    #end if
+    #if $file.has_key('user') and $file.user
+    <tr>
+      <th>User</th><td>$file.user</td>
+    </tr>
+    #end if
+    #if $file.has_key('group') and $file.group
+    <tr>
+      <th>Group</th><td>$file.group</td>
+    </tr>
+    #end if
+    #if $file.has_key('mode') and $file.mode
+    <tr>
+      <th>Mode</th><td class="rpmheader">$util.formatMode($file.mode)</td>
+    </tr>
+    #end if
     <tr>
       <th>Flags</th>
       <td>
