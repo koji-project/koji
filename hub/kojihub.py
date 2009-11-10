@@ -5603,7 +5603,9 @@ class RootExports(object):
           - owner_name
           - creation_event_id
           - creation_time
+          - creation_ts
           - completion_time
+          - completion_ts
           - task_id
 
         If no builds match, an empty list is returned.
@@ -5611,6 +5613,8 @@ class RootExports(object):
         fields = (('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
+                  ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+                  ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
                   ('users.id', 'owner_id'), ('users.name', 'owner_name'))
