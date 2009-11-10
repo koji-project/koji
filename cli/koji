@@ -219,11 +219,12 @@ def print_task_recurse(task,depth=0):
 
 class TaskWatcher(object):
 
-    def __init__(self,task_id,session,level=0):
+    def __init__(self,task_id,session,level=0,quiet=False):
         self.id = task_id
         self.session = session
         self.info = None
         self.level = level
+        self.quiet = quiet
 
     #XXX - a bunch of this stuff needs to adapt to different tasks
 
@@ -261,19 +262,22 @@ class TaskWatcher(object):
         last = self.info
         self.info = self.session.getTaskInfo(self.id, request=True)
         if self.info is None:
-            print "No such task id: %i" % self.id
+            if not self.quiet:
+                print "No such task id: %i" % self.id
             sys.exit(1)
         state = self.info['state']
         if last:
             #compare and note status changes
             laststate = last['state']
             if laststate != state:
-                print "%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info))
+                if not self.quiet:
+                    print "%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info))
                 return True
             return False
         else:
             # First time we're seeing this task, so just show the current state
-            print "%s: %s" % (self.str(), self.display_state(self.info))
+            if not self.quiet:
+                print "%s: %s" % (self.str(), self.display_state(self.info))
             return False
 
     def is_done(self):
@@ -332,42 +336,46 @@ def display_task_results(tasks):
             # shouldn't happen
             print '%s has not completed' % task_label
 
-def watch_tasks(session,tasklist):
+def watch_tasks(session,tasklist,quiet=False):
     if not tasklist:
         return
-    print "Watching tasks (this may be safely interrupted)..."
+    if not quiet:
+        print "Watching tasks (this may be safely interrupted)..."
     rv = 0
     try:
         tasks = {}
         for task_id in tasklist:
-            tasks[task_id] = TaskWatcher(task_id,session)
+            tasks[task_id] = TaskWatcher(task_id,session,quiet=quiet)
         while True:
             all_done = True
             for task_id,task in tasks.items():
                 changed = task.update()
                 if not task.is_done():
                     all_done = False
-                elif changed:
-                    # task is done and state just changed
-                    display_tasklist_status(tasks)
+                else:
+                    if changed:
+                        # task is done and state just changed
+                        if not quiet:
+                            display_tasklist_status(tasks)
                     if not task.is_success():
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
                     if not child_id in tasks.keys():
-                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1)
+                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
                         # in case they have children also
                         all_done = False
             if all_done:
-                print
-                display_task_results(tasks)
+                if not quiet:
+                    print
+                    display_task_results(tasks)
                 break
 
             time.sleep(1)
     except (KeyboardInterrupt):
-        if tasks:
+        if tasks and not quiet:
             print \
 """Tasks still running. You can continue to watch with the 'koji watch-task' command.
 Running Tasks:
@@ -655,8 +663,12 @@ def handle_build(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
                       help=_("Perform a scratch build"))
-    parser.add_option("--nowait", action="store_true",
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
                       help=_("Don't wait on build"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--arch-override", help=_("Override build arches"))
     parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
     parser.add_option("--noprogress", action="store_true",
@@ -698,9 +710,10 @@ def handle_build(options, session, args):
     # try to check that source is an SRPM
     if '://' not in source:
         #treat source as an srpm and upload it
-        print "Uploading srpm: %s" % source
+        if not build_opts.quiet:
+            print "Uploading srpm: %s" % source
         serverdir = _unique_path('cli-build')
-        if _running_in_bg() or build_opts.noprogress:
+        if _running_in_bg() or build_opts.noprogress or build_opts.quiet:
             callback = None
         else:
             callback = _progress_callback
@@ -708,13 +721,15 @@ def handle_build(options, session, args):
         print
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if _running_in_bg() or build_opts.nowait:
-        return
-    else:
+    if not build_opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    print repr(build_opts.wait)
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session,[task_id])
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+    else:
+        return
 
 def handle_chain_build(options, session, args):
     # XXX - replace handle_build with this, once chain-building has gotten testing
@@ -812,12 +827,13 @@ def handle_resubmit(options, session, args):
         print "Resubmitting the following task:"
         _printTaskInfo(session, taskID, 0, False, True)
     newID = session.resubmitTask(taskID)
-    print "Resubmitted task %s as new task %s" % (taskID, newID)
+    if not options.quiet:
+        print "Resubmitted task %s as new task %s" % (taskID, newID)
     if _running_in_bg() or options.nowait:
         return
     else:
         session.logout()
-        return watch_tasks(session,[newID])
+        return watch_tasks(session, [newID], quiet=options.quiet)
 
 def handle_call(options, session, args):
     "[admin] Execute an arbitrary XML-RPC call"
@@ -4135,6 +4151,8 @@ def anon_handle_watch_task(options, session, args):
     usage = _("usage: %prog watch-task [options] <task id> [<task id>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     activate_session(session)
     tasks = []
@@ -4146,7 +4164,7 @@ def anon_handle_watch_task(options, session, args):
     if not tasks:
         parser.error(_("at least one task id must be specified"))
 
-    return watch_tasks(session, tasks)
+    return watch_tasks(session, tasks, quiet=options.quiet)
 
 def anon_handle_watch_logs(options, session, args):
     "Watch logs in realtime"
