@@ -6823,7 +6823,7 @@ class RootExports(object):
         """Search for an item in the database matching "terms".
         "type" specifies what object type to search for, and must be
         one of "package", "build", "tag", "target", "user", "host",
-        "rpm", or "file".  "matchType" specifies the type of search to
+        or "rpm".  "matchType" specifies the type of search to
         perform, and must be one of "glob" or "regexp".  All searches
         are case-insensitive.  A list of maps containing "id" and
         "name" will be returned.  If no matches are found, an empty
@@ -6856,10 +6856,6 @@ class RootExports(object):
         elif type == 'rpm':
             clause = "name || '-' || version || '-' || release || '.' || arch || '.rpm' %s %%(terms)s" % oper
             cols = ('id', "name || '-' || version || '-' || release || '.' || arch || '.rpm'")
-        elif type == 'file':
-            # only search for exact matches against files, so we can use the index and not thrash the disks
-            clause = 'filename = %(terms)s'
-            cols = ('rpm_id', 'filename')
         elif type == 'tag':
             joins.append('tag_config ON tag.id = tag_config.tag_id')
             clause = 'tag_config.active = TRUE and name %s %%(terms)s' % oper
