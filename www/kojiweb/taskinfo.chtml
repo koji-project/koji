@@ -225,9 +225,17 @@ $value
     <tr>
       <th>Created</th><td>$util.formatTimeLong($task.create_time)</td>
     </tr>
+    #if $task.state == $koji.TASK_STATES.OPEN
+    #if $estCompletion
+    <tr>
+      <th>Est. Completion</th><td>$util.formatTimeLong($estCompletion)</td>
+    </tr>
+    #end if
+    #elif $task.completion_time
     <tr>
       <th>Completed</th><td>$util.formatTimeLong($task.completion_time)</td>
     </tr>
+    #end if
     <tr>
       <th>Owner</th>
       <td>

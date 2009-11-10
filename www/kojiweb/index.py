@@ -502,9 +502,18 @@ def taskinfo(req, taskID):
 
     builds = server.listBuilds(taskID=task['id'])
     if builds:
-        values['taskBuild'] = builds[0]
+        taskBuild = builds[0]
     else:
-        values['taskBuild'] = None
+        taskBuild = None
+    values['taskBuild'] = taskBuild
+
+    values['estCompletion'] = None
+    if taskBuild and taskBuild['state'] == koji.BUILD_STATES['BUILDING']:
+        avgDuration = server.getAverageBuildDuration(taskBuild['package_id'])
+        if avgDuration != None:
+            avgDelta = datetime.timedelta(seconds=avgDuration)
+            startTime = datetime.datetime.fromtimestamp(taskBuild['creation_ts'])
+            values['estCompletion'] = startTime + avgDelta
 
     buildroots = server.listBuildroots(taskID=task['id'])
     values['buildroots'] = buildroots

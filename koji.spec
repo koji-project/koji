@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.3.1
+Version: 1.3.2
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -40,6 +40,16 @@ Requires: %{name} = %{version}-%{release}
 
 %description hub
 koji-hub is the XMLRPC interface to the koji database
+
+%package hub-plugins
+Summary: Koji hub plugins
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires: %{name}-hub = %{version}-%{release}
+
+%description hub-plugins
+Plugins to the koji XMLRPC interface
 
 %package builder
 Summary: Koji RPM builder daemon
@@ -124,6 +134,11 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 %config(noreplace) /etc/koji-hub/hub.conf
 
+%files hub-plugins
+%defattr(-,root,root)
+%dir %{_prefix}/lib/koji-hub-plugins
+%{_prefix}/lib/koji-hub-plugins/*.py*
+
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
@@ -179,6 +194,10 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Nov 10 2009 Mike Bonnet <mikeb@redhat.com> - 1.3.2-1
+- support for LiveCD creation
+- new event-based callback system
+
 * Fri Jun 12 2009 Mike Bonnet <mikeb@redhat.com> - 1.3.1-2
 - use <mirrorOf>*</mirrorOf> now that Maven 2.0.8 is available in the buildroots
 - retrieve Maven info for a build from the top-level pom.xml in the source tree

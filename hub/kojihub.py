@@ -26,6 +26,7 @@ import calendar
 import koji
 import koji.auth
 import koji.db
+import koji.plugin
 import koji.policy
 import datetime
 import errno
@@ -134,6 +135,9 @@ class Task(object):
         """Attempt to associate the task for host, either to assign or open
 
         returns True if successful, False otherwise"""
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
+        self.runCallbacks('preTaskStateChange', info, 'host_id', host_id)
         #we use row-level locks to keep things sane
         #note the SELECT...FOR UPDATE
         task_id = self.id
@@ -170,6 +174,8 @@ class Task(object):
         q = """UPDATE task SET state=%(state)s,host_id=%(host_id)s
         WHERE id=%(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
+        self.runCallbacks('postTaskStateChange', info, 'host_id', host_id)
         return True
 
     def assign(self,host_id,force=False):
@@ -196,6 +202,9 @@ class Task(object):
 
     def free(self):
         """Free a task"""
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('preTaskStateChange', info, 'host_id', None)
         task_id = self.id
         # access checks should be performed by calling function
         query = """SELECT state FROM task WHERE id = %(id)i FOR UPDATE"""
@@ -211,23 +220,31 @@ class Task(object):
         q = """UPDATE task SET state=%(newstate)s,host_id=%(newhost)s
         WHERE id=%(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('postTaskStateChange', info, 'host_id', None)
         return True
 
     def setWeight(self,weight):
         """Set weight for task"""
         task_id = self.id
+        weight = float(weight)
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'weight', weight)
         # access checks should be performed by calling function
         q = """UPDATE task SET weight=%(weight)s WHERE id = %(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'weight', weight)
 
     def setPriority(self, priority, recurse=False):
         """Set priority for task"""
         task_id = self.id
         priority = int(priority)
-
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'priority', priority)
         # access checks should be performed by calling function
         q = """UPDATE task SET priority=%(priority)s WHERE id = %(task_id)s"""
         _dml(q,locals())
+        self.runCallbacks('postTaskStateChange', info, 'priority', priority)
 
         if recurse:
             """Change priority of child tasks"""
@@ -241,11 +258,18 @@ class Task(object):
         Returns True if successful, False if not"""
         task_id = self.id
         # access checks should be performed by calling function
-        st_closed = koji.TASK_STATES['CLOSED']
+        # this is an approximation, and will be different than what is in the database
+        # the actual value should be retrieved from the 'new' value of the post callback
+        now = time.time()
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', state)
+        self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
         update = """UPDATE task SET result = %(result)s, state = %(state)s, completion_time = NOW()
         WHERE id = %(task_id)d
         """
         _dml(update,locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', state)
+        self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
 
     def close(self,result):
         # access checks should be performed by calling function
@@ -276,6 +300,10 @@ class Task(object):
         successfully canceled, or if it was already canceled, False if it is
         closed."""
         # access checks should be performed by calling function
+        now = time.time()
+        info = self.getInfo(request=True)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
+        self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
         task_id = self.id
         q = """SELECT state FROM task WHERE id = %(task_id)s FOR UPDATE"""
         state = _singleValue(q,locals())
@@ -289,6 +317,8 @@ class Task(object):
         update = """UPDATE task SET state = %(st_canceled)i, completion_time = NOW()
         WHERE id = %(task_id)i"""
         _dml(update, locals())
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
+        self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
         #cancel associated builds (only if state is 'BUILDING')
         #since we check build state, we avoid loops with cancel_build on our end
         b_building = koji.BUILD_STATES['BUILDING']
@@ -403,6 +433,22 @@ class Task(object):
                 task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
+    def runCallbacks(self, cbtype, old_info, attr, new_val):
+        if cbtype.startswith('pre'):
+            info = old_info
+        elif cbtype.startswith('post'):
+            info = self.getInfo(request=True)
+            new_val = info[attr]
+        else:
+            raise koji.GenericError, 'unknown callback type: %s' % cbtype
+        old_val = old_info[attr]
+        if attr == 'state':
+            # state is passed in as an integer, but we want to use the string
+            old_val = koji.TASK_STATES[old_val]
+            new_val = koji.TASK_STATES[new_val]
+        koji.plugin.run_callbacks(cbtype, attribute=attr, old=old_val, new=new_val,
+                                  info=info)
+
 def make_task(method,arglist,**opts):
     """Create a task
 
@@ -464,6 +510,7 @@ def make_task(method,arglist,**opts):
                                       allow_none=1)
     opts['state'] = koji.TASK_STATES['FREE']
     opts['method'] = method
+    koji.plugin.run_callbacks('preTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     # stick it in the database
     q = """
     INSERT INTO task (state,owner,method,request,priority,
@@ -474,6 +521,8 @@ def make_task(method,arglist,**opts):
     _dml(q,opts)
     q = """SELECT currval('task_id_seq')"""
     task_id = _singleValue(q, {})
+    opts['id'] = task_id
+    koji.plugin.run_callbacks('postTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     return task_id
 
 def mktask(__taskopts,__method,*args,**opts):
@@ -753,6 +802,13 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
     pkg_id = pkg['id']
     if owner is not None:
         owner = get_user(owner,strict=True)['id']
+    action = 'add'
+    if update:
+        action = 'update'
+    elif bool(block):
+        action = 'block'
+    koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches, force=force, update=update)
     # first check to see if package is:
     #   already present (via inheritance)
     #   blocked
@@ -796,6 +852,8 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
         else:
             raise koji.GenericError, "owner not specified"
     _pkglist_add(tag_id,pkg_id,owner,block,extra_arches)
+    koji.plugin.run_callbacks('postPackageListChange', action=action, tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches, force=force, update=update)
 
 def pkglist_remove(taginfo,pkginfo,force=False):
     """Remove package from the list for tag
@@ -807,9 +865,11 @@ def pkglist_remove(taginfo,pkginfo,force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
-    tag_id = get_tag_id(taginfo, strict=True)
-    pkg_id = get_package_id(pkginfo, strict=True)
-    _pkglist_remove(tag_id,pkg_id)
+    tag = get_tag(taginfo, strict=True)
+    pkg = lookup_package(pkginfo, strict=True)
+    koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
+    _pkglist_remove(tag['id'],pkg['id'])
+    koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
 
 def pkglist_block(taginfo,pkginfo):
     """Block the package in tag"""
@@ -823,6 +883,7 @@ def pkglist_unblock(taginfo,pkginfo):
     the blocking entry is simply removed"""
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
+    koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg)
     tag_id = tag['id']
     pkg_id = pkg['id']
     pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
@@ -845,6 +906,7 @@ def pkglist_unblock(taginfo,pkginfo):
         if not pkglist.has_key(pkg_id) or pkglist[pkg_id]['blocked']:
             _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'],
                          event_id)
+    koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
 
 def pkglist_setowner(taginfo,pkginfo,owner,force=False):
     """Set the owner for package in tag"""
@@ -1243,6 +1305,12 @@ def _tag_build(tag,build,user_id=None,force=False):
     """
     tag = get_tag(tag, strict=True)
     build = get_build(build, strict=True)
+    if user_id:
+        user = get_user(user_id, strict=True)
+    else:
+        # use the user associated with the current session
+        user = get_user(context.session.user_id, strict=True)
+    koji.plugin.run_callbacks('preTag', tag=tag, build=build, user=user, force=force)
     tag_id = tag['id']
     build_id = build['id']
     nvr = "%(name)s-%(version)s-%(release)s" % build
@@ -1274,6 +1342,7 @@ def _tag_build(tag,build,user_id=None,force=False):
     q = """INSERT INTO tag_listing(tag_id,build_id,active,create_event)
     VALUES(%(tag_id)i,%(build_id)i,TRUE,%(event_id)i)"""
     _dml(q,locals())
+    koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
 
 def _untag_build(tag,build,user_id=None,strict=True,force=False):
     """Untag a build
@@ -1286,6 +1355,12 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     """
     tag = get_tag(tag, strict=True)
     build = get_build(build, strict=True)
+    if user_id:
+        user = get_user(user_id, strict=True)
+    else:
+        # use the user associated with the current session
+        user = get_user(context.session.user_id, strict=True)
+    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id,user_id=user_id,force=force)
@@ -1297,6 +1372,7 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr,tag['name'])
+    koji.plugin.run_callbacks('postUntag', tag=tag, build=build, user=user, force=force, strict=strict)
 
 # tag-group operations
 #       add
@@ -1870,6 +1946,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     logger = logging.getLogger("koji.hub.repo_init")
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True, event=event)
+    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
+                              event=event, repo_id=None)
     tag_id = tinfo['id']
     repo_arches = {}
     if tinfo['arches']:
@@ -1986,6 +2064,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
+                              event=event, repo_id=repo_id)
     return [repo_id, event_id]
 
 def _populate_maven_repodir(buildinfo, maveninfo, archiveinfo, repodir, artifact_dirs):
@@ -3612,6 +3692,8 @@ def new_build(data):
     row = _fetchSingle(q, data)
     if row:
         id, state, task_id = row
+        data['id'] = id
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
         st_desc = koji.BUILD_STATES[state]
         if st_desc == 'BUILDING':
             # check to see if this is the controlling task
@@ -3625,22 +3707,25 @@ def new_build(data):
             update = """UPDATE build SET state=%(state)i,task_id=%(task_id)s,
             owner=%(owner)s,completion_time=%(completion_time)s,create_event=get_event()
             WHERE id = %(id)i"""
-            data['id'] = id
             _dml(update, data)
+            koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
             return id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
             % (id, st_desc, data)
+    else:
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #insert the new data
+    data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     q="""
-    INSERT INTO build (pkg_id,version,release,epoch,state,
+    INSERT INTO build (id,pkg_id,version,release,epoch,state,
             task_id,owner,completion_time)
-    VALUES (%(pkg_id)s,%(version)s,%(release)s,%(epoch)s,
+    VALUES (%(id)i,%(pkg_id)i,%(version)s,%(release)s,%(epoch)s,
             %(state)s,%(task_id)s,%(owner)s,%(completion_time)s)
     """
     _dml(q, data)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
-    q="""SELECT currval('build_id_seq')"""
-    return _singleValue(q)
+    return data['id']
 
 def check_noarch_rpms(basepath, rpms):
     """
@@ -3682,6 +3767,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     """
     if brmap is None:
         brmap = {}
+    koji.plugin.run_callbacks('preImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
+                              task_id=task_id, build_id=build_id, build=None, logs=logs)
     uploadpath = koji.pathinfo.work()
     #verify files exist
     for relpath in [srpm] + rpms:
@@ -3709,9 +3796,12 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
     if build_id is None:
         build_id = new_build(build)
+        binfo = get_build(build_id, strict=True)
     else:
         #build_id was passed in - sanity check
-        binfo = get_build(build_id)
+        binfo = get_build(build_id, strict=True)
+        st_complete = koji.BUILD_STATES['COMPLETE']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
         for key in ('name','version','release','epoch','task_id'):
             if build[key] != binfo[key]:
                 raise koji.GenericError, "Unable to complete build: %s mismatch (build: %s, rpm: %s)" % (key, binfo[key], build[key])
@@ -3719,10 +3809,10 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             raise koji.GenericError, "Unable to complete build: state is %s" \
                     % koji.BUILD_STATES[binfo['state']]
         #update build state
-        st_complete = koji.BUILD_STATES['COMPLETE']
         update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
         WHERE id=%(build_id)i"""
         _dml(update,locals())
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
     build['id'] = build_id
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
@@ -3737,6 +3827,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             for relpath in files:
                 fn = "%s/%s" % (uploadpath,relpath)
                 import_build_log(fn, build, subdir=key)
+    koji.plugin.run_callbacks('postImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
+                              task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return build
 
 def import_rpm(fn,buildinfo=None,brootid=None):
@@ -3801,6 +3893,9 @@ def import_rpm(fn,buildinfo=None,brootid=None):
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
     rpminfo['brootid'] = brootid
+
+    koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo)
+
     q = """INSERT INTO rpminfo (id,name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
             external_repo_id,
@@ -3811,6 +3906,8 @@ def import_rpm(fn,buildinfo=None,brootid=None):
             %(size)s,%(payloadhash)s)
     """
     _dml(q, rpminfo)
+
+    koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo)
 
     return rpminfo
 
@@ -3952,6 +4049,7 @@ def import_build_in_place(build):
                 raise koji.GenericError, "srpm mismatch for %s: %s (expected %s)" \
                         % (fn,sourcerpm,srpmname)
             rpms.append(fn)
+    koji.plugin.run_callbacks('preImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
     # actually import
     buildinfo = None
     if srpm is not None:
@@ -3965,9 +4063,12 @@ def import_build_in_place(build):
     #update build state
     build_id = buildinfo['id']
     st_complete = koji.BUILD_STATES['COMPLETE']
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
     update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
     WHERE id=%(build_id)i"""
     _dml(update,locals())
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
+    koji.plugin.run_callbacks('postImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
     return build_id
 
 def _import_wrapper(task_id, build_info, rpm_results):
@@ -4603,6 +4704,8 @@ def _delete_build(binfo):
     #   archiveinfo KEEP
     #               buildroot_archives KEEP (but should ideally be empty anyway)
     #   files on disk: DELETE
+    st_deleted = koji.BUILD_STATES['DELETED']
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=st_deleted, info=binfo)
     build_id = binfo['id']
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
     rpm_ids = _fetchMulti(q, locals())
@@ -4613,7 +4716,6 @@ def _delete_build(binfo):
     update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
     WHERE active = TRUE AND build_id=%(build_id)i"""
     _dml(update, locals())
-    st_deleted = koji.BUILD_STATES['DELETED']
     update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
     _dml(update, locals())
     #now clear the build dirs
@@ -4621,9 +4723,6 @@ def _delete_build(binfo):
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
         dirs_to_clear.append(builddir)
-    archivedir = koji.pathinfo.archive(binfo)
-    if os.path.exists(archivedir):
-        dirs_to_clear.append(archivedir)
     maven_info = get_maven_build(build_id)
     if maven_info:
         mavendir = koji.pathinfo.mavenbuild(binfo, maven_info)
@@ -4634,7 +4733,10 @@ def _delete_build(binfo):
         if rv != 0:
             raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, filedir)
         #and clear out the emptied dirs
-        os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
+        rv = os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
+        if rv != 0:
+            raise koji.GenericError, 'directory removal failed (code %r) for %s' % (rv, filedir)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_deleted, info=binfo)
 
 def reset_build(build):
     """Reset a build so that it can be reimported
@@ -4658,6 +4760,7 @@ def reset_build(build):
         #nothing to do
         return
     minfo = get_maven_build(binfo)
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
     for (rpm_id,) in ids:
@@ -4686,9 +4789,6 @@ def reset_build(build):
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
         dirs_to_clear.append(builddir)
-    archivedir = koji.pathinfo.archive(binfo)
-    if os.path.exists(archivedir):
-        dirs_to_clear.append(archivedir)
     if minfo:
         mavendir = koji.pathinfo.mavenbuild(binfo, minfo)
         if os.path.exists(mavendir):
@@ -4698,7 +4798,10 @@ def reset_build(build):
         if rv != 0:
             raise koji.GenericError, 'file removal failed (code %r) for %s' % (rv, filedir)
         #and clear out the emptied dirs
-        os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
+        rv = os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
+        if rv != 0:
+            raise koji.GenericError, 'directory removal failed (code %r) for %s' % (rv, filedir)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
 
 def cancel_build(build_id, cancel_task=True):
     """Cancel a build
@@ -4714,6 +4817,10 @@ def cancel_build(build_id, cancel_task=True):
     """
     st_canceled = koji.BUILD_STATES['CANCELED']
     st_building = koji.BUILD_STATES['BUILDING']
+    build = get_build(build_id, strict=True)
+    if build['state'] != st_building:
+        return False
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build['state'], new=st_canceled, info=build)
     update = """UPDATE build
     SET state = %(st_canceled)i, completion_time = NOW()
     WHERE id = %(build_id)i AND state = %(st_building)i"""
@@ -4726,6 +4833,7 @@ def cancel_build(build_id, cancel_task=True):
         build_notification(task_id, build_id)
         if cancel_task:
             Task(task_id).cancelFull(strict=False)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build['state'], new=st_canceled, info=build)
     return True
 
 def _get_build_target(task_id):
@@ -5425,24 +5533,20 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     exceeds the 32-bit signed integer limit. This function will convert it if
     need be. Not called for scratch images.
     """
-
-    #sanity checks
-    host = Host()
-    host.verify()
-    task = Task(task_id)
-    task.assertHost(host.id)
-
     imageinfo = {}
     imageinfo['id'] = _singleValue("""SELECT nextval('imageinfo_id_seq')""")
-    imageinfo['taskid'] = task_id
+    imageinfo['task_id'] = task_id
     imageinfo['filename'] = filename
     imageinfo['filesize'] = int(filesize)
     imageinfo['arch'] = arch
     imageinfo['mediatype'] = mediatype
     imageinfo['hash'] = hash
+
+    koji.plugin.run_callbacks('preImport', type='image', image=imageinfo)
+
     q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
            arch,mediatype,hash)
-           VALUES (%(id)i,%(taskid)i,%(filename)s,%(filesize)i,
+           VALUES (%(id)i,%(task_id)i,%(filename)s,%(filesize)i,
            %(arch)s,%(mediatype)s,%(hash)s)
         """
     _dml(q, imageinfo)
@@ -5462,6 +5566,8 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     image_id = imageinfo['id']
     for rpm_id in rpm_ids:
         _dml(q, locals())
+
+    koji.plugin.run_callbacks('postImport', type='image', image=imageinfo)
 
     return image_id
 
@@ -6465,7 +6571,9 @@ class RootExports(object):
           - owner_name
           - creation_event_id
           - creation_time
+          - creation_ts
           - completion_time
+          - completion_ts
           - task_id
 
         If type == 'maven', each map will also contain the following keys:
@@ -6479,6 +6587,8 @@ class RootExports(object):
         fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
+                  ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+                  ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
                   ('users.id', 'owner_id'), ('users.name', 'owner_name')]
@@ -6790,16 +6900,20 @@ class RootExports(object):
 
         results = []
         hdr = koji.get_rpm_header(rpm_path)
-        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags',
+                                              'fileusername', 'filegroupname', 'filemtimes', 'filemodes'])
         digest_algo = koji.util.filedigestAlgo(hdr)
 
-        for (name, digest, size, flags) in zip(fields['filenames'], fields['filemd5s'],
-                                           fields['filesizes'], fields['fileflags']):
+        for (name, digest, size, flags, user, group, mtime, mode) in zip(fields['filenames'], fields['filemd5s'],
+                                                                         fields['filesizes'], fields['fileflags'],
+                                                                         fields['fileusername'], fields['filegroupname'],
+                                                                         fields['filemtimes'], fields['filemodes']):
             if queryOpts.get('asList'):
-                results.append([name, digest, size, flags, digest_algo])
+                results.append([name, digest, size, flags, digest_algo, user, group, mtime, mode])
             else:
                 results.append({'name': name, 'digest': digest, 'digest_algo': digest_algo,
-                                'md5': digest, 'size': size, 'flags': flags})
+                                'md5': digest, 'size': size, 'flags': flags,
+                                'user': user, 'group': group, 'mtime': mtime, 'mode': mode})
 
         return _applyQueryOpts(results, queryOpts)
 
@@ -6827,7 +6941,8 @@ class RootExports(object):
 
         hdr = koji.get_rpm_header(rpm_path)
         # use filemd5s for backward compatibility
-        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags'])
+        fields = koji.get_header_fields(hdr, ['filenames', 'filemd5s', 'filesizes', 'fileflags',
+                                              'fileusername', 'filegroupname', 'filemtimes', 'filemodes'])
         digest_algo = koji.util.filedigestAlgo(hdr)
 
         i = 0
@@ -6835,7 +6950,9 @@ class RootExports(object):
             if name == filename:
                 return {'rpm_id': rpm_info['id'], 'name': name, 'digest': fields['filemd5s'][i],
                         'digest_algo': digest_algo, 'md5': fields['filemd5s'][i],
-                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i]}
+                        'size': fields['filesizes'][i], 'flags': fields['fileflags'][i],
+                        'user': fields['fileusername'][i], 'group': fields['filegroupname'][i],
+                        'mtime': fields['filemtimes'][i], 'mode': fields['filemodes'][i]}
             i += 1
         return {}
 
@@ -6980,6 +7097,19 @@ class RootExports(object):
         insert = """INSERT INTO user_perms (user_id, perm_id)
         VALUES (%(user_id)i, %(perm_id)i)"""
         _dml(insert, locals())
+
+    def revokePermission(self, userinfo, permission):
+        """Revoke a permission from a user"""
+        context.session.assertPerm('admin')
+        user_id = get_user(userinfo, strict=True)['id']
+        perm = lookup_perm(permission, strict=True)
+        perm_id = perm['id']
+        if perm['name'] not in koji.auth.get_user_perms(user_id):
+            raise koji.GenericError, 'user %s does not have permission: %s' % (userinfo, perm['name'])
+        update = """UPDATE user_perms
+        SET active = NULL, revoke_event = get_event()
+        WHERE user_id = %(user_id)i and perm_id = %(perm_id)i"""
+        _dml(update, locals())
 
     def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
@@ -7478,8 +7608,10 @@ class RootExports(object):
             raise koji.GenericError, 'user does not exist: %s' % user
         userid = userinfo['id']
         buildid = buildinfo['id']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='owner_id', old=buildinfo['owner_id'], new=userid, info=buildinfo)
         q = """UPDATE build SET owner=%(userid)i WHERE id=%(buildid)i"""
         _dml(q,locals())
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='owner_id', old=buildinfo['owner_id'], new=userid, info=buildinfo)
 
     def setBuildTimestamp(self, build, ts):
         """Set the completion time for a build
@@ -7500,11 +7632,13 @@ class RootExports(object):
                 raise koji.GenericError, "Invalid time: %s" % ts
         elif not isinstance(ts, (int, long, float)):
             raise koji.GenericError, "Invalid type for timestamp"
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
         buildid = buildinfo['id']
         q = """UPDATE build
         SET completion_time=TIMESTAMP 'epoch' AT TIME ZONE 'utc' + '%(ts)f seconds'::interval
         WHERE id=%%(buildid)i""" % locals()
         _dml(q,locals())
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
 
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
@@ -7683,7 +7817,7 @@ class RootExports(object):
         """Search for an item in the database matching "terms".
         "type" specifies what object type to search for, and must be
         one of "package", "build", "tag", "target", "user", "host",
-        "rpm", or "file".  "matchType" specifies the type of search to
+        or "rpm".  "matchType" specifies the type of search to
         perform, and must be one of "glob" or "regexp".  All searches
         are case-insensitive.  A list of maps containing "id" and
         "name" will be returned.  If no matches are found, an empty
@@ -7716,10 +7850,6 @@ class RootExports(object):
         elif type == 'rpm':
             clause = "name || '-' || version || '-' || release || '.' || arch || '.rpm' %s %%(terms)s" % oper
             cols = ('id', "name || '-' || version || '-' || release || '.' || arch || '.rpm'")
-        elif type == 'file':
-            # only search for exact matches against files, so we can use the index and not thrash the disks
-            clause = 'filename = %(terms)s'
-            cols = ('rpm_id', 'filename')
         elif type == 'tag':
             joins.append('tag_config ON tag.id = tag_config.tag_id')
             clause = 'tag_config.active = TRUE and name %s %%(terms)s' % oper
@@ -8425,28 +8555,30 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
 
+        st_failed = koji.BUILD_STATES['FAILED']
+        buildinfo = get_build(build_id, strict=True)
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=buildinfo['state'], new=st_failed, info=buildinfo)
+
         query = """SELECT state, completion_time
         FROM build
         WHERE id = %(build_id)i
         FOR UPDATE"""
         result = _singleRow(query, locals(), ('state', 'completion_time'))
 
-        if not result:
-            raise koji.GenericError, 'no build with ID: %i' % build_id
-        elif result['state'] != koji.BUILD_STATES['BUILDING']:
+        if result['state'] != koji.BUILD_STATES['BUILDING']:
             raise koji.GenericError, 'cannot update build %i, state: %s' % \
                   (build_id, koji.BUILD_STATES[result['state']])
         elif result['completion_time'] is not None:
             raise koji.GenericError, 'cannot update build %i, completed at %s' % \
                   (build_id, result['completion_time'])
 
-        state = koji.BUILD_STATES['FAILED']
         update = """UPDATE build
-        SET state = %(state)i,
+        SET state = %(st_failed)i,
         completion_time = NOW()
         WHERE id = %(build_id)i"""
         _dml(update, locals())
         build_notification(task_id, build_id)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_failed, info=buildinfo)
 
     def tagBuild(self,task_id,tag,build,force=False,fromtag=None):
         """Tag a build (host version)
@@ -8479,6 +8611,12 @@ class HostExports(object):
 
     # Called from kojid::LiveCDTask
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+        """Import a built image, populating the database with metadata and moving the image
+        to its final location."""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
         image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
                                        hash, rpmlist)
         moveImageResults(task_id, image_id, arch)
@@ -8673,6 +8811,7 @@ class HostExports(object):
         host = Host()
         host.verify()
         rinfo = repo_info(repo_id, strict=True)
+        koji.plugin.run_callbacks('preRepoDone', repo=rinfo, data=data, expire=expire)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
@@ -8692,6 +8831,7 @@ class HostExports(object):
                 os.unlink(src)
         if expire:
             repo_expire(repo_id)
+            koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
             return
         #else:
         repo_ready(repo_id)
@@ -8706,7 +8846,7 @@ class HostExports(object):
         except OSError:
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
-
+        koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
     def isEnabled(self):
         host = Host()

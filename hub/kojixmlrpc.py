@@ -102,12 +102,16 @@ class HandlerRegistry(object):
             if isinstance(v, (types.ClassType, types.TypeType)):
                 #skip classes
                 continue
-            if callable(v) and getattr(v, 'exported', False):
-                if hasattr(v, 'export_alias'):
-                    name = getattr(v, 'export_alias')
-                else:
-                    name = v.__name__
-                self.register_function(v, name=name)
+            if callable(v):
+                if getattr(v, 'exported', False):
+                    if hasattr(v, 'export_alias'):
+                        name = getattr(v, 'export_alias')
+                    else:
+                        name = v.__name__
+                    self.register_function(v, name=name)
+                if getattr(v, 'callbacks', None):
+                    for cbtype in v.callbacks:
+                        koji.plugin.register_callback(cbtype, v)
 
     def list_api(self):
         funcs = []

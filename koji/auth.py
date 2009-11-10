@@ -459,17 +459,13 @@ class Session(object):
         c.execute(update, locals())
         context.cnx.commit()
 
-    def createSession(self, user_id, hostip, authtype, master=None, locked=False):
+    def createSession(self, user_id, hostip, authtype, master=None):
         """Create a new session for the given user.
 
         Return a map containing the session-id and session-key.
         If master is specified, create a subsession
         """
         c = context.cnx.cursor()
-        if not locked:
-            #acquire a row lock on the user entry
-            q = """SELECT id FROM users WHERE id=%(user_id)s"""
-            c.execute(q,locals())
 
         # generate a random key
         alnum = string.ascii_letters + string.digits
