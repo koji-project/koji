@@ -21,6 +21,7 @@
             <option value="user">Users</option>
             <option value="host">Hosts</option>
             <option value="rpm">RPMs</option>
+            <option value="maven">Maven Artifacts</option>
           </select>
         </td>
       </tr>

@@ -1980,7 +1980,8 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'target': 'buildtargetinfo?targetID=%(id)i',
              'user': 'userinfo?userID=%(id)i',
              'host': 'hostinfo?hostID=%(id)i',
-             'rpm': 'rpminfo?rpmID=%(id)i'}
+             'rpm': 'rpminfo?rpmID=%(id)i',
+             'maven': 'archiveinfo?archiveID=%(id)i'}
 
 _VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
 _VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""

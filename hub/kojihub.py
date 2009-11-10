@@ -7676,7 +7676,8 @@ class RootExports(object):
                      'target': 'build_target',
                      'user': 'users',
                      'host': 'host',
-                     'rpm': 'rpminfo'}
+                     'rpm': 'rpminfo',
+                     'maven': 'archiveinfo'}
 
     def search(self, terms, type, matchType, queryOpts=None):
         """Search for an item in the database matching "terms".
@@ -7725,6 +7726,11 @@ class RootExports(object):
         elif type == 'target':
             joins.append('build_target_config ON build_target.id = build_target_config.build_target_id')
             clause = 'build_target_config.active = TRUE and name %s %%(terms)s' % oper
+        elif type == 'maven':
+            cols = ('id', 'filename')
+            joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
+            clause = "archiveinfo.filename %s %%(terms)s or maven_archives.group_id || '-' || " \
+                "maven_archives.artifact_id || '-' || maven_archives.version %s %%(terms)s" % (oper, oper)
         else:
             clause = 'name %s %%(terms)s' % oper
 
