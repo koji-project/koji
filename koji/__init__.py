@@ -1375,10 +1375,6 @@ class PathInfo(object):
         version = maveninfo['version']
         return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s" % locals())
 
-    def archive(self, build):
-        """Return the directory where the archive belongs"""
-        return self.topdir + ("/archives/%(name)s/%(version)s/%(release)s" % build)
-
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo
