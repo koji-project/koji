@@ -6328,6 +6328,12 @@ class RootExports(object):
             decode[bool]: whether or not xmlrpc data in the 'request' and 'result'
                           fields should be decoded; defaults to False
             method[str]: limit to tasks of the given method
+            createdBefore[float or str]: limit to tasks whose create_time is before the
+                                         given date, in either float (seconds since the epoch)
+                                         or str (ISO) format
+            createdAfter[float or str]: limit to tasks whose create_time is after the
+                                        given date, in either float (seconds since the epoch)
+                                        or str (ISO) format
             completeBefore[float or str]: limit to tasks whose completion_time is before
                                          the given date, in either float (seconds since the epoch)
                                          or str (ISO) format
@@ -6359,6 +6365,16 @@ class RootExports(object):
                     conditions.append('%s = %%(%s)i' % (f, f))
         if opts.has_key('method'):
             conditions.append('method = %(method)s')
+        if opts.get('createdBefore') != None:
+            createdBefore = opts['createdBefore']
+            if not isinstance(createdBefore, str):
+                opts['createdBefore'] = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
+            conditions.append('create_time < %(createdBefore)s')
+        if opts.get('createdAfter') != None:
+            createdAfter = opts['createdAfter']
+            if not isinstance(createdAfter, str):
+                opts['createdAfter'] = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
+            conditions.append('create_time > %(createdAfter)s')
         if opts.get('completeBefore') != None:
             completeBefore = opts['completeBefore']
             if not isinstance(completeBefore, str):
