@@ -7,9 +7,10 @@
 %else
 %define release %{baserelease}
 %endif
+%define meadrelease .mead.1
 Name: koji
 Version: 1.3.2
-Release: %{release}%{?dist}
+Release: %{release}%{meadrelease}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
 Summary: Build system tools
