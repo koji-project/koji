@@ -3269,7 +3269,7 @@ def anon_handle_taginfo(options, session, args):
                     flags += '.'
             parent['flags'] = flags
             print "  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent
-            if parent['maxdepth']:
+            if parent['maxdepth'] is not None:
                 print "    maxdepth: %(maxdepth)s" % parent
             if parent['pkg_filter']:
                 print "    package filter: %(pkg_filter)s" % parent
