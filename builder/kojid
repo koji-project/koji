@@ -2035,6 +2035,9 @@ class BuildArchTask(BaseTaskHandler):
         avg = session.getAverageBuildDuration(name)
         if not avg:
             return
+        if avg < 0:
+            self.logger.warn("Negative average build duration for %s: %s", name, avg)
+            return
         # increase the task weight by 0.75 for every hour of build duration
         adj = (avg / 4800.0)
         # cap the adjustment at +4.5
