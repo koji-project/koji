@@ -724,7 +724,6 @@ def handle_build(options, session, args):
     if not build_opts.quiet:
         print "Created task:", task_id
         print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    print repr(build_opts.wait)
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet)
