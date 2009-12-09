@@ -35,7 +35,8 @@ def formatChangelog(entries):
         result += """* %s %s
 %s
 
-""" % (_changelogDate(entry['date']), entry['author'], entry['text'])
+""" % (_changelogDate(entry['date']), entry['author'].encode("utf-8"),
+       entry['text'].encode("utf-8"))
 
     return result
 
