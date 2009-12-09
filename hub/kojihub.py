@@ -2080,7 +2080,7 @@ def _populate_maven_repodir(buildinfo, maveninfo, archiveinfo, repodir, artifact
             os.symlink(os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix))
         except:
             log_error('Error linking %s to %s' % (os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix)))
-            raise
+
     artifact_dirs.setdefault(os.path.dirname(destdir), {})[(archiveinfo['group_id'],
                                                             archiveinfo['artifact_id'],
                                                             archiveinfo['version'])] = 1
