@@ -951,42 +951,52 @@ def anon_handle_mock_config(options, session, args):
         print output
 
 def handle_disable_host(options, session, args):
-    "[admin] Mark a host as disabled"
-    usage = _("usage: %prog disable-host [options] hostname")
+    "[admin] Mark one or more hosts as disabled"
+    usage = _("usage: %prog disable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("Exactly one argument (a hostname) is required"))
-        assert False
-    host = args[0]
-    
-    activate_session(session)
-    id = session.getHost(host)
-    if not id:
-        print "Host %s does not exist" % host
-        return 1
 
-    session.disableHost(host)
+    activate_session(session)
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [id] in zip(args, session.multiCall(strict=True)):
+        if not id:
+            print "Host %s does not exist" % host
+            error = True
+    if error:
+        print "No changes made. Please correct the command line."
+        return 1
+    session.multicall = True
+    for host in args:
+        session.disableHost(host)
+    session.multiCall(strict=True)
 
 def handle_enable_host(options, session, args):
-    "[admin] Mark a host as enabled"
-    usage = _("usage: %prog enable-host [options] hostname")
+    "[admin] Mark one or more hosts as enabled"
+    usage = _("usage: %prog enable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("Exactly one argument (a hostname) is required"))
-        assert False
-    host = args[0]
-    
-    activate_session(session)
-    id = session.getHost(host)
-    if not id:
-        print "Host %s does not exist" % host
-        return 1
 
-    session.enableHost(host)
+    activate_session(session)
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [id] in zip(args, session.multiCall(strict=True)):
+        if not id:
+            print "Host %s does not exist" % host
+            error = True
+    if error:
+        print "No changes made. Please correct the command line."
+        return 1
+    session.multicall = True
+    for host in args:
+        session.enableHost(host)
+    session.multiCall(strict=True)
 
 def handle_import(options, session, args):
     "[admin] Import local RPMs to the database"
