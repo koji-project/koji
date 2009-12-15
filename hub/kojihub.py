@@ -1687,7 +1687,7 @@ def readTagGroups(tag,event=None,inherit=True,incl_pkgs=True,incl_reqs=True):
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')
     if not get_host(hostname):
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     c = context.cnx.cursor()
     c.execute("""UPDATE host SET enabled = %(enabled)s WHERE name = %(hostname)s""", locals())
     context.commit_pending = True
@@ -1696,11 +1696,11 @@ def add_host_to_channel(hostname, channel_name):
     context.session.assertPerm('admin')
     host = get_host(hostname)
     if host == None:
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     host_id = host['id']
     channel_id = get_channel_id(channel_name)
     if channel_id == None:
-        raise koji.GenericError, 'channel does not exists: %s' % channel_name
+        raise koji.GenericError, 'channel does not exist: %s' % channel_name
     channels = list_channels(host_id)
     for channel in channels:
         if channel['id'] == channel_id:
@@ -1713,11 +1713,11 @@ def remove_host_from_channel(hostname, channel_name):
     context.session.assertPerm('admin')
     host = get_host(hostname)
     if host == None:
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     host_id = host['id']
     channel_id = get_channel_id(channel_name)
     if channel_id == None:
-        raise koji.GenericError, 'channel does not exists: %s' % channel_name
+        raise koji.GenericError, 'channel does not exist: %s' % channel_name
     found = False
     channels = list_channels(host_id)
     for channel in channels:
