@@ -128,9 +128,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/koji-hub
 %dir %{_libexecdir}/koji-hub
 %{_libexecdir}/koji-hub/rpmdiff
-%config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%config(noreplace) %{_sysconfdir}/httpd/conf.d/kojihub.conf
 %dir %{_sysconfdir}/koji-hub
-%config(noreplace) /etc/koji-hub/hub.conf
+%config(noreplace) %{_sysconfdir}/koji-hub/hub.conf
 
 %files hub-plugins
 %defattr(-,root,root)
@@ -157,7 +157,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-web
 %{_sysconfdir}/kojiweb
-%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
+%config(noreplace) %{_sysconfdir}/httpd/conf.d/kojiweb.conf
 
 %files builder
 %defattr(-,root,root)
@@ -169,7 +169,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
 %{_datadir}/koji-builder
-%attr(-,kojibuilder,kojibuilder) /etc/mock/koji
+%attr(-,kojibuilder,kojibuilder) %{_sysconfdir}/mock/koji
 
 %pre builder
 /usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
