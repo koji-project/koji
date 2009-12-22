@@ -129,12 +129,15 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_libexecdir}/koji-hub
 %{_libexecdir}/koji-hub/rpmdiff
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%dir %{_sysconfdir}/koji-hub
 %config(noreplace) /etc/koji-hub/hub.conf
 
 %files hub-plugins
 %defattr(-,root,root)
 %dir %{_prefix}/lib/koji-hub-plugins
 %{_prefix}/lib/koji-hub-plugins/*.py*
+%dir %{_sysconfdir}/koji-hub/plugins
+%{_sysconfdir}/koji-hub/plugins/*.conf
 
 %files utils
 %defattr(-,root,root)
