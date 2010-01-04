@@ -89,8 +89,8 @@ def get_routing_key(cbtype, *args, **kws):
     # ensure the routing key is an ascii string with a maximum
     # length of 255 characters
     key = '.'.join(key)
-    key = key[:MAX_KEY_LENGTH]
     key = key.encode('ascii', 'xmlcharrefreplace')
+    key = key[:MAX_KEY_LENGTH]
     return key
 
 def encode_data(data):
