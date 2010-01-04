@@ -56,7 +56,8 @@ def get_session():
 
 def get_routing_key(cbtype, *args, **kws):
     global config
-    key = [config.get('queues', 'prefix'), cbtype]
+    key = [config.get('topic', 'prefix'), cbtype]
+
     if cbtype in ('prePackageListChange', 'postPackageListChange'):
         key.append(kws['tag']['name'])
         key.append(kws['package']['name'])
