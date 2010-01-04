@@ -54,38 +54,35 @@ def get_session():
 
     return session
 
+def _token_append(tokenlist, val):
+    # Replace any periods with underscores so we have a deterministic number of tokens
+    val = val.replace('.', '_')
+    tokenlist.append(val)
+
 def get_routing_key(cbtype, *args, **kws):
     global config
     key = [config.get('topic', 'prefix'), cbtype]
 
     if cbtype in ('prePackageListChange', 'postPackageListChange'):
-        key.append(kws['tag']['name'])
-        key.append(kws['package']['name'])
+        _token_append(key, kws['tag']['name'])
+        _token_append(key, kws['package']['name'])
     elif cbtype in ('preTaskStateChange', 'postTaskStateChange'):
-        key.append(kws['attribute'])
-        key.append(str(kws['old']))
-        key.append(str(kws['new']))
+        _token_append(key, kws['attribute'])
     elif cbtype in ('preBuildStateChange', 'postBuildStateChange'):
         info = kws['info']
-        key.append(info['name'])
-        key.append(info['version'])
-        key.append(info['release'])
-        key.append(kws['attribute'])
-        key.append(str(kws['old']))
-        key.append(str(kws['new']))
+        _token_append(key, kws['attribute'])
+        _token_append(key, info['name'])
     elif cbtype in ('preImport', 'postImport'):
-        key.append(kws['type'])
+        _token_append(key, kws['type'])
     elif cbtype in ('preTag', 'postTag', 'preUntag', 'postUntag'):
-        key.append(kws['tag']['name'])
+        _token_append(key, kws['tag']['name'])
         build = kws['build']
-        key.append(build['name'])
-        key.append(build['version'])
-        key.append(build['release'])
-        key.append(kws['user']['name'])
+        _token_append(key, build['name'])
+        _token_append(key, kws['user']['name'])
     elif cbtype in ('preRepoInit', 'postRepoInit'):
-        key.append(kws['tag']['name'])
+        _token_append(key, kws['tag']['name'])
     elif cbtype in ('preRepoDone', 'postRepoDone'):
-        key.append(kws['repo']['tag_name'])
+        _token_append(key, kws['repo']['tag_name'])
 
     # ensure the routing key is an ascii string with a maximum
     # length of 255 characters
