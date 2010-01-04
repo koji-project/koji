@@ -46,6 +46,10 @@ def get_session():
     conn.start()
     session = conn.session('koji-' + str(qpid.datatypes.uuid4()))
 
+    session.exchange_declare(exchange=config.get('exchange', 'name'),
+                             type=config.get('exchange', 'type'),
+                             durable=config.getboolean('exchange', 'durable'))
+
     connection = conn
 
     return session
@@ -100,6 +104,7 @@ def encode_data(data):
 @callback(*callbacks.keys())
 @ignore_error
 def send_message(cbtype, *args, **kws):
+    global config
     session = get_session()
     routing_key = get_routing_key(cbtype, *args, **kws)
     props = session.delivery_properties(routing_key=routing_key)
@@ -108,5 +113,5 @@ def send_message(cbtype, *args, **kws):
         data['args'] = list(args)
     payload = encode_data(data)
     message = qpid.datatypes.Message(props, payload)
-    session.message_transfer(destination='amq.topic', message=message)
+    session.message_transfer(destination=config.get('exchange', 'name'), message=message)
     session.close()
