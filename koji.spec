@@ -47,6 +47,7 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
 Requires: %{name}-hub = %{version}-%{release}
+Requires: python-qpid
 
 %description hub-plugins
 Plugins to the koji XMLRPC interface
