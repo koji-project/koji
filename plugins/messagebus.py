@@ -61,7 +61,9 @@ def _token_append(tokenlist, val):
 
 def get_routing_key(cbtype, *args, **kws):
     global config
-    key = [config.get('topic', 'prefix'), cbtype]
+    # We're only registering for post callbacks, so strip
+    # off the redundant "post" prefix
+    key = [config.get('topic', 'prefix'), cbtype[4:]]
 
     if cbtype in ('prePackageListChange', 'postPackageListChange'):
         _token_append(key, kws['tag']['name'])
@@ -92,7 +94,9 @@ def get_routing_key(cbtype, *args, **kws):
     return key
 
 def get_message_headers(cbtype, *args, **kws):
-    headers = {'type': cbtype}
+    # We're only registering for post callbacks, so strip
+    # off the redundant "post" prefix
+    headers = {'type': cbtype[4:]}
 
     if cbtype in ('prePackageListChange', 'postPackageListChange'):
         headers['tag'] = kws['tag']['name']
@@ -133,7 +137,7 @@ def encode_data(data):
     else:
         raise koji.PluginError, 'unsupported encoding: %s' % format
 
-@callback(*callbacks.keys())
+@callback(*[c for c in callbacks.keys() if c.startswith('post')])
 @ignore_error
 def send_message(cbtype, *args, **kws):
     global config
