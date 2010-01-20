@@ -2645,7 +2645,7 @@ class WrapperRPMTask(BaseTaskHandler):
                 maven_info = koji.pom_to_maven_info(pom_info)
                 maven_nvr = koji.maven_info_to_nvr(maven_info)
                 maven_nvr['release'] = '0.scratch'
-                self.copy_fields(pom_nvr, values, 'epoch', 'name', 'version', 'release')
+                self.copy_fields(maven_nvr, values, 'epoch', 'name', 'version', 'release')
             else:
                 values.update({'epoch': None, 'name': '', 'version': '', 'release': ''})
 
