@@ -124,6 +124,13 @@ def connect(debug=False):
         # closed.  This is safe to call multiple times.
         conn = _DBconn.conn
         try:
+            # Under normal circumstances, the last use of this connection
+            # will have issued a raw ROLLBACK to close the transaction. To
+            # avoid 'no transaction in progress' warnings (depending on postgres
+            # configuration) we open a new one here.
+            # Should there somehow be a transaction in progress, a second
+            # BEGIN will be a harmless no-op, though there may be a warning.
+            conn.cursor().execute('BEGIN')
             conn.rollback()
             return DBWrapper(conn, debug)
         except pgdb.Error:

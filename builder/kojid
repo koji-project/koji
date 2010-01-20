@@ -60,10 +60,18 @@ from gzip import GzipFile
 from optparse import OptionParser
 from StringIO import StringIO
 from xmlrpclib import Fault
-import pykickstart.parser as ksparser
-import pykickstart.handlers.control as kscontrol
-import hashlib
-import iso9660 # from pycdio
+
+#imports for LiveCD handler
+livecd_enabled = False
+try:
+    import pykickstart.parser as ksparser
+    import pykickstart.handlers.control as kscontrol
+    import hashlib
+    import iso9660 # from pycdio
+    livecd_enabled = True
+except ImportError:
+    pass
+
 
 # our private modules
 sys.path.insert(0, '/usr/share/koji-builder/lib')
@@ -2815,6 +2823,11 @@ class LiveCDTask(BaseTaskHandler):
     def handler(self, arch, target, ksfile, opts=None):
         if not opts:
             opts = {}
+
+        if not livecd_enabled:
+            self.logger.error("LiveCD features require the following dependencies: "
+                    "pykickstart, pycdio, and possibly python-hashlib")
+            raise koji.LiveCDError, 'LiveCD functions not available'
 
         global options
         target_info = session.getBuildTarget(target, strict=True)
