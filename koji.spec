@@ -67,8 +67,6 @@ Requires(pre): /usr/sbin/useradd
 Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
-Requires: rpm-build
-Requires: redhat-rpm-config
 %if 0%{?rhel} >= 5
 Requires: createrepo >= 0.4.11-2
 %endif
