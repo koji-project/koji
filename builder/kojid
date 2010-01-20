@@ -2330,14 +2330,15 @@ class MavenTask(BaseTaskHandler):
             maven_info = maven_results['maven_info']
             build_info = koji.maven_info_to_nvr(maven_info)
 
-            dest_cfg = session.getPackageConfig(dest_tag['id'], build_info['name'])
-            # Make sure package is on the list for this tag
-            if dest_cfg is None:
-                raise koji.BuildError, "package %s not in list for tag %s" \
-                    % (build_info['name'], dest_tag['name'])
-            elif dest_cfg['blocked']:
-                raise koji.BuildError, "package %s is blocked for tag %s" \
-                    % (build_info['name'], dest_tag['name'])
+            if not self.opts.get('skip_tag'):
+                dest_cfg = session.getPackageConfig(dest_tag['id'], build_info['name'])
+                # Make sure package is on the list for this tag
+                if dest_cfg is None:
+                    raise koji.BuildError, "package %s not in list for tag %s" \
+                        % (build_info['name'], dest_tag['name'])
+                elif dest_cfg['blocked']:
+                    raise koji.BuildError, "package %s is blocked for tag %s" \
+                        % (build_info['name'], dest_tag['name'])
 
             self.build_id, build_info = session.host.initMavenBuild(self.id, build_info, maven_info)
 
