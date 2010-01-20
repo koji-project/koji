@@ -1670,11 +1670,16 @@ class BaseTaskHandler(object):
 
         If the file is on an nfs mount, use that, otherwise download a copy"""
         if options.topurl:
+            fn = "%s/local/%s" % (self.workdir, relpath)
+            if os.path.exists(fn):
+                # We've already downloaded this file,
+                # just return the existing local path
+                return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (options.topurl, relpath)
             fsrc = urllib2.urlopen(url)
-            fn = "%s/local/%s" % (self.workdir, relpath)
-            os.makedirs(os.path.dirname(fn))
+            if not os.path.exists(os.path.dirname(fn)):
+                os.makedirs(os.path.dirname(fn))
             fdst = file(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
@@ -2590,6 +2595,9 @@ class WrapperRPMTask(BaseTaskHandler):
 
         artifacts = {}
 
+        # makes generating relative paths easier
+        self.pathinfo = koji.PathInfo(topdir='')
+
         if task:
             # called as a subtask of a maven build
             artifact_names = session.listTaskOutput(task['id'])
@@ -2599,7 +2607,8 @@ class WrapperRPMTask(BaseTaskHandler):
                 if ext == '.log':
                     # Exclude log files for consistency with the output of listArchives() used below
                     continue
-                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.task(task['id']), artifact_name))
+                relpath = os.path.join(self.pathinfo.task(task['id']), artifact_name)[1:]
+                artifacts.setdefault(ext, []).append(relpath)
         else:
             # called as a top-level task to create wrapper rpms for an existing build
             # verify that the build is complete
@@ -2618,7 +2627,8 @@ class WrapperRPMTask(BaseTaskHandler):
                 if ext == '.log':
                     # listArchives() should never return .log files, but we check for completeness
                     continue
-                artifacts.setdefault(ext, []).append(os.path.join(koji.pathinfo.mavenbuild(build, maven_info), artifact_name))
+                relpath = os.path.join(self.pathinfo.mavenbuild(build, maven_info), artifact_name)[1:]
+                artifacts.setdefault(ext, []).append(relpath)
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
@@ -2642,7 +2652,8 @@ class WrapperRPMTask(BaseTaskHandler):
             # likely fail.
             poms = artifacts.get('.pom', [])
             if poms:
-                pom_info = koji.parse_pom(poms[0])
+                pom_path = self.localPath(poms[0])
+                pom_info = koji.parse_pom(pom_path)
                 maven_info = koji.pom_to_maven_info(pom_info)
                 maven_nvr = koji.maven_info_to_nvr(maven_info)
                 maven_nvr['release'] = '0.scratch'
@@ -2686,7 +2697,8 @@ class WrapperRPMTask(BaseTaskHandler):
         specdir = os.path.dirname(spec_template)
         for key, filepaths in artifacts.items():
             for filepath in filepaths:
-                shutil.copy(filepath, specdir)
+                localpath = self.localPath(filepath)
+                shutil.copy(localpath, specdir)
 
         contents = Cheetah.Template.Template(file=spec_template,
                                              searchList=[values]).respond()
