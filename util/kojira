@@ -29,6 +29,7 @@ import os
 import koji
 from optparse import OptionParser
 from ConfigParser import ConfigParser
+import fnmatch
 import logging
 import logging.handlers
 import pprint
@@ -386,7 +387,17 @@ class RepoManager(object):
             if len(self.tasks) >= options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached.")
                 break
-            task_id = session.newRepo(tags[tag_id])
+            tagname = tags[tag_id]
+            taskopts = {}
+            for pat in options.debuginfo_tags.split():
+                if fnmatch.fnmatch(tagname, pat):
+                    taskopts['debuginfo'] = True
+                    break
+            for pat in options.source_tags.split():
+                if fnmatch.fnmatch(tagname, pat):
+                    taskopts['src'] = True
+                    break
+            task_id = session.newRepo(tagname, **taskopts)
             self.logger.info("Created newRepo task %s for tag %s (%s)" % (task_id, tag_id, tags[tag_id]))
             self.tasks[tag_id] = task_id
         #some cleanup
@@ -485,6 +496,8 @@ def get_options():
         if x != section:
             quit('invalid section found in config file: %s' % x)
     defaults = {'with_src': False,
+                'debuginfo_tags': '',
+                'source_tags': '',
                 'verbose': False,
                 'debug': False,
                 'ignore_stray_repos': False,
@@ -510,7 +523,8 @@ def get_options():
     if config.has_section(section):
         int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks',
                     'delete_batch_size', 'retry_interval', 'max_retries', 'offline_retry_interval')
-        str_opts = ('topdir','server','user','password','logfile', 'principal', 'keytab', 'cert', 'ca', 'serverca')
+        str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
+                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
         for name in config.options(section):
             if name in int_opts:
