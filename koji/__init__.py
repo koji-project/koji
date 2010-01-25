@@ -881,9 +881,9 @@ class POMHandler(xml.sax.handler.ContentHandler):
                 # Only set a value from the "parent" tag if we don't already have
                 # that value set
                 if not self.values.has_key(self.tag_stack[-1]):
-                    self.values[self.tag_stack[-1]] = self.tag_content
+                    self.values[self.tag_stack[-1]] = self.tag_content.strip()
             elif self.tag_stack[-2] == 'project':
-                self.values[self.tag_stack[-1]] = self.tag_content
+                self.values[self.tag_stack[-1]] = self.tag_content.strip()
         self.tag_content = ''
         self.tag_stack.pop()
 
