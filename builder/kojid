@@ -2329,6 +2329,8 @@ class MavenTask(BaseTaskHandler):
             build_opts['properties'] = opts['properties']
         if opts.get('patches'):
             build_opts['patches'] = opts['patches']
+        if opts.get('jvm_options'):
+            build_opts['jvm_options'] = opts['jvm_options']
 
         self.build_task_id = session.host.subtask(method='buildMaven',
                                                   arglist=[url, build_tag, build_opts],
@@ -2426,8 +2428,17 @@ class BuildMavenTask(BaseTaskHandler):
         event_id = repo_info['create_event']
 
         br_arch = self.find_arch('noarch', session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+        maven_opts = opts.get('jvm_options')
+        if not maven_opts:
+            maven_opts = []
+        for opt in maven_opts:
+            if opt.startswith('-Xmx'):
+                break
+        else:
+            # Give the JVM 2G to work with by default, if the build isn't specifying its own max. memory
+            maven_opts.append('-Xmx2048m')
         buildroot = BuildRoot(build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id,
-                              maven_opts='-Xmx1024m')
+                              maven_opts=' '.join(maven_opts))
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
