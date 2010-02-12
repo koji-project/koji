@@ -2851,7 +2851,12 @@ class NewRepoTask(BaseTaskHandler):
             if fn != 'groups' and os.path.isfile("%s/%s/pkglist" % (path, fn)):
                 arches.append(fn)
         #see if we can find a previous repo to update from
-        oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
+        #only shadowbuild tags should start with SHADOWBUILD, their repos are auto
+        #expired.  so lets get the most recent expired tag for newRepo shadowbuild tasks.
+        if tag.startswith('SHADOWBUILD'):
+            oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_EXPIRED)
+        else:
+            oldrepo = session.getRepo(tinfo['id'], state=koji.REPO_READY)
         subtasks = {}
         external_repos = session.getExternalRepoList(tinfo['id'], event=event)
         for arch in arches:
