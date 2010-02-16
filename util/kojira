@@ -295,9 +295,7 @@ class RepoManager(object):
         still get regen priority.
         """
         if not data:
-            ret = data[:]  #copy
-            ret.sort()
-            return ret
+            return []
         data = [(ts, tag_id, self.tagUseStats(tag_id)) for ts, tag_id in data]
         max_n = max([s['n_recent'] for ts,tag,s in data])
         if max_n == 0:
