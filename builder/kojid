@@ -2218,9 +2218,10 @@ class LiveCDTask(BaseTaskHandler):
         #		'/dev/loop7' : '/dev/loop7'}}
         bind_opts = {'dirs' : {
                          '/dev/pts' : '/dev/pts',
+                         '/dev/shm' : '/dev/shm',
                          '/dev/mapper' : '/dev/mapper',
                          '/selinux' : '/selinux'}
-                     }
+                    }
         rootopts = {'install_group': 'livecd-build',
                     'setup_dns': True,
                     'repo_id': repo_info['id'],
@@ -2319,21 +2320,25 @@ class LiveCDTask(BaseTaskHandler):
         livecd_log = os.path.join(tmpchroot, 'livecd.log')  # path in chroot
 
         # Create the loopback devices we need
-        mknod_cmd = 'for i in $(seq 0 7); do mknod /dev/loop$i b 7 $i; done'
-        rv = broot.mock(['--chroot', mknod_cmd])
+        cmd = 'for i in $(seq 0 7); do mknod /dev/loop$i b 7 $i; done'
+        rv = broot.mock(['--chroot', cmd])
         if rv:
             broot.expire()
             raise koji.LiveCDError, \
-                "Could not create loopback device files: %s" % _parseStatus(rv, '"%s"' % mknod_cmd)
+                "Could not create loopback device files: %s" % _parseStatus(rv, '"%s"' % cmd)
+
+        # Create /dev/urandom
+        cmd = 'mknod /dev/urandom c 1 9'
+        rv = broot.mock(['--chroot', cmd])
+        if rv:
+            broot.expire()
+            raise koji.LiveCDError, \
+                "Could not create /dev/urandom: %s" % _parseStatus(rv, '"%s"' % cmd)
 
         # Run livecd-creator
-        livecd_cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v', '--logfile', livecd_log,
-                      '--cache', cachedir]
-
-        # run the livecd-creator command
-        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + livecd_cmd)
+        cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v', '--logfile', livecd_log, '--cache', cachedir]
+        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
         self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
-        broot.expire()
         if rv:
             raise koji.LiveCDError, \
                 "Could not create LiveCD: %s" % _parseStatus(rv, 'livecd-creator') + \
@@ -2422,6 +2427,7 @@ class LiveCDTask(BaseTaskHandler):
             image_id = session.host.importImage(self.id, isofile, filesize, arch,
                                                 'LiveCD ISO', hash, hdrlist)
 
+        broot.expire()
         if opts.get('scratch'):
             return 'Scratch image created: %s' % \
                    os.path.join(koji.pathinfo.work(),
