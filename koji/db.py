@@ -25,6 +25,7 @@ import logging
 import sys
 import pgdb
 import time
+import traceback
 from pgdb import _quoteparams
 assert pgdb.threadsafety >= 1
 import context
@@ -111,6 +112,7 @@ def getDBopts():
     return _DBopts
 
 def connect():
+    logger = logging.getLogger('koji.db')
     global _DBconn
     if hasattr(_DBconn, 'conn'):
         # Make sure the previous transaction has been
@@ -132,7 +134,11 @@ def connect():
     opts = _DBopts
     if opts is None:
         opts = {}
-    conn = pgdb.connect(**opts)
+    try:
+        conn = pgdb.connect(**opts)
+    except Exception:
+        logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+        raise
     # XXX test
     # return conn
     _DBconn.conn = conn
