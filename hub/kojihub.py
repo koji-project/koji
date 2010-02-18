@@ -5107,14 +5107,14 @@ class RootExports(object):
 
     # Create the livecd task. Called from handle_spin_livecd in the client.
     #
-    def livecd (self, arch, target, ksfile, opts=None, priority=None):
+    def build_image (self, arch, target, ksfile, img_type, opts=None, priority=None):
         """
-        Create a live CD image using a kickstart file and group package list.
+        Create an image using a kickstart file and group package list.
         """
 
-        context.session.assertPerm('livecd')
+        context.session.assertPerm(img_type)
 
-        taskOpts = {'channel': 'livecd'}
+        taskOpts = {'channel': img_type}
         taskOpts['arch'] = arch
         if priority:
             if priority < 0:
@@ -5124,7 +5124,12 @@ class RootExports(object):
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
-        return make_task('createLiveCD', [arch, target, ksfile, opts],
+        if img_type == 'livecd':
+            task_type = 'createLiveCD'
+        elif img_type == 'appliance':
+            task_type = 'createAppliance'
+
+        return make_task(task_type, [arch, target, ksfile, opts],
                          **taskOpts)
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
