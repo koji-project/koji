@@ -1469,73 +1469,6 @@ class BaseTaskHandler(object):
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             session.uploadWrapper(filename, self.getUploadDir(), remoteName)
 
-    def genImageManifest(self, image, manifile):
-        """
-        Using iso9660 from pycdio, get the file manifest of the given image,
-        and save it to the text file manifile.
-        """
-        fd = open(manifile, 'w')
-        if not fd:
-            raise koji.GenericError, \
-                'Unable to open manifest file (%s) for writing!' % manifile
-        iso = iso9660.ISO9660.IFS(source=image)
-        if not iso.is_open():
-            raise koji.GenericError, \
-                'Could not open %s as an ISO-9660 image!' % image
-
-        # image metadata
-        id = iso.get_application_id()
-        if id is not None: fd.write("Application ID: %s\n" % id)
-        id = iso.get_preparer_id()
-        if id is not None: fd.write("Preparer ID: %s\n" % id)
-        id = iso.get_publisher_id()
-        if id is not None: fd.write("Publisher ID: %s\n" % id)
-        id = iso.get_system_id()
-        if id is not None: fd.write("System ID: %s\n" % id)
-        id = iso.get_volume_id()
-        if id is not None: fd.write("Volume ID: %s\n" % id)
-        id = iso.get_volumeset_id()
-        if id is not None: fd.write("Volumeset ID: %s\n" % id)
-
-        fd.write('\nSize(bytes)  File Name\n')
-        manifest = self.listImageDir(iso, '/')
-        for a_file in manifest:
-            fd.write(a_file)
-        fd.close()
-        iso.close()
-
-    def listImageDir(self, iso, path):
-        """
-        Helper function called recursively by getImageManifest. Returns a
-        listing of files/directories at the given path in an iso image obj.
-        """
-        manifest = []
-        file_stats = iso.readdir(path)
-        for stat in file_stats:
-            filename = stat[0]
-            size = stat[2]
-            is_dir = stat[4] == 2
-
-            if filename == '..':
-                continue
-            elif filename == '.':
-                # path should always end in a trailing /
-                filepath = path
-            else:
-                filepath = path + filename
-                # identify directories with a trailing /
-                if is_dir:
-                    filepath += '/'
-
-            if is_dir and filename != '.':
-                # recurse into subdirectories
-                manifest.extend(self.listImageDir(iso, filepath))
-            else:
-                # output information for the current directory and files
-                manifest.append("%-10d   %s\n" % (size, filepath))
-
-        return manifest
-
     def localPath(self, relpath):
         """Return a local path to a remote file.
 
@@ -2189,145 +2122,41 @@ class TagBuildTask(BaseTaskHandler):
             session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
 
-# LiveCDTask begins with a mock chroot, and then installs livecd-tools into it
-# via the livecd-build group. livecd-creator is then executed in the chroot
-# to create the LiveCD image.
-#
-class LiveCDTask(BaseTaskHandler):
+# A generic task for building cd or disk images. Other handlers should inherit
+# this.
+class ImageTask(BaseTaskHandler):
+    Methods = []
 
-    Methods = ['createLiveCD']
-    _taskWeight = 1.5
+    def makeImgBuildRoot(self, buildtag, repoinfo, arch, inst_group):
+        """
+        Create and prepare the chroot we're going to build an image in. 
+        Binds necessary directories and creates needed device files.
 
-    def handler(self, arch, target, ksfile, opts=None):
-        if not opts:
-            opts = {}
-
-        if not livecd_enabled:
-            self.logger.error("LiveCD features require the following dependencies: "
-                    "pykickstart, pycdio, and possibly python-hashlib")
-            raise koji.LiveCDError, 'LiveCD functions not available'
-
-        global options
-        target_info = session.getBuildTarget(target, strict=True)
-        build_tag = target_info['build_tag']
-        repo_info = session.getRepo(build_tag)
+        @args:
+            buildtag: a build tag
+            repoinfo: a session.getRepo() object
+            arch: a canonical architecture name
+            inst_group: a string representing the yum group to install with
+        @returns: a buildroot object
+        """
 
         # Here we configure mock to bind mount a set of /dev directories
-        # so livecd-creator can use them.
-        # We use mknod to create the loopN device files later, but if we
-        # wanted to have mock do that work, our bind_opts variable would have
-        # this additional dictionary:
-        #	{ 'files' : {
-        #		'/dev/loop0' : '/dev/loop0',
-        #		'/dev/loop1' : '/dev/loop1',
-        #		'/dev/loop2' : '/dev/loop2',
-        #		'/dev/loop3' : '/dev/loop3',
-        #		'/dev/loop4' : '/dev/loop4',
-        #		'/dev/loop5' : '/dev/loop5',
-        #		'/dev/loop6' : '/dev/loop6',
-        #		'/dev/loop7' : '/dev/loop7'}}
         bind_opts = {'dirs' : {
                          '/dev/pts' : '/dev/pts',
                          '/dev/shm' : '/dev/shm',
                          '/dev/mapper' : '/dev/mapper',
                          '/selinux' : '/selinux'}
                     }
-        rootopts = {'install_group': 'livecd-build',
+        rootopts = {'install_group': inst_group,
                     'setup_dns': True,
-                    'repo_id': repo_info['id'],
+                    'repo_id': repoinfo['id'],
                     'bind_opts' : bind_opts}
 
-        broot = BuildRoot(build_tag, arch, self.id, **rootopts)
+        broot = BuildRoot(buildtag, arch, self.id, **rootopts)
 
         # create the mock chroot
-        self.logger.debug("Initializing buildroot")
+        self.logger.debug("Initializing image buildroot")
         broot.init()
-
-        # Note that if the KS file existed locally, then "ksfile" is a relative
-        # path to it in the /mnt/koji/work directory. If not, then it is still
-        # the parameter the user passed in initially, and we assume it is a
-        # relative path in a remote scm. The user should have passed in an scm
-        # url with --ksurl.
-        tmpchroot = '/tmp'
-        scmdir = os.path.join(broot.rootdir(), tmpchroot[1:])
-        koji.ensuredir(scmdir)
-        self.logger.debug("ksfile = %s" % ksfile)
-        if opts.get('ksurl'):
-            scm = SCM(opts['ksurl'])
-            scm.assert_allowed(options.allowed_scms)
-            logfile = os.path.join(self.workdir, 'checkout.log')
-            scmsrcdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
-            kspath = os.path.join(scmsrcdir, ksfile)
-        else:
-            kspath = self.localPath("work/%s" % ksfile)
-
-        # XXX: If the ks file came from a local path and has %include
-        #      macros, livecd-creator will fail because the included
-        #      kickstarts were not copied into the chroot. For now we
-        #      require users to flatten their kickstart file if submitting
-        #      the task with a local path.
-        #
-        #      Note that if an SCM URL was used instead, %include macros
-        #      may not be a problem if the included kickstarts are present
-        #      in the repository we checked out.
-
-        # Now we do some kickstart manipulation. If the user passed in a repo
-        # url with --repo, then we substitute that in for the repo(s) specified
-        # in the kickstart file. If --repo wasn't specified, then we use the
-        # repo associated with the target passed in initially.
-        self.uploadFile(kspath) # upload the original ks file
-        if opts.get('ksversion'):
-            version = ksparser.makeVersion(ksparser.stringToVersion(opts['ksversion']))
-        else:
-            version = ksparser.makeVersion()
-        ks = ksparser.KickstartParser(version)
-        repo_class = kscontrol.dataMap[ks.version]['RepoData']
-
-        try:
-            ks.readKickstart(kspath)
-        except IOError, (err, msg):
-            raise koji.LiveCDError("Failed to read kickstart file "
-                                   "'%s' : %s" % (ksfile, msg))
-        except kserrors.KickstartError, e:
-            raise koji.LiveCDError("Failed to parse kickstart file "
-                                    "'%s' : %s" % (ksfile, e))
-
-        ks.handler.repo.repoList = [] # delete whatever the ks file told us
-        if opts.get('repo'):
-            user_repos = opts['repo'].split(',')
-            index = 0
-            for user_repo in user_repos:
-                ks.handler.repo.repoList.append(repo_class(baseurl=user_repo,
-                                                           name='koji-override-%i' % index))
-                index += 1
-        else:
-            topurl = getattr(options, 'topurl')
-            if not topurl:
-                raise koji.LiveCDError, 'topurl must be defined in kojid.conf'
-            path_info = koji.PathInfo(topdir=topurl)
-            repopath = path_info.repo(repo_info['id'],
-                                      target_info['build_tag_name'])
-            baseurl = '%s/%s' % (repopath, arch)
-            self.logger.debug('BASEURL: %s' % baseurl)
-            ks.handler.repo.repoList.append(repo_class(baseurl=baseurl,
-                                                       name='koji-%s-%i' % (target_info['build_tag_name'],
-                                                                            repo_info['id'])))
-
-        # Write out the new ks file. Note that things may not be in the same
-        # order and comments in the original ks file may be lost.
-        kskoji = os.path.join(tmpchroot, 'koji-livecd-%s-%i.ks' % (target_info['build_tag_name'], self.id))
-        kspath = os.path.join(broot.rootdir(), kskoji[1:])
-        outfile = open(kspath, 'w')
-        outfile.write(str(ks.handler))
-        outfile.close()
-
-        # put the new ksfile in the output directory
-        if not os.path.exists(kspath):
-            raise koji.LiveCDError, "KS file missing: %s" % kspath
-        self.uploadFile(kspath)
-
-        cachedir = os.path.join(tmpchroot, 'koji-livecd')   # arbitrary
-        livecd_log = os.path.join(tmpchroot, 'livecd.log')  # path in chroot
 
         # Create the loopback devices we need
         cmd = 'for i in $(seq 0 7); do mknod /dev/loop$i b 7 $i; done'
@@ -2345,7 +2174,249 @@ class LiveCDTask(BaseTaskHandler):
             raise koji.LiveCDError, \
                 "Could not create /dev/urandom: %s" % _parseStatus(rv, '"%s"' % cmd)
 
+        self.logger.debug("Image buildroot ready: " + broot.rootdir())
+        return broot
+
+    def fetchKickstart(self, broot, ksfile):
+        """
+        Retrieve the kickstart file we were given (locally or remotely) and upload it.
+        Note that if the KS file existed locally, then "ksfile" is a relative
+        path to it in the /mnt/koji/work directory. If not, then it is still
+        the parameter the user passed in initially, and we assume it is a
+        relative path in a remote scm. The user should have passed in an scm
+        url with --ksurl.
+
+        @args:
+            broot: a buildroot object
+            ksfile: path to a kickstart file
+        @returns: absolute path to the retrieved kickstart file
+        """
+        scmdir = os.path.join(broot.rootdir(), 'tmp')
+        koji.ensuredir(scmdir)
+        self.logger.debug("ksfile = %s" % ksfile)
+        if self.opts.get('ksurl'):
+            scm = SCM(self.opts['ksurl'])
+            scm.assert_allowed(options.allowed_scms)
+            logfile = os.path.join(self.workdir, 'checkout.log')
+            scmsrcdir = scm.checkout(scmdir, self.getUploadDir(), logfile)
+            kspath = os.path.join(scmsrcdir, ksfile)
+        else:
+            kspath = self.localPath("work/%s" % ksfile)
+
+        self.uploadFile(kspath) # upload the original ks file
+        return kspath # full absolute path to the file in the chroot
+
+    def prepareKickstart(self, repo_info, target_info, arch, broot, kspath):
+        """
+        Process the ks file to be used for controlled image generation. This
+        method also uploads the modified kickstart file to the task output
+        area.
+
+        @args:
+            target_info: a sesion.getBuildTarget() object
+            repo_info: session.getRepo() object
+            arch: canonical architecture name
+            broot: a buildroot object
+            kspath: absolute path to a kickstart file
+        @returns:
+            absolute path to a processed kickstart file within the buildroot
+        """
+        # XXX: If the ks file came from a local path and has %include
+        #      macros, livecd-creator will fail because the included
+        #      kickstarts were not copied into the chroot. For now we
+        #      require users to flatten their kickstart file if submitting
+        #      the task with a local path.
+        #
+        #      Note that if an SCM URL was used instead, %include macros
+        #      may not be a problem if the included kickstarts are present
+        #      in the repository we checked out.
+
+        # Now we do some kickstart manipulation. If the user passed in a repo
+        # url with --repo, then we substitute that in for the repo(s) specified
+        # in the kickstart file. If --repo wasn't specified, then we use the
+        # repo associated with the target passed in initially.
+        if self.opts.get('ksversion'):
+            version = ksparser.makeVersion(ksparser.stringToVersion(self.opts['ksversion']))
+        else:
+            version = ksparser.makeVersion()
+        ks = ksparser.KickstartParser(version)
+        repo_class = kscontrol.dataMap[ks.version]['RepoData']
+
+        try:
+            ks.readKickstart(kspath)
+        except IOError, (err, msg):
+            raise koji.LiveCDError("Failed to read kickstart file "
+                                   "'%s' : %s" % (kspath, msg))
+        except kserrors.KickstartError, e:
+            raise koji.LiveCDError("Failed to parse kickstart file "
+                                    "'%s' : %s" % (kspath, e))
+
+        ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        if self.opts.get('repo'):
+            user_repos = self.opts['repo'].split(',')
+            index = 0
+            for user_repo in user_repos:
+                ks.handler.repo.repoList.append(repo_class(baseurl=user_repo, name='koji-override-%i' % index))
+                index += 1
+        else:
+            topurl = getattr(options, 'topurl')
+            if not topurl:
+                raise koji.LiveCDError, 'topurl must be defined in kojid.conf'
+            path_info = koji.PathInfo(topdir=topurl)
+            repopath = path_info.repo(repo_info['id'],
+                                      target_info['build_tag_name'])
+            baseurl = '%s/%s' % (repopath, arch)
+            self.logger.debug('BASEURL: %s' % baseurl)
+            ks.handler.repo.repoList.append(repo_class(baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'], repo_info['id'])))
+
+        # Write out the new ks file. Note that things may not be in the same
+        # order and comments in the original ks file may be lost.
+        kskoji = os.path.join('/tmp', 'koji-livecd-%s-%i.ks' % (target_info['build_tag_name'], self.id))
+        kojikspath = os.path.join(broot.rootdir(), kskoji[1:])
+        outfile = open(kojikspath, 'w')
+        outfile.write(str(ks.handler))
+        outfile.close()
+
+        # put the new ksfile in the output directory
+        if not os.path.exists(kojikspath):
+            raise koji.LiveCDError, "KS file missing: %s" % kojikspath
+        self.uploadFile(kojikspath)
+        return kskoji # absolute path within chroot
+
+    def getImagePackages(self, cachepath):
+        """
+        Read RPM header information from the yum cache available in the 
+        given path. Returns a list of dictionaries for each RPM included.
+        """
+        repos = os.listdir(os.path.join(cachepath))
+        if len(repos) == 0:
+            raise koji.LiveCDError, 'No repos found in yum cache!'
+        hdrlist = []
+        fields = ['name', 'version', 'release', 'epoch', 'arch', \
+                  'buildtime', 'sigmd5']
+        for repo in repos:
+            pkgpath = os.path.join(cachepath, repo, 'packages')
+            pkgs = os.listdir(pkgpath)
+            for pkg in pkgs:
+                pkgfile = os.path.join(pkgpath, pkg)
+                hdr = koji.get_header_fields(pkgfile, fields)
+                hdr['size'] = os.path.getsize(pkgfile)
+                hdr['payloadhash'] = koji.hex_string(hdr['sigmd5'])
+                del hdr['sigmd5']
+                hdrlist.append(hdr)
+        return hdrlist
+
+    def getImageHash(self, img_path):
+        """return a sha256 hash of the given image file"""
+        sha256sum = hashlib.sha256()
+        image_fo = file(img_path, 'r')
+        while True:
+            data = image_fo.read(1048576)
+            sha256sum.update(data)
+            if not len(data):
+                break
+        hash = sha256sum.hexdigest()
+        self.logger.debug('digest: %s' % hash)
+        return hash
+
+# LiveCDTask begins with a mock chroot, and then installs livecd-tools into it
+# via the livecd-build group. livecd-creator is then executed in the chroot
+# to create the LiveCD image.
+#
+class LiveCDTask(ImageTask):
+
+    Methods = ['createLiveCD']
+    _taskWeight = 1.5
+
+    def genISOManifest(self, image, manifile):
+        """
+        Using iso9660 from pycdio, get the file manifest of the given image,
+        and save it to the text file manifile.
+        """
+        fd = open(manifile, 'w')
+        if not fd:
+            raise koji.GenericError, \
+                'Unable to open manifest file (%s) for writing!' % manifile
+        iso = iso9660.ISO9660.IFS(source=image)
+        if not iso.is_open():
+            raise koji.GenericError, \
+                'Could not open %s as an ISO-9660 image!' % image
+
+        # image metadata
+        id = iso.get_application_id()
+        if id is not None: fd.write("Application ID: %s\n" % id)
+        id = iso.get_preparer_id()
+        if id is not None: fd.write("Preparer ID: %s\n" % id)
+        id = iso.get_publisher_id()
+        if id is not None: fd.write("Publisher ID: %s\n" % id)
+        id = iso.get_system_id()
+        if id is not None: fd.write("System ID: %s\n" % id)
+        id = iso.get_volume_id()
+        if id is not None: fd.write("Volume ID: %s\n" % id)
+        id = iso.get_volumeset_id()
+        if id is not None: fd.write("Volumeset ID: %s\n" % id)
+
+        fd.write('\nSize(bytes)  File Name\n')
+        manifest = self.listISODir(iso, '/')
+        for a_file in manifest:
+            fd.write(a_file)
+        fd.close()
+        iso.close()
+
+    def listISODir(self, iso, path):
+        """
+        Helper function called recursively by genISOManifest. Returns a
+        listing of files/directories at the given path in an iso image obj.
+        """
+        manifest = []
+        file_stats = iso.readdir(path)
+        for stat in file_stats:
+            filename = stat[0]
+            size = stat[2]
+            is_dir = stat[4] == 2
+
+            if filename == '..':
+                continue
+            elif filename == '.':
+                # path should always end in a trailing /
+                filepath = path
+            else:
+                filepath = path + filename
+                # identify directories with a trailing /
+                if is_dir:
+                    filepath += '/'
+
+            if is_dir and filename != '.':
+                # recurse into subdirectories
+                manifest.extend(self.listISODir(iso, filepath))
+            else:
+                # output information for the current directory and files
+                manifest.append("%-10d   %s\n" % (size, filepath))
+
+        return manifest
+
+    def handler(self, arch, target, ksfile, opts=None):
+
+        target_info = session.getBuildTarget(target, strict=True)
+        build_tag = target_info['build_tag']
+        repo_info = session.getRepo(build_tag)
+
+        if not opts:
+            opts = {}
+        self.opts = opts
+
+        if not livecd_enabled:
+            self.logger.error("LiveCD features require the following dependencies: "
+                    "pykickstart, pycdio, and possibly python-hashlib")
+            raise koji.LiveCDError, 'LiveCD functions not available'
+
+        broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 'livecd-build')
+        kspath = self.fetchKickstart(broot, ksfile)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, kspath)
+
         # Run livecd-creator
+        cachedir = '/tmp/koji-livecd'   # arbitrary paths in chroot
+        livecd_log = '/tmp/livecd.log'
         cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v', '--logfile', livecd_log, '--cache', cachedir]
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
         self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
@@ -2383,53 +2454,21 @@ class LiveCDTask(BaseTaskHandler):
         # copy the iso out of the chroot. If we were given an isoname, this is
         # where the renaming happens.
         self.logger.debug('uploading image: %s' % isosrc)
-        if opts.get('isoname'):
-            isofile = opts['isoname']
+        if self.opts.get('isoname'):
+            isofile = self.opts['isoname']
             if not isofile.endswith('.iso'):
                 isofile += '.iso'
         self.uploadFile(isosrc, remoteName=isofile)
 
         # Generate the file manifest of the image
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
-        self.genImageManifest(isosrc, manifest)
+        self.genISOManifest(isosrc, manifest)
         self.uploadFile(manifest)
 
-        if not opts.get('scratch'):
-            # Read the rpm header information from the yum cache livecd-creator
-            # used. We assume it was empty to start.
-            #
-            # LiveCD creator would have thrown an error if no repo was
-            # specified, so we assume the ones we parse are ok.
-            repos = os.listdir(os.path.join(broot.rootdir(), cachedir[1:]))
-            if len(repos) == 0:
-                raise koji.LiveCDError, 'No repos found in yum cache!'
+        if not self.opts.get('scratch'):
 
-            hdrlist = []
-            fields = ['name', 'version', 'release', 'epoch', 'arch', \
-                      'buildtime', 'sigmd5']
-            for repo in repos:
-                pkgpath = os.path.join(broot.rootdir(), cachedir[1:], repo,
-                                       'packages')
-                pkgs = os.listdir(pkgpath)
-                for pkg in pkgs:
-                    pkgfile = os.path.join(pkgpath, pkg)
-                    hdr = koji.get_header_fields(pkgfile, fields)
-                    hdr['size'] = os.path.getsize(pkgfile)
-                    hdr['payloadhash'] = koji.hex_string(hdr['sigmd5'])
-                    del hdr['sigmd5']
-                    hdrlist.append(hdr)
-
-            # get a unique hash of the image file
-            sha256sum = hashlib.sha256()
-            image_fo = file(isosrc, 'r')
-            while True:
-                data = image_fo.read(1048576)
-                sha256sum.update(data)
-                if not len(data):
-                    break
-
-            hash = sha256sum.hexdigest()
-            self.logger.debug('digest: %s' % hash)
+            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(), cachedir[1:]))
+            hash = self.getImageHash(isosrc)
 
             # Import info about the image into the database, unless this is a
             # scratch image.
