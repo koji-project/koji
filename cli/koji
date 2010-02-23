@@ -1037,7 +1037,7 @@ def handle_enable_host(options, session, args):
     session.multiCall(strict=True)
 
 def handle_import(options, session, args):
-    "[admin] Import local RPMs to the database"
+    "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
