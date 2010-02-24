@@ -51,10 +51,10 @@ from koji.context import context
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):
-    if hasattr(context,'req'):
-        context.req.log_error(msg)
-    else:
-        sys.stderr.write(msg + "\n")
+    #if hasattr(context,'req'):
+    #    context.req.log_error(msg)
+    #else:
+    #    sys.stderr.write(msg + "\n")
     logger.error(msg)
 
 
