@@ -621,7 +621,10 @@ def handler(req, profiling=False):
         finally:
             #make sure context gets cleaned up
             if hasattr(context,'cnx'):
-                context.cnx.close()
+                try:
+                    context.cnx.close()
+                except Exception:
+                    pass
             context._threadclear()
     return apache.OK
 
