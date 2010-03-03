@@ -289,6 +289,10 @@ class CallbackError(PluginError):
     """Raised when there is an error executing a callback"""
     faultCode = 1017
 
+class ApplianceError(GenericError):
+    """Raised when Appliance Image creation fails"""
+    faultCode = 1018
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of
@@ -1274,6 +1278,10 @@ class PathInfo(object):
     def livecdRelPath(self, image_id):
         """Return the relative path for the livecd image directory"""
         return os.path.join('livecd', str(image_id % 10000), str(image_id))
+
+    def applianceRelPath(self, image_id):
+        """Return the relative path for the appliance image directory"""
+        return os.path.join('appliance', str(image_id % 10000), str(image_id))
 
     def imageFinalPath(self):
         """Return the absolute path to where completed images can be found"""

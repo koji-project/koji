@@ -4035,7 +4035,7 @@ def _build_image(options, task_opts, session, args, img_type):
         print
 
     # finally, create the task.
-    task_id = session.build_image(arch, target, ksfile, img_type, 
+    task_id = session.buildImage(arch, target, ksfile, img_type, 
                                   opts=task_opts, priority=priority)
 
     print "Created task:", task_id

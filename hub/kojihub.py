@@ -5016,18 +5016,23 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
 
     return image_id
 
-def moveImageResults(task_id, image_id, arch):
+def moveImageResults(task_id, image_id, arch, mediatype):
     """
     Move the image file from the work/task directory into its more
     permanent resting place. This shouldn't be called for scratch images.
     """
     source_path = os.path.join(koji.pathinfo.work(),
                                koji.pathinfo.taskrelpath(task_id))
-    final_path = os.path.join(koji.pathinfo.imageFinalPath(),
-                              koji.pathinfo.livecdRelPath(image_id))
+    # TODO: enum this
+    if mediatype == 'Raw Appliance':
+        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.applianceRelPath(image_id))
+    elif mediatype == 'LiveCD ISO':
+        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.livecdRelPath(image_id))
     log_path = os.path.join(final_path, 'data', 'logs', arch)
     if os.path.exists(final_path) or os.path.exists(log_path):
-        raise koji.GenericError, "Error moving LiveCD image: the final " + \
+        raise koji.GenericError, "Error moving image: the final " + \
             "destination already exists!"
     koji.ensuredir(final_path)
     koji.ensuredir(log_path)
@@ -5035,18 +5040,14 @@ def moveImageResults(task_id, image_id, arch):
     src_files = os.listdir(source_path)
     got_iso = False
     for fname in src_files:
-        if fname.endswith('.iso'):
-            got_iso = True
-            dest_path = final_path
-        else:
+        if not fname.endswith('.log'):
             dest_path = log_path
+        else:
+            dest_path = final_path
         os.rename(os.path.join(source_path, fname),
                   os.path.join(dest_path, fname))
         os.symlink(os.path.join(dest_path, fname),
                    os.path.join(source_path, fname))
-
-    if not got_iso:
-        raise koji.GenericError, "Could not move the iso to the final destination!"
 
 #
 # XMLRPC Methods
@@ -5105,9 +5106,9 @@ class RootExports(object):
 
         return make_task('chainbuild',[srcs,target,opts],**taskOpts)
 
-    # Create the livecd task. Called from handle_spin_livecd in the client.
+    # Create the image task. Called from _build_image in the client.
     #
-    def build_image (self, arch, target, ksfile, img_type, opts=None, priority=None):
+    def buildImage (self, arch, target, ksfile, img_type, opts=None, priority=None):
         """
         Create an image using a kickstart file and group package list.
         """
@@ -7672,7 +7673,6 @@ class HostExports(object):
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
 
-    # Called from kojid::LiveCDTask
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
         """Import a built image, populating the database with metadata and moving the image
         to its final location."""
@@ -7682,7 +7682,7 @@ class HostExports(object):
         task.assertHost(host.id)
         image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
                                        hash, rpmlist)
-        moveImageResults(task_id, image_id, arch)
+        moveImageResults(task_id, image_id, arch, mediatype)
         return image_id
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
