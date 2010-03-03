@@ -3959,24 +3959,36 @@ def handle_appliance_build(options, session, args):
                "help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--nowait", action="store_true",
-        help=_("Don't wait on appliance creation"))
+        help=_("Do not wait on appliance creation."))
     parser.add_option("--noprogress", action="store_true",
-        help=_("Do not display progress of the upload"))
+        help=_("Do not display progress of the upload."))
     parser.add_option("--background", action="store_true",
-        help=_("Run the appliance creation task at a lower priority"))
+        help=_("Run the appliance creation task at a lower priority."))
     parser.add_option("--ksurl", metavar="SCMURL",
-        help=_("The URL to the SCM containing the kickstart file"))
+        help=_("The URL to the SCM containing the kickstart file."))
     parser.add_option("--ksversion", metavar="VERSION",
-        help=_("The syntax version used in the kickstart file"))
+        help=_("The syntax version used in the kickstart file."))
     parser.add_option("--scratch", action="store_true",
-        help=_("Create a scratch appliance."))
+        help=_("Create a scratch appliance"))
     parser.add_option("--repo",
         help=_("Specify a comma-separated list of repos that will override\n" +
                "the repo used to install RPMs in the appliance. The \n" +
                "build tag repo associated with the target is the default."))
-    parser.add_option("--app-options", metavar="OPTIONS",
-        help=_("Specify a comma-separated list of options that will be\n" +
-               "passed down to appliance-creator in the chroot."))
+    parser.add_option("--version", metavar="VERSION", default=None,
+        help=_("Set an appliance version; used in .xml metadata."))
+    parser.add_option("--name", metavar="NAME", default=None,
+        help=_("Specify the appliance file name."))
+    parser.add_option("--release", metavar="RELEASE", default=None,
+        help=_("Set an appliance release number; used in .xml metadata."))
+    parser.add_option("--vmem", metavar="VMEM", default=None,
+        help=_("Set the amount of virtual memory in the appliance in MB,\n" +
+               "default is 512."))
+    parser.add_option("--vcpu", metavar="VCPU", default=None,
+        help=_("Set the number of virtual cpus in the appliance,\n" +
+               "default is 1."))
+    parser.add_option("--format", metavar="DISK_FORMAT", default='raw',
+        help=_("Disk format, default is raw. Other options are qcow,\n" +
+               "qcow2, and vmx."))
 
     (task_options, args) = parser.parse_args(args)
 
@@ -3987,7 +3999,6 @@ def handle_appliance_build(options, session, args):
                        "kickstart file ."))
         assert False
     _build_image(options, task_options, session, args, 'appliance')
-
 
 def _build_image(options, task_opts, session, args, img_type):
     """

@@ -5023,13 +5023,12 @@ def moveImageResults(task_id, image_id, arch, mediatype):
     """
     source_path = os.path.join(koji.pathinfo.work(),
                                koji.pathinfo.taskrelpath(task_id))
-    # TODO: enum this
-    if mediatype == 'Raw Appliance':
-        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
-                                  koji.pathinfo.applianceRelPath(image_id))
-    elif mediatype == 'LiveCD ISO':
+    if mediatype == 'LiveCD ISO':
         final_path = os.path.join(koji.pathinfo.imageFinalPath(),
                                   koji.pathinfo.livecdRelPath(image_id))
+    else:
+        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.applianceRelPath(image_id))
     log_path = os.path.join(final_path, 'data', 'logs', arch)
     if os.path.exists(final_path) or os.path.exists(log_path):
         raise koji.GenericError, "Error moving image: the final " + \
