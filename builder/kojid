@@ -59,14 +59,14 @@ from optparse import OptionParser
 from StringIO import StringIO
 from xmlrpclib import Fault
 
-#imports for LiveCD handler
-livecd_enabled = False
+#imports for LiveCD and Appliance handler
+image_enabled = False
 try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
     import hashlib
     import iso9660 # from pycdio
-    livecd_enabled = True
+    image_enabled = True
 except ImportError:
     pass
 
@@ -2179,7 +2179,9 @@ class ImageTask(BaseTaskHandler):
 
     def fetchKickstart(self, broot, ksfile):
         """
-        Retrieve the kickstart file we were given (locally or remotely) and upload it.
+        Retrieve the kickstart file we were given (locally or remotely) and 
+        upload it.
+
         Note that if the KS file existed locally, then "ksfile" is a relative
         path to it in the /mnt/koji/work directory. If not, then it is still
         the parameter the user passed in initially, and we assume it is a
@@ -2222,7 +2224,7 @@ class ImageTask(BaseTaskHandler):
             absolute path to a processed kickstart file within the buildroot
         """
         # XXX: If the ks file came from a local path and has %include
-        #      macros, livecd-creator will fail because the included
+        #      macros, *-creator will fail because the included
         #      kickstarts were not copied into the chroot. For now we
         #      require users to flatten their kickstart file if submitting
         #      the task with a local path.
@@ -2271,7 +2273,8 @@ class ImageTask(BaseTaskHandler):
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
-        kskoji = os.path.join('/tmp', 'koji-livecd-%s-%i.ks' % (target_info['build_tag_name'], self.id))
+        kskoji = os.path.join('/tmp', 'koji-image-%s-%i.ks' % 
+                              (target_info['build_tag_name'], self.id))
         kojikspath = os.path.join(broot.rootdir(), kskoji[1:])
         outfile = open(kojikspath, 'w')
         outfile.write(str(ks.handler))
@@ -2318,6 +2321,103 @@ class ImageTask(BaseTaskHandler):
         hash = sha256sum.hexdigest()
         self.logger.debug('digest: %s' % hash)
         return hash
+
+# ApplianceTask begins with a mock chroot, and then installs appliance-tools 
+# into it via the appliance-build group. appliance-creator is then executed 
+# in the chroot to create the appliance image.
+#
+class ApplianceTask(ImageTask):
+
+    Methods = ['createAppliance']
+    _taskWeight = 1.5
+
+    def handler(self, arch, target, ksfile, opts=None):
+
+        target_info = session.getBuildTarget(target, strict=True)
+        build_tag = target_info['build_tag']
+        repo_info = session.getRepo(build_tag)
+
+        if not opts:
+            opts = {}
+        self.opts = opts
+
+        if not image_enabled:
+            self.logger.error("Appliance features require the following dependencies: pykickstart, and possibly python-hashlib")
+            raise koji.ApplianceError, 'Appliance functions not available'
+
+        broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 
+                                      'appliance-build')
+        kspath = self.fetchKickstart(broot, ksfile)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, 
+                                       kspath)
+
+        # Run appliance-creator
+        # TODO: handle --app-options
+        odir = 'output'
+        cachedir = '/tmp/koji-appliance'   # arbitrary paths in chroot
+        app_log = '/tmp/appliance.log'
+        cmd = ['/usr/bin/appliance-creator', '-c', kskoji, '-d', '-v', 
+               '--logfile', app_log, '--cache', cachedir, '-o', odir]
+        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        self.uploadFile(os.path.join(broot.rootdir(), app_log[1:]))
+        if rv:
+            raise koji.ApplianceError, \
+                "Could not create appliance: %s" % _parseStatus(rv, 'appliance-creator') + "; see root.log or appliance.log for more information"
+
+        # Find the resultant raw disk image and accompanying xml file
+        rawpath, xmlpath = None, None
+        for rdir, subdirs, files in os.walk(broot.rootdir(), 'tmp', odir):
+            for f in files:
+                if f.endswith('.raw'): 
+                    rawpath = os.path.join(broot.rootdir(), 'tmp', rdir, f)
+                if f.endswith('.xml'):
+                    if f == 'repomd.xml': continue
+                    xmlpath = os.path.join(broot.rootdir(), 'tmp', rdir, f)
+
+        self.logger.debug('raw: %s xml: %s' % (rawpath, xmlpath))
+        if rawpath == None or xmlpath == None:
+            raise koji.ApplianceError, 'missing appliance-creator output'
+
+        try:
+            filesize = os.path.getsize(rawpath)
+        except OSError:
+            raise koji.LiveCDError, 'Could not get appliance file size'
+
+        # if filesize is greater than a 32-bit signed integer's range, the
+        # python XMLRPC module will break.
+        filesize = str(filesize)
+
+        # copy the output out of the chroot. If we were given a name, this is
+        # where the renaming happens.
+        self.logger.debug('uploading appliance output: %s' % rawpath)
+        self.uploadFile(xmlpath)
+        self.uploadFile(rawpath)
+
+        # TODO: get file manifest from the appliance
+
+        if not self.opts.get('scratch'):
+            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(), 
+                                                         cachedir[1:]))
+            hash = self.getImageHash(rawpath)
+
+            # Import info about the image into the database, unless this is a
+            # scratch image.
+            broot.markExternalRPMs(hdrlist)
+            rawfile = os.path.basename(rawpath)
+            image_id = session.host.importImage(self.id, rawfile, filesize, 
+                                                arch, 'Raw Appliance', hash, 
+                                                hdrlist)
+
+        broot.expire()
+        if opts.get('scratch'):
+            return 'Scratch appliance image created: %s' % \
+                   os.path.join(koji.pathinfo.work(),
+                                koji.pathinfo.taskrelpath(self.id), rawfile)
+        else:
+            return 'Created appliance image: %s' % \
+                   os.path.join(koji.pathinfo.imageFinalPath(),
+                                koji.pathinfo.applianceRelPath(image_id), 
+                                rawfile)
 
 # LiveCDTask begins with a mock chroot, and then installs livecd-tools into it
 # via the livecd-build group. livecd-creator is then executed in the chroot
@@ -2405,7 +2505,7 @@ class LiveCDTask(ImageTask):
             opts = {}
         self.opts = opts
 
-        if not livecd_enabled:
+        if not image_enabled:
             self.logger.error("LiveCD features require the following dependencies: "
                     "pykickstart, pycdio, and possibly python-hashlib")
             raise koji.LiveCDError, 'LiveCD functions not available'
