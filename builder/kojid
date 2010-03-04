@@ -2418,9 +2418,9 @@ class ApplianceTask(ImageTask):
             hash = self.getImageHash(app_path)
             broot.markExternalRPMs(hdrlist)
             itype = img_type[self.opts.get('format')]
+            self.uploadFile(app_path)
             image_id = session.host.importImage(self.id, app_file, filesize, 
                 arch, itype, hash, hdrlist)
-            self.uploadFile(app_path)
 
         broot.expire()
         if opts.get('scratch'):

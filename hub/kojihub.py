@@ -5037,9 +5037,8 @@ def moveImageResults(task_id, image_id, arch, mediatype):
     koji.ensuredir(log_path)
 
     src_files = os.listdir(source_path)
-    got_iso = False
     for fname in src_files:
-        if not fname.endswith('.log'):
+        if fname.endswith('.log') or fname.endswith('.ks'):
             dest_path = log_path
         else:
             dest_path = final_path

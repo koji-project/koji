@@ -363,9 +363,10 @@ _TASKS = ['build',
           'buildNotification',
           'tagNotification',
           'dependantTask',
-          'createLiveCD']
+          'createLiveCD',
+          'createAppliance']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'newRepo']
 
@@ -587,7 +588,11 @@ def imageinfo(req, imageID):
     values['title'] = image['filename'] + ' | Image Information'
     values['buildroot'] = server.getBuildroot(image['br_id'], strict=True)
     values['task'] = server.getTaskInfo(image['task_id'], request=True)
-    values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
+    if image['mediatype'] == 'LiveCD ISO':
+        values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
+    else:
+        values['imageBase'] = imageURL + '/' + koji.pathinfo.applianceRelPath(image['id'])
+
     return _genHTML(req, 'imageinfo.chtml')
 
 def taskstatus(req, taskID):
@@ -640,7 +645,9 @@ def getfile(req, taskID, name, offset=None, size=None):
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
-    elif name.endswith('.iso'):
+    elif name.endswith('.iso') or name.endswith('.raw') or \
+         name.endswith('.qcow') or name.endswith('.qcow2') or \
+         name.endswith('.vmx'):
         req.content_type = 'application/octet-stream'
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
 
