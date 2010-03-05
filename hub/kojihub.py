@@ -5128,8 +5128,11 @@ class RootExports(object):
         elif img_type == 'appliance':
             task_type = 'createAppliance'
 
-        return make_task(task_type, [arch, target, ksfile, opts],
-                         **taskOpts)
+        for oname, oval in opts.items():
+            if oval == None:
+                del opts[oname]
+
+        return make_task(task_type, [arch, target, ksfile, opts], **taskOpts)
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
     #
