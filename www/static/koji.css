@@ -221,6 +221,10 @@ div.dataHeader {
     font-weight: bold;
 }
 
+div.noPaginate {
+    margin-bottom: 10px;
+}
+
 div.pageHeader {
     margin-bottom: 10px;
     font-weight: bold;

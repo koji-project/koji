@@ -204,20 +204,20 @@ def logout(req, page=None):
 
     _redirectBack(req, page, forceSSL=False)
 
-def index(req, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, taskOrder='-completion_time', taskStart=None):
+def index(req, packageOrder='package_name', packageStart=None):
     values = _initValues(req)
     server = _getServer(req)
 
     user = req.currentUser
 
-    builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None)},
-                                         start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
+    values['builds'] = server.listBuilds(userID=(user and user['id'] or None), queryOpts={'order': '-build_id', 'limit': 10})
 
     taskOpts = {'parent': None, 'decode': True}
     if user:
         taskOpts['owner'] = user['id']
-    tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': taskOpts},
-                                        start=taskStart, dataName='tasks', prefix='task', order=taskOrder, pageSize=10)
+    values['tasks'] = server.listTasks(opts=taskOpts, queryOpts={'order': '-id', 'limit': 10})
+
+    values['order'] = '-id'
 
     if user:
         packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
