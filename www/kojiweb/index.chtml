@@ -10,6 +10,9 @@
     <tr class="list-header">
       <th>ID $util.sortImage(self, 'id')</th>
       <th>NVR</th>
+      #if not $user
+      <th>Built by</th>
+      #end if
       <th>Finished</th>
       <th>State</th>
     </tr>
@@ -18,6 +21,9 @@
       #set $stateName = $util.stateName($build.state)
       <td>$build.build_id</td>
       <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
+      #if not $user
+      <td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+      #end if
       <td>$util.formatTime($build.completion_time)</td>
       <td class="$stateName">$util.stateImage($build.state)</td>
     </tr>
@@ -36,6 +42,9 @@
     <tr class="list-header">
       <th>ID $util.sortImage($self, 'id')</th>
       <th>Type</th>
+      #if not $user
+      <th>Owner</th>
+      #end if
       <th>Arch</th>
       <th>Finished</th>
       <th>State</th>
@@ -45,6 +54,15 @@
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
       <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
+      #if not $user
+      <td>
+        #if $task.owner_type == $koji.USERTYPES['HOST']
+        <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+        #else
+        <a href="userinfo?userID=$task.owner">$task.owner_name</a>
+        #end if
+      </td>
+      #end if
       <td>$task.arch</td>
       <td>$util.formatTime($task.completion_time)</td>
       <td class="task$state">$util.imageTag($state)</td>
