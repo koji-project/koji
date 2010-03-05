@@ -116,7 +116,7 @@
         <strong>Source:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
-        #elif $task.method == 'createLiveCD'
+        #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
         <strong>Arch:</strong> $params[0]<br/>
         <strong>Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         <strong>Kickstart File:</strong> $params[2]<br/>
@@ -255,7 +255,7 @@
       </td>
     </tr>
     #end if
-    #if $task.method == 'createLiveCD' and $image
+    #if ($task.method == 'createLiveCD' or $task.method == 'createAppliance') and $image
     <tr>
       <th>Image</th>
       <td>
@@ -263,9 +263,10 @@
       </td>
     </tr>
     #end if
+    #if not ($task.method == 'createLiveCD' or $task.method == 'createAppliance')
     <tr>
       <th>Parent</th>
-      <td>
+        <td>
         #if $parent
         <a href="taskinfo?taskID=$parent.id" class="task$util.taskState($parent.state)">$koji.taskLabel($parent)</a>
         #end if
@@ -280,6 +281,7 @@
         $printChildren($task.id, $descendents)
       </td>
     </tr>
+    #end if
     <tr>
       <th>Waiting?</th><td>#if $task.waiting then 'yes' else 'no'#</td>
     </tr>
@@ -321,7 +323,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if

@@ -520,7 +520,7 @@ def taskinfo(req, taskID):
     if task['method'] == 'buildArch':
         buildTag = server.getTag(params[1])
         values['buildTag'] = buildTag
-    elif task['method'] == 'createLiveCD':
+    elif task['method'] == 'createLiveCD' or task['method'] == 'createAppliance':
         values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:
