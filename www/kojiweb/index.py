@@ -369,7 +369,7 @@ _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'newRepo', 'tagBu
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'newRepo']
 
-def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-completion_time'):
+def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-id'):
     values = _initValues(req, 'Tasks', 'tasks')
     server = _getServer(req)
 
@@ -1079,7 +1079,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1'):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1'):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
