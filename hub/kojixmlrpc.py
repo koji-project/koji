@@ -459,6 +459,10 @@ _default_policies = {
             has_perm admin :: allow
             all :: deny
             ''',
+    'package_list' : '''
+            has_perm admin :: allow
+            all :: deny
+            '''
 }
 
 def get_policy(opts, plugins):

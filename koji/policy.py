@@ -60,6 +60,27 @@ class NoneTest(FalseTest):
     #alias for false
 
 
+class BoolTest(BaseSimpleTest):
+    """Test a field in the data as a boolean value
+
+    This test can be used as-is, or it can be subclassed to
+    test a specific field
+
+    Syntax:
+        name [field]
+    """
+    name = 'bool'
+    field = None
+    def run(self, data):
+        args = self.str.split()[1:]
+        if self.field is None:
+            field = args[0]
+        else:
+            # expected when we are subclassed
+            field = self.field
+        return bool(data[field])
+
+
 class MatchTest(BaseSimpleTest):
     """Matches a field in the data against glob patterns
 
