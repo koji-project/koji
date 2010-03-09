@@ -50,6 +50,11 @@
   <tr>
     <th colspan="2"><a href="$imageBase/$image.filename">Download Image</a> (<a href="$imageBase/data/logs/$image.arch/">build logs</a>)</th>
   </tr>
+  #if $image.get('xmlfile', None)
+  <tr>
+    <th colspan="2"><a href="$imageBase/$image.xmlfile">Download XML Description</a></th>
+  </tr>
+  #end if
 </table>
 
 #include "includes/footer.chtml"

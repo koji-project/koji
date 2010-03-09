@@ -2387,7 +2387,7 @@ class ApplianceTask(ImageTask):
         self.logger.debug('output: %s' % results)
         if len(results) > 2:
             raise koji.ApplianceError, \
-                "Unexpected output found! Full list is: %s" % results
+                "Only one disk image allowed for output! found: %s" % results
 
         app_path = None
         for ofile in results:
@@ -2420,7 +2420,9 @@ class ApplianceTask(ImageTask):
             itype = img_type[self.opts.get('format')]
             self.uploadFile(app_path)
             image_id = session.host.importImage(self.id, app_file, filesize, 
-                arch, itype, hash, hdrlist)
+                arch, itype, hash, hdrlist) # xml file automatically moved too
+        else:
+            self.uploadFile(app_path)
 
         broot.expire()
         if opts.get('scratch'):

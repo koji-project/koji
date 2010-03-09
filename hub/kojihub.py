@@ -5166,10 +5166,19 @@ class RootExports(object):
             else:
                 raise koji.GenericError, 'no image for task ID: %i' % taskID
 
+        # find the accompanying xml file, if any
+        if ret['mediatype'] != 'LiveCD ISO':
+            imagepath = os.path.join(koji.pathinfo.imageFinalPath(), 
+                                     koji.pathinfo.applianceRelPath(ret['id']))
+            out_files = os.listdir(imagepath)
+            for out_file in out_files:
+                if out_file.endswith('.xml'):
+                    ret['xmlfile'] = out_file
+
         # additional tweaking
         if ret:
-            # Always return filesize as a string instead of an int so XMLRPC doesn't
-            # complain about 32-bit overflow
+            # Always return filesize as a string instead of an int so XMLRPC 
+            # doesn't complain about 32-bit overflow
             ret['filesize'] = str(ret['filesize'])
         return ret
 
