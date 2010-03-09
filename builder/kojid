@@ -3500,7 +3500,7 @@ if __name__ == "__main__":
                               keytab=options.keytab,
                               ccache=options.ccache)
         except krbV.Krb5Error, e:
-            quit("Kerberos authentication failed: '%s' (%s)" % (e.message, e.err_code))
+            quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
         except socket.error, e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
