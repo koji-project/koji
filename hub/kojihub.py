@@ -5426,21 +5426,6 @@ class RootExports(object):
             tasklist.append(task_id)
         return tasklist
 
-    def fixTags(self):
-        """A fix for incomplete tag import, adds tag_config entries
-
-        Note the query will only add the tag_config entries if there are
-        no other tag_config entries, so it will not 'undelete' any tags"""
-        c = context.cnx.cursor()
-        q = """
-        INSERT INTO tag_config(tag_id,arches,perm_id,locked)
-        SELECT id,'i386 ia64 ppc ppc64 s390 s390x sparc sparc64 x86_64',NULL,False
-        FROM tag LEFT OUTER JOIN tag_config ON tag.id = tag_config.tag_id
-        WHERE revoke_event IS NULL AND active IS NULL;
-        """
-        context.commit_pending = True
-        c.execute(q)
-
     def listTags(self, build=None, package=None, queryOpts=None):
         """List tags.  If build is specified, only return tags associated with the
         given build.  If package is specified, only return tags associated with the
