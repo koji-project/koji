@@ -4986,6 +4986,7 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     imageinfo['arch'] = arch
     imageinfo['mediatype'] = mediatype
     imageinfo['hash'] = hash
+    # TODO: add xmlfile field to the imageinfo table
 
     koji.plugin.run_callbacks('preImport', type='image', image=imageinfo)
 
@@ -5167,7 +5168,7 @@ class RootExports(object):
                 raise koji.GenericError, 'no image for task ID: %i' % taskID
 
         # find the accompanying xml file, if any
-        if ret['mediatype'] != 'LiveCD ISO':
+        if ret != None and ret['mediatype'] != 'LiveCD ISO':
             imagepath = os.path.join(koji.pathinfo.imageFinalPath(), 
                                      koji.pathinfo.applianceRelPath(ret['id']))
             out_files = os.listdir(imagepath)
@@ -7684,14 +7685,16 @@ class HostExports(object):
         _tag_build(tag,build,user_id=user_id,force=force)
 
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
-        """Import a built image, populating the database with metadata and moving the image
-        to its final location."""
+        """
+        Import a built image, populating the database with metadata and 
+        moving the image to its final location.
+        """
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
-                                       hash, rpmlist)
+        image_id = importImageInternal(task_id, filename, filesize, arch,
+                                       mediatype, hash, rpmlist)
         moveImageResults(task_id, image_id, arch, mediatype)
         return image_id
 

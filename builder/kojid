@@ -2385,6 +2385,7 @@ class ApplianceTask(ImageTask):
                 results.append(os.path.join(broot.rootdir(), 'tmp', 
                                             directory, f))
         self.logger.debug('output: %s' % results)
+        # TODO: allow for multiple disk images to be generated
         if len(results) > 2:
             raise koji.ApplianceError, \
                 "Only one disk image allowed for output! found: %s" % results

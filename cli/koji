@@ -3949,11 +3949,13 @@ def handle_spin_livecd(options, session, args):
         assert False
     _build_image(options, task_options, session, args, 'livecd')
 
-def handle_appliance_build(options, session, args):
+# This handler is for spinning appliance images
+#
+def handle_spin_appliance(options, session, args):
     """[admin] Create an appliance given a kickstart file"""
 
     # Usage & option parsing
-    usage = _("usage: %prog appliance_build [options] <target> <arch> " +
+    usage = _("usage: %prog spin-appliance [options] <target> <arch> " +
               "<kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
