@@ -182,6 +182,8 @@ CREATE TABLE host (
 	arches TEXT,
 	task_load FLOAT CHECK (NOT task_load < 0) NOT NULL DEFAULT 0.0,
 	capacity FLOAT CHECK (capacity > 1) NOT NULL DEFAULT 2.0,
+	description TEXT,
+	comment TEXT,
 	ready BOOLEAN NOT NULL DEFAULT 'false',
 	enabled BOOLEAN NOT NULL DEFAULT 'true'
 ) WITHOUT OIDS;

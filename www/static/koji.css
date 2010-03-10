@@ -418,7 +418,7 @@ abbr {
     cursor: help;
 }
 
-.changelog {
+.changelog, .rpmheader, .usertext {
     font-family: monospace;
     font-size: medium;
     white-space: pre;
@@ -441,12 +441,6 @@ span#loginInfo {
 
 .smaller {
     font-size: smaller;
-}
-
-.rpmheader {
-    font-family: monospace;
-    font-size: medium;
-    white-space: pre;
 }
 
 .error {

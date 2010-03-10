@@ -492,6 +492,48 @@ def handle_add_host(options, session, args):
         if id:
             print "%s added: id %d" % (host, id)
 
+def handle_edit_host(options, session, args):
+    "[admin] Edit a host"
+    usage = _("usage: %prog edit-host hostname ... [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arches", help=_("Space-separated list of supported architectures"))
+    parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
+    parser.add_option("--description", metavar="DESC", help=_("Description of this host"))
+    parser.add_option("--comment", help=_("A brief comment about this host"))
+    (subopts, args) = parser.parse_args(args)
+    if not args:
+        parser.error(_("Please specify a hostname"))
+
+    activate_session(session)
+
+    vals = {}
+    for key, val in subopts.__dict__.items():
+        if val is not None:
+            vals[key] = val
+
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [info] in zip(args, session.multiCall(strict=True)):
+        if not info:
+            print _("Host %s does not exist") % host
+            error = True
+
+    if error:
+        print _("No changes made, please correct the command line")
+        return 1
+
+    session.multicall = True
+    for host in args:
+        session.editHost(host, **vals)
+    for host, [result] in zip(args, session.multiCall(strict=True)):
+        if result:
+            print _("Edited %s") % host
+        else:
+            print _("No changes made to %s") % host
+
 def handle_add_host_to_channel(options, session, args):
     "[admin] Add a host to a channel"
     usage = _("usage: %prog add-host-to-channel [options] hostname channel")
@@ -949,6 +991,7 @@ def handle_disable_host(options, session, args):
     usage = _("usage: %prog disable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--comment", help=_("Comment indicating why the host(s) are being disabled"))
     (options, args) = parser.parse_args(args)
 
     activate_session(session)
@@ -966,6 +1009,8 @@ def handle_disable_host(options, session, args):
     session.multicall = True
     for host in args:
         session.disableHost(host)
+        if options.comment:
+            session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
 
 def handle_enable_host(options, session, args):
@@ -973,6 +1018,7 @@ def handle_enable_host(options, session, args):
     usage = _("usage: %prog enable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--comment", help=_("Comment indicating why the host(s) are being enabled"))
     (options, args) = parser.parse_args(args)
 
     activate_session(session)
@@ -990,6 +1036,8 @@ def handle_enable_host(options, session, args):
     session.multicall = True
     for host in args:
         session.enableHost(host)
+        if options.comment:
+            session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
 
 def handle_import(options, session, args):

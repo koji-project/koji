@@ -3011,11 +3011,13 @@ def get_host(hostInfo, strict=False):
     - arches
     - task_load
     - capacity
+    - description
+    - comment
     - ready
     - enabled
     """
     fields = ('id', 'user_id', 'name', 'arches', 'task_load',
-              'capacity', 'ready', 'enabled')
+              'capacity', 'description', 'comment', 'ready', 'enabled')
     query = """SELECT %s FROM host
     WHERE """ % ', '.join(fields)
     if isinstance(hostInfo, int) or isinstance(hostInfo, long):
@@ -3026,6 +3028,42 @@ def get_host(hostInfo, strict=False):
         raise koji.GenericError, 'invalid type for hostInfo: %s' % type(hostInfo)
 
     return _singleRow(query, locals(), fields, strict)
+
+def edit_host(hostInfo, **kw):
+    """Edit information for an existing host.
+    hostInfo specifies the host to edit, either as an integer (id)
+    or a string (name).
+    fields to be changed are specified as keyword parameters:
+    - arches
+    - capacity
+    - description
+    - comment
+
+    Returns True if changes are made to the database, False otherwise.
+    """
+    context.session.assertPerm('admin')
+
+    host = get_host(hostInfo, strict=True)
+
+    fields = ('arches', 'capacity', 'description', 'comment')
+    changes = []
+    for field in fields:
+        if field in kw and kw[field] != host[field]:
+            changed = True
+            if field == 'capacity':
+                # capacity is a float, so set the substitution format appropriately
+                changes.append('%s = %%(%s)f' % (field, field))
+            else:
+                changes.append('%s = %%(%s)s' % (field, field))
+
+    if not changes:
+        return False
+
+    update = 'UPDATE host set ' + ', '.join(changes) + ' where id = %(id)i'
+    data = kw.copy()
+    data['id'] = host['id']
+    _dml(update, data)
+    return True
 
 def get_channel(channelInfo, strict=False):
     """Return information about a channel."""
@@ -6560,6 +6598,7 @@ class RootExports(object):
         set_host_enabled(hostname, False)
 
     getHost = staticmethod(get_host)
+    editHost = staticmethod(edit_host)
     addHostToChannel = staticmethod(add_host_to_channel)
     removeHostFromChannel = staticmethod(remove_host_from_channel)
 
