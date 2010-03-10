@@ -1341,6 +1341,42 @@ def hostinfo(req, hostID=None, userID=None):
     
     return _genHTML(req, 'hostinfo.chtml')
 
+def hostedit(req, hostID):
+    server = _getServer(req)
+    _assertLogin(req)
+
+    hostID = int(hostID)
+    host = server.getHost(hostID)
+    if host == None:
+        raise koji.GenericError, 'no host with ID: %i' % hostID
+
+    form = req.form
+
+    if form.has_key('save'):
+        arches = form['arches'].value
+        capacity = float(form['capacity'].value)
+        description = form['description'].value
+        comment = form['comment'].value
+        enabled = bool(form.has_key('enabled'))
+
+        server.editHost(host['id'], arches=arches, capacity=capacity,
+                        description=description, comment=comment)
+        if enabled != host['enabled']:
+            if enabled:
+                server.enableHost(host['name'])
+            else:
+                server.disableHost(host['name'])
+
+        mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
+    elif form.has_key('cancel'):
+        mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
+    else:
+        values = _initValues(req, 'Edit Host', 'hosts')
+
+        values['host'] = host
+
+        return _genHTML(req, 'hostedit.chtml')
+
 def disablehost(req, hostID):
     server = _getServer(req)
     _assertLogin(req)
