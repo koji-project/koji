@@ -809,7 +809,7 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
     context.session.assertLogin()
     policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
     #don't check policy for admins using force
-    if not force or not context.session.hasPerm('admin'):
+    if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
@@ -874,7 +874,7 @@ def pkglist_remove(taginfo,pkginfo,force=False):
     context.session.assertLogin()
     policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
     #don't check policy for admins using force
-    if not force or not context.session.hasPerm('admin'):
+    if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
     _pkglist_remove(tag['id'],pkg['id'])
@@ -895,7 +895,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     context.session.assertLogin()
     policy_data = {'tag' : tag['id'], 'action' : 'unblock', 'package' : pkg['id'], 'force' : force}
     #don't check policy for admins using force
-    if not force or not context.session.hasPerm('admin'):
+    if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg)
     tag_id = tag['id']
@@ -5322,7 +5322,7 @@ class RootExports(object):
         else:
             policy_data['operation'] = 'move'
         #don't check policy for admins using force
-        if not force or not context.session.hasPerm('admin'):
+        if not (force and context.session.hasPerm('admin')):
             assert_policy('tag', policy_data)
         #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
         if pkg_error:
@@ -5350,7 +5350,7 @@ class RootExports(object):
         policy_data['operation'] = 'untag'
         try:
             #don't check policy for admins using force
-            if not force or not context.session.hasPerm('admin'):
+            if not (force and context.session.hasPerm('admin')):
                 assert_policy('tag', policy_data)
             _untag_build(tag,build,strict=strict,force=force)
             tag_notification(True, None, tag, build, user_id)
@@ -5411,7 +5411,7 @@ class RootExports(object):
         #policy check
         policy_data = {'tag' : tag2, 'fromtag' : tag1, 'operation' : 'move'}
         #don't check policy for admins using force
-        if not force or not context.session.hasPerm('admin'):
+        if not (force and context.session.hasPerm('admin')):
             for build in build_list:
                 policy_data['build'] = build
                 assert_policy('tag', policy_data)
