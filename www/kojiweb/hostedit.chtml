@@ -39,6 +39,15 @@
         <td><input type="checkbox" name="enabled" value="yes" #if $host.enabled then 'checked="checked"' else ''#/>
       </tr>
       <tr>
+        <th>Channels</th>
+        <td>
+          <select name="channels" multiple="multiple">
+            #for $channel in $allChannels
+            <option value="$channel.name" #if $channel in $hostChannels then 'selected="selected"' else ''#>$channel.name</option>
+            #end for
+          </select>
+        </td>
+      <tr>
         <td><button type="submit" name="save" value="Save">Save</button></td>
         <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
       </tr>

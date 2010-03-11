@@ -1358,6 +1358,7 @@ def hostedit(req, hostID):
         description = form['description'].value
         comment = form['comment'].value
         enabled = bool(form.has_key('enabled'))
+        channels = [f.value for f in form.getlist('channels')]
 
         server.editHost(host['id'], arches=arches, capacity=capacity,
                         description=description, comment=comment)
@@ -1367,6 +1368,14 @@ def hostedit(req, hostID):
             else:
                 server.disableHost(host['name'])
 
+        hostChannels = [c['name'] for c in server.listChannels(hostID=host['id'])]
+        for channel in hostChannels:
+            if channel not in channels:
+                server.removeHostFromChannel(host['name'], channel)
+        for channel in channels:
+            if channel not in hostChannels:
+                server.addHostToChannel(host['name'], channel)
+
         mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
     elif form.has_key('cancel'):
         mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
@@ -1374,6 +1383,10 @@ def hostedit(req, hostID):
         values = _initValues(req, 'Edit Host', 'hosts')
 
         values['host'] = host
+        allChannels = server.listChannels()
+        allChannels.sort(_sortbyname)
+        values['allChannels'] = allChannels
+        values['hostChannels'] = server.listChannels(hostID=host['id'])
 
         return _genHTML(req, 'hostedit.chtml')
 
