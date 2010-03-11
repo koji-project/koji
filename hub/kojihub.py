@@ -6694,18 +6694,6 @@ class RootExports(object):
 
         return _multiRow(query, {}, ['id', 'name'])
 
-    def getAllChannels(self):
-        """Get a list of all channels in the system.  Returns a list of maps.  Each
-        map contains the following keys:
-
-        - id
-        - name
-        """
-        query = """SELECT id, name FROM channels
-        ORDER BY id"""
-
-        return _multiRow(query, {}, ['id', 'name'])
-
     def getLoggedInUser(self):
         """Return information about the currently logged-in user.  Returns data
         in the same format as getUser().  If there is no currently logged-in user,

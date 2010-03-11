@@ -545,14 +545,13 @@ def handle_add_host_to_channel(options, session, args):
         parser.error(_("Please specify a hostname and a channel"))
         assert False
     activate_session(session)
-    channels = dict([(p['name'], p['id']) for p in session.getAllChannels()])
     if options.list:
-        for p in channels.keys():
-            print p
+        for channel in session.listChannels():
+            print channel['name']
         return
     channel = args[1]
-    channel_id = channels.get(channel, None)
-    if not channel_id:
+    channelinfo = session.getChannel(channel)
+    if not channelinfo:
         print "No such channel: %s" % channel
         return 1
     host = args[0]
@@ -577,11 +576,10 @@ def handle_remove_host_from_channel(options, session, args):
     if not hostinfo:
         print "No such host: %s" % host
         return 1
-    hostchannels = dict([(p['name'], p['id']) for p in session.listChannels(hostinfo['id'])])
+    hostchannels = [c['name'] for c in session.listChannels(hostinfo['id'])]
 
     channel = args[1]
-    channel_id = hostchannels.get(channel, None)
-    if not channel_id:
+    if channel not in hostchannels:
         print "Host %s is not a member of channel %s" % (host, channel)
         return 1
     
