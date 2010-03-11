@@ -1,7 +1,7 @@
 # Python library
 
 # kojihub - library for koji's XMLRPC interface
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2010 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -4243,6 +4243,154 @@ def set_user_status(user, status):
     # sanity check
     if rows == 0:
         raise koji.GenericError, 'invalid user ID: %i' % user_id
+
+
+def get_event():
+    """Get an event id for this transaction
+
+    We cache the result in context, so subsequent calls in the same transaction will
+    get the same event.
+    Note that this will persist across calls in a multiCall, which is fine because
+    it is all one transaction.
+    """
+    if hasattr(context, 'event_id'):
+        return context.event_id
+    event_id = _singleValue("SELECT get_event()")
+    context.event_id = event_id
+    return event_id
+
+
+class InsertProcessor(object):
+    """Build an insert statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+
+    does not support query inserts of "DEFAULT VALUES"
+    """
+
+    def __init__(self, table, data=None, rawdata=None):
+        self.table = table
+        self.data = {}
+        if data:
+            self.data.update(data)
+        self.rawdata = {}
+        if rawdata:
+            self.rawdata.update(rawdata)
+
+    def __str__(self):
+        if not self.data and not self.rawdata:
+            return "-- incomplete update: no assigns"
+        parts = ['INSERT INTO %s ' % self.table]
+        columns = self.data.keys()
+        columns.extend(self.rawdata.keys())
+        parts.append("(%s) " % ', '.join(columns))
+        values = []
+        for key in columns:
+            if self.data.has_key(key):
+                values.append("%%(%s)s" % key)
+            else:
+                values.append("(%s)" % self.rawdata[key])
+        parts.append("VALUES (%s)" % ', '.join(values))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<InsertProcessor: %r>" % vars(self)
+
+    def set(self, **kwargs):
+        """Set data via keyword args"""
+        self.data.update(kwargs)
+
+    def rawset(self, **kwargs):
+        """Set rawdata via keyword args"""
+        self.rawdata.update(kwargs)
+
+    def as_create(self, event_id=None, user_id=None):
+        if event_id is None:
+            event_id = get_event()
+        if user_id is None:
+            context.session.assertLogin()
+            user_id = context.session.user_id
+        self.data['create_event'] = event_id
+        self.data['creator_id'] = user_id
+
+    def execute(self):
+        return _dml(str(self), self.data)
+
+
+class UpdateProcessor(object):
+    """Build an update statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+    clauses - a list of where clauses which will be ANDed together
+    values - dict of values used in clauses
+
+    does not support the FROM clause
+    """
+
+    def __init__(self, table, data=None, rawdata=None, clauses=None, values=None):
+        self.table = table
+        self.data = {}
+        if data:
+            self.data.update(data)
+        self.rawdata = {}
+        if rawdata:
+            self.rawdata.update(rawdata)
+        self.clauses = []
+        if clauses:
+            self.clauses.extend(clauses)
+        self.values = {}
+        if values:
+            self.values.update(values)
+
+    def __str__(self):
+        if not self.data and not self.rawdata:
+            return "-- incomplete update: no assigns"
+        parts = ['UPDATE %s SET ' % self.table]
+        assigns = ["%s = %%(data.%s)s" % (key, key) for key in self.data]
+        assigns.extend(["%s = (%s)" % (key, self.rawdata[key]) for key in self.rawdata])
+        parts.append(', '.join(assigns))
+        if self.clauses:
+            parts.append('\nWHERE ')
+            parts.append(' AND '.join(["( %s )" % c for c in self.clauses]))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<UpdateProcessor: %r>" % vars(self)
+
+    def get_values(self):
+        """Returns unified values dict, including data"""
+        ret = {}
+        ret.update(self.values)
+        for key in self.data:
+            ret["data."+key] = self.data[key]
+        return ret
+
+    def set(self, **kwargs):
+        """Set data via keyword args"""
+        self.data.update(kwargs)
+
+    def rawset(self, **kwargs):
+        """Set rawdata via keyword args"""
+        self.rawdata.update(kwargs)
+
+    def make_revoke(self, event_id=None, user_id=None):
+        """Add standard revoke options to the update"""
+        if event_id is None:
+            event_id = get_event()
+        if user_id is None:
+            context.session.assertLogin()
+            user_id = context.session.user_id
+        self.data['revoke_event'] = event_id
+        self.data['revoker_id'] = user_id
+        self.clauses.append('active = TRUE')
+
+    def execute(self):
+        return _dml(str(self), self.get_values())
+
 
 class QueryProcessor(object):
     """
