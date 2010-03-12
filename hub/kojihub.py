@@ -33,7 +33,7 @@ import errno
 import logging
 import fcntl
 import fnmatch
-from koji.util import md5_constructor
+from koji.util import md5_constructor, dslice
 import os
 import random
 import re
@@ -642,17 +642,14 @@ def writeInheritanceData(tag_id, changes, clear=False):
         #oops, duplicate entries for a single priority
         dup_ids = [ link['parent_id'] for link in dups]
         raise koji.GenericError, "Inheritance priorities must be unique (pri %s: %r )" % (pri, dup_ids)
-    # get an event
-    event = _singleValue("SELECT get_event()")
     for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
         # revoke old values
-        q = """
-        UPDATE tag_inheritance SET active=NULL,revoke_event=%(event)s
-        WHERE tag_id=%(tag_id)s AND parent_id = %(parent_id)s AND active = TRUE
-        """
-        _dml(q,locals())
+        update = UpdateProcessor('tag_inheritance', values=locals(),
+                    clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
+        update.make_revoke()
+        update.execute()
     for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
@@ -660,20 +657,12 @@ def writeInheritanceData(tag_id, changes, clear=False):
         if link.get('delete link'):
             continue
         # insert new value
-        newlink = {}
-        for f in fields:
-            newlink[f] = link[f]
+        newlink = dslice(link, fields)
         newlink['tag_id'] = tag_id
-        newlink['create_event'] = event
         # defaults ok for the rest
-        keys = newlink.keys()
-        flist = ','.join(["%s" % k for k in keys])
-        vlist = ','.join(["%%(%s)s" % k for k in keys])
-        q = """
-        INSERT INTO tag_inheritance (%(flist)s)
-        VALUES (%(vlist)s)
-        """ % locals()
-        _dml(q,newlink)
+        insert = InsertProcessor('tag_inheritance', data=newlink)
+        insert.make_create()
+        insert.execute()
 
 def readFullInheritance(tag_id,event=None,reverse=False,stops={},jumps={}):
     """Returns a list representing the full, ordered inheritance from tag"""
@@ -773,21 +762,21 @@ def readFullInheritanceRecurse(tag_id,event,order,prunes,top,hist,currdepth,maxd
 #       list
 
 
-def _pkglist_remove(tag_id,pkg_id,event_id=None):
-    if event_id is None:
-        event_id = _singleValue("SELECT get_event()")
-    q = """UPDATE tag_packages SET active=NULL,revoke_event=%(event_id)i
-    WHERE active = TRUE AND package_id=%(pkg_id)i AND tag_id=%(tag_id)i"""
-    _dml(q,locals())
+def _pkglist_remove(tag_id, pkg_id):
+    clauses = ('package_id=%(pkg_id)i', 'tag_id=%(tag_id)i')
+    update = UpdateProcessor('tag_packages', values=locals(), clauses=clauses)
+    update.make_revoke()  #XXX user_id?
+    update.execute()
 
-def _pkglist_add(tag_id,pkg_id,owner,block,extra_arches,event_id=None):
-    if event_id is None:
-        event_id = _singleValue("SELECT get_event()")
+def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
     #revoke old entry (if present)
-    _pkglist_remove(tag_id,pkg_id,event_id)
-    q = """INSERT INTO tag_packages(package_id,tag_id,owner,blocked,extra_arches,create_event)
-    VALUES (%(pkg_id)s,%(tag_id)s,%(owner)s,%(block)s,%(extra_arches)s,%(event_id)s) """
-    _dml(q,locals())
+    _pkglist_remove(tag_id, pkg_id)
+    data = dslice(locals(), ('tag_id', 'owner', 'extra_arches'))
+    data['package_id'] = pkg_id
+    data['blocked'] = block
+    insert = InsertProcessor('tag_packages', data=data)
+    insert.make_create()  #XXX user_id?
+    insert.execute()
 
 def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=False,update=False):
     """Add to (or update) package list for tag"""
@@ -907,19 +896,16 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
                 % (pkg['name'],tag['name'])
     if not previous['blocked']:
         raise koji.GenericError, "package %s NOT blocked in tag %s" % (pkg['name'],tag['name'])
-    event_id = _singleValue("SELECT get_event()")
     if previous['tag_id'] != tag_id:
         _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'])
     else:
         #just remove the blocking entry
-        event_id = _singleValue("SELECT get_event()")
-        _pkglist_remove(tag_id,pkg_id,event_id)
+        _pkglist_remove(tag_id, pkg_id)
         #it's possible this was the only entry in the inheritance or that the next entry
         #back is also a blocked entry. if so, we need to add it back as unblocked
         pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
         if not pkglist.has_key(pkg_id) or pkglist[pkg_id]['blocked']:
-            _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'],
-                         event_id)
+            _pkglist_add(tag_id, pkg_id, previous['owner_id'], False, previous['extra_arches'])
     koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
 
 def pkglist_setowner(taginfo,pkginfo,owner,force=False):
@@ -1234,28 +1220,30 @@ def _tag_build(tag,build,user_id=None,force=False):
         raise koji.TagError, "build %s not complete: state %s" % (nvr,state)
     #access check
     assert_tag_access(tag['id'],user_id=user_id,force=force)
-    #XXX - add another check based on package ownership?
     # see if it's already tagged
     retag = False
-    q = """SELECT build_id FROM tag_listing WHERE tag_id=%(tag_id)i
-    AND build_id=%(build_id)i AND active = TRUE FOR UPDATE"""
+    table = 'tag_listing'
+    clauses = ('tag_id=%(tag_id)i', 'build_id=%(build_id)i')
+    query = QueryProcessor(columns=['build_id'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
     #note: tag_listing is unique on (build_id, tag_id, active)
-    if _fetchSingle(q,locals()):
+    if query.fetchSingle():
         #already tagged
         if not force:
             raise koji.TagError, "build %s already tagged (%s)" % (nvr,tag['name'])
         #otherwise we retag
         retag = True
-    event_id = _singleValue("SELECT get_event()")
     if retag:
         #revoke the old tag first
-        q = """UPDATE tag_listing SET active=NULL,revoke_event=%(event_id)i
-        WHERE tag_id=%(tag_id)i AND build_id=%(build_id)i AND active = TRUE"""
-        _dml(q,locals())
+        update = UpdateProcessor(table, values=locals(), clauses=clauses)
+        update.make_revoke(user_id=user_id)
+        update.execute()
     #tag the package
-    q = """INSERT INTO tag_listing(tag_id,build_id,active,create_event)
-    VALUES(%(tag_id)i,%(build_id)i,TRUE,%(event_id)i)"""
-    _dml(q,locals())
+    insert = InsertProcessor(table)
+    insert.set(tag_id=tag_id, build_id=build_id)
+    insert.make_create(user_id=user_id)
+    insert.execute()
     koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
 
 def _untag_build(tag,build,user_id=None,strict=True,force=False):
@@ -1278,11 +1266,10 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id,user_id=user_id,force=force)
-    #XXX - add another check based on package ownership?
-    q = """UPDATE tag_listing SET active=NULL,revoke_event=get_event()
-    WHERE tag_id=%(tag_id)i AND build_id=%(build_id)i AND active = TRUE
-    """
-    count = _dml(q,locals())
+    update = UpdateProcessor('tag_listing', values=locals(),
+                clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
+    update.make_revoke(user_id=user_id)
+    count = update.execute()
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr,tag['name'])
@@ -1307,6 +1294,8 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     previous = groups.get(group['id'],None)
     cfg_fields = ('exported','display_name','is_default','uservisible',
                   'description','langonly','biarchonly',)
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1332,18 +1321,15 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     opts['tag_id'] = tag['id']
     opts['grp_id'] = group['id']
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_config SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_config', values=opts,
+                clauses=['group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields)
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_config(group_id,tag_id,blocked,create_event,%s)
-    VALUES (%%(grp_id)s,%%(tag_id)s,%%(blocked)s,%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_config', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grplist_remove(taginfo,grpinfo,force=False):
     """Remove group from the list for tag
@@ -1357,9 +1343,10 @@ def grplist_remove(taginfo,grpinfo,force=False):
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
     grp_id = group['id']
-    q = """UPDATE group_config SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND package_id=%(pkg_id)s AND tag_id=%(tag_id)s"""
-    _dml(q,locals())
+    clauses = ['group_id=%(grp_id)s', 'tag_id=%(tag_id)s']
+    update = UpdateProcessor('group_config', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 def grplist_block(taginfo,grpinfo):
     """Block the group in tag"""
@@ -1377,15 +1364,17 @@ def grplist_unblock(taginfo,grpinfo):
     group = lookup_group(grpinfo,strict=True)
     tag_id = tag['id']
     grp_id = group['id']
-    q = """SELECT blocked FROM group_config
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-    FOR UPDATE"""
-    blocked = _singleValue(q,locals())
+    table = 'group_config'
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "group %s is NOT blocked in tag %s" % (group['name'],tag['name'])
-    q = """UPDATE group_config SET active=NULL,revoke_event=get_event()
-    WHERE id=%(row_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor(table, values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 
 # tag-group-pkg operations
@@ -1411,6 +1400,8 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
         raise koji.GenericError, "group %s is blocked in tag %s" % (group['name'],tag['name'])
     previous = grp_cfg['packagelist'].get(pkg_name,None)
     cfg_fields = ('type','basearchonly','requires')
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1432,26 +1423,20 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
         if not changed and not force:
             #no point in adding it again with the same data (unless force is on)
             return
-    #XXX - sanity check data?
     opts.setdefault('type','default')
     opts['group_id'] = group['id']
     opts['tag_id'] = tag['id']
     opts['package'] = pkg_name
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(group_id)s AND tag_id=%(tag_id)s
-        AND package=%(package)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_package_listing', values=opts,
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'package=%(package)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields) \
-                + ('group_id','tag_id','package','blocked')
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_package_listing(create_event,%s)
-    VALUES (%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_package_listing', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grp_pkg_remove(taginfo,grpinfo,pkg_name,force=False):
     """Remove package from the list for group-tag
@@ -1463,10 +1448,10 @@ def grp_pkg_remove(taginfo,grpinfo,pkg_name,force=False):
     context.session.assertPerm('admin')
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND package=%(pkg_name)s AND tag_id=%(tag_id)s
-            AND group_id = %(grp_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_package_listing', values=locals(),
+                clauses=['package=%(pkg_name)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+    update.make_revoke()
+    update.execute()
 
 def grp_pkg_block(taginfo,grpinfo, pkg_name):
     """Block the package in group-tag"""
@@ -1480,20 +1465,20 @@ def grp_pkg_unblock(taginfo,grpinfo,pkg_name):
     """
     # only admins...
     context.session.assertPerm('admin')
+    table = 'group_package_listing'
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
-    q = """SELECT blocked FROM group_package_listing
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-            AND package = %(pkg_name)s
-    FOR UPDATE"""
-    blocked = _singleValue(q, locals(), strict=False)
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'package = %(pkg_name)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "package %s is NOT blocked in group %s, tag %s" \
                     % (pkg_name,grp_id,tag_id)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-          AND package = %(pkg_name)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_package_listing', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 # tag-group-req operations
 #       add
@@ -1519,6 +1504,8 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
         raise koji.GenericError, "group %s is blocked in tag %s" % (group['name'],tag['name'])
     previous = grp_cfg['grouplist'].get(req['id'],None)
     cfg_fields = ('type','is_metapkg')
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1540,26 +1527,20 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
         if not changed:
             #no point in adding it again with the same data
             return
-    #XXX - sanity check data?
     opts.setdefault('type','mandatory')
     opts['group_id'] = group['id']
     opts['tag_id'] = tag['id']
     opts['req_id'] = req['id']
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(group_id)s AND tag_id=%(tag_id)s
-            AND req_id=%(req_id)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_req_listing', values=opts,
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'req_id=%(req_id)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields) \
-                + ('group_id','tag_id','req_id','blocked')
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_req_listing(create_event,%s)
-    VALUES (%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_req_listing', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grp_req_remove(taginfo,grpinfo,reqinfo,force=False):
     """Remove group requirement from the list for group-tag
@@ -1572,10 +1553,10 @@ def grp_req_remove(taginfo,grpinfo,reqinfo,force=False):
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
     req_id = get_group_id(reqinfo,strict=True)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND req_id=%(req_id)s AND tag_id=%(tag_id)s
-            AND group_id = %(grp_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_req_listing', values=locals(),
+                clauses=['req_id=%(req_id)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+    update.make_revoke()
+    update.execute()
 
 def grp_req_block(taginfo,grpinfo,reqinfo):
     """Block the group requirement in group-tag"""
@@ -1592,17 +1573,19 @@ def grp_req_unblock(taginfo,grpinfo,reqinfo):
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
     req_id = get_group_id(reqinfo,strict=True)
-    q = """SELECT blocked FROM group_req_listing
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-            AND req_id = %(req_id)s
-    FOR UPDATE"""
-    blocked = _singleValue(q,locals())
+    table = 'group_req_listing'
+
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'req_id = %(req_id)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "group req %s is NOT blocked in group %s, tag %s" \
                     % (req_id,grp_id,tag_id)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=get_event()
-    WHERE id=%(row_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 def get_tag_groups(tag,event=None,inherit=True,incl_pkgs=True,incl_reqs=True):
     """Return group data for the tag
@@ -2078,10 +2061,10 @@ def create_build_target(name, build_tag, dest_tag):
     #is possible the name is in the system
     id = get_build_target_id(name,create=True)
 
-    insert = """INSERT into build_target_config (build_target_id, build_tag, dest_tag)
-    VALUES (%(id)d, %(build_tag)d, %(dest_tag)d)"""
-
-    _dml(insert, locals())
+    insert = InsertProcessor('build_target_config')
+    insert.set(build_target_id=id, build_tag=build_tag, dest_tag=dest_tag)
+    insert.make_create()
+    insert.execute()
 
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
@@ -2116,23 +2099,16 @@ def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 
         _dml(rename, locals())
 
-    eventID = _singleValue("SELECT get_event()")
+    update = UpdateProcessor('build_target_config', values=locals(),
+                clauses=["build_target_id = %(buildTargetID)i"])
+    update.make_revoke()
 
-    update = """UPDATE build_target_config
-    SET active = NULL,
-    revoke_event = %(eventID)i
-    WHERE build_target_id = %(buildTargetID)i
-    AND active is true
-    """
+    insert = InsertProcessor('build_target_config')
+    insert.set(build_target_id=buildTargetID, build_tag=buildTagID, dest_tag=destTagID)
+    insert.make_create()
 
-    insert = """INSERT INTO build_target_config
-    (build_target_id, build_tag, dest_tag, create_event)
-    VALUES
-    (%(buildTargetID)i, %(buildTagID)i, %(destTagID)i, %(eventID)i)
-    """
-
-    _dml(update, locals())
-    _dml(insert, locals())
+    update.execute()
+    insert.execute()
 
 def delete_build_target(buildTargetInfo):
     """Delete the build target with the given name.  If no build target
@@ -2147,12 +2123,10 @@ def delete_build_target(buildTargetInfo):
 
     #build targets are versioned, so we do not delete them from the db
     #instead we revoke the config entry
-    delConfig = """UPDATE build_target_config
-    SET active=NULL,revoke_event=get_event()
-    WHERE build_target_id = %(targetID)i
-    """
-
-    _dml(delConfig, locals())
+    update = UpdateProcessor('build_target_config', values=locals(),
+                clauses=["build_target_id = %(targetID)i"])
+    update.make_revoke()
+    update.execute()
 
 def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, queryOpts=None):
     """Return data on all the build targets
@@ -2304,12 +2278,10 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False):
     #there may already be an id for a deleted tag, this will reuse it
     tag_id = get_tag_id(name,create=True)
 
-    c=context.cnx.cursor()
-
-    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked)
-    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s)"""
-    context.commit_pending = True
-    c.execute(q,locals())
+    insert = InsertProcessor('tag_config')
+    insert.set(tag_id=tag_id, arches=arches, perm_id=perm, locked=locked)
+    insert.make_create()
+    insert.execute()
 
     if parent_id:
         data = {'parent_id': parent_id,
@@ -2408,21 +2380,14 @@ def edit_tag(tagInfo, **kwargs):
     if not changed:
         return
 
-    #use the same event for both
-    data['event_id'] = _singleValue("SELECT get_event()")
+    update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
+    update.make_revoke()
+    update.execute()
 
-    update = """UPDATE tag_config
-    SET active = null,
-        revoke_event = %(event_id)i
-    WHERE tag_id = %(id)i
-      AND active is true"""
-    _dml(update, data)
-
-    insert = """INSERT INTO tag_config
-    (tag_id, arches, perm_id, locked, create_event)
-    VALUES
-    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(event_id)i)"""
-    _dml(insert, data)
+    insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
+    insert.set(tag_id=data['id'])
+    insert.make_create()
+    insert.execute()
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):
     """Edit information for an existing tag."""
@@ -2437,29 +2402,28 @@ def delete_tag(tagInfo):
 
     #We do not ever DELETE tag data. It is versioned -- we revoke it instead.
 
-    def _tagDelete(tableName, value, event, columnName='tag_id'):
-        delete = """UPDATE %(tableName)s SET active=NULL,revoke_event=%%(event)i
-        WHERE %(columnName)s = %%(value)i AND active = TRUE""" % locals()
-        _dml(delete, locals())
+    def _tagDelete(tableName, value, columnName='tag_id'):
+        update = UpdateProcessor(tableName, clauses=["%s = %%(value)i" % columnName],
+                    values={'value':value})
+        update.make_revoke()
+        update.execute()
 
     tag = get_tag(tagInfo)
     tagID = tag['id']
-    #all these updates are a single transaction, so we use the same event
-    eventID = _singleValue("SELECT get_event()")
 
-    _tagDelete('tag_config', tagID, eventID)
+    _tagDelete('tag_config', tagID)
     #technically, to 'delete' the tag we only have to revoke the tag_config entry
     #these remaining revocations are more for cleanup.
-    _tagDelete('tag_inheritance', tagID, eventID)
-    _tagDelete('tag_inheritance', tagID, eventID, 'parent_id')
-    _tagDelete('build_target_config', tagID, eventID, 'build_tag')
-    _tagDelete('build_target_config', tagID, eventID, 'dest_tag')
-    _tagDelete('tag_listing', tagID, eventID)
-    _tagDelete('tag_packages', tagID, eventID)
-    _tagDelete('tag_external_repos', tagID, eventID)
-    _tagDelete('group_config', tagID, eventID)
-    _tagDelete('group_req_listing', tagID, eventID)
-    _tagDelete('group_package_listing', tagID, eventID)
+    _tagDelete('tag_inheritance', tagID)
+    _tagDelete('tag_inheritance', tagID, 'parent_id')
+    _tagDelete('build_target_config', tagID, 'build_tag')
+    _tagDelete('build_target_config', tagID, 'dest_tag')
+    _tagDelete('tag_listing', tagID)
+    _tagDelete('tag_packages', tagID)
+    _tagDelete('tag_external_repos', tagID)
+    _tagDelete('group_config', tagID)
+    _tagDelete('group_req_listing', tagID)
+    _tagDelete('group_package_listing', tagID)
     # note: we do not delete the entry in the tag table (we can't actually, it
     # is still referenced by the revoked rows).
     # note: there is no need to do anything with the repo entries that reference tagID
@@ -2483,8 +2447,10 @@ def create_external_repo(name, url):
         # Ensure the url always ends with /
         url += '/'
     values = {'id': id, 'name': name, 'url': url}
-    insert = """INSERT INTO external_repo_config (external_repo_id, url) VALUES (%(id)i, %(url)s)"""
-    _dml(insert, values)
+    insert = InsertProcessor('external_repo_config')
+    insert.set(external_repo_id = id, url=url)
+    insert.make_create()
+    insert.execute()
     return values
 
 def get_external_repos(info=None, url=None, event=None, queryOpts=None):
@@ -2547,20 +2513,17 @@ def edit_external_repo(info, name=None, url=None):
         if not url.endswith('/'):
             # Ensure the url always ends with /
             url += '/'
-        event_id = _singleValue("SELECT get_event()")
 
-        update = """UPDATE external_repo_config
-        SET active = NULL, revoke_event = %(event_id)i
-        WHERE external_repo_id = %(repo_id)i
-        AND active is true"""
+        update = UpdateProcessor('external_repo_config', values=locals(),
+                    clauses=['external_repo_id = %(repo_id)i'])
+        update.make_revoke()
 
-        insert = """INSERT INTO external_repo_config
-        (external_repo_id, url, create_event)
-        VALUES
-        (%(repo_id)i, %(url)s, %(event_id)i)"""
+        insert = InsertProcessor('external_repo_config')
+        insert.set(external_repo_id=repo_id, url=url)
+        insert.make_create()
 
-        _dml(update, locals())
-        _dml(insert, locals())
+        update.execute()
+        insert.execute()
 
 def delete_external_repo(info):
     """Delete an external repo"""
@@ -2574,14 +2537,12 @@ def delete_external_repo(info):
         remove_external_repo_from_tag(tag_info=tag_repo['tag_id'],
                                       repo_info=repo_id)
 
-    update = """UPDATE external_repo_config
-    SET active = null, revoke_event = get_event()
-    WHERE external_repo_id = %(repo_id)i
-    AND active = true"""
+    update = updateProcessor('external_repo_config', values=locals(),
+                    clauses=['external_repo_id = %(repo_id)i'])
+    update.make_revoke()
+    update.execute()
 
-    _dml(update, locals())
-
-def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
+def add_external_repo_to_tag(tag_info, repo_info, priority):
     """Add an external repo to a tag"""
 
     context.session.assertPerm('admin')
@@ -2599,19 +2560,12 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
         raise koji.GenericError, 'tag %s already associated with an external repo at priority %i' % \
             (tag['name'], priority)
 
-    if event is None:
-        event_id = _singleValue("SELECT get_event()")
-    else:
-        event_id = event
+    insert = InsertProcessor('tag_external_repos')
+    insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority)
+    insert.make_create()
+    insert.execute()
 
-    insert = """INSERT INTO tag_external_repos
-    (tag_id, external_repo_id, priority, create_event)
-    VALUES
-    (%(tag_id)i, %(repo_id)i, %(priority)i, %(event_id)i)"""
-
-    _dml(insert, locals())
-
-def remove_external_repo_from_tag(tag_info, repo_info, event=None):
+def remove_external_repo_from_tag(tag_info, repo_info):
     """Remove an external repo from a tag"""
 
     context.session.assertPerm('admin')
@@ -2625,17 +2579,10 @@ def remove_external_repo_from_tag(tag_info, repo_info, event=None):
         raise koji.GenericError, 'external repo %s not associated with tag %s' % \
             (repo['name'], tag['name'])
 
-    if event is None:
-        event_id = _singleValue("SELECT get_event()")
-    else:
-        event_id = event
-
-    update = """UPDATE tag_external_repos
-    SET active = null, revoke_event=%(event_id)i
-    WHERE tag_id = %(tag_id)i AND external_repo_id = %(repo_id)i
-    AND active = true"""
-
-    _dml(update, locals())
+    update = UpdateProcessor('tag_external_repos', values=locals(),
+                clauses=["tag_id = %(tag_id)i", "external_repo_id = %(repo_id)i"])
+    update.make_revoke()
+    update.execute()
 
 def edit_tag_external_repo(tag_info, repo_info, priority):
     """Edit a tag<->external repo association
@@ -2655,9 +2602,8 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
     tag_repo = tag_repos[0]
 
     if priority != tag_repo['priority']:
-        event_id = _singleValue("SELECT get_event()")
-        remove_external_repo_from_tag(tag_id, repo_id, event=event_id)
-        add_external_repo_to_tag(tag_id, repo_id, priority, event=event_id)
+        remove_external_repo_from_tag(tag_id, repo_id)
+        add_external_repo_to_tag(tag_id, repo_id, priority)
 
 def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     """
@@ -2997,6 +2943,7 @@ def _dml(operation, values):
     c = context.cnx.cursor()
     c.execute(operation, values)
     ret = c.rowcount
+    logger.debug("Operation affected %s row(s)", ret)
     c.close()
     context.commit_pending = True
     return ret
@@ -3777,10 +3724,14 @@ def tag_history(build=None, tag=None, package=None, queryOpts=None):
     fields = ('build.id', 'package.name', 'build.version', 'build.release',
               'tag.id', 'tag.name', 'tag_listing.active',
               'tag_listing.create_event', 'tag_listing.revoke_event',
+              'tag_listing.creator_id', 'tag_listing.revoker_id',
+              'creator.name', 'revoker.name',
               'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',)
     aliases = ('build_id', 'name', 'version', 'release',
               'tag_id', 'tag_name', 'active',
               'create_event', 'revoke_event',
+              'creator_id', 'revoker_id',
+              'creator_name', 'revoker_name',
               'create_ts', 'revoke_ts',)
     st_complete = koji.BUILD_STATES['COMPLETE']
     tables = ['tag_listing']
@@ -3788,7 +3739,9 @@ def tag_history(build=None, tag=None, package=None, queryOpts=None):
              "build ON build.id = tag_listing.build_id",
              "package ON package.id = build.pkg_id",
              "events AS ev1 ON ev1.id = tag_listing.create_event",
-             "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event", ]
+             "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event",
+             "users AS creator ON creator.id = tag_listing.creator_id",
+             "LEFT OUTER JOIN users AS revoker ON revoker.id = tag_listing.revoker_id", ]
     clauses = []
     if tag is not None:
         tag_id = get_tag_id(tag, strict=True)
@@ -3966,10 +3919,9 @@ def _delete_build(binfo):
     for (rpm_id,) in rpm_ids:
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
-    event_id = _singleValue("SELECT get_event()")
-    update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
-    WHERE active = TRUE AND build_id=%(build_id)i"""
-    _dml(update, locals())
+    update = UpdateProcessor('tag_listing', clauses=["build_id=%(build_id)i"], values=locals())
+    update.make_revoke()
+    update.execute()
     update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
     _dml(update, locals())
     #now clear the build dir
@@ -4178,7 +4130,7 @@ def new_group(name):
         raise koji.GenericError, 'user/group already exists: %s' % name
     return context.session.createUser(name, usertype=koji.USERTYPES['GROUP'])
 
-def add_group_member(group,user):
+def add_group_member(group, user, strict=True):
     """Add user to group"""
     context.session.assertPerm('admin')
     group = get_user(group)
@@ -4188,19 +4140,20 @@ def add_group_member(group,user):
     if user['usertype'] == koji.USERTYPES['GROUP']:
         raise koji.GenericError, "Groups cannot be members of other groups"
     #check to see if user is already a member
-    user_id = user['id']
-    group_id = group['id']
-    q = """SELECT user_id FROM user_groups
-    WHERE active = TRUE AND user_id = %(user_id)i
-        AND group_id = %(group_id)s
-    FOR UPDATE"""
-    row = _fetchSingle(q, locals(), strict=False)
+    data = {'user_id' : user['id'], 'group_id' : group['id']}
+    table = 'user_groups'
+    clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
+    query = QueryProcessor(columns=['user_id'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=data, opts={'rowlock':True})
+    row = query.fetchSingle(strict=False)
     if row:
+        if not strict:
+            return
         raise koji.GenericError, "User already in group"
-    insert = """INSERT INTO user_groups (user_id,group_id)
-    VALUES(%(user_id)i,%(group_id)i)"""
-    _dml(insert,locals())
-
+    insert = InsertProcessor(table, data)
+    insert.make_create()
+    insert.execute()
 
 def drop_group_member(group,user):
     """Drop user from group"""
@@ -4211,11 +4164,9 @@ def drop_group_member(group,user):
         raise koji.GenericError, "Not a group: %(name)s" % group
     user_id = user['id']
     group_id = group['id']
-    insert = """UPDATE user_groups
-    SET active=NULL, revoke_event=get_event()
-    WHERE active = TRUE AND user_id = %(user_id)i
-        AND group_id = %(group_id)i"""
-    _dml(insert,locals())
+    update = UpdateProcessor('user_groups', clauses=["user_id = %(user_id)i", "group_id = %(group_id)i"])
+    update.make_revoke()
+    update.execute()
 
 def get_group_members(group):
     """Get the members of a group"""
@@ -4306,7 +4257,7 @@ class InsertProcessor(object):
         """Set rawdata via keyword args"""
         self.rawdata.update(kwargs)
 
-    def as_create(self, event_id=None, user_id=None):
+    def make_create(self, event_id=None, user_id=None):
         if event_id is None:
             event_id = get_event()
         if user_id is None:
@@ -4386,6 +4337,7 @@ class UpdateProcessor(object):
             user_id = context.session.user_id
         self.data['revoke_event'] = event_id
         self.data['revoker_id'] = user_id
+        self.rawdata['active'] = 'NULL'
         self.clauses.append('active = TRUE')
 
     def execute(self):
@@ -4412,6 +4364,7 @@ class QueryProcessor(object):
         limit: an integer to use in the 'LIMIT' clause
         asList: if True, return results as a list of lists, where each list contains the
                 column values in query order, rather than the usual list of maps
+        rowlock: if True, use "FOR UPDATE" to lock the queried rows
     """
     def __init__(self, columns=None, aliases=None, tables=None,
                  joins=None, clauses=None, values=None, opts=None):
@@ -4474,6 +4427,8 @@ SELECT %(col_str)s
         if self.opts.get('countOnly') and \
            (self.opts.get('offset') or self.opts.get('limit')):
             query = 'SELECT count(*)\nFROM (' + query + ') numrows'
+        if self.opts.get('rowlock'):
+            query += '\n FOR UPDATE'
         return query
 
     def __repr__(self):
@@ -4530,6 +4485,9 @@ SELECT %(col_str)s
             return '%s %i' % (optname.upper(), optval)
         else:
             return ''
+
+    def singleValue(self, strict=True):
+        return _singleValue(str(self), self.values, strict=strict)
 
     def execute(self):
         query = str(self)
@@ -6332,9 +6290,10 @@ class RootExports(object):
         perm_id = perm['id']
         if perm['name'] in koji.auth.get_user_perms(user_id):
             raise koji.GenericError, 'user %s already has permission: %s' % (userinfo, perm['name'])
-        insert = """INSERT INTO user_perms (user_id, perm_id)
-        VALUES (%(user_id)i, %(perm_id)i)"""
-        _dml(insert, locals())
+        insert = InsertProcessor('user_perms')
+        insert.set(user_id=user_id, perm_id=perm_id)
+        insert.make_create()
+        insert.execute()
 
     def revokePermission(self, userinfo, permission):
         """Revoke a permission from a user"""
@@ -6344,10 +6303,10 @@ class RootExports(object):
         perm_id = perm['id']
         if perm['name'] not in koji.auth.get_user_perms(user_id):
             raise koji.GenericError, 'user %s does not have permission: %s' % (userinfo, perm['name'])
-        update = """UPDATE user_perms
-        SET active = NULL, revoke_event = get_event()
-        WHERE user_id = %(user_id)i and perm_id = %(perm_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('user_perms', values=locals(),
+                    clauses=["user_id = %(user_id)i", "perm_id = %(perm_id)i"])
+        update.make_revoke()
+        update.execute()
 
     def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
