@@ -3066,10 +3066,14 @@ def anon_handle_list_tag_history(options, session, args):
     def _histline(event_id, x):
         if event_id == x['revoke_event']:
             ts = x['revoke_ts']
-            fmt = "Untagged %(name)s-%(version)s-%(release)s from %(tag_name)s"
+            fmt = "%(name)s-%(version)s-%(release)s untagged from %(tag_name)s"
+            if x.has_key('revoker_name'):
+                fmt += " by %(revoker_name)s"
         elif event_id == x['create_event']:
             ts = x['create_ts']
-            fmt = "Tagged %(name)s-%(version)s-%(release)s with %(tag_name)s"
+            fmt = "%(name)s-%(version)s-%(release)s tagged into %(tag_name)s"
+            if x.has_key('creator_name'):
+                fmt += " by %(creator_name)s"
             if x['active']:
                 fmt += " [still active]"
         else:
