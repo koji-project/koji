@@ -147,6 +147,11 @@ def get_options():
         'weburl' : 'http://localhost/koji',
         'pkgurl' : 'http://localhost/packages',
         'topdir' : '/mnt/koji',
+        'max_retries' : None,
+        'retry_interval': None,
+        'anon_retry' : None,
+        'offline_retry' : None,
+        'offline_retry_interval' : None,
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
         'serverca': '~/.koji/serverca.crt', 
@@ -4722,8 +4727,12 @@ if __name__ == "__main__":
     options, command, args = get_options()
 
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
+    for k in ('user', 'password', 'debug_xmlrpc', 'debug', 'max_retries',
+                'retry_interval', 'offline_retry', 'offline_retry_interval',
+                'anon_retry'):
+        value = getattr(options,k)
+        if value is not None:
+            session_opts[k] = value
     session = koji.ClientSession(options.server,session_opts)
     rv = 0
     try:
