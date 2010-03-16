@@ -482,6 +482,7 @@ def handle_add_host(options, session, args):
     usage = _("usage: %prog add-host [options] hostname arch [arch2 ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--krb-principal", help=_("set a non-default kerberos principal for the host"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a hostname and at least one arch"))
@@ -493,7 +494,10 @@ def handle_add_host(options, session, args):
         print "%s is already in the database" % host
         return 1
     else:
-        id = session.addHost(host, args[1:])
+        kwargs = {}
+        if options.krb_principal is not None:
+            kwargs['krb_principal'] = options.krb_principal
+        id = session.addHost(host, args[1:], **kwargs)
         if id:
             print "%s added: id %d" % (host, id)
 
