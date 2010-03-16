@@ -2876,6 +2876,81 @@ def get_rpm(rpminfo, strict=False, multi=False):
         return None
     return ret
 
+def list_rpms(self, buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
+    """List RPMS.  If buildID, imageID and/or buildrootID are specified,
+    restrict the list of RPMs to only those RPMs that are part of that
+    build, or were built in that buildroot.  If componentBuildrootID is specified,
+    restrict the list to only those RPMs that will get pulled into that buildroot
+    when it is used to build another package.  A list of maps is returned, each map
+    containing the following keys:
+
+    - id
+    - name
+    - version
+    - release
+    - nvr (synthesized for sorting purposes)
+    - arch
+    - epoch
+    - payloadhash
+    - size
+    - buildtime
+    - build_id
+    - buildroot_id
+    - external_repo_id
+    - external_repo_name
+
+    If componentBuildrootID is specified, two additional keys will be included:
+    - component_buildroot_id
+    - is_update
+
+    If no build has the given ID, or the build generated no RPMs,
+    an empty list is returned."""
+    fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
+              ('rpminfo.release', 'release'),
+              ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
+              ('rpminfo.arch', 'arch'),
+              ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
+              ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
+              ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
+              ('rpminfo.external_repo_id', 'external_repo_id'),
+              ('external_repo.name', 'external_repo_name'),
+             ]
+    joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
+    clauses = []
+
+    if buildID != None:
+        clauses.append('rpminfo.build_id = %(buildID)i')
+    if buildrootID != None:
+        clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
+    if componentBuildrootID != None:
+        fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
+                       'component_buildroot_id'))
+        fields.append(('buildroot_listing.is_update', 'is_update'))
+        joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
+        clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
+
+    # image specific constraints
+    if imageID != None:
+       clauses.append('imageinfo_listing.image_id = %(imageID)i')
+       joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
+
+    if hostID != None:
+        joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
+        clauses.append('buildroot.host_id = %(hostID)i')
+    if arches != None:
+        if isinstance(arches, list) or isinstance(arches, tuple):
+            clauses.append('rpminfo.arch IN %(arches)s')
+        elif isinstance(arches, str):
+            clauses.append('rpminfo.arch = %(arches)s')
+        else:
+            raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
+
+    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+                           tables=['rpminfo'], joins=joins, clauses=clauses,
+                           values=locals(), opts=queryOpts)
+    return query.execute()
+
+
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
     c = context.cnx.cursor()
@@ -5935,79 +6010,7 @@ class RootExports(object):
                 mapping[int(key)] = mapping[key]
         return readFullInheritance(tag,event,reverse,stops,jumps)
 
-    def listRPMs(self, buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
-        """List RPMS.  If buildID, imageID and/or buildrootID are specified,
-        restrict the list of RPMs to only those RPMs that are part of that
-        build, or were built in that buildroot.  If componentBuildrootID is specified,
-        restrict the list to only those RPMs that will get pulled into that buildroot
-        when it is used to build another package.  A list of maps is returned, each map
-        containing the following keys:
-
-        - id
-        - name
-        - version
-        - release
-        - nvr (synthesized for sorting purposes)
-        - arch
-        - epoch
-        - payloadhash
-        - size
-        - buildtime
-        - build_id
-        - buildroot_id
-        - external_repo_id
-        - external_repo_name
-
-        If componentBuildrootID is specified, two additional keys will be included:
-        - component_buildroot_id
-        - is_update
-
-        If no build has the given ID, or the build generated no RPMs,
-        an empty list is returned."""
-        fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
-                  ('rpminfo.release', 'release'),
-                  ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
-                  ('rpminfo.arch', 'arch'),
-                  ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
-                  ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
-                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
-                  ('rpminfo.external_repo_id', 'external_repo_id'),
-                  ('external_repo.name', 'external_repo_name'),
-                 ]
-        joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
-        clauses = []
-
-        if buildID != None:
-            clauses.append('rpminfo.build_id = %(buildID)i')
-        if buildrootID != None:
-            clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
-        if componentBuildrootID != None:
-            fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
-                           'component_buildroot_id'))
-            fields.append(('buildroot_listing.is_update', 'is_update'))
-            joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
-            clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
-
-        # image specific constraints
-        if imageID != None:
-           clauses.append('imageinfo_listing.image_id = %(imageID)i')
-           joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
-
-        if hostID != None:
-            joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
-            clauses.append('buildroot.host_id = %(hostID)i')
-        if arches != None:
-            if isinstance(arches, list) or isinstance(arches, tuple):
-                clauses.append('rpminfo.arch IN %(arches)s')
-            elif isinstance(arches, str):
-                clauses.append('rpminfo.arch = %(arches)s')
-            else:
-                raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
-
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpminfo'], joins=joins, clauses=clauses,
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+    listRPMs = staticmethod(list_rpms)
 
     def listBuildRPMs(self,build):
         """Get information about all the RPMs generated by the build with the given
