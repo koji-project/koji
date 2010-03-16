@@ -2290,7 +2290,9 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False):
                 'intransitive': False,
                 'noconfig': False,
                 'pkg_filter': ''}
-        writeInheritanceData(get_tag(name)['id'],data)
+        writeInheritanceData(tag_id, data)
+
+    return tag_id
 
 def get_tag(tagInfo,strict=False,event=None):
     """Get tag information based on the tagInfo.  tagInfo may be either
