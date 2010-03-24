@@ -217,6 +217,7 @@ CREATE TABLE task (
 	id SERIAL NOT NULL PRIMARY KEY,
 	state INTEGER,
 	create_time TIMESTAMP NOT NULL DEFAULT NOW(),
+	start_time TIMESTAMP,
 	completion_time TIMESTAMP,
 	channel_id INTEGER NOT NULL REFERENCES channels(id),
 	host_id INTEGER REFERENCES host (id),

@@ -3224,6 +3224,11 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
             print "%s  %s" % (indent, line)
     print "%sOwner: %s" % (indent, owner)
     print "%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower())
+    print "%sCreated: %s" % (indent, time.asctime(time.localtime(info['create_ts'])))
+    if info.get('start_ts'):
+        print "%sStarted: %s" % (indent, time.asctime(time.localtime(info['start_ts'])))
+    if info.get('completion_ts'):
+        print "%sFinished: %s" % (indent, time.asctime(time.localtime(info['completion_ts'])))
     if host_info:
         print "%sHost: %s" % (indent, host_info['name'])
     if build_info:

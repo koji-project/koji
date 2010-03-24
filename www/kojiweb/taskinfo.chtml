@@ -199,6 +199,10 @@
     <tr>
       <th>Created</th><td>$util.formatTimeLong($task.create_time)</td>
     </tr>
+    #if $task.start_time
+    <tr>
+      <th>Started</th><td>$util.formatTimeLong($task.start_time)</td>
+    #end if
     #if $task.state == $koji.TASK_STATES.OPEN
     #if $estCompletion
     <tr>

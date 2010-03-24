@@ -6,6 +6,8 @@ BEGIN;
 -- First the simple stuff. A pair of new host fields.
 ALTER TABLE host ADD COLUMN description TEXT;
 ALTER TABLE host ADD COLUMN comment TEXT;
+-- ...and a new field for tasks
+ALTER TABLE task ADD COLUMN start_time TIMESTAMP;
 
 
 -- The rest updates all the versioned tables to track who did what

@@ -66,6 +66,8 @@ class Task(object):
                 ('task.state', 'state'),
                 ('task.create_time', 'create_time'),
                 ('EXTRACT(EPOCH FROM create_time)','create_ts'),
+                ('task.start_time', 'start_time'),
+                ('EXTRACT(EPOCH FROM task.start_time)', 'start_ts'),
                 ('task.completion_time', 'completion_time'),
                 ('EXTRACT(EPOCH FROM completion_time)','completion_ts'),
                 ('task.channel_id', 'channel_id'),
@@ -186,10 +188,15 @@ class Task(object):
 
         returns task data if successful, None otherwise"""
         if self.lock(host_id,'OPEN'):
+            #set task start time
+            update = UpdateProcessor('task', clauses=['id=%(id)i'], values=vars(self))
+            update.rawset(start_time='NOW()')
+            update.execute()
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
-            q = """SELECT %s FROM task WHERE id=%%(id)i""" % ','.join([f[0] for f in fields])
-            ret = _singleRow(q, vars(self), [f[1] for f in fields], strict=True)
+            query = QueryProcessor(tables=['task'], clauses=['id=%(id)i'], values=vars(self),
+                            columns=[f[0] for f in fields], aliases=[f[1] for f in fields])
+            ret = query.executeOne()
             if ret['request'].find('<?xml', 0, 10) == -1:
                 #handle older base64 encoded data
                 ret['request'] = base64.decodestring(ret['request'])
