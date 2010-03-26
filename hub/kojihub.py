@@ -2546,7 +2546,7 @@ def delete_external_repo(info):
         remove_external_repo_from_tag(tag_info=tag_repo['tag_id'],
                                       repo_info=repo_id)
 
-    update = updateProcessor('external_repo_config', values=locals(),
+    update = UpdateProcessor('external_repo_config', values=locals(),
                     clauses=['external_repo_id = %(repo_id)i'])
     update.make_revoke()
     update.execute()
