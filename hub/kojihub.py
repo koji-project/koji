@@ -2883,7 +2883,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         return None
     return ret
 
-def list_rpms(self, buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
+def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
     """List RPMS.  If buildID, imageID and/or buildrootID are specified,
     restrict the list of RPMs to only those RPMs that are part of that
     build, or were built in that buildroot.  If componentBuildrootID is specified,
