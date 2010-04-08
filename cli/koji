@@ -892,6 +892,7 @@ def handle_wrapper_rpm(options, session, args):
     usage = _("usage: %prog wrapper-rpm [options] target build-id|n-v-r URL")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--scratch", action="store_true", help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
     parser.add_option("--background", action="store_true", help=_("Run the build at a lower priority"))
 
@@ -912,7 +913,10 @@ def handle_wrapper_rpm(options, session, args):
     priority = None
     if build_opts.background:
         priority = 5
-    task_id = session.wrapperRPM(build_id, url, target, priority)
+    opts = {}
+    if build_opts.scratch:
+        opts['scratch'] = True
+    task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or build_opts.nowait:

@@ -2792,7 +2792,7 @@ class WrapperRPMTask(BaseTaskHandler):
                    'rpms': rpms,
                    'logs': logs}
 
-        if not task:
+        if not task and not opts.get('scratch'):
             # Called as a standalone top-level task, so import the rpms now.
             # Otherwise we let the parent task handle it.
             session.host.importWrapperRPMs(self.id, build['id'], results)

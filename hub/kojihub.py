@@ -5686,7 +5686,7 @@ class RootExports(object):
 
         return make_task('maven', [url, target, opts], **taskOpts)
 
-    def wrapperRPM(self, build, url, target, priority=None, channel='maven'):
+    def wrapperRPM(self, build, url, target, priority=None, channel='maven', opts=None):
         """Create a top-level wrapperRPM task
 
         build: The build to generate wrapper rpms for.  Must be in the COMPLETE state, and have
@@ -5703,8 +5703,11 @@ class RootExports(object):
         """
         context.session.assertPerm('admin')
 
+        if not opts:
+            opts = {}
+
         build = self.getBuild(build, strict=True)
-        if list_rpms(build['id']):
+        if list_rpms(build['id']) and not opts.get('scratch'):
             raise koji.PreBuildError, 'wrapper rpms for %s have already been built' % koji.buildLabel(build)
         build_target = self.getBuildTarget(target)
         if not build_target:
@@ -5713,13 +5716,14 @@ class RootExports(object):
         repo_info = self.getRepo(build_tag['id'])
         if not repo_info:
             raise koji.PreBuildError, 'no repo for tag: %s' % build_tag['name']
+        opts['repo_id'] = repo_info['id']
 
         taskOpts = {}
         if priority:
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         taskOpts['channel'] = channel
 
-        return make_task('wrapperRPM', [url, build_tag, build, None, {'repo_id': repo_info['id']}], **taskOpts)
+        return make_task('wrapperRPM', [url, build_tag, build, None, opts], **taskOpts)
 
     # Create the livecd task. Called from handle_spin_livecd in the client.
     #
