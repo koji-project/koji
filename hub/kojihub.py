@@ -3831,7 +3831,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
                               task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return build
 
-def import_rpm(fn,buildinfo=None,brootid=None):
+def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     """Import a single rpm into the database
 
     Designed to be called from import_build.
@@ -3874,7 +3874,8 @@ def import_rpm(fn,buildinfo=None,brootid=None):
             if state in ('FAILED', 'CANCELED', 'DELETED'):
                 nvr = "%(name)s-%(version)s-%(release)s" % buildinfo
                 raise koji.GenericError, "Build is %s: %s" % (state, nvr)
-    else:
+    elif not wrapper:
+        # only enforce the srpm name matching the build for non-wrapper rpms
         srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % buildinfo
         #either the sourcerpm field should match the build, or the filename
         #itself (for the srpm)
@@ -4078,7 +4079,7 @@ def _import_wrapper(task_id, build_info, rpm_results):
 
     for rpm_path in [rpm_results['srpm']] + rpm_results['rpms']:
         rpm_path = os.path.join(rpm_task_dir, rpm_path)
-        rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id)
+        rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id, wrapper=True)
         import_rpm_file(rpm_path, build_info, rpm_info)
         add_rpm_sig(rpm_info['id'], koji.rip_rpm_sighdr(rpm_path))
 

@@ -2597,15 +2597,6 @@ class WrapperRPMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
-    def check_srpm(self, srpm, build):
-        """Basic sanity check that the SRPM E:N-V-R matches the build"""
-        fields = ['name', 'version', 'release', 'epoch']
-        srpminfo = koji.get_header_fields(srpm, fields)
-        for field in fields:
-            if srpminfo[field] != build[field]:
-                raise koji.BuildError, 'srpm header "%s" does not match build info: srpm: %s, build: %s' % \
-                    (field, srpminfo[field], build[field])
-
     def handler(self, spec_url, build_tag, build, task, opts=None):
         if not opts:
             opts = {}
@@ -2765,9 +2756,6 @@ class WrapperRPMTask(BaseTaskHandler):
         shutil.move(srpm, self.workdir)
         srpm = os.path.join(self.workdir, os.path.basename(srpm))
 
-        if build:
-            self.check_srpm(srpm, build)
-
         buildroot.build(srpm)
 
         resultdir = buildroot.resultdir()
@@ -2792,8 +2780,6 @@ class WrapperRPMTask(BaseTaskHandler):
 
         if not srpm:
             raise koji.BuildError, 'no srpm found'
-        elif build:
-            self.check_srpm(os.path.join(resultdir, srpm), build)
 
         if not rpms:
             raise koji.BuildError, 'no rpms found'
