@@ -204,20 +204,20 @@ def logout(req, page=None):
 
     _redirectBack(req, page, forceSSL=False)
 
-def index(req, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, taskOrder='-completion_time', taskStart=None):
+def index(req, packageOrder='package_name', packageStart=None):
     values = _initValues(req)
     server = _getServer(req)
 
     user = req.currentUser
 
-    builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None)},
-                                         start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
+    values['builds'] = server.listBuilds(userID=(user and user['id'] or None), queryOpts={'order': '-build_id', 'limit': 10})
 
     taskOpts = {'parent': None, 'decode': True}
     if user:
         taskOpts['owner'] = user['id']
-    tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': taskOpts},
-                                        start=taskStart, dataName='tasks', prefix='task', order=taskOrder, pageSize=10)
+    values['tasks'] = server.listTasks(opts=taskOpts, queryOpts={'order': '-id', 'limit': 10})
+
+    values['order'] = '-id'
 
     if user:
         packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
@@ -365,13 +365,14 @@ _TASKS = ['build',
           'buildNotification',
           'tagNotification',
           'dependantTask',
-          'createLiveCD']
+          'createLiveCD',
+          'createAppliance']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'maven', 'newRepo']
 
-def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-completion_time'):
+def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-id'):
     values = _initValues(req, 'Tasks', 'tasks')
     server = _getServer(req)
 
@@ -524,7 +525,7 @@ def taskinfo(req, taskID):
     elif task['method'] == 'buildMaven':
         buildTag = params[1]
         values['buildTag'] = buildTag
-    elif task['method'] == 'createLiveCD':
+    elif task['method'] == 'createLiveCD' or task['method'] == 'createAppliance':
         values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:
@@ -598,7 +599,11 @@ def imageinfo(req, imageID):
     values['title'] = image['filename'] + ' | Image Information'
     values['buildroot'] = server.getBuildroot(image['br_id'], strict=True)
     values['task'] = server.getTaskInfo(image['task_id'], request=True)
-    values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
+    if image['mediatype'] == 'LiveCD ISO':
+        values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
+    else:
+        values['imageBase'] = imageURL + '/' + koji.pathinfo.applianceRelPath(image['id'])
+
     return _genHTML(req, 'imageinfo.chtml')
 
 def taskstatus(req, taskID):
@@ -651,7 +656,9 @@ def getfile(req, taskID, name, offset=None, size=None):
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
     elif name.endswith('.log'):
         req.content_type = 'text/plain'
-    elif name.endswith('.iso'):
+    elif name.endswith('.iso') or name.endswith('.raw') or \
+         name.endswith('.qcow') or name.endswith('.qcow2') or \
+         name.endswith('.vmx'):
         req.content_type = 'application/octet-stream'
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
 
@@ -1092,7 +1099,7 @@ def buildinfo(req, buildID):
 
     return _genHTML(req, 'buildinfo.chtml')
 
-def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-completion_time', start=None, prefix=None, inherited='1', latest='1', type=None):
+def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):
     values = _initValues(req, 'Builds', 'builds')
     server = _getServer(req)
 
@@ -1407,6 +1414,55 @@ def hostinfo(req, hostID=None, userID=None):
         values['perms'] = []
     
     return _genHTML(req, 'hostinfo.chtml')
+
+def hostedit(req, hostID):
+    server = _getServer(req)
+    _assertLogin(req)
+
+    hostID = int(hostID)
+    host = server.getHost(hostID)
+    if host == None:
+        raise koji.GenericError, 'no host with ID: %i' % hostID
+
+    form = req.form
+
+    if form.has_key('save'):
+        arches = form['arches'].value
+        capacity = float(form['capacity'].value)
+        description = form['description'].value
+        comment = form['comment'].value
+        enabled = bool(form.has_key('enabled'))
+        channels = [f.value for f in form.getlist('channels')]
+
+        server.editHost(host['id'], arches=arches, capacity=capacity,
+                        description=description, comment=comment)
+        if enabled != host['enabled']:
+            if enabled:
+                server.enableHost(host['name'])
+            else:
+                server.disableHost(host['name'])
+
+        hostChannels = [c['name'] for c in server.listChannels(hostID=host['id'])]
+        for channel in hostChannels:
+            if channel not in channels:
+                server.removeHostFromChannel(host['name'], channel)
+        for channel in channels:
+            if channel not in hostChannels:
+                server.addHostToChannel(host['name'], channel)
+
+        mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
+    elif form.has_key('cancel'):
+        mod_python.util.redirect(req, 'hostinfo?hostID=%i' % host['id'])
+    else:
+        values = _initValues(req, 'Edit Host', 'hosts')
+
+        values['host'] = host
+        allChannels = server.listChannels()
+        allChannels.sort(_sortbyname)
+        values['allChannels'] = allChannels
+        values['hostChannels'] = server.listChannels(hostID=host['id'])
+
+        return _genHTML(req, 'hostedit.chtml')
 
 def disablehost(req, hostID):
     server = _getServer(req)

@@ -21,6 +21,12 @@
       <th>Task Load</th><td><a href="tasks?hostID=$host.id">#echo '%.2f' % $host.task_load#</a></td>
     </tr>
     <tr>
+      <th>Description</th><td class="usertext">$util.escapeHTML($host.description)</td>
+    </tr>
+    <tr>
+      <th>Comment</th><td class="usertext">$util.escapeHTML($host.comment)</td>
+    </tr>
+    <tr>
       #set $enabled = $host.enabled and 'yes' or 'no'
       <th>Enabled?</th>
       <td class="$enabled">
@@ -47,12 +53,15 @@
         #for $channel in $channels
         <a href="channelinfo?channelID=$channel.id">$channel.name</a><br/>
         #end for
+        #if not $channels
+        No channels
+        #end if
       </td>
     </tr>
     <tr>
       <th>Active Buildroots</th>
+      #if $buildroots
       <td class="container">
-        #if $len($buildroots) > 0
         <table class="nested data-list">
           <tr class="list-header">
             <th>Buildroot</th><th>Created</th><th>State</th>
@@ -65,11 +74,18 @@
           </tr>
           #end for
         </table>
-        #else
-        No buildroots
-        #end if
       </td>
+      #else
+      <td>
+        No buildroots
+      </td>
+      #end if
     </tr>
+    #if 'admin' in $perms
+    <tr>
+      <td colspan="2"><a href="hostedit?hostID=$host.id$util.authToken($self)">Edit host</a></td>
+    </tr>
+    #end if
   </table>
 
 #include "includes/footer.chtml"

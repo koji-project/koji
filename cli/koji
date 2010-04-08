@@ -64,24 +64,23 @@ def _(args):
     """Stub function for translation"""
     return args
 
-def arg_filter(str):
-    valmap = {'None': None,
-              'True': True,
-              'False': False}
+ARGMAP = {'None': None,
+          'True': True,
+          'False': False}
+
+def arg_filter(arg):
     try:
-        return valmap[str]
-    except KeyError:
-        pass
-    try:
-        return int(str)
+        return int(arg)
     except ValueError:
         pass
     try:
-        return float(str)
+        return float(arg)
     except ValueError:
         pass
-    #handle lists?
-    return str
+    if arg in ARGMAP:
+        return ARGMAP[arg]
+    #handle lists/dicts?
+    return arg
 
 def get_options():
     """process options from command line and config file"""
@@ -148,6 +147,11 @@ def get_options():
         'weburl' : 'http://localhost/koji',
         'pkgurl' : 'http://localhost/packages',
         'topdir' : '/mnt/koji',
+        'max_retries' : None,
+        'retry_interval': None,
+        'anon_retry' : None,
+        'offline_retry' : None,
+        'offline_retry_interval' : None,
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
         'serverca': '~/.koji/serverca.crt', 
@@ -478,6 +482,7 @@ def handle_add_host(options, session, args):
     usage = _("usage: %prog add-host [options] hostname arch [arch2 ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--krb-principal", help=_("set a non-default kerberos principal for the host"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a hostname and at least one arch"))
@@ -489,9 +494,54 @@ def handle_add_host(options, session, args):
         print "%s is already in the database" % host
         return 1
     else:
-        id = session.addHost(host, args[1:])
+        kwargs = {}
+        if options.krb_principal is not None:
+            kwargs['krb_principal'] = options.krb_principal
+        id = session.addHost(host, args[1:], **kwargs)
         if id:
             print "%s added: id %d" % (host, id)
+
+def handle_edit_host(options, session, args):
+    "[admin] Edit a host"
+    usage = _("usage: %prog edit-host hostname ... [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arches", help=_("Space-separated list of supported architectures"))
+    parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
+    parser.add_option("--description", metavar="DESC", help=_("Description of this host"))
+    parser.add_option("--comment", help=_("A brief comment about this host"))
+    (subopts, args) = parser.parse_args(args)
+    if not args:
+        parser.error(_("Please specify a hostname"))
+
+    activate_session(session)
+
+    vals = {}
+    for key, val in subopts.__dict__.items():
+        if val is not None:
+            vals[key] = val
+
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [info] in zip(args, session.multiCall(strict=True)):
+        if not info:
+            print _("Host %s does not exist") % host
+            error = True
+
+    if error:
+        print _("No changes made, please correct the command line")
+        return 1
+
+    session.multicall = True
+    for host in args:
+        session.editHost(host, **vals)
+    for host, [result] in zip(args, session.multiCall(strict=True)):
+        if result:
+            print _("Edited %s") % host
+        else:
+            print _("No changes made to %s") % host
 
 def handle_add_host_to_channel(options, session, args):
     "[admin] Add a host to a channel"
@@ -504,14 +554,13 @@ def handle_add_host_to_channel(options, session, args):
         parser.error(_("Please specify a hostname and a channel"))
         assert False
     activate_session(session)
-    channels = dict([(p['name'], p['id']) for p in session.getAllChannels()])
     if options.list:
-        for p in channels.keys():
-            print p
+        for channel in session.listChannels():
+            print channel['name']
         return
     channel = args[1]
-    channel_id = channels.get(channel, None)
-    if not channel_id:
+    channelinfo = session.getChannel(channel)
+    if not channelinfo:
         print "No such channel: %s" % channel
         return 1
     host = args[0]
@@ -536,11 +585,10 @@ def handle_remove_host_from_channel(options, session, args):
     if not hostinfo:
         print "No such host: %s" % host
         return 1
-    hostchannels = dict([(p['name'], p['id']) for p in session.listChannels(hostinfo['id'])])
+    hostchannels = [c['name'] for c in session.listChannels(hostinfo['id'])]
 
     channel = args[1]
-    channel_id = hostchannels.get(channel, None)
-    if not channel_id:
+    if channel not in hostchannels:
         print "Host %s is not a member of channel %s" % (host, channel)
         return 1
     
@@ -758,9 +806,7 @@ def handle_chain_build(options, session, args):
     build_target = session.getBuildTarget(target)
     if not build_target:
         parser.error(_("Unknown build target: %s" % target))
-    dest_tag = session.getTag(build_target['dest_tag'])
-    if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+    dest_tag = session.getTag(build_target['dest_tag'], strict=True)
     if dest_tag['locked']:
         parser.error(_("Destination tag %s is locked" % dest_tag['name']))
 
@@ -965,7 +1011,7 @@ def handle_call(options, session, args):
     name = args[0]
     non_kw = []
     kw = {}
-    
+
     for arg in args[1:]:
         if arg.find('=') != -1:
             key, value = arg.split('=', 1)
@@ -1057,45 +1103,61 @@ def anon_handle_mock_config(options, session, args):
         print output
 
 def handle_disable_host(options, session, args):
-    "[admin] Mark a host as disabled"
-    usage = _("usage: %prog disable-host [options] hostname")
+    "[admin] Mark one or more hosts as disabled"
+    usage = _("usage: %prog disable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--comment", help=_("Comment indicating why the host(s) are being disabled"))
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("Exactly one argument (a hostname) is required"))
-        assert False
-    host = args[0]
-    
-    activate_session(session)
-    id = session.getHost(host)
-    if not id:
-        print "Host %s does not exist" % host
-        return 1
 
-    session.disableHost(host)
+    activate_session(session)
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [id] in zip(args, session.multiCall(strict=True)):
+        if not id:
+            print "Host %s does not exist" % host
+            error = True
+    if error:
+        print "No changes made. Please correct the command line."
+        return 1
+    session.multicall = True
+    for host in args:
+        session.disableHost(host)
+        if options.comment:
+            session.editHost(host, comment=options.comment)
+    session.multiCall(strict=True)
 
 def handle_enable_host(options, session, args):
-    "[admin] Mark a host as enabled"
-    usage = _("usage: %prog enable-host [options] hostname")
+    "[admin] Mark one or more hosts as enabled"
+    usage = _("usage: %prog enable-host [options] hostname ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--comment", help=_("Comment indicating why the host(s) are being enabled"))
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("Exactly one argument (a hostname) is required"))
-        assert False
-    host = args[0]
-    
-    activate_session(session)
-    id = session.getHost(host)
-    if not id:
-        print "Host %s does not exist" % host
-        return 1
 
-    session.enableHost(host)
+    activate_session(session)
+    session.multicall = True
+    for host in args:
+        session.getHost(host)
+    error = False
+    for host, [id] in zip(args, session.multiCall(strict=True)):
+        if not id:
+            print "Host %s does not exist" % host
+            error = True
+    if error:
+        print "No changes made. Please correct the command line."
+        return 1
+    session.multicall = True
+    for host in args:
+        session.enableHost(host)
+        if options.comment:
+            session.editHost(host, comment=options.comment)
+    session.multiCall(strict=True)
 
 def handle_import(options, session, args):
-    "[admin] Import local RPMs to the database"
+    "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
@@ -3219,10 +3281,14 @@ def anon_handle_list_tag_history(options, session, args):
     def _histline(event_id, x):
         if event_id == x['revoke_event']:
             ts = x['revoke_ts']
-            fmt = "Untagged %(name)s-%(version)s-%(release)s from %(tag_name)s"
+            fmt = "%(name)s-%(version)s-%(release)s untagged from %(tag_name)s"
+            if x.has_key('revoker_name'):
+                fmt += " by %(revoker_name)s"
         elif event_id == x['create_event']:
             ts = x['create_ts']
-            fmt = "Tagged %(name)s-%(version)s-%(release)s with %(tag_name)s"
+            fmt = "%(name)s-%(version)s-%(release)s tagged into %(tag_name)s"
+            if x.has_key('creator_name'):
+                fmt += " by %(creator_name)s"
             if x['active']:
                 fmt += " [still active]"
         else:
@@ -3364,6 +3430,11 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
             print "%s  %s" % (indent, line)
     print "%sOwner: %s" % (indent, owner)
     print "%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower())
+    print "%sCreated: %s" % (indent, time.asctime(time.localtime(info['create_ts'])))
+    if info.get('start_ts'):
+        print "%sStarted: %s" % (indent, time.asctime(time.localtime(info['start_ts'])))
+    if info.get('completion_ts'):
+        print "%sFinished: %s" % (indent, time.asctime(time.localtime(info['completion_ts'])))
     if host_info:
         print "%sHost: %s" % (indent, host_info['name'])
     if build_info:
@@ -3470,7 +3541,7 @@ def anon_handle_taginfo(options, session, args):
                     flags += '.'
             parent['flags'] = flags
             print "  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent
-            if parent['maxdepth']:
+            if parent['maxdepth'] is not None:
                 print "    maxdepth: %(maxdepth)s" % parent
             if parent['pkg_filter']:
                 print "    package filter: %(pkg_filter)s" % parent
@@ -4091,7 +4162,7 @@ def handle_spin_livecd(options, session, args):
     parser.add_option("--repo",
         help=_("Specify a comma-separated list of repos that will override\n" +
                "the repo used to install RPMs in the LiveCD image. The \n" +
-               "repo associated with the target is the default."))
+               "build tag repo associated with the target is the default."))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
@@ -4100,15 +4171,77 @@ def handle_spin_livecd(options, session, args):
                        "a build target, and a relative \npath to a " +
                        "kickstart file ."))
         assert False
+    _build_image(options, task_options, session, args, 'livecd')
 
+# This handler is for spinning appliance images
+#
+def handle_spin_appliance(options, session, args):
+    """[admin] Create an appliance given a kickstart file"""
+
+    # Usage & option parsing
+    usage = _("usage: %prog spin-appliance [options] <target> <arch> " +
+              "<kickstart-file>")
+    usage += _("\n(Specify the --help global option for a list of other " +
+               "help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--nowait", action="store_true",
+        help=_("Do not wait on appliance creation."))
+    parser.add_option("--noprogress", action="store_true",
+        help=_("Do not display progress of the upload."))
+    parser.add_option("--background", action="store_true",
+        help=_("Run the appliance creation task at a lower priority."))
+    parser.add_option("--ksurl", metavar="SCMURL",
+        help=_("The URL to the SCM containing the kickstart file."))
+    parser.add_option("--ksversion", metavar="VERSION",
+        help=_("The syntax version used in the kickstart file."))
+    parser.add_option("--scratch", action="store_true",
+        help=_("Create a scratch appliance"))
+    parser.add_option("--repo",
+        help=_("Specify a comma-separated list of repos that will override\n" +
+               "the repo used to install RPMs in the appliance. The \n" +
+               "build tag repo associated with the target is the default."))
+    parser.add_option("--version", metavar="VERSION", default=None,
+        help=_("Set an appliance version; used in .xml metadata."))
+    parser.add_option("--name", metavar="NAME", default=None,
+        help=_("Specify the appliance file name."))
+    parser.add_option("--release", metavar="RELEASE", default=None,
+        help=_("Set an appliance release number; used in .xml metadata."))
+    parser.add_option("--vmem", metavar="VMEM", default=None,
+        help=_("Set the amount of virtual memory in the appliance in MB,\n" +
+               "default is 512."))
+    parser.add_option("--vcpu", metavar="VCPU", default=None,
+        help=_("Set the number of virtual cpus in the appliance,\n" +
+               "default is 1."))
+    parser.add_option("--format", metavar="DISK_FORMAT", default='raw',
+        help=_("Disk format, default is raw. Other options are qcow,\n" +
+               "qcow2, and vmx."))
+
+    (task_options, args) = parser.parse_args(args)
+
+    # Make sure the target and kickstart is specified.
+    if len(args) != 3:
+        parser.error(_("Three arguments are required: an architecture, " +
+                       "a build target, and a relative \npath to a " +
+                       "kickstart file ."))
+        assert False
+    _build_image(options, task_options, session, args, 'appliance')
+
+def _build_image(options, task_opts, session, args, img_type):
+    """
+    A private helper function that houses common CLI code for building
+    images.
+    """
+
+    if img_type not in ('livecd', 'appliance'):
+        raise koji.GenericError, 'Unrecognized image type: %s\n' % img_type
     activate_session(session)
 
     # Set the task's priority. Users can only lower it with --background.
     priority = None
-    if task_options.background:
+    if task_opts.background:
         # relative to koji.PRIO_DEFAULT; higher means a "lower" priority.
         priority = 5
-    if _running_in_bg() or task_options.noprogress:
+    if _running_in_bg() or task_opts.noprogress:
         callback = None
     else:
         callback = _progress_callback
@@ -4119,11 +4252,11 @@ def handle_spin_livecd(options, session, args):
     target = args[0]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
-        parser.error(_("Unknown build target: %s" % target))
+        raise koji.GenericError, _("Unknown build target: %s" % target)
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" %
-                       tmp_target['dest_tag_name']))
+        raise koji.GenericError, _("Unknown destination tag: %s" %
+                                   tmp_target['dest_tag_name'])
 
     # Set the architecture
     arch = koji.canonArch(args[1])
@@ -4132,24 +4265,19 @@ def handle_spin_livecd(options, session, args):
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
     ksfile = args[2]
 
-    if not task_options.ksurl:
-        serverdir = _unique_path('cli-livecd')
+    if not task_opts.ksurl:
+        serverdir = _unique_path('cli-' + img_type)
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
-    livecd_opts = {}
-    for opt in ['scratch', 'ksurl', 'ksversion', 'isoname', 'repo']:
-        if getattr(task_options, opt):
-            livecd_opts[opt] = getattr(task_options, opt)
-
-    # finally, create the task. Flow continues in kojihub::livecd.
-    task_id = session.livecd(arch, target, ksfile, opts=livecd_opts,
-                             priority=priority)
+    # finally, create the task.
+    task_id = session.buildImage(arch, target, ksfile, img_type, 
+                                  opts=task_opts, priority=priority)
 
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if _running_in_bg() or task_options.nowait:
+    if _running_in_bg() or task_opts.nowait:
         return
     else:
         session.logout()
@@ -4889,8 +5017,12 @@ if __name__ == "__main__":
     options, command, args = get_options()
 
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
+    for k in ('user', 'password', 'debug_xmlrpc', 'debug', 'max_retries',
+                'retry_interval', 'offline_retry', 'offline_retry_interval',
+                'anon_retry'):
+        value = getattr(options,k)
+        if value is not None:
+            session_opts[k] = value
     session = koji.ClientSession(options.server,session_opts)
     rv = 0
     try:

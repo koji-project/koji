@@ -101,6 +101,7 @@ INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
 INSERT INTO permissions (name) VALUES ('livecd');
 INSERT INTO permissions (name) VALUES ('maven-import');
+INSERT INTO permissions (name) VALUES ('appliance');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
@@ -108,10 +109,12 @@ CREATE TABLE user_perms (
 -- versioned - see VERSIONING
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, user_id, perm_id),
 	UNIQUE (user_id,perm_id,active)
 ) WITHOUT OIDS;
@@ -123,10 +126,12 @@ CREATE TABLE user_groups (
 -- versioned - see VERSIONING
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, user_id, group_id),
 	UNIQUE (user_id,group_id,active)
 ) WITHOUT OIDS;
@@ -173,6 +178,7 @@ INSERT INTO channels (name) VALUES ('default');
 INSERT INTO channels (name) VALUES ('createrepo');
 INSERT INTO channels (name) VALUES ('maven');
 INSERT INTO channels (name) VALUES ('livecd');
+INSERT INTO channels (name) VALUES ('appliance');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also
@@ -184,6 +190,8 @@ CREATE TABLE host (
 	arches TEXT,
 	task_load FLOAT CHECK (NOT task_load < 0) NOT NULL DEFAULT 0.0,
 	capacity FLOAT CHECK (capacity > 1) NOT NULL DEFAULT 2.0,
+	description TEXT,
+	comment TEXT,
 	ready BOOLEAN NOT NULL DEFAULT 'false',
 	enabled BOOLEAN NOT NULL DEFAULT 'true'
 ) WITHOUT OIDS;
@@ -213,6 +221,7 @@ CREATE TABLE task (
 	id SERIAL NOT NULL PRIMARY KEY,
 	state INTEGER,
 	create_time TIMESTAMP NOT NULL DEFAULT NOW(),
+	start_time TIMESTAMP,
 	completion_time TIMESTAMP,
 	channel_id INTEGER NOT NULL REFERENCES channels(id),
 	host_id INTEGER REFERENCES host (id),
@@ -313,10 +322,12 @@ CREATE TABLE tag_inheritance (
 -- versioned - see desc above
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, tag_id, priority),
 	UNIQUE (tag_id,priority,active),
 	UNIQUE (tag_id,parent_id,active)
@@ -337,10 +348,12 @@ CREATE TABLE tag_config (
 -- versioned - see desc above
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, tag_id),
 	UNIQUE (tag_id,active)
 ) WITHOUT OIDS;
@@ -361,10 +374,12 @@ CREATE TABLE build_target_config (
 -- versioned - see desc above
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, build_target_id),
 	UNIQUE (build_target_id,active)
 ) WITHOUT OIDS;
@@ -392,10 +407,12 @@ create table external_repo_config (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, external_repo_id),
 	UNIQUE (external_repo_id, active)
 ) WITHOUT OIDS;
@@ -407,10 +424,12 @@ create table tag_external_repos (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, tag_id, priority),
 	UNIQUE (tag_id, priority, active),
 	UNIQUE (tag_id, external_repo_id, active)
@@ -448,10 +467,12 @@ CREATE TABLE tag_listing (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, build_id, tag_id),
 	UNIQUE (build_id,tag_id,active)
 ) WITHOUT OIDS;
@@ -473,10 +494,12 @@ CREATE TABLE tag_packages (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, package_id, tag_id),
 	UNIQUE (package_id,tag_id,active)
 ) WITHOUT OIDS;
@@ -504,10 +527,12 @@ CREATE TABLE group_config (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, group_id, tag_id),
 	UNIQUE (group_id,tag_id,active)
 ) WITHOUT OIDS;
@@ -522,10 +547,12 @@ CREATE TABLE group_req_listing (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, group_id, tag_id, req_id),
 	UNIQUE (group_id,tag_id,req_id,active)
 ) WITHOUT OIDS;
@@ -545,10 +572,12 @@ CREATE TABLE group_package_listing (
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
 	active BOOLEAN DEFAULT 'true' CHECK (active),
 	CONSTRAINT active_revoke_sane CHECK (
-		(active IS NULL AND revoke_event IS NOT NULL )
-		OR (active IS NOT NULL AND revoke_event IS NULL )),
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, group_id, tag_id, package),
 	UNIQUE (group_id,tag_id,package,active)
 ) WITHOUT OIDS;

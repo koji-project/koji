@@ -5,45 +5,30 @@
 
   <div class="pageHeader">$welcomeMessage</div>
   
-  <div class="dataHeader" id="buildlist">#if $user then 'Your ' else ''#Recent Builds</div>
+  <div class="dataHeader noPaginate" id="buildlist">#if $user then 'Your ' else ''#Recent Builds</div>
   <table class="data-list">
-    <tr>
-      <td class="paginate" colspan="3">
-        #if $len($buildPages) > 1
-        <form class="pageJump" action="">
-          Page:
-          <select onchange="javascript: window.location = 'index?buildStart=' + this.value * $buildRange + '$util.passthrough($self, 'buildOrder', 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist';">
-            #for $pageNum in $buildPages
-            <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
-            #end for
-          </select>
-        </form>
-        #end if
-        #if $buildStart > 0
-        <a href="index?buildStart=#echo $buildStart - $buildRange #$util.passthrough($self, 'buildOrder', 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalBuilds != 0
-        <strong>Build #echo $buildStart + 1 # through #echo $buildStart + $buildCount # of $totalBuilds</strong>
-        #end if
-        #if $buildStart + $buildCount < $totalBuilds
-        <a href="index?buildStart=#echo $buildStart + $buildRange#$util.passthrough($self, 'buildOrder', 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist">&gt;&gt;&gt;</a>
-        #end if
-      </td>
-    </tr>
     <tr class="list-header">
-      <th><a href="index?buildOrder=$util.toggleOrder($self, 'nvr', 'buildOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist">NVR</a> $util.sortImage($self, 'nvr', 'buildOrder')</th>
-      <th><a href="index?buildOrder=$util.toggleOrder($self, 'completion_time', 'buildOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist">Finished</a> $util.sortImage($self, 'completion_time', 'buildOrder')</th>
-      <th><a href="index?buildOrder=$util.toggleOrder($self, 'state', 'buildOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'taskOrder', 'taskStart')#buildlist">State</a> $util.sortImage($self, 'state', 'buildOrder')</th>
+      <th>ID $util.sortImage(self, 'id')</th>
+      <th>NVR</th>
+      #if not $user
+      <th>Built by</th>
+      #end if
+      <th>Finished</th>
+      <th>State</th>
     </tr>
     #for $build in $builds
     <tr class="$util.rowToggle($self)">
       #set $stateName = $util.stateName($build.state)
+      <td>$build.build_id</td>
       <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
+      #if not $user
+      <td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+      #end if
       <td>$util.formatTime($build.completion_time)</td>
       <td class="$stateName">$util.stateImage($build.state)</td>
     </tr>
     #end for
-    #if $totalBuilds == 0
+    #if not $builds
     <tr class="row-odd">
       <td colspan="3">No builds</td>
     </tr>
@@ -52,49 +37,38 @@
 
   <br/>
   
-  <div class="dataHeader" id="tasklist">#if $user then 'Your ' else ''#Recent Tasks</div>
+  <div class="dataHeader noPaginate" id="tasklist">#if $user then 'Your ' else ''#Recent Tasks</div>
   <table class="data-list">
-    <tr>
-      <td class="paginate" colspan="5">
-        #if $len($taskPages) > 1
-        <form class="pageJump" action="">
-          Page:
-          <select onchange="javascript: window.location = 'index?taskStart=' + this.value * $taskRange + '$util.passthrough($self, 'taskOrder', 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist';">
-            #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
-            #end for
-          </select>
-        </form>
-        #end if
-        #if $taskStart > 0
-        <a href="index?taskStart=#echo $taskStart - $taskRange #$util.passthrough($self, 'taskOrder', 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTasks != 0
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
-        #end if
-        #if $taskStart + $taskCount < $totalTasks
-        <a href="index?taskStart=#echo $taskStart + $taskRange#$util.passthrough($self, 'taskOrder', 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">&gt;&gt;&gt;</a>
-        #end if
-      </td>
-    </tr>
     <tr class="list-header">
-      <th><a href="index?taskOrder=$util.toggleOrder($self, 'id', 'taskOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">ID</a> $util.sortImage($self, 'id', 'taskOrder')</th>
-      <th><a href="index?taskOrder=$util.toggleOrder($self, 'method', 'taskOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">Type</a> $util.sortImage($self, 'method', 'taskOrder')</th>
-      <th><a href="index?taskOrder=$util.toggleOrder($self, 'arch', 'taskOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">Arch</a> $util.sortImage($self, 'arch', 'taskOrder')</th>
-      <th><a href="index?taskOrder=$util.toggleOrder($self, 'completion_time', 'taskOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">Finished</a> $util.sortImage($self, 'completion_time', 'taskOrder')</th>
-      <th><a href="index?taskOrder=$util.toggleOrder($self, 'state', 'taskOrder')$util.passthrough($self, 'packageOrder', 'packageStart', 'buildOrder', 'buildStart')#tasklist">State</a> $util.sortImage($self, 'state', 'taskOrder')</th>
+      <th>ID $util.sortImage($self, 'id')</th>
+      <th>Type</th>
+      #if not $user
+      <th>Owner</th>
+      #end if
+      <th>Arch</th>
+      <th>Finished</th>
+      <th>State</th>
     </tr>
     #for $task in $tasks
     <tr class="$util.rowToggle($self)">
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
       <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
+      #if not $user
+      <td>
+        #if $task.owner_type == $koji.USERTYPES['HOST']
+        <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+        #else
+        <a href="userinfo?userID=$task.owner">$task.owner_name</a>
+        #end if
+      </td>
+      #end if
       <td>$task.arch</td>
       <td>$util.formatTime($task.completion_time)</td>
       <td class="task$state">$util.imageTag($state)</td>
     </tr>
     #end for
-    #if $totalTasks == 0
+    #if not $tasks
       <tr class="row-odd">
         <td colspan="5">No tasks</td>
       </tr>

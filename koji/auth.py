@@ -44,6 +44,8 @@ class Session(object):
         self.master = None
         self.key = None
         self.user_id = None
+        self.hostip = None
+        self.user_data = {}
         self.message = ''
         self.exclusive = False
         self.lockerror = None
@@ -512,6 +514,10 @@ class Session(object):
     def assertPerm(self, name):
         if not self.hasPerm(name) and not self.hasPerm('admin'):
             raise koji.ActionNotAllowed, "%s permission required" % name
+
+    def assertLogin(self):
+        if not self.logged_in:
+            raise koji.ActionNotAllowed, "you must be logged in for this operation"
 
     def hasGroup(self, group_id):
         if not self.logged_in:

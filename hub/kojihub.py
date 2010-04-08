@@ -1,7 +1,7 @@
 # Python library
 
 # kojihub - library for koji's XMLRPC interface
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2010 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -31,13 +31,12 @@ import koji.policy
 import datetime
 import errno
 import logging
-import logging.handlers
 import fcntl
 import fnmatch
 from koji.util import md5_constructor
 from koji.util import sha1_constructor
+from koji.util import dslice
 import os
-import pgdb
 import random
 import re
 import rpm
@@ -53,12 +52,15 @@ import xmlrpclib
 import zipfile
 from koji.context import context
 
+
+logger = logging.getLogger('koji.hub')
+
 def log_error(msg):
-    if hasattr(context,'req'):
-        context.req.log_error(msg)
-    else:
-        sys.stderr.write(msg + "\n")
-    logging.getLogger('koji.hub').error(msg)
+    #if hasattr(context,'req'):
+    #    context.req.log_error(msg)
+    #else:
+    #    sys.stderr.write(msg + "\n")
+    logger.error(msg)
 
 
 class Task(object):
@@ -69,6 +71,8 @@ class Task(object):
                 ('task.state', 'state'),
                 ('task.create_time', 'create_time'),
                 ('EXTRACT(EPOCH FROM create_time)','create_ts'),
+                ('task.start_time', 'start_time'),
+                ('EXTRACT(EPOCH FROM task.start_time)', 'start_ts'),
                 ('task.completion_time', 'completion_time'),
                 ('EXTRACT(EPOCH FROM completion_time)','completion_ts'),
                 ('task.channel_id', 'channel_id'),
@@ -189,10 +193,15 @@ class Task(object):
 
         returns task data if successful, None otherwise"""
         if self.lock(host_id,'OPEN'):
+            #set task start time
+            update = UpdateProcessor('task', clauses=['id=%(id)i'], values=vars(self))
+            update.rawset(start_time='NOW()')
+            update.execute()
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
-            q = """SELECT %s FROM task WHERE id=%%(id)i""" % ','.join([f[0] for f in fields])
-            ret = _singleRow(q, vars(self), [f[1] for f in fields], strict=True)
+            query = QueryProcessor(tables=['task'], clauses=['id=%(id)i'], values=vars(self),
+                            columns=[f[0] for f in fields], aliases=[f[1] for f in fields])
+            ret = query.executeOne()
             if ret['request'].find('<?xml', 0, 10) == -1:
                 #handle older base64 encoded data
                 ret['request'] = base64.decodestring(ret['request'])
@@ -645,17 +654,14 @@ def writeInheritanceData(tag_id, changes, clear=False):
         #oops, duplicate entries for a single priority
         dup_ids = [ link['parent_id'] for link in dups]
         raise koji.GenericError, "Inheritance priorities must be unique (pri %s: %r )" % (pri, dup_ids)
-    # get an event
-    event = _singleValue("SELECT get_event()")
     for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
         # revoke old values
-        q = """
-        UPDATE tag_inheritance SET active=NULL,revoke_event=%(event)s
-        WHERE tag_id=%(tag_id)s AND parent_id = %(parent_id)s AND active = TRUE
-        """
-        _dml(q,locals())
+        update = UpdateProcessor('tag_inheritance', values=locals(),
+                    clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
+        update.make_revoke()
+        update.execute()
     for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
@@ -663,20 +669,12 @@ def writeInheritanceData(tag_id, changes, clear=False):
         if link.get('delete link'):
             continue
         # insert new value
-        newlink = {}
-        for f in fields:
-            newlink[f] = link[f]
+        newlink = dslice(link, fields)
         newlink['tag_id'] = tag_id
-        newlink['create_event'] = event
         # defaults ok for the rest
-        keys = newlink.keys()
-        flist = ','.join(["%s" % k for k in keys])
-        vlist = ','.join(["%%(%s)s" % k for k in keys])
-        q = """
-        INSERT INTO tag_inheritance (%(flist)s)
-        VALUES (%(vlist)s)
-        """ % locals()
-        _dml(q,newlink)
+        insert = InsertProcessor('tag_inheritance', data=newlink)
+        insert.make_create()
+        insert.execute()
 
 def readFullInheritance(tag_id,event=None,reverse=False,stops={},jumps={}):
     """Returns a list representing the full, ordered inheritance from tag"""
@@ -776,30 +774,32 @@ def readFullInheritanceRecurse(tag_id,event,order,prunes,top,hist,currdepth,maxd
 #       list
 
 
-def _pkglist_remove(tag_id,pkg_id,event_id=None):
-    if event_id is None:
-        event_id = _singleValue("SELECT get_event()")
-    q = """UPDATE tag_packages SET active=NULL,revoke_event=%(event_id)i
-    WHERE active = TRUE AND package_id=%(pkg_id)i AND tag_id=%(tag_id)i"""
-    _dml(q,locals())
+def _pkglist_remove(tag_id, pkg_id):
+    clauses = ('package_id=%(pkg_id)i', 'tag_id=%(tag_id)i')
+    update = UpdateProcessor('tag_packages', values=locals(), clauses=clauses)
+    update.make_revoke()  #XXX user_id?
+    update.execute()
 
-def _pkglist_add(tag_id,pkg_id,owner,block,extra_arches,event_id=None):
-    if event_id is None:
-        event_id = _singleValue("SELECT get_event()")
+def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
     #revoke old entry (if present)
-    _pkglist_remove(tag_id,pkg_id,event_id)
-    q = """INSERT INTO tag_packages(package_id,tag_id,owner,blocked,extra_arches,create_event)
-    VALUES (%(pkg_id)s,%(tag_id)s,%(owner)s,%(block)s,%(extra_arches)s,%(event_id)s) """
-    _dml(q,locals())
+    _pkglist_remove(tag_id, pkg_id)
+    data = dslice(locals(), ('tag_id', 'owner', 'extra_arches'))
+    data['package_id'] = pkg_id
+    data['blocked'] = block
+    insert = InsertProcessor('tag_packages', data=data)
+    insert.make_create()  #XXX user_id?
+    insert.execute()
 
 def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=False,update=False):
     """Add to (or update) package list for tag"""
-    #only admins....
-    context.session.assertPerm('admin')
+    #access control comes a little later (via an assert_policy)
+    #should not make any changes until after policy is checked
     tag = get_tag(taginfo, strict=True)
-    pkg = lookup_package(pkginfo, create=True)
     tag_id = tag['id']
-    pkg_id = pkg['id']
+    pkg = lookup_package(pkginfo, strict=False)
+    if not pkg:
+        if not isinstance(pkginfo, basestring):
+            raise GenericError, "Invalid package: %s" % pkginfo
     if owner is not None:
         owner = get_user(owner,strict=True)['id']
     action = 'add'
@@ -807,13 +807,20 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
         action = 'update'
     elif bool(block):
         action = 'block'
+    context.session.assertLogin()
+    policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
+    #don't check policy for admins using force
+    if not (force and context.session.hasPerm('admin')):
+        assert_policy('package_list', policy_data)
+    if not pkg:
+        pkg = lookup_package(pkginfo, create=True)
     koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
                               block=block, extra_arches=extra_arches, force=force, update=update)
     # first check to see if package is:
     #   already present (via inheritance)
     #   blocked
-    pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
-    previous = pkglist.get(pkg_id,None)
+    pkglist = readPackageList(tag_id, pkgID=pkg['id'], inherit=True)
+    previous = pkglist.get(pkg['id'],None)
     if previous is None:
         if block is None:
             block = False
@@ -851,7 +858,7 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
             owner = context.session.user_id
         else:
             raise koji.GenericError, "owner not specified"
-    _pkglist_add(tag_id,pkg_id,owner,block,extra_arches)
+    _pkglist_add(tag_id, pkg['id'], owner, block, extra_arches)
     koji.plugin.run_callbacks('postPackageListChange', action=action, tag=tag, package=pkg, owner=owner,
                               block=block, extra_arches=extra_arches, force=force, update=update)
 
@@ -863,10 +870,13 @@ def pkglist_remove(taginfo,pkginfo,force=False):
     The main reason to remove an entry like this is to remove an override so
     that the package data can be inherited from elsewhere.
     """
-    #only admins....
-    context.session.assertPerm('admin')
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
+    context.session.assertLogin()
+    policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
+    #don't check policy for admins using force
+    if not (force and context.session.hasPerm('admin')):
+        assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
     _pkglist_remove(tag['id'],pkg['id'])
     koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
@@ -875,7 +885,7 @@ def pkglist_block(taginfo,pkginfo):
     """Block the package in tag"""
     pkglist_add(taginfo,pkginfo,block=True)
 
-def pkglist_unblock(taginfo,pkginfo):
+def pkglist_unblock(taginfo, pkginfo, force=False):
     """Unblock the package in tag
 
     Generally this just adds a unblocked duplicate of the blocked entry.
@@ -883,6 +893,11 @@ def pkglist_unblock(taginfo,pkginfo):
     the blocking entry is simply removed"""
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
+    context.session.assertLogin()
+    policy_data = {'tag' : tag['id'], 'action' : 'unblock', 'package' : pkg['id'], 'force' : force}
+    #don't check policy for admins using force
+    if not (force and context.session.hasPerm('admin')):
+        assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg)
     tag_id = tag['id']
     pkg_id = pkg['id']
@@ -893,19 +908,16 @@ def pkglist_unblock(taginfo,pkginfo):
                 % (pkg['name'],tag['name'])
     if not previous['blocked']:
         raise koji.GenericError, "package %s NOT blocked in tag %s" % (pkg['name'],tag['name'])
-    event_id = _singleValue("SELECT get_event()")
     if previous['tag_id'] != tag_id:
         _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'])
     else:
         #just remove the blocking entry
-        event_id = _singleValue("SELECT get_event()")
-        _pkglist_remove(tag_id,pkg_id,event_id)
+        _pkglist_remove(tag_id, pkg_id)
         #it's possible this was the only entry in the inheritance or that the next entry
         #back is also a blocked entry. if so, we need to add it back as unblocked
         pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
         if not pkglist.has_key(pkg_id) or pkglist[pkg_id]['blocked']:
-            _pkglist_add(tag_id,pkg_id,previous['owner_id'],False,previous['extra_arches'],
-                         event_id)
+            _pkglist_add(tag_id, pkg_id, previous['owner_id'], False, previous['extra_arches'])
     koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
 
 def pkglist_setowner(taginfo,pkginfo,owner,force=False):
@@ -1320,28 +1332,30 @@ def _tag_build(tag,build,user_id=None,force=False):
         raise koji.TagError, "build %s not complete: state %s" % (nvr,state)
     #access check
     assert_tag_access(tag['id'],user_id=user_id,force=force)
-    #XXX - add another check based on package ownership?
     # see if it's already tagged
     retag = False
-    q = """SELECT build_id FROM tag_listing WHERE tag_id=%(tag_id)i
-    AND build_id=%(build_id)i AND active = TRUE FOR UPDATE"""
+    table = 'tag_listing'
+    clauses = ('tag_id=%(tag_id)i', 'build_id=%(build_id)i')
+    query = QueryProcessor(columns=['build_id'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
     #note: tag_listing is unique on (build_id, tag_id, active)
-    if _fetchSingle(q,locals()):
+    if query.fetchSingle():
         #already tagged
         if not force:
             raise koji.TagError, "build %s already tagged (%s)" % (nvr,tag['name'])
         #otherwise we retag
         retag = True
-    event_id = _singleValue("SELECT get_event()")
     if retag:
         #revoke the old tag first
-        q = """UPDATE tag_listing SET active=NULL,revoke_event=%(event_id)i
-        WHERE tag_id=%(tag_id)i AND build_id=%(build_id)i AND active = TRUE"""
-        _dml(q,locals())
+        update = UpdateProcessor(table, values=locals(), clauses=clauses)
+        update.make_revoke(user_id=user_id)
+        update.execute()
     #tag the package
-    q = """INSERT INTO tag_listing(tag_id,build_id,active,create_event)
-    VALUES(%(tag_id)i,%(build_id)i,TRUE,%(event_id)i)"""
-    _dml(q,locals())
+    insert = InsertProcessor(table)
+    insert.set(tag_id=tag_id, build_id=build_id)
+    insert.make_create(user_id=user_id)
+    insert.execute()
     koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
 
 def _untag_build(tag,build,user_id=None,strict=True,force=False):
@@ -1364,11 +1378,10 @@ def _untag_build(tag,build,user_id=None,strict=True,force=False):
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id,user_id=user_id,force=force)
-    #XXX - add another check based on package ownership?
-    q = """UPDATE tag_listing SET active=NULL,revoke_event=get_event()
-    WHERE tag_id=%(tag_id)i AND build_id=%(build_id)i AND active = TRUE
-    """
-    count = _dml(q,locals())
+    update = UpdateProcessor('tag_listing', values=locals(),
+                clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
+    update.make_revoke(user_id=user_id)
+    count = update.execute()
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr,tag['name'])
@@ -1393,6 +1406,8 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     previous = groups.get(group['id'],None)
     cfg_fields = ('exported','display_name','is_default','uservisible',
                   'description','langonly','biarchonly',)
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1418,18 +1433,15 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     opts['tag_id'] = tag['id']
     opts['grp_id'] = group['id']
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_config SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_config', values=opts,
+                clauses=['group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields)
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_config(group_id,tag_id,blocked,create_event,%s)
-    VALUES (%%(grp_id)s,%%(tag_id)s,%%(blocked)s,%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_config', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grplist_remove(taginfo,grpinfo,force=False):
     """Remove group from the list for tag
@@ -1443,9 +1455,10 @@ def grplist_remove(taginfo,grpinfo,force=False):
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
     grp_id = group['id']
-    q = """UPDATE group_config SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND package_id=%(pkg_id)s AND tag_id=%(tag_id)s"""
-    _dml(q,locals())
+    clauses = ['group_id=%(grp_id)s', 'tag_id=%(tag_id)s']
+    update = UpdateProcessor('group_config', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 def grplist_block(taginfo,grpinfo):
     """Block the group in tag"""
@@ -1463,15 +1476,17 @@ def grplist_unblock(taginfo,grpinfo):
     group = lookup_group(grpinfo,strict=True)
     tag_id = tag['id']
     grp_id = group['id']
-    q = """SELECT blocked FROM group_config
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-    FOR UPDATE"""
-    blocked = _singleValue(q,locals())
+    table = 'group_config'
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "group %s is NOT blocked in tag %s" % (group['name'],tag['name'])
-    q = """UPDATE group_config SET active=NULL,revoke_event=get_event()
-    WHERE id=%(row_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor(table, values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 
 # tag-group-pkg operations
@@ -1497,6 +1512,8 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
         raise koji.GenericError, "group %s is blocked in tag %s" % (group['name'],tag['name'])
     previous = grp_cfg['packagelist'].get(pkg_name,None)
     cfg_fields = ('type','basearchonly','requires')
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1518,26 +1535,20 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
         if not changed and not force:
             #no point in adding it again with the same data (unless force is on)
             return
-    #XXX - sanity check data?
     opts.setdefault('type','default')
     opts['group_id'] = group['id']
     opts['tag_id'] = tag['id']
     opts['package'] = pkg_name
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(group_id)s AND tag_id=%(tag_id)s
-        AND package=%(package)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_package_listing', values=opts,
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'package=%(package)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields) \
-                + ('group_id','tag_id','package','blocked')
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_package_listing(create_event,%s)
-    VALUES (%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_package_listing', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grp_pkg_remove(taginfo,grpinfo,pkg_name,force=False):
     """Remove package from the list for group-tag
@@ -1549,10 +1560,10 @@ def grp_pkg_remove(taginfo,grpinfo,pkg_name,force=False):
     context.session.assertPerm('admin')
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND package=%(pkg_name)s AND tag_id=%(tag_id)s
-            AND group_id = %(grp_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_package_listing', values=locals(),
+                clauses=['package=%(pkg_name)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+    update.make_revoke()
+    update.execute()
 
 def grp_pkg_block(taginfo,grpinfo, pkg_name):
     """Block the package in group-tag"""
@@ -1566,20 +1577,20 @@ def grp_pkg_unblock(taginfo,grpinfo,pkg_name):
     """
     # only admins...
     context.session.assertPerm('admin')
+    table = 'group_package_listing'
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
-    q = """SELECT blocked FROM group_package_listing
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-            AND package = %(pkg_name)s
-    FOR UPDATE"""
-    blocked = _singleValue(q, locals(), strict=False)
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'package = %(pkg_name)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "package %s is NOT blocked in group %s, tag %s" \
                     % (pkg_name,grp_id,tag_id)
-    q = """UPDATE group_package_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-          AND package = %(pkg_name)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_package_listing', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 # tag-group-req operations
 #       add
@@ -1605,6 +1616,8 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
         raise koji.GenericError, "group %s is blocked in tag %s" % (group['name'],tag['name'])
     previous = grp_cfg['grouplist'].get(req['id'],None)
     cfg_fields = ('type','is_metapkg')
+    #prevent user-provided opts from doing anything strange
+    opts = dslice(opts, cfg_fields)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1626,26 +1639,20 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
         if not changed:
             #no point in adding it again with the same data
             return
-    #XXX - sanity check data?
     opts.setdefault('type','mandatory')
     opts['group_id'] = group['id']
     opts['tag_id'] = tag['id']
     opts['req_id'] = req['id']
     opts['blocked'] = block
-    opts['event_id'] = _singleValue("SELECT get_event()")
     #revoke old entry (if present)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=%(event_id)s
-    WHERE active = TRUE AND group_id=%(group_id)s AND tag_id=%(tag_id)s
-            AND req_id=%(req_id)s"""
-    _dml(q,opts)
+    update = UpdateProcessor('group_req_listing', values=opts,
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'req_id=%(req_id)s'])
+    update.make_revoke()
+    update.execute()
     #add new entry
-    x_fields = filter(opts.has_key,cfg_fields) \
-                + ('group_id','tag_id','req_id','blocked')
-    params = [ '%%(%s)s' % f for f in x_fields ]
-    q = """INSERT INTO group_req_listing(create_event,%s)
-    VALUES (%%(event_id)s,%s) """ \
-        % ( ','.join(x_fields), ','.join(params))
-    _dml(q,opts)
+    insert = InsertProcessor('group_req_listing', data=opts)
+    insert.make_create()
+    insert.execute()
 
 def grp_req_remove(taginfo,grpinfo,reqinfo,force=False):
     """Remove group requirement from the list for group-tag
@@ -1658,10 +1665,10 @@ def grp_req_remove(taginfo,grpinfo,reqinfo,force=False):
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
     req_id = get_group_id(reqinfo,strict=True)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=get_event()
-    WHERE active = TRUE AND req_id=%(req_id)s AND tag_id=%(tag_id)s
-            AND group_id = %(grp_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_req_listing', values=locals(),
+                clauses=['req_id=%(req_id)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+    update.make_revoke()
+    update.execute()
 
 def grp_req_block(taginfo,grpinfo,reqinfo):
     """Block the group requirement in group-tag"""
@@ -1678,17 +1685,19 @@ def grp_req_unblock(taginfo,grpinfo,reqinfo):
     tag_id = get_tag_id(taginfo,strict=True)
     grp_id = get_group_id(grpinfo,strict=True)
     req_id = get_group_id(reqinfo,strict=True)
-    q = """SELECT blocked FROM group_req_listing
-    WHERE active = TRUE AND group_id=%(grp_id)s AND tag_id=%(tag_id)s
-            AND req_id = %(req_id)s
-    FOR UPDATE"""
-    blocked = _singleValue(q,locals())
+    table = 'group_req_listing'
+
+    clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'req_id = %(req_id)s')
+    query = QueryProcessor(columns=['blocked'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=locals(), opts={'rowlock':True})
+    blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError, "group req %s is NOT blocked in group %s, tag %s" \
                     % (req_id,grp_id,tag_id)
-    q = """UPDATE group_req_listing SET active=NULL,revoke_event=get_event()
-    WHERE id=%(row_id)s"""
-    _dml(q,locals())
+    update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
+    update.make_revoke()
+    update.execute()
 
 def get_tag_groups(tag,event=None,inherit=True,incl_pkgs=True,incl_reqs=True):
     """Return group data for the tag
@@ -1791,7 +1800,7 @@ def readTagGroups(tag,event=None,inherit=True,incl_pkgs=True,incl_reqs=True):
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')
     if not get_host(hostname):
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     c = context.cnx.cursor()
     c.execute("""UPDATE host SET enabled = %(enabled)s WHERE name = %(hostname)s""", locals())
     context.commit_pending = True
@@ -1800,11 +1809,11 @@ def add_host_to_channel(hostname, channel_name):
     context.session.assertPerm('admin')
     host = get_host(hostname)
     if host == None:
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     host_id = host['id']
     channel_id = get_channel_id(channel_name)
     if channel_id == None:
-        raise koji.GenericError, 'channel does not exists: %s' % channel_name
+        raise koji.GenericError, 'channel does not exist: %s' % channel_name
     channels = list_channels(host_id)
     for channel in channels:
         if channel['id'] == channel_id:
@@ -1817,11 +1826,11 @@ def remove_host_from_channel(hostname, channel_name):
     context.session.assertPerm('admin')
     host = get_host(hostname)
     if host == None:
-        raise koji.GenericError, 'host does not exists: %s' % hostname
+        raise koji.GenericError, 'host does not exist: %s' % hostname
     host_id = host['id']
     channel_id = get_channel_id(channel_name)
     if channel_id == None:
-        raise koji.GenericError, 'channel does not exists: %s' % channel_name
+        raise koji.GenericError, 'channel does not exist: %s' % channel_name
     found = False
     channels = list_channels(host_id)
     for channel in channels:
@@ -2266,10 +2275,10 @@ def create_build_target(name, build_tag, dest_tag):
     #is possible the name is in the system
     id = get_build_target_id(name,create=True)
 
-    insert = """INSERT into build_target_config (build_target_id, build_tag, dest_tag)
-    VALUES (%(id)d, %(build_tag)d, %(dest_tag)d)"""
-
-    _dml(insert, locals())
+    insert = InsertProcessor('build_target_config')
+    insert.set(build_target_id=id, build_tag=build_tag, dest_tag=dest_tag)
+    insert.make_create()
+    insert.execute()
 
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
@@ -2304,23 +2313,16 @@ def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 
         _dml(rename, locals())
 
-    eventID = _singleValue("SELECT get_event()")
+    update = UpdateProcessor('build_target_config', values=locals(),
+                clauses=["build_target_id = %(buildTargetID)i"])
+    update.make_revoke()
 
-    update = """UPDATE build_target_config
-    SET active = NULL,
-    revoke_event = %(eventID)i
-    WHERE build_target_id = %(buildTargetID)i
-    AND active is true
-    """
+    insert = InsertProcessor('build_target_config')
+    insert.set(build_target_id=buildTargetID, build_tag=buildTagID, dest_tag=destTagID)
+    insert.make_create()
 
-    insert = """INSERT INTO build_target_config
-    (build_target_id, build_tag, dest_tag, create_event)
-    VALUES
-    (%(buildTargetID)i, %(buildTagID)i, %(destTagID)i, %(eventID)i)
-    """
-
-    _dml(update, locals())
-    _dml(insert, locals())
+    update.execute()
+    insert.execute()
 
 def delete_build_target(buildTargetInfo):
     """Delete the build target with the given name.  If no build target
@@ -2335,12 +2337,10 @@ def delete_build_target(buildTargetInfo):
 
     #build targets are versioned, so we do not delete them from the db
     #instead we revoke the config entry
-    delConfig = """UPDATE build_target_config
-    SET active=NULL,revoke_event=get_event()
-    WHERE build_target_id = %(targetID)i
-    """
-
-    _dml(delConfig, locals())
+    update = UpdateProcessor('build_target_config', values=locals(),
+                clauses=["build_target_id = %(targetID)i"])
+    update.make_revoke()
+    update.execute()
 
 def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, queryOpts=None):
     """Return data on all the build targets
@@ -2492,9 +2492,11 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     #there may already be an id for a deleted tag, this will reuse it
     tag_id = get_tag_id(name,create=True)
 
-    q = """INSERT INTO tag_config (tag_id,arches,perm_id,locked,maven_support,maven_include_all)
-    VALUES (%(tag_id)i,%(arches)s,%(perm)s,%(locked)s,%(maven_support)s,%(maven_include_all)s)"""
-    _dml(q, locals())
+    insert = InsertProcessor('tag_config')
+    insert.set(tag_id=tag_id, arches=arches, perm_id=perm, locked=locked)
+    insert.set(maven_support=maven_support, maven_include_all=maven_include_all)
+    insert.make_create()
+    insert.execute()
 
     if parent_id:
         data = {'parent_id': parent_id,
@@ -2600,21 +2602,15 @@ def edit_tag(tagInfo, **kwargs):
     if not changed:
         return
 
-    #use the same event for both
-    data['event_id'] = _singleValue("SELECT get_event()")
+    update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
+    update.make_revoke()
+    update.execute()
 
-    update = """UPDATE tag_config
-    SET active = null,
-        revoke_event = %(event_id)i
-    WHERE tag_id = %(id)i
-      AND active is true"""
-    _dml(update, data)
-
-    insert = """INSERT INTO tag_config
-    (tag_id, arches, perm_id, locked, maven_support, maven_include_all, create_event)
-    VALUES
-    (%(id)i, %(arches)s, %(perm_id)s, %(locked)s, %(maven_support)s, %(maven_include_all)s, %(event_id)i)"""
-    _dml(insert, data)
+    insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
+    insert.set(tag_id=data['id'])
+    insert.set(**dslice(data, ('maven_support', 'maven_include_all')))
+    insert.make_create()
+    insert.execute()
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):
     """Edit information for an existing tag."""
@@ -2629,29 +2625,28 @@ def delete_tag(tagInfo):
 
     #We do not ever DELETE tag data. It is versioned -- we revoke it instead.
 
-    def _tagDelete(tableName, value, event, columnName='tag_id'):
-        delete = """UPDATE %(tableName)s SET active=NULL,revoke_event=%%(event)i
-        WHERE %(columnName)s = %%(value)i AND active = TRUE""" % locals()
-        _dml(delete, locals())
+    def _tagDelete(tableName, value, columnName='tag_id'):
+        update = UpdateProcessor(tableName, clauses=["%s = %%(value)i" % columnName],
+                    values={'value':value})
+        update.make_revoke()
+        update.execute()
 
     tag = get_tag(tagInfo)
     tagID = tag['id']
-    #all these updates are a single transaction, so we use the same event
-    eventID = _singleValue("SELECT get_event()")
 
-    _tagDelete('tag_config', tagID, eventID)
+    _tagDelete('tag_config', tagID)
     #technically, to 'delete' the tag we only have to revoke the tag_config entry
     #these remaining revocations are more for cleanup.
-    _tagDelete('tag_inheritance', tagID, eventID)
-    _tagDelete('tag_inheritance', tagID, eventID, 'parent_id')
-    _tagDelete('build_target_config', tagID, eventID, 'build_tag')
-    _tagDelete('build_target_config', tagID, eventID, 'dest_tag')
-    _tagDelete('tag_listing', tagID, eventID)
-    _tagDelete('tag_packages', tagID, eventID)
-    _tagDelete('tag_external_repos', tagID, eventID)
-    _tagDelete('group_config', tagID, eventID)
-    _tagDelete('group_req_listing', tagID, eventID)
-    _tagDelete('group_package_listing', tagID, eventID)
+    _tagDelete('tag_inheritance', tagID)
+    _tagDelete('tag_inheritance', tagID, 'parent_id')
+    _tagDelete('build_target_config', tagID, 'build_tag')
+    _tagDelete('build_target_config', tagID, 'dest_tag')
+    _tagDelete('tag_listing', tagID)
+    _tagDelete('tag_packages', tagID)
+    _tagDelete('tag_external_repos', tagID)
+    _tagDelete('group_config', tagID)
+    _tagDelete('group_req_listing', tagID)
+    _tagDelete('group_package_listing', tagID)
     # note: we do not delete the entry in the tag table (we can't actually, it
     # is still referenced by the revoked rows).
     # note: there is no need to do anything with the repo entries that reference tagID
@@ -2675,8 +2670,10 @@ def create_external_repo(name, url):
         # Ensure the url always ends with /
         url += '/'
     values = {'id': id, 'name': name, 'url': url}
-    insert = """INSERT INTO external_repo_config (external_repo_id, url) VALUES (%(id)i, %(url)s)"""
-    _dml(insert, values)
+    insert = InsertProcessor('external_repo_config')
+    insert.set(external_repo_id = id, url=url)
+    insert.make_create()
+    insert.execute()
     return values
 
 def get_external_repos(info=None, url=None, event=None, queryOpts=None):
@@ -2739,20 +2736,17 @@ def edit_external_repo(info, name=None, url=None):
         if not url.endswith('/'):
             # Ensure the url always ends with /
             url += '/'
-        event_id = _singleValue("SELECT get_event()")
 
-        update = """UPDATE external_repo_config
-        SET active = NULL, revoke_event = %(event_id)i
-        WHERE external_repo_id = %(repo_id)i
-        AND active is true"""
+        update = UpdateProcessor('external_repo_config', values=locals(),
+                    clauses=['external_repo_id = %(repo_id)i'])
+        update.make_revoke()
 
-        insert = """INSERT INTO external_repo_config
-        (external_repo_id, url, create_event)
-        VALUES
-        (%(repo_id)i, %(url)s, %(event_id)i)"""
+        insert = InsertProcessor('external_repo_config')
+        insert.set(external_repo_id=repo_id, url=url)
+        insert.make_create()
 
-        _dml(update, locals())
-        _dml(insert, locals())
+        update.execute()
+        insert.execute()
 
 def delete_external_repo(info):
     """Delete an external repo"""
@@ -2766,14 +2760,12 @@ def delete_external_repo(info):
         remove_external_repo_from_tag(tag_info=tag_repo['tag_id'],
                                       repo_info=repo_id)
 
-    update = """UPDATE external_repo_config
-    SET active = null, revoke_event = get_event()
-    WHERE external_repo_id = %(repo_id)i
-    AND active = true"""
+    update = UpdateProcessor('external_repo_config', values=locals(),
+                    clauses=['external_repo_id = %(repo_id)i'])
+    update.make_revoke()
+    update.execute()
 
-    _dml(update, locals())
-
-def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
+def add_external_repo_to_tag(tag_info, repo_info, priority):
     """Add an external repo to a tag"""
 
     context.session.assertPerm('admin')
@@ -2791,19 +2783,12 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, event=None):
         raise koji.GenericError, 'tag %s already associated with an external repo at priority %i' % \
             (tag['name'], priority)
 
-    if event is None:
-        event_id = _singleValue("SELECT get_event()")
-    else:
-        event_id = event
+    insert = InsertProcessor('tag_external_repos')
+    insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority)
+    insert.make_create()
+    insert.execute()
 
-    insert = """INSERT INTO tag_external_repos
-    (tag_id, external_repo_id, priority, create_event)
-    VALUES
-    (%(tag_id)i, %(repo_id)i, %(priority)i, %(event_id)i)"""
-
-    _dml(insert, locals())
-
-def remove_external_repo_from_tag(tag_info, repo_info, event=None):
+def remove_external_repo_from_tag(tag_info, repo_info):
     """Remove an external repo from a tag"""
 
     context.session.assertPerm('admin')
@@ -2817,17 +2802,10 @@ def remove_external_repo_from_tag(tag_info, repo_info, event=None):
         raise koji.GenericError, 'external repo %s not associated with tag %s' % \
             (repo['name'], tag['name'])
 
-    if event is None:
-        event_id = _singleValue("SELECT get_event()")
-    else:
-        event_id = event
-
-    update = """UPDATE tag_external_repos
-    SET active = null, revoke_event=%(event_id)i
-    WHERE tag_id = %(tag_id)i AND external_repo_id = %(repo_id)i
-    AND active = true"""
-
-    _dml(update, locals())
+    update = UpdateProcessor('tag_external_repos', values=locals(),
+                clauses=["tag_id = %(tag_id)i", "external_repo_id = %(repo_id)i"])
+    update.make_revoke()
+    update.execute()
 
 def edit_tag_external_repo(tag_info, repo_info, priority):
     """Edit a tag<->external repo association
@@ -2847,9 +2825,8 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
     tag_repo = tag_repos[0]
 
     if priority != tag_repo['priority']:
-        event_id = _singleValue("SELECT get_event()")
-        remove_external_repo_from_tag(tag_id, repo_id, event=event_id)
-        add_external_repo_to_tag(tag_id, repo_id, priority, event=event_id)
+        remove_external_repo_from_tag(tag_id, repo_id)
+        add_external_repo_to_tag(tag_id, repo_id, priority)
 
 def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     """
@@ -3120,8 +3097,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
         return None
     return ret
 
-def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
-    """List RPMS.  If buildID and/or buildrootID are specified,
+def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
+    """List RPMS.  If buildID, imageID and/or buildrootID are specified,
     restrict the list of RPMs to only those RPMs that are part of that
     build, or were built in that buildroot.  If componentBuildrootID is specified,
     restrict the list to only those RPMs that will get pulled into that buildroot
@@ -3172,6 +3149,12 @@ def list_rpms(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=
         fields.append(('buildroot_listing.is_update', 'is_update'))
         joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
         clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
+
+    # image specific constraints
+    if imageID != None:
+       clauses.append('imageinfo_listing.image_id = %(imageID)i')
+       joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
+
     if hostID != None:
         joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
         clauses.append('buildroot.host_id = %(hostID)i')
@@ -3517,6 +3500,7 @@ def _dml(operation, values):
     c = context.cnx.cursor()
     c.execute(operation, values)
     ret = c.rowcount
+    logger.debug("Operation affected %s row(s)", ret)
     c.close()
     context.commit_pending = True
     return ret
@@ -3532,11 +3516,13 @@ def get_host(hostInfo, strict=False):
     - arches
     - task_load
     - capacity
+    - description
+    - comment
     - ready
     - enabled
     """
     fields = ('id', 'user_id', 'name', 'arches', 'task_load',
-              'capacity', 'ready', 'enabled')
+              'capacity', 'description', 'comment', 'ready', 'enabled')
     query = """SELECT %s FROM host
     WHERE """ % ', '.join(fields)
     if isinstance(hostInfo, int) or isinstance(hostInfo, long):
@@ -3547,6 +3533,42 @@ def get_host(hostInfo, strict=False):
         raise koji.GenericError, 'invalid type for hostInfo: %s' % type(hostInfo)
 
     return _singleRow(query, locals(), fields, strict)
+
+def edit_host(hostInfo, **kw):
+    """Edit information for an existing host.
+    hostInfo specifies the host to edit, either as an integer (id)
+    or a string (name).
+    fields to be changed are specified as keyword parameters:
+    - arches
+    - capacity
+    - description
+    - comment
+
+    Returns True if changes are made to the database, False otherwise.
+    """
+    context.session.assertPerm('admin')
+
+    host = get_host(hostInfo, strict=True)
+
+    fields = ('arches', 'capacity', 'description', 'comment')
+    changes = []
+    for field in fields:
+        if field in kw and kw[field] != host[field]:
+            changed = True
+            if field == 'capacity':
+                # capacity is a float, so set the substitution format appropriately
+                changes.append('%s = %%(%s)f' % (field, field))
+            else:
+                changes.append('%s = %%(%s)s' % (field, field))
+
+    if not changes:
+        return False
+
+    update = 'UPDATE host set ' + ', '.join(changes) + ' where id = %(id)i'
+    data = kw.copy()
+    data['id'] = host['id']
+    _dml(update, data)
+    return True
 
 def get_channel(channelInfo, strict=False):
     """Return information about a channel."""
@@ -4475,10 +4497,14 @@ def tag_history(build=None, tag=None, package=None, queryOpts=None):
     fields = ('build.id', 'package.name', 'build.version', 'build.release',
               'tag.id', 'tag.name', 'tag_listing.active',
               'tag_listing.create_event', 'tag_listing.revoke_event',
+              'tag_listing.creator_id', 'tag_listing.revoker_id',
+              'creator.name', 'revoker.name',
               'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',)
     aliases = ('build_id', 'name', 'version', 'release',
               'tag_id', 'tag_name', 'active',
               'create_event', 'revoke_event',
+              'creator_id', 'revoker_id',
+              'creator_name', 'revoker_name',
               'create_ts', 'revoke_ts',)
     st_complete = koji.BUILD_STATES['COMPLETE']
     tables = ['tag_listing']
@@ -4486,7 +4512,9 @@ def tag_history(build=None, tag=None, package=None, queryOpts=None):
              "build ON build.id = tag_listing.build_id",
              "package ON package.id = build.pkg_id",
              "events AS ev1 ON ev1.id = tag_listing.create_event",
-             "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event", ]
+             "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event",
+             "users AS creator ON creator.id = tag_listing.creator_id",
+             "LEFT OUTER JOIN users AS revoker ON revoker.id = tag_listing.revoker_id", ]
     clauses = []
     if tag is not None:
         tag_id = get_tag_id(tag, strict=True)
@@ -4713,10 +4741,9 @@ def _delete_build(binfo):
     for (rpm_id,) in rpm_ids:
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
-    event_id = _singleValue("SELECT get_event()")
-    update = """UPDATE tag_listing SET revoke_event=%(event_id)i, active=NULL
-    WHERE active = TRUE AND build_id=%(build_id)i"""
-    _dml(update, locals())
+    update = UpdateProcessor('tag_listing', clauses=["build_id=%(build_id)i"], values=locals())
+    update.make_revoke()
+    update.execute()
     update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
     _dml(update, locals())
     #now clear the build dirs
@@ -4891,13 +4918,15 @@ def get_notification_recipients(build, tag_id, state):
         if tag_id:
             packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
             # owner of the package in this tag, following inheritance
-            package_info = packages.get(package_id)
-            if package_info:
-                emails.append('%s@%s' % (package_info['owner_name'], email_domain))
+            pkgdata = packages.get(package_id)
+            # If the package list has changed very recently it is possible we
+            # will get no result.
+            if pkgdata and not pkgdata['blocked']:
+                emails.append('%s@%s' % (pkgdata['owner_name'], email_domain))
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
-    emails_uniq = dict(zip(emails, [1] * len(emails))).keys()
+    emails_uniq = dict([(x,1) for x in emails]).keys()
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
@@ -4960,7 +4989,7 @@ def new_group(name):
         raise koji.GenericError, 'user/group already exists: %s' % name
     return context.session.createUser(name, usertype=koji.USERTYPES['GROUP'])
 
-def add_group_member(group,user):
+def add_group_member(group, user, strict=True):
     """Add user to group"""
     context.session.assertPerm('admin')
     group = get_user(group)
@@ -4970,19 +4999,20 @@ def add_group_member(group,user):
     if user['usertype'] == koji.USERTYPES['GROUP']:
         raise koji.GenericError, "Groups cannot be members of other groups"
     #check to see if user is already a member
-    user_id = user['id']
-    group_id = group['id']
-    q = """SELECT user_id FROM user_groups
-    WHERE active = TRUE AND user_id = %(user_id)i
-        AND group_id = %(group_id)s
-    FOR UPDATE"""
-    row = _fetchSingle(q, locals(), strict=False)
+    data = {'user_id' : user['id'], 'group_id' : group['id']}
+    table = 'user_groups'
+    clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
+    query = QueryProcessor(columns=['user_id'], tables=[table],
+                           clauses=('active = TRUE')+clauses,
+                           values=data, opts={'rowlock':True})
+    row = query.fetchSingle(strict=False)
     if row:
+        if not strict:
+            return
         raise koji.GenericError, "User already in group"
-    insert = """INSERT INTO user_groups (user_id,group_id)
-    VALUES(%(user_id)i,%(group_id)i)"""
-    _dml(insert,locals())
-
+    insert = InsertProcessor(table, data)
+    insert.make_create()
+    insert.execute()
 
 def drop_group_member(group,user):
     """Drop user from group"""
@@ -4993,11 +5023,9 @@ def drop_group_member(group,user):
         raise koji.GenericError, "Not a group: %(name)s" % group
     user_id = user['id']
     group_id = group['id']
-    insert = """UPDATE user_groups
-    SET active=NULL, revoke_event=get_event()
-    WHERE active = TRUE AND user_id = %(user_id)i
-        AND group_id = %(group_id)i"""
-    _dml(insert,locals())
+    update = UpdateProcessor('user_groups', clauses=["user_id = %(user_id)i", "group_id = %(group_id)i"])
+    update.make_revoke()
+    update.execute()
 
 def get_group_members(group):
     """Get the members of a group"""
@@ -5026,6 +5054,155 @@ def set_user_status(user, status):
     if rows == 0:
         raise koji.GenericError, 'invalid user ID: %i' % user_id
 
+
+def get_event():
+    """Get an event id for this transaction
+
+    We cache the result in context, so subsequent calls in the same transaction will
+    get the same event.
+    Note that this will persist across calls in a multiCall, which is fine because
+    it is all one transaction.
+    """
+    if hasattr(context, 'event_id'):
+        return context.event_id
+    event_id = _singleValue("SELECT get_event()")
+    context.event_id = event_id
+    return event_id
+
+
+class InsertProcessor(object):
+    """Build an insert statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+
+    does not support query inserts of "DEFAULT VALUES"
+    """
+
+    def __init__(self, table, data=None, rawdata=None):
+        self.table = table
+        self.data = {}
+        if data:
+            self.data.update(data)
+        self.rawdata = {}
+        if rawdata:
+            self.rawdata.update(rawdata)
+
+    def __str__(self):
+        if not self.data and not self.rawdata:
+            return "-- incomplete update: no assigns"
+        parts = ['INSERT INTO %s ' % self.table]
+        columns = self.data.keys()
+        columns.extend(self.rawdata.keys())
+        parts.append("(%s) " % ', '.join(columns))
+        values = []
+        for key in columns:
+            if self.data.has_key(key):
+                values.append("%%(%s)s" % key)
+            else:
+                values.append("(%s)" % self.rawdata[key])
+        parts.append("VALUES (%s)" % ', '.join(values))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<InsertProcessor: %r>" % vars(self)
+
+    def set(self, **kwargs):
+        """Set data via keyword args"""
+        self.data.update(kwargs)
+
+    def rawset(self, **kwargs):
+        """Set rawdata via keyword args"""
+        self.rawdata.update(kwargs)
+
+    def make_create(self, event_id=None, user_id=None):
+        if event_id is None:
+            event_id = get_event()
+        if user_id is None:
+            context.session.assertLogin()
+            user_id = context.session.user_id
+        self.data['create_event'] = event_id
+        self.data['creator_id'] = user_id
+
+    def execute(self):
+        return _dml(str(self), self.data)
+
+
+class UpdateProcessor(object):
+    """Build an update statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+    clauses - a list of where clauses which will be ANDed together
+    values - dict of values used in clauses
+
+    does not support the FROM clause
+    """
+
+    def __init__(self, table, data=None, rawdata=None, clauses=None, values=None):
+        self.table = table
+        self.data = {}
+        if data:
+            self.data.update(data)
+        self.rawdata = {}
+        if rawdata:
+            self.rawdata.update(rawdata)
+        self.clauses = []
+        if clauses:
+            self.clauses.extend(clauses)
+        self.values = {}
+        if values:
+            self.values.update(values)
+
+    def __str__(self):
+        if not self.data and not self.rawdata:
+            return "-- incomplete update: no assigns"
+        parts = ['UPDATE %s SET ' % self.table]
+        assigns = ["%s = %%(data.%s)s" % (key, key) for key in self.data]
+        assigns.extend(["%s = (%s)" % (key, self.rawdata[key]) for key in self.rawdata])
+        parts.append(', '.join(assigns))
+        if self.clauses:
+            parts.append('\nWHERE ')
+            parts.append(' AND '.join(["( %s )" % c for c in self.clauses]))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<UpdateProcessor: %r>" % vars(self)
+
+    def get_values(self):
+        """Returns unified values dict, including data"""
+        ret = {}
+        ret.update(self.values)
+        for key in self.data:
+            ret["data."+key] = self.data[key]
+        return ret
+
+    def set(self, **kwargs):
+        """Set data via keyword args"""
+        self.data.update(kwargs)
+
+    def rawset(self, **kwargs):
+        """Set rawdata via keyword args"""
+        self.rawdata.update(kwargs)
+
+    def make_revoke(self, event_id=None, user_id=None):
+        """Add standard revoke options to the update"""
+        if event_id is None:
+            event_id = get_event()
+        if user_id is None:
+            context.session.assertLogin()
+            user_id = context.session.user_id
+        self.data['revoke_event'] = event_id
+        self.data['revoker_id'] = user_id
+        self.rawdata['active'] = 'NULL'
+        self.clauses.append('active = TRUE')
+
+    def execute(self):
+        return _dml(str(self), self.get_values())
+
+
 class QueryProcessor(object):
     """
     Build a query from its components.
@@ -5046,6 +5223,7 @@ class QueryProcessor(object):
         limit: an integer to use in the 'LIMIT' clause
         asList: if True, return results as a list of lists, where each list contains the
                 column values in query order, rather than the usual list of maps
+        rowlock: if True, use "FOR UPDATE" to lock the queried rows
     """
     def __init__(self, columns=None, aliases=None, tables=None,
                  joins=None, clauses=None, values=None, opts=None):
@@ -5108,6 +5286,8 @@ SELECT %(col_str)s
         if self.opts.get('countOnly') and \
            (self.opts.get('offset') or self.opts.get('limit')):
             query = 'SELECT count(*)\nFROM (' + query + ') numrows'
+        if self.opts.get('rowlock'):
+            query += '\n FOR UPDATE'
         return query
 
     def __repr__(self):
@@ -5164,6 +5344,9 @@ SELECT %(col_str)s
             return '%s %i' % (optname.upper(), optval)
         else:
             return ''
+
+    def singleValue(self, strict=True):
+        return _singleValue(str(self), self.values, strict=strict)
 
     def execute(self):
         query = str(self)
@@ -5226,13 +5409,49 @@ class OperationTest(koji.policy.MatchTest):
     name = 'operation'
     field = 'operation'
 
+def policy_get_user(data):
+    """Determine user from policy data (default to logged-in user)"""
+    if data.has_key('user_id'):
+        return get_user(data['user_id'])
+    elif context.session.logged_in:
+        return get_user(context.session.user_id)
+    return None
+
+def policy_get_pkg(data):
+    """Determine package from policy data (default to logged-in user)
+
+    returns dict as lookup_package
+    if package does not exist yet, the id field will be None
+    """
+    if data.has_key('package'):
+        pkginfo = lookup_package(data['package'], strict=False)
+        if not pkginfo:
+            #for some operations (e.g. adding a new package), the package
+            #entry may not exist yet
+            if isinstance(data['package'], basestring):
+                return {'id' : None, 'name' : data['package']}
+            else:
+                raise koji.GenericError, "Invalid package: %s" % data['package']
+        return pkginfo
+    if data.has_key('build'):
+        binfo = get_build(data['build'], strict=True)
+        return {'id' : binfo['package_id'], 'name' : binfo['name']}
+    #else
+    raise koji.GenericError, "policy requires package data"
+
+class NewPackageTest(koji.policy.BaseSimpleTest):
+    """Checks to see if a package exists yet"""
+    name = 'is_new_package'
+    def run(self, data):
+        return (policy_get_pkg(data)['id'] is None)
+
 class PackageTest(koji.policy.MatchTest):
     """Checks package against glob patterns"""
     name = 'package'
     field = '_package'
     def run(self, data):
         #we need to find the package name from the base data
-        data[self.field] = get_build(data['build'])['name']
+        data[self.field] = policy_get_pkg(data)['name']
         return super(PackageTest, self).run(data)
 
 class TagTest(koji.policy.MatchTest):
@@ -5350,7 +5569,9 @@ class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
     def run(self, data):
         build = get_build(data['build'])
         owner = get_user(build['owner_id'])
-        user = get_user(data['user_id'])
+        user = policy_get_user(data)
+        if not user:
+            return False
         if owner['id'] == user['id']:
             return True
         if owner['usertype'] == koji.USERTYPES['GROUP']:
@@ -5368,7 +5589,9 @@ class UserInGroupTest(koji.policy.BaseSimpleTest):
     """
     name = "user_in_group"
     def run(self, data):
-        user = get_user(data['user_id'])
+        user = policy_get_user(data)
+        if not user:
+            return False
         groups = koji.auth.get_user_groups(user['id'])
         args = self.str.split()[1:]
         for group_id, group in groups.iteritems():
@@ -5386,7 +5609,9 @@ class HasPermTest(koji.policy.BaseSimpleTest):
     """
     name = "has_perm"
     def run(self, data):
-        user = get_user(data['user_id'])
+        user = policy_get_user(data)
+        if not user:
+            return False
         perms = koji.auth.get_user_perms(user['id'])
         args = self.str.split()[1:]
         for perm in perms:
@@ -5542,6 +5767,7 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     imageinfo['arch'] = arch
     imageinfo['mediatype'] = mediatype
     imageinfo['hash'] = hash
+    # TODO: add xmlfile field to the imageinfo table
 
     koji.plugin.run_callbacks('preImport', type='image', image=imageinfo)
 
@@ -5572,37 +5798,36 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
 
     return image_id
 
-def moveImageResults(task_id, image_id, arch):
+def moveImageResults(task_id, image_id, arch, mediatype):
     """
     Move the image file from the work/task directory into its more
     permanent resting place. This shouldn't be called for scratch images.
     """
     source_path = os.path.join(koji.pathinfo.work(),
                                koji.pathinfo.taskrelpath(task_id))
-    final_path = os.path.join(koji.pathinfo.imageFinalPath(),
-                              koji.pathinfo.livecdRelPath(image_id))
+    if mediatype == 'LiveCD ISO':
+        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.livecdRelPath(image_id))
+    else:
+        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.applianceRelPath(image_id))
     log_path = os.path.join(final_path, 'data', 'logs', arch)
     if os.path.exists(final_path) or os.path.exists(log_path):
-        raise koji.GenericError, "Error moving LiveCD image: the final " + \
+        raise koji.GenericError, "Error moving image: the final " + \
             "destination already exists!"
     koji.ensuredir(final_path)
     koji.ensuredir(log_path)
 
     src_files = os.listdir(source_path)
-    got_iso = False
     for fname in src_files:
-        if fname.endswith('.iso'):
-            got_iso = True
-            dest_path = final_path
-        else:
+        if fname.endswith('.log') or fname.endswith('.ks'):
             dest_path = log_path
+        else:
+            dest_path = final_path
         os.rename(os.path.join(source_path, fname),
                   os.path.join(dest_path, fname))
         os.symlink(os.path.join(dest_path, fname),
                    os.path.join(source_path, fname))
-
-    if not got_iso:
-        raise koji.GenericError, "Could not move the iso to the final destination!"
 
 #
 # XMLRPC Methods
@@ -5725,16 +5950,16 @@ class RootExports(object):
 
         return make_task('wrapperRPM', [url, build_tag, build, None, opts], **taskOpts)
 
-    # Create the livecd task. Called from handle_spin_livecd in the client.
+    # Create the image task. Called from _build_image in the client.
     #
-    def livecd (self, arch, target, ksfile, opts=None, priority=None):
+    def buildImage (self, arch, target, ksfile, img_type, opts=None, priority=None):
         """
-        Create a live CD image using a kickstart file and group package list.
+        Create an image using a kickstart file and group package list.
         """
 
-        context.session.assertPerm('livecd')
+        context.session.assertPerm(img_type)
 
-        taskOpts = {'channel': 'livecd'}
+        taskOpts = {'channel': img_type}
         taskOpts['arch'] = arch
         if priority:
             if priority < 0:
@@ -5744,8 +5969,16 @@ class RootExports(object):
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
-        return make_task('createLiveCD', [arch, target, ksfile, opts],
-                         **taskOpts)
+        if img_type == 'livecd':
+            task_type = 'createLiveCD'
+        elif img_type == 'appliance':
+            task_type = 'createAppliance'
+
+        for oname, oval in opts.items():
+            if oval == None:
+                del opts[oname]
+
+        return make_task(task_type, [arch, target, ksfile, opts], **taskOpts)
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
     #
@@ -5779,10 +6012,19 @@ class RootExports(object):
             else:
                 raise koji.GenericError, 'no image for task ID: %i' % taskID
 
+        # find the accompanying xml file, if any
+        if ret != None and ret['mediatype'] != 'LiveCD ISO':
+            imagepath = os.path.join(koji.pathinfo.imageFinalPath(), 
+                                     koji.pathinfo.applianceRelPath(ret['id']))
+            out_files = os.listdir(imagepath)
+            for out_file in out_files:
+                if out_file.endswith('.xml'):
+                    ret['xmlfile'] = out_file
+
         # additional tweaking
         if ret:
-            # Always return filesize as a string instead of an int so XMLRPC doesn't
-            # complain about 32-bit overflow
+            # Always return filesize as a string instead of an int so XMLRPC 
+            # doesn't complain about 32-bit overflow
             ret['filesize'] = str(ret['filesize'])
         return ret
 
@@ -5874,8 +6116,7 @@ class RootExports(object):
         # the chunk rather than the whole file. the offset indicates where
         # the chunk belongs
         # the special offset -1 is used to indicate the final chunk
-        if not context.session.logged_in:
-            raise koji.GenericError, 'you must be logged-in to upload a file'
+        context.session.assertLogin()
         contents = base64.decodestring(data)
         del data
         # we will accept offset and size as strings to work around xmlrpc limits
@@ -6169,13 +6410,12 @@ class RootExports(object):
         elif pkgs[pkg_id]['blocked']:
             pkg_error = "Package %s blocked in %s" % (build['name'], tag['name'])
         policy_data = {'tag' : tag_id, 'build' : build_id, 'fromtag' : fromtag_id}
-        policy_data['user_id'] = context.session.user_id
         if fromtag is None:
             policy_data['operation'] = 'tag'
         else:
             policy_data['operation'] = 'move'
         #don't check policy for admins using force
-        if not force or not context.session.hasPerm('admin'):
+        if not (force and context.session.hasPerm('admin')):
             assert_policy('tag', policy_data)
         #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
         if pkg_error:
@@ -6200,11 +6440,10 @@ class RootExports(object):
         tag_id = get_tag(tag, strict=True)['id']
         build_id = get_build(build, strict=True)['id']
         policy_data = {'tag' : None, 'build' : build_id, 'fromtag' : tag_id}
-        policy_data['user_id'] = context.session.user_id
         policy_data['operation'] = 'untag'
         try:
             #don't check policy for admins using force
-            if not force or not context.session.hasPerm('admin'):
+            if not (force and context.session.hasPerm('admin')):
                 assert_policy('tag', policy_data)
             _untag_build(tag,build,strict=strict,force=force)
             tag_notification(True, None, tag, build, user_id)
@@ -6264,9 +6503,8 @@ class RootExports(object):
 
         #policy check
         policy_data = {'tag' : tag2, 'fromtag' : tag1, 'operation' : 'move'}
-        policy_data['user_id'] = context.session.user_id
         #don't check policy for admins using force
-        if not force or not context.session.hasPerm('admin'):
+        if not (force and context.session.hasPerm('admin')):
             for build in build_list:
                 policy_data['build'] = build
                 assert_policy('tag', policy_data)
@@ -6280,21 +6518,6 @@ class RootExports(object):
             log_error("\nMade Task: %s\n" % task_id)
             tasklist.append(task_id)
         return tasklist
-
-    def fixTags(self):
-        """A fix for incomplete tag import, adds tag_config entries
-
-        Note the query will only add the tag_config entries if there are
-        no other tag_config entries, so it will not 'undelete' any tags"""
-        c = context.cnx.cursor()
-        q = """
-        INSERT INTO tag_config(tag_id,arches,perm_id,locked)
-        SELECT id,'i386 ia64 ppc ppc64 s390 s390x sparc sparc64 x86_64',NULL,False
-        FROM tag LEFT OUTER JOIN tag_config ON tag.id = tag_config.tag_id
-        WHERE revoke_event IS NULL AND active IS NULL;
-        """
-        context.commit_pending = True
-        c.execute(q)
 
     def listTags(self, build=None, package=None, queryOpts=None):
         """List tags.  If build is specified, only return tags associated with the
@@ -6742,79 +6965,7 @@ class RootExports(object):
                 mapping[int(key)] = mapping[key]
         return readFullInheritance(tag,event,reverse,stops,jumps)
 
-    def listRPMs(self, buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
-        """List RPMS.  If buildID, imageID and/or buildrootID are specified,
-        restrict the list of RPMs to only those RPMs that are part of that
-        build, or were built in that buildroot.  If componentBuildrootID is specified,
-        restrict the list to only those RPMs that will get pulled into that buildroot
-        when it is used to build another package.  A list of maps is returned, each map
-        containing the following keys:
-
-        - id
-        - name
-        - version
-        - release
-        - nvr (synthesized for sorting purposes)
-        - arch
-        - epoch
-        - payloadhash
-        - size
-        - buildtime
-        - build_id
-        - buildroot_id
-        - external_repo_id
-        - external_repo_name
-
-        If componentBuildrootID is specified, two additional keys will be included:
-        - component_buildroot_id
-        - is_update
-
-        If no build has the given ID, or the build generated no RPMs,
-        an empty list is returned."""
-        fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
-                  ('rpminfo.release', 'release'),
-                  ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
-                  ('rpminfo.arch', 'arch'),
-                  ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
-                  ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
-                  ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
-                  ('rpminfo.external_repo_id', 'external_repo_id'),
-                  ('external_repo.name', 'external_repo_name'),
-                 ]
-        joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
-        clauses = []
-
-        if buildID != None:
-            clauses.append('rpminfo.build_id = %(buildID)i')
-        if buildrootID != None:
-            clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
-        if componentBuildrootID != None:
-            fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
-                           'component_buildroot_id'))
-            fields.append(('buildroot_listing.is_update', 'is_update'))
-            joins.append('buildroot_listing ON rpminfo.id = buildroot_listing.rpm_id')
-            clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
-
-        # image specific constraints
-        if imageID != None:
-           clauses.append('imageinfo_listing.image_id = %(imageID)i')
-           joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
-
-        if hostID != None:
-            joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
-            clauses.append('buildroot.host_id = %(hostID)i')
-        if arches != None:
-            if isinstance(arches, list) or isinstance(arches, tuple):
-                clauses.append('rpminfo.arch IN %(arches)s')
-            elif isinstance(arches, str):
-                clauses.append('rpminfo.arch = %(arches)s')
-            else:
-                raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
-
-        query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                               tables=['rpminfo'], joins=joins, clauses=clauses,
-                               values=locals(), opts=queryOpts)
-        return query.execute()
+    listRPMs = staticmethod(list_rpms)
 
     def listBuildRPMs(self,build):
         """Get information about all the RPMs generated by the build with the given
@@ -7099,9 +7250,10 @@ class RootExports(object):
         perm_id = perm['id']
         if perm['name'] in koji.auth.get_user_perms(user_id):
             raise koji.GenericError, 'user %s already has permission: %s' % (userinfo, perm['name'])
-        insert = """INSERT INTO user_perms (user_id, perm_id)
-        VALUES (%(user_id)i, %(perm_id)i)"""
-        _dml(insert, locals())
+        insert = InsertProcessor('user_perms')
+        insert.set(user_id=user_id, perm_id=perm_id)
+        insert.make_create()
+        insert.execute()
 
     def revokePermission(self, userinfo, permission):
         """Revoke a permission from a user"""
@@ -7111,10 +7263,10 @@ class RootExports(object):
         perm_id = perm['id']
         if perm['name'] not in koji.auth.get_user_perms(user_id):
             raise koji.GenericError, 'user %s does not have permission: %s' % (userinfo, perm['name'])
-        update = """UPDATE user_perms
-        SET active = NULL, revoke_event = get_event()
-        WHERE user_id = %(user_id)i and perm_id = %(perm_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('user_perms', values=locals(),
+                    clauses=["user_id = %(user_id)i", "perm_id = %(perm_id)i"])
+        update.make_revoke()
+        update.execute()
 
     def createUser(self, username, status=None, krb_principal=None):
         """Add a user to the database"""
@@ -7503,6 +7655,7 @@ class RootExports(object):
         set_host_enabled(hostname, False)
 
     getHost = staticmethod(get_host)
+    editHost = staticmethod(edit_host)
     addHostToChannel = staticmethod(add_host_to_channel)
     removeHostFromChannel = staticmethod(remove_host_from_channel)
 
@@ -7594,18 +7747,6 @@ class RootExports(object):
         - name
         """
         query = """SELECT id, name FROM permissions
-        ORDER BY id"""
-
-        return _multiRow(query, {}, ['id', 'name'])
-
-    def getAllChannels(self):
-        """Get a list of all channels in the system.  Returns a list of maps.  Each
-        map contains the following keys:
-
-        - id
-        - name
-        """
-        query = """SELECT id, name FROM channels
         ORDER BY id"""
 
         return _multiRow(query, {}, ['id', 'name'])
@@ -8630,17 +8771,18 @@ class HostExports(object):
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
 
-    # Called from kojid::LiveCDTask
     def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
-        """Import a built image, populating the database with metadata and moving the image
-        to its final location."""
+        """
+        Import a built image, populating the database with metadata and 
+        moving the image to its final location.
+        """
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        image_id = importImageInternal(task_id, filename, filesize, arch, mediatype,
-                                       hash, rpmlist)
-        moveImageResults(task_id, image_id, arch)
+        image_id = importImageInternal(task_id, filename, filesize, arch,
+                                       mediatype, hash, rpmlist)
+        moveImageResults(task_id, image_id, arch, mediatype)
         return image_id
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):

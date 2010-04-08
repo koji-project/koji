@@ -39,7 +39,8 @@ def formatChangelog(entries):
         result += """* %s %s
 %s
 
-""" % (_changelogDate(entry['date']), entry['author'], entry['text'])
+""" % (_changelogDate(entry['date']), entry['author'].encode("utf-8"),
+       entry['text'].encode("utf-8"))
 
     return result
 
@@ -98,6 +99,15 @@ def printList(l):
         ret += ', and '
         ret += l[-1]
         return ret
+
+def dslice(dict, keys, strict=True):
+    """Returns a new dictionary containing only the specified keys"""
+    ret = {}
+    for key in keys:
+        if strict or dict.has_key(key):
+            #for strict we skip the has_key check and let the dict generate the KeyError
+            ret[key] = dict[key]
+    return ret
 
 def eventFromOpts(session, opts):
     """Determine event id from standard cli options

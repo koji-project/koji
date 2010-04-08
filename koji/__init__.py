@@ -293,6 +293,10 @@ class CallbackError(PluginError):
     """Raised when there is an error executing a callback"""
     faultCode = 1017
 
+class ApplianceError(GenericError):
+    """Raised when Appliance Image creation fails"""
+    faultCode = 1018
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of
@@ -1407,6 +1411,10 @@ class PathInfo(object):
         """Return the relative path for the livecd image directory"""
         return os.path.join('livecd', str(image_id % 10000), str(image_id))
 
+    def applianceRelPath(self, image_id):
+        """Return the relative path for the appliance image directory"""
+        return os.path.join('appliance', str(image_id % 10000), str(image_id))
+
     def imageFinalPath(self):
         """Return the absolute path to where completed images can be found"""
         return os.path.join(self.topdir, 'images')
@@ -1861,7 +1869,9 @@ class DBHandler(logging.Handler):
             #note we're letting cursor.execute do the escaping
             cursor.execute(command,data)
             cursor.close()
-            self.cnx.commit()
+            #self.cnx.commit()
+            #XXX - commiting here is most likely wrong, but we need to set commit_pending or something
+            #      ...and this is really the wrong place for that
         except:
             self.handleError(record)
 

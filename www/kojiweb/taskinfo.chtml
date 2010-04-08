@@ -142,7 +142,7 @@ $value
         #if $len($params) > 4
         $printOpts($params[4])
         #end if
-        #elif $task.method == 'createLiveCD'
+        #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
         <strong>Arch:</strong> $params[0]<br/>
         <strong>Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         <strong>Kickstart File:</strong> $params[2]<br/>
@@ -225,6 +225,10 @@ $value
     <tr>
       <th>Created</th><td>$util.formatTimeLong($task.create_time)</td>
     </tr>
+    #if $task.start_time
+    <tr>
+      <th>Started</th><td>$util.formatTimeLong($task.start_time)</td>
+    #end if
     #if $task.state == $koji.TASK_STATES.OPEN
     #if $estCompletion
     <tr>
@@ -277,7 +281,7 @@ $value
       </td>
     </tr>
     #end if
-    #if $task.method == 'createLiveCD' and $image
+    #if ($task.method == 'createLiveCD' or $task.method == 'createAppliance') and $image
     <tr>
       <th>Image</th>
       <td>
@@ -285,9 +289,10 @@ $value
       </td>
     </tr>
     #end if
+    #if not ($task.method == 'createLiveCD' or $task.method == 'createAppliance')
     <tr>
       <th>Parent</th>
-      <td>
+        <td>
         #if $parent
         <a href="taskinfo?taskID=$parent.id" class="task$util.taskState($parent.state)">$koji.taskLabel($parent)</a>
         #end if
@@ -302,6 +307,7 @@ $value
         $printChildren($task.id, $descendents)
       </td>
     </tr>
+    #end if
     <tr>
       <th>Waiting?</th><td>#if $task.waiting then 'yes' else 'no'#</td>
     </tr>
@@ -338,12 +344,12 @@ ${excClass.__name__}: $cgi.escape($str($result))
         #for $filename in $output
         <a href="getfile?taskID=$task.id&name=$urllib.quote($filename)">$filename</a>
            #if $filename.endswith('.log')
-           (<a href="getfile?taskID=$task.id&name=$urllib.quote($filename)&offset=-2000">tail</a>)
+           (<a href="getfile?taskID=$task.id&name=$urllib.quote($filename)&offset=-4000">tail</a>)
            #end if
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'buildMaven', 'wrapperRPM', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
