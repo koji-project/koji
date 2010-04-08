@@ -2612,22 +2612,32 @@ class WrapperRPMTask(BaseTaskHandler):
 
         values = {}
 
+        maven_info = None
+
+        # map of file extension to a list of files
         artifacts = {}
+        # list of all files
+        all_artifacts = []
+        # list of all files with their maven repo path
+        all_artifacts_with_path = []
 
         # makes generating relative paths easier
         self.pathinfo = koji.PathInfo(topdir='')
 
         if task:
             # called as a subtask of a maven build
-            artifact_names = session.listTaskOutput(task['id'])
+            artifact_paths = session.listTaskOutput(task['id'])
 
-            for artifact_name in artifact_names:
+            for artifact_path in artifact_paths:
+                artifact_name = os.path.basename(artifact_path)
                 base, ext = os.path.splitext(artifact_name)
                 if ext == '.log':
                     # Exclude log files for consistency with the output of listArchives() used below
                     continue
-                relpath = os.path.join(self.pathinfo.task(task['id']), artifact_name)[1:]
+                relpath = os.path.join(self.pathinfo.task(task['id']), artifact_path)[1:]
                 artifacts.setdefault(ext, []).append(relpath)
+                all_artifacts.append(artifact_name)
+                all_artifacts_with_path.append(artifact_path)
         else:
             # called as a top-level task to create wrapper rpms for an existing build
             # verify that the build is complete
@@ -2648,6 +2658,9 @@ class WrapperRPMTask(BaseTaskHandler):
                     continue
                 relpath = os.path.join(self.pathinfo.mavenbuild(build, maven_info), artifact_name)[1:]
                 artifacts.setdefault(ext, []).append(relpath)
+                all_artifacts.append(artifact_name)
+                repopath = os.path.join(self.pathinfo.mavenrepo(maven_info, artifact), artifact_name)[len('/maven2/'):]
+                all_artifacts_with_path.append(repopath)
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
@@ -2660,9 +2673,14 @@ class WrapperRPMTask(BaseTaskHandler):
             artifacts_base[key] = [os.path.basename(val) for val in vals]
 
         values['artifacts'] = artifacts_base
+        values['all_artifacts'] = all_artifacts
+        values['all_artifacts_with_path'] = all_artifacts_with_path
 
         if build:
             self.copy_fields(build, values, 'epoch', 'name', 'version', 'release')
+            if not maven_info:
+                maven_info = session.getMavenBuild(build['id'], strict=True)
+            values['maven_info'] = maven_info
         else:
             # Get the pom info from the first pom and convert it to build format
             # so we can use it as substitution variables in the template.
@@ -2677,8 +2695,10 @@ class WrapperRPMTask(BaseTaskHandler):
                 maven_nvr = koji.maven_info_to_nvr(maven_info)
                 maven_nvr['release'] = '0.scratch'
                 self.copy_fields(maven_nvr, values, 'epoch', 'name', 'version', 'release')
+                values['maven_info'] = maven_info
             else:
                 values.update({'epoch': None, 'name': '', 'version': '', 'release': ''})
+                values['maven_info'] = {'group_id': '', 'artifact_id': '', 'version': ''}
 
         scm = SCM(spec_url)
         scm.assert_allowed(options.allowed_scms)
