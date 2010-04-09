@@ -1232,10 +1232,10 @@ def _tag_build(tag,build,user_id=None,force=False):
     table = 'tag_listing'
     clauses = ('tag_id=%(tag_id)i', 'build_id=%(build_id)i')
     query = QueryProcessor(columns=['build_id'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     #note: tag_listing is unique on (build_id, tag_id, active)
-    if query.fetchSingle():
+    if query.executeOne():
         #already tagged
         if not force:
             raise koji.TagError, "build %s already tagged (%s)" % (nvr,tag['name'])
@@ -1374,7 +1374,7 @@ def grplist_unblock(taginfo,grpinfo):
     table = 'group_config'
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -1477,7 +1477,7 @@ def grp_pkg_unblock(taginfo,grpinfo,pkg_name):
     grp_id = get_group_id(grpinfo,strict=True)
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'package = %(pkg_name)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -1584,7 +1584,7 @@ def grp_req_unblock(taginfo,grpinfo,reqinfo):
 
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'req_id = %(req_id)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -4228,9 +4228,9 @@ def add_group_member(group, user, strict=True):
     table = 'user_groups'
     clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
     query = QueryProcessor(columns=['user_id'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=data, opts={'rowlock':True})
-    row = query.fetchSingle(strict=False)
+    row = query.executeOne()
     if row:
         if not strict:
             return
