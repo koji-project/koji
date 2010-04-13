@@ -2246,9 +2246,9 @@ class ImageTask(BaseTaskHandler):
 
         try:
             ks.readKickstart(kspath)
-        except IOError, (err, msg):
+        except IOError, e:
             raise koji.LiveCDError("Failed to read kickstart file "
-                                   "'%s' : %s" % (kspath, msg))
+                                   "'%s' : %s" % (kspath, e))
         except kserrors.KickstartError, e:
             raise koji.LiveCDError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
