@@ -94,7 +94,7 @@ class CursorWrapper:
             start = time.time()
         ret = self.cursor.execute(operation, parameters)
         if debug:
-            self.logger.debug("Execute operation completed in %.4f seconds\n", time.time() - start)
+            self.logger.debug("Execute operation completed in %.4f seconds", time.time() - start)
         return ret
 
 
