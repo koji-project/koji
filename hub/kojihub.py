@@ -1302,7 +1302,7 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     cfg_fields = ('exported','display_name','is_default','uservisible',
                   'description','langonly','biarchonly',)
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1408,7 +1408,7 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
     previous = grp_cfg['packagelist'].get(pkg_name,None)
     cfg_fields = ('type','basearchonly','requires')
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1512,7 +1512,7 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
     previous = grp_cfg['grouplist'].get(req['id'],None)
     cfg_fields = ('type','is_metapkg')
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
