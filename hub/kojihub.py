@@ -1326,11 +1326,11 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     opts.setdefault('uservisible',True)
     # XXX ^^^
     opts['tag_id'] = tag['id']
-    opts['grp_id'] = group['id']
+    opts['group_id'] = group['id']
     opts['blocked'] = block
     #revoke old entry (if present)
     update = UpdateProcessor('group_config', values=opts,
-                clauses=['group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s'])
     update.make_revoke()
     update.execute()
     #add new entry
