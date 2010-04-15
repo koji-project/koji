@@ -1839,8 +1839,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     for repoarch in repo_arches:
         packages.setdefault(repoarch, [])
     for rpminfo in rpms:
-        if (rpminfo['name'].endswith('-debuginfo') or rpminfo['name'].endswith('-debuginfo-common')) \
-                and not with_debuginfo:
+        if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
         arch = rpminfo['arch']
         repoarch = koji.canonArch(arch)

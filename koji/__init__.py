@@ -841,6 +841,12 @@ def parse_NVRA(nvra):
         ret['location'] = location
     return ret
 
+def is_debuginfo(name):
+    """Determines if an rpm is a debuginfo rpm, based on name"""
+    if name.endswith('-debuginfo') or name.endswith('-debuginfo-common'):
+        return True
+    return False
+
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
     #XXX - this could stand to be smarter, and we should probably

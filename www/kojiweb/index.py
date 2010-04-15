@@ -1003,7 +1003,7 @@ def buildinfo(req, buildID):
     rpmsByArch = {}
     debuginfoByArch = {}
     for rpm in rpms:
-        if rpm['name'].endswith('-debuginfo') or rpm['name'].endswith('-debuginfo-common'):
+        if koji.is_debuginfo(rpm['name']):
             debuginfoByArch.setdefault(rpm['arch'], []).append(rpm)
         else:
             rpmsByArch.setdefault(rpm['arch'], []).append(rpm)

@@ -4556,7 +4556,7 @@ def anon_handle_download_build(options, session, args):
         pg = progress.TextMeter()
     
     for rpm in rpms:
-        if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
+        if not suboptions.debuginfo and koji.is_debuginfo(rpm['name']):
             continue
 
         if suboptions.key:
