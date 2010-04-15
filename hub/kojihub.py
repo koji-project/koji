@@ -170,9 +170,11 @@ class Task(object):
         #  - assigned to host_id
         #  - force option is enabled
         state = koji.TASK_STATES[newstate]
-        q = """UPDATE task SET state=%(state)s,host_id=%(host_id)s
-        WHERE id=%(task_id)s"""
-        _dml(q,locals())
+        update = UpdateProcessor('task', clauses=['id=%(task_id)i'], values=locals())
+        update.set(state=state, host_id=host_id)
+        if state == koji.TASK_STATES['OPEN']:
+            update.rawset(start_time='NOW()')
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
         self.runCallbacks('postTaskStateChange', info, 'host_id', host_id)
         return True
@@ -188,10 +190,6 @@ class Task(object):
 
         returns task data if successful, None otherwise"""
         if self.lock(host_id,'OPEN'):
-            #set task start time
-            update = UpdateProcessor('task', clauses=['id=%(id)i'], values=vars(self))
-            update.rawset(start_time='NOW()')
-            update.execute()
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
             query = QueryProcessor(tables=['task'], clauses=['id=%(id)i'], values=vars(self),
