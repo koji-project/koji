@@ -1699,7 +1699,7 @@ def handle_disable_user(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
-        parser.error(_("You must specify the username of the user to enable"))
+        parser.error(_("You must specify the username of the user to disable"))
     elif len(args) > 1:
         parser.error(_("This command only accepts one argument (username)"))
     username = args[0]
