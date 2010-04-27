@@ -6550,6 +6550,12 @@ class RootExports(object):
             createdAfter[float or str]: limit to tasks whose create_time is after the
                                         given date, in either float (seconds since the epoch)
                                         or str (ISO) format
+            startedBefore[float or str]: limit to tasks whose start_time is before the
+                                         given date, in either float (seconds since the epoch)
+                                         or str (ISO) format
+            startedAfter[float or str]: limit to tasks whose start_time is after the
+                                        given date, in either float (seconds since the epoch)
+                                        or str (ISO) format
             completeBefore[float or str]: limit to tasks whose completion_time is before
                                          the given date, in either float (seconds since the epoch)
                                          or str (ISO) format
@@ -6583,26 +6589,20 @@ class RootExports(object):
                     conditions.append('%s = %%(%s)i' % (f, f))
         if opts.has_key('method'):
             conditions.append('method = %(method)s')
-        if opts.get('createdBefore') != None:
-            createdBefore = opts['createdBefore']
-            if not isinstance(createdBefore, str):
-                opts['createdBefore'] = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
-            conditions.append('create_time < %(createdBefore)s')
-        if opts.get('createdAfter') != None:
-            createdAfter = opts['createdAfter']
-            if not isinstance(createdAfter, str):
-                opts['createdAfter'] = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
-            conditions.append('create_time > %(createdAfter)s')
-        if opts.get('completeBefore') != None:
-            completeBefore = opts['completeBefore']
-            if not isinstance(completeBefore, str):
-                opts['completeBefore'] = datetime.datetime.fromtimestamp(completeBefore).isoformat(' ')
-            conditions.append('completion_time < %(completeBefore)s')
-        if opts.get('completeAfter') != None:
-            completeAfter = opts['completeAfter']
-            if not isinstance(completeAfter, str):
-                opts['completeAfter'] = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
-            conditions.append('completion_time > %(completeAfter)s')
+        time_opts = [
+                ['createdBefore', 'create_time', '<'],
+                ['createdAfter', 'create_time', '>'],
+                ['startedBefore', 'start_time', '<'],
+                ['startedAfter', 'start_time', '>'],
+                ['completedBefore', 'completion_time', '<'],
+                ['completedAfter', 'completion_time', '>'],
+            ]
+        for key, field, cmp in time_opts:
+            if opts.get(key) != None:
+                value = opts[key]
+                if not isinstance(value, str):
+                    opts[key] = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                conditions.append('%(field)s %(cmp)s %%(%(key)s)s' % locals())
 
         query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
                                clauses=conditions, values=opts, opts=queryOpts)
