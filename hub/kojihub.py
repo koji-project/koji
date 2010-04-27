@@ -6562,12 +6562,14 @@ class RootExports(object):
 
         tables = ['task']
         joins = ['users ON task.owner = users.id']
-        fields = ('task.id','state','create_time','completion_time','channel_id',
-                  'host_id','parent','label','waiting','awaited','owner','method',
-                  'arch','priority','weight','request','result', 'users.name', 'users.usertype')
-        aliases = ('id','state','create_time','completion_time','channel_id',
-                   'host_id','parent','label','waiting','awaited','owner','method',
-                   'arch','priority','weight','request','result', 'owner_name', 'owner_type')
+        flist = Task.fields + (
+                    ('task.request', 'request'),
+                    ('task.result', 'result'),
+                    ('users.name', 'owner_name'),
+                    ('users.usertype', 'owner_type'),
+                    )
+        fields = [f[0] for f in flist]
+        aliases = [f[1] for f in flist]
 
         conditions = []
         for f in ['arch','state']:
