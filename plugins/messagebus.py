@@ -69,6 +69,7 @@ def get_routing_key(cbtype, *args, **kws):
         _token_append(key, kws['tag']['name'])
         _token_append(key, kws['package']['name'])
     elif cbtype in ('preTaskStateChange', 'postTaskStateChange'):
+        _token_append(key, kws['info']['method'])
         _token_append(key, kws['attribute'])
     elif cbtype in ('preBuildStateChange', 'postBuildStateChange'):
         info = kws['info']
@@ -94,14 +95,16 @@ def get_routing_key(cbtype, *args, **kws):
     return key
 
 def get_message_headers(cbtype, *args, **kws):
-    # We're only registering for post callbacks, so strip
-    # off the redundant "post" prefix
-    headers = {'type': cbtype[4:]}
+    if cbtype.startswith('pre'):
+        headers = {'type': cbtype[3:]}
+    else:
+        headers = {'type': cbtype[4:]}
 
     if cbtype in ('prePackageListChange', 'postPackageListChange'):
         headers['tag'] = kws['tag']['name']
         headers['package'] = kws['package']['name']
     elif cbtype in ('preTaskStateChange', 'postTaskStateChange'):
+        headers['method'] = kws['info']['method']
         headers['attribute'] = kws['attribute']
         headers['old'] = kws['old']
         headers['new'] = kws['new']
