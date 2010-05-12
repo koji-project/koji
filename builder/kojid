@@ -1665,22 +1665,22 @@ class ChainBuildTask(BaseTaskHandler):
         if not target_info:
             raise koji.GenericError, 'unknown build target: %s' % target
         nvrs = []
-        for n_src, build_level in enumerate(srcs):
+        for n_level, build_level in enumerate(srcs):
             #if there are any nvrs to wait on, do so
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
                                                arglist=[target_info['build_tag_name'], None, nvrs],
-                                               label="wait %i" % n_src,
+                                               label="wait %i" % n_level,
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
             nvrs = []
             #kick off the builds for this level
             build_tasks = []
-            for src in build_level:
+            for n_src, src in enumerate(build_level):
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
-                                                   label="build %i" % n_src,
+                                                   label="build %i,%i" % (n_level, n_src),
                                                    parent=self.id)
                     build_tasks.append(task_id)
                 else:
