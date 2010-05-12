@@ -4329,7 +4329,7 @@ def handle_make_task(options, session, args):
             taskopts[key] = value
     task_id = session.makeTask(method=args[0],
                                arglist=map(arg_filter,args[1:]),
-                               opts=taskopts)
+                               **taskopts)
     print "Created task id %d" % task_id
     if _running_in_bg() or not options.watch:
         return
