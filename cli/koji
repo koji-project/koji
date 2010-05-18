@@ -3921,8 +3921,10 @@ def handle_spin_livecd(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--nowait", action="store_true",
-        help=_("Don't wait on livecd creation"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the livecd creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on livecd creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
@@ -3960,8 +3962,10 @@ def handle_spin_appliance(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--nowait", action="store_true",
-        help=_("Do not wait on appliance creation."))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the appliance creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on appliance creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload."))
     parser.add_option("--background", action="store_true",
@@ -4047,13 +4051,17 @@ def _build_image(options, task_opts, session, args, img_type):
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
+    # don't send the 'wait' option to the hub
+    wait = task_opts.wait
+    del task_opts.wait
+
     # finally, create the task.
     task_id = session.buildImage(arch, target, ksfile, img_type, 
                                   opts=task_opts, priority=priority)
 
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if _running_in_bg() or task_opts.nowait:
+    if not wait and (_running_in_bg() or wait is False):
         return
     else:
         session.logout()
