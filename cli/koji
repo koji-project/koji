@@ -26,6 +26,11 @@ try:
     import krbV
 except ImportError:
     pass
+try:
+    import ast
+except ImportError:
+    ast = None
+    pass
 import ConfigParser
 import base64
 import koji
@@ -892,21 +897,31 @@ def handle_call(options, session, args):
     usage = _("usage: %prog call [options] name [arg...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
+    parser.add_option("--kwargs", help=_("Specify keyword arguments as a dictionary (implies --python)"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify the name of the XML-RPC method"))
         assert False
+    if options.kwargs:
+        options.python = True
+    if options.python and ast is None:
+        parser.error(_("The ast module is required to read python syntax"))
     activate_session(session)
     name = args[0]
     non_kw = []
     kw = {}
-
-    for arg in args[1:]:
-        if arg.find('=') != -1:
-            key, value = arg.split('=', 1)
-            kw[key] = arg_filter(value)
-        else:
-            non_kw.append(arg_filter(arg))
+    if options.python:
+        non_kw = [ast.literal_eval(a) for a in args[1:]]
+        if options.kwargs:
+            kw = ast.literal_eval(options.kwargs)
+    else:
+        for arg in args[1:]:
+            if arg.find('=') != -1:
+                key, value = arg.split('=', 1)
+                kw[key] = arg_filter(value)
+            else:
+                non_kw.append(arg_filter(arg))
     pprint.pprint(getattr(session, name).__call__(*non_kw, **kw))
 
 def anon_handle_mock_config(options, session, args):
