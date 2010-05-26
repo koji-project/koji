@@ -475,23 +475,64 @@ def make_task(method,arglist,**opts):
             raise koji.GenericError, "Parent task (id %(parent)s) is not open" % opts
         #default to a higher priority than parent
         opts.setdefault('priority', pdata['priority'] - 1)
-        for f in ('owner','channel_id','arch'):
+        for f in ('owner', 'arch'):
             opts.setdefault(f,pdata[f])
         opts.setdefault('label',None)
     else:
         opts.setdefault('priority',koji.PRIO_DEFAULT)
         #calling function should enforce priority limitations, if applicable
         opts.setdefault('arch','noarch')
-        opts.setdefault('channel','default')
-        #no labels for top-level tasks
-        #calling function should enforce channel limitations, if applicable
-        opts['channel_id'] = get_channel_id(opts['channel'],strict=True)
         if not context.session.logged_in:
             raise koji.GenericError, 'task must have an owner'
         else:
             opts['owner'] = context.session.user_id
         opts['label'] = None
         opts['parent'] = None
+    #determine channel from policy
+    policy_data = {}
+    policy_data['method'] = method
+    for key in 'arch', 'parent', 'label', 'owner':
+        policy_data[key] = opts[key]
+    policy_data['user_id'] = opts['owner']
+    if 'channel' in opts:
+        policy_data['req_channel'] = opts['channel']
+        req_channel_id = get_channel_id(opts['channel'], strict=True)
+    if method == 'build':
+        # arglist = source, target, [opts]
+        args = koji.decode_args2(arglist, ('source', 'target', 'opts'))
+        policy_data['source'] = args['source']
+        target = get_build_target(args['target'], strict=True)
+        policy_data['target'] = target['name']
+        t_opts = args.get('opts', {})
+        policy_data['scratch'] = t_opts.get('scratch', False)
+    ruleset = context.policy.get('channel')
+    result = ruleset.apply(policy_data)
+    if result is None:
+        logger.warning('Channel policy returned no result, using default')
+        opts['channel_id'] = get_channel_id('default', strict=True)
+    else:
+        try:
+            parts = result.split()
+            if parts[0] == "use":
+                opts['channel_id'] = get_channel_id(parts[1], strict=True)
+            elif parts[0] == "parent":
+                if not opts.get('parent'):
+                    logger.error("Invalid channel policy result (no parent task): %s",
+                                    ruleset.last_rule())
+                    raise koji.GenericError, "invalid channel policy"
+                opts['channel_id'] = pdata['channel_id']
+            elif parts[0] == "req":
+                if 'channel' not in opts:
+                    logger.error('Invalid channel policy result (no channel requested): %s',
+                                    ruleset.last_rule())
+                    raise koji.GenericError, "invalid channel policy"
+                opts['channel_id'] = req_channel_id
+            else:
+                logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
+                raise koji.GenericError, "invalid channel policy"
+        except IndexError:
+            logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
+            raise koji.GenericError, "invalid channel policy"
     #XXX - temporary workaround
     if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
@@ -2165,6 +2206,17 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
                            tables=['build_target_config'], joins=joins, clauses=clauses,
                            values=locals(), opts=queryOpts)
     return query.execute()
+
+def get_build_target(info, event=None, strict=False):
+    """Return the build target with the given name or ID.
+    If there is no matching build target, return None."""
+    targets = get_build_targets(info=info, event=event)
+    if len(targets) == 1:
+        return targets[0]
+    elif strict:
+        raise koji.GenericError, 'No matching build target found: %s' % info
+    else:
+        return None
 
 def lookup_name(table,info,strict=False,create=False):
     """Find the id and name in the table associated with info.
@@ -4779,6 +4831,14 @@ class ImportedTest(koji.policy.BaseSimpleTest):
         #otherwise...
         return False
 
+class ChildTaskTest(koji.policy.BoolTest):
+    name = 'is_child_task'
+    field = 'parent'
+
+class MethodTest(koji.policy.MatchTest):
+    name = 'method'
+    field = 'method'
+
 class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
     """Check if user owns the build"""
     name = "is_build_owner"
@@ -6476,18 +6536,7 @@ class RootExports(object):
     editBuildTarget = staticmethod(edit_build_target)
     deleteBuildTarget = staticmethod(delete_build_target)
     getBuildTargets = staticmethod(get_build_targets)
-
-    def getBuildTarget(self, info, event=None, strict=False):
-        """Return the build target with the given name or ID.
-        If there is no matching build target, return None."""
-        targets = get_build_targets(info=info, event=event)
-        if len(targets) == 1:
-            return targets[0]
-        else:
-            if strict:
-                raise koji.GenericError, 'No matching build target found: %s' % info
-            else:
-                return None
+    getBuildTarget = staticmethod(get_build_target)
 
     def taskFinished(self,taskId):
         task = Task(taskId)

@@ -466,6 +466,11 @@ _default_policies = {
     'package_list' : '''
             has_perm admin :: allow
             all :: deny
+            ''',
+    'channel' : '''
+            has req_channel :: req
+            is_child_task :: parent
+            all :: use default
             '''
 }
 

@@ -60,6 +60,21 @@ class NoneTest(FalseTest):
     #alias for false
 
 
+class HasTest(BaseSimpleTest):
+    """Test if policy data contains a field"""
+
+    name = "has"
+
+    def __init__(self, str):
+        try:
+            self.field = str.split(None, 1)[1]
+        except IndexError:
+            raise koji.GenericError, "Empty python expression in policy"
+
+    def run(self, data):
+        return self.field in data
+
+
 class BoolTest(BaseSimpleTest):
     """Test a field in the data as a boolean value
 
