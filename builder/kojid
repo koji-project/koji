@@ -495,18 +495,18 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
-    def build_srpm(self, specfile, sourcedir):
+    def build_srpm(self, specfile, sourcedir, source_cmd):
         session.host.setBuildRootState(self.id,'BUILDING')
-        chroot_sourcedir = sourcedir[len(self.rootdir()):]
-        # call "make sources" in the chroot so any required files not stored in
-        # the SCM can be retrieved
-        args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
-
-        rv = self.mock(args)
-
-        if rv:
-            self.expire()
-            raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
+        if source_cmd:
+            # call the command defined by source_cmd in the chroot so any required files not stored in
+            # the SCM can be retrieved
+            chroot_sourcedir = sourcedir[len(self.rootdir()):]
+            args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot']
+            args.extend(source_cmd)
+            rv = self.mock(args)
+            if rv:
+                self.expire()
+                raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
 
         args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir]
 
@@ -2685,7 +2685,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
 
         #build srpm
         self.logger.debug("Running srpm build")
-        broot.build_srpm(spec_file, sourcedir)
+        broot.build_srpm(spec_file, sourcedir, scm.source_cmd)
 
         srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
         if len(srpms) == 0:
@@ -3255,6 +3255,7 @@ class SCM(object):
         - module
         - revision
         - use_common (defaults to True, may be set by assert_allowed())
+        - source_cmd (defaults to ['make', 'sources'], may be set by assert_allowed())
         - scmtype
 
         The exact format of each attribute is SCM-specific, but the structure of the url
@@ -3275,6 +3276,7 @@ class SCM(object):
         self.module = query
         self.revision = fragment
         self.use_common = True
+        self.source_cmd = ['make', 'sources']
 
         for scmtype, schemes in SCM.types.items():
             if self.scheme in schemes:
@@ -3331,22 +3333,33 @@ class SCM(object):
         Verify that the host and repository of this SCM is in the provided list of
         allowed repositories.
 
-        allowed is a space-separated list of host:repository[:use_common] tuples.  Incorrectly-formatted
+        allowed is a space-separated list of host:repository[:use_common[:source_cmd]] tuples.  Incorrectly-formatted
         tuples will be ignored.
 
         If use_common is not present, kojid will attempt to checkout a common/ directory from the
         repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
         directory.
+
+        source_cmd is a shell command (args separated with commas instead of spaces) to run before building the srpm.
+        It is generally used to retrieve source files from a remote location.  If no source_cmd is specified,
+        "make sources" is run by default.
         """
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) in (2, 3):
+            if len(scm_tuple) >= 2:
                 if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
                     # SCM host:repository is in the allowed list
                     # check if we specify a value for use_common
-                    if len(scm_tuple) == 3:
+                    if len(scm_tuple) >= 3:
                         if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
                             self.use_common = False
+                    # check if we specify a custom source_cmd
+                    if len(scm_tuple) >= 4:
+                        if scm_tuple[3]:
+                            self.source_cmd = scm_tuple[3].split(',')
+                        else:
+                            # there was nothing after the trailing :, so they don't want to run a source_cmd at all
+                            self.source_cmd = None
                     break
             else:
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
