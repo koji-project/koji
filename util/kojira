@@ -255,10 +255,12 @@ class RepoManager(object):
                     continue
                 rinfo = session.repoInfo(repo_id)
                 if rinfo is None:
-                    age = time.time() - dir_ts
-                    if age > 36000:
-                        if not options.ignore_stray_repos:
-                            self.logger.warn("Unexpected directory (no such repo): %s" % repodir)
+                    if not options.ignore_stray_repos:
+                        age = time.time() - dir_ts
+                        if age > options.deleted_repo_lifetime:
+                            count += 1
+                            self.logger.info("Removing unexpected directory (no such repo): %s" % repodir)
+                            safe_rmtree(repodir, strict=False)
                     continue
                 if rinfo['tag_name'] != taginfo['name']:
                     self.logger.warn("Tag name mismatch: %s" % repodir)
