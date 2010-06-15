@@ -4839,6 +4839,17 @@ class MethodTest(koji.policy.MatchTest):
     name = 'method'
     field = 'method'
 
+class UserTest(koji.policy.MatchTest):
+    """Checks username against glob patterns"""
+    name = 'user'
+    field = '_username'
+    def run(self, data):
+        user = policy_get_user(data)
+        if not user:
+            return False
+        data[self.field] = user['name']
+        return super(UserTest, self).run(data)
+
 class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
     """Check if user owns the build"""
     name = "is_build_owner"
