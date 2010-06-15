@@ -135,13 +135,20 @@ class ManagedRepo(object):
             #also check dir age. We do this because a repo can be created from an older event
             #and should not be removed based solely on that event's timestamp.
             mtime = os.stat(path).st_mtime
-        except OSError:
-            self.logger.error("Can't stat repo directory: %s" % path)
-            return True
-        age = time.time() - max(self.event_ts, mtime)
-        if age < options.deleted_repo_lifetime:
-            #XXX should really be called expired_repo_lifetime
-            return False
+        except OSError, e:
+            if e.errno == 2:
+                # No such file or directory, so the repo either never existed,
+                # or has already been deleted, so allow it to be marked deleted.
+                self.logger.info("Repo directory does not exist: %s" % path)
+                pass
+            else:
+                self.logger.error("Can't stat repo directory: %s, %s" % (path, e.strerror))
+                return False
+        else:
+            age = time.time() - max(self.event_ts, mtime)
+            if age < options.deleted_repo_lifetime:
+                #XXX should really be called expired_repo_lifetime
+                return False
         self.logger.debug("Attempting to delete repo %s.." % self.repo_id)
         if self.state != koji.REPO_EXPIRED:
             raise GenericError, "Repo not expired"
