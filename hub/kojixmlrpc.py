@@ -367,11 +367,11 @@ def load_config(req):
 
         ['AuthPrincipal', 'string', None],
         ['AuthKeytab', 'string', None],
-        ['ProxyPrincipals', 'string', None],
+        ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
 
         ['DNUsernameComponent', 'string', 'CN'],
-        ['ProxyDNs', 'string', None],
+        ['ProxyDNs', 'string', ''],
 
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
