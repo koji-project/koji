@@ -360,9 +360,6 @@ class RepoManager(object):
                 del self.tasks[tag_id]
             #TODO [?] - implement a timeout for active tasks?
         self.logger.debug("Current tasks: %r" % self.tasks)
-        if len(self.tasks) >= options.max_repo_tasks:
-            self.logger.info("Maximum number of repo tasks reached.")
-            return
         self.logger.debug("Updating repos")
         self.readCurrentRepos()
         #check for stale repos
