@@ -369,6 +369,15 @@ def decode_args(*args):
             args = args[:-1]
     return args,opts
 
+def decode_args2(args, names, strict=True):
+    "An alternate form of decode_args, returns a dictionary"
+    args, opts = decode_args(*args)
+    if strict and len(names) < len(args):
+        raise TypeError, "Expecting at most %i arguments" % len(names)
+    ret = dict(zip(names, args))
+    ret.update(opts)
+    return ret
+
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
     if n <= 2147483647:
@@ -844,6 +853,12 @@ def parse_NVRA(nvra):
     if location:
         ret['location'] = location
     return ret
+
+def is_debuginfo(name):
+    """Determines if an rpm is a debuginfo rpm, based on name"""
+    if name.endswith('-debuginfo') or name.endswith('-debuginfo-common'):
+        return True
+    return False
 
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""

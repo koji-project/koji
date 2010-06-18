@@ -142,11 +142,11 @@ class RepoMerge(object):
         """
         For each package object, check if the srpm name has ever been seen before.
         If is has not, keep the package.  If it has, check if the srpm name was first seen
-        in the same repo as the current package.  If so, keep the package (it's probably a subpackage
-        of the same build).  If not, delete the package from the package sack.
-        Note that this does allow an external repo to contain multiple versions of the same package,
-        and they will all end up in the repo, but the yum client will ensure that only the latest is
-        installed.
+        in the same repo as the current package.  If so, keep the package from the srpm with the
+        highest NVR.  If not, keep the packages from the first srpm we found, and delete packages from
+        all other srpms.
+
+        Packages with matching NVRs in multiple repos will be taken from the first repo.
 
         If the srpm name appears in the blocked package list, any packages generated from the srpm
         will be deleted from the package sack as well.
@@ -161,31 +161,49 @@ class RepoMerge(object):
         repos = self.yumbase.repos.listEnabled()
         repos.sort(key=lambda o: o._merge_rank)
 
-        seen_srpms = {}
+        include_srpms = {}
+
+        # calculating what "builds" (srpms) we're allowing into the repo
+        for repo in repos:
+            for pkg in repo.sack:
+                srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
+                if include_srpms.has_key(srpm_name):
+                    other_srpm, other_repoid = include_srpms[srpm_name]
+                    if pkg.repoid != other_repoid:
+                        # We found a rpm built from an srpm with the same name in a previous repo.
+                        # The previous repo takes precendence, so ignore the srpm found here.
+                        continue
+                    else:
+                        # We're in the same repo, so compare srpm NVRs
+                        other_srpm_name, other_ver, other_rel, other_epoch, other_arch = \
+                                         rpmUtils.miscutils.splitFilename(other_srpm)
+                        cmp = rpmUtils.miscutils.compareEVR((epoch, ver, rel),
+                                                            (other_epoch, other_ver, other_rel))
+                        if cmp > 0:
+                            # The current package we're processing is from a newer srpm than the
+                            # existing srpm in the dict, so update the dict
+                            include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
+                elif self.blocked.has_key(srpm_name):
+                    continue
+                else:
+                    include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
         origins = file(pkgorigins, 'w')
 
+        seen_rpms = {}
         for repo in repos:
             for pkg in repo.sack:
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
-                if seen_srpms.has_key(srpm_name):
-                    # We've seen a package created from this srpm before.
-                    # Check if that package was also from this repo, in
-                    # which case it's likely just another subpackage from
-                    # the same build.
-                    if seen_srpms[srpm_name] != pkg.repoid:
-                        # Package has been superceded by a package
-                        # from a higher priority repo
-                        repo.sack.delPackage(pkg)
-                        continue
-                elif self.blocked.has_key(srpm_name):
-                    print >> sys.stderr, 'Removing blocked package: %s' % pkg
+                incl_srpm, incl_repoid = include_srpms.get(srpm_name, (None, None))
+                pkg_nvra = str(pkg)
+                if incl_srpm == pkg.sourcerpm and not seen_rpms.has_key(pkg_nvra):
+                    origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
+                    seen_rpms[pkg_nvra] = 1
+                else:
+                    # Either the srpm is in the block list, it is not built from the srpm we
+                    # identified above, or it's a duplicate, so exclude it
                     repo.sack.delPackage(pkg)
-                    continue
-
-                seen_srpms[srpm_name] = pkg.repoid
-                origins.write('%s\t%s\n' % (pkg, repo.urls[0]))
 
         origins.close()
         self.mdconf.additional_metadata['origin'] = pkgorigins

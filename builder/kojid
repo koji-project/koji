@@ -545,17 +545,15 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
-    def build_srpm(self, specfile, sourcedir, make_sources=True):
+    def build_srpm(self, specfile, sourcedir, source_cmd, make_sources=True):
         session.host.setBuildRootState(self.id,'BUILDING')
-
-        if make_sources:
-            chroot_sourcedir = sourcedir[len(self.rootdir()):]
-            # call "make sources" in the chroot so any required files not stored in
+        if source_cmd and make_sources:
+            # call the command defined by source_cmd in the chroot so any required files not stored in
             # the SCM can be retrieved
-            args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot', 'make', 'sources']
-
+            chroot_sourcedir = sourcedir[len(self.rootdir()):]
+            args = ['--no-clean', '--unpriv', '--cwd', chroot_sourcedir, '--chroot']
+            args.extend(source_cmd)
             rv = self.mock(args)
-
             if rv:
                 self.expire()
                 raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
@@ -1811,22 +1809,22 @@ class ChainBuildTask(BaseTaskHandler):
         if not target_info:
             raise koji.GenericError, 'unknown build target: %s' % target
         nvrs = []
-        for n_src, build_level in enumerate(srcs):
+        for n_level, build_level in enumerate(srcs):
             #if there are any nvrs to wait on, do so
             if nvrs:
                 task_id = session.host.subtask(method='waitrepo',
                                                arglist=[target_info['build_tag_name'], None, nvrs],
-                                               label="wait %i" % n_src,
+                                               label="wait %i" % n_level,
                                                parent=self.id)
                 self.wait(task_id, all=True, failany=True)
             nvrs = []
             #kick off the builds for this level
             build_tasks = []
-            for src in build_level:
+            for n_src, src in enumerate(build_level):
                 if SCM.is_scm_url(src):
                     task_id = session.host.subtask(method='build',
                                                    arglist=[src, target, opts],
-                                                   label="build %i" % n_src,
+                                                   label="build %i,%i" % (n_level, n_src),
                                                    parent=self.id)
                     build_tasks.append(task_id)
                 else:
@@ -2898,9 +2896,9 @@ class ImageTask(BaseTaskHandler):
 
         try:
             ks.readKickstart(kspath)
-        except IOError, (err, msg):
+        except IOError, e:
             raise koji.LiveCDError("Failed to read kickstart file "
-                                   "'%s' : %s" % (kspath, msg))
+                                   "'%s' : %s" % (kspath, e))
         except kserrors.KickstartError, e:
             raise koji.LiveCDError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
@@ -3337,7 +3335,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
 
         #build srpm
         self.logger.debug("Running srpm build")
-        broot.build_srpm(spec_file, sourcedir)
+        broot.build_srpm(spec_file, sourcedir, scm.source_cmd)
 
         srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
         if len(srpms) == 0:
@@ -3907,6 +3905,7 @@ class SCM(object):
         - module
         - revision
         - use_common (defaults to True, may be set by assert_allowed())
+        - source_cmd (defaults to ['make', 'sources'], may be set by assert_allowed())
         - scmtype
 
         The exact format of each attribute is SCM-specific, but the structure of the url
@@ -3927,6 +3926,7 @@ class SCM(object):
         self.module = query
         self.revision = fragment
         self.use_common = True
+        self.source_cmd = ['make', 'sources']
 
         for scmtype, schemes in SCM.types.items():
             if self.scheme in schemes:
@@ -3983,22 +3983,33 @@ class SCM(object):
         Verify that the host and repository of this SCM is in the provided list of
         allowed repositories.
 
-        allowed is a space-separated list of host:repository[:use_common] tuples.  Incorrectly-formatted
+        allowed is a space-separated list of host:repository[:use_common[:source_cmd]] tuples.  Incorrectly-formatted
         tuples will be ignored.
 
         If use_common is not present, kojid will attempt to checkout a common/ directory from the
         repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
         directory.
+
+        source_cmd is a shell command (args separated with commas instead of spaces) to run before building the srpm.
+        It is generally used to retrieve source files from a remote location.  If no source_cmd is specified,
+        "make sources" is run by default.
         """
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) in (2, 3):
+            if len(scm_tuple) >= 2:
                 if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
                     # SCM host:repository is in the allowed list
                     # check if we specify a value for use_common
-                    if len(scm_tuple) == 3:
+                    if len(scm_tuple) >= 3:
                         if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
                             self.use_common = False
+                    # check if we specify a custom source_cmd
+                    if len(scm_tuple) >= 4:
+                        if scm_tuple[3]:
+                            self.source_cmd = scm_tuple[3].split(',')
+                        else:
+                            # there was nothing after the trailing :, so they don't want to run a source_cmd at all
+                            self.source_cmd = None
                     break
             else:
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)

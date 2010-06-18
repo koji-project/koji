@@ -175,9 +175,11 @@ class Task(object):
         #  - assigned to host_id
         #  - force option is enabled
         state = koji.TASK_STATES[newstate]
-        q = """UPDATE task SET state=%(state)s,host_id=%(host_id)s
-        WHERE id=%(task_id)s"""
-        _dml(q,locals())
+        update = UpdateProcessor('task', clauses=['id=%(task_id)i'], values=locals())
+        update.set(state=state, host_id=host_id)
+        if state == koji.TASK_STATES['OPEN']:
+            update.rawset(start_time='NOW()')
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
         self.runCallbacks('postTaskStateChange', info, 'host_id', host_id)
         return True
@@ -193,10 +195,6 @@ class Task(object):
 
         returns task data if successful, None otherwise"""
         if self.lock(host_id,'OPEN'):
-            #set task start time
-            update = UpdateProcessor('task', clauses=['id=%(id)i'], values=vars(self))
-            update.rawset(start_time='NOW()')
-            update.execute()
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
             query = QueryProcessor(tables=['task'], clauses=['id=%(id)i'], values=vars(self),
@@ -482,23 +480,64 @@ def make_task(method,arglist,**opts):
             raise koji.GenericError, "Parent task (id %(parent)s) is not open" % opts
         #default to a higher priority than parent
         opts.setdefault('priority', pdata['priority'] - 1)
-        for f in ('owner','channel_id','arch'):
+        for f in ('owner', 'arch'):
             opts.setdefault(f,pdata[f])
         opts.setdefault('label',None)
     else:
         opts.setdefault('priority',koji.PRIO_DEFAULT)
         #calling function should enforce priority limitations, if applicable
         opts.setdefault('arch','noarch')
-        opts.setdefault('channel','default')
-        #no labels for top-level tasks
-        #calling function should enforce channel limitations, if applicable
-        opts['channel_id'] = get_channel_id(opts['channel'],strict=True)
         if not context.session.logged_in:
             raise koji.GenericError, 'task must have an owner'
         else:
             opts['owner'] = context.session.user_id
         opts['label'] = None
         opts['parent'] = None
+    #determine channel from policy
+    policy_data = {}
+    policy_data['method'] = method
+    for key in 'arch', 'parent', 'label', 'owner':
+        policy_data[key] = opts[key]
+    policy_data['user_id'] = opts['owner']
+    if 'channel' in opts:
+        policy_data['req_channel'] = opts['channel']
+        req_channel_id = get_channel_id(opts['channel'], strict=True)
+    if method == 'build':
+        # arglist = source, target, [opts]
+        args = koji.decode_args2(arglist, ('source', 'target', 'opts'))
+        policy_data['source'] = args['source']
+        target = get_build_target(args['target'], strict=True)
+        policy_data['target'] = target['name']
+        t_opts = args.get('opts', {})
+        policy_data['scratch'] = t_opts.get('scratch', False)
+    ruleset = context.policy.get('channel')
+    result = ruleset.apply(policy_data)
+    if result is None:
+        logger.warning('Channel policy returned no result, using default')
+        opts['channel_id'] = get_channel_id('default', strict=True)
+    else:
+        try:
+            parts = result.split()
+            if parts[0] == "use":
+                opts['channel_id'] = get_channel_id(parts[1], strict=True)
+            elif parts[0] == "parent":
+                if not opts.get('parent'):
+                    logger.error("Invalid channel policy result (no parent task): %s",
+                                    ruleset.last_rule())
+                    raise koji.GenericError, "invalid channel policy"
+                opts['channel_id'] = pdata['channel_id']
+            elif parts[0] == "req":
+                if 'channel' not in opts:
+                    logger.error('Invalid channel policy result (no channel requested): %s',
+                                    ruleset.last_rule())
+                    raise koji.GenericError, "invalid channel policy"
+                opts['channel_id'] = req_channel_id
+            else:
+                logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
+                raise koji.GenericError, "invalid channel policy"
+        except IndexError:
+            logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
+            raise koji.GenericError, "invalid channel policy"
     #XXX - temporary workaround
     if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
         #not all arches can generate a proper buildroot for all tags
@@ -1337,10 +1376,10 @@ def _tag_build(tag,build,user_id=None,force=False):
     table = 'tag_listing'
     clauses = ('tag_id=%(tag_id)i', 'build_id=%(build_id)i')
     query = QueryProcessor(columns=['build_id'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     #note: tag_listing is unique on (build_id, tag_id, active)
-    if query.fetchSingle():
+    if query.executeOne():
         #already tagged
         if not force:
             raise koji.TagError, "build %s already tagged (%s)" % (nvr,tag['name'])
@@ -1407,7 +1446,7 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     cfg_fields = ('exported','display_name','is_default','uservisible',
                   'description','langonly','biarchonly',)
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1431,11 +1470,11 @@ def grplist_add(taginfo,grpinfo,block=False,force=False,**opts):
     opts.setdefault('uservisible',True)
     # XXX ^^^
     opts['tag_id'] = tag['id']
-    opts['grp_id'] = group['id']
+    opts['group_id'] = group['id']
     opts['blocked'] = block
     #revoke old entry (if present)
     update = UpdateProcessor('group_config', values=opts,
-                clauses=['group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
+                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s'])
     update.make_revoke()
     update.execute()
     #add new entry
@@ -1479,7 +1518,7 @@ def grplist_unblock(taginfo,grpinfo):
     table = 'group_config'
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -1513,7 +1552,7 @@ def grp_pkg_add(taginfo,grpinfo,pkg_name,block=False,force=False,**opts):
     previous = grp_cfg['packagelist'].get(pkg_name,None)
     cfg_fields = ('type','basearchonly','requires')
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1582,7 +1621,7 @@ def grp_pkg_unblock(taginfo,grpinfo,pkg_name):
     grp_id = get_group_id(grpinfo,strict=True)
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'package = %(pkg_name)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -1617,7 +1656,7 @@ def grp_req_add(taginfo,grpinfo,reqinfo,block=False,force=False,**opts):
     previous = grp_cfg['grouplist'].get(req['id'],None)
     cfg_fields = ('type','is_metapkg')
     #prevent user-provided opts from doing anything strange
-    opts = dslice(opts, cfg_fields)
+    opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
         #already there (possibly via inheritance)
         if previous['blocked'] and not force:
@@ -1689,7 +1728,7 @@ def grp_req_unblock(taginfo,grpinfo,reqinfo):
 
     clauses = ('group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'req_id = %(req_id)s')
     query = QueryProcessor(columns=['blocked'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=locals(), opts={'rowlock':True})
     blocked = query.singleValue(strict=False)
     if not blocked:
@@ -1988,8 +2027,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     for repoarch in repo_arches:
         packages.setdefault(repoarch, [])
     for rpminfo in rpms:
-        if (rpminfo['name'].endswith('-debuginfo') or rpminfo['name'].endswith('-debuginfo-common')) \
-                and not with_debuginfo:
+        if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
         arch = rpminfo['arch']
         repoarch = koji.canonArch(arch)
@@ -2375,6 +2413,17 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
                            tables=['build_target_config'], joins=joins, clauses=clauses,
                            values=locals(), opts=queryOpts)
     return query.execute()
+
+def get_build_target(info, event=None, strict=False):
+    """Return the build target with the given name or ID.
+    If there is no matching build target, return None."""
+    targets = get_build_targets(info=info, event=event)
+    if len(targets) == 1:
+        return targets[0]
+    elif strict:
+        raise koji.GenericError, 'No matching build target found: %s' % info
+    else:
+        return None
 
 def lookup_name(table,info,strict=False,create=False):
     """Find the id and name in the table associated with info.
@@ -5003,9 +5052,9 @@ def add_group_member(group, user, strict=True):
     table = 'user_groups'
     clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
     query = QueryProcessor(columns=['user_id'], tables=[table],
-                           clauses=('active = TRUE')+clauses,
+                           clauses=('active = TRUE',)+clauses,
                            values=data, opts={'rowlock':True})
-    row = query.fetchSingle(strict=False)
+    row = query.executeOne()
     if row:
         if not strict:
             return
@@ -5562,6 +5611,25 @@ class ImportedTest(koji.policy.BaseSimpleTest):
                 return True
         #otherwise...
         return False
+
+class ChildTaskTest(koji.policy.BoolTest):
+    name = 'is_child_task'
+    field = 'parent'
+
+class MethodTest(koji.policy.MatchTest):
+    name = 'method'
+    field = 'method'
+
+class UserTest(koji.policy.MatchTest):
+    """Checks username against glob patterns"""
+    name = 'user'
+    field = '_username'
+    def run(self, data):
+        user = policy_get_user(data)
+        if not user:
+            return False
+        data[self.field] = user['name']
+        return super(UserTest, self).run(data)
 
 class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
     """Check if user owns the build"""
@@ -7410,18 +7478,7 @@ class RootExports(object):
     editBuildTarget = staticmethod(edit_build_target)
     deleteBuildTarget = staticmethod(delete_build_target)
     getBuildTargets = staticmethod(get_build_targets)
-
-    def getBuildTarget(self, info, event=None, strict=False):
-        """Return the build target with the given name or ID.
-        If there is no matching build target, return None."""
-        targets = get_build_targets(info=info, event=event)
-        if len(targets) == 1:
-            return targets[0]
-        else:
-            if strict:
-                raise koji.GenericError, 'No matching build target found: %s' % info
-            else:
-                return None
+    getBuildTarget = staticmethod(get_build_target)
 
     def taskFinished(self,taskId):
         task = Task(taskId)
@@ -7484,6 +7541,12 @@ class RootExports(object):
             createdAfter[float or str]: limit to tasks whose create_time is after the
                                         given date, in either float (seconds since the epoch)
                                         or str (ISO) format
+            startedBefore[float or str]: limit to tasks whose start_time is before the
+                                         given date, in either float (seconds since the epoch)
+                                         or str (ISO) format
+            startedAfter[float or str]: limit to tasks whose start_time is after the
+                                        given date, in either float (seconds since the epoch)
+                                        or str (ISO) format
             completeBefore[float or str]: limit to tasks whose completion_time is before
                                          the given date, in either float (seconds since the epoch)
                                          or str (ISO) format
@@ -7496,12 +7559,14 @@ class RootExports(object):
 
         tables = ['task']
         joins = ['users ON task.owner = users.id']
-        fields = ('task.id','state','create_time','completion_time','channel_id',
-                  'host_id','parent','label','waiting','awaited','owner','method',
-                  'arch','priority','weight','request','result', 'users.name', 'users.usertype')
-        aliases = ('id','state','create_time','completion_time','channel_id',
-                   'host_id','parent','label','waiting','awaited','owner','method',
-                   'arch','priority','weight','request','result', 'owner_name', 'owner_type')
+        flist = Task.fields + (
+                    ('task.request', 'request'),
+                    ('task.result', 'result'),
+                    ('users.name', 'owner_name'),
+                    ('users.usertype', 'owner_type'),
+                    )
+        fields = [f[0] for f in flist]
+        aliases = [f[1] for f in flist]
 
         conditions = []
         for f in ['arch','state']:
@@ -7515,26 +7580,20 @@ class RootExports(object):
                     conditions.append('%s = %%(%s)i' % (f, f))
         if opts.has_key('method'):
             conditions.append('method = %(method)s')
-        if opts.get('createdBefore') != None:
-            createdBefore = opts['createdBefore']
-            if not isinstance(createdBefore, str):
-                opts['createdBefore'] = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
-            conditions.append('create_time < %(createdBefore)s')
-        if opts.get('createdAfter') != None:
-            createdAfter = opts['createdAfter']
-            if not isinstance(createdAfter, str):
-                opts['createdAfter'] = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
-            conditions.append('create_time > %(createdAfter)s')
-        if opts.get('completeBefore') != None:
-            completeBefore = opts['completeBefore']
-            if not isinstance(completeBefore, str):
-                opts['completeBefore'] = datetime.datetime.fromtimestamp(completeBefore).isoformat(' ')
-            conditions.append('completion_time < %(completeBefore)s')
-        if opts.get('completeAfter') != None:
-            completeAfter = opts['completeAfter']
-            if not isinstance(completeAfter, str):
-                opts['completeAfter'] = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
-            conditions.append('completion_time > %(completeAfter)s')
+        time_opts = [
+                ['createdBefore', 'create_time', '<'],
+                ['createdAfter', 'create_time', '>'],
+                ['startedBefore', 'start_time', '<'],
+                ['startedAfter', 'start_time', '>'],
+                ['completedBefore', 'completion_time', '<'],
+                ['completedAfter', 'completion_time', '>'],
+            ]
+        for key, field, cmp in time_opts:
+            if opts.get(key) != None:
+                value = opts[key]
+                if not isinstance(value, str):
+                    opts[key] = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                conditions.append('%(field)s %(cmp)s %%(%(key)s)s' % locals())
 
         query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
                                clauses=conditions, values=opts, opts=queryOpts)

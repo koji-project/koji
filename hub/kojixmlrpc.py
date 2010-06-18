@@ -246,8 +246,8 @@ class ModXMLRPCRequestHandler(object):
             self.logger.debug("Handling method %s for session %s (#%s)",
                             method, context.session.id, context.session.callnum)
             if method != 'uploadFile':
-                self.logger.debug("Params: %s\n", pprint.pformat(params))
-                self.logger.debug("Opts: %s\n", pprint.pformat(opts))
+                self.logger.debug("Params: %s", pprint.pformat(params))
+                self.logger.debug("Opts: %s", pprint.pformat(opts))
             start = time.time()
 
         ret = func(*params,**opts)
@@ -297,7 +297,7 @@ class ModXMLRPCRequestHandler(object):
         req.content_type = "text/xml"
         req.set_content_length(len(response))
         req.write(response)
-        self.logger.debug("Returning %d bytes after %f seconds\n", len(response),
+        self.logger.debug("Returning %d bytes after %f seconds", len(response),
                         time.time() - start)
 
 
@@ -367,11 +367,11 @@ def load_config(req):
 
         ['AuthPrincipal', 'string', None],
         ['AuthKeytab', 'string', None],
-        ['ProxyPrincipals', 'string', None],
+        ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
 
         ['DNUsernameComponent', 'string', 'CN'],
-        ['ProxyDNs', 'string', None],
+        ['ProxyDNs', 'string', ''],
 
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
@@ -444,7 +444,7 @@ def load_plugins(opts):
     logger = logging.getLogger('koji.plugins')
     tracker = koji.plugin.PluginTracker(path=opts['PluginPath'].split(':'))
     for name in opts['Plugins'].split():
-        logger.info('Loading plugin: %s\n', name)
+        logger.info('Loading plugin: %s', name)
         try:
             tracker.load(name)
         except Exception:
@@ -466,6 +466,11 @@ _default_policies = {
     'package_list' : '''
             has_perm admin :: allow
             all :: deny
+            ''',
+    'channel' : '''
+            has req_channel :: req
+            is_child_task :: parent
+            all :: use default
             '''
 }
 

@@ -26,6 +26,11 @@ try:
     import krbV
 except ImportError:
     pass
+try:
+    import ast
+except ImportError:
+    ast = None
+    pass
 import ConfigParser
 import base64
 import koji
@@ -1003,21 +1008,31 @@ def handle_call(options, session, args):
     usage = _("usage: %prog call [options] name [arg...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
+    parser.add_option("--kwargs", help=_("Specify keyword arguments as a dictionary (implies --python)"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify the name of the XML-RPC method"))
         assert False
+    if options.kwargs:
+        options.python = True
+    if options.python and ast is None:
+        parser.error(_("The ast module is required to read python syntax"))
     activate_session(session)
     name = args[0]
     non_kw = []
     kw = {}
-
-    for arg in args[1:]:
-        if arg.find('=') != -1:
-            key, value = arg.split('=', 1)
-            kw[key] = arg_filter(value)
-        else:
-            non_kw.append(arg_filter(arg))
+    if options.python:
+        non_kw = [ast.literal_eval(a) for a in args[1:]]
+        if options.kwargs:
+            kw = ast.literal_eval(options.kwargs)
+    else:
+        for arg in args[1:]:
+            if arg.find('=') != -1:
+                key, value = arg.split('=', 1)
+                kw[key] = arg_filter(value)
+            else:
+                non_kw.append(arg_filter(arg))
     pprint.pprint(getattr(session, name).__call__(*non_kw, **kw))
 
 def anon_handle_mock_config(options, session, args):
@@ -1810,7 +1825,7 @@ def handle_disable_user(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
-        parser.error(_("You must specify the username of the user to enable"))
+        parser.error(_("You must specify the username of the user to disable"))
     elif len(args) > 1:
         parser.error(_("This command only accepts one argument (username)"))
     username = args[0]
@@ -4145,8 +4160,10 @@ def handle_spin_livecd(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--nowait", action="store_true",
-        help=_("Don't wait on livecd creation"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the livecd creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on livecd creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
@@ -4184,8 +4201,10 @@ def handle_spin_appliance(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--nowait", action="store_true",
-        help=_("Do not wait on appliance creation."))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the appliance creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on appliance creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload."))
     parser.add_option("--background", action="store_true",
@@ -4271,13 +4290,17 @@ def _build_image(options, task_opts, session, args, img_type):
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
+    # don't send the 'wait' option to the hub
+    wait = task_opts.wait
+    del task_opts.wait
+
     # finally, create the task.
     task_id = session.buildImage(arch, target, ksfile, img_type, 
                                   opts=task_opts, priority=priority)
 
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if _running_in_bg() or task_opts.nowait:
+    if not wait and (_running_in_bg() or wait is False):
         return
     else:
         session.logout()
@@ -4354,10 +4377,14 @@ def handle_set_task_priority(options, session, args):
     if options.priority is None:
         parser.error(_("You must specify --priority"))
         assert False
+    try:
+        tasks = [int(a) for a in args]
+    except ValueError:
+        parser.error(_("Task numbers must be integers"))
 
     activate_session(session)
 
-    for task_id in args:
+    for task_id in tasks:
         session.setTaskPriority(task_id, options.priority, options.recurse)
 
 def handle_list_tasks(options, session, args):
@@ -4553,7 +4580,7 @@ def handle_make_task(options, session, args):
             taskopts[key] = value
     task_id = session.makeTask(method=args[0],
                                arglist=map(arg_filter,args[1:]),
-                               opts=taskopts)
+                               **taskopts)
     print "Created task id %d" % task_id
     if _running_in_bg() or not options.watch:
         return
@@ -4780,7 +4807,7 @@ def anon_handle_download_build(options, session, args):
         pg = progress.TextMeter()
     
     for rpm in rpms:
-        if rpm['name'].endswith('-debuginfo') and not suboptions.debuginfo:
+        if not suboptions.debuginfo and koji.is_debuginfo(rpm['name']):
             continue
 
         if suboptions.key:
