@@ -4153,10 +4153,14 @@ def handle_set_task_priority(options, session, args):
     if options.priority is None:
         parser.error(_("You must specify --priority"))
         assert False
+    try:
+        tasks = [int(a) for a in args]
+    except ValueError:
+        parser.error(_("Task numbers must be integers"))
 
     activate_session(session)
 
-    for task_id in args:
+    for task_id in tasks:
         session.setTaskPriority(task_id, options.priority, options.recurse)
 
 def handle_list_tasks(options, session, args):
