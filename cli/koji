@@ -2077,7 +2077,10 @@ def anon_handle_latest_pkg(options, session, args):
             else:
                 fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         else:
-            data = session.getLatestBuilds(args[0], package=pkg, type=options.type)
+            kwargs = {'package': pkg}
+            if options.type:
+                kwargs['type'] = options.type
+            data = session.getLatestBuilds(args[0], **kwargs)
             if options.paths:
                 if options.type == 'maven':
                     for x in data:
@@ -2213,7 +2216,8 @@ def anon_handle_list_tagged(options, session, args):
     if options.sigs:
         opts['rpmsigs'] = True
         options.rpms = True
-    opts['type'] = options.type
+    if options.type:
+        opts['type'] = options.type
     event = koji.util.eventFromOpts(session, options)
     if event:
         opts['event'] = event['id']
