@@ -2524,6 +2524,8 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     """Create a new tag"""
 
     context.session.assertPerm('admin')
+    if not context.opts.get('EnableMaven') and (maven_support or maven_include_all):
+        raise koji.GenericError, "Maven support not enabled"
 
     #see if there is already a tag by this name (active)
     if get_tag(name):
@@ -2611,6 +2613,9 @@ def edit_tag(tagInfo, **kwargs):
     """
 
     context.session.assertPerm('admin')
+    if not context.opts.get('EnableMaven') \
+                and dslice(kwargs, ['maven_support','maven_include_all'], strict=False):
+        raise koji.GenericError, "Maven support not enabled"
 
     tag = get_tag(tagInfo, strict=True)
     if kwargs.has_key('perm'):
@@ -5966,6 +5971,8 @@ class RootExports(object):
 
         Returns the task ID
         """
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         if not opts:
             opts = {}
         taskOpts = {}
@@ -5995,6 +6002,8 @@ class RootExports(object):
         returns the task ID
         """
         context.session.assertPerm('admin')
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
 
         if not opts:
             opts = {}
@@ -6371,6 +6380,8 @@ class RootExports(object):
         type: type of the archive being imported.  Currently supported archive types: maven
         typeInfo: dict of type-specific information
         """
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         if type == 'maven':
             context.session.assertPerm('maven-import')
             buildinfo = get_build(buildinfo, strict=True)
@@ -6402,6 +6413,8 @@ class RootExports(object):
         on the server (relative to the work/ directory).
         """
         context.session.assertPerm('admin')
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         build = get_build(build_info)
         if not build:
             build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
@@ -8247,6 +8260,8 @@ class BuildRoot(object):
         """Update the list of archives in a buildroot.
         If project is True, the archives are project dependencies.  If False, they dependencies required to setup the
         build environment."""
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         if self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         current = dict([(r['id'], 1) for r in self.getArchiveList()])
@@ -8654,6 +8669,8 @@ class HostExports(object):
         """Create a new in-progress Maven build
            Synthesize the release number by taking the (integer) release of the
            last successful build and incrementing it."""
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         host = Host()
         host.verify()
         task = Task(task_id)
@@ -8695,6 +8712,8 @@ class HostExports(object):
 
     def completeMavenBuild(self, task_id, build_id, maven_results, rpm_results):
         """Complete the Maven build."""
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         host = Host()
         host.verify()
         task = Task(task_id)
@@ -8750,6 +8769,8 @@ class HostExports(object):
     def importWrapperRPMs(self, task_id, build_id, rpm_results):
         """Import the wrapper rpms and associate them with the given build.  Any existing
            rpms are deleted before import."""
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         host = Host()
         host.verify()
         task = Task(task_id)
@@ -8903,6 +8924,8 @@ class HostExports(object):
         return br.updateList(rpmlist)
 
     def updateMavenBuildRootList(self, brootid, task_id, mavenlist, ignore=None, project=False):
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
         host = Host()
         host.verify()
         Task(task_id).assertHost(host.id)

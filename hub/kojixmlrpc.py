@@ -391,6 +391,7 @@ def load_config(req):
         ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s %(name)s: %(message)s'],
 
         ['MissingPolicyOk', 'boolean', True],
+        ['EnableMaven', 'boolean', True],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],
