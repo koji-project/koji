@@ -545,9 +545,9 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return _parseStatus(rv, 'mock') + msg
 
-    def build_srpm(self, specfile, sourcedir, source_cmd, make_sources=True):
+    def build_srpm(self, specfile, sourcedir, source_cmd):
         session.host.setBuildRootState(self.id,'BUILDING')
-        if source_cmd and make_sources:
+        if source_cmd:
             # call the command defined by source_cmd in the chroot so any required files not stored in
             # the SCM can be retrieved
             chroot_sourcedir = sourcedir[len(self.rootdir()):]
@@ -2687,7 +2687,7 @@ class WrapperRPMTask(BaseTaskHandler):
 
         #build srpm
         self.logger.debug("Running srpm build")
-        buildroot.build_srpm(specfile, specdir, make_sources=False)
+        buildroot.build_srpm(specfile, specdir, None)
 
         srpms = glob.glob('%s/*.src.rpm' % buildroot.resultdir())
         if len(srpms) == 0:
