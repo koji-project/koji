@@ -2050,7 +2050,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.write(comps)
     fo.close()
 
-    if tinfo['maven_support']:
+    if context.opts.get('EnableMaven') and tinfo['maven_support']:
         maven_builds = dict([(build['id'], build) for build in maven_tag_packages(tinfo, event_id)])
     
     #link packages
@@ -2100,7 +2100,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                     blocklist.write('\n')
                 blocklist.close()
 
-    if tinfo['maven_support']:
+    if context.opts.get('EnableMaven') and tinfo['maven_support']:
         artifact_dirs = {}
         for build in maven_builds.itervalues():
             build_maven_info = {'group_id': build['maven_group_id'],
@@ -6121,6 +6121,9 @@ class RootExports(object):
 
     def getAPIVersion(self):
         return koji.API_VERSION
+
+    def mavenEnabled(self):
+        return bool(context.opts.get('EnableMaven'))
 
     def showSession(self):
         return "%s" % context.session
