@@ -67,9 +67,9 @@ class HasTest(BaseSimpleTest):
 
     def __init__(self, str):
         try:
-            self.field = str.split(None, 1)[1]
+            self.field = str.split()[1]
         except IndexError:
-            raise koji.GenericError, "Empty python expression in policy"
+            raise koji.GenericError, "Invalid or missing field in policy test"
 
     def run(self, data):
         return self.field in data
