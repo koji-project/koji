@@ -1,16 +1,15 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define baserelease 2
+%define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if "x%{?testbuild}" == "x1"
 %define release %{baserelease}.%(date +%%Y%%m%%d.%%H%%M.%%S)
 %else
 %define release %{baserelease}
 %endif
-%define meadrelease .mead.1
 Name: koji
-Version: 1.3.2
-Release: %{release}%{meadrelease}%{?dist}
+Version: 1.4
+Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
 Summary: Build system tools
@@ -197,6 +196,24 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Tue Jul  1 2010 Mike McLean <mikem at redhat.com> - 1.4-1
+- Merge mead branch: support for building jars with Maven *
+- support for building appliance images *
+- soft dependencies for LiveCD/Appliance features
+- smarter prioritization of repo regenerations
+- package list policy to determine if package list changes are allowed
+- channel policy to determine which channel a task is placed in
+- edit host data via webui
+- description and comment fields for hosts *
+- cleaner log entries for kojihub
+- track user data in versioned tables *
+- allow setting retry parameters for the cli
+- track start time for tasks *
+- allow packages built from the same srpm to span multiple external repos
+- make the command used to fetch sources configuable per repo
+- kojira: remove unexpected directories
+- schema changes to support starred items
+
 * Tue Nov 10 2009 Mike Bonnet <mikeb@redhat.com> - 1.3.2-1
 - support for LiveCD creation
 - new event-based callback system
