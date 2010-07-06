@@ -65,6 +65,8 @@ def _genHTML(req, fileName):
     else:
         req._values['currentUser'] = None
     req._values['authToken'] = _genToken(req)
+    if not req._values.has_key('mavenEnabled'):
+        req._values['mavenEnabled'] = req._session.mavenEnabled()
 
     tmpl_class = TEMPLATES.get(fileName)
     if not tmpl_class:

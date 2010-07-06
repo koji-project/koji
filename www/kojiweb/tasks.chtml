@@ -79,7 +79,11 @@ All
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
           <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
           #for $task_type in $alltasks
+          #if $task_type in ('maven', 'buildMaven') and not $mavenEnabled
+          #continue
+          #else
           <option value="$task_type" #if $method == $task_type then 'selected="selected"' else ''#>$task_type</option>
+          #end if
           #end for
         </select>
         </td><td>

@@ -42,14 +42,19 @@
           #end for
         </select>
         </td></tr>
-        <tr><td>
+	#if $tag or $mavenEnabled
+        <tr>
+	#if $mavenEnabled
+	<td>
         <strong>Type</strong>:
-        </td><td>
+        </td>
+	<td>
         <select name="type" class="filterlist" onchange="javascript: window.location='builds?type=' + this.value + '$util.passthrough_except($self, 'type')';">
           <option value="all" #if not $type then 'selected="selected"' else ''#>all</option>
           <option value="maven" #if $type == 'maven' then 'selected="selected"' else ''#>Maven</option>
         </select>
         </td>
+	#end if
         #if $tag
         <td>
         <strong>Inherited</strong>:
@@ -61,6 +66,7 @@
         </td>
         #end if
         </tr>
+	#end if
         </table>
       </td>
     </tr>

@@ -837,17 +837,21 @@ def tagcreate(req):
     server = _getServer(req)
     _assertLogin(req)
 
+    mavenEnabled = server.mavenEnabled()
+
     form = req.form
 
     if form.has_key('add'):
         params = {}
         name = form['name'].value
         params['arches'] = form['arches'].value
-        params['locked'] = form.has_key('locked')
+        params['locked'] = bool(form.has_key('locked'))
         permission = form['permission'].value
         if permission != 'none':
             params['perm'] = int(permission)
-        params['maven_support'] = form.has_key('maven_support')
+        if mavenEnabled:
+            params['maven_support'] = bool(form.has_key('maven_support'))
+            params['maven_include_all'] = bool(form.has_key('maven_include_all'))
 
         tagID = server.createTag(name, **params)
 
@@ -857,6 +861,8 @@ def tagcreate(req):
     else:
         values = _initValues(req, 'Add Tag', 'tags')
 
+        values['mavenEnabled'] = mavenEnabled
+
         values['tag'] = None
         values['permissions'] = server.getAllPerms()
 
@@ -865,6 +871,8 @@ def tagcreate(req):
 def tagedit(req, tagID):
     server = _getServer(req)
     _assertLogin(req)
+
+    mavenEnabled = server.mavenEnabled()
 
     tagID = int(tagID)
     tag = server.getTag(tagID)
@@ -877,12 +885,13 @@ def tagedit(req, tagID):
         params = {}
         params['name'] = form['name'].value
         params['arches'] = form['arches'].value
-        params['locked'] = form.has_key('locked')
+        params['locked'] = bool(form.has_key('locked'))
         permission = form['permission'].value
         if permission != 'none':
             params['perm'] = int(permission)
-        params['maven_support'] = form.has_key('maven_support')
-        params['maven_include_all'] = form.has_key('maven_include_all')
+        if mavenEnabled:
+            params['maven_support'] = bool(form.has_key('maven_support'))
+            params['maven_include_all'] = bool(form.has_key('maven_include_all'))
 
         server.editTag2(tag['id'], **params)
         
@@ -891,6 +900,8 @@ def tagedit(req, tagID):
         mod_python.util.redirect(req, 'taginfo?tagID=%i' % tag['id'])
     else:
         values = _initValues(req, 'Edit Tag', 'tags')
+
+        values['mavenEnabled'] = mavenEnabled
 
         values['tag'] = tag
         values['permissions'] = server.getAllPerms()

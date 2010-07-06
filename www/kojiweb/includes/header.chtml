@@ -56,7 +56,9 @@
               <option value="user">Users</option>
               <option value="host">Hosts</option>
               <option value="rpm">RPMs</option>
+              #if $mavenEnabled
               <option value="maven">Maven Artifacts</option>
+              #end if
             </select>
             <input type="text" name="terms"/>
             <input type="submit" value="Search"/>

@@ -25,12 +25,14 @@
     <tr>
       <th>Permission</th><td>#if $tag.perm_id then $allPerms[$tag.perm_id] else 'none'#</td>
     </tr>
+    #if $mavenEnabled
     <tr>
       <th>Maven Support?</th><td class="$str($tag.maven_support).lower()">#if $tag.maven_support then 'yes' else 'no'#</td>
     </tr>
     <tr>
       <th>Include All Maven Builds?</th><td class="$str($tag.maven_include_all).lower()">#if $tag.maven_include_all then 'yes' else 'no'#</td>
     </tr>
+    #end if
     <tr>
       <th>Inheritance</th>
       <td class="tree">
