@@ -4294,17 +4294,20 @@ def _build_image(options, task_opts, session, args, img_type):
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
-    # don't send the 'wait' option to the hub
-    wait = task_opts.wait
-    del task_opts.wait
+    hub_opts = {}
+    for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
+                'name', 'version', 'release', 'vmem', 'vcpu', 'format'):
+        val = getattr(task_opts, opt, None)
+        if val is not None:
+            hub_opts[opt] = val
 
     # finally, create the task.
     task_id = session.buildImage(arch, target, ksfile, img_type, 
-                                  opts=task_opts, priority=priority)
+                                  opts=hub_opts, priority=priority)
 
     print "Created task:", task_id
     print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if not wait and (_running_in_bg() or wait is False):
+    if not task_opts.wait and (_running_in_bg() or task_opts.wait is False):
         return
     else:
         session.logout()

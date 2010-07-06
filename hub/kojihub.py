@@ -6050,10 +6050,8 @@ class RootExports(object):
             task_type = 'createLiveCD'
         elif img_type == 'appliance':
             task_type = 'createAppliance'
-
-        for oname, oval in opts.items():
-            if oval == None:
-                del opts[oname]
+        else:
+            raise koji.GenericError, 'unsupported image type: %s' % img_type
 
         return make_task(task_type, [arch, target, ksfile, opts], **taskOpts)
 
