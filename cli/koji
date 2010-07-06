@@ -1140,7 +1140,7 @@ def handle_disable_host(options, session, args):
     session.multicall = True
     for host in args:
         session.disableHost(host)
-        if options.comment:
+        if options.comment is not None:
             session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
 
@@ -1167,7 +1167,7 @@ def handle_enable_host(options, session, args):
     session.multicall = True
     for host in args:
         session.enableHost(host)
-        if options.comment:
+        if options.comment is not None:
             session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
 
