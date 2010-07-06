@@ -5984,22 +5984,25 @@ SELECT %(col_str)s
         # Don't bother sorting if we're just counting
         if self.opts.get('countOnly'):
             return ''
-        order = self.opts.get('order')
-        if order:
-            if order.startswith('-'):
-                order = order[1:]
-                direction = ' DESC'
-            else:
-                direction = ''
-            # Check if we're ordering by alias first
-            orderCol = self.colsByAlias.get(order)
-            if orderCol:
-                pass
-            elif order in self.columns:
-                orderCol = order
-            else:
-                raise StandardError, 'invalid order: ' + order
-            return 'ORDER BY ' + orderCol + direction
+        order_opt = self.opts.get('order')
+        if order_opt:
+            order_exprs = []
+            for order in order_opt.split(','):
+                if order.startswith('-'):
+                    order = order[1:]
+                    direction = ' DESC'
+                else:
+                    direction = ''
+                # Check if we're ordering by alias first
+                orderCol = self.colsByAlias.get(order)
+                if orderCol:
+                    pass
+                elif order in self.columns:
+                    orderCol = order
+                else:
+                    raise StandardError, 'invalid order: ' + order
+                order_exprs.append(orderCol + direction)
+            return 'ORDER BY ' + ', '.join(order_exprs)
         else:
             return ''
 
