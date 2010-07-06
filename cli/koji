@@ -4305,13 +4305,14 @@ def _build_image(options, task_opts, session, args, img_type):
     task_id = session.buildImage(arch, target, ksfile, img_type, 
                                   opts=hub_opts, priority=priority)
 
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
-    if not task_opts.wait and (_running_in_bg() or task_opts.wait is False):
-        return
-    else:
+    if not options.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session,[task_id])
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+    else:
+        return
 
 def handle_free_task(options, session, args):
     "[admin] Free a task"
