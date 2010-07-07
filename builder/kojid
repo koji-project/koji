@@ -1077,7 +1077,7 @@ class TaskManager(object):
                 self.logger.debug("task is assigned")
                 if self.host_id == task['host_id']:
                     #assigned to us, we can take it regardless
-                    if self.takeTask(task['id']):
+                    if self.takeTask(task):
                         return True
             elif task['state'] == koji.TASK_STATES['FREE']:
                 bin = "%(channel_id)s:%(arch)s" % task
@@ -1096,7 +1096,7 @@ class TaskManager(object):
                     #decline for now and give the upper half a chance
                     return False
                 #otherwise, we attempt to open the task
-                if self.takeTask(task['id']):
+                if self.takeTask(task):
                     return True
             else:
                 #should not happen
@@ -1315,15 +1315,15 @@ class TaskManager(object):
         #               io (iostat/vmstat)
         #               network (netstat?)
         global options
-        hostdata = session.host.getHost()
-        self.logger.debug('hostdata: %r' % hostdata)
-        if not hostdata['enabled']:
+        self.hostdata = session.host.getHost()
+        self.logger.debug('hostdata: %r' % self.hostdata)
+        if not self.hostdata['enabled']:
             self.status = "Host is disabled"
             self.logger.info(self.status)
             return False
-        if self.task_load > hostdata['capacity']:
+        if self.task_load > self.hostdata['capacity']:
             self.status = "Over capacity"
-            self.logger.info("Task load (%.2f) exceeds capacity (%.2f)" % (self.task_load, hostdata['capacity']))
+            self.logger.info("Task load (%.2f) exceeds capacity (%.2f)" % (self.task_load, self.hostdata['capacity']))
             return False
         if len(self.tasks) >= options.maxjobs:
             # This serves as a backup to the capacity check and prevents
@@ -1345,18 +1345,35 @@ class TaskManager(object):
         #XXX - add more checks
         return True
 
-    def takeTask(self,task_id):
+    def takeTask(self,task):
         """Attempt to open the specified task
 
         Returns True if successful, False otherwise
         """
-        self.logger.info("Attempting to take task %s" %task_id)
-        data = session.host.openTask(task_id)
+        self.logger.info("Attempting to take task %s" % task['id'])
+        if task['method'] in ('buildArch', 'buildSRPMFromSCM', 'buildMaven') and \
+               task['arch'] == 'noarch':
+            task_info = session.getTaskInfo(task['id'], request=True)
+            if task['method'] == 'buildMaven':
+                tag = task_info['request'][1]
+            else:
+                tag_id = task_info['request'][1]
+                tag = session.getTag(tag_id)
+            if tag and tag['arches']:
+                tag_arches = [koji.canonArch(a) for a in tag['arches'].split()]
+                host_arches = self.hostdata['arches'].split()
+                if not set(tag_arches).intersection(host_arches):
+                    self.logger.info('Skipping task %s (%s) because tag arches (%s) and ' \
+                                     'host arches (%s) are disjoint' % \
+                                     (task['id'], task['method'],
+                                      ', '.join(tag_arches), ', '.join(host_arches)))
+                    return False
+        data = session.host.openTask(task['id'])
         if data is None:
             self.logger.warn("Could not open")
             return False
         if not data.has_key('request') or data['request'] is None:
-            self.logger.warn("Task '%s' has no request" % task_id)
+            self.logger.warn("Task '%s' has no request" % task['id'])
             return False
         id = data['id']
         request = data['request']
@@ -1374,7 +1391,7 @@ class TaskManager(object):
         else:
             handler = handlerClass(id,method,params)
         # set weight
-        session.host.setTaskWeight(task_id,handler.weight())
+        session.host.setTaskWeight(id,handler.weight())
         if handler.Foreground:
             self.logger.info("running task in foreground")
             handler.setManager(self)

@@ -538,20 +538,6 @@ def make_task(method,arglist,**opts):
         except IndexError:
             logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
             raise koji.GenericError, "invalid channel policy"
-    #XXX - temporary workaround
-    if method in ('buildArch', 'buildSRPMFromSCM') and opts['arch'] == 'noarch':
-        #not all arches can generate a proper buildroot for all tags
-        tag = get_tag(arglist[1])
-        if not tag['arches']:
-            raise koji.BuildError, 'no arches defined for tag %s' % tag['name']
-        # canonicalize tagarches, since get_all_arches() is canonical but
-        # non-canonical arches may be set in tag['arches']
-        tagarches = [koji.canonArch(a) for a in tag['arches'].split()]
-        for a in get_all_arches():
-            if a not in tagarches:
-                random.seed()
-                opts['arch'] = random.choice(tagarches)
-                break
 
     # encode xmlrpc request
     opts['request'] = xmlrpclib.dumps(tuple(arglist), methodname=method,
@@ -1922,7 +1908,7 @@ def get_all_arches():
 def get_active_tasks():
     """Return data on tasks that are yet to be run"""
     c = context.cnx.cursor()
-    fields = ['id','state','channel_id','host_id','arch']
+    fields = ['id','state','channel_id','host_id','arch', 'method']
     q = """
     SELECT %s FROM task
     WHERE state IN (%%(FREE)s,%%(ASSIGNED)s)
