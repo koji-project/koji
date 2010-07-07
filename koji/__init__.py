@@ -1488,6 +1488,7 @@ class ClientSession(object):
         if self.opts.get('timeout'):
             self.proxyOpts['timeout'] = self.opts['timeout']
         self.baseurl = baseurl
+        self.origurl = None
         self.setSession(sinfo)
         self.multicall = False
         self._calls = []
@@ -1501,8 +1502,9 @@ class ClientSession(object):
             self.logged_in = False
             self.callnum = None
             # undo state changes made by ssl_login()
-            if self.baseurl.startswith('https:'):
-                self.baseurl = self.baseurl.replace('https:', 'http:')
+            if self.origurl:
+                self.baseurl = self.origurl
+                self.origurl = None
             self.opts.pop('certs', None)
             self.proxyOpts.pop('certs', None)
             self.opts.pop('timeout', None)
@@ -1612,7 +1614,8 @@ class ClientSession(object):
 
     def ssl_login(self, cert, ca, serverca, proxyuser=None):
         if not self.baseurl.startswith('https:'):
-            self.baseurl = self.baseurl.replace('http:', 'https:')
+            self.origurl = self.baseurl
+            self.baseurl = self.baseurl.replace('http:', 'https:', 1)
         
         certs = {}
         certs['key_and_cert'] = cert
