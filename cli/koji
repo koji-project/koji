@@ -177,7 +177,17 @@ def get_options():
                     #options *can* be set via the config file. Such options should
                     #not have a default value set in the option parser.
                     if defaults.has_key(name):
-                        defaults[name] = value
+                        if name in ('anon_retry', 'offline_retry'):
+                            defaults[name] = config.getboolean(progname, name)
+                        elif name in ('max_retries', 'retry_interval',
+                                      'offline_retry_interval'):
+                            try:
+                                defaults[name] = int(value)
+                            except ValueError:
+                                parser.error("value for %s config option must be a valid integer" % name)
+                                assert False
+                        else:
+                            defaults[name] = value
     for name, value in defaults.iteritems():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
