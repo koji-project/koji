@@ -1620,7 +1620,8 @@ class ClientSession(object):
         certs['peer_ca_cert'] = serverca
 
         # 60 second timeout during login
-        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl, certs, timeout=60, **self.proxyOpts)
+        # Append /login to the URL so we can only require client certs to be sent on login requests
+        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl + '/ssllogin', certs, timeout=60, **self.proxyOpts)
         sinfo = self.callMethod('sslLogin', proxyuser)
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
