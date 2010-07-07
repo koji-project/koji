@@ -4860,7 +4860,7 @@ def anon_handle_wait_repo(options, session, args):
                       help=_("Check that the given build (or a later build of the same package) is in the newly-generated repo (may be used multiple times)"))
     parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
     parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
-    parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"))
+    parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"), default=options.quiet)
     (suboptions, args) = parser.parse_args(args)
 
     start = time.time()
