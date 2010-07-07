@@ -157,6 +157,7 @@ def get_options():
         'anon_retry' : None,
         'offline_retry' : None,
         'offline_retry_interval' : None,
+        'poll_interval': 5,
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
         'serverca': '~/.koji/serverca.crt', 
@@ -180,7 +181,7 @@ def get_options():
                         if name in ('anon_retry', 'offline_retry'):
                             defaults[name] = config.getboolean(progname, name)
                         elif name in ('max_retries', 'retry_interval',
-                                      'offline_retry_interval'):
+                                      'offline_retry_interval', 'poll_interval'):
                             try:
                                 defaults[name] = int(value)
                             except ValueError:
@@ -363,6 +364,7 @@ def display_task_results(tasks):
             print '%s has not completed' % task_label
 
 def watch_tasks(session,tasklist,quiet=False):
+    global options
     if not tasklist:
         return
     if not quiet:
@@ -399,7 +401,7 @@ def watch_tasks(session,tasklist,quiet=False):
                     display_task_results(tasks)
                 break
 
-            time.sleep(1)
+            time.sleep(options.poll_interval)
     except (KeyboardInterrupt):
         if tasks and not quiet:
             print \
@@ -409,7 +411,8 @@ Running Tasks:
         rv = 1
     return rv
 
-def watch_logs(session, tasklist, options):
+def watch_logs(session, tasklist, opts):
+    global options
     print "Watching logs (this may be safely interrupted)..."
     def _isDone(session, taskId):
         info = session.getTaskInfo(taskId)
@@ -432,8 +435,8 @@ def watch_logs(session, tasklist, options):
 
                 output = session.listTaskOutput(task_id)
 
-                if options.log:
-                    logs = [filename for filename in output if filename == options.log]
+                if opts.log:
+                    logs = [filename for filename in output if filename == opts.log]
                 else:
                     logs = [filename for filename in output if filename.endswith('.log')]
 
@@ -458,7 +461,7 @@ def watch_logs(session, tasklist, options):
             if not tasklist:
                 break
 
-            time.sleep(1)
+            time.sleep(options.poll_interval)
     except (KeyboardInterrupt):
         pass
 
@@ -5058,7 +5061,7 @@ def activate_session(session):
         print "successfully connected to hub"
 
 if __name__ == "__main__":
-
+    global options
     options, command, args = get_options()
 
     session_opts = {}
