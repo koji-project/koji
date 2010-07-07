@@ -876,7 +876,7 @@ def handle_chain_build(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id])
+        return watch_tasks(session,[task_id],quiet=options.quiet)
 
 def handle_maven_build(options, session, args):
     "Build a Maven package from source"
@@ -949,7 +949,7 @@ def handle_maven_build(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id])
+        return watch_tasks(session,[task_id],quiet=options.quiet)
 
 def handle_wrapper_rpm(options, session, args):
     """[admin] Build wrapper rpms for any jars associated with the build.  Any existing rpms will be deleted from the database and the filesystem."""
@@ -987,7 +987,7 @@ def handle_wrapper_rpm(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id])
+        return watch_tasks(session,[task_id],quiet=options.quiet)
 
 def handle_resubmit(options, session, args):
     """Retry a canceled or failed task, using the same parameter as the original task."""
@@ -4580,7 +4580,7 @@ def anon_handle_watch_logs(options, session, args):
 
     watch_logs(session, tasks, options)
 
-def handle_make_task(options, session, args):
+def handle_make_task(opts, session, args):
     "[admin] Create an arbitrary task"
     usage = _("usage: %prog make-task [options] <arg1> [<arg2>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -4607,9 +4607,9 @@ def handle_make_task(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id])
+        return watch_tasks(session, [task_id], quiet=opts.quiet)
 
-def handle_tag_pkg(options, session, args):
+def handle_tag_pkg(opts, session, args):
     "Apply a tag to one or more packages"
     usage = _("usage: %prog tag-pkg [options] <tag> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -4631,9 +4631,9 @@ def handle_tag_pkg(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,tasks)
+        return watch_tasks(session,tasks,quiet=opts.quiet)
 
-def handle_move_pkg(options, session, args):
+def handle_move_pkg(opts, session, args):
     "'Move' one or more packages between tags"
     usage = _("usage: %prog move-pkg [options] <tag1> <tag2> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -4677,7 +4677,7 @@ def handle_move_pkg(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, tasks)
+        return watch_tasks(session, tasks, quiet=opts.quiet)
 
 def handle_untag_pkg(options, session, args):
     "Remove a tag from one or more packages"
@@ -4952,7 +4952,7 @@ def handle_regen_repo(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id])
+        return watch_tasks(session, [task_id], quiet=options.quiet)
 
 def anon_handle_search(options, session, args):
     "Search koji"
