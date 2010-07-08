@@ -10,6 +10,69 @@ ALTER TABLE host ADD COLUMN comment TEXT;
 ALTER TABLE task ADD COLUMN start_time TIMESTAMP;
 
 
+-- new standard permissions and channels
+INSERT INTO permissions (name) VALUES ('maven-import');
+INSERT INTO permissions (name) VALUES ('appliance');
+
+INSERT INTO channels (name) VALUES ('maven');
+INSERT INTO channels (name) VALUES ('appliance');
+
+
+-- extensions for maven support
+ALTER TABLE tag_config ADD COLUMN maven_support BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE tag_config ADD COLUMN maven_include_all BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE maven_builds (
+        build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id),
+       group_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        version TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE archivetypes (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT NOT NULL,
+        extensions TEXT NOT NULL
+) WITHOUT OIDS;
+
+insert into archivetypes (name, description, extensions) values ('jar', 'Jar files', 'jar war rar ear');
+insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives', 'zip');
+insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management files', 'pom');
+insert into archivetypes (name, description, extensions) values ('tar', 'Tar files', 'tar tar.gz tar.bz2');
+insert into archivetypes (name, description, extensions) values ('xml', 'XML files', 'xml');
+
+CREATE TABLE archiveinfo (
+       id SERIAL NOT NULL PRIMARY KEY,
+        type_id INTEGER NOT NULL REFERENCES archivetypes (id),
+       build_id INTEGER NOT NULL REFERENCES build (id),
+       buildroot_id INTEGER REFERENCES buildroot (id),
+       filename TEXT NOT NULL,
+       size INTEGER NOT NULL,
+       md5sum TEXT NOT NULL
+) WITHOUT OIDS;
+CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
+CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
+CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
+CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
+
+CREATE TABLE maven_archives (
+        archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+       group_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        version TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE buildroot_archives (
+       buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),
+       archive_id INTEGER NOT NULL REFERENCES archiveinfo (id),
+       project_dep BOOLEAN NOT NULL,
+       PRIMARY KEY (buildroot_id, archive_id)
+) WITHOUT OIDS;
+CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);
+
+
+
 -- The rest updates all the versioned tables to track who did what
 
 -- One issue with this is that we need to provide creator/revoker data
