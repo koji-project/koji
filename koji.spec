@@ -8,14 +8,14 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.4
+Version: 1.4.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
 Summary: Build system tools
 Group: Applications/System
 URL: http://fedorahosted.org/koji
-Source: https://fedorahosted.org/koji/attachment/wiki/KojiRelease/%{name}-%{PACKAGE_VERSION}.tar.bz2
+Source: https://fedorahosted.org/koji/attachment/wiki/KojiRelease/%{name}-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
@@ -196,7 +196,7 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
-* Tue Jul  1 2010 Mike McLean <mikem at redhat.com> - 1.4-1
+* Thu Jul  8 2010 Mike McLean <mikem at redhat.com> - 1.4.0-1
 - Merge mead branch: support for building jars with Maven *
 - support for building appliance images *
 - soft dependencies for LiveCD/Appliance features
@@ -212,6 +212,8 @@ fi
 - allow packages built from the same srpm to span multiple external repos
 - make the command used to fetch sources configuable per repo
 - kojira: remove unexpected directories
+- let kojid to decide if it can handle a noarch task
+- avoid extraneous ssl handshakes
 - schema changes to support starred items
 
 * Tue Nov 10 2009 Mike Bonnet <mikeb@redhat.com> - 1.3.2-1
