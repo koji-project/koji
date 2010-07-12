@@ -1,0 +1,40 @@
+#!/usr/bin/python
+
+import koji
+import optparse
+
+# cli/koji -c ~/.koji/config-mead call --python makeTask '"vmExec"' '["Win2k8-x86-vstudio-devel", ["wget -q -O /tmp/test-build.sh http://download.lab.bos.redhat.com/devel/mikeb/mead/debug/test-build.sh && chmod 755 /tmp/test-build.sh && /tmp/test-build.sh &> /tmp/output/build.log && echo build successful"], {"cpus": 2, "mem": 2048}]' --kwargs '{"channel": "vm"}'
+
+parser = optparse.OptionParser('%prog VM-NAME COMMAND-TO-RUN')
+parser.add_option('--server', help='Koji hub')
+parser.add_option('--cert', help='Client certificate')
+parser.add_option('--ca', help='Client CA')
+parser.add_option('--server-ca', help='Server CA')
+parser.add_option('--cpus', help='Number of virtual CPUs to allocate to the VM (optional)',
+                  type='int')
+parser.add_option('--mem', help='Amount of memory (in megabytes) to allocate to the VM (optional)',
+                  type='int')
+parser.add_option('--channel', help='Channel to create the task in', default='vm')
+
+opts, args = parser.parse_args()
+
+if len(args) < 2:
+    parser.error('You must specify a VM name and a command to run')
+
+vm_name = args[0]
+cmd = ' '.join(args[1:])
+
+session = koji.ClientSession(opts.server)
+session.ssl_login(opts.cert, opts.ca, opts.server_ca)
+
+task_opts = {}
+if opts.cpus:
+    task_opts['cpus'] = opts.cpus
+if opts.mem:
+    task_opts['mem'] = opts.mem
+
+params = [vm_name, [cmd], task_opts]
+
+task_id = session.makeTask('vmExec', params, channel=opts.channel)
+
+print 'Created task %s' % task_id

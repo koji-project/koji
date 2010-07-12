@@ -1,0 +1,177 @@
+#!/usr/bin/python
+
+# Koji daemon that runs in a Windows VM and executes commands associated
+# with a task.
+# Copyright (c) 2010 Red Hat
+#
+#    Koji is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; 
+#    version 2.1 of the License.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this software; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Authors:
+#       Mike Bonnet <mikeb@redhat.com>
+
+# To register this script as a service on Windows 2008 (with Cygwin 1.7.5 installed) run:
+#   kojiwind --install
+# in a cygwin shell.
+
+import datetime
+import os
+import subprocess
+import sys
+import time
+import xmlrpclib
+import base64
+import hashlib
+import traceback
+
+MANAGER_PORT = 7000
+
+def log(msg):
+    print >> sys.stderr, '%s: %s' % (datetime.datetime.now().ctime(), msg)
+
+def run(cmd):
+    shell = False
+    if isinstance(cmd, (str, unicode)) and len(cmd.split()) > 1:
+        shell = True
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            close_fds=True, shell=shell)
+    ret = proc.wait()
+    output = proc.stdout.read()
+    return ret, output
+
+def find_net_info():
+    """
+    Find the network gateway configured for this VM.
+    """
+    ret, output = run(['ipconfig', '/all'])
+    if ret:
+        raise RuntimeError, 'error running ipconfig, output was: %s' % output
+    macaddr = None
+    gateway = None
+    for line in output.splitlines():
+        line = line.strip()
+        # take the first values we find
+        if line.startswith('Physical Address'):
+            if not macaddr:
+                macaddr = line.split()[-1]
+                # format it to be consistent with the libvirt MAC address
+                macaddr = macaddr.replace('-', ':').lower()
+        elif line.startswith('Default Gateway'):
+            if not gateway:
+                gateway = line.split()[-1]
+
+    # check that we have valid values
+    if macaddr and len(macaddr) != 17:
+        macaddr = None
+    if gateway and (len(gateway) < 7 or len(gateway) > 15):
+        gateway = None
+    return macaddr, gateway
+
+def uploadFile(server, prefix, path):
+    fobj = file(os.path.join(prefix, path), 'r')
+    offset = 0
+    sum = hashlib.sha1()
+    while True:
+        data = fobj.read(131072)
+        if not data:
+            break
+        encoded = base64.b64encode(data)
+        server.upload(path, offset, encoded)
+        offset += len(data)
+        sum.update(data)
+    fobj.close()
+    server.verifyChecksum(path, sum.hexdigest(), 'sha1')
+
+def uploadDir(server, root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        for filename in filenames:
+            filepath = os.path.join(dirpath, filename)
+            relpath = filepath[len(root) + 1:]
+            uploadFile(server, root, relpath)
+
+def main():
+    macaddr, gateway = find_net_info()
+    while not (macaddr and gateway):
+        # wait for the network connection to come up and get an address
+        time.sleep(5)
+        macaddr, gateway = find_net_info()
+    log('found MAC address %s, connecting to %s:%s' % (macaddr, gateway, MANAGER_PORT))
+    server = xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, MANAGER_PORT), allow_none=True)
+    # we would set a timeout on the socket here, but that is apparently not supported
+    # by python/cygwin/Windows
+    task_port = server.getPort(macaddr)
+    log('found task-specific port %s' % task_port)
+    server = xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
+
+    ret = 1
+    output = 'unknown error'
+    exc_info = None
+
+    try:
+        task_info = server.getTaskInfo()
+        if task_info:
+            cmd = task_info[0]
+            os.mkdir('/tmp/output')
+            log('running command: %s' % cmd)
+            ret, output = run(cmd)
+        else:
+            ret = 1
+            output = 'no command provided'
+        uploadDir(server, '/tmp/output')
+    except:
+        exc_info = sys.exc_info()
+    finally:
+        if exc_info:
+            tb = ''.join(traceback.format_exception(*exc_info))
+            server.failTask(tb)
+        elif ret:
+            server.failTask('"%s" failed, return code was %s, output was %s' % (cmd, ret, output))
+        else:
+            server.closeTask(output)
+
+def usage():
+    print '%s: Runs Koji tasks assigned to a VM'
+    print '    run with no options to start the daemon'
+    print
+    print 'Options:'
+    print '  --help       show this help message and exit'
+    print '  --install    install this daemon as the "kojiwind" Windows service'
+    print '  --uninstall  uninstall the "kojiwind" Windows service'
+
+if __name__ == '__main__':
+    prog = os.path.abspath(sys.argv[0])
+    if len(sys.argv) > 1:
+        opt = sys.argv[1]
+        if opt == '--install':
+            ret, output = run(['cygrunsrv', '--install', 'kojiwind',
+                               '--path', sys.executable, '--args', prog,
+                               '--type', 'auto', '--dep', 'Dhcp',
+                               '--disp', 'Koji Windows Daemon',
+                               '--desc', 'Runs Koji tasks assigned to a VM'])
+            if ret:
+                print 'Error installing kojiwind service, output was: %s' % output
+                sys.exit(1)
+            else:
+                print 'Successfully installed the kojiwind service'
+        elif opt == '--uninstall':
+            ret, output = run(['cygrunsrv', '--remove', 'kojiwind'])
+            if ret:
+                print 'Error removing the kojiwind service, output was: %s' % output
+                sys.exit(1)
+            else:
+                print 'Successfully removed the kojiwind service'
+        else:
+            usage()
+    else:
+        main()
