@@ -617,6 +617,23 @@ def handle_remove_host_from_channel(options, session, args):
     
     session.removeHostFromChannel(host, channel)
 
+def handle_remove_channel(options, session, args):
+    "[admin] Remove a channel entirely"
+    usage = _("usage: %prog remove-channel [options] channel")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action="store_true", help=_("force removal, if possible"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    cinfo = session.getChannel(args[0])
+    if not cinfo:
+        print "No such channel: %s" % args[0]
+        return 1
+    session.removeChannel(args[0], force=options.force)
+
 def handle_rename_channel(options, session, args):
     "[admin] Rename a channel"
     usage = _("usage: %prog rename-channel [options] old-name new-name")

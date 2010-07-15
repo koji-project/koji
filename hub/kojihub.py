@@ -1884,6 +1884,30 @@ def rename_channel(old, new):
     update.set(name=new)
     update.execute()
 
+def remove_channel(channel_name, force=False):
+    """Remove a channel
+
+    Channel must have no hosts, unless force is set to True
+    If a channel has associated tasks, it cannot be removed
+    """
+    context.session.assertPerm('admin')
+    channel_id = get_channel_id(channel_name, strict=True)
+    # check for task references
+    query = QueryProcessor(tables=['task'], clauses=['channel_id=%(channel_id)i'],
+                    values=locals(), columns=['id'], opts={'limit':1})
+    #XXX slow query
+    if query.execute():
+        raise koji.GenericError, 'channel %s has task references' % channel_name
+    query = QueryProcessor(tables=['host_channels'], clauses=['channel_id=%(channel_id)i'],
+                    values=locals(), columns=['host_id'], opts={'limit':1})
+    if query.execute():
+        if not force:
+            raise koji.GenericError, 'channel %s has host references' % channel_name
+        delete = """DELETE FROM host_channels WHERE channel_id=%(channel_id)i"""
+        _dml(delete, locals())
+    delete = """DELETE FROM channels WHERE id=%(channel_id)i"""
+    _dml(delete, locals())
+
 def get_ready_hosts():
     """Return information about hosts that are ready to build.
 
@@ -7734,6 +7758,7 @@ class RootExports(object):
     addHostToChannel = staticmethod(add_host_to_channel)
     removeHostFromChannel = staticmethod(remove_host_from_channel)
     renameChannel = staticmethod(rename_channel)
+    removeChannel = staticmethod(remove_channel)
 
     def listHosts(self, arches=None, channelID=None, ready=None, enabled=None, userID=None, queryOpts=None):
         """Get a list of hosts.  "arches" is a list of string architecture
