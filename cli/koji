@@ -567,6 +567,7 @@ def handle_add_host_to_channel(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--list", action="store_true", help=_("List possible channels"))
+    parser.add_option("--new", action="store_true", help=_("Create channel if needed"))
     (options, args) = parser.parse_args(args)
     if not options.list and len(args) != 2:
         parser.error(_("Please specify a hostname and a channel"))
@@ -577,16 +578,20 @@ def handle_add_host_to_channel(options, session, args):
             print channel['name']
         return
     channel = args[1]
-    channelinfo = session.getChannel(channel)
-    if not channelinfo:
-        print "No such channel: %s" % channel
-        return 1
+    if not options.new:
+        channelinfo = session.getChannel(channel)
+        if not channelinfo:
+            print "No such channel: %s" % channel
+            return 1
     host = args[0]
     hostinfo = session.getHost(host)
     if not hostinfo:
         print "No such host: %s" % host
         return 1
-    session.addHostToChannel(host, channel)
+    kwargs = {}
+    if options.new:
+        kwargs['create'] = True
+    session.addHostToChannel(host, channel, **kwargs)
 
 def handle_remove_host_from_channel(options, session, args):
     "[admin] Remove a host from a channel"

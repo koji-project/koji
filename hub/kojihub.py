@@ -1829,22 +1829,26 @@ def set_host_enabled(hostname, enabled=True):
     c.execute("""UPDATE host SET enabled = %(enabled)s WHERE name = %(hostname)s""", locals())
     context.commit_pending = True
 
-def add_host_to_channel(hostname, channel_name):
+def add_host_to_channel(hostname, channel_name, create=False):
+    """Add the host to the specified channel
+
+    Channel must already exist unless create option is specified
+    """
     context.session.assertPerm('admin')
     host = get_host(hostname)
     if host == None:
         raise koji.GenericError, 'host does not exist: %s' % hostname
     host_id = host['id']
-    channel_id = get_channel_id(channel_name)
+    channel_id = get_channel_id(channel_name, create=create)
     if channel_id == None:
         raise koji.GenericError, 'channel does not exist: %s' % channel_name
     channels = list_channels(host_id)
     for channel in channels:
         if channel['id'] == channel_id:
             raise koji.GenericError, 'host %s is already subscribed to the %s channel' % (hostname, channel_name)
-    c = context.cnx.cursor()
-    c.execute("""INSERT INTO host_channels (host_id, channel_id) values (%(host_id)d, %(channel_id)d)""", locals())
-    context.commit_pending = True
+    insert = InsertProcessor('host_channels')
+    insert.set(host_id=host_id, channel_id=channel_id)
+    insert.execute()
 
 def remove_host_from_channel(hostname, channel_name):
     context.session.assertPerm('admin')
