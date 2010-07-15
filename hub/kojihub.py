@@ -1871,6 +1871,19 @@ def remove_host_from_channel(hostname, channel_name):
     c.execute("""DELETE FROM host_channels WHERE host_id = %(host_id)d and channel_id = %(channel_id)d""", locals())
     context.commit_pending = True
 
+def rename_channel(old, new):
+    """Rename a channel"""
+    context.session.assertPerm('admin')
+    if not isinstance(new, basestring):
+        raise koji.GenericError, "new channel name must be a string"
+    cinfo = get_channel(old, strict=True)
+    dup_check = get_channel(new, strict=False)
+    if dup_check:
+        raise koji.GenericError, "channel %(name)s already exists (id=%(id)i)" % dup_check
+    update = UpdateProcessor('channels', clauses=['id=%(id)i'], values=cinfo)
+    update.set(name=new)
+    update.execute()
+
 def get_ready_hosts():
     """Return information about hosts that are ready to build.
 
@@ -7720,6 +7733,7 @@ class RootExports(object):
     editHost = staticmethod(edit_host)
     addHostToChannel = staticmethod(add_host_to_channel)
     removeHostFromChannel = staticmethod(remove_host_from_channel)
+    renameChannel = staticmethod(rename_channel)
 
     def listHosts(self, arches=None, channelID=None, ready=None, enabled=None, userID=None, queryOpts=None):
         """Get a list of hosts.  "arches" is a list of string architecture

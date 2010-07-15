@@ -617,6 +617,22 @@ def handle_remove_host_from_channel(options, session, args):
     
     session.removeHostFromChannel(host, channel)
 
+def handle_rename_channel(options, session, args):
+    "[admin] Rename a channel"
+    usage = _("usage: %prog rename-channel [options] old-name new-name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    activate_session(session)
+    cinfo = session.getChannel(args[0])
+    if not cinfo:
+        print "No such channel: %s" % args[0]
+        return 1
+    session.renameChannel(args[0], args[1])
+
 def handle_add_pkg(options, session, args):
     "[admin] Add a package to the listing for tag"
     usage = _("usage: %prog add-pkg [options] tag package [package2 ...]")
