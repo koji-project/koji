@@ -175,7 +175,7 @@ def main(options, session):
         pt = koji.plugin.PluginTracker(path=options.pluginpath.split(':'))
         for name in options.plugin:
             logger.info('Loading plugin: %s' % name)
-            tm.findHandlers(vars(pt.load(name)))
+            tm.scanPlugin(pt.load(name))
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)

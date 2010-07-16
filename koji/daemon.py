@@ -435,6 +435,10 @@ class TaskManager(object):
                 for method in v.Methods:
                     self.handlers[method] = v
 
+    def scanPlugin(self, plugin):
+        """Find task handlers in a plugin"""
+        self.findHandlers(vars(plugin))
+
     def shutdown(self):
         """Attempt to shut down cleanly"""
         for task_id in self.pids.keys():
