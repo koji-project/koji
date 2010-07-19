@@ -22,7 +22,7 @@
 
 import koji
 import koji.util
-from koji.daemon import TaskManager
+from koji.daemon import SCM, TaskManager
 from koji.tasks import ServerExit, BaseTaskHandler
 import sys
 import logging
@@ -125,6 +125,7 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
+                'allowed_scms': '',
                 'cert': '/etc/kojivmd/client.crt',
                 'ca': '/etc/kojivmd/clientca.crt',
                 'serverca': '/etc/kojivmd/serverca.crt'}
@@ -426,7 +427,7 @@ class VMTask(BaseTaskHandler):
         thr.setDaemon(True)
         thr.start()
 
-    def handler(self, name, task_info, opts=None):
+    def handler(self, name, source_url, opts=None):
         """
         Clone the VM named "name", and provide the data in "task_info" to it.
         Available options:
@@ -437,7 +438,14 @@ class VMTask(BaseTaskHandler):
             opts = {}
         timeout = opts.get('timeout', 720)
 
-        self.task_info = task_info
+        self.task_info = [source_url, koji.util.dslice(opts, ['specfile', 'patches'],
+                                                       strict=False)]
+        # opts may contain specfile and patches entries, both of which are
+        # urls.
+        # Verify the urls before passing them to the VM.
+        for url in [source_url] + self.task_info[1].values():
+            scm = SCM(url)
+            scm.assert_allowed(self.options.allowed_scms)
 
         conn = libvirt.open(None)
         clone_name = self.clone(conn, name)

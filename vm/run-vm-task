@@ -15,14 +15,16 @@ parser.add_option('--cpus', help='Number of virtual CPUs to allocate to the VM (
 parser.add_option('--mem', help='Amount of memory (in megabytes) to allocate to the VM (optional)',
                   type='int')
 parser.add_option('--channel', help='Channel to create the task in', default='vm')
+parser.add_option('--specfile', help='Alternate SCM URL of the specfile')
+parser.add_option('--patches', help='SCM URL of patches to apply before build')
 
 opts, args = parser.parse_args()
 
 if len(args) < 2:
-    parser.error('You must specify a VM name and a command to run')
+    parser.error('You must specify a VM name and SCM URL')
 
 vm_name = args[0]
-cmd = ' '.join(args[1:])
+scm_url = args[1]
 
 session = koji.ClientSession(opts.server)
 session.ssl_login(opts.cert, opts.ca, opts.server_ca)
@@ -32,8 +34,12 @@ if opts.cpus:
     task_opts['cpus'] = opts.cpus
 if opts.mem:
     task_opts['mem'] = opts.mem
+if opts.specfile:
+    task_opts['specfile'] = opts.specfile
+if opts.patches:
+    task_opts['patches'] = opts.patches
 
-params = [vm_name, [cmd], task_opts]
+params = [vm_name, scm_url, task_opts]
 
 task_id = session.makeTask('vmExec', params, channel=opts.channel)
 

@@ -177,6 +177,7 @@ class SCM(object):
         sourcedir = '%s/%s' % (scmdir, self.module)
 
         update_checkout_cmd = None
+        update_checkout_dir = None
 
         if self.scmtype == 'CVS':
             pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
@@ -203,6 +204,7 @@ class SCM(object):
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level directory
             if self.module:
@@ -222,6 +224,7 @@ class SCM(object):
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level directory
             if self.module:
@@ -256,7 +259,7 @@ class SCM(object):
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            ret, output = run(update_checkout_cmd, chdir=sourcedir)
+            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir)
             log(output)
             if ret:
                 raise BuildError, 'Error running %s update command "%s": %s' % \
@@ -332,18 +335,21 @@ class WindowsBuild(object):
 def log(msg):
     print >> sys.stderr, '%s: %s' % (datetime.datetime.now().ctime(), msg)
 
-def run(cmd, chdir='.'):
+def run(cmd, chdir=None):
     shell = False
     if isinstance(cmd, (str, unicode)) and len(cmd.split()) > 1:
         shell = True
-    olddir = os.getcwd()
-    os.chdir(chdir)
+    olddir = None
+    if chdir:
+        olddir = os.getcwd()
+        os.chdir(chdir)
     log('running command: %s' % cmd)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             close_fds=True, shell=shell)
     ret = proc.wait()
     output = proc.stdout.read()
-    os.chdir(olddir)
+    if olddir:
+        os.chdir(olddir)
     return ret, output
 
 def find_net_info():
@@ -422,38 +428,50 @@ def get_options():
     parser = OptionParser(usage=usage)
     parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
     parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
-    parser.add_option('-s', '--scmurl', action='append', help='Forcibly specify an scmurl to checkout from', default=[])
+    parser.add_option('-s', '--scmurl', help='Forcibly specify an scmurl to checkout from')
     (options, args) = parser.parse_args()
     return options
 
-def run_build(workdir, scmurls):
+def apply_patches(src_dir, patch_dir):
+    patches = [patch for patch in os.listdir(patch_dir) if \
+               os.path.isfile(os.path.join(patch_dir, patch)) and \
+               not patch.startswith('.')]
+    if not patches:
+        raise BuildError, 'no patches found at %s' % patch_dir
+    patches.sort()
+    for patch in patches:
+        cmd = ['/usr/bin/patch', '--verbose', '-d', src_dir, '-p1', '-i', os.path.join(patch_dir, patch)]
+        ret, output = run(cmd)
+        if ret:
+            raise BuildError, 'error applying patches, output was: %s' % output
+
+def run_build(workdir, source_url, task_opts):
     """run the build"""
-    if len(scmurls) == 2:
-        # should SCM.assert_allowed() be called on SCM objs?
-        specurl, srcurl = scmurls
-        spec_scm = SCM(specurl)
-        spec_dir = spec_scm.checkout(workdir)
-        src_scm = SCM(srcurl)
-        src_dir = src_scm.checkout(workdir)
-    elif len(scmurls) == 1:
-        specurl = scmurls[0]
-        spec_scm = SCM(specurl)
-        spec_dir = spec_scm.checkout(workdir)
-        src_scm, src_dir = spec_scm, spec_dir
+    src_scm = SCM(source_url)
+    src_dir = src_scm.checkout(os.path.join(workdir, 'source'))
+    if 'specfile' in task_opts:
+        spec_scm = SCM(task_opts['specfile'])
+        spec_dir = spec_scm.checkout(os.path.join(workdir, 'spec'))
     else:
-        raise BuildError, 'Unexpected number of SCM URLs given: %s' % scmurls
+        spec_dir = src_dir
+    if 'patches' in task_opts:
+        patch_scm = SCM(task_opts['patches'])
+        patch_dir = patch_scm.checkout(os.path.join(workdir, 'patches'))
+        apply_patches(src_dir, patch_dir)
 
     specfile = [spec for spec in os.listdir(spec_dir) if spec.endswith('.ini')]
-    if len(specfile) != 1:
-        raise BuildError, 'Exactly one .ini file must be found in a check out'
+    if len(specfile) == 0:
+        raise BuildError, 'No .ini file found'
+    elif len(specfile) > 1:
+        raise BuildError, 'Multiple .ini files found'
     winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), src_dir)
     return winbld.doAll(), src_dir
 
-def flunk(server_report, server=None):
+def flunk(server):
     """do the right thing when a build fails"""
     exc_info = sys.exc_info()
     tb = ''.join(traceback.format_exception(*exc_info))
-    if server_report:
+    if server is not None:
         server.failTask(tb)
     log(tb)
     sys.exit(1)
@@ -481,20 +499,27 @@ if __name__ == '__main__':
         else:
             print 'Successfully removed the %s service' % prog
             sys.exit(0)
-    use_server, server = False, None
+    server = None
     try:
-        if len(opts.scmurl) == 0:
-            use_server = True
+        source_url = None
+        task_opts = None
+        if opts.scmurl:
+            source_url = opts.scmurl
+        else:
             server = get_mgmt_server()
-            scmurl = server.getTaskInfo()
-            opts.scmurl.append(scmurl)
+            info = server.getTaskInfo()
+            source_url = info[0]
+            if len(info) > 1:
+                task_opts = info[1]
+        if not task_opts:
+            task_opts = {}
         workdir = '/tmp/workdir'
         os.mkdir(workdir)
-        results, results_dir = run_build(workdir, opts.scmurl)
-        if use_server:
+        results, results_dir = run_build(workdir, source_url, task_opts)
+        if server is not None:
             upload_results(server, results_dir, results)
             server.closeTask(results)
         log('Build results: %s' % results)
     except:
-        flunk(use_server, server=server)
+        flunk(server)
     sys.exit(0)
