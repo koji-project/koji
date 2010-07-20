@@ -40,7 +40,6 @@ import os
 import random
 import re
 import rpm
-import sha
 import stat
 import subprocess
 import sys
