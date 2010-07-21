@@ -6491,11 +6491,15 @@ class RootExports(object):
             - tag locked
             - missing permission
             - package not in list for tag
-        The force option is really only effect for admins
+            - policy violation
+        The force option is really only effective for admins
 
         If fromtag is specified, this becomes a move operation.
 
-        This call creates a task to do some of the heavy lifting
+        This call creates a task that was originally intended to perform more
+        extensive checks, but never has. We're stuck with this task system until
+        we're ready to break the api.
+
         The return value is the task id
         """
         #first some lookups and basic sanity checks
@@ -6508,15 +6512,27 @@ class RootExports(object):
         pkg_id = build['package_id']
         tag_id = tag['id']
         build_id = build['id']
-        # note: we're just running the quick checks now so we can fail
-        #       early if appropriate, rather then waiting for the task
-        # Make sure package is on the list for this tag
+        # build state check
+        if build['state'] != koji.BUILD_STATES['COMPLETE']:
+            state = koji.BUILD_STATES[build['state']]
+            raise koji.TagError, "build %s not complete: state %s" % (build['nvr'], state)
+        # basic tag access check
+        assert_tag_access(tag_id,user_id=None,force=force)
+        if fromtag:
+            assert_tag_access(fromtag_id,user_id=None,force=force)
+        # package list check
         pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
         pkg_error = None
         if not pkgs.has_key(pkg_id):
             pkg_error = "Package %s not in list for %s" % (build['name'], tag['name'])
         elif pkgs[pkg_id]['blocked']:
             pkg_error = "Package %s blocked in %s" % (build['name'], tag['name'])
+        if pkg_error:
+            if force and context.session.hasPerm('admin'):
+                pkglist_add(tag_id,pkg_id,force=True,block=False)
+            else:
+                raise koji.TagError, pkg_error
+        # tag policy check
         policy_data = {'tag' : tag_id, 'build' : build_id, 'fromtag' : fromtag_id}
         if fromtag is None:
             policy_data['operation'] = 'tag'
@@ -6525,17 +6541,8 @@ class RootExports(object):
         #don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             assert_policy('tag', policy_data)
-        #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
-        if pkg_error:
-            if force and context.session.hasPerm('admin'):
-                pkglist_add(tag_id,pkg_id,force=True,block=False)
-            else:
-                raise koji.TagError, pkg_error
-        #access check
-        assert_tag_access(tag_id,user_id=None,force=force)
-        if fromtag:
-            assert_tag_access(fromtag_id,user_id=None,force=force)
-        #spawn the tagging tasks (it performs more thorough checks)
+            #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
+        #spawn the tagging task
         return make_task('tagBuild', [tag_id, build_id, force, fromtag_id], priority=10)
 
     def untagBuild(self,tag,build,strict=True,force=False):
