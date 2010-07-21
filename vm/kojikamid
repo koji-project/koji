@@ -166,7 +166,7 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def checkout(self, scmdir):
+    def checkout(self, scmdir, logfile):
         """
         Checkout the module from SCM.  Accepts the following parameters:
          - scmdir: the working directory
@@ -250,7 +250,7 @@ class SCM(object):
             raise BuildError, 'Unknown SCM type: %s' % self.scmtype
 
         # perform checkouts
-        ret, output = run(module_checkout_cmd)
+        ret, output = run(module_checkout_cmd, chdir=scmdir, logfile=logfile, fatal=True)
         log(output)
         if ret:
             raise BuildError, 'Error running %s checkout command "%s: %s"' % \
@@ -259,7 +259,7 @@ class SCM(object):
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir)
+            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir, logfile=logfile, fatal=True)
             log(output)
             if ret:
                 raise BuildError, 'Error running %s update command "%s": %s' % \
@@ -273,10 +273,12 @@ class SCM(object):
 
 class WindowsBuild(object):
 
-    def __init__(self, specpath, build_tag, workdir, opts):
+    def __init__(self, specpath, build_tag, workdir, opts, logfile):
         """constructor: check ini spec file syntax, set build properties"""
         self.build_tag = build_tag
         self.opts = opts
+        self.workdir = workdir
+        self.logfile = logfile
         conf = ConfigParser()
         conf.read(specpath)
 
@@ -290,11 +292,13 @@ class WindowsBuild(object):
         for entry in ('buildrequires', 'provides'):
             setattr(self, entry, conf.get('building', entry).split())
         # execute is multi-valued (newline-separated)
-        self.execute = [e.strip() for e in conf.get('building', 'execute').split('\n')]
+        self.execute = [e.strip() for e in conf.get('building', 'execute').split('\n') if e]
 
         # [files] section
         self.output = {}
         for entry in conf.get('files', 'output').split('\n'):
+            if not entry:
+                continue
             tokens = entry.strip().split(':')
             filename = tokens[0]
             metadata = {}
@@ -304,9 +308,7 @@ class WindowsBuild(object):
             else:
                 metadata['flags'] = []
             self.output[filename] = metadata
-        self.logs = [e.strip() for e in conf.get('files', 'logs').split('\n')]
-
-        self.workdir = workdir
+        self.logs = [e.strip() for e in conf.get('files', 'logs').split('\n') if e]
 
     def checkEnv(self):
         """Is this environment fit to build in, based on the spec file?"""
@@ -319,7 +321,7 @@ class WindowsBuild(object):
     def build(self):
         """Do the build: run the execute line(s)"""
         for cmd in self.execute:
-            ret, output = run(os.path.join(self.workdir, cmd), chdir=self.workdir)
+            ret, output = run(cmd, chdir=self.workdir, logfile=self.logfile)
             if ret:
                 raise BuildError, 'Build command failed: %s' % output
 
@@ -345,7 +347,7 @@ class WindowsBuild(object):
 def log(msg):
     print >> sys.stderr, '%s: %s' % (datetime.datetime.now().ctime(), msg)
 
-def run(cmd, chdir=None):
+def run(cmd, chdir=None, logfile=None, fatal=False):
     shell = False
     if isinstance(cmd, (str, unicode)) and len(cmd.split()) > 1:
         shell = True
@@ -358,8 +360,19 @@ def run(cmd, chdir=None):
                             close_fds=True, shell=shell)
     ret = proc.wait()
     output = proc.stdout.read()
+    if logfile:
+        logfile.write('$ ')
+        if isinstance(cmd, (str, unicode)):
+            logfile.write(cmd)
+        else:
+            logfile.writelines(' '.join(cmd))
+        logfile.write('\n')
+        logfile.write(output)
+        logfile.write('\n')
     if olddir:
         os.chdir(olddir)
+    if ret and fatal:
+        raise BuildError, 'error running: %s, return code was %s, output was: %s' % (cmd, ret, output)
     return ret, output
 
 def find_net_info():
@@ -441,7 +454,7 @@ def get_options():
     (options, args) = parser.parse_args()
     return options
 
-def apply_patches(src_dir, patch_dir):
+def apply_patches(src_dir, patch_dir, logfile):
     patches = [patch for patch in os.listdir(patch_dir) if \
                os.path.isfile(os.path.join(patch_dir, patch)) and \
                not patch.startswith('.')]
@@ -450,37 +463,49 @@ def apply_patches(src_dir, patch_dir):
     patches.sort()
     for patch in patches:
         cmd = ['/usr/bin/patch', '--verbose', '-d', src_dir, '-p1', '-i', os.path.join(patch_dir, patch)]
-        ret, output = run(cmd)
+        ret, output = run(cmd, logfile=logfile)
         if ret:
             raise BuildError, 'error applying patches, output was: %s' % output
 
-def run_build(workdir, source_url, build_tag, task_opts):
+def ensuredir(path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    return path
+
+def run_build(workdir, source_url, build_tag, task_opts, logfile):
     """run the build"""
     src_scm = SCM(source_url)
-    src_dir = src_scm.checkout(os.path.join(workdir, 'source'))
+    src_dir = src_scm.checkout(ensuredir(os.path.join(workdir, 'source')), logfile)
     if 'specfile' in task_opts:
         spec_scm = SCM(task_opts['specfile'])
-        spec_dir = spec_scm.checkout(os.path.join(workdir, 'spec'))
+        spec_dir = spec_scm.checkout(ensuredir(os.path.join(workdir, 'spec')), logfile)
     else:
         spec_dir = src_dir
     if 'patches' in task_opts:
         patch_scm = SCM(task_opts['patches'])
-        patch_dir = patch_scm.checkout(os.path.join(workdir, 'patches'))
-        apply_patches(src_dir, patch_dir)
+        patch_dir = patch_scm.checkout(ensuredir(os.path.join(workdir, 'patches')), logfile)
+        apply_patches(src_dir, patch_dir, logfile)
 
     specfile = [spec for spec in os.listdir(spec_dir) if spec.endswith('.ini')]
     if len(specfile) == 0:
         raise BuildError, 'No .ini file found'
     elif len(specfile) > 1:
         raise BuildError, 'Multiple .ini files found'
-    winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), build_tag, src_dir, task_opts)
+    winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), build_tag, src_dir, task_opts, logfile)
     return winbld.doAll(), src_dir
 
-def flunk(server):
+def flunk(server, logfile):
     """do the right thing when a build fails"""
     exc_info = sys.exc_info()
     tb = ''.join(traceback.format_exception(*exc_info))
     if server is not None:
+        if logfile is not None:
+            try:
+                logfile.close()
+                upload_file(server, os.path.dirname(logfile.name),
+                            os.path.basename(logfile.name))
+            except:
+                pass
         server.failTask(tb)
     log(tb)
     sys.exit(1)
@@ -509,6 +534,7 @@ if __name__ == '__main__':
             print 'Successfully removed the %s service' % prog
             sys.exit(0)
     server = None
+    logfile = None
     try:
         source_url = None
         task_opts = None
@@ -525,11 +551,15 @@ if __name__ == '__main__':
             task_opts = {}
         workdir = '/tmp/workdir'
         os.mkdir(workdir)
-        results, results_dir = run_build(workdir, source_url, build_tag, task_opts)
+        logfile = file(os.path.join(workdir, 'build.log'), 'w')
+        results, results_dir = run_build(workdir, source_url, build_tag, task_opts, logfile)
+        logfile.close()
         if server is not None:
+            upload_file(server, workdir, 'build.log')
             upload_results(server, results_dir, results)
+            results['logs'].append('build.log')
             server.closeTask(results)
         log('Build results: %s' % results)
     except:
-        flunk(server)
+        flunk(server, logfile)
     sys.exit(0)
