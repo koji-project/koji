@@ -1386,6 +1386,10 @@ class PathInfo(object):
         release = build['release']
         return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
 
+    def winbuild(self, build, wininfo):
+        """Return the directory where the Windows build exists"""
+        return self.build(build) + '/win'
+
     def mavenrepo(self, build, maveninfo):
         """Return the directory where the Maven artifact exists in the per-tag Maven repo
         (/mnt/koji/repos/tag-name/repo-id/maven2/)"""

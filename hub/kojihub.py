@@ -3236,6 +3236,32 @@ def get_maven_build(buildInfo, strict=False):
     WHERE build_id = %%(build_id)i""" % ', '.join(fields)
     return _singleRow(query, locals(), fields, strict)
 
+def get_win_build(buildInfo, strict=False):
+    """
+    Retrieve Windows-specific information about a build.
+    buildInfo can be either a string (n-v-r) or an integer
+    (build ID).
+    Returns a map containing the following keys:
+
+    build_id: id of the build (integer)
+    platform: the platform the build was performed on (string)
+    """
+    fields = ('build_id', 'platform')
+
+    build_id = find_build_id(buildInfo)
+    if not build_id:
+        if strict:
+            raise koji.GenericError, 'No matching build found: %s' % buildInfo
+        else:
+            return None
+    query = QueryProcessor(tables=('win_builds',), columns=fields,
+                           clauses=('build_id = %(build_id)i',),
+                           values={'build_id': build_id})
+    result = query.executeOne()
+    if strict and not result:
+        raise koji.GenericError, 'no such Windows build: %s' % buildInfo
+    return result
+
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, md5sum=None, typeInfo=None, queryOpts=None):
     """
@@ -4230,7 +4256,25 @@ def new_maven_build(build, maven_info):
                     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
         _dml(insert, maven_info)
 
-def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
+def new_win_build(build_id, win_info):
+    """
+    Add Windows metadata to an existing build.
+    win_info must contain a 'platform' key.
+    """
+    current = get_win_build(build_id, strict=False)
+    if current:
+        if current['platform'] != win_info['platform']:
+            update = UpdateProcessor('win_builds', clauses=['build_id=%(build_id)i'],
+                                     values={'build_id': build_id})
+            update.set(platform=win_info['platform'])
+            update.execute()
+    else:
+        insert = InsertProcessor('win_builds')
+        insert.set(build_id=build_id)
+        insert.set(platform=win_info['platform'])
+        insert.execute()
+
+def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destpath=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
@@ -4240,6 +4284,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     type: type of the archive being imported.  Currently supported archive types: maven
     typeInfo: dict of type-specific information
     buildroot_id: the id of the buildroot the archive was built in (may be null)
+    destpath: the path relative to the destination directory that the file should be moved to (may be null)
     """
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
@@ -4283,6 +4328,17 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         # move the file to it's final destination
         _import_archive_file(filepath, mavendir)
         _generate_maven_metadata(maveninfo, mavendir)
+    elif type == 'win':
+        insert = InsertProcessor('win_archives')
+        insert.set(archive_id=archive_id)
+        insert.set(platforms=' '.join(typeInfo['platforms']))
+        insert.set(flags=' '.join(typeInfo['flags']))
+        insert.execute()
+        wininfo = get_win_build(buildinfo, strict=True)
+        destdir = koji.pathinfo.winbuild(buildinfo, wininfo)
+        if destpath:
+            destdir = os.path.join(destdir, destpath)
+        _import_archive_file(filepath, destdir)
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
@@ -8624,6 +8680,24 @@ class HostExports(object):
                     os.rename(fn,dest)
                     os.symlink(dest,fn)
 
+    def moveWinBuildToScratch(self, task_id, results):
+        "Move a completed scratch build into place (not imported)"
+        if not context.opts.get('EnableWin'):
+            raise koji.GenericError, 'Windows support not enabled'
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+        scratchdir = koji.pathinfo.scratch()
+        username = get_user(task.getOwner())['name']
+        destdir = "%s/%s/task_%s" % (scratchdir, username, task_id)
+        for relpath in results['output'].keys() + results['logs']:
+            filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
+            dest = os.path.join(destdir, relpath)
+            koji.ensuredir(os.path.dirname(dest))
+            os.rename(filename, dest)
+            os.symlink(dest, filename)
+
     def initBuild(self,data):
         """Create a stub build entry.
 
@@ -8774,6 +8848,66 @@ class HostExports(object):
             raise koji.GenericError, 'wrapper rpms for %s have already been imported' % koji.buildLabel(build_info)
 
         _import_wrapper(task.id, build_info, rpm_results)
+
+    def initWinBuild(self, task_id, build_info, win_info):
+        """
+        Create a new in-progress Windows build.
+        """
+        if not context.opts.get('EnableWin'):
+            raise koji.GenericError, 'Windows support not enabled'
+        host = Host()
+        host.verify()
+        #sanity checks
+        task = Task(task_id)
+        task.assertHost(host.id)
+        # build_info must contain name, version, and release
+        data = build_info.copy()
+        data['task_id'] = task_id
+        data['owner'] = task.getOwner()
+        data['state'] = koji.BUILD_STATES['BUILDING']
+        data['completion_time'] = None
+        build_id = new_build(data)
+        new_win_build(build_id, win_info)
+        return build_id
+
+    def completeWinBuild(self, task_id, build_id, results):
+        """Complete a Windows build"""
+        if not context.opts.get('EnableWin'):
+            raise koji.GenericError, 'Windows support not enabled'
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+
+        build_info = get_build(build_id, strict=True)
+        win_info = get_win_build(build_id, strict=True)
+
+        task_dir = koji.pathinfo.task(results['task_id'])
+        # import the build output
+        for relpath, metadata in results['output'].iteritems():
+            archivetype = get_archive_type(relpath)
+            if not archivetype:
+                # Unknown archive type, skip it
+                continue
+            filepath = os.path.join(task_dir, relpath)
+            import_archive(filepath, build_info, 'win', metadata,
+                           destpath=os.path.dirname(relpath))
+
+        # move the logs to their final destination
+        for relpath in results['logs']:
+            import_build_log(os.path.join(task_dir, relpath),
+                             build_info, subdir='win')
+
+        # update build state
+        st_complete = koji.BUILD_STATES['COMPLETE']
+        update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
+                                 values={'build_id': build_id})
+        update.set(id=build_id, state=st_complete)
+        update.rawset(completion_time='now()')
+        update.execute()
+
+        # send email
+        build_notification(task_id, build_id)
 
     def failBuild(self, task_id, build_id):
         """Mark the build as failed.  If the current state is not

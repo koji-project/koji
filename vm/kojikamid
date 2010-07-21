@@ -273,29 +273,47 @@ class SCM(object):
 
 class WindowsBuild(object):
 
-    def __init__(self, specpath, workdir):
+    def __init__(self, specpath, build_tag, workdir, opts):
         """constructor: check ini spec file syntax, set build properties"""
-        buildconf = ConfigParser()
-        buildconf.read(specpath)
-        self.results = None
+        self.build_tag = build_tag
+        self.opts = opts
+        conf = ConfigParser()
+        conf.read(specpath)
 
-        # make sure we've got the right sections defined
-        goodsections = ('naming', 'building', 'files')
-        badsections = [s for s in buildconf.sections() if s not in goodsections]
-        if len(badsections) > 0:
-            raise BuildError, 'Unrecognized section(s) in ini: %s' % badsections
-        for section in goodsections:
-            if not buildconf.has_section(section):
-                raise BuildError, 'missing required section in ini: %s' % section
-        map(self.__dict__.update, (buildconf.items('naming'),))
-        for section in ('building', 'files'):
-            for name, value in buildconf.items(section):
-                value = value.split()
-                self.__setattr__(name, value)
+        # [naming] section
+        for entry in ('name', 'version', 'release', 'description'):
+            setattr(self, entry, conf.get('naming', entry))
+
+        # [building] section
+        self.platform = conf.get('building', 'platform')
+        # buildrequires and provides are multi-valued (space-separated)
+        for entry in ('buildrequires', 'provides'):
+            setattr(self, entry, conf.get('building', entry).split())
+        # execute is multi-valued (newline-separated)
+        self.execute = [e.strip() for e in conf.get('building', 'execute').split('\n')]
+
+        # [files] section
+        self.output = {}
+        for entry in conf.get('files', 'output').split('\n'):
+            tokens = entry.strip().split(':')
+            filename = tokens[0]
+            metadata = {}
+            metadata['platforms'] = tokens[1].split(',')
+            if len(tokens) > 2:
+                metadata['flags'] = tokens[2].split(',')
+            else:
+                metadata['flags'] = []
+            self.output[filename] = metadata
+        self.logs = [e.strip() for e in conf.get('files', 'logs').split('\n')]
+
         self.workdir = workdir
 
     def checkEnv(self):
         """Is this environment fit to build in, based on the spec file?"""
+        pass
+
+    def fetchBuildReqs(self):
+        """Retrieve buildrequires listed in the spec file"""
         pass
 
     def build(self):
@@ -309,28 +327,20 @@ class WindowsBuild(object):
         """check the build output for viruses"""
         pass
 
-    def gatherOutput(self):
+    def gatherResults(self):
         """gather information about the output from the build, return it"""
-        if self.results != None: return self.results
-        # TODO: VM platform value in hash?
-        self.results = {}
-        for ftype in ('output', 'debug', 'log'):    
-            files = getattr(self, ftype + 'files')
-            fdict = {}
-            if files:
-                for f in files:
-                    if not os.path.exists(os.path.join(self.workdir, f)):
-                        raise BuildError('Could not find %s after build' % f)
-                    fdict[f] = {'platform': self.platform, 'debug': False, 'flags': ''}
-            self.results[ftype] = fdict
-        return self.results
+        return {'name': self.name, 'version': self.version, 'release': self.release,
+                'description': self.description, 'platform': self.platform,
+                'provides': self.provides,
+                'output': self.output, 'logs': self.logs}
 
     def doAll(self):
         """helper function that runs the entire process"""
         self.checkEnv()
+        self.fetchBuildReqs()
         self.build()
         self.virusCheck()
-        return self.gatherOutput()
+        return self.gatherResults()
 
 def log(msg):
     print >> sys.stderr, '%s: %s' % (datetime.datetime.now().ctime(), msg)
@@ -398,9 +408,8 @@ def upload_file(server, prefix, path):
 
 def upload_results(server, codir, results):
     """upload the results of a build given the results dict"""
-    for output_type in results.keys():
-        for output_file in results[output_type].keys():
-            upload_file(server, codir, output_file)
+    for filename in results['output'].keys() + results['logs']:
+        upload_file(server, codir, filename)
 
 def get_mgmt_server():
     """retrieve scmurls from kojivmd we'll use to build from"""
@@ -445,7 +454,7 @@ def apply_patches(src_dir, patch_dir):
         if ret:
             raise BuildError, 'error applying patches, output was: %s' % output
 
-def run_build(workdir, source_url, task_opts):
+def run_build(workdir, source_url, build_tag, task_opts):
     """run the build"""
     src_scm = SCM(source_url)
     src_dir = src_scm.checkout(os.path.join(workdir, 'source'))
@@ -464,7 +473,7 @@ def run_build(workdir, source_url, task_opts):
         raise BuildError, 'No .ini file found'
     elif len(specfile) > 1:
         raise BuildError, 'Multiple .ini files found'
-    winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), src_dir)
+    winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), build_tag, src_dir, task_opts)
     return winbld.doAll(), src_dir
 
 def flunk(server):
@@ -509,13 +518,14 @@ if __name__ == '__main__':
             server = get_mgmt_server()
             info = server.getTaskInfo()
             source_url = info[0]
-            if len(info) > 1:
-                task_opts = info[1]
+            build_tag = info[1]
+            if len(info) > 2:
+                task_opts = info[2]
         if not task_opts:
             task_opts = {}
         workdir = '/tmp/workdir'
         os.mkdir(workdir)
-        results, results_dir = run_build(workdir, source_url, task_opts)
+        results, results_dir = run_build(workdir, source_url, build_tag, task_opts)
         if server is not None:
             upload_results(server, results_dir, results)
             server.closeTask(results)

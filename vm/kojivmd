@@ -257,7 +257,97 @@ class TaskXMLRPCServer(DaemonXMLRPCServer):
         self.register_function(task_handler.upload)
         self.register_function(task_handler.verifyChecksum)
 
-class VMTask(BaseTaskHandler):
+
+class WinBuildTask(BaseTaskHandler):
+    """
+    Spawns a vmExec task to run a build, and imports the output.
+    """
+    Methods = ['winbuild']
+    _taskWeight = 0.2
+
+    def handler(self, name, source_url, target, opts=None):
+        if not opts:
+            opts = {}
+
+        subopts = koji.util.dslice(opts, ['specfile', 'patches'],
+                                   strict=False)
+        # specfile and patches options are urls
+        # verify the urls before passing them to the VM
+        for url in [source_url] + subopts.values():
+            scm = SCM(url)
+            scm.assert_allowed(self.options.allowed_scms)
+
+        task_info = self.session.getTaskInfo(self.id)
+        target_info = self.session.getBuildTarget(target)
+        if not target_info:
+            raise koji.BuildError, 'unknown build target: %s' % target
+        dest_tag = self.session.getTag(target_info['dest_tag'], strict=True)
+        build_tag = self.session.getTag(target_info['build_tag'], strict=True)
+        repo_id = opts.get('repo_id')
+        if repo_id:
+            repo_info = session.repoInfo(repo_id)
+            if not repo_info:
+                raise koji.BuildError, 'invalid repo ID: %s' % repo_id
+            policy_data = {
+                'user_id' : task_info['owner'],
+                'source' : source_url,
+                'task_id' : self.id,
+                'build_tag' : build_tag['id'],
+                'skip_tag' : bool(opts.get('skip_tag')),
+                'target': target_info['id']
+                }
+            if not opts.get('skip_tag'):
+                policy_data['tag'] = dest_tag['id']
+            self.session.host.assertPolicy('build_from_repo_id', policy_data)
+            event_id = repo_info['create_event']
+        else:
+            event_id = self.session.getLastEvent()['id']
+
+        subopts['event_id'] = event_id
+
+        task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem'], strict=False)
+        task_id = self.session.host.subtask(method='vmExec',
+                                            arglist=[name, [source_url, build_tag['name'], subopts], task_opts],
+                                            label=name[:255],
+                                            parent=self.id)
+        results = self.wait(task_id)[task_id]
+        results['task_id'] = task_id
+
+        if opts.get('scratch'):
+            self.session.host.moveWinBuildToScratch(self.id, results)
+        else:
+            build_info = koji.util.dslice(results, ['name', 'version', 'release'])
+            pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'], event=event_id)
+            if not opts.get('skip_tag'):
+                # Make sure package is on the list for this tag
+                if pkg_cfg is None:
+                    raise koji.BuildError, "package %s not in list for tag %s" \
+                            % (build_info['name'], dest_tag['name'])
+                elif pkg_cfg['blocked']:
+                    raise koji.BuildError, "package %s is blocked for tag %s" \
+                            % (build_info['name'], dest_tag['name'])
+
+            # epoch is rpm-specific, so doesn't have a lot of relevance here
+            # but a value is required by the data model
+            build_info['epoch'] = None
+            build_id = self.session.host.initWinBuild(self.id, build_info,
+                                                      koji.util.dslice(results, ['platform']))
+            try:
+                self.session.host.completeWinBuild(self.id, build_id, results)
+            except (SystemExit, ServerExit, KeyboardInterrupt):
+                raise
+            except:
+                self.session.host.failBuild(self.id, build_id)
+                raise
+            if not opts.get('skip_tag') and not opts.get('scratch'):
+                task_id = self.session.host.subtask(method='tagBuild',
+                                                    arglist=[dest_tag['id'], build_id],
+                                                    label='tag',
+                                                    channel='default',
+                                                    parent=self.id)
+                self.wait(task_id)
+
+class VMExecTask(BaseTaskHandler):
     """
     Handles the startup, state-tracking, and shutdown of a VM
     for the purposes for executing a single task.
@@ -269,7 +359,7 @@ class VMTask(BaseTaskHandler):
     QCOW2_EXT = '.qcow2'
 
     def __init__(self, *args, **kw):
-        super(VMTask, self).__init__(*args, **kw)
+        super(VMExecTask, self).__init__(*args, **kw)
         self.task_manager = xmlrpclib.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
                                                   allow_none=True)
         self.port = None
@@ -427,7 +517,7 @@ class VMTask(BaseTaskHandler):
         thr.setDaemon(True)
         thr.start()
 
-    def handler(self, name, source_url, opts=None):
+    def handler(self, name, task_info, opts=None):
         """
         Clone the VM named "name", and provide the data in "task_info" to it.
         Available options:
@@ -436,16 +526,9 @@ class VMTask(BaseTaskHandler):
         """
         if not opts:
             opts = {}
-        timeout = opts.get('timeout', 720)
+        timeout = opts.get('timeout', 1440)
 
-        self.task_info = [source_url, koji.util.dslice(opts, ['specfile', 'patches'],
-                                                       strict=False)]
-        # opts may contain specfile and patches entries, both of which are
-        # urls.
-        # Verify the urls before passing them to the VM.
-        for url in [source_url] + self.task_info[1].values():
-            scm = SCM(url)
-            scm.assert_allowed(self.options.allowed_scms)
+        self.task_info = task_info
 
         conn = libvirt.open(None)
         clone_name = self.clone(conn, name)
@@ -565,8 +648,8 @@ class VMTaskManager(TaskManager):
         disks = []
         for node in nodelist:
             disk = node.prop('file')
-            if os.path.basename(disk).startswith(VMTask.CLONE_PREFIX) and \
-                   disk.endswith(VMTask.QCOW2_EXT):
+            if os.path.basename(disk).startswith(VMExecTask.CLONE_PREFIX) and \
+                   disk.endswith(VMExecTask.QCOW2_EXT):
                 disks.append(disk)
         ctx.xpathFreeContext()
         doc.freeDoc()
@@ -646,7 +729,7 @@ class VMTaskManager(TaskManager):
         for vm_name in vms:
             if type(vm_name) == int:
                 vm_name = self.libvirt_conn.lookupByID(vm_name).name()
-            if vm_name.startswith(VMTask.CLONE_PREFIX):
+            if vm_name.startswith(VMExecTask.CLONE_PREFIX):
                 self.cleanupVM(vm_name)
 
     def cleanupExpiredVMs(self):
