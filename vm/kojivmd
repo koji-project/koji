@@ -30,7 +30,6 @@ import os
 import xmlrpclib
 import signal
 import time
-import traceback
 import subprocess
 import libvirt
 import libxml2
@@ -175,7 +174,7 @@ def main(options, session):
         #load plugins
         pt = koji.plugin.PluginTracker(path=options.pluginpath.split(':'))
         for name in options.plugin:
-            logger.info('Loading plugin: %s' % name)
+            logger.info('Loading plugin: %s', name)
             tm.scanPlugin(pt.load(name))
     def shutdown(*args):
         raise SystemExit
@@ -198,7 +197,7 @@ def main(options, session):
         except:
             # XXX - this is a little extreme
             # log the exception and continue
-            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+            logger.error('Error in main loop', exc_info=True)
         try:
             if not taken:
                 # Only sleep if we didn't take a task, otherwise retry immediately.
@@ -235,7 +234,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
         while self.active:
             try:
                 conn, (ipaddr, port) = self.get_request()
-                self.logger.info('request from %s:%s' % (ipaddr, port))
+                self.logger.info('request from %s:%s',ipaddr, port)
                 if self.verify_request(conn, (ipaddr, port)):
                     try:
                         self.process_request(conn, (ipaddr, port))
@@ -244,8 +243,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
             except socket.timeout:
                 pass
             except:
-                tb = ''.join(traceback.format_exception(*sys.exc_info()))
-                self.logger.error('Error handling requests: %s' % tb)
+                self.logger.error('Error handling requests', exc_info=True)
 
 class TaskXMLRPCServer(DaemonXMLRPCServer):
 
@@ -532,7 +530,7 @@ class VMExecTask(BaseTaskHandler):
 
         conn = libvirt.open(None)
         clone_name = self.clone(conn, name)
-        self.logger.debug('Cloned VM %s to %s' % (name, clone_name))
+        self.logger.debug('Cloned VM %s to %s',name, clone_name)
         try:
             vm = conn.lookupByName(clone_name)
             vm_info = vm.info()
@@ -555,7 +553,7 @@ class VMExecTask(BaseTaskHandler):
                 registered = self.task_manager.registerVM(macaddr, clone_name, self.id, self.port)
             self.setupTaskServer()
             vm.create()
-            self.logger.info('Started VM %s' % clone_name)
+            self.logger.info('Started VM %s', clone_name)
         except libvirt.libvirtError, e:
             raise koji.PreBuildError, 'error starting VM %s, error was: %s' % \
                   (clone_name, e)
@@ -565,7 +563,7 @@ class VMExecTask(BaseTaskHandler):
             time.sleep(15)
             info = vm.info()
             if info[0] in (libvirt.VIR_DOMAIN_CRASHED, libvirt.VIR_DOMAIN_SHUTOFF):
-                self.logger.warn('VM %s crashed' % clone_name)
+                self.logger.warn('VM %s crashed', clone_name)
                 self.server.server_close()
                 raise koji.BuildError, 'VM %s crashed' % clone_name
             if self.success is None:
@@ -615,7 +613,7 @@ class VMTaskManager(TaskManager):
             if macaddr in self.macaddrs:
                 raise koji.PreBuildError, 'duplicate MAC address: %s' % macaddr
             self.macaddrs[macaddr] = (vm_name, task_id, port)
-            self.logger.info('registered MAC address %s for VM %s (task ID %s, port %s)' % (macaddr, vm_name, task_id, port))
+            self.logger.info('registered MAC address %s for VM %s (task ID %s, port %s)', macaddr, vm_name, task_id, port)
             return True
         finally:
             self.macaddr_lock.release()
@@ -657,7 +655,7 @@ class VMTaskManager(TaskManager):
 
     def checkDisk(self):
         if not os.path.exists(self.options.imagedir):
-            self.logger.error('No such directory: %s' % self.options.imagedir)
+            self.logger.error('No such directory: %s', self.options.imagedir)
             raise IOError, 'No such directory: %s' % self.options.imagedir
         fs_stat = os.statvfs(self.options.imagedir)
         available = fs_stat.f_bavail * fs_stat.f_bsize
@@ -681,8 +679,8 @@ class VMTaskManager(TaskManager):
         avail_mem = phys_mem - vm_mem
         # options.minmem is listed in mbytes
         min_mem = self.options.minmem * 1024
-        self.logger.debug('physical mem: %sk, allocated mem: %sk, available mem: %sk' % \
-                          (phys_mem, vm_mem, avail_mem))
+        self.logger.debug('physical mem: %sk, allocated mem: %sk, available mem: %sk',
+                          phys_mem, vm_mem, avail_mem)
         if avail_mem < min_mem:
             self.status = 'Insufficient memory: %sk allocated, %sk available, %sk required' % \
                           (vm_mem, avail_mem, min_mem)
@@ -698,26 +696,30 @@ class VMTaskManager(TaskManager):
         """
         Cleanup a single VM with the given name.
         """
-        vm = self.libvirt_conn.lookupByName(vm_name)
+        try:
+            vm = self.libvirt_conn.lookupByName(vm_name)
+        except libvirt.libvirtError:
+            # if we can't find the VM by name, it has probably been cleaned up manually
+            self.logger.warn("Can't find %s, assuming it has already been cleaned up", vm_name)
+            return True
         info = vm.info()
         if info[0] not in (libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED):
             vm.destroy()
-            self.logger.info('Shut down VM %s' % vm_name)
+            self.logger.info('Shut down VM %s', vm_name)
         disks = self.getCloneDisks(vm)
         for disk in disks:
             try:
                 if os.path.isfile(disk):
                     os.unlink(disk)
-                    self.logger.debug('Removed disk file %s for VM %s' % (disk, vm_name))
+                    self.logger.debug('Removed disk file %s for VM %s', disk, vm_name)
             except:
-                tb = ''.join(traceback.format_exception(*sys.exc_info()))
-                self.logger.error('Error removing disk file %s for VM %s, error was: %s' % \
-                                  (disk, vm_name, tb))
+                self.logger.error('Error removing disk file %s for VM %s', disk, vm_name,
+                                  exc_info=True)
                 return False
         else:
             # Removed all the disks successfully, so undefine the VM
             vm.undefine()
-            self.logger.info('Cleaned up VM %s' % vm_name)
+            self.logger.info('Cleaned up VM %s', vm_name)
             return True
 
     def cleanupAllVMs(self):
@@ -753,7 +755,7 @@ class VMTaskManager(TaskManager):
                     if task_id == id:
                         self.expired_vms[vm_name] = self.session.getTaskInfo(task_id)
                         del self.macaddrs[macaddr]
-                        self.logger.info('unregistered MAC address %s' % macaddr)
+                        self.logger.info('unregistered MAC address %s', macaddr)
                         break
             return ret
         finally:
