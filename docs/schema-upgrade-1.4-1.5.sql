@@ -7,11 +7,13 @@ INSERT INTO channels (name) VALUES ('vm');
 
 insert into archivetypes (name, description, extensions) values ('exe', 'Windows executable', 'exe');
 insert into archivetypes (name, description, extensions) values ('dll', 'Windows dynamic link library', 'dll');
+insert into archivetypes (name, description, extensions) values ('lib', 'Windows import library', 'lib');
 insert into archivetypes (name, description, extensions) values ('sys', 'Windows device driver', 'sys');
 insert into archivetypes (name, description, extensions) values ('inf', 'Windows driver information file', 'inf');
 insert into archivetypes (name, description, extensions) values ('cat', 'Windows catalog file', 'cat');
 insert into archivetypes (name, description, extensions) values ('msi', 'Windows Installer package', 'msi');
 insert into archivetypes (name, description, extensions) values ('pdb', 'Windows debug information', 'pdb');
+insert into archivetypes (name, description, extensions) values ('oem', 'Windows driver oem file', 'oem');
 
 -- flag to indicate that a build is a Windows build
 CREATE TABLE win_builds (

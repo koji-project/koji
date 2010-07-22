@@ -251,7 +251,7 @@ class SCM(object):
             raise BuildError, 'Unknown SCM type: %s' % self.scmtype
 
         # perform checkouts
-        ret, output = run(module_checkout_cmd, chdir=scmdir, logfile=logfile, fatal=True)
+        ret, output = run(module_checkout_cmd, chdir=scmdir, logfile=logfile)
         log(output)
         if ret:
             raise BuildError, 'Error running %s checkout command "%s: %s"' % \
@@ -260,7 +260,10 @@ class SCM(object):
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir, logfile=logfile, fatal=True)
+            if self.scmtype.startswith('GIT'):
+                run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, logfile=logfile, fatal=True)
+                run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, logfile=logfile, fatal=True)
+            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir, logfile=logfile)
             log(output)
             if ret:
                 raise BuildError, 'Error running %s update command "%s": %s' % \
@@ -291,7 +294,7 @@ class WindowsBuild(object):
         self.platform = conf.get('building', 'platform')
         # buildrequires and provides are multi-valued (space-separated)
         for entry in ('buildrequires', 'provides'):
-            setattr(self, entry, conf.get('building', entry).split())
+            setattr(self, entry, [e for e in conf.get('building', entry).split() if e])
         # execute is multi-valued (newline-separated)
         self.execute = [e.strip() for e in conf.get('building', 'execute').split('\n') if e]
 
