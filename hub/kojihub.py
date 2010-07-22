@@ -1319,7 +1319,7 @@ def check_tag_access(tag_id,user_id=None):
     if tag['perm_id']:
         needed_perm = lookup_perm(tag['perm_id'],strict=True)['name']
         if needed_perm not in perms:
-            return (False, override, "tag is locked")
+            return (False, override, "tag requires %s permission" % needed_perm)
     return (True,override,"")
 
 def assert_tag_access(tag_id,user_id=None,force=False):
