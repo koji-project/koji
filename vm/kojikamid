@@ -31,6 +31,7 @@ from ConfigParser import ConfigParser
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urlparse
 import xmlrpclib
@@ -320,10 +321,17 @@ class WindowsBuild(object):
 
     def build(self):
         """Do the build: run the execute line(s)"""
+        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
+        script = os.fdopen(tmpfd, 'w')
         for cmd in self.execute:
-            ret, output = run(cmd, chdir=self.workdir, logfile=self.logfile)
-            if ret:
-                raise BuildError, 'Build command failed: %s' % output
+            script.write(cmd)
+            script.write('\n')
+        script.close()
+        cmd = ['/bin/bash', '-e', '-x', tmpname]
+        ret, output = run(cmd, chdir=self.workdir, logfile=self.logfile)
+        if ret:
+            raise BuildError, 'Build command failed, see %s for details' % \
+                  os.path.basename(self.logfile.name)
 
     def virusCheck(self):
         """check the build output for viruses"""
@@ -365,7 +373,7 @@ def run(cmd, chdir=None, logfile=None, fatal=False):
         if isinstance(cmd, (str, unicode)):
             logfile.write(cmd)
         else:
-            logfile.writelines(' '.join(cmd))
+            logfile.write(' '.join(cmd))
         logfile.write('\n')
         logfile.write(output)
         logfile.write('\n')
