@@ -12,6 +12,9 @@
       <th>ID</th><td>$channel.id</td>
     </tr>
     <tr>
+      <th>Active Tasks</th><td><a href="tasks?view=flat&channelID=$channel.id">$taskCount</a></td>
+    </tr>
+    <tr>
       <th>Hosts</th>
       <td>
         #if $len($hosts) > 0

@@ -372,7 +372,7 @@ _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'newRepo
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'maven', 'newRepo']
 
-def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-id'):
+def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(req, 'Tasks', 'tasks')
     server = _getServer(req)
 
@@ -443,6 +443,19 @@ def tasks(req, owner=None, state='active', view='tree', method='all', hostID=Non
     else:
         values['host'] = None
         values['hostID'] = None
+
+    if channelID:
+        try:
+            channelID = int(channelID)
+        except ValueError:
+            pass
+        channel = server.getChannel(channelID, strict=True)
+        opts['channel_id'] = channel['id']
+        values['channel'] = channel
+        values['channelID'] = channel['id']
+    else:
+        values['channel'] = None
+        values['channelID'] = None
 
     loggedInUser = req.currentUser
     values['loggedInUser'] = loggedInUser
@@ -1505,6 +1518,11 @@ def channelinfo(req, channelID):
         raise koji.GenericError, 'invalid channel ID: %i' % channelID
 
     values['title'] = channel['name'] + ' | Channel Info'
+
+    states = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
+    values['taskCount'] = \
+            server.listTasks(opts={'channel_id': channelID, 'state': states},
+                             queryOpts={'countOnly': True})
 
     hosts = server.listHosts(channelID=channelID)
     hosts.sort(_sortbyname)

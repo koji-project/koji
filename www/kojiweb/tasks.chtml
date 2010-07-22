@@ -36,11 +36,11 @@ All
   #end if
 #end def
 
-#attr _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'order']
+#attr _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'channelID', 'order']
 
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''#</h4>
+  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $channel.name) else ''#</h4>
 
   <table class="data-list">
     <tr>

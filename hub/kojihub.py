@@ -7571,6 +7571,7 @@ class RootExports(object):
             state[list]: limit to tasks of given state
             owner[int]: limit to tasks owned by the user with the given ID
             host_id[int]: limit to tasks running on the host with the given ID
+            channel_id[int]: limit to tasks in the specified channel
             parent[int]: limit to tasks with the given parent
             decode[bool]: whether or not xmlrpc data in the 'request' and 'result'
                           fields should be decoded; defaults to False
@@ -7612,7 +7613,7 @@ class RootExports(object):
         for f in ['arch','state']:
             if opts.has_key(f):
                 conditions.append('%s IN %%(%s)s' % (f, f))
-        for f in ['owner', 'host_id', 'parent']:
+        for f in ['owner', 'host_id', 'channel_id', 'parent']:
             if opts.has_key(f):
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
