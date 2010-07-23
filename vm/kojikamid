@@ -275,16 +275,83 @@ class SCM(object):
 # End heinous copy and paste
 ############################
 
+def ensuredir(path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    return path
+
 class WindowsBuild(object):
 
-    def __init__(self, specpath, build_tag, workdir, opts, logfile):
+    def __init__(self, server, logfile):
         """constructor: check ini spec file syntax, set build properties"""
-        self.build_tag = build_tag
-        self.opts = opts
-        self.workdir = workdir
+        self.server = server
+        info = server.getTaskInfo()
+        self.source_url = info[0]
+        self.build_tag = info[1]
+        if len(info) > 2:
+            self.task_opts = info[2]
+        else:
+            self.task_opts = {}
+        self.workdir = '/tmp/build'
+        ensuredir(self.workdir)
+        self.source_dir = None
+        self.spec_dir = None
         self.logfile = logfile
+
+        # we initialize these here for clarity, but they are populated in loadConfig()
+        self.name = None
+        self.version = None
+        self.release = None
+        self.description = None
+        self.platform = None
+        self.buildrequires = []
+        self.provides = []
+        self.execute = []
+        self.output = {}
+        self.logs = []
+
+    def checkEnv(self):
+        """Is this environment fit to build in, based on the spec file?"""
+        pass
+
+    def checkout(self):
+        """Checkout sources, specfile, and patches, and apply patches"""
+        src_scm = SCM(self.source_url)
+        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')), self.logfile)
+        if 'specfile' in self.task_opts:
+            spec_scm = SCM(self.task_opts['specfile'])
+            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')), self.logfile)
+        else:
+            self.spec_dir = self.source_dir
+        if 'patches' in self.task_opts:
+            patch_scm = SCM(self.task_opts['patches'])
+            patch_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')), self.logfile)
+            self.applyPatches(self.source_dir, patch_dir)
+
+    def applyPatches(self, sourcedir, patchdir):
+        """Apply patches in patchdir to files in sourcedir)"""
+        patches = [patch for patch in os.listdir(patchdir) if \
+                   os.path.isfile(os.path.join(patchdir, patch)) and \
+                   not patch.startswith('.')]
+        if not patches:
+            raise BuildError, 'no patches found at %s' % patchdir
+        patches.sort()
+        for patch in patches:
+            cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
+            ret, output = run(cmd, logfile=self.logfile)
+            if ret:
+                raise BuildError, 'error applying patches, output was: %s' % output
+
+    def loadConfig(self):
+        """Load build configuration from the spec file."""
+        specfiles = [spec for spec in os.listdir(self.spec_dir) if spec.endswith('.ini')]
+        if len(specfiles) == 0:
+            raise BuildError, 'No .ini file found'
+        elif len(specfiles) > 1:
+            raise BuildError, 'Multiple .ini files found'
+
         conf = ConfigParser()
-        conf.read(specpath)
+        conf.read(os.path.join(self.spec_dir, specfiles[0]))
 
         # [naming] section
         for entry in ('name', 'version', 'release', 'description'):
@@ -294,12 +361,11 @@ class WindowsBuild(object):
         self.platform = conf.get('building', 'platform')
         # buildrequires and provides are multi-valued (space-separated)
         for entry in ('buildrequires', 'provides'):
-            setattr(self, entry, [e for e in conf.get('building', entry).split() if e])
+            getattr(self, entry).extend([e for e in conf.get('building', entry).split() if e])
         # execute is multi-valued (newline-separated)
-        self.execute = [e.strip() for e in conf.get('building', 'execute').split('\n') if e]
+        self.execute.extend([e.strip() for e in conf.get('building', 'execute').split('\n') if e])
 
         # [files] section
-        self.output = {}
         for entry in conf.get('files', 'output').split('\n'):
             if not entry:
                 continue
@@ -312,15 +378,12 @@ class WindowsBuild(object):
             else:
                 metadata['flags'] = []
             self.output[filename] = metadata
-        self.logs = [e.strip() for e in conf.get('files', 'logs').split('\n') if e]
-
-    def checkEnv(self):
-        """Is this environment fit to build in, based on the spec file?"""
-        pass
+        self.logs.extend([e.strip() for e in conf.get('files', 'logs').split('\n') if e])
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
-        pass
+        for br in self.buildrequires:
+            pass
 
     def build(self):
         """Do the build: run the execute line(s)"""
@@ -331,25 +394,27 @@ class WindowsBuild(object):
             script.write('\n')
         script.close()
         cmd = ['/bin/bash', '-e', '-x', tmpname]
-        ret, output = run(cmd, chdir=self.workdir, logfile=self.logfile)
+        ret, output = run(cmd, chdir=self.source_dir, logfile=self.logfile)
         if ret:
             raise BuildError, 'Build command failed, see %s for details' % \
                   os.path.basename(self.logfile.name)
 
     def virusCheck(self):
-        """check the build output for viruses"""
+        """Check the build output for viruses"""
         pass
 
     def gatherResults(self):
-        """gather information about the output from the build, return it"""
+        """Gather information about the output from the build, return it"""
         return {'name': self.name, 'version': self.version, 'release': self.release,
                 'description': self.description, 'platform': self.platform,
                 'provides': self.provides,
                 'output': self.output, 'logs': self.logs}
 
-    def doAll(self):
-        """helper function that runs the entire process"""
+    def run(self):
+        """Run the entire build process"""
         self.checkEnv()
+        self.checkout()
+        self.loadConfig()
         self.fetchBuildReqs()
         self.build()
         self.virusCheck()
@@ -430,13 +495,8 @@ def upload_file(server, prefix, path):
     fobj.close()
     server.verifyChecksum(path, sum.hexdigest(), 'sha1')
 
-def upload_results(server, codir, results):
-    """upload the results of a build given the results dict"""
-    for filename in results['output'].keys() + results['logs']:
-        upload_file(server, codir, filename)
-
 def get_mgmt_server():
-    """retrieve scmurls from kojivmd we'll use to build from"""
+    """Get a ServerProxy object we can use to retrieve task info"""
     macaddr, gateway = find_net_info()
     while not (macaddr and gateway):
         # wait for the network connection to come up and get an address
@@ -461,49 +521,8 @@ def get_options():
     parser = OptionParser(usage=usage)
     parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
     parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
-    parser.add_option('-s', '--scmurl', help='Forcibly specify an scmurl to checkout from')
     (options, args) = parser.parse_args()
     return options
-
-def apply_patches(src_dir, patch_dir, logfile):
-    patches = [patch for patch in os.listdir(patch_dir) if \
-               os.path.isfile(os.path.join(patch_dir, patch)) and \
-               not patch.startswith('.')]
-    if not patches:
-        raise BuildError, 'no patches found at %s' % patch_dir
-    patches.sort()
-    for patch in patches:
-        cmd = ['/usr/bin/patch', '--verbose', '-d', src_dir, '-p1', '-i', os.path.join(patch_dir, patch)]
-        ret, output = run(cmd, logfile=logfile)
-        if ret:
-            raise BuildError, 'error applying patches, output was: %s' % output
-
-def ensuredir(path):
-    if not os.path.isdir(path):
-        os.makedirs(path)
-    return path
-
-def run_build(workdir, source_url, build_tag, task_opts, logfile):
-    """run the build"""
-    src_scm = SCM(source_url)
-    src_dir = src_scm.checkout(ensuredir(os.path.join(workdir, 'source')), logfile)
-    if 'specfile' in task_opts:
-        spec_scm = SCM(task_opts['specfile'])
-        spec_dir = spec_scm.checkout(ensuredir(os.path.join(workdir, 'spec')), logfile)
-    else:
-        spec_dir = src_dir
-    if 'patches' in task_opts:
-        patch_scm = SCM(task_opts['patches'])
-        patch_dir = patch_scm.checkout(ensuredir(os.path.join(workdir, 'patches')), logfile)
-        apply_patches(src_dir, patch_dir, logfile)
-
-    specfile = [spec for spec in os.listdir(spec_dir) if spec.endswith('.ini')]
-    if len(specfile) == 0:
-        raise BuildError, 'No .ini file found'
-    elif len(specfile) > 1:
-        raise BuildError, 'Multiple .ini files found'
-    winbld = WindowsBuild(os.path.join(spec_dir, specfile[0]), build_tag, src_dir, task_opts, logfile)
-    return winbld.doAll(), src_dir
 
 def flunk(server, logfile):
     """do the right thing when a build fails"""
@@ -544,32 +563,21 @@ if __name__ == '__main__':
         else:
             print 'Successfully removed the %s service' % prog
             sys.exit(0)
+
     server = None
     logfile = None
     try:
-        source_url = None
-        task_opts = None
-        if opts.scmurl:
-            source_url = opts.scmurl
-        else:
-            server = get_mgmt_server()
-            info = server.getTaskInfo()
-            source_url = info[0]
-            build_tag = info[1]
-            if len(info) > 2:
-                task_opts = info[2]
-        if not task_opts:
-            task_opts = {}
-        workdir = '/tmp/workdir'
-        os.mkdir(workdir)
-        logfile = file(os.path.join(workdir, 'build.log'), 'w')
-        results, results_dir = run_build(workdir, source_url, build_tag, task_opts, logfile)
+        logfile = file('/tmp/build.log', 'w')
+        server = get_mgmt_server()
+        build = WindowsBuild(server, logfile)
+        results = build.run()
         logfile.close()
-        if server is not None:
-            upload_file(server, workdir, 'build.log')
-            upload_results(server, results_dir, results)
-            results['logs'].append('build.log')
-            server.closeTask(results)
+
+        upload_file(server, '/tmp', 'build.log')
+        for filename in results['output'].keys() + results['logs']:
+            upload_file(server, build.source_dir, filename)
+        results['logs'].append('build.log')
+        server.closeTask(results)
         log('Build results: %s' % results)
     except:
         flunk(server, logfile)
