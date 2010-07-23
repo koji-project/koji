@@ -101,6 +101,7 @@ INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
 INSERT INTO permissions (name) VALUES ('livecd');
 INSERT INTO permissions (name) VALUES ('maven-import');
+INSERT INTO permissions (name) values ('win-import');
 INSERT INTO permissions (name) VALUES ('appliance');
 
 CREATE TABLE user_perms (
@@ -734,6 +735,7 @@ CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);
 -- Extended information about files built in Windows VMs
 CREATE TABLE win_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+        relpath TEXT NOT NULL,
         platforms TEXT NOT NULL,
         flags TEXT
 ) WITHOUT OIDS;

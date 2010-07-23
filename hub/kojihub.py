@@ -1048,8 +1048,8 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     set event to query at a time in the past
     set latest=True to get only the latest build per package
 
-    If type is not None, restrict the list to builds of the given type.  Currently the only
-    supported type is 'maven'.
+    If type is not None, restrict the list to builds of the given type.  Currently the supported
+    types are 'maven' and 'win'.
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
@@ -1074,14 +1074,17 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
               ('users.id', 'owner_id'), ('users.name', 'owner_name')]
     st_complete = koji.BUILD_STATES['COMPLETE']
 
-    maven_join = ''
+    type_join = ''
     if type is None:
         pass
     elif type == 'maven':
-        maven_join = 'JOIN maven_builds on maven_builds.build_id = tag_listing.build_id'
+        type_join = 'JOIN maven_builds ON maven_builds.build_id = tag_listing.build_id'
         fields.extend([('maven_builds.group_id', 'maven_group_id'),
                        ('maven_builds.artifact_id', 'maven_artifact_id'),
                        ('maven_builds.version', 'maven_version')])
+    elif type == 'win':
+        type_join = 'JOIN win_builds ON win_builds.build_id = tag_listing.build_id'
+        fields.append(('win_builds.platform', 'platform'))
     else:
         raise koji.GenericError, 'unsupported build type: %s' % type
 
@@ -1095,7 +1098,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     JOIN package ON package.id = build.pkg_id
     WHERE %s AND tag_id=%%(tagid)s
         AND build.state=%%(st_complete)i
-    """ % (', '.join([pair[0] for pair in fields]), maven_join, eventCondition(event, 'tag_listing'))
+    """ % (', '.join([pair[0] for pair in fields]), type_join, eventCondition(event, 'tag_listing'))
     if package:
         q += """AND package.name = %(package)s
         """
@@ -1135,8 +1138,8 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     set event to query at a time in the past
     set latest=False to get all tagged RPMS (not just from the latest builds)
 
-    If type is not None, restrict the list to rpms from builds of the given type.  Currently the only
-    supported type is 'maven'.
+    If type is not None, restrict the list to rpms from builds of the given type.  Currently the
+    supported types are 'maven' and 'win'.
     """
     taglist = [tag]
     if inherit:
@@ -1224,7 +1227,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     set latest=False to get all tagged archives (not just from the latest builds)
 
     If type is not None, restrict the listing to archives of the given type.  Currently
-    the only supported type is 'maven'.
+    the supported types are 'maven' and 'win'.
     """
     taglist = [tag]
     if inherit:
@@ -1260,6 +1263,11 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
         fields.extend([('maven_archives.group_id', 'maven_group_id'),
                        ('maven_archives.artifact_id', 'maven_artifact_id'),
                        ('maven_archives.version', 'maven_version')])
+    elif type == 'win':
+        joins.append('win_archives ON archiveinfo.id = win_archives.archive_id')
+        fields.extend([('win_archives.relpath', 'relpath'),
+                       ('win_archives.platforms', 'platforms'),
+                       ('win_archives.flags', 'flags')])
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
@@ -3244,6 +3252,28 @@ def get_win_build(buildInfo, strict=False):
     Returns a map containing the following keys:
 
     build_id: id of the build (integer)
+    platform: the Windows platform the build was run on (string)
+    """
+    fields = ('build_id', 'platform')
+    build_id = find_build_id(buildInfo)
+    if not build_id:
+        if strict:
+            raise koji.GenericError, 'No matching build found: %s' % buildInfo
+        else:
+            return None
+    query = """SELECT %s
+    FROM win_builds
+    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
+    return _singleRow(query, locals(), fields, strict)
+
+def get_win_build(buildInfo, strict=False):
+    """
+    Retrieve Windows-specific information about a build.
+    buildInfo can be either a string (n-v-r) or an integer
+    (build ID).
+    Returns a map containing the following keys:
+
+    build_id: id of the build (integer)
     platform: the platform the build was performed on (string)
     """
     fields = ('build_id', 'platform')
@@ -3294,7 +3324,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     those associated with additional metadata of the given type.
     Currently supported types are:
 
-    maven
+    maven, win
 
     If 'maven' is specified as a type, each returned map will contain
     these additional keys:
@@ -3302,6 +3332,13 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     group_id: Maven groupId (string)
     artifact_id: Maven artifactId (string)
     version: Maven version (string)
+
+    if 'win' is specified as a type, each returned map will contain
+    these additional keys:
+
+    relpath: the relative path where the file is located (string)
+    platforms: space-separated list of platforms the file is suitable for use on (string)
+    flags: space-separated list of flags used when building the file (fre, chk) (string)
 
     typeInfo is a dict that can be used to filter the output by type-specific info.
     For the 'maven' type, this dict may contain one or more of group_id, artifact_id, or version,
@@ -3361,6 +3398,22 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                 if typeInfo.has_key(key):
                     clauses.append('maven_archives.%s = %%(%s)s' % (key, key))
                     values[key] = typeInfo[key]
+    elif type == 'win':
+        joins.append('win_archives ON archiveinfo.id = win_archives.archive_id')
+        columns.extend(['win_archives.relpath', 'win_archives.platforms', 'win_archives.flags'])
+        aliases.extend(['relpath', 'platforms', 'flags'])
+
+        if typeInfo:
+            if 'relpath' in typeInfo:
+                clauses.append('win_archives.relpath = %(relpath)s')
+                values['relpath'] = typeInfo['relpath']
+            for key in ('platforms', 'flags'):
+                if key in typeInfo:
+                    val = typeInfo[key]
+                    if not isinstance(val, (list, tuple)):
+                        val = [val]
+                    for v in val:
+                        clauses.append(r"""%s ~ E'\\m%s\\M'""" % (key, v))
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
@@ -3397,6 +3450,21 @@ def get_maven_archive(archive_id):
     """
     fields = ('archive_id', 'group_id', 'artifact_id', 'version')
     select = """SELECT %s FROM maven_archives
+    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
+    return _singleRow(select, locals(), fields)
+
+def get_win_archive(archive_id):
+    """
+    Retrieve Windows-specific information about an archive.
+    Returns a map containing the following keys:
+
+    archive_id: id of the build (integer)
+    relpath: the relative path where the file is located (string)
+    platforms: space-separated list of platforms the file is suitable for use on (string)
+    flags: space-separated list of flags used when building the file (fre, chk) (string)
+    """
+    fields = ('archive_id', 'relpath', 'platforms', 'flags')
+    select = """SELECT %s FROM win_archives
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     return _singleRow(select, locals(), fields)
 
@@ -4331,8 +4399,10 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
     elif type == 'win':
         insert = InsertProcessor('win_archives')
         insert.set(archive_id=archive_id)
+        insert.set(relpath=destpath)
         insert.set(platforms=' '.join(typeInfo['platforms']))
-        insert.set(flags=' '.join(typeInfo['flags']))
+        if typeInfo['flags']:
+            insert.set(flags=' '.join(typeInfo['flags']))
         insert.execute()
         wininfo = get_win_build(buildinfo, strict=True)
         destdir = koji.pathinfo.winbuild(buildinfo, wininfo)
@@ -6430,6 +6500,12 @@ class RootExports(object):
             buildinfo = get_build(buildinfo, strict=True)
             fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
             import_archive(fullpath, buildinfo, type, typeInfo)
+        elif type == 'win':
+            context.session.assertPerm('win-import')
+            buildinfo = get_build(buildinfo, strict=True)
+            fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
+            import_archive(fullpath, buildinfo, type, typeInfo,
+                           destpath=os.path.dirname(filepath))
         else:
             koji.GenericError, 'unsupported archive type: %s' % type
 
@@ -6703,11 +6779,13 @@ class RootExports(object):
 
     getBuild = staticmethod(get_build)
     getMavenBuild = staticmethod(get_maven_build)
+    getWinBuild = staticmethod(get_win_build)
     getArchiveTypes = staticmethod(get_archive_types)
     getArchiveType = staticmethod(get_archive_type)
     listArchives = staticmethod(list_archives)
     getArchive = staticmethod(get_archive)
     getMavenArchive = staticmethod(get_maven_archive)
+    getWinArchive = staticmethod(get_win_archive)
     listArchiveFiles = staticmethod(list_archive_files)
     getArchiveFile = staticmethod(get_archive_file)
 
@@ -6901,7 +6979,7 @@ class RootExports(object):
         completion_time is before and/or after the given time.
         The time may be specified as a floating point value indicating seconds since the Epoch (as
         returned by time.time()) or as a string in ISO format ('YYYY-MM-DD HH24:MI:SS').
-        If type is not None, only list builds of the associated type.  Currently the only supported type is 'maven'.
+        If type is not None, only list builds of the associated type.  Currently the supported types are 'maven' and 'win'.
         if typeInfo is not None, only list builds with matching type-specific info.  Must be used in conjunction with
            the type parameter.
              Currently the only supported type is 'maven', and typeInfo is a dict containing
@@ -6996,6 +7074,12 @@ class RootExports(object):
                 if typeInfo.has_key('version'):
                     clauses.append('maven_builds.version = %(version)s')
                     version = typeInfo['version']
+        elif type == 'win':
+            joins.append('win_builds ON build.id = win_builds.build_id')
+            fields.append(('win_builds.platform', 'platform'))
+            if typeInfo:
+                clauses.append('win_builds.platform = %(platform)s')
+                platform = typeInfo['platform']
         else:
             raise koji.GenericError, 'unsupported build type: %s' % type
 

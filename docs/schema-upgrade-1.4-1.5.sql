@@ -3,6 +3,8 @@
 
 BEGIN;
 
+INSERT INTO permissions (name) values ('win-import');
+
 INSERT INTO channels (name) VALUES ('vm');
 
 insert into archivetypes (name, description, extensions) values ('exe', 'Windows executable', 'exe');
@@ -24,6 +26,7 @@ CREATE TABLE win_builds (
 -- Extended information about files built in Windows VMs
 CREATE TABLE win_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+        relpath TEXT NOT NULL,
         platforms TEXT NOT NULL,
         flags TEXT
 ) WITHOUT OIDS;
