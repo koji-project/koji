@@ -572,7 +572,7 @@ class VMExecTask(BaseTaskHandler):
     def verifyChecksum(self, path, checksum, algo='sha1'):
         if path.startswith('/'):
             # Only happens when called by verifyBuildReq()
-            local_path = path
+            local_path = os.path.abspath(path)
         else:
             local_path = os.path.abspath(os.path.join(self.output_dir, path))
         if not local_path.startswith(self.workdir):
