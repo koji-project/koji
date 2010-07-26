@@ -283,6 +283,7 @@ class TaskXMLRPCServer(DaemonXMLRPCServer):
         self.register_function(task_handler.getLatestBuild)
         self.register_function(task_handler.getFileList)
         self.register_function(task_handler.getFile)
+        self.register_function(task_handler.verifyBuildReq)
         self.register_function(task_handler.upload)
         self.register_function(task_handler.verifyChecksum)
 
@@ -534,6 +535,15 @@ class VMExecTask(BaseTaskHandler):
         finally:
             fileobj.close()
 
+    def verifyBuildReq(self, buildinfo, archiveinfo, type, checksum, algo='sha1'):
+        """
+        Verify the checksum of a build requirement.  The in-VM daemon calls this
+        method to verify that the file it has downloaded is valid.
+        """
+        fileobj = self.localCache(buildinfo, archiveinfo, type)
+        fileobj.close()
+        return self.verifyChecksum(fileobj.name, checksum, algo)
+
     def upload(self, path, offset, contents):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))
         if not local_path.startswith(self.output_dir):
@@ -560,8 +570,12 @@ class VMExecTask(BaseTaskHandler):
         return len(data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
-        local_path = os.path.abspath(os.path.join(self.output_dir, path))
-        if not local_path.startswith(self.output_dir):
+        if path.startswith('/'):
+            # Only happens when called by verifyBuildReq()
+            local_path = path
+        else:
+            local_path = os.path.abspath(os.path.join(self.output_dir, path))
+        if not local_path.startswith(self.workdir):
             raise koji.BuildError, 'invalid path: %s' % path
         if not os.path.isfile(local_path):
             raise koji.BuildError, '%s does not exist' % local_path
