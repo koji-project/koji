@@ -1994,6 +1994,16 @@ def taskLabel(taskInfo):
                 extra = '%s, %s' % (build_tag['name'], buildLabel(build))
             else:
                 extra = build_tag['name']
+    elif method == 'winbuild':
+        if taskInfo.has_key('request'):
+            vm = taskInfo['request'][0]
+            url = taskInfo['request'][1]
+            target = taskInfo['request'][2]
+            module_info = _module_info(url)
+            extra = '%s, %s' % (target, module_info)
+    elif method == 'vmExec':
+        if taskInfo.has_key('request'):
+            extra = taskInfo['request'][0]
     elif method == 'buildNotification':
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]

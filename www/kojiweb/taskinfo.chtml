@@ -149,6 +149,26 @@ $value
         #if $len($params) > 3
         $printOpts($params[3])
         #end if
+        #elif $task.method == 'winbuild'
+        <strong>VM:</strong> $params[0]<br/>
+        <strong>SCM URL:</strong> $params[1]<br/>
+        <strong>Build Target:</strong> $params[2]<br/>
+        #if $len($params) > 3
+        $printOpts($params[3])
+        #end if
+        #elif $task.method == 'vmExec'
+        <strong>VM:</strong> $params[0]<br/>
+        <strong>Exec Params:</strong><br/>
+        #for $info in $params[1]
+        #if $isinstance($info, dict)
+        $printMap($info, '&nbsp;&nbsp;&nbsp;&nbsp;')
+        #else
+        &nbsp;&nbsp;$info<br/>
+        #end if
+        #end for
+        #if $len($params) > 2
+        $printOpts($params[2])
+        #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $len($params) > 1
