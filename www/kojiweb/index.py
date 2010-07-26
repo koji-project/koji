@@ -1014,7 +1014,14 @@ def buildinfo(req, buildID):
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
     mavenbuild = server.getMavenBuild(buildID)
-    archives = server.listArchives(build['id'], queryOpts={'order': 'filename'})
+    winbuild = server.getWinBuild(buildID)
+    if mavenbuild:
+        archivetype = 'maven'
+    elif winbuild:
+        archivetype = 'win'
+    else:
+        archivetype = None
+    archives = server.listArchives(build['id'], type=archivetype, queryOpts={'order': 'filename'})
     archivesByExt = {}
     for archive in archives:
         archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
@@ -1084,6 +1091,7 @@ def buildinfo(req, buildID):
     values['debuginfoByArch'] = debuginfoByArch
     values['task'] = task
     values['mavenbuild'] = mavenbuild
+    values['winbuild'] = winbuild
     values['archives'] = archives
     values['archivesByExt'] = archivesByExt
     
@@ -1286,6 +1294,7 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None, buildrootOrder
     archive_type = server.getArchiveType(type_id=archive['type_id'])
     build = server.getBuild(archive['build_id'])
     maveninfo = server.getMavenArchive(archive['id'])
+    wininfo = server.getWinArchive(archive['id'])
     builtInRoot = None
     if archive['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
@@ -1302,6 +1311,7 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None, buildrootOrder
     values['archive_type'] = archive_type
     values['build'] = build
     values['maveninfo'] = maveninfo
+    values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
 
