@@ -8979,8 +8979,12 @@ class HostExports(object):
 
         # move the logs to their final destination
         for relpath in results['logs']:
+            subdir = 'win'
+            reldir = os.path.dirname(relpath)
+            if reldir:
+                subdir = os.path.join(subdir, reldir)
             import_build_log(os.path.join(task_dir, relpath),
-                             build_info, subdir='win')
+                             build_info, subdir=subdir)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
