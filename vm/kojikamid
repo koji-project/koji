@@ -20,12 +20,12 @@
 #
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
-
+#       Jay Greguske <jgregusk@redhat.com>
+#
 # To register this script as a service on Windows 2008 (with Cygwin 1.7.5 installed) run:
 #   kojiwind --install
 # in a cygwin shell.
 
-import datetime
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 import os
@@ -37,9 +37,9 @@ import urlparse
 import xmlrpclib
 import base64
 import hashlib
+import logging
 import traceback
-import base64
-import hashlib
+import threading
 
 MANAGER_PORT = 7000
 
@@ -169,7 +169,7 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def checkout(self, scmdir, logfile):
+    def checkout(self, scmdir):
         """
         Checkout the module from SCM.  Accepts the following parameters:
          - scmdir: the working directory
@@ -253,8 +253,7 @@ class SCM(object):
             raise BuildError, 'Unknown SCM type: %s' % self.scmtype
 
         # perform checkouts
-        ret, output = run(module_checkout_cmd, chdir=scmdir, logfile=logfile)
-        log(output)
+        ret, output = run(module_checkout_cmd, chdir=scmdir)
         if ret:
             raise BuildError, 'Error running %s checkout command "%s: %s"' % \
                 (self.scmtype, ' '.join(module_checkout_cmd), output)
@@ -263,10 +262,9 @@ class SCM(object):
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
             if self.scmtype.startswith('GIT'):
-                run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, logfile=logfile, fatal=True)
-                run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, logfile=logfile, fatal=True)
-            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir, logfile=logfile)
-            log(output)
+                run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, fatal=True)
+                run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, fatal=True)
+            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir)
             if ret:
                 raise BuildError, 'Error running %s update command "%s": %s' % \
                     (self.scmtype, ' '.join(update_checkout_cmd), output)
@@ -284,8 +282,9 @@ def ensuredir(path):
 
 class WindowsBuild(object):
 
-    def __init__(self, server, logfile):
+    def __init__(self, server):
         """constructor: check ini spec file syntax, set build properties"""
+        self.logger = logging.getLogger('koji.vm.WindowsBuild')
         self.server = server
         info = server.getTaskInfo()
         self.source_url = info[0]
@@ -300,7 +299,6 @@ class WindowsBuild(object):
         ensuredir(self.buildreq_dir)
         self.source_dir = None
         self.spec_dir = None
-        self.logfile = logfile
 
         # we initialize these here for clarity, but they are populated in loadConfig()
         self.name = None
@@ -321,15 +319,15 @@ class WindowsBuild(object):
     def checkout(self):
         """Checkout sources, specfile, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
-        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')), self.logfile)
+        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
         if 'specfile' in self.task_opts:
             spec_scm = SCM(self.task_opts['specfile'])
-            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')), self.logfile)
+            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])
-            patch_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')), self.logfile)
+            patch_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
             self.applyPatches(self.source_dir, patch_dir)
 
     def applyPatches(self, sourcedir, patchdir):
@@ -342,7 +340,7 @@ class WindowsBuild(object):
         patches.sort()
         for patch in patches:
             cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
-            ret, output = run(cmd, logfile=self.logfile)
+            ret, output = run(cmd)
             if ret:
                 raise BuildError, 'error applying patches, output was: %s' % output
 
@@ -407,7 +405,7 @@ class WindowsBuild(object):
         destfile.close()
         digest = checksum.hexdigest()
         self.server.verifyBuildReq(buildinfo, fileinfo, type, digest, 'sha1')
-        self.logfile.write('Retrieved %s (%s bytes, sha1: %s)\n' % (destpath, offset, digest))
+        self.logger.info('Retrieved %s (%s bytes, sha1: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
@@ -440,10 +438,9 @@ class WindowsBuild(object):
             script.write('\n')
         script.close()
         cmd = ['/bin/bash', '-e', '-x', tmpname]
-        ret, output = run(cmd, chdir=self.source_dir, logfile=self.logfile)
+        ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError, 'Build command failed, see %s for details' % \
-                  os.path.basename(self.logfile.name)
+            raise BuildError, 'Build command failed, see build.log for details'
 
     def virusCheck(self):
         """Check the build output for viruses"""
@@ -466,31 +463,19 @@ class WindowsBuild(object):
         self.virusCheck()
         return self.gatherResults()
 
-def log(msg):
-    print >> sys.stderr, '%s: %s' % (datetime.datetime.now().ctime(), msg)
-
-def run(cmd, chdir=None, logfile=None, fatal=False):
-    shell = False
-    if isinstance(cmd, (str, unicode)) and len(cmd.split()) > 1:
-        shell = True
+def run(cmd, chdir=None, fatal=False, log=True):
     olddir = None
     if chdir:
         olddir = os.getcwd()
         os.chdir(chdir)
-    log('running command: %s' % cmd)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            close_fds=True, shell=shell)
+                            close_fds=True)
     ret = proc.wait()
     output = proc.stdout.read()
-    if logfile:
-        logfile.write('$ ')
-        if isinstance(cmd, (str, unicode)):
-            logfile.write(cmd)
-        else:
-            logfile.write(' '.join(cmd))
-        logfile.write('\n')
-        logfile.write(output)
-        logfile.write('\n')
+    if log:
+        logger = logging.getLogger('koji.vm.run')
+        logger.info('$ %s', ' '.join(cmd))
+        logger.info(output)
     if olddir:
         os.chdir(olddir)
     if ret and fatal:
@@ -501,7 +486,7 @@ def find_net_info():
     """
     Find the network gateway configured for this VM.
     """
-    ret, output = run(['ipconfig', '/all'])
+    ret, output = run(['ipconfig', '/all'], log=False)
     if ret:
         raise RuntimeError, 'error running ipconfig, output was: %s' % output
     macaddr = None
@@ -533,6 +518,7 @@ def encode_int(n):
 
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
+    logger = logging.getLogger('koji.vm.upload_file')
     fobj = file(os.path.join(prefix, path), 'r')
     offset = 0
     sum = hashlib.sha1()
@@ -545,23 +531,26 @@ def upload_file(server, prefix, path):
         offset += len(data)
         sum.update(data)
     fobj.close()
-    server.verifyChecksum(path, sum.hexdigest(), 'sha1')
+    digest = sum.hexdigest()
+    server.verifyChecksum(path, digest, 'sha1')
+    logger.info('Uploaded %s (%s bytes, sha1: %s)', path, offset, digest)
 
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
+    logger = logging.getLogger('koji.vm.get_mgmt_server')
     macaddr, gateway = find_net_info()
     while not (macaddr and gateway):
         # wait for the network connection to come up and get an address
         time.sleep(5)
         macaddr, gateway = find_net_info()
-    log('found MAC address %s, connecting to %s:%s' % 
-        (macaddr, gateway, MANAGER_PORT))
-    server = xmlrpclib.ServerProxy('http://%s:%s/' % 
+    logger.debug('found MAC address %s, connecting to %s:%s',
+                 macaddr, gateway, MANAGER_PORT)
+    server = xmlrpclib.ServerProxy('http://%s:%s/' %
                                    (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not 
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
-    log('found task-specific port %s' % task_port)
+    logger.debug('found task-specific port %s', task_port)
     return xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
 def get_options():
@@ -576,20 +565,42 @@ def get_options():
     (options, args) = parser.parse_args()
     return options
 
+def setup_logging(logname, logfile):
+    logger = logging.getLogger(logname)
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(logfile, mode='w')
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+    logger.addHandler(handler)
+    return handler
+
+def incremental_upload(server, handler):
+    fd = file(handler.baseFilename, 'r')
+    while handler.active:
+        offset = fd.tell()
+        handler.flush()
+        contents = fd.read(65536)
+        if contents:
+            size = len(contents)
+            data = base64.b64encode(contents)
+            digest = hashlib.md5(contents).hexdigest()
+            del contents
+            server.uploadDirect(os.path.basename(handler.baseFilename),
+                                offset, size, digest, data)
+        time.sleep(1)
+
 def flunk(server, logfile):
     """do the right thing when a build fails"""
     exc_info = sys.exc_info()
     tb = ''.join(traceback.format_exception(*exc_info))
     if server is not None:
-        if logfile is not None:
-            try:
-                logfile.close()
-                upload_file(server, os.path.dirname(logfile.name),
-                            os.path.basename(logfile.name))
-            except:
-                pass
+        try:
+            logging.shutdown()
+            upload_file(server, os.path.dirname(logfile),
+                        os.path.basename(logfile))
+        except:
+            pass
         server.failTask(tb)
-    log(tb)
     sys.exit(1)
 
 if __name__ == '__main__':
@@ -600,7 +611,8 @@ if __name__ == '__main__':
                            '--path', sys.executable, '--args', os.path.abspath(prog),
                            '--type', 'auto', '--dep', 'Dhcp',
                            '--disp', 'Koji Windows Daemon',
-                           '--desc', 'Runs Koji tasks assigned to a VM'])
+                           '--desc', 'Runs Koji tasks assigned to a VM'],
+                          log=False)
         if ret:
             print 'Error installing %s service, output was: %s' % (prog, output)
             sys.exit(1)
@@ -608,7 +620,7 @@ if __name__ == '__main__':
             print 'Successfully installed the %s service' % prog
             sys.exit(0)
     elif opts.uninstall:
-        ret, output = run(['cygrunsrv', '--remove', prog])
+        ret, output = run(['cygrunsrv', '--remove', prog], log=False)
         if ret:
             print 'Error removing the %s service, output was: %s' % (prog, output)
             sys.exit(1)
@@ -616,21 +628,32 @@ if __name__ == '__main__':
             print 'Successfully removed the %s service' % prog
             sys.exit(0)
 
+    logfile = '/tmp/build.log'
+    handler = setup_logging('koji', logfile)
+    handler.active = True
     server = None
-    logfile = None
     try:
-        logfile = file('/tmp/build.log', 'w')
         server = get_mgmt_server()
-        build = WindowsBuild(server, logfile)
-        results = build.run()
-        logfile.close()
 
-        upload_file(server, '/tmp', 'build.log')
+        thread = threading.Thread(target=incremental_upload,
+                                  args=(server, handler))
+        thread.start()
+
+        build = WindowsBuild(server)
+        results = build.run()
+
         for filename in results['output'].keys() + results['logs']:
             upload_file(server, build.source_dir, filename)
-        results['logs'].append('build.log')
+
+        handler.active = False
+        thread.join()
+
+        handler.flush()
+        upload_file(server, os.path.dirname(logfile),
+                    os.path.basename(logfile))
+        results['logs'].append(os.path.basename(logfile))
+
         server.closeTask(results)
-        log('Build results: %s' % results)
     except:
         flunk(server, logfile)
     sys.exit(0)

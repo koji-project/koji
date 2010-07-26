@@ -240,7 +240,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
         while self.active:
             try:
                 conn, (ipaddr, port) = self.get_request()
-                self.logger.info('request from %s:%s',ipaddr, port)
+                self.logger.debug('request from %s:%s', ipaddr, port)
                 if self.verify_request(conn, (ipaddr, port)):
                     try:
                         self.process_request(conn, (ipaddr, port))
@@ -554,6 +554,13 @@ class VMExecTask(BaseTaskHandler):
         fobj.close()
         return len(data)
 
+    def uploadDirect(self, filename, offset, size, md5sum, data):
+        """
+        Upload contents directly to the server.
+        """
+        self.session.uploadFile(self.getUploadDir(), filename, size,
+                                md5sum, offset, data)
+
     def verifyChecksum(self, path, checksum, algo='sha1'):
         if path.startswith('/'):
             # Only happens when called by verifyBuildReq()
@@ -609,6 +616,7 @@ class VMExecTask(BaseTaskHandler):
         self.server.register_function(self.getFile)
         self.server.register_function(self.verifyBuildReq)
         self.server.register_function(self.upload)
+        self.server.register_function(self.uploadDirect)
         self.server.register_function(self.verifyChecksum)
         thr = threading.Thread(name='task_%s_thread' % self.id,
                                target=self.server.handle_while_active)
@@ -877,7 +885,7 @@ if __name__ == "__main__":
     else:
         logging.getLogger("koji").setLevel(logging.WARN)
     if options.debug_task:
-        logging.getLogger("koji.vm.BaseTaskHandler").setLevel(logging.DEBUG)
+        logging.getLogger("koji.build.BaseTaskHandler").setLevel(logging.DEBUG)
     if options.admin_emails:
         koji.add_mail_logger("koji", options.admin_emails)
 
