@@ -40,6 +40,7 @@ import SimpleXMLRPCServer
 import threading
 import base64
 import pwd
+import urlgrabber
 from ConfigParser import ConfigParser
 from optparse import OptionParser
 try:
@@ -107,6 +108,7 @@ def get_options():
                 'vmuser': 'qemu',
                 'admin_emails': None,
                 'workdir': '/tmp/koji',
+                'topurl': '',
                 'imagedir': '/var/lib/libvirt/images',
                 'pluginpath': '/usr/lib/koji-vm-plugins',
                 'privaddr': '192.168.122.1',
@@ -221,7 +223,11 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
     allow_reuse_address = True
 
     def __init__(self, addr, port):
-        SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+        if sys.version_info[:2] <= (2, 4):
+            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+        else:
+            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
+                                                           allow_none=True)
         self.logger = logging.getLogger('koji.vm.' + self.__class__.__name__)
         self.socket.settimeout(5)
         self.active = True
@@ -245,6 +251,28 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
             except:
                 self.logger.error('Error handling requests', exc_info=True)
 
+    if sys.version_info[:2] <= (2, 4):
+        # Copy and paste from SimpleXMLRPCServer, with the addition of passing
+        # allow_none=True to xmlrpclib.dumps()
+        def _marshaled_dispatch(self, data, dispatch_method = None):
+            params, method = xmlrpclib.loads(data)
+            try:
+                if dispatch_method is not None:
+                    response = dispatch_method(method, params)
+                else:
+                    response = self._dispatch(method, params)
+                response = (response,)
+                response = xmlrpclib.dumps(response, methodresponse=1, allow_none=True)
+            except xmlrpclib.Fault, fault:
+                response = xmlrpclib.dumps(fault)
+            except:
+                # report exception back to server
+                response = xmlrpclib.dumps(
+                    xmlrpclib.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                    )
+            return response
+
+
 class TaskXMLRPCServer(DaemonXMLRPCServer):
 
     def __init__(self, addr, port, task_handler):
@@ -252,6 +280,9 @@ class TaskXMLRPCServer(DaemonXMLRPCServer):
         self.register_function(task_handler.getTaskInfo)
         self.register_function(task_handler.closeTask)
         self.register_function(task_handler.failTask)
+        self.register_function(task_handler.getLatestBuild)
+        self.register_function(task_handler.getFileList)
+        self.register_function(task_handler.getFile)
         self.register_function(task_handler.upload)
         self.register_function(task_handler.verifyChecksum)
 
@@ -363,6 +394,10 @@ class VMExecTask(BaseTaskHandler):
         self.port = None
         self.server = None
         self.task_info = None
+        self.buildreq_dir = os.path.join(self.workdir, 'buildreqs')
+        koji.ensuredir(self.buildreq_dir)
+        self.output_dir = os.path.join(self.workdir, 'output')
+        koji.ensuredir(self.output_dir)
         self.output = None
         self.success = None
 
@@ -442,9 +477,66 @@ class VMExecTask(BaseTaskHandler):
         """
         return self.task_info
 
+    def getLatestBuild(self, tag, package, event=None):
+        """
+        Get information about the latest build of package "package" in tag "tag".
+        """
+        builds = self.session.getLatestBuilds(tag, package=package, event=event)
+        if not builds:
+            raise koji.BuildError, 'no build of package %s in tag %s' % (package, tag)
+        return builds[0]
+
+    def getFileList(self, buildID, type=None):
+        """
+        Get the file list for the latest build of the package "package" in tag "tag".
+        If type is specified, include the extended information for archives of that type.
+        """
+        return self.session.listArchives(buildID=buildID, type=type)
+
+    def localCache(self, buildinfo, fileinfo, type=None):
+        """
+        Access a file in the local cache.  If the file does not exist, it's downloaded
+        from the server.  Returns an open file object.
+        """
+        local_pi = koji.PathInfo(self.buildreq_dir)
+        if type == 'win':
+            localpath = os.path.join(local_pi.winbuild(buildinfo),
+                                     fileinfo['relpath'], fileinfo['filename'])
+        else:
+            raise koji.BuildError, 'unsupported file type: %s' % type
+
+        if not os.path.isfile(localpath):
+            remote_pi = koji.PathInfo(self.options.topurl)
+            if type == 'win':
+                remote_url = remote_pi.winbuild(buildinfo) + '/' + \
+                             fileinfo['relpath']  + '/' + fileinfo['filename']
+            else:
+                raise koji.BuildError, 'unsupported file type: %s' % type
+            koji.ensuredir(os.path.dirname(localpath))
+            urlgrabber.urlgrab(remote_url, filename=localpath)
+
+        return file(localpath, 'r')
+
+    def getFile(self, buildinfo, archiveinfo, offset, length, type=None):
+        """
+        Get the contents of the file indicated by fileinfo, returning a maximum of
+        "length" bytes starting at "offset".  Contents are returned base64-encoded.
+        """
+        offset = int(offset)
+        length = int(length)
+        fileobj = self.localCache(buildinfo, archiveinfo, type=type)
+        try:
+            fileobj.seek(offset)
+            data = fileobj.read(length)
+            encoded = base64.b64encode(data)
+            del data
+            return encoded
+        finally:
+            fileobj.close()
+
     def upload(self, path, offset, contents):
-        local_path = os.path.abspath(os.path.join(self.workdir, path))
-        if not local_path.startswith(self.workdir):
+        local_path = os.path.abspath(os.path.join(self.output_dir, path))
+        if not local_path.startswith(self.output_dir):
             raise koji.BuildError, 'invalid upload path: %s' % path
         koji.ensuredir(os.path.dirname(local_path))
         # accept offset as a str to avoid problems with files larger than 2**32
@@ -468,8 +560,8 @@ class VMExecTask(BaseTaskHandler):
         return len(data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
-        local_path = os.path.abspath(os.path.join(self.workdir, path))
-        if not local_path.startswith(self.workdir):
+        local_path = os.path.abspath(os.path.join(self.output_dir, path))
+        if not local_path.startswith(self.output_dir):
             raise koji.BuildError, 'invalid path: %s' % path
         if not os.path.isfile(local_path):
             raise koji.BuildError, '%s does not exist' % local_path
@@ -578,7 +670,7 @@ class VMExecTask(BaseTaskHandler):
             else:
                 vm.destroy()
                 self.server.server_close()
-                self.uploadTree(self.workdir)
+                self.uploadTree(self.output_dir)
                 if self.success:
                     return self.output
                 else:

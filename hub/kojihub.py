@@ -3438,7 +3438,7 @@ def get_archive(archive_id, strict=False):
     WHERE id = %%(archive_id)i""" % ', '.join(fields)
     return _singleRow(select, locals(), fields, strict=strict)
 
-def get_maven_archive(archive_id):
+def get_maven_archive(archive_id, strict=False):
     """
     Retrieve Maven-specific information about an archive.
     Returns a map containing the following keys:
@@ -3451,9 +3451,9 @@ def get_maven_archive(archive_id):
     fields = ('archive_id', 'group_id', 'artifact_id', 'version')
     select = """SELECT %s FROM maven_archives
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields)
+    return _singleRow(select, locals(), fields, strict=strict)
 
-def get_win_archive(archive_id):
+def get_win_archive(archive_id, strict=False):
     """
     Retrieve Windows-specific information about an archive.
     Returns a map containing the following keys:
@@ -3466,7 +3466,7 @@ def get_win_archive(archive_id):
     fields = ('archive_id', 'relpath', 'platforms', 'flags')
     select = """SELECT %s FROM win_archives
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields)
+    return _singleRow(select, locals(), fields, strict=strict)
 
 def _get_zipfile_list(archive_id, zippath):
     """
@@ -4397,6 +4397,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
         _import_archive_file(filepath, mavendir)
         _generate_maven_metadata(maveninfo, mavendir)
     elif type == 'win':
+        wininfo = get_win_build(buildinfo, strict=True)
         insert = InsertProcessor('win_archives')
         insert.set(archive_id=archive_id)
         insert.set(relpath=destpath)
@@ -4404,8 +4405,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
         if typeInfo['flags']:
             insert.set(flags=' '.join(typeInfo['flags']))
         insert.execute()
-        wininfo = get_win_build(buildinfo, strict=True)
-        destdir = koji.pathinfo.winbuild(buildinfo, wininfo)
+        destdir = koji.pathinfo.winbuild(buildinfo)
         if destpath:
             destdir = os.path.join(destdir, destpath)
         _import_archive_file(filepath, destdir)

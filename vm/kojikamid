@@ -38,6 +38,7 @@ import xmlrpclib
 import base64
 import hashlib
 import traceback
+import base64
 
 MANAGER_PORT = 7000
 
@@ -294,6 +295,8 @@ class WindowsBuild(object):
             self.task_opts = {}
         self.workdir = '/tmp/build'
         ensuredir(self.workdir)
+        self.buildreq_dir = os.path.join(self.workdir, 'buildreqs')
+        ensuredir(self.buildreq_dir)
         self.source_dir = None
         self.spec_dir = None
         self.logfile = logfile
@@ -304,7 +307,7 @@ class WindowsBuild(object):
         self.release = None
         self.description = None
         self.platform = None
-        self.buildrequires = []
+        self.buildrequires = {}
         self.provides = []
         self.execute = []
         self.output = {}
@@ -360,8 +363,12 @@ class WindowsBuild(object):
         # [building] section
         self.platform = conf.get('building', 'platform')
         # buildrequires and provides are multi-valued (space-separated)
-        for entry in ('buildrequires', 'provides'):
-            getattr(self, entry).extend([e for e in conf.get('building', entry).split() if e])
+        for br in conf.get('building', 'buildrequires').split():
+            if br:
+                self.buildrequires[br] = {}
+        for prov in conf.get('building', 'provides').split():
+            if prov:
+                self.provides.append(prov)
         # execute is multi-valued (newline-separated)
         self.execute.extend([e.strip() for e in conf.get('building', 'execute').split('\n') if e])
 
@@ -380,15 +387,49 @@ class WindowsBuild(object):
             self.output[filename] = metadata
         self.logs.extend([e.strip() for e in conf.get('files', 'logs').split('\n') if e])
 
+    def fetchFile(self, basedir, buildinfo, fileinfo, type=None):
+        """Download the file from buildreq, at filepath, into the basedir"""
+        destpath = os.path.join(basedir, fileinfo['relpath'], fileinfo['filename'])
+        ensuredir(os.path.dirname(destpath))
+        destfile = file(destpath, 'w')
+        offset = 0
+        while True:
+            encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, type)
+            if not encoded:
+                break
+            data = base64.b64decode(encoded)
+            del encoded
+            destfile.write(data)
+            offset += len(data)
+        destfile.close()
+        self.logfile.write('Retrieved %s (%s bytes)\n' % (destpath, offset))
+
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
-        for br in self.buildrequires:
-            pass
+        for buildreq, brinfo in self.buildrequires.items():
+            buildinfo = self.server.getLatestBuild(self.build_tag, buildreq,
+                                                   self.task_opts.get('event_id'))
+            br_dir = os.path.join(self.buildreq_dir, buildreq)
+            ensuredir(br_dir)
+            brinfo['dir'] = br_dir
+            brfiles = []
+            brinfo['files'] = brfiles
+            buildfiles = self.server.getFileList(buildinfo['id'], 'win')
+            for fileinfo in buildfiles:
+                self.fetchFile(br_dir, buildinfo, fileinfo, 'win')
+                brfiles.append(os.path.join(fileinfo['relpath'], fileinfo['filename']))
 
     def build(self):
         """Do the build: run the execute line(s)"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
         script = os.fdopen(tmpfd, 'w')
+        for buildreq, brinfo in self.buildrequires.items():
+            script.write("export %s_dir='%s'\n" % (buildreq, brinfo['dir']))
+            script.write("export %s_files='" % buildreq)
+            for filename in brinfo['files']:
+                script.write(filename)
+                script.write('\n')
+            script.write("'\n\n")
         for cmd in self.execute:
             script.write(cmd)
             script.write('\n')
@@ -479,6 +520,12 @@ def find_net_info():
         gateway = None
     return macaddr, gateway
 
+def encode_int(n):
+    """If n is too large for a 32bit signed, convert it to a string"""
+    if n <= 2147483647:
+        return n
+    return str(n)
+
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     fobj = file(os.path.join(prefix, path), 'r')
@@ -489,7 +536,7 @@ def upload_file(server, prefix, path):
         if not data:
             break
         encoded = base64.b64encode(data)
-        server.upload(path, offset, encoded)
+        server.upload(path, encode_int(offset), encoded)
         offset += len(data)
         sum.update(data)
     fobj.close()

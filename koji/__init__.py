@@ -1386,7 +1386,7 @@ class PathInfo(object):
         release = build['release']
         return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
 
-    def winbuild(self, build, wininfo):
+    def winbuild(self, build):
         """Return the directory where the Windows build exists"""
         return self.build(build) + '/win'
 
