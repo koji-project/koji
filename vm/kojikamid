@@ -402,7 +402,7 @@ class WindowsBuild(object):
         if digest != fileinfo['md5sum']:
             raise BuildError, 'md5 checksum validation failed for %s, %s (computed) != %s (provided)' % \
                   (destpath, digest, fileinfo['md5sum'])
-        self.logger.info('Retrieved %s (%s bytes, md5sum: %s)', destpath, offset, digest)
+        self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
@@ -526,9 +526,10 @@ def encode_int(n):
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm.upload_file')
-    fobj = file(os.path.join(prefix, path), 'r')
+    destpath = os.path.join(prefix, path)
+    fobj = file(destpath, 'r')
     offset = 0
-    sum = hashlib.sha1()
+    sum = hashlib.md5()
     while True:
         data = fobj.read(131072)
         if not data:
@@ -539,8 +540,8 @@ def upload_file(server, prefix, path):
         sum.update(data)
     fobj.close()
     digest = sum.hexdigest()
-    server.verifyChecksum(path, digest, 'sha1')
-    logger.info('Uploaded %s (%s bytes, sha1: %s)', path, offset, digest)
+    server.verifyChecksum(path, digest, 'md5')
+    logger.info('Uploaded %s (%s bytes, md5: %s)', destpath, offset, digest)
 
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
