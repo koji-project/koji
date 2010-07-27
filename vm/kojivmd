@@ -520,15 +520,6 @@ class VMExecTask(BaseTaskHandler):
         finally:
             fileobj.close()
 
-    def verifyBuildReq(self, buildinfo, archiveinfo, type, checksum, algo='sha1'):
-        """
-        Verify the checksum of a build requirement.  The in-VM daemon calls this
-        method to verify that the file it has downloaded is valid.
-        """
-        fileobj = self.localCache(buildinfo, archiveinfo, type)
-        fileobj.close()
-        return self.verifyChecksum(fileobj.name, checksum, algo)
-
     def upload(self, path, offset, contents):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))
         if not local_path.startswith(self.output_dir):
@@ -562,12 +553,8 @@ class VMExecTask(BaseTaskHandler):
                                 md5sum, offset, data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
-        if path.startswith('/'):
-            # Only happens when called by verifyBuildReq()
-            local_path = os.path.abspath(path)
-        else:
-            local_path = os.path.abspath(os.path.join(self.output_dir, path))
-        if not local_path.startswith(self.workdir):
+        local_path = os.path.abspath(os.path.join(self.output_dir, path))
+        if not local_path.startswith(self.output_dir):
             raise koji.BuildError, 'invalid path: %s' % path
         if not os.path.isfile(local_path):
             raise koji.BuildError, '%s does not exist' % local_path
@@ -614,7 +601,6 @@ class VMExecTask(BaseTaskHandler):
         self.server.register_function(self.getLatestBuild)
         self.server.register_function(self.getFileList)
         self.server.register_function(self.getFile)
-        self.server.register_function(self.verifyBuildReq)
         self.server.register_function(self.upload)
         self.server.register_function(self.uploadDirect)
         self.server.register_function(self.verifyChecksum)

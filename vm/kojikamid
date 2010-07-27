@@ -380,11 +380,14 @@ class WindowsBuild(object):
 
     def fetchFile(self, basedir, buildinfo, fileinfo, type=None):
         """Download the file from buildreq, at filepath, into the basedir"""
-        destpath = os.path.join(basedir, fileinfo['relpath'], fileinfo['filename'])
+        if type == 'win':
+            destpath = os.path.join(basedir, fileinfo['relpath'], fileinfo['filename'])
+        else:
+            raise BuildError, 'unsupported file type: %s' % type
         ensuredir(os.path.dirname(destpath))
         destfile = file(destpath, 'w')
         offset = 0
-        checksum = hashlib.sha1()
+        checksum = hashlib.md5()
         while True:
             encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, type)
             if not encoded:
@@ -396,8 +399,10 @@ class WindowsBuild(object):
             checksum.update(data)
         destfile.close()
         digest = checksum.hexdigest()
-        self.server.verifyBuildReq(buildinfo, fileinfo, type, digest, 'sha1')
-        self.logger.info('Retrieved %s (%s bytes, sha1: %s)', destpath, offset, digest)
+        if digest != fileinfo['md5sum']:
+            raise BuildError, 'md5 checksum validation failed for %s, %s (computed) != %s (provided)' % \
+                  (destpath, digest, fileinfo['md5sum'])
+        self.logger.info('Retrieved %s (%s bytes, md5sum: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
