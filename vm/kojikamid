@@ -253,10 +253,7 @@ class SCM(object):
             raise BuildError, 'Unknown SCM type: %s' % self.scmtype
 
         # perform checkouts
-        ret, output = run(module_checkout_cmd, chdir=scmdir)
-        if ret:
-            raise BuildError, 'Error running %s checkout command "%s: %s"' % \
-                (self.scmtype, ' '.join(module_checkout_cmd), output)
+        run(module_checkout_cmd, chdir=scmdir, fatal=True)
 
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
@@ -264,10 +261,7 @@ class SCM(object):
             if self.scmtype.startswith('GIT'):
                 run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, fatal=True)
                 run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, fatal=True)
-            ret, output = run(update_checkout_cmd, chdir=update_checkout_dir)
-            if ret:
-                raise BuildError, 'Error running %s update command "%s": %s' % \
-                    (self.scmtype, ' '.join(update_checkout_cmd), output)
+            run(update_checkout_cmd, chdir=update_checkout_dir, fatal=True)
 
         return sourcedir
 
@@ -340,9 +334,7 @@ class WindowsBuild(object):
         patches.sort()
         for patch in patches:
             cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
-            ret, output = run(cmd)
-            if ret:
-                raise BuildError, 'error applying patches, output was: %s' % output
+            run(cmd, fatal=True)
 
     def loadConfig(self):
         """Load build configuration from the spec file."""
@@ -440,7 +432,7 @@ class WindowsBuild(object):
         cmd = ['/bin/bash', '-e', '-x', tmpname]
         ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError, 'Build command failed, see build.log for details'
+            raise BuildError, 'build command failed, see build.log for details'
 
     def virusCheck(self):
         """Check the build output for viruses"""
@@ -464,22 +456,32 @@ class WindowsBuild(object):
         return self.gatherResults()
 
 def run(cmd, chdir=None, fatal=False, log=True):
+    global logfd
+    output = ''
     olddir = None
     if chdir:
         olddir = os.getcwd()
         os.chdir(chdir)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            close_fds=True)
-    ret = proc.wait()
-    output = proc.stdout.read()
     if log:
         logger = logging.getLogger('koji.vm.run')
         logger.info('$ %s', ' '.join(cmd))
-        logger.info(output)
+        proc = subprocess.Popen(cmd, stdout=logfd, stderr=subprocess.STDOUT,
+                                close_fds=True)
+        ret = proc.wait()
+    else:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                close_fds=True)
+        output, dummy = proc.communicate()
+        ret = proc.returncode
     if olddir:
         os.chdir(olddir)
     if ret and fatal:
-        raise BuildError, 'error running: %s, return code was %s, output was: %s' % (cmd, ret, output)
+        msg = 'error running: %s, return code was %s' % (' '.join(cmd), ret)
+        if log:
+            msg += ', see %s for details' % (os.path.basename(logfd.name))
+        else:
+            msg += ', output: %s' % output
+        raise BuildError, msg
     return ret, output
 
 def find_net_info():
@@ -565,20 +567,21 @@ def get_options():
     (options, args) = parser.parse_args()
     return options
 
-def setup_logging(logname, logfile):
-    logger = logging.getLogger(logname)
+def setup_logging(logfile):
+    global logfd
+    logger = logging.getLogger('koji')
     logger.setLevel(logging.INFO)
     handler = logging.FileHandler(logfile, mode='w')
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logger.addHandler(handler)
+    logfd = handler.stream
     return handler
 
 def incremental_upload(server, handler):
     fd = file(handler.baseFilename, 'r')
     while handler.active:
         offset = fd.tell()
-        handler.flush()
         contents = fd.read(65536)
         if contents:
             size = len(contents)
@@ -602,6 +605,8 @@ def flunk(server, logfile):
             pass
         server.failTask(tb)
     sys.exit(1)
+
+logfd = None
 
 if __name__ == '__main__':
     prog = os.path.basename(sys.argv[0])
@@ -629,7 +634,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
     logfile = '/tmp/build.log'
-    handler = setup_logging('koji', logfile)
+    handler = setup_logging(logfile)
     handler.active = True
     server = None
     try:
@@ -648,7 +653,6 @@ if __name__ == '__main__':
         handler.active = False
         thread.join()
 
-        handler.flush()
         upload_file(server, os.path.dirname(logfile),
                     os.path.basename(logfile))
         results['logs'].append(os.path.basename(logfile))

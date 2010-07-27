@@ -369,7 +369,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if
