@@ -49,6 +49,7 @@ import urllib
 import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
 import xmlrpclib
+import yum.comps
 import optparse
 #for import-comps handler (currently disabled)
 #from rhpl.comps import Comps
@@ -1345,49 +1346,42 @@ def handle_import(options, session, args):
             do_import(path, data)
 
 
-# Currently disabled, needs porting to yum.comps
-#def handle_import_comps(options, session, args):
-#    "Import group/package information from a comps file"
-#    usage = _("usage: %prog import-comps [options] <file> <tag>")
-#    usage += _("\n(Specify the --help global option for a list of other help options)")
-#    parser = OptionParser(usage=usage)
-#    parser.add_option("--force", action="store_true", help=_("force import"))
-#    (local_options, args) = parser.parse_args(args)
-#    if len(args) != 2:
-#        parser.error(_("Incorrect number of arguments"))
-#        assert False
-#    comps = Comps(args[0])
-#    tag = args[1]
-#    force = local_options.force
-#    #add all the groups first (so that group reqs do not break)
-#    for name,group in comps.groups.items():
-#        print "Group: %s (%s)" % (group.id,name)
-#        session.groupListAdd(tag,group.id,force=force,display_name=name,
-#                        is_default=bool(group.default),
-#                        uservisible=bool(group.user_visible),
-#                        description=group.description,
-#                        langonly=group.langonly,
-#                        biarchonly=bool(group.biarchonly))
-#        #for k in ('id','biarchonly','langonly','user_visible','default','description'):
-#        #    print "  %s: %s" %(k,getattr(group,k))
-#    for name,group in comps.groups.items():
-#        print "Group: %s (%s)" % (group.id,name)
-#        for pkg in group.pkgs.values():
-#            pkg = pkg.copy()
-#            pkg_name = pkg['package']
-#            if group.pkgConditionals.has_key(pkg_name):
-#                pkg['requires'] = group.pkgConditionals[pkg_name]
-#            pkg['basearchonly'] = bool(pkg['baseonly'])
-#            del pkg['package']
-#            del pkg['baseonly']
-#            print "  Package: %s: %r" % (pkg_name, pkg)
-#            session.groupPackageListAdd(tag,group.id,pkg_name,force=force, **pkg)
-#        for type,req in group.groups.values():
-#            print "  Req: %s (%s)" % (req,type)
-#            session.groupReqListAdd(tag,group.id,req,force=force,type=type)
-#        for type,req in group.metapkgs.values():
-#            print "  Metapkg: %s (%s)" %(req,type)
-#            session.groupReqListAdd(tag,group.id,req,force=force,type=type,is_metapkg=True)
+def handle_import_comps(options, session, args):
+    "Import group/package information from a comps file"
+    usage = _("usage: %prog import-comps [options] <file> <tag>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--force", action="store_true", help=_("force import"))
+    (local_options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Incorrect number of arguments"))
+        assert False
+    comps = yum.comps.Comps()
+    comps.add(args[0])
+    tag = args[1]
+    force = local_options.force
+    activate_session(session)
+    for group in comps.groups:
+        print "Group: %(groupid)s (%(name)s)" % vars(group)
+        session.groupListAdd(tag, group.groupid, force=force, display_name=group.name,
+                        is_default=bool(group.default),
+                        uservisible=bool(group.user_visible),
+                        description=group.description,
+                        langonly=group.langonly)
+        #yum.comps does not support the biarchonly field
+        for ptype, pdata in [('mandatory', group.mandatory_packages),
+                             ('default', group.default_packages),
+                             ('optional', group.optional_packages),
+                             ('conditional', group.conditional_packages)]:
+            for pkg in pdata:
+                pkgopts = {'type' : ptype}
+                if ptype == 'conditional':
+                    pkgopts['requires'] = pdata[pkg]
+                #yum.comps does not support basearchonly
+                print "  Package: %s: %r" % (pkg, pkgopts)
+                session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
+        #yum.comps does not support group dependencies
+        #yum.comps does not support metapkgs
 
 def handle_import_sig(options, session, args):
     "[admin] Import signatures into the database"
