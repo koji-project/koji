@@ -4327,6 +4327,67 @@ def _build_image(options, task_opts, session, args, img_type):
     else:
         return
 
+def handle_win_build(options, session, args):
+    """Build a Windows-based package from source"""
+    # Usage & option parsing
+    usage = _("usage: %prog win-build [options] target URL [spec-URL]")
+    usage += _("\n(Specify the --help global option for a list of other " +
+               "help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the appliance creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on appliance creation"))
+    parser.add_option("--noprogress", action="store_true",
+        help=_("Do not display progress of the upload"))
+    parser.add_option("--background", action="store_true",
+        help=_("Run the appliance creation task at a lower priority"))
+    parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform a scratch build"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
+    (build_opts, args) = parser.parse_args(args)
+    if len(args) < 2 or len(args) > 3:
+        parser.error(_("Two arguments are required, a target and SCM URL. Optionally you\nmay specify a second SCM URL for the spec file if it is not included in the\nsources."))
+        assert False
+    activate_session(session)
+    target = args[0]
+    if target.lower() == "none" and build_opts.repo_id:
+        target = None
+        build_opts.skip_tag = True
+    else:
+        build_target = session.getBuildTarget(target)
+        if not build_target:
+            parser.error(_("Unknown build target: %s" % target))
+        dest_tag = session.getTag(build_target['dest_tag'])
+        if not dest_tag:
+            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        if dest_tag['locked'] and not build_opts.scratch:
+            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    scmurls = args[1:]
+    opts = {}
+    for key in ('skip_tag', 'scratch', 'repo_id'):
+        val = getattr(build_opts, key)
+        if val is not None:
+            opts[key] = val
+    priority = None
+    if build_opts.background:
+        #relative to koji.PRIO_DEFAULT
+        priority = 5
+    # try to check that source is an SRPM
+    task_id = session.winbuild(scmurls, target, opts, priority=priority)
+    if not build_opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+    else:
+        return
+
 def handle_free_task(options, session, args):
     "[admin] Free a task"
     usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")
