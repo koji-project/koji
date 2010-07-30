@@ -1368,11 +1368,14 @@ class PathInfo(object):
     # ASCII numbers and upper- and lower-case letter for use in tmpdir()
     ASCII_CHARS = [chr(i) for i in range(48, 58) + range(65, 91) + range(97, 123)]
 
-    def __init__(self,topdir=None):
-        if topdir is None:
-            self.topdir = BASEDIR
-        else:
-            self.topdir = topdir
+    def __init__(self, topdir=None):
+        self._topdir = topdir
+
+    def topdir(self):
+        if self._topdir is None:
+            self._topdir = str(BASEDIR)
+        return self._topdir
+    topdir = property(topdir)
 
     def build(self,build):
         """Return the directory where a build belongs"""
