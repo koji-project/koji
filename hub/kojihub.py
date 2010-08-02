@@ -505,8 +505,12 @@ def make_task(method,arglist,**opts):
         # arglist = source, target, [opts]
         args = koji.decode_args2(arglist, ('source', 'target', 'opts'))
         policy_data['source'] = args['source']
-        target = get_build_target(args['target'], strict=True)
-        policy_data['target'] = target['name']
+        if args['target'] is None:
+            #koji-shadow makes null-target builds
+            policy_data['target'] = None
+        else:
+            target = get_build_target(args['target'], strict=True)
+            policy_data['target'] = target['name']
         t_opts = args.get('opts', {})
         policy_data['scratch'] = t_opts.get('scratch', False)
     ruleset = context.policy.get('channel')
