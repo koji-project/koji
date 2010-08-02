@@ -174,7 +174,7 @@
             #if $mavenbuild
             $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
             #elif $winbuild
-            $archive.relpath/$archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$downloadBase/$nvrpath/win/$archive.relpath/$archive.filename">download</a>)
+            $koji.pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$downloadBase/$nvrpath/win/$koji.pathinfo.winfile($archive)">download</a>)
             #end if
 	    </td>
 	  </tr>

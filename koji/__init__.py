@@ -1390,6 +1390,14 @@ class PathInfo(object):
         """Return the directory where the Windows build exists"""
         return self.build(build) + '/win'
 
+    def winfile(self, wininfo):
+        """Return the relative path from the winbuild directory where the
+           file identified by wininfo is located."""
+        filepath = wininfo['filename']
+        if wininfo.get('relpath'):
+            filepath = wininfo['relpath'] + '/' + filepath
+        return filepath
+
     def mavenrepo(self, build, maveninfo):
         """Return the directory where the Maven artifact exists in the per-tag Maven repo
         (/mnt/koji/repos/tag-name/repo-id/maven2/)"""

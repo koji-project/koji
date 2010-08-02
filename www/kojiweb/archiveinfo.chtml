@@ -13,7 +13,7 @@
     </tr>
     <tr>
     #if $wininfo
-      <th>File Name</th><td>$wininfo.relpath/$archive.filename</td>
+      <th>File Name</th><td>$koji.pathinfo.winfile($archive)</td>
     #else
       <th>File Name</th><td>$archive.filename</td>
     #end if
