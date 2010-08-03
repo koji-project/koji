@@ -40,6 +40,7 @@ import hashlib
 import logging
 import traceback
 import threading
+import re
 
 MANAGER_PORT = 7000
 
@@ -276,6 +277,9 @@ def ensuredir(path):
 
 class WindowsBuild(object):
 
+    LEADING_CHAR = re.compile('^[^A-Za-z_]')
+    VAR_CHARS = re.compile('[^A-Za-z0-9_]')
+
     def __init__(self, server):
         """constructor: check ini spec file syntax, set build properties"""
         self.logger = logging.getLogger('koji.vm.WindowsBuild')
@@ -302,6 +306,7 @@ class WindowsBuild(object):
         self.platform = None
         self.buildrequires = {}
         self.provides = []
+        self.shell = None
         self.execute = []
         self.output = {}
         self.logs = []
@@ -360,6 +365,12 @@ class WindowsBuild(object):
         for prov in conf.get('building', 'provides').split():
             if prov:
                 self.provides.append(prov)
+        # optionally specify a shell to use (defaults to bash)
+        # valid values are: cmd, cmd.exe (alias for cmd), and bash
+        if conf.has_option('building', 'shell'):
+            self.shell = conf.get('building', 'shell')
+        else:
+            self.shell = 'bash'
         # execute is multi-valued (newline-separated)
         self.execute.extend([e.strip() for e in conf.get('building', 'execute').split('\n') if e])
 
@@ -417,13 +428,56 @@ class WindowsBuild(object):
             buildfiles = self.server.getFileList(buildinfo['id'], 'win')
             for fileinfo in buildfiles:
                 self.fetchFile(br_dir, buildinfo, fileinfo, 'win')
-                brfiles.append(os.path.join(fileinfo['relpath'], fileinfo['filename']))
+                if fileinfo['relpath']:
+                    brfiles.append(os.path.join(fileinfo['relpath'], fileinfo['filename']))
+                else:
+                    brfiles.append(fileinfo['filename'])
 
     def build(self):
-        """Do the build: run the execute line(s)"""
+        if self.shell in ('cmd', 'cmd.exe'):
+            self.cmdBuild()
+        else:
+            self.bashBuild()
+
+    def varname(self, name):
+        """
+        Convert name to a valid shell variable name.
+        Converts leading characters that aren't letters or underscores
+        to underscores.
+        Converts any other characters that aren't letters, numbers,
+        or underscores to underscores.
+        """
+        name = self.LEADING_CHAR.sub('_', name)
+        name = self.VAR_CHARS.sub('_', name)
+        return name
+
+    def cmdBuild(self):
+        """Do the build: run the execute line(s) with cmd.exe"""
+        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat', dir='/cygdrive/c/Windows/Temp')
+        script = os.fdopen(tmpfd, 'w')
+        for buildreq, brinfo in self.buildrequires.items():
+            buildreq = self.varname(buildreq)
+            ret, output = run(['cygpath', '-wa', brinfo['dir']], log=False, fatal=True)
+            br_dir = output.strip()
+            script.write('set %s_dir=%s\r\n' % (buildreq, br_dir))
+            files = ' '.join(brinfo['files'])
+            files.replace('/', '\\')
+            script.write('set %s_files=%s\r\n' % (buildreq, files))
+        for cmd in self.execute:
+            script.write(cmd)
+            script.write('\r\n')
+        script.close()
+        cmd = ['cmd.exe', '/C', 'C:\\Windows\\Temp\\' + os.path.basename(tmpname)]
+        ret, output = run(cmd, chdir=self.source_dir)
+        if ret:
+            raise BuildError, 'build command failed, see build.log for details'
+
+    def bashBuild(self):
+        """Do the build: run the execute line(s) with bash"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
         script = os.fdopen(tmpfd, 'w')
         for buildreq, brinfo in self.buildrequires.items():
+            buildreq = self.varname(buildreq)
             script.write("export %s_dir='%s'\n" % (buildreq, brinfo['dir']))
             script.write("export %s_files='" % buildreq)
             for filename in brinfo['files']:
@@ -596,10 +650,12 @@ def incremental_upload(server, handler):
             del contents
             server.uploadDirect(os.path.basename(handler.baseFilename),
                                 offset, size, digest, data)
-        time.sleep(1)
+        else:
+            time.sleep(1)
 
 def flunk(server, logfile):
     """do the right thing when a build fails"""
+    logging.getLogger('koji.vm').error('error running build', exc_info=True)
     exc_info = sys.exc_info()
     tb = ''.join(traceback.format_exception(*exc_info))
     if server is not None:

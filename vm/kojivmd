@@ -649,6 +649,7 @@ class VMExecTask(BaseTaskHandler):
             vm.create()
             self.logger.info('Started VM %s', clone_name)
         except libvirt.libvirtError, e:
+            self.logger.error('error starting VM %s', clone_name, exc_info=True)
             raise koji.PreBuildError, 'error starting VM %s, error was: %s' % \
                   (clone_name, e)
 
