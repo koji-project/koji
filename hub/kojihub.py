@@ -3533,12 +3533,18 @@ def list_archive_files(archive_id, queryOpts=None):
     archive_type = get_archive_type(type_id=archive_info['type_id'], strict=True)
     build_info = get_build(archive_info['build_id'], strict=True)
     maven_info = get_maven_build(build_info['id'])
-    if not maven_info:
-        # XXX support other archive types, when they exist
-        return _applyQueryOpts([], queryOpts)
+    win_info = get_win_build(build_info['id'])
 
-    file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
-                             archive_info['filename'])
+    if maven_info:
+        file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
+                                 archive_info['filename'])
+    elif win_info:
+        win_archive = get_win_archive(archive_info['id'], strict=True)
+        archive_info.update(win_archive)
+        file_path = os.path.join(koji.pathinfo.winbuild(build_info),
+                                 koji.pathinfo.winfile(archive_info))
+    else:
+        return _applyQueryOpts([], queryOpts)
 
     if archive_type['name'] in ('zip', 'jar'):
         return _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
