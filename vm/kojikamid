@@ -638,6 +638,11 @@ def setup_logging(logfile):
     logfd = handler.stream
     return handler
 
+def log_local(msg):
+    tb = ''.join(traceback.format_exception(*sys.exc_info()))
+    sys.stderr.write('%s: %s\n' % (time.ctime(), msg))
+    sys.stderr.write(tb)
+
 def incremental_upload(server, handler):
     fd = file(handler.baseFilename, 'r')
     while handler.active:
@@ -648,8 +653,14 @@ def incremental_upload(server, handler):
             data = base64.b64encode(contents)
             digest = hashlib.md5(contents).hexdigest()
             del contents
-            server.uploadDirect(os.path.basename(handler.baseFilename),
-                                offset, size, digest, data)
+            while handler.active:
+                try:
+                    server.uploadDirect(os.path.basename(handler.baseFilename),
+                                        offset, size, digest, data)
+                    break
+                except:
+                    # upload failed (possibly a timeout), log and retry
+                    log_local('error calling server.uploadDirect()')
         else:
             time.sleep(1)
 
@@ -657,8 +668,7 @@ def flunk(server, logfile):
     """do the right thing when a build fails"""
     global logfd
     logging.getLogger('koji.vm').error('error running build', exc_info=True)
-    exc_info = sys.exc_info()
-    tb = ''.join(traceback.format_exception(*exc_info))
+    tb = ''.join(traceback.format_exception(*sys.exc_info()))
     if server is not None:
         try:
             logfd.flush()
