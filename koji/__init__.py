@@ -1375,7 +1375,11 @@ class PathInfo(object):
         if self._topdir is None:
             self._topdir = str(BASEDIR)
         return self._topdir
-    topdir = property(topdir)
+
+    def _set_topdir(self, topdir):
+        self._topdir = topdir
+
+    topdir = property(topdir, _set_topdir)
 
     def build(self,build):
         """Return the directory where a build belongs"""
