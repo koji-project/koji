@@ -1394,9 +1394,16 @@ class PathInfo(object):
         """Return the relative path from the winbuild directory where the
            file identified by wininfo is located."""
         filepath = wininfo['filename']
-        if wininfo.get('relpath'):
+        if wininfo['relpath']:
             filepath = wininfo['relpath'] + '/' + filepath
         return filepath
+
+    def mavenfile(self, maveninfo):
+        """Return the relative path the file exists in the per-tag Maven repo"""
+        group_path = maveninfo['group_id'].replace('.', '/')
+        artifact_id = maveninfo['artifact_id']
+        version = maveninfo['version']
+        return "%(group_path)s/%(artifact_id)s/%(version)s" % locals()
 
     def mavenrepo(self, build, maveninfo):
         """Return the directory where the Maven artifact exists in the per-tag Maven repo
@@ -1404,7 +1411,7 @@ class PathInfo(object):
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s" % locals())
+        return self.topdir + "/maven2/" + self.mavenfile(maveninfo)
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""

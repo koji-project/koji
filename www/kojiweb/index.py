@@ -1293,8 +1293,12 @@ def archiveinfo(req, archiveID, fileOrder='name', fileStart=None, buildrootOrder
     archive = server.getArchive(archiveID)
     archive_type = server.getArchiveType(type_id=archive['type_id'])
     build = server.getBuild(archive['build_id'])
-    maveninfo = server.getMavenArchive(archive['id'])
-    wininfo = server.getWinArchive(archive['id'])
+    maveninfo = False
+    if 'group_id' in archive:
+        maveninfo = True
+    wininfo = False
+    if 'relpath' in archive:
+        wininfo = True
     builtInRoot = None
     if archive['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(archive['buildroot_id'])

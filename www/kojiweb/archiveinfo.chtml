@@ -26,13 +26,13 @@
     </tr>
     #if $maveninfo
     <tr>
-      <th>Maven groupId</th><td>$maveninfo.group_id</td>
+      <th>Maven groupId</th><td>$archive.group_id</td>
     </tr>
     <tr>
-      <th>Maven artifactId</th><td>$maveninfo.artifact_id</td>
+      <th>Maven artifactId</th><td>$archive.artifact_id</td>
     </tr>
     <tr>
-      <th>Maven version</th><td>$maveninfo.version</td>
+      <th>Maven version</th><td>$archive.version</td>
     </tr>
     #end if
     <tr>
@@ -43,10 +43,10 @@
     </tr>
     #if $wininfo
     <tr>
-      <th>Platforms</th><td>$wininfo.platforms</td>
+      <th>Platforms</th><td>$archive.platforms</td>
     </tr>
     <tr>
-      <th>Flags</th><td>$wininfo.flags</td>
+      <th>Flags</th><td>$archive.flags</td>
     </tr>
     #end if
     #if $builtInRoot

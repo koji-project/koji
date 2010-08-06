@@ -41,6 +41,7 @@ import threading
 import base64
 import pwd
 import urlgrabber
+import fnmatch
 from ConfigParser import ConfigParser
 from optparse import OptionParser
 try:
@@ -301,6 +302,7 @@ class WinBuildTask(BaseTaskHandler):
         repo_id = opts.get('repo_id')
         if repo_id:
             repo_info = session.repoInfo(repo_id)
+            event_id = repo_info['create_event']
             if not repo_info:
                 raise koji.BuildError, 'invalid repo ID: %s' % repo_id
             policy_data = {
@@ -314,11 +316,12 @@ class WinBuildTask(BaseTaskHandler):
             if not opts.get('skip_tag'):
                 policy_data['tag'] = dest_tag['id']
             self.session.host.assertPolicy('build_from_repo_id', policy_data)
-            event_id = repo_info['create_event']
         else:
-            event_id = self.session.getLastEvent()['id']
+            repo_info = self.getRepo(build_tag['id'])
+            repo_id = repo_info['id']
+            event_id = None
 
-        subopts['event_id'] = event_id
+        subopts['repo_id'] = repo_id
 
         task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem'], strict=False)
         task_id = self.session.host.subtask(method='vmExec',
@@ -463,39 +466,110 @@ class VMExecTask(BaseTaskHandler):
         """
         return self.task_info
 
-    def getLatestBuild(self, tag, package, event=None):
+    def getLatestBuild(self, tag, package, repo_id):
         """
         Get information about the latest build of package "package" in tag "tag".
         """
-        builds = self.session.getLatestBuilds(tag, package=package, event=event)
+        repo_info = self.session.repoInfo(repo_id, strict=True)
+        builds = self.session.getLatestBuilds(tag, package=package,
+                                              event=repo_info['create_event'])
         if not builds:
             raise koji.BuildError, 'no build of package %s in tag %s' % (package, tag)
-        return builds[0]
+        build = builds[0]
+        maven_build = self.session.getMavenBuild(build['id'])
+        if maven_build:
+            del maven_build['build_id']
+            build.update(maven_build)
+        win_build = self.session.getWinBuild(build['id'])
+        if win_build:
+            del win_build['build_id']
+            build.update(win_build)
+        return build
 
-    def getFileList(self, buildID, type=None):
+    def getFileList(self, buildID, type, typeopts):
         """
-        Get the file list for the latest build of the package "package" in tag "tag".
-        If type is specified, include the extended information for archives of that type.
+        Get the list of files of "type" for the latest build of the package "package" in tag "tag".
+        typeopts is a dict that is used to filter the file list.
+        typeopts is checked for:
+          patterns: comma-separated list of path/filename patterns (as used by fnmatch)
+                    to filter the results with
+        If type is 'rpm', typeopts is checked for:
+          arches: comma-separated list of arches to include in output
+        If type is 'maven', typeopts is checked for:
+          group_ids: Maven group IDs to include in the output
+          artifact_ids: Maven artifact IDs to include in the output
+          versions: Maven versions to include in the output
+        If type is 'win', typeopts is checked for:
+          platforms: comma-separated list of platforms
+          flags: comma-separated list of flags
         """
-        return self.session.listArchives(buildID=buildID, type=type)
+        if not typeopts:
+            typeopts = {}
+        if type == 'rpm':
+            arches = None
+            if typeopts.get('arches'):
+                arches = typeopts['arches'].split(',')
+            files = self.session.listRPMs(buildID=buildID, arches=arches)
+        else:
+            files = self.session.listArchives(buildID=buildID, type=type)
+        for fileinfo in files:
+            if type == 'rpm':
+                filepath = koji.pathinfo.rpm(fileinfo)
+            elif type == 'maven':
+                filepath = koji.pathinfo.mavenfile(fileinfo)
+            elif type == 'win':
+                filepath = koji.pathinfo.winfile(fileinfo)
+            else:
+                # XXX support other file types when available
+                filepath = fileinfo['filename']
+            fileinfo['localpath'] = filepath
+        if typeopts.get('patterns'):
+            to_filter = files
+            files = []
+            patterns = typeopts['patterns'].split(',')
+            for fileinfo in to_filter:
+                for pattern in patterns:
+                    if fnmatch.fnmatch(fileinfo['localpath'], pattern):
+                        files.append(fileinfo)
+                        break
+        if type == 'maven':
+            if typeopts.get('group_ids'):
+                group_ids = typeopts['group_ids'].split(',')
+                files = [f for f in files if f['group_id'] in group_ids]
+            if typeopts.get('artifact_ids'):
+                artifact_ids = typeopts['artifact_ids'].split(',')
+                files = [f for f in files if f['artifact_id'] in artifact_ids]
+            if typeopts.get('versions'):
+                versions = typeopts['versions'].split(',')
+                files = [f for f in files if f['version'] in versions]
+        if type == 'win':
+            if typeopts.get('platforms'):
+                platforms = typeopts['platforms'].split(',')
+                files = [f for f in files if set(f['platforms'].split()).intersection(platforms)]
+            if typeopts.get('flags'):
+                flags = typeopts['flags'].split(',')
+                files = [f for f in files if set(f['flags'].split()).intersection(flags)]
+        return files
 
-    def localCache(self, buildinfo, fileinfo, type=None):
+    def localCache(self, buildinfo, fileinfo, type):
         """
         Access a file in the local cache.  If the file does not exist, it's downloaded
         from the server.  Returns an open file object.
         """
-        local_pi = koji.PathInfo(self.buildreq_dir)
-        if type == 'win':
-            localpath = os.path.join(local_pi.winbuild(buildinfo),
-                                     fileinfo['relpath'], fileinfo['filename'])
-        else:
-            raise koji.BuildError, 'unsupported file type: %s' % type
-
+        # fileinfo['localpath'] is set by getFileList()
+        localpath = os.path.join(self.buildreq_dir, type, fileinfo['localpath'])
         if not os.path.isfile(localpath):
             remote_pi = koji.PathInfo(self.options.topurl)
-            if type == 'win':
+            if type == 'rpm':
+                remote_url = remote_pi.build(buildinfo) + '/' + \
+                             remote_pi.rpm(fileinfo)
+            elif type == 'maven':
+                # the relevant Maven info is included in the buildinfo
+                remote_url = remote_pi.mavenbuild(buildinfo, buildinfo) + '/' + \
+                             fileinfo['filename']
+            elif type == 'win':
                 remote_url = remote_pi.winbuild(buildinfo) + '/' + \
-                             fileinfo['relpath']  + '/' + fileinfo['filename']
+                             remote_pi.winfile(fileinfo)
             else:
                 raise koji.BuildError, 'unsupported file type: %s' % type
             koji.ensuredir(os.path.dirname(localpath))
@@ -503,14 +577,14 @@ class VMExecTask(BaseTaskHandler):
 
         return file(localpath, 'r')
 
-    def getFile(self, buildinfo, archiveinfo, offset, length, type=None):
+    def getFile(self, buildinfo, archiveinfo, offset, length, type):
         """
         Get the contents of the file indicated by fileinfo, returning a maximum of
         "length" bytes starting at "offset".  Contents are returned base64-encoded.
         """
         offset = int(offset)
         length = int(length)
-        fileobj = self.localCache(buildinfo, archiveinfo, type=type)
+        fileobj = self.localCache(buildinfo, archiveinfo, type)
         try:
             fileobj.seek(offset)
             data = fileobj.read(length)
@@ -781,6 +855,13 @@ class VMTaskManager(TaskManager):
     def checkSpace(self):
         """See if we have enough space to accept another job"""
         return self.checkDisk() and self.checkMem()
+
+    def checkRelAvail(self, bin_avail, avail):
+        """
+        Always return True, since we may be the only daemon with access
+        to the VM required to process this task.
+        """
+        return True
 
     def takeTask(self, task):
         """

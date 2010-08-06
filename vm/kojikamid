@@ -304,7 +304,7 @@ class WindowsBuild(object):
         self.release = None
         self.description = None
         self.platform = None
-        self.buildrequires = {}
+        self.buildrequires = []
         self.provides = []
         self.shell = None
         self.execute = []
@@ -360,8 +360,22 @@ class WindowsBuild(object):
         self.platform = conf.get('building', 'platform')
         # buildrequires and provides are multi-valued (space-separated)
         for br in conf.get('building', 'buildrequires').split():
+            # buildrequires is a space-separated list
+            # each item in the list is in the format:
+            # pkgname[:opt1:opt2=val2:...]
+            # the options are put into a dict
+            # if the option has no =val, the value in the dict will be None
             if br:
-                self.buildrequires[br] = {}
+                br = br.split(':')
+                bropts = {}
+                for opt in br[1:]:
+                    if '=' in opt:
+                        key, val = opt.split('=', 1)
+                    else:
+                        key = opt
+                        val = None
+                    bropts[key] = val
+                self.buildrequires.append((br[0], bropts))
         for prov in conf.get('building', 'provides').split():
             if prov:
                 self.provides.append(prov)
@@ -389,12 +403,9 @@ class WindowsBuild(object):
             self.output[filename] = metadata
         self.logs.extend([e.strip() for e in conf.get('files', 'logs').split('\n') if e])
 
-    def fetchFile(self, basedir, buildinfo, fileinfo, type=None):
+    def fetchFile(self, basedir, buildinfo, fileinfo, type):
         """Download the file from buildreq, at filepath, into the basedir"""
-        if type == 'win':
-            destpath = os.path.join(basedir, fileinfo['relpath'], fileinfo['filename'])
-        else:
-            raise BuildError, 'unsupported file type: %s' % type
+        destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))
         destfile = file(destpath, 'w')
         offset = 0
@@ -410,28 +421,28 @@ class WindowsBuild(object):
             checksum.update(data)
         destfile.close()
         digest = checksum.hexdigest()
-        if digest != fileinfo['md5sum']:
+        # rpms don't have a md5sum in the fileinfo, but check it for everything else
+        if ('md5sum' in fileinfo) and (digest != fileinfo['md5sum']):
             raise BuildError, 'md5 checksum validation failed for %s, %s (computed) != %s (provided)' % \
                   (destpath, digest, fileinfo['md5sum'])
         self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
-        for buildreq, brinfo in self.buildrequires.items():
+        for buildreq, brinfo in self.buildrequires:
+            # if no type is specified in the options, default to win
+            brtype = brinfo.get('type', 'win')
             buildinfo = self.server.getLatestBuild(self.build_tag, buildreq,
-                                                   self.task_opts.get('event_id'))
-            br_dir = os.path.join(self.buildreq_dir, buildreq)
+                                                   self.task_opts.get('repo_id'))
+            br_dir = os.path.join(self.buildreq_dir, buildreq, brtype)
             ensuredir(br_dir)
             brinfo['dir'] = br_dir
             brfiles = []
             brinfo['files'] = brfiles
-            buildfiles = self.server.getFileList(buildinfo['id'], 'win')
+            buildfiles = self.server.getFileList(buildinfo['id'], brtype, brinfo)
             for fileinfo in buildfiles:
-                self.fetchFile(br_dir, buildinfo, fileinfo, 'win')
-                if fileinfo['relpath']:
-                    brfiles.append(os.path.join(fileinfo['relpath'], fileinfo['filename']))
-                else:
-                    brfiles.append(fileinfo['filename'])
+                self.fetchFile(br_dir, buildinfo, fileinfo, brtype)
+                brfiles.append(fileinfo['localpath'])
 
     def build(self):
         if self.shell in ('cmd', 'cmd.exe'):
@@ -455,14 +466,22 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with cmd.exe"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat', dir='/cygdrive/c/Windows/Temp')
         script = os.fdopen(tmpfd, 'w')
-        for buildreq, brinfo in self.buildrequires.items():
+        for buildreq, brinfo in self.buildrequires:
             buildreq = self.varname(buildreq)
             ret, output = run(['cygpath', '-wa', brinfo['dir']], log=False, fatal=True)
             br_dir = output.strip()
-            script.write('set %s_dir=%s\r\n' % (buildreq, br_dir))
             files = ' '.join(brinfo['files'])
             files.replace('/', '\\')
-            script.write('set %s_files=%s\r\n' % (buildreq, files))
+            if brinfo.get('type'):
+                # if the spec file qualifies the buildreq with a type,
+                # the env. var is named buildreq_type_{dir,files}
+                script.write('set %s_%s_dir=%s\r\n' % (buildreq, brinfo['type'], br_dir))
+                script.write('set %s_%s_files=%s\r\n' % (buildreq, brinfo['type'], files))
+            else:
+                # otherwise it's just buildreq_{dir,files}
+                script.write('set %s_dir=%s\r\n' % (buildreq, br_dir))
+                script.write('set %s_files=%s\r\n' % (buildreq, files))
+            script.write('\r\n')
         for cmd in self.execute:
             script.write(cmd)
             script.write('\r\n')
@@ -476,10 +495,14 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with bash"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
         script = os.fdopen(tmpfd, 'w')
-        for buildreq, brinfo in self.buildrequires.items():
+        for buildreq, brinfo in self.buildrequires:
             buildreq = self.varname(buildreq)
-            script.write("export %s_dir='%s'\n" % (buildreq, brinfo['dir']))
-            script.write("export %s_files='" % buildreq)
+            if brinfo.get('type'):
+                script.write("export %s_%s_dir='%s'\n" % (buildreq, brinfo['type'], brinfo['dir']))
+                script.write("export %s_%s_files='" % (buildreq, brinfo['type']))
+            else:
+                script.write("export %s_dir='%s'\n" % (buildreq, brinfo['dir']))
+                script.write("export %s_files='" % buildreq)
             for filename in brinfo['files']:
                 script.write(filename)
                 script.write('\n')
@@ -664,19 +687,26 @@ def incremental_upload(server, handler):
         else:
             time.sleep(1)
 
-def flunk(server, logfile):
+def flunk(server, handler):
     """do the right thing when a build fails"""
     global logfd
     logging.getLogger('koji.vm').error('error running build', exc_info=True)
     tb = ''.join(traceback.format_exception(*sys.exc_info()))
+    handler.active = False
     if server is not None:
         try:
             logfd.flush()
-            upload_file(server, os.path.dirname(logfile),
-                        os.path.basename(logfile))
+            upload_file(server, os.path.dirname(handler.baseFilename),
+                        os.path.basename(handler.baseFilename))
         except:
-            pass
-        server.failTask(tb)
+            log_local('error calling upload_file()')
+        while True:
+            try:
+                # this is the very last thing we do, keep trying as long as we can
+                server.failTask(tb)
+                break
+            except:
+                log_local('error calling server.failTask()')
     sys.exit(1)
 
 logfd = None
@@ -715,6 +745,7 @@ if __name__ == '__main__':
 
         thread = threading.Thread(target=incremental_upload,
                                   args=(server, handler))
+        thread.daemon = True
         thread.start()
 
         build = WindowsBuild(server)
@@ -732,5 +763,5 @@ if __name__ == '__main__':
 
         server.closeTask(results)
     except:
-        flunk(server, logfile)
+        flunk(server, handler)
     sys.exit(0)

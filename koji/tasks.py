@@ -320,6 +320,21 @@ class BaseTaskHandler(object):
             raise koji.BuildError, "host %s (%s) does not support any arches of tag %s (%s)" % \
                 (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches))
 
+    def getRepo(self, tag):
+        """
+        Get the active repo for the given tag.  If there is no repo available,
+        wait for a repo to be created.
+        """
+        repo_info = self.session.getRepo(tag)
+        if not repo_info:
+            #wait for it
+            task_id = self.session.host.subtask(method='waitrepo',
+                                                arglist=[tag, None, None],
+                                                parent=self.id)
+            repo_info = self.wait(task_id)[task_id]
+        return repo_info
+
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True

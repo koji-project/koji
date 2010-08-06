@@ -741,8 +741,7 @@ class TaskManager(object):
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
                 median = bin_avail[(len(bin_avail)-1)/2]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
-                if our_avail < median:
-                    self.logger.debug("Skipping - available capacity in lower half")
+                if not self.checkRelAvail(bin_avail, our_avail):
                     #decline for now and give the upper half a chance
                     return False
                 #otherwise, we attempt to open the task
@@ -752,6 +751,19 @@ class TaskManager(object):
                 #should not happen
                 raise Exception, "Invalid task state reported by server"
         return False
+
+    def checkRelAvail(self, bin_avail, avail):
+        """
+        Check our available capacity against the capacity of other hosts in this bin.
+        Return True if we should take a task, False otherwise.
+        """
+        median = bin_avail[(len(bin_avail)-1)/2]
+        self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
+        if avail >= median:
+            return True
+        else:
+            self.logger.debug("Skipping - available capacity in lower half")
+            return False
 
     def _waitTask(self, task_id, pid=None):
         """Wait (nohang) on the task, return true if finished"""

@@ -3432,11 +3432,32 @@ def get_archive(archive_id, strict=False):
     filename: name of the archive (string)
     size: size of the archive (integer)
     md5sum: md5sum of the archive (string)
+
+    If the archive is part of a Maven build, the following keys will be included:
+      group_id
+      artifact_id
+      version
+    If the archive is part of a Windows builds, the following keys will be included:
+      relpath
+      platforms
+      flags
     """
     fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
     select = """SELECT %s FROM archiveinfo
     WHERE id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields, strict=strict)
+    archive =  _singleRow(select, locals(), fields, strict=strict)
+    if not archive:
+        # strict is taken care of by _singleRow()
+        return None
+    maven_info = get_maven_archive(archive_id)
+    if maven_info:
+        del maven_info['archive_id']
+        archive.update(maven_info)
+    win_info = get_win_archive(archive_id)
+    if win_info:
+        del win_info['archive_id']
+        archive.update(win_info)
+    return archive
 
 def get_maven_archive(archive_id, strict=False):
     """
