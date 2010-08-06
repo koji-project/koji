@@ -3364,6 +3364,293 @@ def anon_handle_list_tag_history(options, session, args):
             print "%r" % x
         print _histline(event_id, x)
 
+def _print_histline(entry, **kwargs):
+    options = kwargs['options']
+    event_id, table, create, x = entry
+    who = None
+    edit = x.get('.related')
+    if edit:
+        del x['.related']
+        bad_edit = None
+        if len(edit) != 1:
+            bad_edit = "%i elements" % len(edit)+1
+        other = edit[0]
+        #check edit for sanity
+        if create or not other[2]:
+            bad_edit = "out of order"
+        if event_id != other[0]:
+            bad_edit = "non-matching"
+        if bad_edit:
+            print "Warning: unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit)
+            #we'll simply treat them as separate events
+            pprint.pprint(entry)
+            pprint.pprint(edit)
+            _print_histline(entry, **kwargs)
+            for data in edit:
+                _print_histline(entry, **kwargs)
+            return
+    if create:
+        ts = x['create_ts']
+        if x.has_key('creator_name'):
+            who = "by %(creator_name)s"
+    else:
+        ts = x['revoke_ts']
+        if x.has_key('revoker_name'):
+            who = "by %(revoker_name)s"
+    if table == 'tag_listing':
+        if edit:
+            fmt = "%(name)s-%(version)s-%(release)s re-tagged into %(tag.name)s"
+        elif create:
+            fmt = "%(name)s-%(version)s-%(release)s tagged into %(tag.name)s"
+        else:
+            fmt = "%(name)s-%(version)s-%(release)s untagged from %(tag.name)s"
+    elif table == 'user_perms':
+        if edit:
+            fmt = "permission %(permission.name)s re-granted to %(user.name)s"
+        elif create:
+            fmt = "permission %(permission.name)s granted to %(user.name)s"
+        else:
+            fmt = "permission %(permission.name)s revoked for %(user.name)s"
+    elif table == 'user_groups':
+        if edit:
+            fmt = "user %(user.name)s re-added to group %(group.name)s"
+        elif create:
+            fmt = "user %(user.name)s added to group %(group.name)s"
+        else:
+            fmt = "user %(user.name)s removed from group %(group.name)s"
+    elif table == 'tag_packages':
+        if edit:
+            fmt = "package list entry for %(package.name)s in %(tag.name)s updated"
+        elif create:
+            fmt = "package list entry created: %(package.name)s in %(tag.name)s"
+        else:
+            fmt = "package list entry revoked: %(package.name)s in %(tag.name)s"
+    elif table == 'tag_inheritance':
+        if edit:
+            fmt = "inheritance line %(tag.name)s->%(parent.name)s updated"
+        elif create:
+            fmt = "inheritance line %(tag.name)s->%(parent.name)s added"
+        else:
+            fmt = "inheritance line %(tag.name)s->%(parent.name)s removed"
+    elif table == 'tag_config':
+        if edit:
+            fmt = "tag configuration for %(tag.name)s altered"
+        elif create:
+            fmt = "new tag: %(tag.name)s"
+        else:
+            fmt = "tag deleted: %(tag.name)s"
+    elif table == 'build_target_config':
+        if edit:
+            fmt = "build target configuration for %(build_target.name)s updated"
+        elif create:
+            fmt = "new build target: %(build_target.name)s"
+        else:
+            fmt = "build target deleted: %(build_target.name)s"
+    elif table == 'external_repo_config':
+        if edit:
+            fmt = "external repo configuration for %(external_repo.name)s altered"
+        elif create:
+            fmt = "new external repo: %(external_repo.name)s"
+        else:
+            fmt = "external repo deleted: %(external_repo.name)s"
+    elif table == 'tag_external_repos':
+        if edit:
+            fmt = "external repo entry for %(external_repo.name)s in tag %(tag.name)s updated"
+        elif create:
+            fmt = "external repo entry for %(external_repo.name)s added to tag %(tag.name)s"
+        else:
+            fmt = "external repo entry for %(external_repo.name)s removed from tag %(tag.name)s"
+    elif table == 'group_config':
+        if edit:
+            fmt = "group %(group.name)s configuration for tag %(tag.name)s updated"
+        elif create:
+            fmt = "group %(group.name)s added to tag %(tag.name)s"
+        else:
+            fmt = "group %(group.name)s removed from tag %(tag.name)s"
+    elif table == 'group_req_listing':
+        if edit:
+            fmt = "group dependency %(group.name)s->%(req.name)s updated in tag %(tag.name)s"
+        elif create:
+            fmt = "group dependency %(group.name)s->%(req.name)s added in tag %(tag.name)s"
+        else:
+            fmt = "group dependency %(group.name)s->%(req.name)s dropped from tag %(tag.name)s"
+    elif table == 'group_package_listing':
+        if edit:
+            fmt = "package entry %(package)s in group %(group.name)s, tag %(tag.name)s updated"
+        elif create:
+            fmt = "package %(package)s added to group %(group.name)s in tag %(tag.name)s"
+        else:
+            fmt = "package %(package)s removed from group %(group.name)s in tag %(tag.name)s"
+    else:
+        if edit:
+            fmt = "%s entry updated" % table
+        elif create:
+            fmt = "%s entry created" % table
+        else:
+            fmt = "%s entry revoked" % table
+    time_str = time.asctime(time.localtime(ts))
+    parts  = [time_str, fmt % x]
+    if options.events or options.verbose:
+        parts.insert(1, "(eid %i)" % event_id)
+    if who:
+        parts.append(who % x)
+    if create and x['active']:
+        parts.append("[still active]")
+    print ' '.join(parts)
+    hidden_fields = ['active', 'create_event', 'revoke_event', 'creator_id', 'revoker_id',
+                     'creator_name', 'revoker_name', 'create_ts', 'revoke_ts']
+    def get_nkey(key):
+        if key == 'perm_id':
+            return 'permission.name'
+        elif key.endswith('_id'):
+            return '%s.name' % key[:-3]
+        else:
+            return '%s.name' % key
+    if edit:
+        keys = x.keys()
+        keys.sort()
+        y = other[-1]
+        for key in keys:
+            if key in hidden_fields:
+                continue
+            if x[key] == y[key]:
+                continue
+            if key[0] == '_':
+                continue
+            nkey = get_nkey(key)
+            if nkey in x and nkey in y:
+                continue
+            print "    %s: %s -> %s" % (key, x[key], y[key])
+    elif create and options.verbose and table != 'tag_listing':
+        keys = x.keys()
+        keys.sort()
+        # the table keys have already been represented in the base format string
+        also_hidden = list(_table_keys[table])
+        also_hidden.extend([get_nkey(k) for k in also_hidden])
+        for key in keys:
+            if key in hidden_fields or key in also_hidden:
+                continue
+            nkey = get_nkey(key)
+            if nkey in x:
+                continue
+            if key[0] == '_':
+                continue
+            if x.get('blocked') and key != 'blocked':
+                continue
+            if key.endswith('.name'):
+                dkey = key[:-5]
+            else:
+                dkey = key
+            print "    %s: %s" % (dkey, x[key])
+
+_table_keys = {
+    'user_perms' : ['user_id', 'perm_id'],
+    'user_groups' : ['user_id', 'group_id'],
+    'tag_inheritance' : ['tag_id', 'parent_id'],
+    'tag_config' : ['tag_id'],
+    'build_target_config' : ['build_target_id'],
+    'external_repo_config' : ['external_repo_id'],
+    'tag_external_repos' : ['tag_id', 'external_repo_id'],
+    'tag_listing' : ['build_id', 'tag_id'],
+    'tag_packages' : ['package_id', 'tag_id'],
+    'group_config' : ['group_id', 'tag_id'],
+    'group_req_listing' : ['group_id', 'tag_id', 'req_id'],
+    'group_package_listing' : ['group_id', 'tag_id', 'package'],
+    }
+
+def anon_handle_list_history(options, session, args):
+    "Display historical data"
+    usage = _("usage: %prog list-tag-history [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--debug", action="store_true")
+    parser.add_option("--build", help=_("Only show data for a specific build"))
+    parser.add_option("--package", help=_("Only show data for a specific package"))
+    parser.add_option("--tag", help=_("Only show data for a specific tag"))
+    parser.add_option("--editor", "--by", metavar="USER", help=_("Only show entries modified by user"))
+    parser.add_option("--user", help=_("Only show entries affecting a user"))
+    parser.add_option("--permission", help=_("Only show entries relating to a given permission"))
+    parser.add_option("--external-repo", "--erepo", help=_("Only show entries relating to a given external repo"))
+    parser.add_option("--build-target", "--target", help=_("Only show entries relating to a given build target"))
+    parser.add_option("--group", help=_("Only show entries relating to a given group"))
+    parser.add_option("--before", metavar="TIMESTAMP", help=_("Only show entries before timestamp"))
+    parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
+    parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
+    parser.add_option("--after-event", metavar="EVENT_ID", type='int', help=_("Only show entries after event"))
+    parser.add_option("--context", action="store_true", help=_("Show related entries"))
+    parser.add_option("-s", "--show", action="append", help=_("Show data from selected tables"))
+    parser.add_option("-v", "--verbose", action="store_true", help=_("Show more detail"))
+    parser.add_option("-e", "--events", action="store_true", help=_("Show event ids"))
+    parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    kwargs = {}
+    limited = False
+    for opt in 'package', 'tag', 'build', 'editor', 'user', 'permission', 'external_repo', \
+               'build_target', 'group', 'before', 'after':
+        val = getattr(options, opt)
+        if val:
+            kwargs[opt] = val
+            limited = True
+    if options.before_event:
+        kwargs['beforeEvent'] = options.before_event
+    if options.after_event:
+        kwargs['afterEvent'] = options.after_event
+    tables = None
+    if options.show:
+        tables = []
+        for arg in options.show:
+            tables.extend(arg.split(','))
+    if not limited and not options.all:
+        parser.error(_("Please specify an option to limit the query"))
+
+    activate_session(session)
+
+    histdata = session.queryHistory(tables=tables, **kwargs)
+    timeline = []
+    def distinguish_match(x, name):
+        """determine if create or revoke event matched"""
+        if options.context:
+            return True
+        name = "_" + name
+        ret = True
+        for key in x:
+            if key.startswith(name):
+                ret = ret and x[key]
+        return ret
+    for table in histdata:
+        hist = histdata[table]
+        for x in hist:
+            if x['revoke_event'] is not None:
+                if distinguish_match(x, 'revoked'):
+                    timeline.append((x['revoke_event'], table, 0, x.copy()))
+                #pprint.pprint(timeline[-1])
+            if distinguish_match(x, 'created'):
+                timeline.append((x['create_event'], table, 1, x))
+    timeline.sort()
+    #group edits together
+    new_timeline = []
+    last_event = None
+    edit_index = {}
+    for entry in timeline:
+        event_id, table, create, x = entry
+        if event_id != last_event:
+            edit_index = {}
+            last_event = event_id
+        key = tuple([x[k] for k in _table_keys[table]])
+        prev = edit_index.get((table, event_id), {}).get(key)
+        if prev:
+            prev[-1].setdefault('.related', []).append(entry)
+        else:
+            edit_index.setdefault((table, event_id), {})[key] = entry
+            new_timeline.append(entry)
+    for entry in new_timeline:
+        if options.debug:
+            print "%r" % list(entry)
+        _print_histline(entry, options=options)
+
 def _parseTaskParams(session, method, task_id):
     """Parse the return of getTaskRequest()"""
     params = session.getTaskRequest(task_id)

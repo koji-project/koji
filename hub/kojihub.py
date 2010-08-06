@@ -4571,6 +4571,251 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     koji.splice_rpm_sighdr(sighdr, rpm_path, signedpath)
 
 
+def query_history(tables=None, **kwargs):
+    """Returns history data from various tables that support it
+
+    tables: list of versioned tables to search, no value implies all tables
+            valid entries: user_perms, user_groups, tag_inheritance, tag_config,
+                build_target_config, external_repo_config, tag_external_repos,
+                tag_listing, tag_packages, group_config, group_req_listing,
+                group_package_listing
+
+    - Time options -
+    times are specified as an integer event or a string timestamp
+    time options are valid for all record types
+    before: either created or revoked before timestamp
+    after: either created or revoked after timestamp
+    beforeEvent: either created or revoked before event id
+    afterEvent: either created or revoked after event id
+
+    - other versioning options-
+    active: select by active status
+    editor: record created or revoked by user
+
+    - table-specific search options -
+    use of these options will implicitly limit the search to applicable tables
+    package: only for given package
+    build: only for given build
+    tag: only for given tag
+    user: only affecting a given user
+    permission: only relating to a given permission
+    external_repo: only relateing to an external repo
+    build_target: only relating to a build target
+    group: only relating to a (comps) group)
+    """
+    common_fields = {
+        #fields:aliases common to all versioned tables
+        'active' : 'active',
+        'create_event' : 'create_event',
+        'revoke_event' : 'revoke_event',
+        'creator_id' : 'creator_id',
+        'revoker_id' : 'revoker_id',
+        }
+    common_joins = [
+        "events AS ev1 ON ev1.id = create_event",
+        "LEFT OUTER JOIN events AS ev2 ON ev2.id = revoke_event",
+        "users AS creator ON creator.id = creator_id",
+        "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
+        ]
+    common_joined_fields = {
+        'creator.name' : 'creator_name',
+        'revoker.name' : 'revoker_name',
+        'EXTRACT(EPOCH FROM ev1.time) AS create_ts' : 'create_ts',
+        'EXTRACT(EPOCH FROM ev2.time) AS revoke_ts' : 'revoke_ts',
+        }
+    table_fields = {
+        'user_perms' : ['user_id', 'perm_id'],
+        'user_groups' : ['user_id', 'group_id'],
+        'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
+        'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
+        'build_target_config' : ['build_target_id', 'build_tag', 'dest_tag'],
+        'external_repo_config' : ['external_repo_id', 'url'],
+        'tag_external_repos' : ['tag_id', 'external_repo_id', 'priority'],
+        'tag_listing' : ['build_id', 'tag_id'],
+        'tag_packages' : ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
+        'group_config' : ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
+                            'description', 'langonly', 'biarchonly'],
+        'group_req_listing' : ['group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg'],
+        'group_package_listing' : ['group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires'],
+        }
+    name_joins = {
+        #joins triggered by table fields for name lookup
+        #field : [table, join-alias, alias]
+        'user_id' : ['users', 'users', 'user'],
+        'perm_id' : ['permissions', 'permission'],
+        #group_id is overloaded (special case below)
+        'tag_id' : ['tag'],
+        'parent_id' : ['tag', 'parent'],
+        'build_target_id' : ['build_target'],
+        'build_tag' : ['tag', 'build_tag'],
+        'dest_tag' : ['tag', 'dest_tag'],
+        'external_repo_id' : ['external_repo'],
+        # build_id is special cased
+        'package_id' : ['package'],
+        'owner' : ['users', 'owner'],
+        'req_id' : ['groups', 'req'],
+        }
+    if tables is None:
+        tables = table_fields.keys()
+        tables.sort()
+    else:
+        for table in tables:
+            if table not in table_fields:
+                raise koji.GenericError, "Unknown history table: %s" % table
+    ret = {}
+    for table in tables:
+        fields = {}
+        for field in common_fields:
+            fullname = "%s.%s" % (table, field)
+            fields[fullname] = common_fields[field]
+        joins = list(common_joins)
+        fields.update(common_joined_fields)
+        joined = {}
+        for field in table_fields[table]:
+            fullname = "%s.%s" % (table,field)
+            fields[fullname] = field
+            name_join = name_joins.get(field)
+            if name_join:
+                tbl = join_as = name_join[0]
+                if len(name_join) > 1:
+                    join_as = name_join[1]
+                joined[tbl] = join_as
+                fullname = "%s.name" % join_as
+                if len(name_join) > 2:
+                    #apply alias
+                    fields[fullname] = "%s.name" % name_join[2]
+                else:
+                    fields[fullname] = fullname
+                if join_as == tbl:
+                    joins.append('LEFT OUTER JOIN %s ON %s = %s.id' % (tbl, field, tbl))
+                else:
+                    joins.append('LEFT OUTER JOIN %s AS %s ON %s = %s.id' % (tbl, join_as, field, join_as))
+            elif field == 'build_id':
+                #special case
+                fields.update({
+                    'package.name' : 'name', #XXX?
+                    'build.version' : 'version',
+                    'build.release' : 'release',
+                    'build.epoch' : 'epoch',
+                    'build.state' : 'build.state',
+                })
+                joins.extend([
+                    'build ON build_id = build.id',
+                    'package ON build.pkg_id = package.id',
+                ])
+                joined['build'] = 'build'
+                joined['package'] = 'package'
+            elif field == 'group_id':
+                if table.startswith('group_'):
+                    fields['groups.name'] = 'group.name'
+                    joins.append('groups ON group_id = groups.id')
+                    joined['groups'] = 'groups'
+                elif table == 'user_groups':
+                    fields['usergroup.name'] = 'group.name'
+                    joins.append('users AS usergroup ON group_id = usergroup.id')
+                    joined['users'] = 'usergroup'
+        clauses = []
+        skip = False
+        data = {}
+        for arg in kwargs:
+            value = kwargs[arg]
+            if arg == 'tag':
+                if 'tag' not in joined:
+                    skip = True
+                    break
+                data['tag_id'] = get_tag_id(value, strict=True)
+                if table == 'tag_inheritance':
+                    #special cased because there are two tag columns
+                    clauses.append("tag_id = %(tag_id)i OR parent_id = %(tag_id)i")
+                else:
+                    clauses.append("%s.id = %%(tag_id)i" % joined['tag'])
+            elif arg == 'build':
+                if 'build' not in joined:
+                    skip = True
+                    break
+                data['build_id'] = get_build(value, strict=True)['id']
+                clauses.append("build.id = %(build_id)i")
+            elif arg == 'package':
+                if 'package' not in joined:
+                    skip = True
+                    break
+                data['pkg_id'] = get_package_id(value, strict=True)
+                clauses.append("package.id = %(pkg_id)i")
+            elif arg == 'user':
+                if 'users' not in joined:
+                    skip = True
+                    break
+                data['affected_user_id'] = get_user(value, strict=True)['id']
+                clauses.append("%s.id = %%(affected_user_id)i" % joined['users'])
+            elif arg == 'permission':
+                if 'permissions' not in joined:
+                    skip = True
+                    break
+                data['perm_id'] = get_perm_id(value, strict=True)
+                clauses.append("%s.id = %%(perm_id)i" % joined['permissions'])
+            elif arg == 'external_repo':
+                if 'external_repo' not in joined:
+                    skip = True
+                    break
+                data['external_repo_id'] = get_external_repo_id(value, strict=True)
+                clauses.append("%s.id = %%(external_repo_id)i" % joined['external_repo'])
+            elif arg == 'build_target':
+                if 'build_target' not in joined:
+                    skip = True
+                    break
+                data['build_target_id'] = get_build_target_id(value, strict=True)
+                clauses.append("%s.id = %%(build_target_id)i" % joined['build_target'])
+            elif arg == 'group':
+                if 'groups' not in joined:
+                    skip = True
+                    break
+                data['group_id'] = get_group_id(value, strict=True)
+                clauses.append("%s.id = %%(group_id)i" % joined['groups'])
+            elif arg == 'active':
+                if value:
+                    clauses.append('active = TRUE')
+                elif value is not None:
+                    clauses.append('active = FALSE')
+            elif arg == 'editor':
+                data['editor'] = get_user(value, strict=True)['id']
+                clauses.append('creator.id = %(editor)i OR revoker.id = %(editor)i')
+                fields['creator.id = %(editor)i'] = '_created_by'
+                fields['revoker.id = %(editor)i'] = '_revoked_by'
+            elif arg == 'after':
+                if not isinstance(value, basestring):
+                    value = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                data['after'] = value
+                clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
+                fields['ev1.time > %(after)s'] = '_created_after'
+                fields['ev2.time > %(after)s'] = '_revoked_after'
+                #clauses.append('EXTRACT(EPOCH FROM ev1.time) > %(after)s OR EXTRACT(EPOCH FROM ev2.time) > %(after)s')
+            elif arg == 'afterEvent':
+                data['afterEvent'] = value
+                clauses.append('create_event > %(afterEvent)i OR revoke_event > %(afterEvent)i')
+                fields['create_event > %(afterEvent)i'] = '_created_after_event'
+                fields['revoke_event > %(afterEvent)i'] = '_revoked_after_event'
+            elif arg == 'before':
+                if not isinstance(value, basestring):
+                    value = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                data['before'] = value
+                clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
+                #clauses.append('EXTRACT(EPOCH FROM ev1.time) < %(before)s OR EXTRACT(EPOCH FROM ev2.time) < %(before)s')
+                fields['ev1.time < %(before)s'] = '_created_before'
+                fields['ev2.time < %(before)s'] = '_revoked_before'
+            elif arg == 'beforeEvent':
+                data['beforeEvent'] = value
+                clauses.append('create_event < %(beforeEvent)i OR revoke_event < %(beforeEvent)i')
+                fields['create_event < %(beforeEvent)i'] = '_created_before_event'
+                fields['revoke_event < %(beforeEvent)i'] = '_revoked_before_event'
+        if skip:
+            continue
+        fields, aliases = zip(*fields.items())
+        query = QueryProcessor(columns=fields, aliases=aliases, tables=[table],
+                               joins=joins, clauses=clauses, values=data)
+        ret[table] = query.execute()
+    return ret
+
+
 def tag_history(build=None, tag=None, package=None, queryOpts=None):
     """Returns historical tag data
 
@@ -6423,6 +6668,7 @@ class RootExports(object):
 
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
+    queryHistory = staticmethod(query_history)
 
     buildMap = staticmethod(build_map)
     deleteBuild = staticmethod(delete_build)
