@@ -304,6 +304,7 @@ class WindowsBuild(object):
         self.release = None
         self.description = None
         self.platform = None
+        self.preinstalled = []
         self.buildrequires = []
         self.provides = []
         self.shell = None
@@ -313,7 +314,42 @@ class WindowsBuild(object):
 
     def checkEnv(self):
         """Is this environment fit to build in, based on the spec file?"""
-        pass
+        errors = []
+        for entry in self.preinstalled:
+            checkdir = False
+            if entry.startswith('/'):
+                # Cygwin path
+                if entry.endswith('/'):
+                    # directory
+                    checkdir = True
+            elif entry[1:3] == ':\\':
+                # Windows path
+                if entry.endswith('\\'):
+                    # directory
+                    checkdir = True
+            else:
+                # Check in the path
+                ret, output = run(['which', entry], log=False, fatal=False)
+                output = output.strip()
+                if ret:
+                    errors.append(output)
+                else:
+                    self.logger.debug('command %s is available at %s', entry, output)
+                continue
+            if checkdir:
+                if not os.path.isdir(entry):
+                    errors.append('directory %s does not exist' % entry)
+                else:
+                    self.logger.debug('directory %s exists', entry)
+            else:
+                # file
+                if not os.path.isfile(entry):
+                    errors.append('file %s does not exist' % entry)
+                else:
+                    self.logger.debug('file %s exists', entry)
+        if errors:
+            raise BuildError, 'error validating build environment: %s' % \
+                  ', '.join(errors)
 
     def checkout(self):
         """Checkout sources, specfile, and patches, and apply patches"""
@@ -358,6 +394,17 @@ class WindowsBuild(object):
 
         # [building] section
         self.platform = conf.get('building', 'platform')
+
+        # preinstalled are paths to files or directories that must exist
+        # in the VM for it to execute the build.
+        # If the path ends in / or \ it must be a directory, otherwise it must
+        # be a file.
+        # They may be specified as Cygwin (/cygdrive/c/...) or Windows (C:\...)
+        # absolute paths, or without a path in which case it is searched for
+        # on the PATH.
+        if conf.has_option('building', 'preinstalled'):
+            self.preinstalled.extend([e.strip() for e in conf.get('building', 'preinstalled').split('\n') if e])
+
         # buildrequires and provides are multi-valued (space-separated)
         for br in conf.get('building', 'buildrequires').split():
             # buildrequires is a space-separated list
@@ -529,9 +576,9 @@ class WindowsBuild(object):
 
     def run(self):
         """Run the entire build process"""
-        self.checkEnv()
         self.checkout()
         self.loadConfig()
+        self.checkEnv()
         self.fetchBuildReqs()
         self.build()
         self.virusCheck()
