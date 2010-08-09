@@ -653,13 +653,13 @@ def get_options():
 
 def setup_logging(opts):
     global logfile, logfd
-    logfd = file(logfile, 'w')
-    logger = logging.getLogger('koji')
+    logger = logging.getLogger('koji.vm')
     level = logging.INFO
     if opts.debug:
         level = logging.DEBUG
     logger.setLevel(level)
-    handler = logging.StreamHandler(logfile)
+    logfd = file(logfile, 'w')
+    handler = logging.StreamHandler(logfd)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logger.addHandler(handler)
