@@ -282,7 +282,7 @@ class WindowsBuild(object):
 
     def __init__(self, server):
         """constructor: check ini spec file syntax, set build properties"""
-        self.logger = logging.getLogger('koji.vm.WindowsBuild')
+        self.logger = logging.getLogger('koji.vm')
         self.server = server
         info = server.getTaskInfo()
         self.source_url = info[0]
@@ -545,7 +545,7 @@ def run(cmd, chdir=None, fatal=False, log=True):
         olddir = os.getcwd()
         os.chdir(chdir)
     if log:
-        logger = logging.getLogger('koji.vm.run')
+        logger = logging.getLogger('koji.vm')
         logger.info('$ %s', ' '.join(cmd))
         proc = subprocess.Popen(cmd, stdout=logfd, stderr=subprocess.STDOUT,
                                 close_fds=True)
@@ -602,7 +602,7 @@ def encode_int(n):
 
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
-    logger = logging.getLogger('koji.vm.upload_file')
+    logger = logging.getLogger('koji.vm')
     destpath = os.path.join(prefix, path)
     fobj = file(destpath, 'r')
     offset = 0
@@ -622,7 +622,7 @@ def upload_file(server, prefix, path):
 
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
-    logger = logging.getLogger('koji.vm.get_mgmt_server')
+    logger = logging.getLogger('koji.vm')
     macaddr, gateway = find_net_info()
     while not (macaddr and gateway):
         # wait for the network connection to come up and get an address
@@ -645,20 +645,24 @@ def get_options():
     Run without any arguments to start this daemon.
     """
     parser = OptionParser(usage=usage)
+    parser.add_option('-d', '--debug', action='store_true', help='Log debug statements')
     parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
     parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
     (options, args) = parser.parse_args()
     return options
 
-def setup_logging(logfile):
-    global logfd
+def setup_logging(opts):
+    global logfile, logfd
+    logfd = file(logfile, 'w')
     logger = logging.getLogger('koji')
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(logfile, mode='w')
-    handler.setLevel(logging.INFO)
+    level = logging.INFO
+    if opts.debug:
+        level = logging.DEBUG
+    logger.setLevel(level)
+    handler = logging.StreamHandler(logfile)
+    handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logger.addHandler(handler)
-    logfd = handler.stream
     return handler
 
 def log_local(msg):
@@ -667,7 +671,8 @@ def log_local(msg):
     sys.stderr.write(tb)
 
 def incremental_upload(server, handler):
-    fd = file(handler.baseFilename, 'r')
+    global logfile
+    fd = file(logfile, 'r')
     while handler.active:
         offset = fd.tell()
         contents = fd.read(65536)
@@ -678,7 +683,7 @@ def incremental_upload(server, handler):
             del contents
             while handler.active:
                 try:
-                    server.uploadDirect(os.path.basename(handler.baseFilename),
+                    server.uploadDirect(os.path.basename(logfile),
                                         offset, size, digest, data)
                     break
                 except:
@@ -687,17 +692,17 @@ def incremental_upload(server, handler):
         else:
             time.sleep(1)
 
-def flunk(server, handler):
+def fail(server, handler):
     """do the right thing when a build fails"""
-    global logfd
+    global logfile, logfd
     logging.getLogger('koji.vm').error('error running build', exc_info=True)
     tb = ''.join(traceback.format_exception(*sys.exc_info()))
     handler.active = False
     if server is not None:
         try:
             logfd.flush()
-            upload_file(server, os.path.dirname(handler.baseFilename),
-                        os.path.basename(handler.baseFilename))
+            upload_file(server, os.path.dirname(logfile),
+                        os.path.basename(logfile))
         except:
             log_local('error calling upload_file()')
         while True:
@@ -709,9 +714,11 @@ def flunk(server, handler):
                 log_local('error calling server.failTask()')
     sys.exit(1)
 
+
+logfile = '/tmp/build.log'
 logfd = None
 
-if __name__ == '__main__':
+def main():
     prog = os.path.basename(sys.argv[0])
     opts = get_options()
     if opts.install:
@@ -736,8 +743,7 @@ if __name__ == '__main__':
             print 'Successfully removed the %s service' % prog
             sys.exit(0)
 
-    logfile = '/tmp/build.log'
-    handler = setup_logging(logfile)
+    handler = setup_logging(opts)
     handler.active = True
     server = None
     try:
@@ -763,5 +769,9 @@ if __name__ == '__main__':
 
         server.closeTask(results)
     except:
-        flunk(server, handler)
+        fail(server, handler)
     sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
