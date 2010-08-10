@@ -4328,30 +4328,41 @@ def _build_image(options, task_opts, session, args, img_type):
         return
 
 def handle_win_build(options, session, args):
-    """Build a Windows-based package from source"""
+    """Build a Windows package from source"""
     # Usage & option parsing
-    usage = _("usage: %prog win-build [options] target URL [spec-URL]")
+    usage = _("usage: %prog win-build [options] target URL VM")
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--wait", action="store_true",
-                      help=_("Wait on the appliance creation, even if running in the background"))
-    parser.add_option("--nowait", action="store_false", dest="wait",
-                      help=_("Don't wait on appliance creation"))
-    parser.add_option("--noprogress", action="store_true",
-        help=_("Do not display progress of the upload"))
-    parser.add_option("--background", action="store_true",
-        help=_("Run the appliance creation task at a lower priority"))
+    parser.add_option("--specfile", metavar="URL",
+                      help=_("SCM URL to retrieve the build descriptor from. " + \
+                             "Otherwise it must be in the root directory " + \
+                             "of the source repository."))
+    parser.add_option("--patches", metavar="URL",
+                      help=_("SCM URL of a directory containing patches to apply " + \
+                             "to the sources before building"))
+    parser.add_option("--cpus", type="int",
+                      help=_("Number of cpus to allocate to the build VM " + \
+                             "(requires admin access)"))
+    parser.add_option("--mem", type="int",
+                      help=_("Amount of memory (in megabytes) to allocate to the build VM " + \
+                             "(requires admin access)"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform a scratch build"))
     parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
-    parser.add_option("--scratch", action="store_true",
-                      help=_("Perform a scratch build"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on build"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
     (build_opts, args) = parser.parse_args(args)
-    if len(args) < 2 or len(args) > 3:
-        parser.error(_("Two arguments are required, a target and SCM URL. Optionally you\nmay specify a second SCM URL for the spec file if it is not included in the\nsources."))
+    if len(args) != 3:
+        parser.error(_("Exactly three arguments (a build target, a SCM URL, and a VM name) are required"))
         assert False
     activate_session(session)
     target = args[0]
@@ -4367,9 +4378,11 @@ def handle_win_build(options, session, args):
             parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
         if dest_tag['locked'] and not build_opts.scratch:
             parser.error(_("Destination tag %s is locked" % dest_tag['name']))
-    scmurls = args[1:]
+    scmurl = args[1]
+    vm_name = args[2]
     opts = {}
-    for key in ('skip_tag', 'scratch', 'repo_id'):
+    for key in ('specfile', 'patches', 'cpus', 'mem',
+                'scratch', 'repo_id', 'skip_tag'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
@@ -4377,8 +4390,7 @@ def handle_win_build(options, session, args):
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
         priority = 5
-    # try to check that source is an SRPM
-    task_id = session.winbuild(scmurls, target, opts, priority=priority)
+    task_id = session.winBuild(vm_name, scmurl, target, opts, priority=priority)
     if not build_opts.quiet:
         print "Created task:", task_id
         print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)

@@ -3,7 +3,8 @@
 
 BEGIN;
 
-INSERT INTO permissions (name) values ('win-import');
+INSERT INTO permissions (name) VALUES ('win-import');
+INSERT INTO permissions (name) VALUES ('win-admin');
 
 INSERT INTO channels (name) VALUES ('vm');
 

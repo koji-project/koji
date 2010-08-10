@@ -6166,6 +6166,38 @@ class RootExports(object):
 
         return make_task('wrapperRPM', [url, build_tag, build, None, opts], **taskOpts)
 
+    def winBuild(self, vm, url, target, opts=None, priority=None, channel='vm'):
+        """
+        Create a Windows build task
+
+        vm: the name of the VM to run the build in
+        url: The url to checkout the source from.  May be a CVS, SVN, or GIT repository.
+        opts: task options
+        target: the build target
+        priority: the amount to increase (or decrease) the task priority, relative
+                  to the default priority; higher values mean lower priority; only
+                  admins have the right to specify a negative priority here
+        channel: the channel to allocate the task to (defaults to the "vm" channel)
+
+        Returns the task ID
+        """
+        if not context.opts.get('EnableWin'):
+            raise koji.GenericError, "Windows support not enabled"
+        if not opts:
+            opts = {}
+        if 'cpus' in opts or 'mem' in opts:
+            context.session.assertPerm('win-admin')
+        taskOpts = {}
+        if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed, 'only admins may create high-priority tasks'
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        if channel:
+            taskOpts['channel'] = channel
+
+        return make_task('winbuild', [vm, url, target, opts], **taskOpts)
+
     # Create the image task. Called from _build_image in the client.
     #
     def buildImage (self, arch, target, ksfile, img_type, opts=None, priority=None):
