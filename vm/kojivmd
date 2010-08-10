@@ -404,9 +404,25 @@ class VMExecTask(BaseTaskHandler):
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
         return new_path
         
-    def fixDriverXML(self, xml):
+    def updateXML(self, xml, opts):
+        """Fix areas of the clone XML that CloneDesign doesn't handle, or gets wrong"""
         doc = libxml2.parseDoc(xml)
         ctx = doc.xpathNewContext()
+        if opts.get('cpus'):
+            cpus = opts['cpus']
+            cpu_node = ctx.xpathEval('/domain/vcpu')[0]
+            if str(cpus) != cpu_node.getContent():
+                cpu_node.setContent(str(cpus))
+        if opts.get('mem'):
+            mem = opts['mem']
+            # mem is in mbytes, libvirt expects kbytes
+            mem = mem * 1024
+            mem_node = ctx.xpathEval('/domain/memory')[0]
+            if mem > int(mem_node.getContent()):
+                mem_node.setContent(str(mem))
+            curr_mem_node = ctx.xpathEval('/domain/currentMemory')[0]
+            if str(mem) != curr_mem_node.getContent():
+                curr_mem_node.setContent(str(mem))
         disks = ctx.xpathEval('/domain/devices/disk[@device="disk" and @type="file"]')
         for disk in disks:
             drivers = disk.xpathEval('driver')
@@ -420,7 +436,7 @@ class VMExecTask(BaseTaskHandler):
         doc.freeDoc()
         return fixed_xml
 
-    def clone(self, conn, name):
+    def clone(self, conn, name, opts):
         """
         Clone the VM named "name" and return the name of the cloned VM.
         All disks will be qcow2 images backed by the storage of the original
@@ -439,9 +455,10 @@ class VMExecTask(BaseTaskHandler):
             i += 1
 
         design.setup_clone()
-        # The CloneManager API doesn't fix the type= of the <driver/> entry in
+        # The CloneManager API doesn't always fix the type= of the <driver/> entry in
         # the XML (if it exists), so do it manually.
-        clone_xml = self.fixDriverXML(design.clone_xml)
+        # Also set the cpus and mem parameters directly in the XML.
+        clone_xml = self.updateXML(design.clone_xml, opts)
         conn.defineXML(clone_xml)
 
         return clone_name
@@ -697,22 +714,10 @@ class VMExecTask(BaseTaskHandler):
         self.task_info = task_info
 
         conn = libvirt.open(None)
-        clone_name = self.clone(conn, name)
+        clone_name = self.clone(conn, name, opts)
         self.logger.debug('Cloned VM %s to %s',name, clone_name)
         try:
             vm = conn.lookupByName(clone_name)
-            vm_info = vm.info()
-            cpus = opts.get('cpus')
-            if cpus and cpus != vm_info[3]:
-                vm.setVcpus(cpus)
-            mem = opts.get('mem')
-            if mem:
-                # mem is in mbytes, libvirt expects kbytes
-                mem = mem * 1024
-                if vm_info[1] < mem:
-                    vm.setMaxMemory(mem)
-                if vm_info[2] != mem:
-                    vm.setMemory(mem)
             macaddr = self.macAddr(vm)
             registered = False
             while not registered:
