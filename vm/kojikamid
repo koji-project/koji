@@ -41,6 +41,7 @@ import logging
 import traceback
 import threading
 import re
+import glob
 
 MANAGER_PORT = 7000
 
@@ -309,6 +310,7 @@ class WindowsBuild(object):
         self.provides = []
         self.shell = None
         self.execute = []
+        self.postbuild = []
         self.output = {}
         self.logs = []
 
@@ -434,6 +436,15 @@ class WindowsBuild(object):
             self.shell = 'bash'
         # execute is multi-valued (newline-separated)
         self.execute.extend([e.strip() for e in conf.get('building', 'execute').split('\n') if e])
+
+        # postbuild are files or directories that must exist after the build is
+        # complete, but are not included in the build output
+        # they are specified as paths relative the source directory, and may be
+        # in Unix or Windows format
+        # each entry may contain shell-style globs, and one or more files
+        # matching the glob is considered valid
+        if conf.has_option('building', 'postbuild'):
+            self.postbuild.extend([e.strip() for e in conf.get('building', 'postbuild').split('\n') if e])
 
         # [files] section
         for entry in conf.get('files', 'output').split('\n'):
@@ -563,6 +574,33 @@ class WindowsBuild(object):
         if ret:
             raise BuildError, 'build command failed, see build.log for details'
 
+    def checkBuild(self):
+        """Verify that the build completed successfully."""
+        errors = []
+        for entry in self.postbuild:
+            relpath = entry
+            if '\\' in relpath:
+                relpath = relpath.replace('\\', '/')
+            fullpath = os.path.join(self.source_dir, relpath)
+            results = glob.glob(fullpath)
+            if fullpath.endswith('/'):
+                for result in results:
+                    if os.path.isdir(result):
+                        self.logger.debug('found directory %s at %s', entry, result)
+                        break
+                else:
+                    errors.append('directory %s does not exist' % entry)
+            else:
+                for result in results:
+                    if os.path.isfile(result):
+                        self.logger.debug('found file %s at %s', entry, result)
+                        break
+                else:
+                    errors.append('file %s does not exist' % entry)
+        if errors:
+            raise BuildError, 'error validating build output: %s' % \
+                  ', '.join(errors)
+
     def virusCheck(self):
         """Check the build output for viruses"""
         pass
@@ -581,6 +619,7 @@ class WindowsBuild(object):
         self.checkEnv()
         self.fetchBuildReqs()
         self.build()
+        self.checkBuild()
         self.virusCheck()
         return self.gatherResults()
 
