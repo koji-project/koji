@@ -152,7 +152,7 @@ $value
         #elif $task.method == 'winbuild'
         <strong>VM:</strong> $params[0]<br/>
         <strong>SCM URL:</strong> $params[1]<br/>
-        <strong>Build Target:</strong> $params[2]<br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[2]">$params[2]</a><br/>
         #if $len($params) > 3
         $printOpts($params[3])
         #end if
