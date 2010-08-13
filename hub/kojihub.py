@@ -5098,16 +5098,16 @@ def add_group_member(group, user, strict=True):
     insert.make_create()
     insert.execute()
 
-def drop_group_member(group,user):
+def drop_group_member(group, user):
     """Drop user from group"""
     context.session.assertPerm('admin')
-    group = get_user(group)
-    user = get_user(user)
-    if group['usertype'] != koji.USERTYPES['GROUP']:
-        raise koji.GenericError, "Not a group: %(name)s" % group
-    user_id = user['id']
-    group_id = group['id']
-    update = UpdateProcessor('user_groups', clauses=["user_id = %(user_id)i", "group_id = %(group_id)i"])
+    user = get_user(user, strict=True)
+    ginfo = get_user(group)
+    if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
+        raise koji.GenericError, "No such group: %s" % group
+    data = {'user_id' : user['id'], 'group_id' : ginfo['id']}
+    clauses=["user_id = %(user_id)i", "group_id = %(group_id)i"]
+    update = UpdateProcessor('user_groups', values=data, clauses=clauses)
     update.make_revoke()
     update.execute()
 
