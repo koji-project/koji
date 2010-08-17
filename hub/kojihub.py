@@ -2035,18 +2035,23 @@ def get_all_arches():
             ret[koji.canonArch(arch)] = 1
     return ret.keys()
 
-def get_active_tasks():
+def get_active_tasks(host=None):
     """Return data on tasks that are yet to be run"""
-    c = context.cnx.cursor()
-    fields = ['id','state','channel_id','host_id','arch', 'method']
-    q = """
-    SELECT %s FROM task
-    WHERE state IN (%%(FREE)s,%%(ASSIGNED)s)
-    ORDER BY priority,create_time
-    LIMIT 100
-    """ % ','.join(fields)
-    c.execute(q,koji.TASK_STATES)
-    return [dict(zip(fields,row)) for row in c.fetchall()]
+    fields = ['id', 'state', 'channel_id', 'host_id', 'arch', 'method', 'priority', 'create_time']
+    values = dslice(koji.TASK_STATES, ('FREE','ASSIGNED'))
+    if host:
+        values['arches'] = host['arches'].split() + ['noarch']
+        values['channels'] = host['channels']
+        values['host_id'] = host['id']
+        clauses = ['''\
+(state = %(FREE)i AND arch IN %(arches)s AND channel_id IN %(channels)s)
+OR (state = %(ASSIGNED)i AND host_id = %(host_id)i)''']
+    else:
+        clauses = ['state IN (%(FREE)i,%(ASSIGNED)i)']
+    queryOpts = {'limit' : 100, 'order' : 'priority,create_time'}
+    query = QueryProcessor(columns=fields, tables=['task'], clauses=clauses,
+                           values=values, opts=queryOpts)
+    return query.execute()
 
 def get_task_descendents(task, childMap=None, request=False):
     if childMap == None:
@@ -9121,7 +9126,16 @@ class Host(object):
 
         This data is relatively small and the necessary load analysis is
         relatively complex, so we let the host machines crunch it."""
-        return [get_ready_hosts(),get_active_tasks()]
+        hosts = get_ready_hosts()
+        for host in hosts:
+            if host['id'] == self.id:
+                break
+        else:
+            #this host not in ready list
+            return [[], []]
+        #host is the host making the call
+        tasks = get_active_tasks(host)
+        return [hosts, tasks]
 
     def getTask(self):
         """Open next available task and return it"""
