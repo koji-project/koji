@@ -876,6 +876,8 @@ def canonArch(arch):
         return 'sparc'
     elif fnmatch(arch, 'alpha*'):
         return 'alpha'
+    elif fnmatch(arch,'arm*'):
+        return 'arm'
     else:
         return arch
 
