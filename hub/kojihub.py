@@ -5061,13 +5061,17 @@ def _get_build_target(task_id):
     # XXX Should we be storing a reference to the build target
     # in the build table for reproducibility?
     task = Task(task_id)
-    request = task.getRequest()
-    # request is (path-to-srpm, build-target-name, map-of-other-options)
-    if request[1]:
-        ret = get_build_targets(request[1])
-        return ret[0]
-    else:
-        return None
+    info = task.getInfo(request=True)
+    request = info['request']
+    if info['method'] in ('build', 'maven'):
+        # request is (source-url, build-target, map-of-other-options)
+        if request[1]:
+            return get_build_target(request[1])
+    elif info['method'] == 'winbuild':
+        # request is (vm-name, source-url, build-target, map-of-other-options)
+        if request[2]:
+            return get_build_target(request[2])
+    return None
 
 def get_notification_recipients(build, tag_id, state):
     """
