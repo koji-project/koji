@@ -349,6 +349,13 @@ class WindowsBuild(object):
                     errors.append('file %s does not exist' % entry)
                 else:
                     self.logger.debug('file %s exists', entry)
+        # update ClamAV virus definitions
+        ret, output = run(['freshclam'])
+        if ret and ret == 1:
+            self.logger.info('ClamAV database is already up to date')
+        elif ret:
+            errors.append(output)
+
         if errors:
             raise BuildError, 'error validating build environment: %s' % \
                   ', '.join(errors)
@@ -366,6 +373,7 @@ class WindowsBuild(object):
             patch_scm = SCM(self.task_opts['patches'])
             patch_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
             self.applyPatches(self.source_dir, patch_dir)
+        self.virusCheck(self.workdir)
 
     def applyPatches(self, sourcedir, patchdir):
         """Apply patches in patchdir to files in sourcedir)"""
@@ -501,6 +509,7 @@ class WindowsBuild(object):
             for fileinfo in buildfiles:
                 self.fetchFile(br_dir, buildinfo, fileinfo, brtype)
                 brfiles.append(fileinfo['localpath'])
+        self.virusCheck(self.buildreq_dir)
 
     def build(self):
         if self.shell in ('cmd', 'cmd.exe'):
@@ -597,13 +606,16 @@ class WindowsBuild(object):
                         break
                 else:
                     errors.append('file %s does not exist' % entry)
+        self.virusCheck(self.workdir)
         if errors:
             raise BuildError, 'error validating build output: %s' % \
                   ', '.join(errors)
 
-    def virusCheck(self):
-        """Check the build output for viruses"""
-        pass
+    def virusCheck(self, path):
+        """ensure a path is virus free with ClamAV. path should be absolute"""
+        if not path.startswith('/'):
+            raise BuildError, 'Invalid path to scan for viruses: ' + path
+        run(['clamscan', '--quiet', '--recursive', path], fatal=True)
 
     def gatherResults(self):
         """Gather information about the output from the build, return it"""
@@ -620,7 +632,6 @@ class WindowsBuild(object):
         self.fetchBuildReqs()
         self.build()
         self.checkBuild()
-        self.virusCheck()
         return self.gatherResults()
 
 def run(cmd, chdir=None, fatal=False, log=True):
