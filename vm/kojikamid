@@ -314,7 +314,7 @@ class WindowsBuild(object):
         self.output = {}
         self.logs = []
 
-    def checkEnv(self):
+    def checkTools(self):
         """Is this environment fit to build in, based on the spec file?"""
         errors = []
         for entry in self.preinstalled:
@@ -349,16 +349,25 @@ class WindowsBuild(object):
                     errors.append('file %s does not exist' % entry)
                 else:
                     self.logger.debug('file %s exists', entry)
-        # update ClamAV virus definitions
+        if errors:
+            raise BuildError, 'error validating build environment: %s' % \
+                  ', '.join(errors)
+
+    def updateClam(self):
+        """update ClamAV virus definitions"""
         ret, output = run(['freshclam'])
         if ret and ret == 1:
             self.logger.info('ClamAV database is already up to date')
         elif ret:
-            errors.append(output)
+            raise BuildError, 'could not update ClamAV database: %s' % output
 
-        if errors:
-            raise BuildError, 'error validating build environment: %s' % \
-                  ', '.join(errors)
+    def checkEnv(self):
+        """make the environment is fit for building in"""
+        # right now we just check for ClamAV executables
+        for clam_tool in ('freshclam', 'clamscan'):
+            ret, output = run(['which', clam_tool], log=False, fatal=False)
+            if ret:
+                raise BuildError, '%s appears to be missing, is ClamAV installed?' % clam_tool
 
     def checkout(self):
         """Checkout sources, specfile, and patches, and apply patches"""
@@ -626,9 +635,11 @@ class WindowsBuild(object):
 
     def run(self):
         """Run the entire build process"""
+        self.checkEnv()
+        self.updateClam()
         self.checkout()
         self.loadConfig()
-        self.checkEnv()
+        self.checkTools()
         self.fetchBuildReqs()
         self.build()
         self.checkBuild()
