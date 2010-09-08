@@ -3455,7 +3455,7 @@ Status: %(status)s\r
 
         message = self.message_templ % locals()
         # ensure message is in UTF-8
-        message = message.encode('utf-8')
+        message = koji.fixEncoding(message)
 
         server = smtplib.SMTP(options.smtphost)
         #server.set_debuglevel(True)
@@ -3646,7 +3646,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         subject = self.subject_templ % locals()
         message = self.message_templ % locals()
         # ensure message is in UTF-8
-        message = message.encode('utf-8')
+        message = koji.fixEncoding(message)
 
         server = smtplib.SMTP(options.smtphost)
         # server.set_debuglevel(True)
