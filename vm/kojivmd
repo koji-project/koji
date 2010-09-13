@@ -285,9 +285,9 @@ class WinBuildTask(BaseTaskHandler):
         if not opts:
             opts = {}
 
-        subopts = koji.util.dslice(opts, ['specfile', 'patches'],
+        subopts = koji.util.dslice(opts, ['winspec', 'patches'],
                                    strict=False)
-        # specfile and patches options are urls
+        # winspec and patches options are urls
         # verify the urls before passing them to the VM
         for url in [source_url] + subopts.values():
             scm = SCM(url)

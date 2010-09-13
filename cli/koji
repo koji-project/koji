@@ -4334,9 +4334,9 @@ def handle_win_build(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--specfile", metavar="URL",
+    parser.add_option("--winspec", metavar="URL",
                       help=_("SCM URL to retrieve the build descriptor from. " + \
-                             "Otherwise it must be in the root directory " + \
+                             "If not specified, the winspec must be in the root directory " + \
                              "of the source repository."))
     parser.add_option("--patches", metavar="URL",
                       help=_("SCM URL of a directory containing patches to apply " + \
@@ -4381,7 +4381,7 @@ def handle_win_build(options, session, args):
     scmurl = args[1]
     vm_name = args[2]
     opts = {}
-    for key in ('specfile', 'patches', 'cpus', 'mem',
+    for key in ('winspec', 'patches', 'cpus', 'mem',
                 'scratch', 'repo_id', 'skip_tag'):
         val = getattr(build_opts, key)
         if val is not None:

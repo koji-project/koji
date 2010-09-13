@@ -211,7 +211,7 @@ class SCM(object):
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
-            # self.module may be empty, in which case the specfile should be in the top-level directory
+            # self.module may be empty, in which case the winspec should be in the top-level directory
             if self.module:
                 # Treat the module as a directory inside the git repository
                 sourcedir = '%s/%s' % (sourcedir, self.module)
@@ -231,7 +231,7 @@ class SCM(object):
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
-            # self.module may be empty, in which case the specfile should be in the top-level directory
+            # self.module may be empty, in which case the winspec should be in the top-level directory
             if self.module:
                 # Treat the module as a directory inside the git repository
                 sourcedir = '%s/%s' % (sourcedir, self.module)
@@ -370,11 +370,11 @@ class WindowsBuild(object):
                 raise BuildError, '%s appears to be missing, is ClamAV installed?' % clam_tool
 
     def checkout(self):
-        """Checkout sources, specfile, and patches, and apply patches"""
+        """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
         self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
-        if 'specfile' in self.task_opts:
-            spec_scm = SCM(self.task_opts['specfile'])
+        if 'winspec' in self.task_opts:
+            spec_scm = SCM(self.task_opts['winspec'])
             self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
         else:
             self.spec_dir = self.source_dir
