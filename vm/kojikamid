@@ -410,6 +410,10 @@ class WindowsBuild(object):
         # [naming] section
         for entry in ('name', 'version', 'release', 'description'):
             setattr(self, entry, conf.get('naming', entry))
+        if conf.has_option('naming', 'epoch'):
+            self.epoch = conf.get('naming', 'epoch')
+        else:
+            self.epoch = None
 
         # [building] section
         self.platform = conf.get('building', 'platform')
@@ -629,6 +633,7 @@ class WindowsBuild(object):
     def gatherResults(self):
         """Gather information about the output from the build, return it"""
         return {'name': self.name, 'version': self.version, 'release': self.release,
+                'epoch': self.epoch,
                 'description': self.description, 'platform': self.platform,
                 'provides': self.provides,
                 'output': self.output, 'logs': self.logs}
