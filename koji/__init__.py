@@ -1949,13 +1949,17 @@ def formatTimeLong(value):
 
 def buildLabel(buildInfo, showEpoch=False):
     """Format buildInfo (dict) into a descriptive label."""
-    epoch = buildInfo['epoch']
+    epoch = buildInfo.get('epoch')
     if showEpoch and epoch != None:
         epochStr = '%i:' % epoch
     else:
         epochStr = ''
-    return '%s%s-%s-%s' % (epochStr, buildInfo['package_name'],
-                           buildInfo['version'], buildInfo['release'])
+    name = buildInfo.get('package_name')
+    if not name:
+        name = buildInfo.get('name')
+    return '%s%s-%s-%s' % (epochStr, name,
+                           buildInfo.get('version'),
+                           buildInfo.get('release'))
 
 def _module_info(url):
     module_info = ''
