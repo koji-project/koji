@@ -8,6 +8,7 @@ INSERT INTO permissions (name) VALUES ('win-admin');
 
 INSERT INTO channels (name) VALUES ('vm');
 
+insert into archivetypes (name, description, extensions) values ('spec', 'RPM spec file', 'spec');
 insert into archivetypes (name, description, extensions) values ('exe', 'Windows executable', 'exe');
 insert into archivetypes (name, description, extensions) values ('dll', 'Windows dynamic link library', 'dll');
 insert into archivetypes (name, description, extensions) values ('lib', 'Windows import library', 'lib');

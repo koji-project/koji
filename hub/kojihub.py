@@ -4351,11 +4351,12 @@ def new_maven_build(build, maven_info):
                     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
         _dml(insert, maven_info)
 
-def new_win_build(build_id, win_info):
+def new_win_build(build_info, win_info):
     """
     Add Windows metadata to an existing build.
     win_info must contain a 'platform' key.
     """
+    build_id = build_info['id']
     current = get_win_build(build_id, strict=False)
     if current:
         if current['platform'] != win_info['platform']:
@@ -4981,6 +4982,7 @@ def reset_build(build):
         #nothing to do
         return
     minfo = get_maven_build(binfo)
+    winfo = get_win_build(binfo)
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
@@ -4996,11 +4998,15 @@ def reset_build(build):
     for (archive_id,) in ids:
         delete = """DELETE FROM maven_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM win_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
     delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
@@ -5010,6 +5016,7 @@ def reset_build(build):
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
         dirs_to_clear.append(builddir)
+    # Windows files exist under the builddir, and will be removed with the rpms
     if minfo:
         mavendir = koji.pathinfo.mavenbuild(binfo, minfo)
         if os.path.exists(mavendir):
@@ -8827,7 +8834,7 @@ class HostExports(object):
                     os.rename(fn,dest)
                     os.symlink(dest,fn)
 
-    def moveWinBuildToScratch(self, task_id, results):
+    def moveWinBuildToScratch(self, task_id, results, rpm_results):
         "Move a completed scratch build into place (not imported)"
         if not context.opts.get('EnableWin'):
             raise koji.GenericError, 'Windows support not enabled'
@@ -8837,13 +8844,22 @@ class HostExports(object):
         task.assertHost(host.id)
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
-        destdir = "%s/%s/task_%s" % (scratchdir, username, task_id)
+        destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
         for relpath in results['output'].keys() + results['logs']:
             filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
             dest = os.path.join(destdir, relpath)
             koji.ensuredir(os.path.dirname(dest))
             os.rename(filename, dest)
             os.symlink(dest, filename)
+        if rpm_results:
+            for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
+                    rpm_results['logs']:
+                filename = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
+                                        relpath)
+                dest = os.path.join(destdir, 'rpms', relpath)
+                koji.ensuredir(os.path.dirname(dest))
+                os.rename(filename, dest)
+                os.symlink(dest, filename)
 
     def initBuild(self,data):
         """Create a stub build entry.
@@ -8913,10 +8929,10 @@ class HostExports(object):
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
         build_id = new_build(data)
-        build_info['id'] = build_id
-        new_maven_build(build_info, maven_info)
+        data['id'] = build_id
+        new_maven_build(data, maven_info)
 
-        return build_id, build_info
+        return data
 
     def completeMavenBuild(self, task_id, build_id, maven_results, rpm_results):
         """Complete the Maven build."""
@@ -9014,10 +9030,11 @@ class HostExports(object):
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
         build_id = new_build(data)
-        new_win_build(build_id, win_info)
-        return build_id
+        data['id'] = build_id
+        new_win_build(data, win_info)
+        return data
 
-    def completeWinBuild(self, task_id, build_id, results):
+    def completeWinBuild(self, task_id, build_id, results, rpm_results):
         """Complete a Windows build"""
         if not context.opts.get('EnableWin'):
             raise koji.GenericError, 'Windows support not enabled'
@@ -9048,6 +9065,9 @@ class HostExports(object):
                 subdir = os.path.join(subdir, reldir)
             import_build_log(os.path.join(task_dir, relpath),
                              build_info, subdir=subdir)
+
+        if rpm_results:
+            _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']

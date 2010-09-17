@@ -31,7 +31,7 @@ import glob
 import logging
 import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM
-from koji.tasks import ServerExit, BaseTaskHandler
+from koji.tasks import ServerExit, BaseTaskHandler, MultiPlatformTask
 from koji.util import parseStatus, isSuccess
 import os
 import pwd
@@ -1014,7 +1014,7 @@ class BuildArchTask(BaseTaskHandler):
 
         return ret
 
-class MavenTask(BaseTaskHandler):
+class MavenTask(MultiPlatformTask):
 
     Methods = ['maven']
 
@@ -1072,13 +1072,14 @@ class MavenTask(BaseTaskHandler):
                     raise koji.BuildError, "package %s is blocked for tag %s" \
                         % (build_info['name'], dest_tag['name'])
 
-            self.build_id, build_info = self.session.host.initMavenBuild(self.id, build_info, maven_info)
+            build_info = self.session.host.initMavenBuild(self.id, build_info, maven_info)
+            self.build_id = build_info['id']
 
         try:
             rpm_results = None
             spec_url = self.opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, build_tag, build_info, repo_id)
+                rpm_results = self.buildWrapperRPM(spec_url, self.build_task_id, build_tag, build_info, repo_id)
 
             if not self.opts.get('scratch'):
                 self.session.host.completeMavenBuild(self.id, self.build_id, maven_results, rpm_results)
@@ -1099,20 +1100,6 @@ class MavenTask(BaseTaskHandler):
                                                     parent=self.id,
                                                     arch='noarch')
             self.wait(tag_task_id)
-
-    def buildWrapperRPM(self, spec_url, build_tag, build, repo_id):
-        task = self.session.getTaskInfo(self.build_task_id)
-        arglist = [spec_url, build_tag, build, task, {'repo_id': repo_id}]
-
-        rpm_task_id = self.session.host.subtask(method='wrapperRPM',
-                                                arglist=arglist,
-                                                label='rpm',
-                                                parent=self.id,
-                                                arch='noarch')
-        results = self.wait(rpm_task_id)[rpm_task_id]
-        results['task_id'] = rpm_task_id
-
-        return results
 
 class BuildMavenTask(BaseTaskHandler):
 
@@ -1318,22 +1305,32 @@ class WrapperRPMTask(BaseTaskHandler):
         if not opts:
             opts = {}
 
+        if not (build or task):
+            raise koji.BuildError, 'build and/or task must be specified'
+
         values = {}
 
-        maven_info = None
+        if build:
+            maven_info = self.session.getMavenBuild(build['id'], strict=False)
+            win_info = self.session.getWinBuild(build['id'], strict=False)
+        else:
+            maven_info = None
+            win_info = None
 
+        # list of artifact paths relative to kojiroot (not exposed to the specfile)
+        artifact_relpaths = []
         # map of file extension to a list of files
         artifacts = {}
         # list of all files
         all_artifacts = []
-        # list of all files with their maven repo path
+        # list of all files with their repo path
         all_artifacts_with_path = []
 
         # makes generating relative paths easier
         self.pathinfo = koji.PathInfo(topdir='')
 
         if task:
-            # called as a subtask of a maven build
+            # called as a subtask of a build
             artifact_paths = self.session.listTaskOutput(task['id'])
 
             for artifact_path in artifact_paths:
@@ -1343,7 +1340,8 @@ class WrapperRPMTask(BaseTaskHandler):
                     # Exclude log files for consistency with the output of listArchives() used below
                     continue
                 relpath = os.path.join(self.pathinfo.task(task['id']), artifact_path)[1:]
-                artifacts.setdefault(ext, []).append(relpath)
+                artifact_relpaths.append(relpath)
+                artifacts.setdefault(ext, []).append(artifact_name)
                 all_artifacts.append(artifact_name)
                 all_artifacts_with_path.append(artifact_path)
         else:
@@ -1352,61 +1350,67 @@ class WrapperRPMTask(BaseTaskHandler):
             if not build['state'] == koji.BUILD_STATES['COMPLETE']:
                 raise koji.BuildError, 'cannot call wrapperRPM on a build that did not complete successfully'
 
-            maven_info = self.session.getMavenBuild(build['id'], strict=True)
-
             # get the list of files from the build instead of the task, because the task output directory may
             # have already been cleaned up
-            build_artifacts = self.session.listArchives(buildID=build['id'], type='maven')
+            if maven_info:
+                build_artifacts = self.session.listArchives(buildID=build['id'], type='maven')
+            elif win_info:
+                build_artifacts = self.session.listArchives(buildID=build['id'], type='win')
+            else:
+                raise koji.BuildError, 'unsupported build type'
 
             for artifact in build_artifacts:
                 artifact_name = artifact['filename']
                 base, ext = os.path.splitext(artifact_name)
+                artifacts.setdefault(ext, []).append(artifact_name)
+                all_artifacts.append(artifact_name)
                 if ext == '.log':
                     # listArchives() should never return .log files, but we check for completeness
                     continue
-                relpath = os.path.join(self.pathinfo.mavenbuild(build, maven_info), artifact_name)[1:]
-                artifacts.setdefault(ext, []).append(relpath)
-                all_artifacts.append(artifact_name)
-                repopath = os.path.join(self.pathinfo.mavenrepo(maven_info, artifact), artifact_name)[len('/maven2/'):]
-                all_artifacts_with_path.append(repopath)
+                if maven_info:
+                    relpath = os.path.join(self.pathinfo.mavenbuild(build, maven_info), artifact_name)[1:]
+                    artifact_relpaths.append(relpath)
+                    repopath = self.pathinfo.mavenfile(artifact)
+                    all_artifacts_with_path.append(repopath)
+                elif win_info:
+                    repopath = self.pathinfo.winfile(artifact)
+                    relpath = os.path.join(self.pathinfo.winbuild(build), repopath)[1:]
+                    artifact_relpaths.append(relpath)
+                    all_artifacts_with_path.append(repopath)
+                else:
+                    # can't happen
+                    assert False
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
 
-        artifacts_base = {}
-        # construct a map of just basenames to pass to the template
-        for key, vals in artifacts.items():
-            # sort the lists while we're at it
-            vals.sort()
-            artifacts_base[key] = [os.path.basename(val) for val in vals]
-
-        values['artifacts'] = artifacts_base
+        values['artifacts'] = artifacts
         values['all_artifacts'] = all_artifacts
         values['all_artifacts_with_path'] = all_artifacts_with_path
 
         if build:
             self.copy_fields(build, values, 'epoch', 'name', 'version', 'release')
-            if not maven_info:
-                maven_info = self.session.getMavenBuild(build['id'], strict=True)
-            values['maven_info'] = maven_info
+            if maven_info:
+                values['maven_info'] = maven_info
+            elif win_info:
+                values['win_info'] = win_info
+            else:
+                # can't happen
+                assert False
         else:
-            # Get the pom info from the first pom and convert it to build format
-            # so we can use it as substitution variables in the template.
-            # If there are no poms, populate the values dict with empty placeholders.  If the spec file 
-            # doesn't require these variables, it should work.  If it does, then the rpmbuild will 
-            # likely fail.
-            poms = artifacts.get('.pom', [])
-            if poms:
-                pom_path = self.localPath(poms[0])
-                pom_info = koji.parse_pom(pom_path)
-                maven_info = koji.pom_to_maven_info(pom_info)
+            task_result = self.session.getTaskResult(task['id'])
+            if task['method'] == 'buildMaven':
+                maven_info = task_result['maven_info']
                 maven_nvr = koji.maven_info_to_nvr(maven_info)
                 maven_nvr['release'] = '0.scratch'
                 self.copy_fields(maven_nvr, values, 'epoch', 'name', 'version', 'release')
                 values['maven_info'] = maven_info
+            elif task['method'] == 'vmExec':
+                self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
+                values['win_info'] = {'platform': task_result['platform']}
             else:
-                values.update({'epoch': None, 'name': '', 'version': '', 'release': ''})
-                values['maven_info'] = {'group_id': '', 'artifact_id': '', 'version': ''}
+                # can't happen
+                assert False
 
         scm = SCM(spec_url)
         scm.assert_allowed(self.options.allowed_scms)
@@ -1442,11 +1446,19 @@ class WrapperRPMTask(BaseTaskHandler):
         # set to the rpm _sourcedir so other files in the SCM may be referenced in the
         # specfile as well.
         specdir = os.path.dirname(spec_template)
-        for key, filepaths in artifacts.items():
-            for filepath in filepaths:
-                localpath = self.localPath(filepath)
-                shutil.copy(localpath, specdir)
+        for relpath in artifact_relpaths:
+            localpath = self.localPath(relpath)
+            # RPM requires all SOURCE files in the srpm to be in the same directory, so
+            # we flatten any directory structure of the output files here.
+            # If multiple files in the build have the same basename, the last one
+            # listed will be the one that ends up in the srpm, which is rarely the right
+            # thing to do.  In this case the build should be putting the output into a
+            # zipfile or tarball so that rpmbuild can then expand it in %setup, which
+            # will preserve the directory structure.
+            shutil.copy(localpath, specdir)
 
+        # change directory to the specdir to the template can reference files there
+        os.chdir(specdir)
         contents = Cheetah.Template.Template(file=spec_template,
                                              searchList=[values]).respond()
 

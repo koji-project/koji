@@ -1403,7 +1403,8 @@ class PathInfo(object):
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return "%(group_path)s/%(artifact_id)s/%(version)s" % locals()
+        filename = maveninfo['filename']
+        return "%(group_path)s/%(artifact_id)s/%(version)s/%(filename)s" % locals()
 
     def mavenrepo(self, build, maveninfo):
         """Return the directory where the Maven artifact exists in the per-tag Maven repo
@@ -1411,7 +1412,7 @@ class PathInfo(object):
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return self.topdir + "/maven2/" + self.mavenfile(maveninfo)
+        return self.topdir + "/maven2/" + os.path.dirname(self.mavenfile(maveninfo))
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""

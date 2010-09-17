@@ -23,7 +23,7 @@
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
-from koji.tasks import ServerExit, BaseTaskHandler
+from koji.tasks import ServerExit, BaseTaskHandler, MultiPlatformTask
 import sys
 import logging
 import os
@@ -274,7 +274,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
             return response
 
 
-class WinBuildTask(BaseTaskHandler):
+class WinBuildTask(MultiPlatformTask):
     """
     Spawns a vmExec task to run a build, and imports the output.
     """
@@ -331,10 +331,10 @@ class WinBuildTask(BaseTaskHandler):
         results = self.wait(task_id)[task_id]
         results['task_id'] = task_id
 
-        if opts.get('scratch'):
-            self.session.host.moveWinBuildToScratch(self.id, results)
-        else:
-            build_info = koji.util.dslice(results, ['name', 'version', 'release'])
+        build_info = None
+        if not opts.get('scratch'):
+            build_info = koji.util.dslice(results, ['name', 'version', 'release', 'epoch'])
+            build_info['package_name'] = build_info['name']
             pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'], event=event_id)
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
@@ -345,25 +345,38 @@ class WinBuildTask(BaseTaskHandler):
                     raise koji.BuildError, "package %s is blocked for tag %s" \
                             % (build_info['name'], dest_tag['name'])
 
-            # epoch is rpm-specific, so doesn't have a lot of relevance here
-            # but a value is required by the data model
-            build_info['epoch'] = None
-            build_id = self.session.host.initWinBuild(self.id, build_info,
-                                                      koji.util.dslice(results, ['platform']))
-            try:
-                self.session.host.completeWinBuild(self.id, build_id, results)
-            except (SystemExit, ServerExit, KeyboardInterrupt):
-                raise
-            except:
+            build_info = self.session.host.initWinBuild(self.id, build_info,
+                                                        koji.util.dslice(results, ['platform']))
+            build_id = build_info['id']
+
+        try:
+            rpm_results = None
+            spec_url = opts.get('specfile')
+            if spec_url:
+                rpm_results = self.buildWrapperRPM(spec_url, task_id, build_tag, build_info, repo_id,
+                                                   channel='default')
+
+            if opts.get('scratch'):
+                self.session.host.moveWinBuildToScratch(self.id, results, rpm_results)
+            else:
+                self.session.host.completeWinBuild(self.id, build_id, results, rpm_results)
+        except (SystemExit, ServerExit, KeyboardInterrupt):
+            # we do not trap these
+            raise
+        except:
+            if not opts.get('scratch'):
+                # scratch builds do not get imported
                 self.session.host.failBuild(self.id, build_id)
-                raise
-            if not opts.get('skip_tag') and not opts.get('scratch'):
-                task_id = self.session.host.subtask(method='tagBuild',
+            # reraise the exception
+            raise
+
+        if not opts.get('scratch') and not opts.get('skip_tag'):
+            tag_task_id = self.session.host.subtask(method='tagBuild',
                                                     arglist=[dest_tag['id'], build_id],
                                                     label='tag',
                                                     channel='default',
                                                     parent=self.id)
-                self.wait(task_id)
+            self.wait(tag_task_id)
 
 class VMExecTask(BaseTaskHandler):
     """

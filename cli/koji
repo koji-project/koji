@@ -4347,6 +4347,8 @@ def handle_win_build(options, session, args):
     parser.add_option("--mem", type="int",
                       help=_("Amount of memory (in megabytes) to allocate to the build VM " + \
                              "(requires admin access)"))
+    parser.add_option("--specfile", metavar="URL",
+                      help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--scratch", action="store_true",
                       help=_("Perform a scratch build"))
     parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
@@ -4382,7 +4384,7 @@ def handle_win_build(options, session, args):
     vm_name = args[2]
     opts = {}
     for key in ('winspec', 'patches', 'cpus', 'mem',
-                'scratch', 'repo_id', 'skip_tag'):
+                'specfile', 'scratch', 'repo_id', 'skip_tag'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
