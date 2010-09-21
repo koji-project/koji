@@ -6305,6 +6305,9 @@ class RootExports(object):
     def mavenEnabled(self):
         return bool(context.opts.get('EnableMaven'))
 
+    def winEnabled(self):
+        return bool(context.opts.get('EnableWin'))
+
     def showSession(self):
         return "%s" % context.session
 

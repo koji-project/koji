@@ -359,6 +359,9 @@ _TASKS = ['build',
           'chainbuild',
           'maven',
           'buildMaven',
+          'wrapperRPM',
+          'winbuild',
+          'vmExec',
           'waitrepo',
           'tagBuild',
           'newRepo',
@@ -369,9 +372,9 @@ _TASKS = ['build',
           'createLiveCD',
           'createAppliance']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'newRepo']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo']
 
 def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, start=None, order='-id'):
     values = _initValues(req, 'Tasks', 'tasks')
