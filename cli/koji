@@ -2692,26 +2692,46 @@ def anon_handle_buildinfo(options, session, args):
         if info is None:
             print "No such build: %s\n" % build
             continue
+        task = None
+        if info['task_id']:
+            task = session.getTaskInfo(info['task_id'], request=True)
         taglist = []
         for tag in session.listTags(build):
             taglist.append(tag['name'])
-        if info['epoch'] is None:
-            info['epoch'] = ""
-        else:
-            info['epoch'] = str(info['epoch']) + ":"
-        info['name'] = info['package_name']
         info['arch'] = 'src'
         info['state'] = koji.BUILD_STATES[info['state']]
-        rpms = session.listRPMs(buildID=info['id'])
         print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
         print "State: %(state)s" % info
         print "Built by: %(owner_name)s" % info
-        print "Task: %(task_id)s" % info
+        if task:
+            print "Task: %s %s" % (task['id'], koji.taskLabel(task))
+        else:
+            print "Task: none"
         print "Finished: %s" % koji.formatTimeLong(info['completion_time'])
+        maven_info = session.getMavenBuild(info['id'])
+        if maven_info:
+            print "Maven groupId: %s" % maven_info['group_id']
+            print "Maven artifactId: %s" % maven_info['artifact_id']
+            print "Maven version: %s" % maven_info['version']
+        win_info = session.getWinBuild(info['id'])
+        if win_info:
+            print "Windows build platform: %s" % win_info['platform']
         print "Tags: %s" % ' '.join(taglist)
-        print "RPMs:"
-        for rpm in rpms:
-            print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+        maven_archives = session.listArchives(buildID=info['id'], type='maven')
+        if maven_archives:
+            print "Maven archives:"
+            for archive in maven_archives:
+                print os.path.join(koji.pathinfo.mavenbuild(info, maven_info), archive['filename'])
+        win_archives = session.listArchives(buildID=info['id'], type='win')
+        if win_archives:
+            print "Windows archives:"
+            for archive in win_archives:
+                print os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive))
+        rpms = session.listRPMs(buildID=info['id'])
+        if rpms:
+            print "RPMs:"
+            for rpm in rpms:
+                print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
         if options.changelog:
             changelog = session.getChangelogEntries(info['id'])
             if changelog:
