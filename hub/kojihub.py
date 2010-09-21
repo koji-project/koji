@@ -7718,11 +7718,11 @@ class RootExports(object):
         else:
             return ret
 
-    def getTaskChildren(self, task_id):
+    def getTaskChildren(self, task_id, request=False):
         """Return a list of the children
         of the Task with the given ID."""
         task = Task(task_id)
-        return task.getChildren()
+        return task.getChildren(request=request)
 
     def getTaskDescendents(self, task_id, request=False):
         """Get all descendents of the task with the given ID.

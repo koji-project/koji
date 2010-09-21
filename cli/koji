@@ -3332,6 +3332,16 @@ def anon_handle_list_tag_history(options, session, args):
             print "%r" % x
         print _histline(event_id, x)
 
+def _handleMap(lines, data, prefix=''):
+    for key, val in data.items():
+        if key != '__starstar':
+            lines.append('  %s%s: %s' % (prefix, key, val))
+
+def _handleOpts(lines, opts, prefix=''):
+    if opts:
+        lines.append("%sOptions:" % prefix)
+        _handleMap(lines, opts, prefix)
+
 def _parseTaskParams(session, method, task_id):
     """Parse the return of getTaskRequest()"""
     params = session.getTaskRequest(task_id)
@@ -3348,9 +3358,7 @@ def _parseTaskParams(session, method, task_id):
         lines.append("Build Arch: %s" % params[2])
         lines.append("SRPM Kept: %r" % params[3])
         if len(params) > 4:
-            for key in params[4].keys():
-                if not key == '__starstar':
-                    lines.append("%s: %s" % (key, params[4][key]))
+            _handleOpts(lines, params[4])
     elif method == 'tagBuild':
         build = session.getBuild(params[1])
         lines.append("Destination Tag: %s" % session.getTag(params[0])['name'])
@@ -3365,9 +3373,49 @@ def _parseTaskParams(session, method, task_id):
     elif method == 'build':
         lines.append("Source: %s" % params[0])
         lines.append("Build Target: %s" % params[1])
-        for key in params[2].keys():
-            if not key == '__starstar':
-                lines.append("%s: %s" % (key, params[2][key]))
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'maven':
+        lines.append("SCM URL: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'buildMaven':
+        lines.append("SCM URL: %s" % params[0])
+        lines.append("Build Tag: %s" % params[1]['name'])
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'wrapperRPM':
+        lines.append("Spec File URL: %s" % params[0])
+        lines.append("Build Tag: %s" % params[1]['name'])
+        if params[2]:
+            lines.append("Build: %s" % koji.buildLabel(params[2]))
+        if params[3]:
+            lines.append("Task: %s %s" % (params[3]['id'], koji.taskLabel(params[3])))
+        if len(params) > 4:
+            _handleOpts(lines, params[4])
+    elif method == 'winbuild':
+        lines.append("VM: %s" % params[0])
+        lines.append("SCM URL: %s" % params[1])
+        lines.append("Build Target: %s" % params[2])
+        if len(params) > 3:
+            _handleOpts(lines, params[3])
+    elif method == 'vmExec':
+        lines.append("VM: %s" % params[0])
+        lines.append("Exec Params:")
+        for info in params[1]:
+            if isinstance(info, dict):
+                _handleMap(lines, info, prefix='  ')
+            else:
+                lines.append("  %s" % info)
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method in ('createLiveCD', 'createAppliance'):
+        lines.append("Arch: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+        lines.append("Kickstart File: %s" % params[2])
+        if len(params) > 3:
+            _handleOpts(lines, params[3])
     elif method == 'newRepo':
         tag = session.getTag(params[0])
         lines.append("Tag: %s" % tag['name'])
@@ -3407,11 +3455,8 @@ def _parseTaskParams(session, method, task_id):
             lines.append("  Method: %s" % subtask[0])
             lines.append("  Parameters: %s" % ", ".join([str(subparam) for subparam in subtask[1]]))
             if len(subtask) > 2 and subtask[2]:
-                lines.append("  Options:")
                 subopts = subtask[2]
-                for key in subopts:
-                    if not key == '__starstar':
-                        lines.append("    %s: %s" % (key, subopts[key]))
+                _handleOpts(lines, subopts, prefix='  ')
             lines.append("")
     elif method == 'chainbuild':
         lines.append("Build Groups:")
@@ -3420,9 +3465,8 @@ def _parseTaskParams(session, method, task_id):
             group_num += 1
             lines.append("  %i: %s" % (group_num, ', '.join(group_list)))
         lines.append("Build Target: %s" % params[1])
-        for key in params[2].keys():
-            if not key == '__starstar':
-                lines.append("%s: %s" % (key, params[2][key]))
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
     elif method == 'waitrepo':
         lines.append("Build Target: %s" % params[0])
         if params[1]:
@@ -3482,14 +3526,15 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     if output:
         print "%sOutput:" % indent
         for filename in output:
-            print "%s %s/%s" % (indent, files_dir, filename)
+            print "%s  %s/%s" % (indent, files_dir, filename)
 
     # white space
-    sys.stdout.write("\n")
+    print
 
     if recurse:
         level += 1
-        children = session.getTaskChildren(task_id)
+        children = session.getTaskChildren(task_id, request=True)
+        children.sort(cmp=lambda a, b: cmp(a['id'], b['id']))
         for child in children:
             _printTaskInfo(session, child['id'], level, verbose=verbose)
 
@@ -3498,7 +3543,7 @@ def anon_handle_taskinfo(options, session, args):
     usage = _("usage: %prog taskinfo [options] taskID [taskID...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--recurse", action="store_true", help=_("Show children of this task as well"))
+    parser.add_option("-r", "--recurse", action="store_true", help=_("Show children of this task as well"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
