@@ -59,6 +59,9 @@
               #if $mavenEnabled
               <option value="maven">Maven Artifacts</option>
               #end if
+              #if $winEnabled
+              <option value="win">Windows Artifacts</option>
+              #end if
             </select>
             <input type="text" name="terms"/>
             <input type="submit" value="Search"/>

@@ -8245,13 +8245,14 @@ class RootExports(object):
                      'user': 'users',
                      'host': 'host',
                      'rpm': 'rpminfo',
-                     'maven': 'archiveinfo'}
+                     'maven': 'archiveinfo',
+                     'win': 'archiveinfo'}
 
     def search(self, terms, type, matchType, queryOpts=None):
         """Search for an item in the database matching "terms".
         "type" specifies what object type to search for, and must be
         one of "package", "build", "tag", "target", "user", "host",
-        or "rpm".  "matchType" specifies the type of search to
+        "rpm", "maven", or "win".  "matchType" specifies the type of search to
         perform, and must be one of "glob" or "regexp".  All searches
         are case-insensitive.  A list of maps containing "id" and
         "name" will be returned.  If no matches are found, an empty
@@ -8295,6 +8296,11 @@ class RootExports(object):
             joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
             clause = "archiveinfo.filename %s %%(terms)s or maven_archives.group_id || '-' || " \
                 "maven_archives.artifact_id || '-' || maven_archives.version %s %%(terms)s" % (oper, oper)
+        elif type == 'win':
+            cols = ('id', "trim(leading '/' from win_archives.relpath || '/' || archiveinfo.filename)")
+            joins.append('win_archives ON archiveinfo.id = win_archives.archive_id')
+            clause = "archiveinfo.filename %s %%(terms)s or win_archives.relpath || '/' || " \
+                     "archiveinfo.filename %s %%(terms)s" % (oper, oper)
         else:
             clause = 'name %s %%(terms)s' % oper
 

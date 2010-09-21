@@ -2075,7 +2075,8 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'user': 'userinfo?userID=%(id)i',
              'host': 'hostinfo?hostID=%(id)i',
              'rpm': 'rpminfo?rpmID=%(id)i',
-             'maven': 'archiveinfo?archiveID=%(id)i'}
+             'maven': 'archiveinfo?archiveID=%(id)i',
+             'win': 'archiveinfo?archiveID=%(id)i'}
 
 _VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
 _VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
@@ -2121,6 +2122,13 @@ def search(req, start=None, order='name'):
             # (you're feeling lucky)
             mod_python.util.redirect(req, infoURL % results[0])
         else:
+            if type == 'maven':
+                typeLabel = 'Maven artifacts'
+            elif type == 'win':
+                typeLabel = 'Windows artifacts'
+            else:
+                typeLabel = '%ss' % type
+            values['typeLabel'] = typeLabel
             return _genHTML(req, 'searchresults.chtml')
     else:
         return _genHTML(req, 'search.chtml')
