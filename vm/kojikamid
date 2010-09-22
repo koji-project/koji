@@ -473,6 +473,8 @@ class WindowsBuild(object):
                 continue
             tokens = entry.strip().split(':')
             filename = tokens[0]
+            for var in ('name', 'version', 'release'): 
+                filename = filename.replace('$' + var, getattr(self, var))
             metadata = {}
             metadata['platforms'] = tokens[1].split(',')
             if len(tokens) > 2:
@@ -562,6 +564,9 @@ class WindowsBuild(object):
                 script.write('set %s_dir=%s\r\n' % (buildreq, br_dir))
                 script.write('set %s_files=%s\r\n' % (buildreq, files))
             script.write('\r\n')
+        script.write('set name=%s\r\n' % self.name)
+        script.write('set version=%s\r\n' % self.version)
+        script.write('set release=%s\r\n' % self.release)
         for cmd in self.execute:
             script.write(cmd)
             script.write('\r\n')
@@ -587,6 +592,9 @@ class WindowsBuild(object):
                 script.write(filename)
                 script.write('\n')
             script.write("'\n\n")
+        script.write('export name=%s\n' % self.name)
+        script.write('export version=%s\n' % self.version)
+        script.write('export release=%s\n' % self.release)
         for cmd in self.execute:
             script.write(cmd)
             script.write('\n')
