@@ -2,6 +2,7 @@ import os
 import os.path
 import re
 import sys
+import mimetypes
 import mod_python
 import mod_python.Cookie
 import Cheetah.Filters
@@ -650,16 +651,16 @@ def getfile(req, taskID, name, offset=None, size=None):
     file_info = output.get(name)
     if not file_info:
         raise koji.GenericError, 'no file "%s" output by task %i' % (name, taskID)
-    
-    if name.endswith('.rpm'):
-        req.content_type = 'application/x-rpm'
-        req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
-    elif name.endswith('.log'):
-        req.content_type = 'text/plain'
-    elif name.endswith('.iso') or name.endswith('.raw') or \
-         name.endswith('.qcow') or name.endswith('.qcow2') or \
-         name.endswith('.vmx'):
-        req.content_type = 'application/octet-stream'
+
+    mime_guess = mimetypes.guess_type(name, strict=False)[0]
+    if mime_guess:
+        req.content_type = mime_guess
+    else:
+        if name.endswith('.log') or name.endswith('.ks'):
+            req.content_type = 'text/plain'
+        else:
+            req.content_type = 'application/octet-stream'
+    if req.content_type != 'text/plain':
         req.headers_out['Content-Disposition'] = 'attachment; filename=%s' % name
 
     file_size = int(file_info['st_size'])
