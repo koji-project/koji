@@ -8843,8 +8843,40 @@ class HostExports(object):
                     os.rename(fn,dest)
                     os.symlink(dest,fn)
 
+    def moveMavenBuildToScratch(self, task_id, results, rpm_results):
+        "Move a completed Maven scratch build into place (not imported)"
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, 'Maven support not enabled'
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+        scratchdir = koji.pathinfo.scratch()
+        username = get_user(task.getOwner())['name']
+        destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
+        for reldir, files in results['files'].items() + [('', results['logs'])]:
+            for filename in files:
+                if reldir:
+                    relpath = os.path.join(reldir, filename)
+                else:
+                    relpath = filename
+                src = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
+                dest = os.path.join(destdir, relpath)
+                koji.ensuredir(os.path.dirname(dest))
+                os.rename(src, dest)
+                os.symlink(dest, src)
+        if rpm_results:
+            for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
+                    rpm_results['logs']:
+                src = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
+                                   relpath)
+                dest = os.path.join(destdir, 'rpms', relpath)
+                koji.ensuredir(os.path.dirname(dest))
+                os.rename(src, dest)
+                os.symlink(dest, src)
+
     def moveWinBuildToScratch(self, task_id, results, rpm_results):
-        "Move a completed scratch build into place (not imported)"
+        "Move a completed Windows scratch build into place (not imported)"
         if not context.opts.get('EnableWin'):
             raise koji.GenericError, 'Windows support not enabled'
         host = Host()

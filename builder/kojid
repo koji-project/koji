@@ -1081,7 +1081,9 @@ class MavenTask(MultiPlatformTask):
             if spec_url:
                 rpm_results = self.buildWrapperRPM(spec_url, self.build_task_id, build_tag, build_info, repo_id)
 
-            if not self.opts.get('scratch'):
+            if self.opts.get('scratch'):
+                self.session.host.moveMavenBuildToScratch(self.id, maven_results, rpm_results)
+            else:
                 self.session.host.completeMavenBuild(self.id, self.build_id, maven_results, rpm_results)
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
