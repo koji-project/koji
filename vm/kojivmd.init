@@ -1,0 +1,79 @@
+#! /bin/sh
+#
+# kojivmd       Start/Stop kojivmd
+#
+# chkconfig: - 99 99
+# description: kojivmd server
+# processname: kojivmd
+
+# Source function library.
+. /etc/init.d/functions
+
+# Check that we're a priviledged user
+[ `id -u` = 0 ] || exit 1
+
+[ -f /etc/sysconfig/kojivmd ] && . /etc/sysconfig/kojivmd
+
+prog="kojivmd"
+
+# Check that networking is up.
+if [ "$NETWORKING" = "no" ]
+then
+    exit 0
+fi
+
+[ -f /usr/sbin/kojivmd ] || exit 1
+
+RETVAL=0
+
+start() {
+    echo -n $"Starting $prog: "
+    cd /
+    ARGS=""
+    [ "$FORCE_LOCK" == "Y" ] && ARGS="$ARGS --force-lock"
+    [ "$KOJIVMD_DEBUG" == "Y" ] && ARGS="$ARGS --debug"
+    [ "$KOJIVMD_VERBOSE" == "Y" ] && ARGS="$ARGS --verbose"
+    daemon /usr/sbin/kojivmd $ARGS
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/kojivmd
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc kojivmd
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/kojivmd
+    return $RETVAL
+}
+
+restart() {
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status $prog
+        ;;
+  restart|reload|force-reload)
+        restart
+        ;;
+  condrestart|try-restart)
+        [ -f /var/lock/subsys/kojivmd ] && restart || :
+        ;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 1
+esac
+
+exit $?
