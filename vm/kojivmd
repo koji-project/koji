@@ -5,7 +5,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -416,7 +416,7 @@ class VMExecTask(BaseTaskHandler):
         vm_user = pwd.getpwnam(self.options.vmuser)
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
         return new_path
-        
+
     def updateXML(self, xml, opts):
         """Fix areas of the clone XML that CloneDesign doesn't handle, or gets wrong"""
         doc = libxml2.parseDoc(xml)
@@ -455,7 +455,7 @@ class VMExecTask(BaseTaskHandler):
         All disks will be qcow2 images backed by the storage of the original
         VM.  The original VM must be shutdown, or this will raise an error.
         """
-        clone_name = self.CLONE_PREFIX + str(self.id) + '-' + name 
+        clone_name = self.CLONE_PREFIX + str(self.id) + '-' + name
         design = virtinst.CloneManager.CloneDesign(conn)
         design.original_guest = name
         design.clone_name = clone_name
@@ -1008,7 +1008,7 @@ if __name__ == "__main__":
         except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)
         except xmlrpclib.ProtocolError:
-            quit("Error: Unable to connect to server %s" % (options.server))        
+            quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
             # authenticate using user/password
