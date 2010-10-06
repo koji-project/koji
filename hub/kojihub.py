@@ -3252,28 +3252,6 @@ def get_win_build(buildInfo, strict=False):
     Returns a map containing the following keys:
 
     build_id: id of the build (integer)
-    platform: the Windows platform the build was run on (string)
-    """
-    fields = ('build_id', 'platform')
-    build_id = find_build_id(buildInfo)
-    if not build_id:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
-    query = """SELECT %s
-    FROM win_builds
-    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
-    return _singleRow(query, locals(), fields, strict)
-
-def get_win_build(buildInfo, strict=False):
-    """
-    Retrieve Windows-specific information about a build.
-    buildInfo can be either a string (n-v-r) or an integer
-    (build ID).
-    Returns a map containing the following keys:
-
-    build_id: id of the build (integer)
     platform: the platform the build was performed on (string)
     """
     fields = ('build_id', 'platform')
