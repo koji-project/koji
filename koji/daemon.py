@@ -128,6 +128,9 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                     outfd.close()
                 return status[1]
 
+
+## BEGIN kojikamid dup
+
 class SCM(object):
     "SCM abstraction class"
 
@@ -410,6 +413,8 @@ class SCM(object):
                 os.symlink(rel_path + 'common', '%s/../common' % sourcedir)
 
         return sourcedir
+
+## END kojikamid dup
 
 
 class TaskManager(object):

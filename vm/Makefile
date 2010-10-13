@@ -6,10 +6,12 @@ _default:
 	@echo "nothing to make.  try make install"
 
 clean:
-	rm -f *.o *.so *.pyc *~
+	rm -f *.o *.so *.pyc *~ kojikamid
 
+kojikamid: kojikamid.py
+	bash fix_kojikamid.sh >kojikamid
 
-install:
+install: kojikamid
 	@if [ "$(DESTDIR)" = "" ]; then \
 		echo " "; \
 		echo "ERROR: A destdir is required"; \

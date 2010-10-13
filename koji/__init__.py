@@ -211,6 +211,8 @@ BASEDIR = '/mnt/koji'
 # default task priority
 PRIO_DEFAULT = 20
 
+## BEGIN kojikamid dup
+
 #Exceptions
 class GenericError(Exception):
     """Base class for our custom exceptions"""
@@ -224,6 +226,7 @@ class GenericError(Exception):
                 return str(self.args[0])
             except:
                 return str(self.__dict__)
+## END kojikamid dup
 
 class LockConflictError(GenericError):
     """Raised when there is a lock conflict"""
@@ -241,9 +244,12 @@ class ActionNotAllowed(GenericError):
     """Raised when the session does not have permission to take some action"""
     faultCode = 1004
 
+## BEGIN kojikamid dup
+
 class BuildError(GenericError):
     """Raised when a build fails"""
     faultCode = 1005
+## END kojikamid dup
 
 class AuthLockError(AuthError):
     """Raised when a lock prevents authentication"""
@@ -303,6 +309,7 @@ class MultiCallInProgress(object):
     constructing a multicall.
     """
     pass
+
 
 #A function to get create an exception from a fault
 def convertFault(fault):
@@ -378,12 +385,15 @@ def decode_args2(args, names, strict=True):
     ret.update(opts)
     return ret
 
+## BEGIN kojikamid dup
+
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
     if n <= 2147483647:
         return n
     #else
     return str(n)
+## END kojikamid dup
 
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
@@ -401,6 +411,8 @@ def safe_xmlrpc_loads(s):
     except Fault, f:
         return f
 
+## BEGIN kojikamid dup
+
 def ensuredir(directory):
     """Create directory, if necessary."""
     if os.path.isdir(directory):
@@ -412,6 +424,7 @@ def ensuredir(directory):
         if not os.path.isdir(directory):
             #something else must have gone wrong
             raise
+## END kojikamid dup
 
 def daemonize():
     """Detach and run in background"""
