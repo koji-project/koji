@@ -280,13 +280,15 @@ class SCM(object):
         else:
             raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
 
-    def checkout(self, scmdir, session, uploadpath, logfile):
+    def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
         """
         Checkout the module from SCM.  Accepts the following parameters:
-
          - scmdir: the working directory
+         - session: a ClientSession object
          - uploadpath: the path on the server the logfile should be uploaded to
          - logfile: the file used for logging command output
+        session, uploadpath, and logfile are not used when run within kojikamid,
+        but are otherwise required.
 
         Returns the directory that the module was checked-out into (a subdirectory of scmdir)
         """
@@ -296,6 +298,17 @@ class SCM(object):
         update_checkout_cmd = None
         update_checkout_dir = None
         env = None
+        def _run(cmd, chdir=None, fatal=False, log=True, _count=[0]):
+            if globals().get('KOJIKAMID'):
+                #we've been inserted into kojikamid, use its run()
+                return run(cmd, chdir=chdir, fatal=fatal, log=log)
+            else:
+                append = (_count[0] > 0)
+                _count[0] += 1
+                if log_output(session, cmd[0], cmd, logfile, uploadpath,
+                              cwd=chdir, logerror=1, append=append, env=env):
+                    raise koji.BuildError, 'Error running %s command "%s", see %s for details' % \
+                        (self.scmtype, ' '.join(cmd), os.path.basename(logfile))
 
         if self.scmtype == 'CVS':
             pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
@@ -329,12 +342,12 @@ class SCM(object):
                 checkout_path = os.path.basename(self.repository[:-4])
                 commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
-            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, checkout_path]
+            sourcedir = '%s/%s' % (scmdir, checkout_path)
+            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
-            update_checkout_dir = '%s/%s' % (scmdir, checkout_path)
+            update_checkout_dir = sourcedir
 
-            sourcedir = '%s/%s' % (scmdir, checkout_path)
             # self.module may be empty, in which case the specfile should be in the top-level directory
             if self.module:
                 # Treat the module as a directory inside the git repository
@@ -357,12 +370,12 @@ class SCM(object):
                 checkout_path = os.path.basename(self.repository[:-4])
                 commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
-            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, checkout_path]
+            sourcedir = '%s/%s' % (scmdir, checkout_path)
+            module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
-            update_checkout_dir = '%s/%s' % (scmdir, checkout_path)
+            update_checkout_dir = sourcedir
 
-            sourcedir = '%s/%s' % (scmdir, checkout_path)
             # self.module may be empty, in which case the specfile should be in the top-level directory
             if self.module:
                 # Treat the module as a directory inside the git repository
@@ -389,22 +402,18 @@ class SCM(object):
             raise koji.BuildError, 'Unknown SCM type: %s' % self.scmtype
 
         # perform checkouts
-        if log_output(session, module_checkout_cmd[0], module_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, env=env):
-            raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
-                (self.scmtype, ' '.join(module_checkout_cmd), os.path.basename(logfile))
+        _run(module_checkout_cmd, chdir=scmdir, fatal=True)
 
         if update_checkout_cmd:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
-            if log_output(session, update_checkout_cmd[0], update_checkout_cmd, logfile, uploadpath, cwd=update_checkout_dir,
-                          logerror=1, append=1, env=env):
-                raise koji.BuildError, 'Error running %s update command "%s", see %s for details' % \
-                    (self.scmtype, ' '.join(update_checkout_cmd), os.path.basename(logfile))
+            if self.scmtype.startswith('GIT') and globals().get('KOJIKAMID'):
+                _run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, fatal=True)
+                _run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, fatal=True)
+            _run(update_checkout_cmd, chdir=update_checkout_dir, fatal=True)
 
-        if self.use_common:
-            if log_output(session, common_checkout_cmd[0], common_checkout_cmd, logfile, uploadpath, cwd=scmdir, logerror=1, append=1, env=env):
-                raise koji.BuildError, 'Error running %s checkout command "%s", see %s for details' % \
-                    (self.scmtype, ' '.join(common_checkout_cmd), os.path.basename(logfile))
+        if self.use_common and not globals().get('KOJIKAMID'):
+            _run(common_checkout_cmd, chdir=scmdir, fatal=True)
             if not os.path.exists('%s/../common' % sourcedir):
                 # find the relative distance from sourcedir/../common to scmdir/common
                 destdir = os.path.split(sourcedir)[0]

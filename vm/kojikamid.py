@@ -45,7 +45,17 @@ import glob
 
 MANAGER_PORT = 7000
 
+KOJIKAMID = True
+
 ## INSERT kojikamid dup
+
+class fakemodule(object):
+    pass
+
+#make parts of the above insert accessible as koji.X
+koji = fakemodule()
+koji.GenericError = GenericError
+koji.BuildError = BuildError
 
 
 class WindowsBuild(object):
