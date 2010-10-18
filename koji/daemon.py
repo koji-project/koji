@@ -1115,6 +1115,8 @@ class TaskManager(object):
             #we do not trap these
             raise
         except:
+            tb = ''.join(traceback.format_exception(*sys.exc_info()))
+            self.logger.warn("TRACEBACK: %s" % tb)
             fail = True
             # report exception back to server
             e_class, e = sys.exc_info()[:2]
@@ -1122,10 +1124,6 @@ class TaskManager(object):
             if issubclass(e_class, koji.GenericError):
                 #just pass it through
                 tb = str(e)
-                self.logger.warn(tb)
-            else:
-                tb = ''.join(traceback.format_exception(*sys.exc_info()))
-                self.logger.warn("TRACEBACK: %s" % tb)
             response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
 
         if fail:
