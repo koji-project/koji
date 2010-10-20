@@ -1,4 +1,4 @@
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2010 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -18,6 +18,7 @@ import calendar
 import re
 import time
 import koji
+import os
 
 try:
     from hashlib import md5 as md5_constructor
@@ -147,3 +148,21 @@ def filedigestAlgo(hdr):
         digest_algo_id = None
     digest_algo = koji.RPM_FILEDIGESTALGO_IDS.get(digest_algo_id, 'unknown')
     return digest_algo.lower()
+
+def parseStatus(rv, prefix):
+    if isinstance(prefix, list) or isinstance(prefix, tuple):
+        prefix = ' '.join(prefix)
+    if os.WIFSIGNALED(rv):
+        return '%s was killed by signal %i' % (prefix, os.WTERMSIG(rv))
+    elif os.WIFEXITED(rv):
+        return '%s exited with status %i' % (prefix, os.WEXITSTATUS(rv))
+    else:
+        return '%s terminated for unknown reasons' % prefix
+
+def isSuccess(rv):
+    """Return True if rv indicates successful completion
+    (exited with status 0), False otherwise."""
+    if os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 0:
+        return True
+    else:
+        return False

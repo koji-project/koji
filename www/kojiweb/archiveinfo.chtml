@@ -5,30 +5,34 @@
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
 #include "includes/header.chtml"
-  <h4>Information for archive $archive.filename</h4>
+  <h4>Information for archive <a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></h4>
 
   <table>
     <tr>
       <th>ID</th><td>$archive.id</td>
     </tr>
     <tr>
+    #if $wininfo
+      <th>File Name</th><td>$koji.pathinfo.winfile($archive)</td>
+    #else
       <th>File Name</th><td>$archive.filename</td>
+    #end if
     </tr>
     <tr>
-      <th>File Type</th><td>$archive_type.name</td>
+      <th>File Type</th><td>$archive_type.description</td>
     </tr>
     <tr>
       <th>Build</th><td><a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></td>
     </tr>
     #if $maveninfo
     <tr>
-      <th>Maven groupId</th><td>$maveninfo.group_id</td>
+      <th>Maven groupId</th><td>$archive.group_id</td>
     </tr>
     <tr>
-      <th>Maven artifactId</th><td>$maveninfo.artifact_id</td>
+      <th>Maven artifactId</th><td>$archive.artifact_id</td>
     </tr>
     <tr>
-      <th>Maven version</th><td>$maveninfo.version</td>
+      <th>Maven version</th><td>$archive.version</td>
     </tr>
     #end if
     <tr>
@@ -37,6 +41,14 @@
     <tr>
       <th>MD5 Sum</th><td>$archive.md5sum</td>
     </tr>
+    #if $wininfo
+    <tr>
+      <th>Platforms</th><td>$archive.platforms</td>
+    </tr>
+    <tr>
+      <th>Flags</th><td>$archive.flags</td>
+    </tr>
+    #end if
     #if $builtInRoot
     <tr>
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>

@@ -211,6 +211,8 @@ BASEDIR = '/mnt/koji'
 # default task priority
 PRIO_DEFAULT = 20
 
+## BEGIN kojikamid dup
+
 #Exceptions
 class GenericError(Exception):
     """Base class for our custom exceptions"""
@@ -224,6 +226,7 @@ class GenericError(Exception):
                 return str(self.args[0])
             except:
                 return str(self.__dict__)
+## END kojikamid dup
 
 class LockConflictError(GenericError):
     """Raised when there is a lock conflict"""
@@ -241,9 +244,12 @@ class ActionNotAllowed(GenericError):
     """Raised when the session does not have permission to take some action"""
     faultCode = 1004
 
+## BEGIN kojikamid dup
+
 class BuildError(GenericError):
     """Raised when a build fails"""
     faultCode = 1005
+## END kojikamid dup
 
 class AuthLockError(AuthError):
     """Raised when a lock prevents authentication"""
@@ -303,6 +309,7 @@ class MultiCallInProgress(object):
     constructing a multicall.
     """
     pass
+
 
 #A function to get create an exception from a fault
 def convertFault(fault):
@@ -378,12 +385,15 @@ def decode_args2(args, names, strict=True):
     ret.update(opts)
     return ret
 
+## BEGIN kojikamid dup
+
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
     if n <= 2147483647:
         return n
     #else
     return str(n)
+## END kojikamid dup
 
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
@@ -401,6 +411,8 @@ def safe_xmlrpc_loads(s):
     except Fault, f:
         return f
 
+## BEGIN kojikamid dup
+
 def ensuredir(directory):
     """Create directory, if necessary."""
     if os.path.isdir(directory):
@@ -412,6 +424,7 @@ def ensuredir(directory):
         if not os.path.isdir(directory):
             #something else must have gone wrong
             raise
+## END kojikamid dup
 
 def daemonize():
     """Detach and run in background"""
@@ -1395,13 +1408,33 @@ class PathInfo(object):
         release = build['release']
         return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
 
+    def winbuild(self, build):
+        """Return the directory where the Windows build exists"""
+        return self.build(build) + '/win'
+
+    def winfile(self, wininfo):
+        """Return the relative path from the winbuild directory where the
+           file identified by wininfo is located."""
+        filepath = wininfo['filename']
+        if wininfo['relpath']:
+            filepath = wininfo['relpath'] + '/' + filepath
+        return filepath
+
+    def mavenfile(self, maveninfo):
+        """Return the relative path the file exists in the per-tag Maven repo"""
+        group_path = maveninfo['group_id'].replace('.', '/')
+        artifact_id = maveninfo['artifact_id']
+        version = maveninfo['version']
+        filename = maveninfo['filename']
+        return "%(group_path)s/%(artifact_id)s/%(version)s/%(filename)s" % locals()
+
     def mavenrepo(self, build, maveninfo):
         """Return the directory where the Maven artifact exists in the per-tag Maven repo
         (/mnt/koji/repos/tag-name/repo-id/maven2/)"""
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s" % locals())
+        return self.topdir + "/maven2/" + os.path.dirname(self.mavenfile(maveninfo))
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
@@ -1939,13 +1972,17 @@ def formatTimeLong(value):
 
 def buildLabel(buildInfo, showEpoch=False):
     """Format buildInfo (dict) into a descriptive label."""
-    epoch = buildInfo['epoch']
+    epoch = buildInfo.get('epoch')
     if showEpoch and epoch != None:
         epochStr = '%i:' % epoch
     else:
         epochStr = ''
-    return '%s%s-%s-%s' % (epochStr, buildInfo['package_name'],
-                           buildInfo['version'], buildInfo['release'])
+    name = buildInfo.get('package_name')
+    if not name:
+        name = buildInfo.get('name')
+    return '%s%s-%s-%s' % (epochStr, name,
+                           buildInfo.get('version'),
+                           buildInfo.get('release'))
 
 def _module_info(url):
     module_info = ''
@@ -1999,6 +2036,16 @@ def taskLabel(taskInfo):
                 extra = '%s, %s' % (build_tag['name'], buildLabel(build))
             else:
                 extra = build_tag['name']
+    elif method == 'winbuild':
+        if taskInfo.has_key('request'):
+            vm = taskInfo['request'][0]
+            url = taskInfo['request'][1]
+            target = taskInfo['request'][2]
+            module_info = _module_info(url)
+            extra = '%s, %s' % (target, module_info)
+    elif method == 'vmExec':
+        if taskInfo.has_key('request'):
+            extra = taskInfo['request'][0]
     elif method == 'buildNotification':
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]

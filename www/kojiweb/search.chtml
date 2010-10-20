@@ -24,6 +24,9 @@
             #if $mavenEnabled
             <option value="maven">Maven Artifacts</option>
             #end if
+            #if $winEnabled
+            <option value="win">Windows Artifacts</option>
+            #end if
           </select>
         </td>
       </tr>

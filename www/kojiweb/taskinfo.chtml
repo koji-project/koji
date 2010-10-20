@@ -144,10 +144,30 @@ $value
         #end if
         #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
         <strong>Arch:</strong> $params[0]<br/>
-        <strong>Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         <strong>Kickstart File:</strong> $params[2]<br/>
         #if $len($params) > 3
         $printOpts($params[3])
+        #end if
+        #elif $task.method == 'winbuild'
+        <strong>VM:</strong> $params[0]<br/>
+        <strong>SCM URL:</strong> $params[1]<br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[2]">$params[2]</a><br/>
+        #if $len($params) > 3
+        $printOpts($params[3])
+        #end if
+        #elif $task.method == 'vmExec'
+        <strong>VM:</strong> $params[0]<br/>
+        <strong>Exec Params:</strong><br/>
+        #for $info in $params[1]
+        #if $isinstance($info, dict)
+        $printMap($info, '&nbsp;&nbsp;&nbsp;&nbsp;')
+        #else
+        &nbsp;&nbsp;$info<br/>
+        #end if
+        #end for
+        #if $len($params) > 2
+        $printOpts($params[2])
         #end if
         #elif $task.method == 'newRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
@@ -349,7 +369,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if

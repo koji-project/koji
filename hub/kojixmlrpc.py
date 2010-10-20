@@ -392,6 +392,7 @@ def load_config(req):
 
         ['MissingPolicyOk', 'boolean', True],
         ['EnableMaven', 'boolean', False],
+        ['EnableWin', 'boolean', False],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],

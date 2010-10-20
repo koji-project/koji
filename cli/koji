@@ -2724,26 +2724,46 @@ def anon_handle_buildinfo(options, session, args):
         if info is None:
             print "No such build: %s\n" % build
             continue
+        task = None
+        if info['task_id']:
+            task = session.getTaskInfo(info['task_id'], request=True)
         taglist = []
         for tag in session.listTags(build):
             taglist.append(tag['name'])
-        if info['epoch'] is None:
-            info['epoch'] = ""
-        else:
-            info['epoch'] = str(info['epoch']) + ":"
-        info['name'] = info['package_name']
         info['arch'] = 'src'
         info['state'] = koji.BUILD_STATES[info['state']]
-        rpms = session.listRPMs(buildID=info['id'])
         print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
         print "State: %(state)s" % info
         print "Built by: %(owner_name)s" % info
-        print "Task: %(task_id)s" % info
+        if task:
+            print "Task: %s %s" % (task['id'], koji.taskLabel(task))
+        else:
+            print "Task: none"
         print "Finished: %s" % koji.formatTimeLong(info['completion_time'])
+        maven_info = session.getMavenBuild(info['id'])
+        if maven_info:
+            print "Maven groupId: %s" % maven_info['group_id']
+            print "Maven artifactId: %s" % maven_info['artifact_id']
+            print "Maven version: %s" % maven_info['version']
+        win_info = session.getWinBuild(info['id'])
+        if win_info:
+            print "Windows build platform: %s" % win_info['platform']
         print "Tags: %s" % ' '.join(taglist)
-        print "RPMs:"
-        for rpm in rpms:
-            print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+        maven_archives = session.listArchives(buildID=info['id'], type='maven')
+        if maven_archives:
+            print "Maven archives:"
+            for archive in maven_archives:
+                print os.path.join(koji.pathinfo.mavenbuild(info, maven_info), archive['filename'])
+        win_archives = session.listArchives(buildID=info['id'], type='win')
+        if win_archives:
+            print "Windows archives:"
+            for archive in win_archives:
+                print os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive))
+        rpms = session.listRPMs(buildID=info['id'])
+        if rpms:
+            print "RPMs:"
+            for rpm in rpms:
+                print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
         if options.changelog:
             changelog = session.getChangelogEntries(info['id'])
             if changelog:
@@ -3651,6 +3671,16 @@ def anon_handle_list_history(options, session, args):
             print "%r" % list(entry)
         _print_histline(entry, options=options)
 
+def _handleMap(lines, data, prefix=''):
+    for key, val in data.items():
+        if key != '__starstar':
+            lines.append('  %s%s: %s' % (prefix, key, val))
+
+def _handleOpts(lines, opts, prefix=''):
+    if opts:
+        lines.append("%sOptions:" % prefix)
+        _handleMap(lines, opts, prefix)
+
 def _parseTaskParams(session, method, task_id):
     """Parse the return of getTaskRequest()"""
     params = session.getTaskRequest(task_id)
@@ -3667,9 +3697,7 @@ def _parseTaskParams(session, method, task_id):
         lines.append("Build Arch: %s" % params[2])
         lines.append("SRPM Kept: %r" % params[3])
         if len(params) > 4:
-            for key in params[4].keys():
-                if not key == '__starstar':
-                    lines.append("%s: %s" % (key, params[4][key]))
+            _handleOpts(lines, params[4])
     elif method == 'tagBuild':
         build = session.getBuild(params[1])
         lines.append("Destination Tag: %s" % session.getTag(params[0])['name'])
@@ -3684,9 +3712,49 @@ def _parseTaskParams(session, method, task_id):
     elif method == 'build':
         lines.append("Source: %s" % params[0])
         lines.append("Build Target: %s" % params[1])
-        for key in params[2].keys():
-            if not key == '__starstar':
-                lines.append("%s: %s" % (key, params[2][key]))
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'maven':
+        lines.append("SCM URL: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'buildMaven':
+        lines.append("SCM URL: %s" % params[0])
+        lines.append("Build Tag: %s" % params[1]['name'])
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method == 'wrapperRPM':
+        lines.append("Spec File URL: %s" % params[0])
+        lines.append("Build Tag: %s" % params[1]['name'])
+        if params[2]:
+            lines.append("Build: %s" % koji.buildLabel(params[2]))
+        if params[3]:
+            lines.append("Task: %s %s" % (params[3]['id'], koji.taskLabel(params[3])))
+        if len(params) > 4:
+            _handleOpts(lines, params[4])
+    elif method == 'winbuild':
+        lines.append("VM: %s" % params[0])
+        lines.append("SCM URL: %s" % params[1])
+        lines.append("Build Target: %s" % params[2])
+        if len(params) > 3:
+            _handleOpts(lines, params[3])
+    elif method == 'vmExec':
+        lines.append("VM: %s" % params[0])
+        lines.append("Exec Params:")
+        for info in params[1]:
+            if isinstance(info, dict):
+                _handleMap(lines, info, prefix='  ')
+            else:
+                lines.append("  %s" % info)
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
+    elif method in ('createLiveCD', 'createAppliance'):
+        lines.append("Arch: %s" % params[0])
+        lines.append("Build Target: %s" % params[1])
+        lines.append("Kickstart File: %s" % params[2])
+        if len(params) > 3:
+            _handleOpts(lines, params[3])
     elif method == 'newRepo':
         tag = session.getTag(params[0])
         lines.append("Tag: %s" % tag['name'])
@@ -3726,11 +3794,8 @@ def _parseTaskParams(session, method, task_id):
             lines.append("  Method: %s" % subtask[0])
             lines.append("  Parameters: %s" % ", ".join([str(subparam) for subparam in subtask[1]]))
             if len(subtask) > 2 and subtask[2]:
-                lines.append("  Options:")
                 subopts = subtask[2]
-                for key in subopts:
-                    if not key == '__starstar':
-                        lines.append("    %s: %s" % (key, subopts[key]))
+                _handleOpts(lines, subopts, prefix='  ')
             lines.append("")
     elif method == 'chainbuild':
         lines.append("Build Groups:")
@@ -3739,9 +3804,8 @@ def _parseTaskParams(session, method, task_id):
             group_num += 1
             lines.append("  %i: %s" % (group_num, ', '.join(group_list)))
         lines.append("Build Target: %s" % params[1])
-        for key in params[2].keys():
-            if not key == '__starstar':
-                lines.append("%s: %s" % (key, params[2][key]))
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
     elif method == 'waitrepo':
         lines.append("Build Target: %s" % params[0])
         if params[1]:
@@ -3801,14 +3865,15 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     if output:
         print "%sOutput:" % indent
         for filename in output:
-            print "%s %s/%s" % (indent, files_dir, filename)
+            print "%s  %s/%s" % (indent, files_dir, filename)
 
     # white space
-    sys.stdout.write("\n")
+    print
 
     if recurse:
         level += 1
-        children = session.getTaskChildren(task_id)
+        children = session.getTaskChildren(task_id, request=True)
+        children.sort(cmp=lambda a, b: cmp(a['id'], b['id']))
         for child in children:
             _printTaskInfo(session, child['id'], level, verbose=verbose)
 
@@ -3817,7 +3882,7 @@ def anon_handle_taskinfo(options, session, args):
     usage = _("usage: %prog taskinfo [options] taskID [taskID...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--recurse", action="store_true", help=_("Show children of this task as well"))
+    parser.add_option("-r", "--recurse", action="store_true", help=_("Show children of this task as well"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -4643,6 +4708,81 @@ def _build_image(options, task_opts, session, args, img_type):
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
+    else:
+        return
+
+def handle_win_build(options, session, args):
+    """Build a Windows package from source"""
+    # Usage & option parsing
+    usage = _("usage: %prog win-build [options] target URL VM")
+    usage += _("\n(Specify the --help global option for a list of other " +
+               "help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--winspec", metavar="URL",
+                      help=_("SCM URL to retrieve the build descriptor from. " + \
+                             "If not specified, the winspec must be in the root directory " + \
+                             "of the source repository."))
+    parser.add_option("--patches", metavar="URL",
+                      help=_("SCM URL of a directory containing patches to apply " + \
+                             "to the sources before building"))
+    parser.add_option("--cpus", type="int",
+                      help=_("Number of cpus to allocate to the build VM " + \
+                             "(requires admin access)"))
+    parser.add_option("--mem", type="int",
+                      help=_("Amount of memory (in megabytes) to allocate to the build VM " + \
+                             "(requires admin access)"))
+    parser.add_option("--specfile", metavar="URL",
+                      help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform a scratch build"))
+    parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on build"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
+    (build_opts, args) = parser.parse_args(args)
+    if len(args) != 3:
+        parser.error(_("Exactly three arguments (a build target, a SCM URL, and a VM name) are required"))
+        assert False
+    activate_session(session)
+    target = args[0]
+    if target.lower() == "none" and build_opts.repo_id:
+        target = None
+        build_opts.skip_tag = True
+    else:
+        build_target = session.getBuildTarget(target)
+        if not build_target:
+            parser.error(_("Unknown build target: %s" % target))
+        dest_tag = session.getTag(build_target['dest_tag'])
+        if not dest_tag:
+            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        if dest_tag['locked'] and not build_opts.scratch:
+            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    scmurl = args[1]
+    vm_name = args[2]
+    opts = {}
+    for key in ('winspec', 'patches', 'cpus', 'mem',
+                'specfile', 'scratch', 'repo_id', 'skip_tag'):
+        val = getattr(build_opts, key)
+        if val is not None:
+            opts[key] = val
+    priority = None
+    if build_opts.background:
+        #relative to koji.PRIO_DEFAULT
+        priority = 5
+    task_id = session.winBuild(vm_name, scmurl, target, opts, priority=priority)
+    if not build_opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
     else:
         return
 

@@ -158,16 +158,24 @@
 	  <tr>
 	    <th>$ext</th>
 	    <td>
-	      #if $mavenbuild and $ext == 'pom'
-	      (<a href="$downloadBase/$nvrpath/data/logs/maven2/">build logs</a>)
-	      #end if
+              #if $ext == $exts[0]
+	        #if $mavenbuild
+                (<a href="$downloadBase/$nvrpath/data/logs/maven2/">build logs</a>)
+                #elif $winbuild
+                (<a href="$downloadBase/$nvrpath/data/logs/win/">build logs</a>)
+	        #end if
+              #end if
 	    </td>
 	  </tr>
 	  #for $archive in $archivesByExt[$ext]
 	  <tr>
 	    <td/>
 	    <td>
-	      $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
+            #if $mavenbuild
+            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
+            #elif $winbuild
+            $koji.pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$downloadBase/$nvrpath/win/$koji.pathinfo.winfile($archive)">download</a>)
+            #end if
 	    </td>
 	  </tr>
 	  #end for

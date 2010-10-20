@@ -81,6 +81,24 @@ Requires: createrepo >= 0.9.2
 koji-builder is the daemon that runs on build machines and executes
 tasks that come through the Koji system.
 
+%package vm
+Summary: Koji virtual machine management daemon
+Group: Applications/System
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires(post): /sbin/chkconfig
+Requires(post): /sbin/service
+Requires(preun): /sbin/chkconfig
+Requires(preun): /sbin/service
+Requires: libvirt-python
+Requires: libxml2-python
+Requires: python-virtinst
+Requires: qemu-img
+
+%description vm
+koji-vm contains a supplemental build daemon that executes certain tasks in a
+virtual machine. This package is not required for most installations.
+
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
@@ -170,7 +188,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
 %dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
-%{_datadir}/koji-builder
 %attr(-,kojibuilder,kojibuilder) %{_sysconfdir}/mock/koji
 
 %pre builder
@@ -184,6 +201,26 @@ rm -rf $RPM_BUILD_ROOT
 if [ $1 = 0 ]; then
   /sbin/service kojid stop &> /dev/null
   /sbin/chkconfig --del kojid
+fi
+
+%files vm
+%defattr(-,root,root)
+%{_sbindir}/kojivmd
+#dir %{_datadir}/kojivmd
+%{_datadir}/kojivmd/kojikamid
+%{_initrddir}/kojivmd
+%config(noreplace) %{_sysconfdir}/sysconfig/kojivmd
+%dir %{_sysconfdir}/kojivmd
+%config(noreplace) %{_sysconfdir}/kojivmd/kojivmd.conf
+
+%post vm
+/sbin/chkconfig --add kojivmd
+/sbin/service kojivmd condrestart &> /dev/null || :
+
+%preun vm
+if [ $1 = 0 ]; then
+  /sbin/service kojivmd stop &> /dev/null
+  /sbin/chkconfig --del kojivmd
 fi
 
 %post utils

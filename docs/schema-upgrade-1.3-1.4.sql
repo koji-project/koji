@@ -36,11 +36,11 @@ CREATE TABLE archivetypes (
         extensions TEXT NOT NULL
 ) WITHOUT OIDS;
 
-insert into archivetypes (name, description, extensions) values ('jar', 'Jar files', 'jar war rar ear');
-insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives', 'zip');
-insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management files', 'pom');
-insert into archivetypes (name, description, extensions) values ('tar', 'Tar files', 'tar tar.gz tar.bz2');
-insert into archivetypes (name, description, extensions) values ('xml', 'XML files', 'xml');
+insert into archivetypes (name, description, extensions) values ('jar', 'Jar file', 'jar war rar ear');
+insert into archivetypes (name, description, extensions) values ('zip', 'Zip archive', 'zip');
+insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management file', 'pom');
+insert into archivetypes (name, description, extensions) values ('tar', 'Tar file', 'tar tar.gz tar.bz2');
+insert into archivetypes (name, description, extensions) values ('xml', 'XML file', 'xml');
 
 CREATE TABLE archiveinfo (
        id SERIAL NOT NULL PRIMARY KEY,

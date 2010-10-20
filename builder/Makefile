@@ -1,15 +1,12 @@
 
-SUBDIRS = lib
 BINFILES = kojid
 LIBEXECFILES = mergerepos
-PYFILES = $(wildcard *.py)
 
 _default:
 	@echo "nothing to make.  try make install"
 
 clean:
 	rm -f *.o *.so *.pyc *~
-	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 
 install:
@@ -35,6 +32,4 @@ install:
 	mkdir -p $(DESTDIR)/etc/kojid
 	install -p -m 644 kojid.conf $(DESTDIR)/etc/kojid/kojid.conf
 
-	for d in $(SUBDIRS); do make DESTDIR=`cd $(DESTDIR); pwd` \
-		-C $$d install; [ $$? = 0 ] || exit 1; done
 

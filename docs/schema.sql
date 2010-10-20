@@ -101,6 +101,8 @@ INSERT INTO permissions (name) VALUES ('build');
 INSERT INTO permissions (name) VALUES ('repo');
 INSERT INTO permissions (name) VALUES ('livecd');
 INSERT INTO permissions (name) VALUES ('maven-import');
+INSERT INTO permissions (name) VALUES ('win-import');
+INSERT INTO permissions (name) VALUES ('win-admin')
 INSERT INTO permissions (name) VALUES ('appliance');
 
 CREATE TABLE user_perms (
@@ -179,6 +181,7 @@ INSERT INTO channels (name) VALUES ('createrepo');
 INSERT INTO channels (name) VALUES ('maven');
 INSERT INTO channels (name) VALUES ('livecd');
 INSERT INTO channels (name) VALUES ('appliance');
+INSERT INTO channels (name) VALUES ('vm');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also
@@ -668,6 +671,12 @@ CREATE TABLE maven_builds (
         version TEXT NOT NULL
 ) WITHOUT OIDS;
 
+-- Windows-specific build information
+CREATE TABLE win_builds (
+        build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id),
+        platform TEXT NOT NULL
+) WITHOUT OIDS;
+
 -- Even though we call this archiveinfo, we can probably use it for
 -- any filetype output by a build process.  In general they will be
 -- archives (.zip, .jar, .tar.gz) but could also be installer executables (.exe)
@@ -678,11 +687,21 @@ CREATE TABLE archivetypes (
         extensions TEXT NOT NULL
 ) WITHOUT OIDS;
 
-insert into archivetypes (name, description, extensions) values ('jar', 'Jar files', 'jar war rar ear');
-insert into archivetypes (name, description, extensions) values ('zip', 'Zip archives', 'zip');
-insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management files', 'pom');
-insert into archivetypes (name, description, extensions) values ('tar', 'Tar files', 'tar tar.gz tar.bz2');
-insert into archivetypes (name, description, extensions) values ('xml', 'XML files', 'xml');
+insert into archivetypes (name, description, extensions) values ('jar', 'Jar file', 'jar war rar ear');
+insert into archivetypes (name, description, extensions) values ('zip', 'Zip archive', 'zip');
+insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management file', 'pom');
+insert into archivetypes (name, description, extensions) values ('tar', 'Tar file', 'tar tar.gz tar.bz2');
+insert into archivetypes (name, description, extensions) values ('xml', 'XML file', 'xml');
+insert into archivetypes (name, description, extensions) values ('spec', 'RPM spec file', 'spec');
+insert into archivetypes (name, description, extensions) values ('exe', 'Windows executable', 'exe');
+insert into archivetypes (name, description, extensions) values ('dll', 'Windows dynamic link library', 'dll');
+insert into archivetypes (name, description, extensions) values ('lib', 'Windows import library', 'lib');
+insert into archivetypes (name, description, extensions) values ('sys', 'Windows device driver', 'sys');
+insert into archivetypes (name, description, extensions) values ('inf', 'Windows driver information file', 'inf');
+insert into archivetypes (name, description, extensions) values ('cat', 'Windows catalog file', 'cat');
+insert into archivetypes (name, description, extensions) values ('msi', 'Windows Installer package', 'msi');
+insert into archivetypes (name, description, extensions) values ('pdb', 'Windows debug information', 'pdb');
+insert into archivetypes (name, description, extensions) values ('oem', 'Windows driver oem file', 'oem');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
@@ -714,5 +733,13 @@ CREATE TABLE buildroot_archives (
 	PRIMARY KEY (buildroot_id, archive_id)
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_archives_archive_idx ON buildroot_archives (archive_id);
+
+-- Extended information about files built in Windows VMs
+CREATE TABLE win_archives (
+        archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+        relpath TEXT NOT NULL,
+        platforms TEXT NOT NULL,
+        flags TEXT
+) WITHOUT OIDS;
 
 COMMIT WORK;

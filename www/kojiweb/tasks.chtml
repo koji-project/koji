@@ -81,6 +81,10 @@ All
           #for $task_type in $alltasks
           #if $task_type in ('maven', 'buildMaven') and not $mavenEnabled
           #continue
+          #elif $task_type in ('winbuild', 'vmExec') and not $winEnabled
+          #continue
+          #elif $task_type == 'wrapperRPM' and not ($mavenEnabled or $winEnabled)
+          #continue
           #else
           <option value="$task_type" #if $method == $task_type then 'selected="selected"' else ''#>$task_type</option>
           #end if
