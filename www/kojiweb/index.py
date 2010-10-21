@@ -709,7 +709,11 @@ def getfile(req, taskID, name, offset=None, size=None):
         chunk_size = 1048576
         if remaining < chunk_size:
             chunk_size = remaining
+        if offset > 2147483647:
+            offset = str(offset)
         content = server.downloadTaskOutput(taskID, name, offset=offset, size=chunk_size)
+        if isinstance(offset, str):
+            offset = int(offset)
         if not content:
             break
         req.write(content)

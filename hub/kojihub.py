@@ -6746,11 +6746,12 @@ class RootExports(object):
             raise koji.GenericError, 'no file "%s" output by task %i' % (fileName, taskID)
         # Let the caller handler any IO or permission errors
         f = file(filePath, 'r')
-        if isinstance(offset, int):
-            if offset > 0:
-                f.seek(offset, 0)
-            elif offset < 0:
-                f.seek(offset, 2)
+        if isinstance(offset, str):
+            offset = int(offset)
+        if offset != None and offset > 0:
+            f.seek(offset, 0)
+        elif offset != None and offset < 0:
+            f.seek(offset, 2)
         contents = f.read(size)
         f.close()
         return base64.encodestring(contents)
