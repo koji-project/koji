@@ -1181,7 +1181,7 @@ def builds(req, userID=None, tagID=None, packageID=None, state=None, order='-bui
     values['prefix'] = prefix
     
     values['order'] = order
-    if type == 'maven':
+    if type in ('maven', 'win'):
         pass
     elif type == 'all':
         type = None

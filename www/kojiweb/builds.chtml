@@ -42,16 +42,21 @@
           #end for
         </select>
         </td></tr>
-	#if $tag or $mavenEnabled
+	#if $tag or $mavenEnabled or $winEnabled
         <tr>
-	#if $mavenEnabled
+	#if $mavenEnabled or $winEnabled
 	<td>
         <strong>Type</strong>:
         </td>
 	<td>
         <select name="type" class="filterlist" onchange="javascript: window.location='builds?type=' + this.value + '$util.passthrough_except($self, 'type')';">
           <option value="all" #if not $type then 'selected="selected"' else ''#>all</option>
+          #if $mavenEnabled
           <option value="maven" #if $type == 'maven' then 'selected="selected"' else ''#>Maven</option>
+          #end if
+          #if $winEnabled
+          <option value="win" #if $type == 'win' then 'selected="selected"' else ''#>Windows</option>
+          #end if
         </select>
         </td>
 	#end if
