@@ -5464,7 +5464,7 @@ def handle_regen_repo(options, session, args):
 
 def anon_handle_search(options, session, args):
     "Search koji"
-    usage = _("usage: %prog sync [options] search_type pattern")
+    usage = _("usage: %prog search [options] search_type pattern")
     usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = optparse.OptionParser(usage=usage)
