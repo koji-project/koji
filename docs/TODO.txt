@@ -1,8 +1,0 @@
-vm/kojikamid:
-- add vmplatform to the top-level dict
-- capture build output itself into a build.log
-- remove debug key for each file, we'll use flags to capture that
-- fix heinous copy and paste job
-
-cli/koji
-- implement win-build directive
