@@ -38,6 +38,7 @@ import pwd
 import random
 import re
 import rpm
+import shutil
 import signal
 import socket
 import struct
@@ -1364,13 +1365,11 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
     on options"""
     if topurl:
         url = "%s/%s" % (topurl, relpath)
-        fo = urllib2.urlopen(url)
-
-        # horrible hack because urlopen() returns a wrapped HTTPConnection
-        # object which doesn't implement fileno()
-        def urlopen_fileno(fileobj):
-            return lambda: fileobj.fp._sock.fp.fileno()
-        fo.fileno = urlopen_fileno(fo)
+        src = urllib2.urlopen(url)
+        fo = tempfile.TemporaryFile()
+        shutil.copyfileobj(src, fo)
+        src.close()
+        fo.seek(0)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)

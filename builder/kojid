@@ -532,9 +532,7 @@ class BuildRoot(object):
         #at this point we know there were external repos at the create event,
         #so there should be an origins file.
         origin_idx = {}
-        #GzipFile doesn't play nice with urlopen, so we have the following
-        fo2 = GzipFile(fileobj=StringIO(fo.read()), mode='r')
-        fo.close()
+        fo2 = GzipFile(fileobj=fo, mode='r')
         for line in fo2:
             parts=line.split(None, 2)
             if len(parts) < 2:
@@ -543,6 +541,7 @@ class BuildRoot(object):
             nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
             origin_idx[nvra] = parts[1]
         fo2.close()
+        fo.close()
         # mergerepo starts from a local repo in the task workdir, so internal
         # rpms have an odd-looking origin that we need to look for
         localtail = '/repo_%s_premerge/' % self.repo_info['id']
@@ -774,6 +773,7 @@ class BuildTask(BaseTaskHandler):
         opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
         fo = koji.openRemoteFile(relpath, **opts)
         h = koji.get_rpm_header(fo)
+        fo.close()
         if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
             raise koji.BuildError, "%s is not a source package" % srpm
         return h
