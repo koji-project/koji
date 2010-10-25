@@ -495,10 +495,14 @@ class BuildRoot(object):
         rv = self.mock(cmd)
 
         # plugin dependencies will be ignored
-        # newly-built archives we find in the repo (we'll import them soon)
+        # if the deploy command failed, don't raise an error on unknown artifacts, because that
+        # will mask the underlying failure
+        ignore_unknown = False
+        if rv:
+            ignore_unknown = True
         self.session.host.updateMavenBuildRootList(self.id, self.task_id, self.getMavenPackageList(repodir),
                                                    ignore=self.getMavenPackageList(outputdir),
-                                                   project=True)
+                                                   project=True, ignore_unknown=ignore_unknown)
         if rv:
             self.expire()
             raise koji.BuildrootError, 'error building Maven package, %s' % self._mockResult(rv, logfile='root.log')

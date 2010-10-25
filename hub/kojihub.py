@@ -9535,7 +9535,7 @@ class HostExports(object):
             br.assertTask(task_id)
         return br.updateList(rpmlist)
 
-    def updateMavenBuildRootList(self, brootid, task_id, mavenlist, ignore=None, project=False):
+    def updateMavenBuildRootList(self, brootid, task_id, mavenlist, ignore=None, project=False, ignore_unknown=False):
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError, "Maven support not enabled"
         host = Host()
@@ -9602,8 +9602,9 @@ class HostExports(object):
                 elif tag_archive and fileinfo['size'] == tag_archive['size']:
                     archives.append(tag_archive)
                 else:
-                    raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
-                        ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
+                    if not ignore_unknown:
+                        raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
+                              ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
 
         return br.updateArchiveList(archives, project)
 
