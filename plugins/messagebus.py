@@ -8,10 +8,6 @@ from koji.plugin import callbacks, callback, ignore_error
 import ConfigParser
 import logging
 import qpid.messaging
-try:
-    import json
-except ImportError:
-    import simplejson as json
 
 MAX_KEY_LENGTH = 255
 CONFIG_FILE = '/etc/koji-hub/plugins/messagebus.conf'
@@ -130,14 +126,6 @@ def get_message_headers(msgtype, *args, **kws):
 
     return headers
 
-def encode_data(data):
-    global config
-    format = config.get('format', 'encoding')
-    if format == 'json':
-        return json.dumps(data)
-    else:
-        raise koji.PluginError, 'unsupported encoding: %s' % format
-
 @callback(*[c for c in callbacks.keys() if c.startswith('post')])
 @ignore_error
 def send_message(cbtype, *args, **kws):
@@ -151,15 +139,14 @@ def send_message(cbtype, *args, **kws):
     data = kws.copy()
     if args:
         data['args'] = list(args)
-    payload = encode_data(data)
 
     exchange_type = config.get('exchange', 'type')
     if exchange_type == 'topic':
         subject = get_message_subject(msgtype, *args, **kws)
-        message = qpid.messaging.Message(subject=subject, content=payload)
+        message = qpid.messaging.Message(subject=subject, content=data)
     elif exchange_type == 'headers':
         headers = get_message_headers(msgtype, *args, **kws)
-        message = qpid.messaging.Message(properties=headers, content=payload)
+        message = qpid.messaging.Message(properties=headers, content=data)
     else:
         raise koji.PluginError, 'unsupported exchange type: %s' % exchange_type
 
