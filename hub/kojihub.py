@@ -4392,7 +4392,7 @@ def new_win_build(build_info, win_info):
         insert.set(platform=win_info['platform'])
         insert.execute()
 
-def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destpath=None):
+def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
@@ -4402,7 +4402,6 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
     type: type of the archive being imported.  Currently supported archive types: maven, win
     typeInfo: dict of type-specific information
     buildroot_id: the id of the buildroot the archive was built in (may be null)
-    destpath: the path relative to the destination directory that the file should be moved to (may be null)
     """
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
@@ -4425,20 +4424,17 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
     archiveinfo['md5sum'] = m.hexdigest()
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, build_type_info=typeInfo)
+                              build_type=type)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
     archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
-    archiveinfo['archive_id'] = archive_id
-    insert = """INSERT INTO archiveinfo
-    (id, type_id, build_id, buildroot_id, filename, size, md5sum)
-    VALUES
-    (%(archive_id)i, %(type_id)i, %(build_id)i, %(buildroot_id)s, %(filename)s, %(size)i, %(md5sum)s)"""
-    _dml(insert, archiveinfo)
+    archiveinfo['id'] = archive_id
+    insert = InsertProcessor('archiveinfo', data=archiveinfo)
+    insert.execute()
 
     if type == 'maven':
         maveninfo = get_maven_build(buildinfo, strict=True)
-        mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+        buildinfo.update(dslice(maveninfo, ('group_id', 'artifact_id', 'version')))
 
         if archivetype['name'] == 'pom':
             pom_info = koji.parse_pom(filepath)
@@ -4448,37 +4444,39 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
                 raise koji.BuildError, 'Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' % \
                     (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo))
 
-        _insert_maven_archive(archive_id, typeInfo)
+        insert = InsertProcessor('maven_archives', data=dslice(typeInfo, ('group_id', 'artifact_id', 'version')))
+        insert.set(archive_id=archive_id)
+        insert.execute()
+
         # move the file to it's final destination
+        mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
         _import_archive_file(filepath, mavendir)
         _generate_maven_metadata(maveninfo, mavendir)
     elif type == 'win':
         wininfo = get_win_build(buildinfo, strict=True)
+        buildinfo['platform'] = wininfo['platform']
+
         insert = InsertProcessor('win_archives')
         insert.set(archive_id=archive_id)
-        insert.set(relpath=destpath)
+        relpath = typeInfo['relpath'].strip('/')
+        insert.set(relpath=relpath)
+        if not typeInfo['platforms']:
+            raise koji.BuildError, 'no value for platforms'
         insert.set(platforms=' '.join(typeInfo['platforms']))
         if typeInfo['flags']:
             insert.set(flags=' '.join(typeInfo['flags']))
         insert.execute()
+
         destdir = koji.pathinfo.winbuild(buildinfo)
-        if destpath:
-            destdir = os.path.join(destdir, destpath)
+        if relpath:
+            destdir = os.path.join(destdir, relpath)
         _import_archive_file(filepath, destdir)
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, build_type_info=typeInfo)
-
-def _insert_maven_archive(archive_id, mavendata):
-    """Associate the Maven data with the given archive"""
-    mavendata = mavendata.copy()
-    mavendata['archive_id'] = archive_id
-    insert = """INSERT INTO maven_archives (archive_id, group_id, artifact_id, version)
-        VALUES (%(archive_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-    _dml(insert, mavendata)
+                              build_type=type)
 
 def _import_archive_file(filepath, destdir):
     """
@@ -6844,21 +6842,19 @@ class RootExports(object):
         type: type of the archive being imported.  Currently supported archive types: maven
         typeInfo: dict of type-specific information
         """
-        if not context.opts.get('EnableMaven'):
-            raise koji.GenericError, "Maven support not enabled"
         if type == 'maven':
+            if not context.opts.get('EnableMaven'):
+                raise koji.GenericError, 'Maven support not enabled'
             context.session.assertPerm('maven-import')
-            buildinfo = get_build(buildinfo, strict=True)
-            fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
-            import_archive(fullpath, buildinfo, type, typeInfo)
         elif type == 'win':
+            if not context.opts.get('EnableWin'):
+                raise koji.GenericError, 'Windows support not enabled'
             context.session.assertPerm('win-import')
-            buildinfo = get_build(buildinfo, strict=True)
-            fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
-            import_archive(fullpath, buildinfo, type, typeInfo,
-                           destpath=os.path.dirname(filepath))
         else:
             koji.GenericError, 'unsupported archive type: %s' % type
+        buildinfo = get_build(buildinfo, strict=True)
+        fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
+        import_archive(fullpath, buildinfo, type, typeInfo)
 
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
@@ -6880,10 +6876,10 @@ class RootExports(object):
     def createMavenBuild(self, build_info, maven_info):
         """
         Associate Maven metadata with an existing build.  The build must
-        not already have associated Maven metadata.  pom_path must be a path
-        on the server (relative to the work/ directory).
+        not already have associated Maven metadata.  maven_info must be a dict
+        containing group_id, artifact_id, and version entries.
         """
-        context.session.assertPerm('admin')
+        context.session.assertPerm('maven-import')
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError, "Maven support not enabled"
         build = get_build(build_info)
@@ -6892,6 +6888,22 @@ class RootExports(object):
                                              build_info['release'], build_info['epoch'])
             build = get_build(build_id, strict=True)
         new_maven_build(build, maven_info)
+
+    def createWinBuild(self, build_info, win_info):
+        """
+        Associate Windows metadata with an existing build.  The build must
+        not already have associated Windows metadata.  win_info must be a dict
+        containing a platform entry.
+        """
+        context.session.assertPerm('win-import')
+        if not context.opts.get('EnableWin'):
+            raise koji.GenericError, "Windows support not enabled"
+        build = get_build(build_info)
+        if not build:
+            build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
+                                             build_info['release'], build_info['epoch'])
+            build = get_build(build_id, strict=True)
+        new_win_build(build, win_info)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.
@@ -9384,8 +9396,8 @@ class HostExports(object):
                 # Unknown archive type, skip it
                 continue
             filepath = os.path.join(task_dir, relpath)
-            import_archive(filepath, build_info, 'win', metadata,
-                           destpath=os.path.dirname(relpath))
+            metadata['relpath'] = os.path.dirname(relpath)
+            import_archive(filepath, build_info, 'win', metadata)
 
         # move the logs to their final destination
         for relpath in results['logs']:
