@@ -416,15 +416,16 @@ def safe_xmlrpc_loads(s):
 
 def ensuredir(directory):
     """Create directory, if necessary."""
-    if os.path.isdir(directory):
-        return
     try:
-        os.makedirs(directory)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
     except OSError:
         #thrown when dir already exists (could happen in a race)
         if not os.path.isdir(directory):
             #something else must have gone wrong
             raise
+    return directory
+
 ## END kojikamid dup
 
 def daemonize():
