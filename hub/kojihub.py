@@ -4399,7 +4399,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
 
     filepath: full path to the archive file
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
-    type: type of the archive being imported.  Currently supported archive types: maven
+    type: type of the archive being imported.  Currently supported archive types: maven, win
     typeInfo: dict of type-specific information
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     destpath: the path relative to the destination directory that the file should be moved to (may be null)
