@@ -6061,6 +6061,11 @@ class UserTest(koji.policy.MatchTest):
         data[self.field] = user['name']
         return super(UserTest, self).run(data)
 
+class VMTest(koji.policy.MatchTest):
+    """Checks a VM name against glob patterns"""
+    name = 'vm_name'
+    field = 'vm_name'
+
 class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
     """Check if user owns the build"""
     name = "is_build_owner"
@@ -6469,10 +6474,10 @@ class RootExports(object):
         """
         if not context.opts.get('EnableWin'):
             raise koji.GenericError, "Windows support not enabled"
+        policy_data = {'vm_name': vm}
+        assert_policy('vm', policy_data)
         if not opts:
             opts = {}
-        if 'cpus' in opts or 'mem' in opts:
-            context.session.assertPerm('win-admin')
         taskOpts = {}
         if priority:
             if priority < 0:
