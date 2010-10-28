@@ -4407,11 +4407,13 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
     if not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
+    archiveinfo = {'buildroot_id': buildroot_id}
     filename = koji.fixEncoding(os.path.basename(filepath))
+    archiveinfo['filename'] = filename
     archivetype = get_archive_type(filename, strict=True)
-    type_id = archivetype['id']
-    build_id = buildinfo['id']
-    size = os.path.getsize(filepath)
+    archiveinfo['type_id'] = archivetype['id']
+    archiveinfo['build_id'] = buildinfo['id']
+    archiveinfo['size'] = os.path.getsize(filepath)
     archivefp = file(filepath)
     m = md5_constructor()
     while True:
@@ -4420,15 +4422,19 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
             break
         m.update(contents)
     archivefp.close()
-    md5sum = m.hexdigest()
+    archiveinfo['md5sum'] = m.hexdigest()
+
+    koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
+                              build_type=type, build_type_info=typeInfo)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
     archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
+    archiveinfo['archive_id'] = archive_id
     insert = """INSERT INTO archiveinfo
     (id, type_id, build_id, buildroot_id, filename, size, md5sum)
     VALUES
     (%(archive_id)i, %(type_id)i, %(build_id)i, %(buildroot_id)s, %(filename)s, %(size)i, %(md5sum)s)"""
-    _dml(insert, locals())
+    _dml(insert, archiveinfo)
 
     if type == 'maven':
         maveninfo = get_maven_build(buildinfo, strict=True)
@@ -4461,6 +4467,10 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None, destp
         _import_archive_file(filepath, destdir)
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
+
+    archiveinfo = get_archive(archive_id, strict=True)
+    koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
+                              build_type=type, build_type_info=typeInfo)
 
 def _insert_maven_archive(archive_id, mavendata):
     """Associate the Maven data with the given archive"""
