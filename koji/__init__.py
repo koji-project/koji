@@ -2100,7 +2100,7 @@ def fixEncoding(value, fallback='iso8859-15'):
     encoded in the 'fallback' charset.
     """
     if not value:
-        return value
+        return ''
 
     if isinstance(value, unicode):
         # value is already unicode, so just convert it

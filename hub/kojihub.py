@@ -7727,7 +7727,11 @@ class RootExports(object):
         else:
             raise koji.GenericError, 'either rpmID or taskID and filepath must be specified'
 
-        return koji.get_header_fields(rpm_path, headers)
+        headers = koji.get_header_fields(rpm_path, headers)
+        for key, value in headers.items():
+            if isinstance(value, basestring):
+                headers[key] = koji.fixEncoding(value)
+        return headers
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
     writeSignedRPM = staticmethod(write_signed_rpm)
