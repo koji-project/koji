@@ -6474,7 +6474,9 @@ class RootExports(object):
         """
         if not context.opts.get('EnableWin'):
             raise koji.GenericError, "Windows support not enabled"
-        policy_data = {'vm_name': vm}
+        targ_info = self.getBuildTarget(target)
+        policy_data = {'vm_name': vm,
+                       'tag': targ_info['dest_tag']}
         assert_policy('vm', policy_data)
         if not opts:
             opts = {}
