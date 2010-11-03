@@ -4506,8 +4506,8 @@ def handle_add_external_repo(options, session, args):
                 else:
                     priority = _pick_external_repo_priority(session, tag)
             session.addExternalRepoToTag(tag, rinfo['name'], priority)
-            print "Added external repo %s to to tag %s (priority %i)" \
-                    % (rinfo['name'], options.tag, priority)
+            print "Added external repo %s to tag %s (priority %i)" \
+                    % (rinfo['name'], tag, priority)
 
 def handle_edit_external_repo(options, session, args):
     "[admin] Edit data for an external repo"
