@@ -829,6 +829,8 @@ def handle_prune():
     tags = [(t['name'], t) for t in session.listTags()]
     tags.sort()
     untagged = {}
+    sigcache = {}
+    build_ids = {}
     for tagname, taginfo in tags:
         if tagname == options.trashcan_tag:
             if options.debug:
@@ -881,6 +883,7 @@ def handle_prune():
                 # get sig data
                 nvr = "%(name)s-%(version)s-%(release)s" % entry
                 keys = get_build_sigs(entry['build_id'])
+                sigcache[nvr] = keys
                 if keys and options.debug:
                     print "signatures for %s: %s" % (nvr, keys)
                 data = {
@@ -891,6 +894,7 @@ def handle_prune():
                     'keys' : keys,
                     'nvr' : nvr,
                     }
+                build_ids[nvr] = entry['build_id']
                 action = policies.apply(data)
                 if action is None:
                     if options.debug:
@@ -903,38 +907,43 @@ def handle_prune():
                 if action == 'untag':
                     if options.test:
                         print "Would have untagged %s from %s" % (nvr, tagname)
-                        untagged[nvr] = entry
+                        untagged.setdefault(nvr, {})[tagname] = 1
                     else:
                         print "Untagging build %s from %s"  % (nvr, tagname)
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
-                            untagged[nvr] = entry
+                            untagged.setdefault(nvr, {})[tagname] = 1
                         except (xmlrpclib.Fault, koji.GenericError), e:
                             print "Warning: untag operation failed: %s" % e
                             pass
                 # if action == 'keep' do nothing
     if options.purge and untagged:
         print "Attempting to purge %i builds" % len(untagged)
-        if options.test:
-            # we didn't actually untag, so we can't easily check which builds
-            # would have been deleted
-            print "Test mode. Skipping deletes."
-            untagged = {}
         for nvr in untagged:
-            build_id = untagged[nvr]['build_id']
+            build_id = build_ids[nvr]
             tags = [t['name'] for t in  session.listTags(build_id)]
+            if options.test:
+                #filted out the tags we would have dropped above
+                tags = [t for t in tags if t not in untagged[nvr]]
             if tags:
                 #still tagged somewhere
                 print "Skipping %s, still tagged: %s" % (nvr, tags)
                 continue
+            #check cached sigs first to save a little time
+            if nvr in sigcache:
+                keys = sigcache[nvr]
+                if protected_sig(keys):
+                    print "Skipping %s, signatures: %s" % (nvr, keys)
+                    continue
+            #recheck signatures in case build was signed during run
             keys = get_build_sigs(build_id)
-            #yes, could cache from above, but this is safer.
-            #build could have been signed during run.
             if protected_sig(keys):
                 print "Skipping %s, signatures: %s" % (nvr, keys)
                 continue
 
-            if not options.test:
+            if options.test:
+                print "Would have deleted build: %s" % nvr
+            else:
                 print "Deleting untagged build: %s"  % nvr
                 try:
                     session.deleteBuild(build_id, strict=False)
