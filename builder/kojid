@@ -255,6 +255,8 @@ class BuildRoot(object):
             cmd.append('--debug')
         cmd.extend(args)
         self.logger.info(' '.join(cmd))
+        workdir = getattr(self, 'workdir', None)
+        mocklog = 'mock_output.log'
         pid = os.fork()
         if pid:
             resultdir = self.resultdir()
@@ -276,11 +278,15 @@ class BuildRoot(object):
 
                 for fname in results:
                     if fname.endswith('.log') and not logs.has_key(fname):
-                        logs[fname] = (None, None, 0)
-
-                for (fname, (fd, inode, size)) in logs.items():
-                    try:
                         fpath = os.path.join(resultdir, fname)
+                        logs[fname] = (None, None, 0, fpath)
+                if workdir and mocklog not in logs:
+                    fpath = os.path.join(workdir, mocklog)
+                    if os.path.exists(fpath):
+                        logs[mocklog] = (None, None, 0, fpath)
+
+                for (fname, (fd, inode, size, fpath)) in logs.items():
+                    try:
                         stat_info = os.stat(fpath)
                         if not fd or stat_info.st_ino != inode or stat_info.st_size < size:
                             # either a file we haven't opened before, or mock replaced a file we had open with
@@ -291,7 +297,7 @@ class BuildRoot(object):
                                                  (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
                             fd = file(fpath, 'r')
-                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size)
+                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size, fpath)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
@@ -299,7 +305,7 @@ class BuildRoot(object):
 
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
             #clean up and return exit status of command
-            for (fname, (fd, inode, size)) in logs.items():
+            for (fname, (fd, inode, size, fpath)) in logs.items():
                 if fd:
                     fd.close()
             return status[1]
@@ -308,6 +314,12 @@ class BuildRoot(object):
             #in no case should exceptions propagate past here
             try:
                 self.session._forget()
+                if workdir:
+                    outfile = os.path.join(workdir, mocklog)
+                    flags = os.O_CREAT | os.O_WRONLY | os.O_APPEND
+                    fd = os.open(outfile, flags, 0666)
+                    os.dup2(fd, 1)
+                    os.dup2(fd, 2)
                 if os.getuid() == 0 and hasattr(self.options,"mockuser"):
                     self.logger.info('Running mock as %s' % self.options.mockuser)
                     uid,gid = pwd.getpwnam(self.options.mockuser)[2:4]
@@ -956,6 +968,7 @@ class BuildArchTask(BaseTaskHandler):
             }
         br_arch = self.find_arch(arch, self.session.host.getHost(), self.session.getBuildConfig(root, event=event_id))
         broot = BuildRoot(self.session, self.options, root, br_arch, self.id, **rootopts)
+        broot.workdir = self.workdir
 
         self.logger.debug("Initializing buildroot")
         broot.init()
@@ -1149,6 +1162,7 @@ class BuildMavenTask(BaseTaskHandler):
             maven_opts.append('-Xmx2048m')
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id,
                               maven_opts=' '.join(maven_opts))
+        broot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
@@ -1435,6 +1449,7 @@ class WrapperRPMTask(BaseTaskHandler):
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
 
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='wrapper-rpm-build', repo_id=repo_id)
+        broot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
@@ -1599,6 +1614,7 @@ class ImageTask(BaseTaskHandler):
                     'bind_opts' : bind_opts}
 
         broot = BuildRoot(self.session, self.options, buildtag, arch, self.id, **rootopts)
+        broot.workdir = self.workdir
 
         # create the mock chroot
         self.logger.debug("Initializing image buildroot")
@@ -2091,6 +2107,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
                     'repo_id': repo_id}
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
         broot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, **rootopts)
+        broot.workdir = self.workdir
 
         self.logger.debug("Initializing buildroot")
         broot.init()
