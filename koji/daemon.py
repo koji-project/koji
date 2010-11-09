@@ -72,6 +72,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
     """Run command with output redirected.  If chroot is not None, chroot to the directory specified
     before running the command."""
     pid = os.fork()
+    fd = None
     if not pid:
         session._forget()
         try:
