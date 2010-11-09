@@ -1181,16 +1181,8 @@ class BuildMavenTask(BaseTaskHandler):
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
 
-        build_pom = os.path.join(sourcedir, 'pom.xml')
-        if not os.path.exists(build_pom):
-            raise koji.BuildError, 'no pom.xml found in checkout'
-        pom_info = koji.parse_pom(build_pom)
-        maven_info = koji.pom_to_maven_info(pom_info)
-        maven_label = koji.mavenLabel(maven_info)
-
         # zip up pristine sources for auditing purposes
-        task_sources = maven_label + '-sources.zip'
-        self._zip_dir(sourcedir, os.path.join(outputdir, task_sources))
+        self._zip_dir(sourcedir, os.path.join(outputdir, 'sources.zip'))
 
         # Checkout out patches, if present
         if self.opts.get('patches'):
@@ -1200,8 +1192,7 @@ class BuildMavenTask(BaseTaskHandler):
             # never try to check out a common/ dir when checking out patches
             patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
-            task_patches = maven_label + '-patches.zip'
-            self._zip_dir(patchcheckoutdir, os.path.join(outputdir, task_patches))
+            self._zip_dir(patchcheckoutdir, os.path.join(outputdir, 'patches.zip'))
 
         # Set ownership of the entire source tree to the mock user
         if mockuid != None:
@@ -1226,6 +1217,20 @@ class BuildMavenTask(BaseTaskHandler):
                 ret = log_output(self.session, cmd[0], cmd, patchlog, uploadpath, logerror=1, append=1)
                 if ret:
                     raise koji.BuildError, 'error applying patches from %s, see patches.log for details' % self.opts.get('patches')
+
+        build_pom = os.path.join(sourcedir, 'pom.xml')
+        if not os.path.exists(build_pom):
+            raise koji.BuildError, 'no pom.xml found in checkout'
+        pom_info = koji.parse_pom(build_pom)
+        maven_info = koji.pom_to_maven_info(pom_info)
+        maven_label = koji.mavenLabel(maven_info)
+
+        # give the zip files more descriptive names
+        os.rename(os.path.join(outputdir, 'sources.zip'),
+                  os.path.join(outputdir, maven_label + '-sources.zip'))
+        if self.opts.get('patches'):
+            os.rename(os.path.join(outputdir, 'patches.zip'),
+                      os.path.join(outputdir, maven_label + '-patches.zip'))
 
         settingsfile = '/maven/settings.xml'
         buildroot.writeMavenSettings(repodir, settingsfile)
