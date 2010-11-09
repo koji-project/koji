@@ -51,6 +51,7 @@ Requires: python-qpid >= 0.7
 %if 0%{?rhel} == 5
 Requires: python-ssl
 %endif
+Requires: cpio
 
 %description hub-plugins
 Plugins to the koji XMLRPC interface

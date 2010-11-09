@@ -4100,7 +4100,8 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
     rpminfo['brootid'] = brootid
 
-    koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo)
+    koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo,
+                              filepath=fn)
 
     q = """INSERT INTO rpminfo (id,name,version,release,epoch,
             build_id,arch,buildtime,buildroot_id,
@@ -4113,7 +4114,8 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     """
     _dml(q, rpminfo)
 
-    koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo)
+    koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo,
+                              filepath=fn)
 
     return rpminfo
 
@@ -4346,19 +4348,10 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
 def new_maven_build(build, maven_info):
     """
     Add Maven metadata to an existing build.
-    maven_info must contain the 'group_id' and
-    'artifact_id' keys.
-
-    Note: the "group_id-artifact_id" must match the name of the build
+    maven_info must contain the 'group_id',
+    'artifact_id', and 'version' keys.
     """
     maven_info = maven_info.copy()
-    maven_nvr = koji.maven_info_to_nvr(maven_info)
-    maven_nvr['release'] = build['release']
-
-    for field in ('name', 'version', 'epoch'):
-        if build[field] != maven_nvr[field]:
-            raise koji.BuildError, '%s mismatch (build: %s, maven: %s)' % \
-                (field, build[field], maven_nvr[field])
 
     current_maven_info = get_maven_build(build)
     if current_maven_info:
@@ -4424,7 +4417,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     archiveinfo['md5sum'] = m.hexdigest()
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type)
+                              build_type=type, filepath=filepath)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
     archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
@@ -4434,7 +4427,6 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
 
     if type == 'maven':
         maveninfo = get_maven_build(buildinfo, strict=True)
-        buildinfo.update(dslice(maveninfo, ('group_id', 'artifact_id', 'version')))
 
         if archivetype['name'] == 'pom':
             pom_info = koji.parse_pom(filepath)
@@ -4454,7 +4446,6 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         _generate_maven_metadata(maveninfo, mavendir)
     elif type == 'win':
         wininfo = get_win_build(buildinfo, strict=True)
-        buildinfo['platform'] = wininfo['platform']
 
         insert = InsertProcessor('win_archives')
         insert.set(archive_id=archive_id)
@@ -4476,7 +4467,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type)
+                              build_type=type, filepath=filepath)
 
 def _import_archive_file(filepath, destdir):
     """
@@ -6272,7 +6263,12 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     imageinfo['hash'] = hash
     # TODO: add xmlfile field to the imageinfo table
 
-    koji.plugin.run_callbacks('preImport', type='image', image=imageinfo)
+    filepath = os.path.join(koji.pathinfo.work(),
+                            koji.pathinfo.taskrelpath(task_id),
+                            filename)
+
+    koji.plugin.run_callbacks('preImport', type='image', image=imageinfo,
+                              filepath=filepath)
 
     q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
            arch,mediatype,hash)
@@ -6297,7 +6293,8 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
     for rpm_id in rpm_ids:
         _dml(q, locals())
 
-    koji.plugin.run_callbacks('postImport', type='image', image=imageinfo)
+    koji.plugin.run_callbacks('postImport', type='image', image=imageinfo,
+                              filepath=filepath)
 
     return image_id
 
@@ -6846,7 +6843,7 @@ class RootExports(object):
         filepath: path to the archive file (relative to the Koji workdir)
         buildinfo: information about the build to associate the archive with
                    May be a string (NVR), integer (buildID), or dict (containing keys: name, version, release)
-        type: type of the archive being imported.  Currently supported archive types: maven
+        type: type of the archive being imported.  Currently supported archive types: maven, win
         typeInfo: dict of type-specific information
         """
         if type == 'maven':
@@ -9287,6 +9284,17 @@ class HostExports(object):
 
         return data
 
+    def createMavenBuild(self, build_info, maven_info):
+        """
+        Associate Maven metadata with an existing build.  Used
+        by the rpm2maven plugin.
+        """
+        host = Host()
+        host.verify()
+        if not context.opts.get('EnableMaven'):
+            raise koji.GenericError, "Maven support not enabled"
+        new_maven_build(build_info, maven_info)
+
     def completeMavenBuild(self, task_id, build_id, maven_results, rpm_results):
         """Complete the Maven build."""
         if not context.opts.get('EnableMaven'):
@@ -9342,6 +9350,23 @@ class HostExports(object):
 
         # send email
         build_notification(task_id, build_id)
+
+    def importArchive(self, filepath, buildinfo, type, typeInfo):
+        """
+        Import an archive file and associate it with a build.  The archive can
+        be any non-rpm filetype supported by Koji.  Used by the rpm2maven plugin.
+        """
+        host = Host()
+        host.verify()
+        if type == 'maven':
+            if not context.opts.get('EnableMaven'):
+                raise koji.GenericError, 'Maven support not enabled'
+        elif type == 'win':
+            if not context.opts.get('EnableWin'):
+                raise koji.GenericError, 'Windows support not enabled'
+        else:
+            koji.GenericError, 'unsupported archive type: %s' % type
+        import_archive(filepath, buildinfo, type, typeInfo)
 
     def importWrapperRPMs(self, task_id, build_id, rpm_results):
         """Import the wrapper rpms and associate them with the given build.  Any existing
