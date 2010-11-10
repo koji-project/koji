@@ -2531,14 +2531,17 @@ class CreaterepoTask(BaseTaskHandler):
         self.outdir = '%s/repo' % self.workdir
         self.datadir = '%s/repodata' % self.outdir
         pkglist = os.path.join(self.repodir, 'pkglist')
-        if os.path.getsize(pkglist) > 0:
-            # don't call createrepo with an empty pkglist or it'll
-            # add every Koji-managed rpm to the repodata
-            self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
+        if os.path.getsize(pkglist) == 0:
+            pkglist = None
+        self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
 
         external_repos = self.session.getExternalRepoList(rinfo['tag_id'], event=rinfo['create_event'])
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
+        elif pkglist is None:
+            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo.write("This repo is empty because its tag has no content for this arch\n")
+            fo.close()
 
         uploadpath = self.getUploadDir()
         files = []
@@ -2550,11 +2553,13 @@ class CreaterepoTask(BaseTaskHandler):
 
     def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
-        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-i', pkglist, '-u', self.options.pkgurl]
+        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-u', self.options.pkgurl]
+        if pkglist is not None:
+            cmd.extend(['-i', pkglist])
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
-        if oldrepo and self.options.createrepo_update:
+        if pkglist and oldrepo and self.options.createrepo_update:
             oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
             olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
@@ -2572,8 +2577,11 @@ class CreaterepoTask(BaseTaskHandler):
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
-        pkgdir = os.path.join(self.pathinfo.topdir, 'packages/')
-        cmd.append(pkgdir)
+        if pkglist is None:
+            cmd.append(self.outdir)
+        else:
+            pkgdir = os.path.join(self.pathinfo.topdir, 'packages/')
+            cmd.append(pkgdir)
 
         logfile = '%s/createrepo.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
