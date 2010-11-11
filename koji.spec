@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.4.0
+Version: 1.5.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -237,6 +237,20 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Thu Nov 11 2010 Mike McLean <mikem at redhat.com> - 1.5.0-1
+- koji vm daemon for executing certain tasks in virtual machine
+- major refactoring of koji daemons
+- support for complete history query (not just tag operations)
+- allow filtering tasks by channel in webui
+- rename-channel and remove-channel commands
+- clean up tagBuild checks (rhbz#616839)
+- resurrect import-comps command
+- utf8 encoding fixes
+- allow getfile to handle files > 2G
+- update the messagebus plugin to use the new qpid.messaging API
+- rpm2maven plugin: use Maven artifacts from rpm builds in Koji's Maven repos
+- log mock output
+
 * Thu Jul  8 2010 Mike McLean <mikem at redhat.com> - 1.4.0-1
 - Merge mead branch: support for building jars with Maven *
 - support for building appliance images *
