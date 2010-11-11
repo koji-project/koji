@@ -118,19 +118,19 @@ class WindowsBuild(object):
                 if ret:
                     errors.append(output)
                 else:
-                    self.logger.debug('command %s is available at %s', entry, output)
+                    self.logger.info('command %s is available at %s', entry, output)
                 continue
             if checkdir:
                 if not os.path.isdir(entry):
                     errors.append('directory %s does not exist' % entry)
                 else:
-                    self.logger.debug('directory %s exists', entry)
+                    self.logger.info('directory %s exists', entry)
             else:
                 # file
                 if not os.path.isfile(entry):
                     errors.append('file %s does not exist' % entry)
                 else:
-                    self.logger.debug('file %s exists', entry)
+                    self.logger.info('file %s exists', entry)
         if errors:
             raise BuildError, 'error validating build environment: %s' % \
                   ', '.join(errors)
@@ -398,14 +398,14 @@ class WindowsBuild(object):
             if fullpath.endswith('/'):
                 for result in results:
                     if os.path.isdir(result):
-                        self.logger.debug('found directory %s at %s', entry, result)
+                        self.logger.info('found directory %s at %s', entry, result)
                         break
                 else:
                     errors.append('directory %s does not exist' % entry)
             else:
                 for result in results:
                     if os.path.isfile(result):
-                        self.logger.debug('found file %s at %s', entry, result)
+                        self.logger.info('found file %s at %s', entry, result)
                         break
                 else:
                     errors.append('file %s does not exist' % entry)
