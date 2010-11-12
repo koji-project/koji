@@ -102,7 +102,7 @@ INSERT INTO permissions (name) VALUES ('repo');
 INSERT INTO permissions (name) VALUES ('livecd');
 INSERT INTO permissions (name) VALUES ('maven-import');
 INSERT INTO permissions (name) VALUES ('win-import');
-INSERT INTO permissions (name) VALUES ('win-admin')
+INSERT INTO permissions (name) VALUES ('win-admin');
 INSERT INTO permissions (name) VALUES ('appliance');
 
 CREATE TABLE user_perms (
