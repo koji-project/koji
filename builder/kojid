@@ -1162,7 +1162,7 @@ class BuildMavenTask(BaseTaskHandler):
             maven_opts.append('-Xmx2048m')
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id,
                               maven_opts=' '.join(maven_opts))
-        broot.workdir = self.workdir
+        buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
@@ -1449,7 +1449,7 @@ class WrapperRPMTask(BaseTaskHandler):
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
 
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='wrapper-rpm-build', repo_id=repo_id)
-        broot.workdir = self.workdir
+        buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
 
