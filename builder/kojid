@@ -59,6 +59,7 @@ image_enabled = False
 try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
+    import pykickstart.errors as kserrors
     import hashlib
     import iso9660 # from pycdio
     image_enabled = True
