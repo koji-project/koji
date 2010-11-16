@@ -93,6 +93,10 @@ class ServerExit(Exception):
     """Raised to shutdown the server"""
     pass
 
+class ServerRestart(Exception):
+    """Raised to restart the server"""
+    pass
+
 class BaseTaskHandler(object):
     """The base class for task handlers
 
@@ -405,6 +409,72 @@ class ShutdownTask(BaseTaskHandler):
     def handler(self):
         #note: this is a foreground task
         raise ServerExit
+
+
+class RestartTask(BaseTaskHandler):
+    """Gracefully restart the daemon"""
+
+    Methods = ['restart']
+    _taskWeight = 0.1
+    Foreground = True
+    def handler(self, host_id):
+        #note: this is a foreground task
+        if host_id != self.session.host.getID():
+            raise koji.GenericError, "Host mismatch"
+        self.manager.restart_pending = True
+        return "graceful restart initiated"
+
+
+class RestartVerifyTask(BaseTaskHandler):
+    """Verify that the daemon has restarted"""
+
+    Methods = ['restartVerify']
+    _taskWeight = 0.1
+    Foreground = True
+    def handler(self, task_id):
+        #note: this is a foreground task
+        tinfo = self.session.getTaskInfo(task_id)
+        state = koji.TASK_STATES[tinfo['state']]
+        if state != 'CLOSED':
+            raise koji.GenericError, "Stage one restart task is %s" % state
+        if tinfo['host_id'] != self.session.host.getID():
+            raise koji.GenericError, "Host mismatch"
+        if self.manager.start_time < tinfo['completion_ts']:
+            start_time = time.asctime(time.localtime(self.manager.start_time))
+            raise koji.GenericError, "Restart failed - start time is %s" % start_time
+
+
+class RestartHostsTask(BaseTaskHandler):
+    """Gracefully restart the daemon"""
+
+    Methods = ['restartHosts']
+    _taskWeight = 0.1
+    def handler(self):
+        hosts = self.session.listHosts(enabled=True)
+        if not hosts:
+            raise koji.GenericError, "No hosts enabled"
+        this_host = self.session.host.getID()
+        subtasks = []
+        my_tasks = None
+        for host in hosts:
+            #note: currently task assignments bypass channel restrictions
+            task1 = self.subtask('restart', [host['id']], assign=host['id'], label="restart %i" % host['id'])
+            task2 = self.subtask('restartVerify', [task1], assign=host['id'], label="sleep %i" % host['id'])
+            subtasks.append(task1)
+            subtasks.append(task2)
+            if host['id'] == this_host:
+                my_tasks = [task1, task2]
+        if not my_tasks:
+            raise koji.GenericError, 'This host is not enabled'
+        self.wait(my_tasks[0])
+        #see if we've restarted
+        if not self.session.taskFinished(my_tasks[1]):
+            raise ServerRestart
+            #raising this inside a task handler causes TaskManager.runTask
+            #to free the task so that it will not block a pending restart
+        if subtasks:
+            self.wait(subtasks, all=True)
+        return
 
 
 class DependantTask(BaseTaskHandler):

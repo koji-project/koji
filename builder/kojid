@@ -32,7 +32,7 @@ import glob
 import logging
 import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM
-from koji.tasks import ServerExit, BaseTaskHandler, MultiPlatformTask
+from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
 from koji.util import parseStatus, isSuccess
 import os
 import pwd
@@ -91,6 +91,9 @@ def main(options, session):
         except (SystemExit,ServerExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
+        except ServerRestart:
+            logger.warn("Restarting")
+            os.execv(sys.argv[0], sys.argv)
         except koji.AuthExpired:
             logger.error('Session expired')
             break

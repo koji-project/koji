@@ -466,6 +466,7 @@ def make_task(method,arglist,**opts):
         channel: the channel to place the task in
         arch: the arch for the task
         priority: the priority of the task
+        assign: a host_id to assign the task to
     """
     if opts.has_key('parent'):
         # for subtasks, we use some of the parent's options as defaults
@@ -549,15 +550,14 @@ def make_task(method,arglist,**opts):
     opts['method'] = method
     koji.plugin.run_callbacks('preTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     # stick it in the database
-    q = """
-    INSERT INTO task (state,owner,method,request,priority,
-        parent,label,channel_id,arch)
-    VALUES (%(state)s,%(owner)s,%(method)s,%(request)s,%(priority)s,
-        %(parent)s,%(label)s,%(channel_id)s,%(arch)s);
-    """
-    _dml(q,opts)
-    q = """SELECT currval('task_id_seq')"""
-    task_id = _singleValue(q, {})
+
+    idata = dslice(opts, ['state', 'owner', 'method', 'request', 'priority', 'parent', 'label', 'channel_id', 'arch'])
+    if opts.get('assign'):
+        idata['state'] = koji.TASK_STATES['ASSIGNED']
+        idata['host_id'] = opts['assign']
+    insert = InsertProcessor('task', data=idata)
+    insert.execute()
+    task_id = _singleValue("SELECT currval('task_id_seq')", strict=True)
     opts['id'] = task_id
     koji.plugin.run_callbacks('postTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     return task_id
@@ -6339,6 +6339,10 @@ class RootExports(object):
         raise koji.Deprecated
         #return make_task('buildFromCVS',[url, tag])
 
+    def restartHosts(self, priority=5):
+        context.session.assertPerm('admin')
+        return make_task('restartHosts', [], priority=priority)
+
     def build(self, src, target, opts=None, priority=None, channel=None):
         """Create a build task
 
@@ -6589,6 +6593,11 @@ class RootExports(object):
 
     def showSession(self):
         return "%s" % context.session
+
+    def getSessionInfo(self):
+        if not context.session.logged_in:
+            return None
+        return context.session.session_data
 
     def showOpts(self):
         context.session.assertPerm('admin')

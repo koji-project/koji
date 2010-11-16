@@ -437,10 +437,12 @@ class TaskManager(object):
         self.subsessions = {}
         self.handlers = {}
         self.status = ''
+        self.restart_pending = False
         self.ready = False
         self.hostdata = {}
         self.task_load = 0.0
         self.host_id = self.session.host.getID()
+        self.start_time = self.session.getSessionInfo()['start_time']
         self.logger = logging.getLogger("koji.TaskManager")
 
     def findHandlers(self, vars):
@@ -993,6 +995,11 @@ class TaskManager(object):
         #       others?:
         #               io (iostat/vmstat)
         #               network (netstat?)
+        if self.restart_pending:
+            if self.tasks:
+                return False
+            else:
+                raise koji.tasks.ServerRestart
         self.hostdata = self.session.host.getHost()
         self.logger.debug('hostdata: %r' % self.hostdata)
         if not self.hostdata['enabled']:
@@ -1116,6 +1123,10 @@ class TaskManager(object):
         except (SystemExit,koji.tasks.ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
+        except koji.tasks.ServerRestart:
+            #freeing this task will allow the pending restart to take effect
+            self.session.host.freeTasks([handler.id])
+            return
         except:
             tb = ''.join(traceback.format_exception(*sys.exc_info()))
             self.logger.warn("TRACEBACK: %s" % tb)

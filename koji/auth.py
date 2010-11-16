@@ -73,8 +73,19 @@ class Session(object):
             callnum = None
         #lookup the session
         c = context.cnx.cursor()
-        fields = ('user_id','authtype','expired','start_time','update_time',
-                  'master','exclusive','callnum')
+        fields = {
+            'authtype': 'authtype',
+            'callnum': 'callnum',
+            'exclusive': 'exclusive',
+            'expired': 'expired',
+            'master': 'master',
+            'start_time': 'start_time',
+            'update_time': 'update_time',
+            'EXTRACT(EPOCH FROM start_time)': 'start_ts',
+            'EXTRACT(EPOCH FROM update_time)': 'update_ts',
+            'user_id': 'user_id',
+            }
+        fields, aliases = zip(*fields.items())
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -86,7 +97,7 @@ class Session(object):
         row = c.fetchone()
         if not row:
             raise koji.AuthError, 'Invalid session or bad credentials'
-        session_data = dict(zip(fields,row))
+        session_data = dict(zip(aliases, row))
         #check for expiration
         if session_data['expired']:
             raise koji.AuthExpired, 'session "%i" has expired' % id
