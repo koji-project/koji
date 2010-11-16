@@ -732,6 +732,9 @@ class TaskManager(object):
         for task in tasks:
             # note: tasks are in priority order
             self.logger.debug("task: %r" % task)
+            if task['method'] not in self.handlers:
+                self.logger.warn("Skipping task %(id)i, no handler for method %(method)s", task)
+                continue
             if self.tasks.has_key(task['id']):
                 # we were running this task, but it apparently has been
                 # freed or reassigned. We can't do anything with it until
@@ -1056,8 +1059,6 @@ class TaskManager(object):
         params, method = xmlrpclib.loads(request)
         if self.handlers.has_key(method):
             handlerClass = self.handlers[method]
-        elif self.handlers.has_key('default'):
-            handlerClass = self.handlers['default']
         else:
             raise koji.GenericError, "No handler found for method '%s'" % method
         handler = handlerClass(id,method,params,self.session,self.options)
