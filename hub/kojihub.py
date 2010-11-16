@@ -7081,7 +7081,7 @@ class RootExports(object):
         #don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             for build in build_list:
-                policy_data['build'] = build
+                policy_data['build'] = build['id']
                 assert_policy('tag', policy_data)
                 #XXX - we're running this check twice, here and in host.tagBuild (called by the task)
 
