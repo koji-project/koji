@@ -27,6 +27,7 @@ except ImportError:
 import koji
 import koji.plugin
 import koji.util
+import koji.tasks
 import glob
 import logging
 import logging.handlers
@@ -71,6 +72,7 @@ def main(options, session):
     logger.info('Starting up')
     tm = TaskManager(options, session)
     tm.findHandlers(globals())
+    tm.findHandlers(vars(koji.tasks))
     if options.plugin:
         #load plugins
         pt = koji.plugin.PluginTracker(path=options.pluginpath.split(':'))
