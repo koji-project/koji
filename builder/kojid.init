@@ -60,6 +60,17 @@ restart() {
     start
 }
 
+graceful() {
+    #SIGUSR1 initiates a graceful restart
+    pid=$(pidofproc kojid)
+    if test -z "$pid"
+    then
+        echo $"$prog not running"
+    else
+        kill -10 $pid
+    fi
+}
+
 # See how we were called.
 case "$1" in
   start)
@@ -77,8 +88,11 @@ case "$1" in
   condrestart|try-restart)
         [ -f /var/lock/subsys/kojid ] && restart || :
         ;;
+  graceful)
+        graceful
+        ;;
   *)
-	echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|graceful}"
         exit 1
 esac
 

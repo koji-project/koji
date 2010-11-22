@@ -199,7 +199,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %post builder
 /sbin/chkconfig --add kojid
-/sbin/service kojid condrestart &> /dev/null || :
 
 %preun builder
 if [ $1 = 0 ]; then
