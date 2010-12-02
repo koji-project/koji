@@ -321,6 +321,10 @@ class TaskWatcher(object):
         return (state == 'CLOSED')
 
     def display_state(self, info):
+        # We can sometimes be passed a task that is not yet open, but
+        # not finished either.  info would be none.
+        if not info:
+            return 'unknown'
         if info['state'] == koji.TASK_STATES['OPEN']:
             if info['host_id']:
                 host = self.session.getHost(info['host_id'])
