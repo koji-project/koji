@@ -23,7 +23,8 @@
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
-from koji.tasks import ServerExit, BaseTaskHandler, MultiPlatformTask
+from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
+from koji.tasks import RestartTask, RestartVerifyTask
 import sys
 import logging
 import os
@@ -181,7 +182,11 @@ def main(options, session):
             tm.scanPlugin(pt.load(name))
     def shutdown(*args):
         raise SystemExit
+    def restart(*args):
+        logger.warn("Initiating graceful restart")
+        tm.restart_pending = True
     signal.signal(signal.SIGTERM,shutdown)
+    signal.signal(signal.SIGUSR1,restart)
     taken = False
     tm.cleanupAllVMs()
     while True:
@@ -192,6 +197,9 @@ def main(options, session):
         except (SystemExit,ServerExit,KeyboardInterrupt):
             logger.warn("Exiting")
             break
+        except ServerRestart:
+            logger.warn("Restarting")
+            os.execv(sys.argv[0], sys.argv)
         except koji.AuthExpired:
             logger.error('Session expired')
             break

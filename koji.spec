@@ -218,7 +218,6 @@ fi
 
 %post vm
 /sbin/chkconfig --add kojivmd
-/sbin/service kojivmd condrestart &> /dev/null || :
 
 %preun vm
 if [ $1 = 0 ]; then
