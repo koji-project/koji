@@ -219,6 +219,12 @@ $value
         #if $params[2]
         <strong>NVRs:</strong> $printValue('', $params[2])
         #end if
+        #elif $task.method == 'restart'
+        <strong>Host:</strong> <a href="hostinfo?hostID=$params[0].id">$params[0].name</a><br/>
+        #elif $task.method == 'restartVerify'
+        <strong>Host:</strong> <a href="hostinfo?hostID=$params[1].id">$params[1].name</a><br/>
+        <strong>Restart Task:</strong>
+            <a href="taskinfo?taskID=$rtask.id" class="task$util.taskState($rtask.state)">$koji.taskLabel($rtask)</a><br/>
         #else
         $params
         #end if

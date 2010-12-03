@@ -2082,6 +2082,14 @@ def taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             arch, target, ksfile = taskInfo['request'][:3]
             extra = '%s, %s, %s' % (target, arch, os.path.basename(ksfile))
+    elif method == 'restart':
+        if taskInfo.has_key('request'):
+            host = taskInfo['request'][0]
+            extra = host['name']
+    elif method == 'restartVerify':
+        if taskInfo.has_key('request'):
+            task_id, host = taskInfo['request'][:2]
+            extra = host['name']
 
     if extra:
         return '%s (%s)' % (method, extra)

@@ -578,6 +578,8 @@ def taskinfo(req, taskID):
         if params[3]:
             wrapTask = server.getTaskInfo(params[3]['id'], request=True)
             values['wrapTask'] = wrapTask
+    elif task['method'] == 'restartVerify':
+        values['rtask'] = server.getTaskInfo(params[0], request=True)
     
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
