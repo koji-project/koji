@@ -1227,6 +1227,29 @@ def handle_enable_host(options, session, args):
             session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
 
+
+def handle_restart_hosts(options, session, args):
+    "[admin] Restart enabled hosts"
+    usage = _("usage: %prog restart-hosts [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on the task, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on task"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
+    (my_opts, args) = parser.parse_args(args)
+
+    activate_session(session)
+    task_id = session.restartHosts()
+    if my_opts.wait or (my_opts.wait is None and not _running_in_bg()):
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=my_opts.quiet)
+    else:
+        return
+
+
 def handle_import(options, session, args):
     "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] package [package...]")
