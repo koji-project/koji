@@ -41,7 +41,11 @@ class PlgSSL_Transport(xmlrpclib.Transport):
             # Yay for Python 2.2
             pass
         _host, _port = urllib.splitport(host)
-        self._https = SSLCommon.PlgHTTPS(_host, (_port and int(_port) or 443), ssl_context=self.ssl_ctx, timeout=self._timeout)
+        if hasattr(xmlrpclib.Transport, 'single_request'):
+            cnx_class = SSLCommon.PlgHTTPSConnection
+        else:
+            cnx_class = SSLCommon.PlgHTTPS
+        self._https = cnx_class(_host, (_port and int(_port) or 443), ssl_context=self.ssl_ctx, timeout=self._timeout)
         return self._https
 
     def close(self):
