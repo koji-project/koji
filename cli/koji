@@ -5418,6 +5418,16 @@ def anon_handle_wait_repo(options, session, args):
         tag_info = session.getTag(tag)
         if not tag_info:
             parser.error("Invalid tag: %s" % tag)
+        targets = session.getBuildTargets(buildTagID=tag_info['id'])
+        if not targets:
+            print "%(name)s is not a build tag for any target" % tag_info
+            targets = session.getBuildTargets(destTagID=tag_info['id'])
+            if targets:
+                maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
+                maybe = maybe.keys()
+                maybe.sort()
+                print "Suggested tags: %s" % ', '.join(maybe)
+            return 1
         tag_id = tag_info['id']
 
     last_repo = None
