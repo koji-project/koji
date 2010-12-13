@@ -1232,7 +1232,7 @@ class BuildMavenTask(BaseTaskHandler):
             # filter out directories and files beginning with . (probably scm metadata)
             patches = [patch for patch in os.listdir(patchcheckoutdir) if \
                            os.path.isfile(os.path.join(patchcheckoutdir, patch)) and \
-                           not patch.startswith('.')]
+                           patch.endswith('.patch')]
             if not patches:
                 raise koji.BuildError, 'no patches found at %s' % self.opts.get('patches')
             patches.sort()
