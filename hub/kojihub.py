@@ -2089,8 +2089,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.close()
 
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
-        maven_builds = dict([(build['id'], build) for build in maven_tag_packages(tinfo, event_id)])
-    
+        maven_builds = maven_tag_packages(tinfo, event_id)
+
     #link packages
     for arch in packages.iterkeys():
         if arch in ['src','noarch']:
@@ -2140,7 +2140,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
         artifact_dirs = {}
-        for build in maven_builds.itervalues():
+        for build in maven_builds:
             build_maven_info = {'group_id': build['maven_group_id'],
                                 'artifact_id': build['maven_artifact_id'],
                                 'version': build['maven_version']}
