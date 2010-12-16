@@ -6897,8 +6897,7 @@ class RootExports(object):
             raise koji.GenericError, "Maven support not enabled"
         build = get_build(build_info)
         if not build:
-            build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
-                                             build_info['release'], build_info['epoch'])
+            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             build = get_build(build_id, strict=True)
         new_maven_build(build, maven_info)
 
@@ -6913,8 +6912,7 @@ class RootExports(object):
             raise koji.GenericError, "Windows support not enabled"
         build = get_build(build_info)
         if not build:
-            build_id = self.createEmptyBuild(build_info['name'], build_info['version'],
-                                             build_info['release'], build_info['epoch'])
+            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             build = get_build(build_id, strict=True)
         new_win_build(build, win_info)
 
