@@ -1845,7 +1845,8 @@ def handle_list_permissions(options, session, args):
     usage = _("usage: %prog list-permissions [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--user", help=_("Only list permissions for this user"))
+    parser.add_option("--user", help=_("List permissions for the given user"))
+    parser.add_option("--mine", action="store_true", help=_("List your permissions"))
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error(_("This command takes no arguments"))
@@ -1857,6 +1858,8 @@ def handle_list_permissions(options, session, args):
             print "User %s does not exist" % options.user
             return 1
         perms = session.getUserPerms(user['id'])
+    elif options.mine:
+        perms = session.getPerms()
     else:
         perms = [p['name'] for p in session.getAllPerms()]
     for perm in perms:
