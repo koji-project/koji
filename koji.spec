@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.5.0
+Version: 1.6.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -235,6 +235,19 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Thu Dec 16 2010 Mike McLean <mikem at redhat.com> - 1.6.0-1
+- extend debuginfo check to cover newer formats
+- ignore tasks that TaskManager does not have a handler for
+- avoid possible traceback on ^c
+- graceful mass builder restart
+- no longer issue condrestart in postinstall scriptlet
+- fix ssl connections for python 2.7
+- more sanity checks on wait-repo arguments (ticket#192)
+- maven: only treat files ending in .patch as patch files
+- maven: retain ordering so more recent builds will take precedence
+- enable passing options to Maven
+- maven: use strict checksum checking
+
 * Thu Nov 11 2010 Mike McLean <mikem at redhat.com> - 1.5.0-1
 - koji vm daemon for executing certain tasks in virtual machine
 - major refactoring of koji daemons
