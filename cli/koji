@@ -937,6 +937,11 @@ def handle_maven_build(options, session, args):
     parser.add_option("-J", "--jvm-option", action="append",
                       dest="jvm_options", metavar="OPTION", default=[],
                       help=_("Pass a command-line option to the JVM"))
+    parser.add_option("-M", "--maven-option", action="append",
+                      dest="maven_options", metavar="OPTION", default=[],
+                      help=_("Pass a command-line option to Maven"))
+    parser.add_option("--debug", action="store_true",
+                      help=_("Run Maven build in debug mode"))
     parser.add_option("--specfile", action="store", metavar="URL",
                       help=_("SCM URL of a spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
@@ -968,7 +973,9 @@ def handle_maven_build(options, session, args):
         parser.error(_("Invalid SCM URL: %s" % source))
         assert False
     opts = {}
-    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'profiles', 'jvm_options'):
+    if build_opts.debug:
+        build_opts.maven_options.append('--debug')
+    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'profiles', 'jvm_options', 'maven_options'):
         val = getattr(build_opts, key)
         if val:
             opts[key] = val

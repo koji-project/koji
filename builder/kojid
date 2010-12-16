@@ -495,10 +495,12 @@ class BuildRoot(object):
 
         return packages
 
-    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None, profiles=None):
+    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None, profiles=None, options=None):
         self.session.host.setBuildRootState(self.id, 'BUILDING')
         cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
                '/usr/bin/mvn', '-s', settingsfile]
+        if options:
+            cmd.extend(options)
         if profiles:
             cmd.append('-P%s' % ','.join(profiles))
         if props:
@@ -1075,6 +1077,8 @@ class MavenTask(MultiPlatformTask):
             build_opts['patches'] = opts['patches']
         if opts.get('jvm_options'):
             build_opts['jvm_options'] = opts['jvm_options']
+        if opts.get('maven_options'):
+            build_opts['maven_options'] = opts['maven_options']
 
         self.build_task_id = self.session.host.subtask(method='buildMaven',
                                                        arglist=[url, build_tag, build_opts],
@@ -1170,7 +1174,8 @@ class BuildMavenTask(BaseTaskHandler):
         else:
             # Give the JVM 2G to work with by default, if the build isn't specifying its own max. memory
             maven_opts.append('-Xmx2048m')
-        buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='maven-build', setup_dns=True, repo_id=repo_id,
+        buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id,
+                              install_group='maven-build', setup_dns=True, repo_id=repo_id,
                               maven_opts=' '.join(maven_opts))
         buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
@@ -1260,7 +1265,8 @@ class BuildMavenTask(BaseTaskHandler):
         buildroot.writeMavenSettings(repodir, settingsfile)
 
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile,
-                             props=self.opts.get('properties'), profiles=self.opts.get('profiles'))
+                             props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
+                             options=self.opts.get('maven_options'))
 
         logs = ['checkout.log']
         if self.opts.get('patches'):
