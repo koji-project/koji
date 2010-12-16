@@ -498,7 +498,7 @@ class BuildRoot(object):
     def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None, profiles=None, options=None):
         self.session.host.setBuildRootState(self.id, 'BUILDING')
         cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
-               '/usr/bin/mvn', '-s', settingsfile]
+               '/usr/bin/mvn', '-s', settingsfile, '-C']
         if options:
             cmd.extend(options)
         if profiles:
