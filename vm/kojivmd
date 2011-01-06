@@ -121,6 +121,7 @@ def get_options():
                 'host_principal_format': 'compile/%s@EXAMPLE.COM',
                 'keytab': '/etc/kojivmd/kojivmd.keytab',
                 'ccache': '/var/tmp/kojivmd.ccache',
+                'krbservice': 'host',
                 'server': None,
                 'user': None,
                 'password': None,
@@ -1001,7 +1002,7 @@ if __name__ == "__main__":
 
     #build session options
     session_opts = {}
-    for k in ('user','password','debug_xmlrpc', 'debug',
+    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug',
               'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
         v = getattr(options, k, None)
         if v is not None:

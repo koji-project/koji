@@ -507,6 +507,7 @@ def get_options():
                 'principal': None,
                 'keytab': None,
                 'ccache': '/var/tmp/kojira.ccache',
+                'krbservice': 'host',
                 'retry_interval': 60,
                 'max_retries': 120,
                 'offline_retry': True,
@@ -523,7 +524,7 @@ def get_options():
     if config.has_section(section):
         int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks',
                     'delete_batch_size', 'retry_interval', 'max_retries', 'offline_retry_interval')
-        str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
+        str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
         for name in config.options(section):
@@ -580,7 +581,7 @@ if  __name__ == "__main__":
     else:
         logger.setLevel(logging.WARNING)
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug',
+    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug',
               'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
         session_opts[k] = getattr(options,k)
     session = koji.ClientSession(options.server,session_opts)

@@ -103,9 +103,10 @@ def _assertLogin(req):
         assert False
 
 def _getServer(req):
-    serverURL = req.get_options().get('KojiHubURL', 'http://localhost/kojihub')
-    session = koji.ClientSession(serverURL)
-    
+    opts = req.get_options()
+    session = koji.ClientSession(opts.get('KojiHubURL', 'http://localhost/kojihub'),
+                                 opts={'krbservice': opts.get('KrbService', 'host')})
+
     req.currentLogin = _getUserCookie(req)
     if req.currentLogin:
         req.currentUser = session.getUser(req.currentLogin)
@@ -114,7 +115,7 @@ def _getServer(req):
         _setUserCookie(req, req.currentLogin)
     else:
         req.currentUser = None
-    
+
     req._session = session
     return session
 

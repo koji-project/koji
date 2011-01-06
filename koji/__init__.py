@@ -1600,7 +1600,7 @@ class ClientSession(object):
             # We're trying to log ourself in.  Connect using existing credentials.
             cprinc = ccache.principal()
 
-        sprinc = krbV.Principal(name=self._serverPrincipal(), context=ctx)
+        sprinc = krbV.Principal(name=self._serverPrincipal(cprinc), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
         ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
@@ -1637,22 +1637,17 @@ class ClientSession(object):
 
         return True
 
-    def _serverPrincipal(self):
+    def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
-        to, based on baseurl.  Assume the last two components of the
-        server name are the Kerberos realm."""
+        to, based on baseurl."""
         servername = urlparse.urlparse(self.baseurl)[1]
         portspec = servername.find(':')
         if portspec != -1:
             servername = servername[:portspec]
+        realm = cprinc.realm
+        service = self.opts.get('krbservice', 'host')
 
-        parts = servername.split('.')
-        if len(parts) < 2:
-            domain = servername.upper()
-        else:
-            domain = '.'.join(parts[-2:]).upper()
-
-        return 'host/%s@%s' % (servername, domain)
+        return '%s/%s@%s' % (service, servername, realm)
 
     def ssl_login(self, cert, ca, serverca, proxyuser=None):
         if not self.baseurl.startswith('https:'):
