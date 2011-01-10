@@ -495,7 +495,8 @@ class BuildRoot(object):
 
         return packages
 
-    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile, props=None, profiles=None, options=None):
+    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile,
+                   props=None, profiles=None, options=None, goals=None):
         self.session.host.setBuildRootState(self.id, 'BUILDING')
         cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
                '/usr/bin/mvn', '-s', settingsfile, '-C']
@@ -515,6 +516,8 @@ class BuildRoot(object):
         self.session.host.updateMavenBuildRootList(self.id, self.task_id,
                                                    self.getMavenPackageList(repodir), project=False)
 
+        if goals:
+            cmd.extend(goals)
         cmd.extend(['deploy', '-DaltDeploymentRepository=koji-output::default::file://%s' % outputdir[len(self.rootdir()):]])
         rv = self.mock(cmd)
 
@@ -1069,6 +1072,8 @@ class MavenTask(MultiPlatformTask):
                 raise koji.BuildError, 'no repo for tag %s' % build_tag['name']
 
         build_opts = {'repo_id': repo_id}
+        if opts.get('goals'):
+            build_opts['goals'] = opts['goals']
         if opts.get('profiles'):
             build_opts['profiles'] = opts['profiles']
         if opts.get('properties'):
@@ -1266,7 +1271,7 @@ class BuildMavenTask(BaseTaskHandler):
 
         buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile,
                              props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
-                             options=self.opts.get('maven_options'))
+                             options=self.opts.get('maven_options'), goals=self.opts.get('goals'))
 
         logs = ['checkout.log']
         if self.opts.get('patches'):
