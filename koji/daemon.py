@@ -1109,14 +1109,14 @@ class TaskManager(object):
                 os._exit(0)
 
     def runTask(self,handler):
-        fail = False
         try:
             response = (handler.run(),)
             # note that we wrap response in a singleton tuple
             response = xmlrpclib.dumps(response, methodresponse=1, allow_none=1)
             self.logger.info("RESPONSE: %r" % response)
+            self.session.host.closeTask(handler.id, response)
+            return
         except xmlrpclib.Fault, fault:
-            fail = True
             response = xmlrpclib.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
@@ -1130,7 +1130,6 @@ class TaskManager(object):
         except:
             tb = ''.join(traceback.format_exception(*sys.exc_info()))
             self.logger.warn("TRACEBACK: %s" % tb)
-            fail = True
             # report exception back to server
             e_class, e = sys.exc_info()[:2]
             faultCode = getattr(e_class,'faultCode',1)
@@ -1139,7 +1138,5 @@ class TaskManager(object):
                 tb = str(e)
             response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
 
-        if fail:
-            self.session.host.failTask(handler.id, response)
-        else:
-            self.session.host.closeTask(handler.id, response)
+        # if we get here, then we're handling an exception, so fail the task
+        self.session.host.failTask(handler.id, response)

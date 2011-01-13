@@ -268,12 +268,14 @@ class Task(object):
         # the actual value should be retrieved from the 'new' value of the post callback
         now = time.time()
         info = self.getInfo(request=True)
+        info['result'] = result
         self.runCallbacks('preTaskStateChange', info, 'state', state)
         self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
         update = """UPDATE task SET result = %(result)s, state = %(state)s, completion_time = NOW()
         WHERE id = %(task_id)d
         """
-        _dml(update,locals())
+        # get the result from the info dict, so callbacks have a chance to modify it
+        _dml(update, {'result': info['result'], 'state': state, 'task_id': task_id})
         self.runCallbacks('postTaskStateChange', info, 'state', state)
         self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
 
@@ -444,6 +446,9 @@ class Task(object):
             info = old_info
         elif cbtype.startswith('post'):
             info = self.getInfo(request=True)
+            if info['state'] == koji.TASK_STATES['CLOSED']:
+                # if task is closed, include the result as well
+                info['result'] = self.getResult()
             new_val = info[attr]
         else:
             raise koji.GenericError, 'unknown callback type: %s' % cbtype
