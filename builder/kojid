@@ -1228,15 +1228,6 @@ class BuildMavenTask(BaseTaskHandler):
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
             self._zip_dir(patchcheckoutdir, os.path.join(outputdir, 'patches.zip'))
 
-        # Set ownership of the entire source tree to the mock user
-        if mockuid != None:
-            cmd = ['/bin/chown', '-R', str(mockuid), scmdir, outputdir, repodir]
-            if self.opts.get('patches'):
-                cmd.append(patchdir)
-            ret = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=1, append=1)
-            if ret:
-                raise koji.BuildError, 'error changing ownership of the source, repo, and output directories'
-
         # Apply patches, if present
         if self.opts.get('patches'):
             # filter out directories and files beginning with . (probably scm metadata)
@@ -1251,6 +1242,15 @@ class BuildMavenTask(BaseTaskHandler):
                 ret = log_output(self.session, cmd[0], cmd, patchlog, uploadpath, logerror=1, append=1)
                 if ret:
                     raise koji.BuildError, 'error applying patches from %s, see patches.log for details' % self.opts.get('patches')
+
+        # Set ownership of the entire source tree to the mock user
+        if mockuid != None:
+            cmd = ['/bin/chown', '-R', str(mockuid), scmdir, outputdir, repodir]
+            if self.opts.get('patches'):
+                cmd.append(patchdir)
+            ret = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=1, append=1)
+            if ret:
+                raise koji.BuildError, 'error changing ownership of the source, repo, and output directories'
 
         build_pom = os.path.join(sourcedir, 'pom.xml')
         if not os.path.exists(build_pom):
