@@ -1396,9 +1396,15 @@ class PathInfo(object):
 
     topdir = property(topdir, _set_topdir)
 
+    def volumedir(self, volume):
+        if volume == 'DEFAULT' or volume is None:
+            return self.topdir
+        #else
+        return self.topdir + ("/vol/%s" % volume)
+
     def build(self,build):
         """Return the directory where a build belongs"""
-        return self.topdir + ("/packages/%(name)s/%(version)s/%(release)s" % build)
+        return self.volumedir(build.get('volume_name')) + ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
     def mavenbuild(self, build, maveninfo):
         """Return the directory where the Maven build exists in the global store (/mnt/koji/maven2)"""
@@ -1406,7 +1412,7 @@ class PathInfo(object):
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
         release = build['release']
-        return self.topdir + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
+        return self.volumedir(build.get('volume_name')) + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
 
     def winbuild(self, build):
         """Return the directory where the Windows build exists"""

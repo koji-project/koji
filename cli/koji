@@ -118,7 +118,8 @@ def get_options():
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
     parser.add_option("--topdir", help=_("specify topdir"))
     parser.add_option("--weburl", help=_("url of the Koji web interface"))
-    parser.add_option("--pkgurl", help=_("url of the Koji package tree"))
+    parser.add_option("--topurl", help=_("url for Koji file access"))
+    parser.add_option("--pkgurl", help=optparse.SUPPRESS_HELP)
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -151,7 +152,8 @@ def get_options():
     defaults = {
         'server' : 'http://localhost/kojihub',
         'weburl' : 'http://localhost/koji',
-        'pkgurl' : 'http://localhost/packages',
+        'topurl' : None,
+        'pkgurl' : None,
         'topdir' : '/mnt/koji',
         'max_retries' : None,
         'retry_interval': None,
@@ -204,6 +206,18 @@ def get_options():
     if options.topdir:
         koji.BASEDIR = options.topdir
         koji.pathinfo.topdir = options.topdir
+
+    #pkgurl is obsolete
+    if options.pkgurl:
+        if options.topurl:
+            print "Warning: the pkgurl option is obsolete"
+        else:
+            suggest = re.sub(r'/packages/?$', '', options.pkgurl)
+            if suggest != options.pkgurl:
+                print "Warning: the pkgurl option is obsolete, using topurl=%r" % suggest
+                options.topurl = suggest
+            else:
+                print "Warning: The pkgurl option is obsolete, please use topurl instead"
 
     return options, cmd, args[1:]
 
@@ -5311,7 +5325,7 @@ def anon_handle_download_build(options, session, args):
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("--key", help=_("Download rpms signed with the given key"))
-    parser.add_option("--topurl", metavar="URL",
+    parser.add_option("--topurl", metavar="URL", default=options.topurl,
                       help=_("URL under which Koji files are accessible"))
     parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"),
                       default=options.quiet)
@@ -5350,6 +5364,12 @@ def anon_handle_download_build(options, session, args):
         print "No such build: %s" % build
         return 1
 
+    if not suboptions.topurl:
+        print "You must specify --topurl to download files"
+        return 1
+    pathinfo = koji.PathInfo(topdir=suboptions.topurl)
+    build_url = pathinfo.build(info)
+
     urls = []
     if suboptions.type:
         archives = session.listArchives(buildID=info['id'], type=suboptions.type)
@@ -5357,18 +5377,13 @@ def anon_handle_download_build(options, session, args):
             print "No %s archives available for %s" % (suboptions.type, koji.buildLabel(info))
             return 1
         if suboptions.type == 'maven':
-            if not suboptions.topurl:
-                print "You must specify --topurl to download Maven archives"
-                return 1
-            maven_pi = koji.PathInfo(topdir=suboptions.topurl)
             maven_info = session.getMavenBuild(info['id'], strict=True)
             for archive in archives:
-                urls.append((maven_pi.mavenbuild(info, maven_info) + '/' + archive['filename'], archive['filename']))
+                urls.append((pathinfo.mavenbuild(info, maven_info) + '/' + archive['filename'], archive['filename']))
         elif suboptions.type == 'win':
             for archive in archives:
-                url = '%s/%s/%s/%s/win/%s' % (options.pkgurl, info['name'], info['version'], info['release'],
-                                              koji.pathinfo.winfile(archive))
-                urls.append((url, koji.pathinfo.winfile(archive)))
+                url = '%s/win/%s' % (build_url, pathinfo.winfile(archive))
+                urls.append((url, pathinfo.winfile(archive)))
         else:
             # can't happen
             assert False
@@ -5387,11 +5402,10 @@ def anon_handle_download_build(options, session, args):
             if not suboptions.debuginfo and koji.is_debuginfo(rpm['name']):
                 continue
             if suboptions.key:
-                fname = koji.pathinfo.signed(rpm, suboptions.key)
+                fname = pathinfo.signed(rpm, suboptions.key)
             else:
-                fname = koji.pathinfo.rpm(rpm)
-            url = '%s/%s/%s/%s/%s' % (options.pkgurl, info['name'], info['version'], info['release'],
-                                      fname)
+                fname = pathinfo.rpm(rpm)
+            url = '%s/%s' % (build_url, fname)
             urls.append((url, os.path.basename(fname)))
 
     if suboptions.quiet:
@@ -5533,7 +5547,7 @@ def anon_handle_search(options, session, args):
     usage = _("usage: %prog search [options] search_type pattern")
     usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
     usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = optparse.OptionParser(usage=usage)
+    parser = OptionParser(usage=usage)
     parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
     parser.add_option("--exact", action="store_true", help=_("exact matches only"))
     main_options = options

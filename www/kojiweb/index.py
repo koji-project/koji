@@ -612,7 +612,7 @@ def imageinfo(req, imageID):
     """Do some prep work and generate the imageinfo page for kojiweb."""
     server = _getServer(req)
     values = _initValues(req, 'Image Information')
-    imageURL = req.get_options().get('KojiImagesURL', 'http://localhost/images')
+    imageURL = req.get_options().get('KojiFilesURL', 'http://localhost') + '/images'
     imageID = int(imageID)
     image = server.getImageInfo(imageID=imageID, strict=True)
     values['image'] = image
@@ -1137,8 +1137,8 @@ def buildinfo(req, buildID):
         else:
             values['estCompletion'] = None
 
-    values['downloadBase'] = req.get_options().get('KojiPackagesURL', 'http://localhost/packages')
-    values['mavenBase'] = req.get_options().get('KojiMavenURL', 'http://localhost/maven2')
+    topurl = req.get_options().get('KojiFilesURL', 'http://localhost/')
+    values['pathinfo'] = koji.PathInfo(topdir=topurl)
 
     return _genHTML(req, 'buildinfo.chtml')
 

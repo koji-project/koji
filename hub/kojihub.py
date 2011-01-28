@@ -40,6 +40,7 @@ import os
 import random
 import re
 import rpm
+import shutil
 import stat
 import subprocess
 import sys
@@ -1087,6 +1088,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.task_id','task_id'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
+              ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
               ('package.name', 'name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
@@ -1115,6 +1117,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     JOIN users ON users.id = build.owner
     JOIN events ON events.id = build.create_event
     JOIN package ON package.id = build.pkg_id
+    JOIN volume ON volume.id = build.volume_id
     WHERE %s AND tag_id=%%(tagid)s
         AND build.state=%%(st_complete)i
     """ % (', '.join([pair[0] for pair in fields]), type_join, eventCondition(event, 'tag_listing'))
@@ -2080,6 +2083,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     packages = {}
     for repoarch in repo_arches:
         packages.setdefault(repoarch, [])
+    relpathinfo = koji.PathInfo(topdir='')
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
@@ -2094,7 +2098,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             # Do not create a repo for arches not in the arch list for this tag
             continue
         build = builds[rpminfo['build_id']]
-        rpminfo['path'] = "%s/%s" % (koji.pathinfo.build(build), koji.pathinfo.rpm(rpminfo))
+        rpminfo['relpath'] = "%s/%s" % (relpathinfo.build(build), relpathinfo.rpm(rpminfo))
+        rpminfo['relpath'] = rpminfo['relpath'].lstrip('/')
         packages.setdefault(repoarch,[]).append(rpminfo)
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
@@ -2107,7 +2112,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
         maven_builds = maven_tag_packages(tinfo, event_id)
 
-    #link packages
+    #generate pkglist files
     for arch in packages.iterkeys():
         if arch in ['src','noarch']:
             continue
@@ -2117,16 +2122,16 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         pkglist = file(os.path.join(repodir, arch, 'pkglist'), 'w')
         logger.info("Creating package list for %s" % arch)
         for rpminfo in packages[arch]:
-            pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
+            pkglist.write(rpminfo['relpath'] + '\n')
         #noarch packages
         for rpminfo in packages.get('noarch',[]):
-            pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
+            pkglist.write(rpminfo['relpath'] + '\n')
         # srpms
         if with_src:
             srpmdir = "%s/%s" % (repodir,'src')
             koji.ensuredir(srpmdir)
             for rpminfo in packages.get('src',[]):
-                pkglist.write(rpminfo['path'].split(os.path.join(koji.pathinfo.topdir, 'packages/'))[1] + '\n')
+                pkglist.write(rpminfo['relpath'] + '\n')
         pkglist.close()
         #write list of blocked packages
         blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
@@ -3066,6 +3071,8 @@ def get_build(buildInfo, strict=False):
       task_id: ID of the task that kicked off the build
       owner_id: ID of the user who kicked off the build
       owner_name: name of the user who kicked off the build
+      volume_id: ID of the storage volume
+      volume_name: name of the storage volume
       creation_event_id: id of the create_event
       creation_time: time the build was created (text)
       creation_ts: time the build was created (epoch)
@@ -3086,6 +3093,7 @@ def get_build(buildInfo, strict=False):
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
+              ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
               ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
@@ -3094,6 +3102,7 @@ def get_build(buildInfo, strict=False):
     FROM build
     JOIN events ON build.create_event = events.id
     JOIN package on build.pkg_id = package.id
+    JOIN volume on build.volume_id = volume.id
     JOIN users on build.owner = users.id
     WHERE build.id = %%(buildID)i""" % ', '.join([pair[0] for pair in fields])
 
@@ -3891,6 +3900,77 @@ def new_package(name,strict=True):
         c.execute(q,locals())
     return pkg_id
 
+
+def add_volume(name, strict=True):
+    """Add a new storage volume in the database"""
+    context.session.assertPerm('admin')
+    if strict:
+        volinfo = lookup_name('volume', name, strict=False)
+        if volinfo:
+            raise koji.GenericError, 'volume %s already exists' % name
+    volinfo = lookup_name('volume', name, strict=False, create=True)
+
+def remove_volume(volume):
+    """Remove unused storage volume from the database"""
+    context.session.assertPerm('admin')
+    volinfo = lookup_name('volume', volume, strict=True)
+    query = QueryProcessor(tables=['build'], clauses=['volume_id=%(id)i'],
+                    values=volinfo, columns=['id'], opts={'limit':1})
+    if query.execute():
+        raise koji.GenericError, 'volume %(name)s has build references' % volinfo
+    delete = """DELETE FROM volume WHERE id=%(id)i"""
+    _dml(delete, volinfo)
+
+def list_volumes():
+    """List storage volumes"""
+    return QueryProcessor(tables=['volume'], columns=['id', 'name']).execute()
+
+def change_build_volume(build, volume, strict=True):
+    """Move a build to a different storage volume"""
+    context.session.assertPerm('admin')
+    volinfo = lookup_name('volume', volume, strict=True)
+    binfo = get_build(build, strict=True)
+    if binfo['volume_id'] == volinfo['id']:
+        if strict:
+            raise koji.GenericError, "Build %(nvr)s already on volume %(volume_name)s" % binfo
+        else:
+            #nothing to do
+            return
+    state = koji.BUILD_STATES[binfo['state']]
+    if state not in ['COMPLETE', 'DELETED']:
+        raise koji.GenericError, "Build %s is %s" % (binfo['nvr'], state)
+
+    # First copy the build dir(s)
+    dir_moves = []
+    old_binfo = binfo.copy()
+    binfo['volume_id'] = volinfo['id']
+    binfo['volume_name'] = volinfo['name']
+    olddir = koji.pathinfo.build(old_binfo)
+    if os.path.exists(olddir):
+        newdir = koji.pathinfo.build(binfo)
+        dir_moves.append([olddir, newdir])
+    maven_info = get_maven_build(binfo['id'])
+    if maven_info:
+        olddir = koji.pathinfo.mavenbuild(old_binfo, maven_info)
+        if os.path.exists(olddir):
+            newdir = koji.pathinfo.mavenbuild(binfo, maven_info)
+            dir_moves.append([olddir, newdir])
+    for olddir, newdir in dir_moves:
+        shutil.copytree(olddir, newdir, symlinks=True)
+
+    # Second, update the db
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
+    update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
+    update.set(volume_id=volinfo['id'])
+    update.execute()
+
+    # Third, delete the old content
+    for olddir, newdir in dir_moves:
+        koji.util.rmtree(olddir)
+
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
+
+
 def new_build(data):
     """insert a new build entry"""
     data = data.copy()
@@ -3908,6 +3988,7 @@ def new_build(data):
     data.setdefault('completion_time', 'NOW')
     data.setdefault('owner',context.session.user_id)
     data.setdefault('task_id',None)
+    data.setdefault('volume_id', 0)
     #check for existing build
     # TODO - table lock?
     q="""SELECT id,state,task_id FROM build
@@ -3939,14 +4020,11 @@ def new_build(data):
     else:
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #insert the new data
+    data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
+                         'task_id', 'owner', 'completion_time'])
     data['id'] = _singleValue("SELECT nextval('build_id_seq')")
-    q="""
-    INSERT INTO build (id,pkg_id,version,release,epoch,state,
-            task_id,owner,completion_time)
-    VALUES (%(id)i,%(pkg_id)i,%(version)s,%(release)s,%(epoch)s,
-            %(state)s,%(task_id)s,%(owner)s,%(completion_time)s)
-    """
-    _dml(q, data)
+    insert = InsertProcessor('build', data=data)
+    insert.execute()
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
     return data['id']
@@ -4037,12 +4115,11 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         WHERE id=%(build_id)i"""
         _dml(update,locals())
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
-    build['id'] = build_id
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath,relpath)
-        rpminfo = import_rpm(fn,build,brmap.get(relpath))
-        import_rpm_file(fn,build,rpminfo)
+        rpminfo = import_rpm(fn, binfo, brmap.get(relpath))
+        import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
         for key, files in logs.iteritems():
@@ -4050,10 +4127,10 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
                 key = None
             for relpath in files:
                 fn = "%s/%s" % (uploadpath,relpath)
-                import_build_log(fn, build, subdir=key)
+                import_build_log(fn, binfo, subdir=key)
     koji.plugin.run_callbacks('postImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
                               task_id=task_id, build_id=build_id, build=binfo, logs=logs)
-    return build
+    return binfo
 
 def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     """Import a single rpm into the database
@@ -4079,14 +4156,11 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     if buildinfo is None:
         #figure it out for ourselves
         if rpminfo['sourcepackage'] == 1:
-            buildinfo = rpminfo.copy()
-            build_id = find_build_id(buildinfo)
-            if build_id:
-                # build already exists
-                buildinfo['id'] = build_id
-            else:
+            buildinfo = get_build(rpminfo, strict=False)
+            if not buildinfo:
                 # create a new build
-                buildinfo['id'] = new_build(rpminfo)
+                build_id = new_build(rpminfo)
+                buildinfo = get_build(build_id, strict=True)
         else:
             #figure it out from sourcerpm string
             buildinfo = get_build(koji.parse_NVRA(rpminfo['sourcerpm']))
@@ -4113,29 +4187,27 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
 
     #add rpminfo entry
     rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
-    rpminfo['build'] = buildinfo
     rpminfo['build_id'] = buildinfo['id']
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
-    rpminfo['brootid'] = brootid
+    rpminfo['buildroot_id'] = brootid
+    rpminfo['external_repo_id'] = 0
 
     koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo,
                               filepath=fn)
 
-    q = """INSERT INTO rpminfo (id,name,version,release,epoch,
-            build_id,arch,buildtime,buildroot_id,
-            external_repo_id,
-            size,payloadhash)
-    VALUES (%(id)i,%(name)s,%(version)s,%(release)s,%(epoch)s,
-            %(build_id)s,%(arch)s,%(buildtime)s,%(brootid)s,
-            0,
-            %(size)s,%(payloadhash)s)
-    """
-    _dml(q, rpminfo)
+    data = rpminfo.copy()
+    del data['sourcepackage']
+    del data['sourcerpm']
+    insert = InsertProcessor('rpminfo', data=data)
+    insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo,
                               filepath=fn)
 
+    #extra fields for return
+    rpminfo['build'] = buildinfo
+    rpminfo['brootid'] = brootid
     return rpminfo
 
 def add_external_rpm(rpminfo, external_repo, strict=True):
@@ -6897,6 +6969,11 @@ class RootExports(object):
     def buildReferences(self, build, limit=None):
         return build_references(get_build(build, strict=True)['id'], limit)
 
+    addVolume = staticmethod(add_volume)
+    removeVolume = staticmethod(remove_volume)
+    listVolumes = staticmethod(list_volumes)
+    changeBuildVolume = staticmethod(change_build_volume)
+
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')
         data = { 'name' : name, 'version' : version, 'release' : release,
@@ -7364,6 +7441,7 @@ class RootExports(object):
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
+                   volumeID=None,
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None, queryOpts=None):
         """List package builds.
@@ -7371,7 +7449,8 @@ class RootExports(object):
         If userID is specified, restrict the results to builds owned by the given user.
         If taskID is specfied, restrict the results to builds with the given task ID.  If taskID is -1,
            restrict the results to builds with a non-null taskID.
-        One or more of packageID, userID, and taskID may be specified.
+        If volumeID is specified, restrict the results to builds stored on that volume
+        One or more of packageID, userID, volumeID, and taskID may be specified.
         If prefix is specified, restrict the results to builds whose package name starts with that
         prefix.
         If createdBefore and/or createdAfter are specified, restrict the results to builds whose
@@ -7400,6 +7479,8 @@ class RootExports(object):
           - nvr (synthesized for sorting purposes)
           - owner_id
           - owner_name
+          - volume_id
+          - volume_name
           - creation_event_id
           - creation_time
           - creation_ts
@@ -7421,18 +7502,22 @@ class RootExports(object):
                   ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
                   ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
+                  ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
                   ('users.id', 'owner_id'), ('users.name', 'owner_name')]
 
         tables = ['build']
         joins = ['events ON build.create_event = events.id',
                  'package ON build.pkg_id = package.id',
+                 'volume ON build.volume_id = volume.id',
                  'users ON build.owner = users.id']
         clauses = []
         if packageID != None:
             clauses.append('package.id = %(packageID)i')
         if userID != None:
             clauses.append('users.id = %(userID)i')
+        if volumeID != None:
+            clauses.append('volume.id = %(packageID)i')
         if taskID != None:
             if taskID == -1:
                 clauses.append('build.task_id IS NOT NULL')

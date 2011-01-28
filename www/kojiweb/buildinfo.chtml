@@ -3,12 +3,10 @@
 #from kojiweb import util
 
 #include "includes/header.chtml"
-#set $nvrpath = '%(name)s/%(version)s/%(release)s' % $build
+#set $nvrpath = $pathinfo.build($build)
 #set $archiveurl = ''
 #if $mavenbuild
-#set $archiveurl = '%s/%s/%s/%s/%s' % ($mavenBase, $mavenbuild['group_id'].replace('.', '/'),
-                                       $mavenbuild['artifact_id'], $mavenbuild['version'],
-                                       $build['release'])
+#set $archiveurl = $pathinfo.mavenbuild($build,$mavenbuild)
 #end if
 
   <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
@@ -108,9 +106,10 @@
           <tr><th>src</th><th></th></tr>
           #for $rpm in $rpmsByArch['src']
           #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
+          #set $rpmpath = $pathinfo.rpm($rpm)
           <tr>
             <td></td>
-            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)</td>
+            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)</td>
           </tr>
           #end for
           #end if
@@ -125,9 +124,9 @@
             <td>
               #if $task
               #if $arch == 'noarch'
-              (<a href="$downloadBase/$nvrpath/data/logs/$noarch_log_dest/">build logs</a>)
+              (<a href="$nvrpath/data/logs/$noarch_log_dest/">build logs</a>)
               #else
-              (<a href="$downloadBase/$nvrpath/data/logs/$arch/">build logs</a>)
+              (<a href="$nvrpath/data/logs/$arch/">build logs</a>)
               #end if
               #end if
             </td>
@@ -135,9 +134,10 @@
           #for $rpm in $rpmsByArch[$arch] + $debuginfoByArch.get($arch, [])
           <tr>
             #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
+            #set $rpmpath = $pathinfo.rpm($rpm)
             <td></td>
             <td>
-              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$downloadBase/$nvrpath/$rpm.arch/$rpmfile">download</a>)
+              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)
             </td>
           </tr>
           #end for
@@ -160,9 +160,9 @@
 	    <td>
               #if $ext == $exts[0]
 	        #if $mavenbuild
-                (<a href="$downloadBase/$nvrpath/data/logs/maven2/">build logs</a>)
+                (<a href="$nvrpath/data/logs/maven2/">build logs</a>)
                 #elif $winbuild
-                (<a href="$downloadBase/$nvrpath/data/logs/win/">build logs</a>)
+                (<a href="$nvrpath/data/logs/win/">build logs</a>)
 	        #end if
               #end if
 	    </td>
@@ -174,7 +174,7 @@
             #if $mavenbuild
             $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archiveurl/$archive.filename">download</a>)
             #elif $winbuild
-            $koji.pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$downloadBase/$nvrpath/win/$koji.pathinfo.winfile($archive)">download</a>)
+            $pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.winbuild($build)/$pathinfo.winfile($archive)">download</a>)
             #end if
 	    </td>
 	  </tr>

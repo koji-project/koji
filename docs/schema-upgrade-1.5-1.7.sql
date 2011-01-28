@@ -1,0 +1,14 @@
+BEGIN;
+
+CREATE TABLE volume (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+) WITHOUT OIDS;
+
+INSERT INTO volume (id, name) VALUES (0, 'DEFAULT');
+
+ALTER TABLE build ADD COLUMN volume_id INTEGER REFERENCES volume (id);
+UPDATE build SET volume_id = 0;
+ALTER TABLE build ALTER COLUMN volume_id SET NOT NULL;
+
+COMMIT;

@@ -52,7 +52,7 @@ import Cheetah.Template
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
-from optparse import OptionParser
+from optparse import OptionParser, SUPPRESS_HELP
 from StringIO import StringIO
 
 #imports for LiveCD and Appliance handler
@@ -221,20 +221,8 @@ class BuildRoot(object):
         repo_id = self.repoid
         tag_name = self.tag_name
 
-        topurl = None
-        topdir = None
-        if hasattr(self.options, 'topurl'):
-            topurl = self.options.topurl
-        if hasattr(self.options, 'topdir'):
-            topdir = self.options.topdir
-        if topurl:
-            pi = koji.PathInfo(topdir=topurl)
-            repourl = pi.repo(repo_id, tag_name) + '/maven2'
-        elif topdir:
-            pi = koji.PathInfo(topdir=topdir)
-            repourl = 'file://' + pi.repo(repo_id, tag_name) + '/maven2'
-        else:
-            raise koji.BuildError, 'either topurl or topdir must be specified in the config file'
+        pi = koji.PathInfo(topdir=self.options.topurl)
+        repourl = pi.repo(repo_id, tag_name) + '/maven2'
         localrepo = localrepodir[len(self.rootdir()):]
 
         settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
@@ -1745,10 +1733,7 @@ class ImageTask(BaseTaskHandler):
                 ks.handler.repo.repoList.append(repo_class(baseurl=user_repo, name='koji-override-%i' % index))
                 index += 1
         else:
-            topurl = getattr(self.options, 'topurl')
-            if not topurl:
-                raise koji.LiveCDError, 'topurl must be defined in kojid.conf'
-            path_info = koji.PathInfo(topdir=topurl)
+            path_info = koji.PathInfo(topdir=self.options.topurl)
             repopath = path_info.repo(repo_info['id'],
                                       target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, arch)
@@ -2426,7 +2411,9 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
             output += "\r\n\r\n"
         else:
             output = ''
-        
+
+        pathinfo = koji.PathInfo(topdir=self.options.topurl)
+        buildurl = pathinfo.build(build)
         # list states here to make them go in the correct order
         for task_state in ['failed', 'canceled', 'closed']:
             if tasks[task_state]:
@@ -2444,12 +2431,12 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                             output += "%s:\r\n" % filetype
                             for file in task[filetype]:
                                 if filetype == 'rpms':
-                                    output += " %s\r\n" % '/'.join([self.options.pkgurl, build['name'], build['version'], build['release'], task['build_arch'], file])
+                                    output += " %s\r\n" % '/'.join([buildurl, task['build_arch'], file])
                                 elif filetype == 'logs':
                                     if tasks[task_state] != 'closed':
                                         output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
                                     else:
-                                        output += " %s\r\n" % '/'.join([self.options.pkgurl, build['name'], build['version'], build['release'], 'data', 'logs', task['build_arch'], file])
+                                        output += " %s\r\n" % '/'.join([buildurl, 'data', 'logs', task['build_arch'], file])
                                 elif task[filetype] == 'misc':
                                     output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
                     output += "\r\n"
@@ -2575,7 +2562,7 @@ class CreaterepoTask(BaseTaskHandler):
 
     def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
-        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-u', self.options.pkgurl]
+        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-u', self.options.topurl]
         if pkglist is not None:
             cmd.extend(['-i', pkglist])
         if os.path.isfile(groupdata):
@@ -2602,8 +2589,7 @@ class CreaterepoTask(BaseTaskHandler):
         if pkglist is None:
             cmd.append(self.outdir)
         else:
-            pkgdir = os.path.join(self.pathinfo.topdir, 'packages/')
-            cmd.append(pkgdir)
+            cmd.append(self.options.topdir)
 
         logfile = '%s/createrepo.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
@@ -2713,6 +2699,7 @@ class WaitrepoTask(BaseTaskHandler):
 def get_options():
     """process options from command line and config file"""
     # parse command line args
+    logger = logging.getLogger("koji.build")
     parser = OptionParser()
     parser.add_option("-c", "--config", dest="configFile",
                       help="use alternate configuration file", metavar="FILE",
@@ -2748,7 +2735,7 @@ def get_options():
     parser.add_option("--mockdir", help="Specify mockdir")
     parser.add_option("--mockuser", help="User to run mock as")
     parser.add_option("-s", "--server", help="url of XMLRPC server")
-    parser.add_option("--pkgurl", help="url of packages directory")
+    parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     (options, args) = parser.parse_args()
 
     if args:
@@ -2829,10 +2816,17 @@ def get_options():
         koji.ensuredir(options.workdir)
 
     if not options.server:
-        parser.error("--server argument required")
+        msg = "the server option is required"
+        logger.error(msg)
+        parser.error(msg)
 
-    if not options.pkgurl:
-        parser.error("--pkgurl argument required")
+    if not options.topurl:
+        msg = "the topurl option is required"
+        logger.error(msg)
+        parser.error(msg)
+
+    if options.pkgurl:
+        logger.warning("The pkgurl option is obsolete")
 
     return options
 

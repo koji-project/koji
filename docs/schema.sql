@@ -261,6 +261,13 @@ CREATE TABLE package (
 -- (implicitly created by unique constraint)
 
 
+CREATE TABLE volume (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+) WITHOUT OIDS;
+
+INSERT INTO volume (id, name) VALUES (0, 'DEFAULT');
+
 -- here we track the built packages
 -- this is at the srpm level, since builds are by srpm
 -- see rpminfo for isolated packages
@@ -269,6 +276,7 @@ CREATE TABLE package (
 --   null, or may point to a deleted task.
 CREATE TABLE build (
 	id SERIAL NOT NULL PRIMARY KEY,
+        volume_id INTEGER NOT NULL REFERENCES volume (id),
 	pkg_id INTEGER NOT NULL REFERENCES package (id) DEFERRABLE,
 	version TEXT NOT NULL,
 	release TEXT NOT NULL,

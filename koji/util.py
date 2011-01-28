@@ -19,6 +19,8 @@ import re
 import time
 import koji
 import os
+import os.path
+import stat
 
 try:
     from hashlib import md5 as md5_constructor
@@ -109,6 +111,46 @@ def dslice(dict, keys, strict=True):
             #for strict we skip the has_key check and let the dict generate the KeyError
             ret[key] = dict[key]
     return ret
+
+
+def rmtree(path):
+    """Delete a directory tree without crossing fs boundaries"""
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode):
+        raise koji.GenericError, "Not a directory: %s" % path
+    dev = st.st_dev
+    dirlist = []
+    for dirpath, dirnames, filenames in os.walk(path):
+        dirlist.append(dirpath)
+        newdirs = []
+        dirsyms = []
+        for fn in dirnames:
+            path = os.path.join(dirpath, fn)
+            st = os.lstat(path)
+            if st.st_dev != dev:
+                # don't cross fs boundary
+                continue
+            if stat.S_ISLNK(st.st_mode):
+                #os.walk includes symlinks to dirs here
+                dirsyms.append(fn)
+                continue
+            newdirs.append(fn)
+        #only walk our filtered dirs
+        dirnames[:] = newdirs
+        for fn in filenames + dirsyms:
+            path = os.path.join(dirpath, fn)
+            st = os.lstat(path)
+            if st.st_dev != dev:
+                #shouldn't happen, but just to be safe...
+                continue
+            os.unlink(path)
+    dirlist.reverse()
+    for dirpath in dirlist:
+        if os.listdir(dirpath):
+            # dir not empty. could happen if a mount was present
+            continue
+        os.rmdir(dirpath)
+
 
 def eventFromOpts(session, opts):
     """Determine event id from standard cli options
