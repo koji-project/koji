@@ -6020,7 +6020,7 @@ class VolumeTest(koji.policy.MatchTest):
     name = 'volume'
     field = '_volume'
     def run(self, data):
-        #we need to find the package name from the base data
+        #we need to find the volume name from the base data
         if 'volume' in data:
             volinfo = lookup_name('volume', name, strict=False)
         elif 'build' in data:

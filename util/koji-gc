@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 import koji
+from koji.util import LazyDict, LazyValue
 import koji.policy
 import ConfigParser
 from email.MIMEText import MIMEText
@@ -517,7 +518,7 @@ def handle_trash():
                 print "[%i/%i] Build untagged only recently: %s" % (i, N, nvr)
             continue
         #check build signatures
-        keys = get_build_sigs(binfo['id'])
+        keys = get_build_sigs(binfo['id'], cache=True)
         if keys and options.debug:
             print "Build: %s, Keys: %s" % (nvr, keys)
         if protected_sig(keys):
@@ -622,7 +623,7 @@ def handle_delete(just_salvage=False):
             salvage_build(binfo)
             continue
         #check build signatures
-        keys = get_build_sigs(binfo['id'])
+        keys = get_build_sigs(binfo['id'], cache=False)
         if keys and options.debug:
             print "Build: %s, Keys: %s" % (nvr, keys)
         if protected_sig(keys):
@@ -664,32 +665,22 @@ def handle_delete(just_salvage=False):
         #TODO - log details for delete failures
 
 
-class TagPruneTest(koji.policy.BaseSimpleTest):
-
+class TagPruneTest(koji.policy.MatchTest):
     name = 'tag'
-
-    def run(self, data):
-        patterns = self.str.split()[1:]
-        for pat in patterns:
-            if fnmatch.fnmatch(data['tagname'], pat):
-                return True
-        return False
+    field = 'tagname'
 
 
-class PackagePruneTest(koji.policy.BaseSimpleTest):
-
+class PackagePruneTest(koji.policy.MatchTest):
     name = 'package'
+    field = 'pkgname'
 
-    def run(self, data):
-        patterns = self.str.split()[1:]
-        for pat in patterns:
-            if fnmatch.fnmatch(data['pkgname'], pat):
-                return True
-        return False
+
+class VolumePruneTest(koji.policy.MatchTest):
+    name = 'volume'
+    field = 'volname'
 
 
 class SigPruneTest(koji.policy.BaseSimpleTest):
-
     name = 'sig'
 
     def run(self, data):
@@ -717,46 +708,15 @@ def sigmatch(key, patterns):
     return False
 
 
-class OrderPruneTest(koji.policy.BaseSimpleTest):
-
+class OrderPruneTest(koji.policy.CompareTest):
     name = 'order'
-
-    cmp_idx = {
-        '<' : lambda a, b: a < b,
-        '>' : lambda a, b: a > b,
-        '<=' : lambda a, b: a <= b,
-        '>=' : lambda a, b: a >= b,
-        '=' : lambda a, b: a == b,
-        '!=' : lambda a, b: a != b,
-        }
-
-    def __init__(self, str):
-        """Read the test parameters from string"""
-        super(OrderPruneTest, self).__init__(str)
-        self.cmp, value = str.split(None, 3)[1:]
-        self.func = self.cmp_idx.get(self.cmp, None)
-        if self.func is None:
-            raise Exception, "Invalid comparison in test: %s" % str
-        self.value = int(value)
-        if self.value < 0:
-            raise Exception, "Invalid value in test: %s" % str
-
-    def run(self, data):
-        return self.func(data['order'], self.value)
+    field = 'order'
+    allow_float = False
 
 
 class AgePruneTest(koji.policy.BaseSimpleTest):
-
     name = 'age'
-
-    cmp_idx = {
-        '<' : lambda a, b: a < b,
-        '>' : lambda a, b: a > b,
-        '<=' : lambda a, b: a <= b,
-        '>=' : lambda a, b: a >= b,
-        '=' : lambda a, b: a == b,
-        '!=' : lambda a, b: a != b,
-        }
+    cmp_idx = koji.policy.CompareTest.operators
 
     def __init__(self, str):
         """Read the test parameters from string"""
@@ -792,12 +752,17 @@ def scan_policies(str):
     tests = koji.policy.findSimpleTests(globals())
     return koji.policy.SimpleRuleSet(str.splitlines(), tests)
 
-def get_build_sigs(build):
+build_sig_cache = {}
+
+def get_build_sigs(build, cache=False):
+    if cache and build in build_sig_cache:
+        return build_sig_cache[build]
     rpms = session.listRPMs(buildID=build)
     keys = {}
     if not rpms:
-        print "Warning: build without rpms: %(name)s-%(version)s-%(release)s" % session.getBuild(build)
-        return []
+        # for non-rpm builds we have no easy way of checking signatures
+        ret = build_sig_cache[build] = []
+        return ret
     else:
         #TODO - multicall helps, but it might be good to have a more robust server-side call
         session.multicall = True
@@ -807,7 +772,8 @@ def get_build_sigs(build):
             for sig in sigs:
                 if sig['sigkey']:
                     keys.setdefault(sig['sigkey'], 1)
-    return keys.keys()
+    ret = build_sig_cache[build] = keys.keys()
+    return ret
 
 def handle_prune():
     """Untag old builds according to policy
@@ -829,7 +795,6 @@ def handle_prune():
     tags = [(t['name'], t) for t in session.listTags()]
     tags.sort()
     untagged = {}
-    sigcache = {}
     build_ids = {}
     for tagname, taginfo in tags:
         if tagname == options.trashcan_tag:
@@ -882,18 +847,17 @@ def handle_prune():
             for order, entry in enumerate(hist):
                 # get sig data
                 nvr = "%(name)s-%(version)s-%(release)s" % entry
-                keys = get_build_sigs(entry['build_id'])
-                sigcache[nvr] = keys
-                if keys and options.debug:
-                    print "signatures for %s: %s" % (nvr, keys)
                 data = {
                     'tagname' : tagname,
                     'pkgname' : pkg,
                     'order': order - skipped,
                     'ts' : entry['create_ts'],
-                    'keys' : keys,
                     'nvr' : nvr,
                     }
+                data = LazyDict(data)
+                data['keys'] = LazyValue(get_build_sigs, (entry['build_id'],), {'cache':True})
+                data['volname'] = LazyValue(lambda x: session.getBuild(x).get('volume_name'),
+                                            (entry['build_id'],), cache=True)
                 build_ids[nvr] = entry['build_id']
                 action = policies.apply(data)
                 if action is None:
@@ -930,13 +894,13 @@ def handle_prune():
                 print "Skipping %s, still tagged: %s" % (nvr, tags)
                 continue
             #check cached sigs first to save a little time
-            if nvr in sigcache:
-                keys = sigcache[nvr]
+            if build_id in build_sig_cache:
+                keys = build_sig_cache[build_id]
                 if protected_sig(keys):
                     print "Skipping %s, signatures: %s" % (nvr, keys)
                     continue
             #recheck signatures in case build was signed during run
-            keys = get_build_sigs(build_id)
+            keys = get_build_sigs(build_id, cache=False)
             if protected_sig(keys):
                 print "Skipping %s, signatures: %s" % (nvr, keys)
                 continue
