@@ -6015,6 +6015,22 @@ class PackageTest(koji.policy.MatchTest):
         data[self.field] = policy_get_pkg(data)['name']
         return super(PackageTest, self).run(data)
 
+class VolumeTest(koji.policy.MatchTest):
+    """Checks storage volume against glob patterns"""
+    name = 'volume'
+    field = '_volume'
+    def run(self, data):
+        #we need to find the package name from the base data
+        if 'volume' in data:
+            volinfo = lookup_name('volume', name, strict=False)
+        elif 'build' in data:
+            build = get_build(data['build'])
+            volinfo = {'id': build['volume_id'], 'name': build['volume_name']}
+        else:
+            return False
+        data[self.field] = volinfo['name']
+        return super(PackageTest, self).run(data)
+
 class TagTest(koji.policy.MatchTest):
     name = 'tag'
     field = '_tagname'
