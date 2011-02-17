@@ -1753,9 +1753,7 @@ class ImageTask(BaseTaskHandler):
 
         # Here we configure mock to bind mount a set of /dev directories
         bind_opts = {'dirs' : {
-                         '/dev/pts' : '/dev/pts',
-                         '/dev/shm' : '/dev/shm',
-                         '/dev/mapper' : '/dev/mapper',
+                         '/dev' : '/dev',
                          '/selinux' : '/selinux'}
                     }
         rootopts = {'install_group': inst_group,
@@ -1769,23 +1767,6 @@ class ImageTask(BaseTaskHandler):
         # create the mock chroot
         self.logger.debug("Initializing image buildroot")
         broot.init()
-
-        # Create the loopback devices we need
-        cmd = 'for i in $(seq 0 7); do mknod /dev/loop$i b 7 $i; done'
-        rv = broot.mock(['--chroot', cmd])
-        if rv:
-            broot.expire()
-            raise koji.LiveCDError, \
-                "Could not create loopback device files: %s" % parseStatus(rv, '"%s"' % cmd)
-
-        # Create /dev/urandom
-        cmd = 'mknod /dev/urandom c 1 9'
-        rv = broot.mock(['--chroot', cmd])
-        if rv:
-            broot.expire()
-            raise koji.LiveCDError, \
-                "Could not create /dev/urandom: %s" % parseStatus(rv, '"%s"' % cmd)
-
         self.logger.debug("Image buildroot ready: " + broot.rootdir())
         return broot
 
