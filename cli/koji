@@ -4292,17 +4292,17 @@ def handle_edit_tag_inheritance(options, session, args):
 
     if len(data) == 0:
         print _("No inheritance link found to remove.  Please check your arguments")
-        return
+        return 1
     elif len(data) > 1:
         print _("Multiple matches for tag.")
         if not parent:
             print _("Please specify a parent on the command line.")
-            return
+            return 1
         if not priority:
             print _("Please specify a priority on the command line.")
-            return
-        print _("Error: Key constrainsts may be broken.  Exiting.")
-        return
+            return 1
+        print _("Error: Key constraints may be broken.  Exiting.")
+        return 1
     
     # len(data) == 1
     data = data[0]
@@ -4310,14 +4310,20 @@ def handle_edit_tag_inheritance(options, session, args):
     inheritanceData = session.getInheritanceData(tag['id'])
     samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
     if samePriority:
-        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name'])
-        return
+        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority.") % tag['name']
+        return 1
 
     new_data = data.copy()
     if options.priority is not None  and options.priority.isdigit():
         new_data['priority'] = int(options.priority)
-    if options.maxdepth is not None and options.maxdepth.isdigit():
-        new_data['maxdepth'] = int(options.maxdepth)
+    if options.maxdepth is not None:
+        if options.maxdepth.isdigit():
+            new_data['maxdepth'] = int(options.maxdepth)
+        elif options.maxdepth.lower() == "none":
+            new_data['maxdepth'] = None
+        else:
+            print _("Invalid maxdepth: %s") % options.maxdepth
+            return 1
     if options.intransitive:
         new_data['intransitive'] = options.intransitive
     if options.noconfig:
