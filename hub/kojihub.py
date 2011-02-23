@@ -736,26 +736,34 @@ def readFullInheritanceRecurse(tag_id,event,order,prunes,top,hist,currdepth,maxd
             id = jumps[id]
         if top.has_key(id):
             #LOOP!
-            log_error("Warning: INHERITANCE LOOP detected at %s -> %s, pruning" % (tag_id,id))
+            if event is None:
+                # only log if the issue is current
+                log_error("Warning: INHERITANCE LOOP detected at %s -> %s, pruning" % (tag_id,id))
             #auto prune
             continue
         if prunes.has_key(id):
             # ignore pruned tags
             continue
-        if link['intransitive'] and len(top) > 1:
+        if link['intransitive'] and len(top) > 1 and not reverse:
             # ignore intransitive inheritance links, except at root
             continue
         if link['priority'] < 0:
             #negative priority indicates pruning, rather than inheritance
             prunes[id] = 1
             continue
-        #propagate maxdepth
-        nextdepth = link['maxdepth']
-        if nextdepth is None:
-            if maxdepth is not None:
-                nextdepth = maxdepth - 1
-        elif maxdepth is not None:
-            nextdepth = min(nextdepth,maxdepth) - 1
+        if reverse:
+            #maxdepth logic is different in this case. no propagation
+            if link['maxdepth'] is not None and link['maxdepth'] < currdepth - 1:
+                continue
+            nextdepth = None
+        else:
+            #propagate maxdepth
+            nextdepth = link['maxdepth']
+            if nextdepth is None:
+                if maxdepth is not None:
+                    nextdepth = maxdepth - 1
+            elif maxdepth is not None:
+                nextdepth = min(nextdepth,maxdepth) - 1
         link['nextdepth'] = nextdepth
         link['currdepth'] = currdepth
         #propagate noconfig and pkg_filter controls
@@ -796,6 +804,9 @@ def readFullInheritanceRecurse(tag_id,event,order,prunes,top,hist,currdepth,maxd
             hist[id] = []
         hist[id].append(link)   #record history
         order.append(link)
+        if link['intransitive'] and reverse:
+            # add link, but don't follow it
+            continue
         readFullInheritanceRecurse(id,event,order,prunes,top,hist,currdepth,nextdepth,noconfig,filter,reverse,jumps)
 
 # tag-package operations
