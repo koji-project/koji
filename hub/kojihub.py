@@ -1087,9 +1087,11 @@ def list_tags(build=None, package=None, queryOpts=None):
     joins = ['tag ON tag.id = tag_config.tag_id',
              'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
     fields = ['tag.id', 'tag.name', 'tag_config.perm_id', 'permissions.name',
-              'tag_config.arches', 'tag_config.locked']
+              'tag_config.arches', 'tag_config.locked', 'tag_config.maven_support',
+              'tag_config.maven_include_all']
     aliases = ['id', 'name', 'perm_id', 'perm',
-               'arches', 'locked']
+               'arches', 'locked', 'maven_support',
+               'maven_include_all']
     clauses = ['tag_config.active = true']
 
     if build is not None:
@@ -2676,7 +2678,7 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
 
     return tag_id
 
-def get_tag(tagInfo,strict=False,event=None):
+def get_tag(tagInfo, strict=False, event=None):
     """Get tag information based on the tagInfo.  tagInfo may be either
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
@@ -2684,6 +2686,7 @@ def get_tag(tagInfo,strict=False,event=None):
     - id
     - name
     - perm_id (may be null)
+    - perm (name, may be null)
     - arches (may be null)
     - locked
     - maven_support
@@ -2696,18 +2699,32 @@ def get_tag(tagInfo,strict=False,event=None):
     in tag_config. A tag whose name appears in the tag table but has no
     active tag_config entry is considered deleted.
     """
-    fields = ('id', 'name', 'perm_id', 'arches', 'locked', 'maven_support', 'maven_include_all')
-    q = """SELECT %s FROM tag_config
-    JOIN tag ON tag_config.tag_id = tag.id
-    WHERE %s
-        AND  """ % (', '.join(fields), eventCondition(event))
+
+    tables = ['tag_config']
+    joins = ['tag ON tag.id = tag_config.tag_id',
+             'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
+    fields = {'tag.id': 'id',
+              'tag.name': 'name',
+              'tag_config.perm_id': 'perm_id',
+              'permissions.name': 'perm',
+              'tag_config.arches': 'arches',
+              'tag_config.locked': 'locked',
+              'tag_config.maven_support': 'maven_support',
+              'tag_config.maven_include_all': 'maven_include_all'
+             }
+    clauses = ['tag_config.active = true', eventCondition(event)]
     if isinstance(tagInfo, int):
-        q += """tag.id = %(tagInfo)i"""
-    elif isinstance(tagInfo, str):
-        q += """tag.name = %(tagInfo)s"""
+        clauses.append("tag.id = %(tagInfo)i")
+    elif isinstance(tagInfo, basestring):
+        clauses.append("tag.name = %(tagInfo)s")
     else:
         raise koji.GenericError, 'invalid type for tagInfo: %s' % type(tagInfo)
-    result = _singleRow(q,locals(),fields)
+
+    data = {'tagInfo': tagInfo}
+    fields, aliases = zip(*fields.items())
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
+                           joins=joins, clauses=clauses, values=data)
+    result = query.executeOne()
     if not result:
         if strict:
             raise koji.GenericError, "Invalid tagInfo: %r" % tagInfo
