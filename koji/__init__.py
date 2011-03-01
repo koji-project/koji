@@ -207,6 +207,12 @@ BR_STATES = Enum((
     'EXPIRED',
 ))
 
+TAG_UPDATE_TYPES = Enum((
+    'VOLUME_CHANGE',
+    'IMPORT',
+    'MANUAL',
+))
+
 #PARAMETERS
 BASEDIR = '/mnt/koji'
 # default task priority

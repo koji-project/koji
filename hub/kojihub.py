@@ -2384,7 +2384,15 @@ def tag_changed_since_event(event,taglist):
 
     Returns: True or False
     """
-    c = context.cnx.cursor()
+    data = locals().copy()
+    #first check the tag_updates table
+    clauses = ['update_event > %(event)i', 'tag_id IN %(taglist)s']
+    query = QueryProcessor(tables=['tag_updates'], columns=['id'],
+                            clauses=['update_event > %(event)i'],
+                            values=data, opts={'asList': True})
+    if query.execute():
+        return True
+    #also check these versioned tables
     tables = (
         'tag_listing',
         'tag_inheritance',
@@ -2395,16 +2403,29 @@ def tag_changed_since_event(event,taglist):
         'group_req_listing',
         'group_config',
     )
-    ret = {}
+    clauses = ['create_event > %(event)i OR revoke_event > %(event)i',
+               'tag_id IN %(taglist)s']
     for table in tables:
-        q = """SELECT tag_id FROM %(table)s
-        WHERE create_event > %%(event)s OR revoke_event > %%(event)s
-        """ % locals()
-        c.execute(q,locals())
-        for (tag_id,) in c.fetchall():
-            if tag_id in taglist:
-                return True
+        query = QueryProcessor(tables=[table], columns=['tag_id'], clauses=clauses,
+                                values=data, opts={'asList': True})
+        if query.execute():
+            return True
     return False
+
+def set_tag_update(tag_id, utype, event_id=None, user_id=None):
+    """Record a non-versioned tag update"""
+    utype_id = koji.TAG_UPDATE_TYPES.getnum(utype)
+    if utype_id is None:
+        raise koji.GenericError, "Invalid update type: %s" % utype
+    if event_id is None:
+        event_id = get_event()
+    if user_id is None:
+        context.session.assertLogin()
+        user_id = context.session.user_id
+    data = {'tag_id': tag_id, 'update_type': utype_id, 'update_event': event_id,
+            'updater_id': user_id}
+    insert = InsertProcessor('tag_updates', data=data)
+    insert.execute()
 
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
@@ -4037,6 +4058,8 @@ def change_build_volume(build, volume, strict=True):
     update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
     update.set(volume_id=volinfo['id'])
     update.execute()
+    for tag in list_tags(build=binfo['id']):
+        set_tag_update(tag['id'], 'VOLUME_CHANGE')
 
     # Third, delete the old content
     for olddir, newdir in dir_moves:
@@ -7115,6 +7138,8 @@ class RootExports(object):
         rpminfo = import_rpm(fn)
         import_rpm_file(fn,rpminfo['build'],rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
+        for tag in list_tags(build=rpminfo['build_id']):
+            set_tag_update(tag['id'], 'IMPORT')
 
     def addExternalRPM(self, rpminfo, external_repo, strict=True):
         """Import an external RPM
