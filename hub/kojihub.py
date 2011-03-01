@@ -4922,7 +4922,7 @@ def query_history(tables=None, **kwargs):
                 if value:
                     clauses.append('active = TRUE')
                 elif value is not None:
-                    clauses.append('active = FALSE')
+                    clauses.append('active IS NULL')
             elif arg == 'editor':
                 data['editor'] = get_user(value, strict=True)['id']
                 clauses.append('creator.id = %(editor)i OR revoker.id = %(editor)i')
