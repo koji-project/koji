@@ -2794,7 +2794,8 @@ def get_options():
                 'createrepo_update': True,
                 'pkgurl': None,
                 'allowed_scms': '',
-                'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories resolver-status.properties',
+                'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
+                                     'resolver-status.properties *.lastUpdated',
                 'cert': '/etc/kojid/client.crt',
                 'ca': '/etc/kojid/clientca.crt',
                 'serverca': '/etc/kojid/serverca.crt'}
