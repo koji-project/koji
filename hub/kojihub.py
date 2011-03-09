@@ -1060,6 +1060,63 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
                 packages[pkgid] = p
     return packages
 
+def list_tags(build=None, package=None, queryOpts=None):
+    """List tags.  If build is specified, only return tags associated with the
+    given build.  If package is specified, only return tags associated with the
+    specified package.  If neither is specified, return all tags.  Build can be
+    either an integer ID or a string N-V-R.  Package can be either an integer ID
+    or a string name.  Only one of build and package may be specified.  Returns
+    a list of maps.  Each map contains keys:
+      - id
+      - name
+      - perm_id
+      - perm
+      - arches
+      - locked
+
+    If package is specified, each map will also contain:
+      - owner_id
+      - owner_name
+      - blocked
+      - extra_arches
+    """
+    if build is not None and package is not None:
+        raise koji.GenericError, 'only one of build and package may be specified'
+
+    tables = ['tag_config']
+    joins = ['tag ON tag.id = tag_config.tag_id',
+             'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
+    fields = ['tag.id', 'tag.name', 'tag_config.perm_id', 'permissions.name',
+              'tag_config.arches', 'tag_config.locked']
+    aliases = ['id', 'name', 'perm_id', 'perm',
+               'arches', 'locked']
+    clauses = ['tag_config.active = true']
+
+    if build is not None:
+        # lookup build id
+        buildinfo = get_build(build)
+        if not buildinfo:
+            raise koji.GenericError, 'invalid build: %s' % build
+        joins.append('tag_listing ON tag.id = tag_listing.tag_id')
+        clauses.append('tag_listing.active = true')
+        clauses.append('tag_listing.build_id = %(buildID)i')
+        buildID = buildinfo['id']
+    elif package is not None:
+        packageinfo = lookup_package(package)
+        if not packageinfo:
+            raise koji.GenericError, 'invalid package: %s' % package
+        fields.extend(['users.id', 'users.name', 'tag_packages.blocked', 'tag_packages.extra_arches'])
+        aliases.extend(['owner_id', 'owner_name', 'blocked', 'extra_arches'])
+        joins.append('tag_packages ON tag.id = tag_packages.tag_id')
+        clauses.append('tag_packages.active = true')
+        clauses.append('tag_packages.package_id = %(packageID)i')
+        joins.append('users ON tag_packages.owner = users.id')
+        packageID = packageinfo['id']
+
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
+                           joins=joins, clauses=clauses, values=locals(),
+                           opts=queryOpts)
+    return query.execute()
 
 def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None,type=None):
     """Returns a list of builds for specified tag
@@ -6065,7 +6122,7 @@ class HasTagTest(koji.policy.BaseSimpleTest):
     """Check to see if build (currently) has a given tag"""
     name = 'hastag'
     def run(self, data):
-        tags = context.handlers.call('listTags', build=data['build'])
+        tags = list_tags(build=data['build'])
         #True if any of these tags match any of the patterns
         args = self.str.split()[1:]
         for tag in tags:
@@ -7213,63 +7270,8 @@ class RootExports(object):
             tasklist.append(task_id)
         return tasklist
 
-    def listTags(self, build=None, package=None, queryOpts=None):
-        """List tags.  If build is specified, only return tags associated with the
-        given build.  If package is specified, only return tags associated with the
-        specified package.  If neither is specified, return all tags.  Build can be
-        either an integer ID or a string N-V-R.  Package can be either an integer ID
-        or a string name.  Only one of build and package may be specified.  Returns
-        a list of maps.  Each map contains keys:
-          - id
-          - name
-          - perm_id
-          - perm
-          - arches
-          - locked
 
-        If package is specified, each map will also contain:
-          - owner_id
-          - owner_name
-          - blocked
-          - extra_arches
-        """
-        if build is not None and package is not None:
-            raise koji.GenericError, 'only one of build and package may be specified'
-
-        tables = ['tag_config']
-        joins = ['tag ON tag.id = tag_config.tag_id',
-                 'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
-        fields = ['tag.id', 'tag.name', 'tag_config.perm_id', 'permissions.name',
-                  'tag_config.arches', 'tag_config.locked']
-        aliases = ['id', 'name', 'perm_id', 'perm',
-                   'arches', 'locked']
-        clauses = ['tag_config.active = true']
-
-        if build is not None:
-            # lookup build id
-            buildinfo = get_build(build)
-            if not buildinfo:
-                raise koji.GenericError, 'invalid build: %s' % build
-            joins.append('tag_listing ON tag.id = tag_listing.tag_id')
-            clauses.append('tag_listing.active = true')
-            clauses.append('tag_listing.build_id = %(buildID)i')
-            buildID = buildinfo['id']
-        elif package is not None:
-            packageinfo = self.getPackage(package)
-            if not packageinfo:
-                raise koji.GenericError, 'invalid package: %s' % package
-            fields.extend(['users.id', 'users.name', 'tag_packages.blocked', 'tag_packages.extra_arches'])
-            aliases.extend(['owner_id', 'owner_name', 'blocked', 'extra_arches'])
-            joins.append('tag_packages ON tag.id = tag_packages.tag_id')
-            clauses.append('tag_packages.active = true')
-            clauses.append('tag_packages.package_id = %(packageID)i')
-            joins.append('users ON tag_packages.owner = users.id')
-            packageID = packageinfo['id']
-
-        query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                               joins=joins, clauses=clauses, values=locals(),
-                               opts=queryOpts)
-        return query.execute()
+    listTags = staticmethod(list_tags)
 
     getBuild = staticmethod(get_build)
     getMavenBuild = staticmethod(get_maven_build)
