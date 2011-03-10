@@ -3791,8 +3791,11 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         hostID - only buildroots on host.
         tagID - only buildroots for tag.
         state - only buildroots in state (may be a list)
-        rpmID - only the buildroot the specified rpm was built in
+        rpmID - only buildroots the specified rpm was used in
+        archiveID - only buildroots the specified archive was used in
         taskID - only buildroots associated with task.
+        buildrootID - only the specified buildroot
+        queryOpts - query options
     """
     fields = [('buildroot.id', 'id'), ('buildroot.arch', 'arch'), ('buildroot.state', 'state'),
               ('buildroot.dirtyness', 'dirtyness'), ('buildroot.task_id', 'task_id'),
