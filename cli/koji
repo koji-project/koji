@@ -2723,6 +2723,7 @@ def anon_handle_rpminfo(options, session, args):
     usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--buildroots", action="store_true", help=_("show buildroots the rpm was used in"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify an RPM"))
@@ -2766,6 +2767,14 @@ def anon_handle_rpminfo(options, session, args):
             print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
             print "Build Host: %(host_name)s" % br_info
             print "Build Task: %(task_id)i" % br_info
+        if options.buildroots:
+            br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order':'buildroot.id'})
+            print "Used in %i buildroots:" % len(br_list)
+            if len(br_list):
+                print "  %8s %-28s %-8s %-29s" % ('id','build tag','arch','build host')
+                print "  %s %s %s %s" % ('-'*8, '-'*28, '-'*8, '-'*29)
+            for br_info in br_list:
+                print "  %(id)8i %(tag_name)-28s %(arch)-8s %(host_name)-29s" % br_info
 
 
 def anon_handle_buildinfo(options, session, args):
