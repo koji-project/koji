@@ -5,6 +5,12 @@
           <a href="https://fedorahosted.org/koji/"><img src="/koji-static/images/powered-by-koji.png" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
         </p>
 
+#set $localfooterpath="/usr/share/koji-web/local/extra-footer.html"
+#if os.path.exists($localfooterpath)
+#set $localfooter="".join(open($localfooterpath).readlines())
+$localfooter
+#end if
+
       </div>
     </div>
 
