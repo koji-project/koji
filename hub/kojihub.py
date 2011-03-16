@@ -3999,11 +3999,15 @@ def new_package(name,strict=True):
 def add_volume(name, strict=True):
     """Add a new storage volume in the database"""
     context.session.assertPerm('admin')
+    voldir = koji.pathinfo.volumedir(name)
+    if not os.path.isdir(voldir):
+        raise koji.GenericError, 'please create the volume directory first'
     if strict:
         volinfo = lookup_name('volume', name, strict=False)
         if volinfo:
             raise koji.GenericError, 'volume %s already exists' % name
     volinfo = lookup_name('volume', name, strict=False, create=True)
+    return volinfo
 
 def remove_volume(volume):
     """Remove unused storage volume from the database"""
@@ -4034,6 +4038,9 @@ def change_build_volume(build, volume, strict=True):
     state = koji.BUILD_STATES[binfo['state']]
     if state not in ['COMPLETE', 'DELETED']:
         raise koji.GenericError, "Build %s is %s" % (binfo['nvr'], state)
+    voldir = koji.pathinfo.volumedir(volinfo['name'])
+    if not os.path.isdir(voldir):
+        raise koji.GenericError, "Directory entry missing for volume %(name)s" % volinfo
 
     # First copy the build dir(s)
     dir_moves = []
@@ -7086,6 +7093,8 @@ class RootExports(object):
     removeVolume = staticmethod(remove_volume)
     listVolumes = staticmethod(list_volumes)
     changeBuildVolume = staticmethod(change_build_volume)
+    def getVolume(self, volume, strict=False):
+        return lookup_name('volume', volume, strict=strict)
 
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')

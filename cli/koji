@@ -1857,6 +1857,58 @@ def handle_prune_signed_copies(options, session, args):
     print "Files: %i" % total_files
     print "Bytes: %i" % total_space
 
+def handle_set_build_volume(options, session, args):
+    "[admin] Move a build to a different volume"
+    usage = _("usage: %prog set-build-volume volume n-v-r [n-v-r ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
+    (options, args) = parser.parse_args(args)
+    volinfo = session.getVolume(args[0])
+    if not volinfo:
+        print "No such volume: %s" % args[0]
+        return 1
+    activate_session(session)
+    builds = []
+    for nvr in args[1:]:
+        binfo = session.getBuild(nvr)
+        if not binfo:
+            print "No such build: %s" % nvr
+        elif binfo['volume_id'] == volinfo['id']:
+            print "Build %s already on volume %s" %(nvr, volinfo['name'])
+        else:
+            builds.append(binfo)
+    if not builds:
+        print "No builds to move"
+        return 1
+    for binfo in builds:
+        session.changeBuildVolume(binfo['id'], volinfo['id'])
+        if options.verbose:
+            print "%s: %s -> %s" % (binfo['nvr'], binfo['volume_name'], volinfo['name'])
+
+def handle_add_volume(options, session, args):
+    "[admin] Add a new storage volume"
+    usage = _("usage: %prog add-volume volume-name")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    name = args[0]
+    volinfo = session.getVolume(name)
+    if volinfo:
+        print "Volume %s already exists" % name
+        return 1
+    activate_session(session)
+    volinfo = session.addVolume(name)
+    print "Added volume %(name)s with id %(id)i" % volinfo
+
+def handle_list_volumes(options, session, args):
+    "List storage volumes"
+    usage = _("usage: %prog list-volumes")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    for volinfo in session.listVolumes():
+        print volinfo['name']
 
 def handle_list_permissions(options, session, args):
     "[admin] List user permissions"
@@ -2820,6 +2872,8 @@ def anon_handle_buildinfo(options, session, args):
         print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
         print "State: %(state)s" % info
         print "Built by: %(owner_name)s" % info
+        if 'volume_name' in info:
+            print "Volume: %(volume_name)s" % info
         if task:
             print "Task: %s %s" % (task['id'], koji.taskLabel(task))
         else:
