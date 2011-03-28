@@ -51,13 +51,16 @@ class ManagedRepo(object):
         self.event_ts = data['create_ts']
         self.tag_id = data['tag_id']
         self.state = data['state']
+        if koji.REPO_STATES[self.state] in ['EXPIRED', 'DELETED', 'PROBLEM']:
+            self.current = False
         self.first_seen = time.time()
-        order = self.session.getFullInheritance(self.tag_id, event=self.event_id)
-        #order may contain same tag more than once
-        tags = {self.tag_id : 1}
-        for x in order:
-            tags[x['parent_id']] = 1
-        self.taglist = tags.keys()
+        if self.current:
+            order = self.session.getFullInheritance(self.tag_id, event=self.event_id)
+            #order may contain same tag more than once
+            tags = {self.tag_id : 1}
+            for x in order:
+                tags[x['parent_id']] = 1
+            self.taglist = tags.keys()
 
     def expire(self):
         """Mark the repo expired"""
@@ -422,7 +425,6 @@ class RepoManager(object):
 def main(options, session):
     repomgr = RepoManager(options, session)
     repomgr.readCurrentRepos()
-    repomgr.pruneLocalRepos()
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
