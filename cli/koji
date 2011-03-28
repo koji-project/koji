@@ -2257,9 +2257,7 @@ def anon_handle_latest_pkg(options, session, args):
             if options.paths:
                 if options.type == 'maven':
                     for x in data:
-                        x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
-                                                            'artifact_id': x['maven_artifact_id'],
-                                                            'version': x['maven_version']})
+                        x['path'] = pathinfo.mavenbuild(x)
                     fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
                 else:
                     for x in data:
@@ -2423,9 +2421,7 @@ def anon_handle_list_tagged(options, session, args):
         if options.paths:
             if options.type == 'maven':
                 for x in data:
-                    x['path'] = pathinfo.mavenbuild(x, {'group_id': x['maven_group_id'],
-                                                        'artifact_id': x['maven_artifact_id'],
-                                                        'version': x['maven_version']})
+                    x['path'] = pathinfo.mavenbuild(x)
                 fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
             else:
                 for x in data:
@@ -2892,7 +2888,7 @@ def anon_handle_buildinfo(options, session, args):
         if maven_archives:
             print "Maven archives:"
             for archive in maven_archives:
-                print os.path.join(koji.pathinfo.mavenbuild(info, maven_info), archive['filename'])
+                print os.path.join(koji.pathinfo.mavenbuild(info), koji.pathinfo.mavenfile(archive))
         win_archives = session.listArchives(buildID=info['id'], type='win')
         if win_archives:
             print "Windows archives:"
@@ -5422,7 +5418,6 @@ def anon_handle_download_build(options, session, args):
         print "You must specify --topurl to download files"
         return 1
     pathinfo = koji.PathInfo(topdir=suboptions.topurl)
-    build_url = pathinfo.build(info)
 
     urls = []
     if suboptions.type:
@@ -5431,12 +5426,12 @@ def anon_handle_download_build(options, session, args):
             print "No %s archives available for %s" % (suboptions.type, koji.buildLabel(info))
             return 1
         if suboptions.type == 'maven':
-            maven_info = session.getMavenBuild(info['id'], strict=True)
             for archive in archives:
-                urls.append((pathinfo.mavenbuild(info, maven_info) + '/' + archive['filename'], archive['filename']))
+                url = pathinfo.mavenbuild(info) + '/' + pathinfo.mavenfile(archive)
+                urls.append((url, pathinfo.mavenfile(archive)))
         elif suboptions.type == 'win':
             for archive in archives:
-                url = '%s/win/%s' % (build_url, pathinfo.winfile(archive))
+                url = pathinfo.winbuild(info) + '/' + pathinfo.winfile(archive)
                 urls.append((url, pathinfo.winfile(archive)))
         else:
             # can't happen
@@ -5459,7 +5454,7 @@ def anon_handle_download_build(options, session, args):
                 fname = pathinfo.signed(rpm, suboptions.key)
             else:
                 fname = pathinfo.rpm(rpm)
-            url = '%s/%s' % (build_url, fname)
+            url = pathinfo.build(info) + '/' + fname
             urls.append((url, os.path.basename(fname)))
 
     if suboptions.quiet:

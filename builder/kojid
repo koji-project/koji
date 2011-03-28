@@ -222,7 +222,7 @@ class BuildRoot(object):
         tag_name = self.tag_name
 
         pi = koji.PathInfo(topdir=self.options.topurl)
-        repourl = pi.repo(repo_id, tag_name) + '/maven2'
+        repourl = pi.repo(repo_id, tag_name) + '/maven'
         localrepo = localrepodir[len(self.rootdir()):]
 
         settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
@@ -1403,9 +1403,9 @@ class WrapperRPMTask(BaseTaskHandler):
                     # listArchives() should never return .log files, but we check for completeness
                     continue
                 if maven_info:
-                    relpath = os.path.join(self.pathinfo.mavenbuild(build, maven_info), artifact_name)[1:]
-                    artifact_relpaths.append(relpath)
                     repopath = self.pathinfo.mavenfile(artifact)
+                    relpath = os.path.join(self.pathinfo.mavenbuild(build), repopath)[1:]
+                    artifact_relpaths.append(relpath)
                     all_artifacts_with_path.append(repopath)
                 elif win_info:
                     repopath = self.pathinfo.winfile(artifact)

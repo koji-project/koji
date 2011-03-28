@@ -2064,46 +2064,88 @@ def get_task_descendents(task, childMap=None, request=False):
         get_task_descendents(Task(child['id']), childMap, request)
     return childMap
 
-def maven_tag_packages(taginfo, event_id):
+def maven_tag_archives(tag_id, event_id=None, inherit=True):
     """
-    Get Maven builds associated with the given tag, following inheritance.
-    For any parent tags where 'maven_include_all' is true, include all tagged
-    builds, not just the latest.  If there are multiple releases of the same
-    Maven groupId-artifactId-version, only take the latest release.
+    Get Maven artifacts associated with the given tag, following inheritance.
+    For any parent tags where 'maven_include_all' is true, include all versions
+    of a given groupId:artifactId, not just the most-recently-tagged.
     """
-    logger = logging.getLogger("koji.hub.repo_init")
-    if not taginfo['maven_support']:
-        return []
-
-    tag_id = taginfo['id']
-    # Get the latest Maven builds using the normal build resolution logic
-    builds = readTaggedBuilds(tag_id, event=event_id, inherit=True, latest=True, type='maven')
-
+    packages = readPackageList(tagID=tag_id, event=event_id, inherit=True)
     taglist = [tag_id]
-    taglist += [t['parent_id'] for t in readFullInheritance(tag_id, event=event_id)]
-    # Check if any tag in the inheritance hierarchy have maven_include_all == True
-    # If so, pull in all packages directly tagged into that tag as well
-    for maven_tag_id in taglist:
-        maven_tag = get_tag(maven_tag_id, strict=True)
-        if maven_tag['maven_include_all']:
-            logger.info('Including all packages in %s' % maven_tag['name'])
-            builds.extend(readTaggedBuilds(maven_tag['id'], event=event_id, inherit=False, latest=False, type='maven'))
-
-    seen = {}
+    if inherit:
+        taglist.extend([link['parent_id'] for link in readFullInheritance(tag_id, event_id)])
+    fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
+              ('build.pkg_id', 'pkg_id'), ('build.id', 'build_id'),
+              ('package.name', 'build_name'), ('build.version', 'build_version'),
+              ('build.release', 'build_release'), ('build.epoch', 'build_epoch'),
+              ('build.state', 'state'), ('build.task_id', 'task_id'),
+              ('build.owner', 'owner'),
+              ('archiveinfo.id', 'id'), ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.buildroot_id', 'buildroot_id'),
+              ('archiveinfo.filename', 'filename'), ('archiveinfo.size', 'size'),
+              ('archiveinfo.md5sum', 'md5sum'),
+              ('maven_archives.group_id', 'group_id'),
+              ('maven_archives.artifact_id', 'artifact_id'),
+              ('maven_archives.version', 'version'),
+              ('tag_listing.create_event', 'tag_event')]
+    tables = ['tag_listing']
+    joins = ['tag ON tag_listing.tag_id = tag.id',
+             'build ON tag_listing.build_id = build.id',
+             'package ON build.pkg_id = package.id',
+             'archiveinfo ON build.id = archiveinfo.build_id',
+             'maven_archives ON archiveinfo.id = maven_archives.archive_id']
+    clauses = [eventCondition(event_id, 'tag_listing'), 'tag_listing.tag_id = %(tag_id)i']
+    order = '-tag_event'
+    query = QueryProcessor(tables=tables, joins=joins,
+                           clauses=clauses, opts={'order': order},
+                           columns=[f[0] for f in fields],
+                           aliases=[f[1] for f in fields])
     results = []
-    # Since a Maven repo structure only has room for one version of a given groupId-artifactId, keep the
-    # first version found via the inheritance/tag-date mechanism, and skip all the rest
-    for build in builds:
-        maven_info = {'group_id': build['maven_group_id'],
-                      'artifact_id': build['maven_artifact_id'],
-                      'version': build['maven_version']}
-        maven_label = koji.mavenLabel(maven_info)
-        if seen.has_key(maven_label):
-            logger.info('Skipping duplicate Maven package: %s, build ID: %i' % (maven_label, build['id']))
-            continue
-        else:
-            results.append(build)
-            seen[maven_label] = True
+    included = {}
+    included_archives = set()
+    for tag_id in taglist:
+        taginfo = get_tag(tag_id, strict=True, event=event_id)
+        query.values['tag_id'] = tag_id
+        archives = query.execute()
+        for archive in archives:
+            pkg = packages.get(archive['pkg_id'])
+            if not pkg or pkg['blocked']:
+                continue
+            # 4 possibilities:
+            # 1: we have never seen this group_id:artifact_id before
+            #  - add it to the results, and it to the included dict
+            # 2: we have seen the group_id:artifact_id before, but a different version
+            #  - if the taginfo['maven_include_all'] is true, add it to the results and
+            #    append it to the included_versions dict, otherwise skip it
+            # 3: we have seen the group_id:artifact_id before, with the same version, from
+            #    a different build
+            #  - this is a different revision of the same GAV, ignore it because a more
+            #    recently-tagged build has already been included
+            # 4: we have seen the group_id:artifact_id before, with the same version, from
+            #    the same build
+            #  - it is another artifact from a build we're already including, so include it
+            #    as well
+            ga = '%(group_id)s:%(artifact_id)s' % archive
+            included_versions = included.get(ga)
+            if not included_versions:
+                included[ga] = {archive['version']: archive['build_id']}
+                included_archives.add(archive['id'])
+                results.append(archive)
+                continue
+            included_build = included_versions.get(archive['version'])
+            if not included_build:
+                if taginfo['maven_include_all']:
+                    included_versions[archive['version']] = archive['build_id']
+                    included_archives.add(archive['id'])
+                    results.append(archive)
+                continue
+            if included_build != archive['build_id']:
+                continue
+            # make sure we haven't already seen this archive somewhere else in the
+            # tag hierarchy
+            if archive['id'] not in included_archives:
+                included_archives.add(archive['id'])
+                results.append(archive)
     return results
 
 def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
@@ -2173,9 +2215,6 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.write(comps)
     fo.close()
 
-    if context.opts.get('EnableMaven') and tinfo['maven_support']:
-        maven_builds = maven_tag_packages(tinfo, event_id)
-
     #generate pkglist files
     for arch in packages.iterkeys():
         if arch in ['src','noarch']:
@@ -2225,12 +2264,12 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
         artifact_dirs = {}
-        for build in maven_builds:
-            build_maven_info = {'group_id': build['maven_group_id'],
-                                'artifact_id': build['maven_artifact_id'],
-                                'version': build['maven_version']}
-            for archive_info in list_archives(buildID=build['id'], type='maven'):
-                _populate_maven_repodir(build, build_maven_info, archive_info, repodir, artifact_dirs)
+        for archive in maven_tag_archives(tinfo['id'], event_id):
+            buildinfo = {'name': archive['build_name'],
+                         'version': archive['build_version'],
+                         'release': archive['build_release'],
+                         'epoch': archive['build_epoch']}
+            _populate_maven_repodir(buildinfo, archive, repodir, artifact_dirs)
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
@@ -2238,29 +2277,26 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                               event=event, repo_id=repo_id)
     return [repo_id, event_id]
 
-def _populate_maven_repodir(buildinfo, maveninfo, archiveinfo, repodir, artifact_dirs):
-    maven_pi = koji.PathInfo(topdir=repodir)
-    srcdir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
-    destdir = maven_pi.mavenrepo(buildinfo, archiveinfo)
+def _populate_maven_repodir(buildinfo, archiveinfo, repodir, artifact_dirs):
+    src = os.path.join(koji.pathinfo.mavenbuild(buildinfo), koji.pathinfo.mavenfile(archiveinfo))
+    destdir = os.path.join(repodir, 'maven', koji.pathinfo.mavenrepo(archiveinfo))
     koji.ensuredir(destdir)
     filename = archiveinfo['filename']
     # assume all artifacts we import have .md5 and .sha1 files associated with them in the global repo
     for suffix in ('', '.md5', '.sha1'):
         try:
-            os.symlink(os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix))
+            os.symlink(src + suffix, os.path.join(destdir, filename + suffix))
         except:
-            log_error('Error linking %s to %s' % (os.path.join(srcdir, filename + suffix), os.path.join(destdir, filename + suffix)))
+            log_error('Error linking %s to %s' % (src + suffix, os.path.join(destdir, filename + suffix)))
+    artifact_dirs.setdefault(os.path.dirname(destdir), set()).add((archiveinfo['group_id'],
+                                                                   archiveinfo['artifact_id'],
+                                                                   archiveinfo['version']))
 
-    artifact_dirs.setdefault(os.path.dirname(destdir), {})[(archiveinfo['group_id'],
-                                                            archiveinfo['artifact_id'],
-                                                            archiveinfo['version'])] = 1
-
-def _write_maven_repo_metadata(destdir, artifact_dict):
+def _write_maven_repo_metadata(destdir, artifacts):
     # Sort the list so that the highest version number comes last.
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
-    artifacts = artifact_dict.keys()
-    artifacts.sort(cmp=lambda a, b: rpm.labelCompare(a, b))
+    artifacts = sorted(artifacts, cmp=lambda a, b: rpm.labelCompare(a, b))
     artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
@@ -2271,16 +2307,19 @@ def _write_maven_repo_metadata(destdir, artifact_dict):
     <latest>%(version)s</latest>
     <release>%(version)s</release>
     <versions>
-"""
+""" % artifactinfo
     for artifact in artifacts:
         contents += """      <version>%s</version>
 """ % artifact[2]
     contents += """    </versions>
-    <lastUpdated>%(timestamp)s</lastUpdated>
+    <lastUpdated>%s</lastUpdated>
   </versioning>
 </metadata>
-"""
-    _generate_maven_metadata(artifactinfo, destdir, contents=contents)
+""" % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    mdfile = file(os.path.join(destdir, 'maven-metadata.xml'), 'w')
+    mdfile.write(contents)
+    mdfile.close()
+    _generate_maven_metadata(artifactinfo, destdir)
 
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
@@ -3704,8 +3743,10 @@ def list_archive_files(archive_id, queryOpts=None):
     win_info = get_win_build(build_info['id'])
 
     if maven_info:
-        file_path = os.path.join(koji.pathinfo.mavenbuild(build_info, maven_info),
-                                 archive_info['filename'])
+        maven_archive = get_maven_archive(archive_info['id'], strict=True)
+        archive_info.update(maven_archive)
+        file_path = os.path.join(koji.pathinfo.mavenbuild(build_info),
+                                 koji.pathinfo.mavenfile(archive_info))
     elif win_info:
         win_archive = get_win_archive(archive_info['id'], strict=True)
         archive_info.update(win_archive)
@@ -4056,12 +4097,6 @@ def change_build_volume(build, volume, strict=True):
     if os.path.exists(olddir):
         newdir = koji.pathinfo.build(binfo)
         dir_moves.append([olddir, newdir])
-    maven_info = get_maven_build(binfo['id'])
-    if maven_info:
-        olddir = koji.pathinfo.mavenbuild(old_binfo, maven_info)
-        if os.path.exists(olddir):
-            newdir = koji.pathinfo.mavenbuild(binfo, maven_info)
-            dir_moves.append([olddir, newdir])
     for olddir, newdir in dir_moves:
         shutil.copytree(olddir, newdir, symlinks=True)
 
@@ -4643,7 +4678,8 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         insert.execute()
 
         # move the file to it's final destination
-        mavendir = koji.pathinfo.mavenbuild(buildinfo, maveninfo)
+        mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
+                                koji.pathinfo.mavenrepo(typeInfo))
         _import_archive_file(filepath, mavendir)
         _generate_maven_metadata(maveninfo, mavendir)
     elif type == 'win':
@@ -4688,26 +4724,11 @@ def _import_archive_file(filepath, destdir):
     os.rename(filepath, final_path)
     os.symlink(final_path, filepath)
 
-def _generate_maven_metadata(maveninfo, mavendir, contents=None):
+def _generate_maven_metadata(maveninfo, mavendir):
     """
     Generate md5 and sha1 sums for every file in mavendir, if it doesn't already exist.
     Checksum files will be named <filename>.md5 and <filename>.sha1.
     """
-    metadata_filename = '%s/maven-metadata.xml' % mavendir
-    if not os.path.exists(metadata_filename):
-        if not contents:
-            contents = """<?xml version="1.0" encoding="UTF-8"?>
-<metadata>
-  <groupId>%(group_id)s</groupId>
-  <artifactId>%(artifact_id)s</artifactId>
-  <version>%(version)s</version>
-</metadata>
-"""
-        contents = contents % maveninfo
-        metadata_file = file(metadata_filename, 'w')
-        metadata_file.write(contents)
-        metadata_file.close()
-        
     mavenfiles = os.listdir(mavendir)
     for mavenfile in mavenfiles:
         if os.path.splitext(mavenfile)[1] in ('.md5', '.sha1'):
@@ -5413,11 +5434,6 @@ def _delete_build(binfo):
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
         dirs_to_clear.append(builddir)
-    maven_info = get_maven_build(build_id)
-    if maven_info:
-        mavendir = koji.pathinfo.mavenbuild(binfo, maven_info)
-        if os.path.exists(mavendir):
-            dirs_to_clear.append(mavendir)
     for filedir in dirs_to_clear:
         rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
         if rv != 0:
@@ -5449,8 +5465,6 @@ def reset_build(build):
     if not binfo:
         #nothing to do
         return
-    minfo = get_maven_build(binfo)
-    winfo = get_win_build(binfo)
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
@@ -5484,11 +5498,6 @@ def reset_build(build):
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
         dirs_to_clear.append(builddir)
-    # Windows files exist under the builddir, and will be removed with the rpms
-    if minfo:
-        mavendir = koji.pathinfo.mavenbuild(binfo, minfo)
-        if os.path.exists(mavendir):
-            dirs_to_clear.append(mavendir)
     for filedir in dirs_to_clear:
         rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
         if rv != 0:
@@ -7669,6 +7678,13 @@ class RootExports(object):
             tag = get_tag_id(tag,strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
 
+    def getLatestMavenArchives(self, tag, event=None, inherit=True):
+        """Return a list of the latest Maven archives in the tag, as of the given event
+           (or now if event is None).  If inherit is True, follow the tag hierarchy
+           and return a list of the latest archives for all tags in the tree."""
+        tag_id = get_tag_id(tag, strict=True)
+        return maven_tag_archives(tag_id, event_id=event, inherit=inherit)
+
     def getAverageBuildDuration(self, package):
         """Get the average duration of a build of the given package.
         Returns a floating-point value indicating the
@@ -8969,19 +8985,14 @@ class BuildRoot(object):
             raise koji.GenericError, "Maven support not enabled"
         if self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
-        current = dict([(r['id'], 1) for r in self.getArchiveList()])
-        archive_ids = []
-        for archive in archives:
-            if current.has_key(archive['id']):
-                continue
-            else:
-                archive_ids.append(archive['id'])
+        archives = set(archives)
+        current = set([r['id'] for r in self.getArchiveList()])
+        new_archives = archives.difference(current)
         insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id, project_dep)
         VALUES
         (%(broot_id)i, %(archive_id)i, %(project)s)"""
         broot_id = self.id
-        archive_ids.sort()
-        for archive_id in archive_ids:
+        for archive_id in sorted(new_archives):
             _dml(insert, locals())
 
 class Host(object):
@@ -9536,7 +9547,7 @@ class HostExports(object):
         # move the logs to their final destination
         for log_path in maven_results['logs']:
             import_build_log(os.path.join(maven_task_dir, log_path),
-                             build_info, subdir='maven2')
+                             build_info, subdir='maven')
 
         if rpm_results:
             _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
@@ -9804,34 +9815,11 @@ class HostExports(object):
 
         repo = repo_info(br.data['repo_id'], strict=True)
         tag = get_tag(repo['tag_id'], strict=True)
-        tag_builds = maven_tag_packages(tag, repo['create_event'])
+        tag_archives = maven_tag_archives(tag['id'], event_id=repo['create_event'])
         archives_by_label = {}
-        for build in tag_builds:
-            maven_info = {'group_id': build['maven_group_id'],
-                          'artifact_id': build['maven_artifact_id'],
-                          'version': build['maven_version']}
-            maven_label = koji.mavenLabel(maven_info)
-            if archives_by_label.has_key(maven_label):
-                # A previous build has already claimed this groupId-artifactId-version, and thus
-                # the spot in the filesystem.  This build never made it into the build environment.
-                continue
-            newly_added_versions = [maven_label]
-            archives_by_label[maven_label] = {}
-            for archive in list_archives(buildID=build['id'], type='maven'):
-                archive_label = koji.mavenLabel(archive)
-                if archive_label in newly_added_versions:
-                    archives_by_label[archive_label][archive['filename']] = archive
-                elif not archives_by_label.has_key(archive_label):
-                    # These archives have a different label than their parent build, but that label
-                    # has not been processed yet.  These archives may have made their way into the
-                    # build environment.
-                    newly_added_versions.append(archive_label)
-                    archives_by_label[archive_label] = {}
-                    archives_by_label[archive_label][archive['filename']] = archive
-                else:
-                    # We've already added entries for archives with this label, but associated
-                    # with another build.  These archives never made it into the build environment.
-                    continue
+        for archive in tag_archives:
+            maven_label = koji.mavenLabel(archive)
+            archives_by_label.setdefault(maven_label, {})[archive['filename']] = archive
 
         if not ignore:
             ignore = []
@@ -9849,15 +9837,15 @@ class HostExports(object):
             maven_info = entry['maven_info']
             maven_label = koji.mavenLabel(maven_info)
             ignore_archives = ignore_by_label.get(maven_label, {})
-            tag_archives = archives_by_label.get(maven_label, {})
+            label_archives = archives_by_label.get(maven_label, {})
 
             for fileinfo in entry['files']:
                 ignore_archive = ignore_archives.get(fileinfo['filename'])
-                tag_archive = tag_archives.get(fileinfo['filename'])
+                tag_archive = label_archives.get(fileinfo['filename'])
                 if ignore_archive and fileinfo['size'] == ignore_archive['size']:
                     continue
                 elif tag_archive and fileinfo['size'] == tag_archive['size']:
-                    archives.append(tag_archive)
+                    archives.append(tag_archive['id'])
                 else:
                     if not ignore_unknown:
                         raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \

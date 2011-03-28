@@ -1412,13 +1412,20 @@ class PathInfo(object):
         """Return the directory where a build belongs"""
         return self.volumedir(build.get('volume_name')) + ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
-    def mavenbuild(self, build, maveninfo):
-        """Return the directory where the Maven build exists in the global store (/mnt/koji/maven2)"""
+    def mavenbuild(self, build):
+        """Return the directory where the Maven build exists in the global store (/mnt/koji/packages)"""
+        return self.build(build) + '/maven'
+
+    def mavenrepo(self, maveninfo):
+        """Return the relative path to the artifact directory in the repo"""
         group_path = maveninfo['group_id'].replace('.', '/')
         artifact_id = maveninfo['artifact_id']
         version = maveninfo['version']
-        release = build['release']
-        return self.volumedir(build.get('volume_name')) + ("/maven2/%(group_path)s/%(artifact_id)s/%(version)s/%(release)s" % locals())
+        return "%(group_path)s/%(artifact_id)s/%(version)s" % locals()
+
+    def mavenfile(self, maveninfo):
+        """Return the relative path to the artifact in the repo"""
+        return self.mavenrepo(maveninfo) + '/' + maveninfo['filename']
 
     def winbuild(self, build):
         """Return the directory where the Windows build exists"""
@@ -1431,22 +1438,6 @@ class PathInfo(object):
         if wininfo['relpath']:
             filepath = wininfo['relpath'] + '/' + filepath
         return filepath
-
-    def mavenfile(self, maveninfo):
-        """Return the relative path the file exists in the per-tag Maven repo"""
-        group_path = maveninfo['group_id'].replace('.', '/')
-        artifact_id = maveninfo['artifact_id']
-        version = maveninfo['version']
-        filename = maveninfo['filename']
-        return "%(group_path)s/%(artifact_id)s/%(version)s/%(filename)s" % locals()
-
-    def mavenrepo(self, build, maveninfo):
-        """Return the directory where the Maven artifact exists in the per-tag Maven repo
-        (/mnt/koji/repos/tag-name/repo-id/maven2/)"""
-        group_path = maveninfo['group_id'].replace('.', '/')
-        artifact_id = maveninfo['artifact_id']
-        version = maveninfo['version']
-        return self.topdir + "/maven2/" + os.path.dirname(self.mavenfile(maveninfo))
 
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
