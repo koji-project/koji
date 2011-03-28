@@ -9554,9 +9554,13 @@ class HostExports(object):
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
-        update = """UPDATE build SET state=%(st_complete)i, completion_time=NOW()
-        WHERE id=%(build_id)i"""
-        _dml(update,locals())
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
+                                 values={'build_id': build_id})
+        update.set(state=st_complete)
+        update.rawset(completion_time='now()')
+        update.execute()
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
 
         # send email
         build_notification(task_id, build_id)
@@ -9659,11 +9663,13 @@ class HostExports(object):
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
-        update.set(id=build_id, state=st_complete)
+        update.set(state=st_complete)
         update.rawset(completion_time='now()')
         update.execute()
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
 
         # send email
         build_notification(task_id, build_id)
