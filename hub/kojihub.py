@@ -844,7 +844,7 @@ def pkglist_add(taginfo,pkginfo,owner=None,block=None,extra_arches=None,force=Fa
     pkg = lookup_package(pkginfo, strict=False)
     if not pkg:
         if not isinstance(pkginfo, basestring):
-            raise GenericError, "Invalid package: %s" % pkginfo
+            raise koji.GenericError, "Invalid package: %s" % pkginfo
     if owner is not None:
         owner = get_user(owner,strict=True)['id']
     action = 'add'
@@ -6567,7 +6567,7 @@ class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
     def buildFromCVS(self, url, tag):
-        raise koji.Deprecated
+        raise koji.FunctionDeprecated
         #return make_task('buildFromCVS',[url, tag])
 
     def restartHosts(self, priority=5):
