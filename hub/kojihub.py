@@ -6144,15 +6144,16 @@ class VolumeTest(koji.policy.MatchTest):
     field = '_volume'
     def run(self, data):
         #we need to find the volume name from the base data
+        volinfo = None
         if 'volume' in data:
-            volinfo = lookup_name('volume', name, strict=False)
+            volinfo = lookup_name('volume', data['volume'], strict=False)
         elif 'build' in data:
             build = get_build(data['build'])
             volinfo = {'id': build['volume_id'], 'name': build['volume_name']}
-        else:
+        if not volinfo:
             return False
         data[self.field] = volinfo['name']
-        return super(PackageTest, self).run(data)
+        return super(VolumeTest, self).run(data)
 
 class TagTest(koji.policy.MatchTest):
     name = 'tag'
