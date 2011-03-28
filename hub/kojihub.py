@@ -4083,7 +4083,9 @@ def change_build_volume(build, volume, strict=True):
 def new_build(data):
     """insert a new build entry"""
     data = data.copy()
-    if not data.has_key('pkg_id'):
+    if 'pkg_id' in data:
+        data['name'] = lookup_package(data['pkg_id'], strict=True)['name']
+    else:
         #see if there's a package name
         name = data.get('name')
         if not name:
@@ -4129,10 +4131,10 @@ def new_build(data):
     else:
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #insert the new data
-    data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
+    insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
                          'task_id', 'owner', 'completion_time'])
-    data['id'] = _singleValue("SELECT nextval('build_id_seq')")
-    insert = InsertProcessor('build', data=data)
+    data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
+    insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
