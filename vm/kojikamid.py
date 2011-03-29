@@ -595,27 +595,42 @@ def log_local(msg):
     sys.stderr.write('%s: %s\n' % (time.ctime(), msg))
     sys.stderr.write(tb)
 
-def incremental_upload(server, handler):
+def stream_logs(server, handler, builds):
+    """Stream logs incrementally to the server.
+       The global logfile will always be streamed.
+       The logfiles associated with any builds
+       will also be streamed."""
     global logfile
-    fd = file(logfile, 'r')
+    logs = {logfile: (os.path.basename(logfile), None)}
     while handler.active:
-        offset = fd.tell()
-        contents = fd.read(65536)
-        if contents:
-            size = len(contents)
-            data = base64.b64encode(contents)
-            digest = hashlib.md5(contents).hexdigest()
-            del contents
-            while handler.active:
+        for build in builds:
+            for relpath in build.logs:
+                logpath = os.path.join(build.source_dir, relpath)
+                if logpath not in logs:
+                    logs[logpath] = (relpath, None)
+        for log, (relpath, fd) in logs.iteritems():
+            if not fd:
+                if os.path.isfile(log):
+                    try:
+                        fd = file(log, 'r')
+                        logs[log] = (relpath, fd)
+                    except:
+                        log_local('Error opening %s' % log)
+                        continue
+                else:
+                    continue
+            offset = fd.tell()
+            contents = fd.read(65536)
+            if contents:
+                size = len(contents)
+                data = base64.b64encode(contents)
+                digest = hashlib.md5(contents).hexdigest()
+                del contents
                 try:
-                    server.uploadDirect(os.path.basename(logfile),
-                                        offset, size, digest, data)
-                    break
+                    server.uploadDirect(relpath, offset, size, digest, data)
                 except:
-                    # upload failed (possibly a timeout), log and retry
-                    log_local('error calling server.uploadDirect()')
-        else:
-            time.sleep(1)
+                    log_local('error uploading %s' % relpath)
+        time.sleep(1)
 
 def fail(server, handler):
     """do the right thing when a build fails"""
@@ -674,19 +689,26 @@ def main():
     try:
         server = get_mgmt_server()
 
-        thread = threading.Thread(target=incremental_upload,
-                                  args=(server, handler))
+        builds = []
+        thread = threading.Thread(target=stream_logs,
+                                  args=(server, handler, builds))
         thread.daemon = True
         thread.start()
 
         build = WindowsBuild(server)
+        builds.append(build)
         results = build.run()
 
-        for filename in results['output'].keys() + results['logs']:
+        for filename in results['output'].keys():
             upload_file(server, build.source_dir, filename)
 
         handler.active = False
         thread.join()
+
+        for filename in results['logs']:
+            # reupload the log files to make sure the thread
+            # didn't miss anything
+            upload_file(server, build.source_dir, filename)
 
         upload_file(server, os.path.dirname(logfile),
                     os.path.basename(logfile))

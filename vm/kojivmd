@@ -657,11 +657,13 @@ class VMExecTask(BaseTaskHandler):
         fobj.close()
         return len(data)
 
-    def uploadDirect(self, filename, offset, size, md5sum, data):
+    def uploadDirect(self, filepath, offset, size, md5sum, data):
         """
         Upload contents directly to the server.
         """
-        self.session.uploadFile(self.getUploadDir(), filename, size,
+        remotepath = os.path.dirname(os.path.join(self.getUploadDir(), filepath))
+        filename = os.path.basename(filepath)
+        self.session.uploadFile(remotepath, filename, size,
                                 md5sum, offset, data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
