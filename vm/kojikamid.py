@@ -113,7 +113,7 @@ class WindowsBuild(object):
                     checkdir = True
             else:
                 # Check in the path
-                ret, output = run(['which', entry], log=False, fatal=False)
+                ret, output = run(['/bin/which', entry], log=False)
                 output = output.strip()
                 if ret:
                     errors.append(output)
@@ -137,10 +137,8 @@ class WindowsBuild(object):
 
     def updateClam(self):
         """update ClamAV virus definitions"""
-        ret, output = run(['freshclam'])
-        if ret and ret == 1:
-            self.logger.info('ClamAV database is already up to date')
-        elif ret:
+        ret, output = run(['/bin/freshclam', '--quiet'])
+        if ret:
             raise BuildError, 'could not update ClamAV database: %s' % output
 
     def checkEnv(self):
@@ -175,7 +173,7 @@ class WindowsBuild(object):
             raise BuildError, 'no patches found at %s' % patchdir
         patches.sort()
         for patch in patches:
-            cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
+            cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
             run(cmd, fatal=True)
 
     def loadConfig(self):
@@ -332,7 +330,7 @@ class WindowsBuild(object):
         script = os.fdopen(tmpfd, 'w')
         for buildreq, brinfo in self.buildrequires:
             buildreq = self.varname(buildreq)
-            ret, output = run(['cygpath', '-wa', brinfo['dir']], log=False, fatal=True)
+            ret, output = run(['/bin/cygpath', '-wa', brinfo['dir']], log=False, fatal=True)
             br_dir = output.strip()
             files = ' '.join(brinfo['files'])
             files.replace('/', '\\')
@@ -418,7 +416,7 @@ class WindowsBuild(object):
         """ensure a path is virus free with ClamAV. path should be absolute"""
         if not path.startswith('/'):
             raise BuildError, 'Invalid path to scan for viruses: ' + path
-        run(['clamscan', '--quiet', '--recursive', path], fatal=True)
+        run(['/bin/clamscan', '--quiet', '--recursive', path], fatal=True)
 
     def gatherResults(self):
         """Gather information about the output from the build, return it"""
@@ -619,7 +617,7 @@ def main():
     prog = os.path.basename(sys.argv[0])
     opts = get_options()
     if opts.install:
-        ret, output = run(['cygrunsrv', '--install', prog,
+        ret, output = run(['/bin/cygrunsrv', '--install', prog,
                            '--path', sys.executable, '--args', os.path.abspath(prog),
                            '--type', 'auto', '--dep', 'Dhcp',
                            '--disp', 'Koji Windows Daemon',
@@ -632,7 +630,7 @@ def main():
             print 'Successfully installed the %s service' % prog
             sys.exit(0)
     elif opts.uninstall:
-        ret, output = run(['cygrunsrv', '--remove', prog], log=False)
+        ret, output = run(['/bin/cygrunsrv', '--remove', prog], log=False)
         if ret:
             print 'Error removing the %s service, output was: %s' % (prog, output)
             sys.exit(1)
