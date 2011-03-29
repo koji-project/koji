@@ -168,7 +168,7 @@ class WindowsBuild(object):
         """Apply patches in patchdir to files in sourcedir)"""
         patches = [patch for patch in os.listdir(patchdir) if \
                    os.path.isfile(os.path.join(patchdir, patch)) and \
-                   not patch.startswith('.')]
+                   patch.endswith('.patch')]
         if not patches:
             raise BuildError, 'no patches found at %s' % patchdir
         patches.sort()
