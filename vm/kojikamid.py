@@ -349,6 +349,11 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with cmd.exe"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat', dir='/cygdrive/c/Windows/Temp')
         script = os.fdopen(tmpfd, 'w')
+        for attr in ['source_dir', 'spec_dir', 'patches_dir']:
+            val = getattr(self, attr)
+            if val:
+                ret, output = run(['/bin/cygpath', '-wa', val], log=False, fatal=True)
+                script.write('set %s=%s\r\n' % (attr, output.strip()))
         for buildreq, brinfo in self.buildrequires:
             buildreq = self.varname(buildreq)
             ret, output = run(['/bin/cygpath', '-wa', brinfo['dir']], log=False, fatal=True)
@@ -381,6 +386,10 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with bash"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
         script = os.fdopen(tmpfd, 'w')
+        script.write("export source_dir='%s'\n" % self.source_dir)
+        script.write("export spec_dir='%s'\n" % self.spec_dir)
+        if self.patches_dir:
+            script.write("export patches_dir='%s'\n" % self.patches_dir)
         for buildreq, brinfo in self.buildrequires:
             buildreq = self.varname(buildreq)
             if brinfo.get('type'):
