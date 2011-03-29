@@ -42,6 +42,7 @@ import traceback
 import threading
 import re
 import glob
+import zipfile
 
 MANAGER_PORT = 7000
 
@@ -64,7 +65,7 @@ class WindowsBuild(object):
     VAR_CHARS = re.compile('[^A-Za-z0-9_]')
 
     def __init__(self, server):
-        """constructor: check ini spec file syntax, set build properties"""
+        """Get task info and setup build directory"""
         self.logger = logging.getLogger('koji.vm')
         self.server = server
         info = server.getTaskInfo()
@@ -80,11 +81,13 @@ class WindowsBuild(object):
         ensuredir(self.buildreq_dir)
         self.source_dir = None
         self.spec_dir = None
+        self.patches_dir = None
 
         # we initialize these here for clarity, but they are populated in loadConfig()
         self.name = None
         self.version = None
         self.release = None
+        self.epoch = None
         self.description = None
         self.platform = None
         self.preinstalled = []
@@ -143,25 +146,36 @@ class WindowsBuild(object):
 
     def checkEnv(self):
         """make the environment is fit for building in"""
-        # right now we just check for ClamAV executables
-        for clam_tool in ('freshclam', 'clamscan'):
-            ret, output = run(['which', clam_tool], log=False, fatal=False)
-            if ret:
-                raise BuildError, '%s appears to be missing, is ClamAV installed?' % clam_tool
+        for tool in ['/bin/freshclam', '/bin/clamscan', '/bin/patch']:
+            if not os.path.isfile(tool):
+                raise BuildError, '%s is missing from the build environment' % tool
+
+    def zipDir(self, rootdir, filename):
+        rootbase = os.path.basename(rootdir)
+        roottrim = len(rootdir) - len(rootbase)
+        zfo = zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED)
+        for dirpath, dirnames, filenames in os.walk(rootdir):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                zfo.write(filepath, filepath[roottrim:])
+        zfo.close()
 
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
         self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
+        self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
             spec_scm = SCM(self.task_opts['winspec'])
             self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
+            self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])
-            patch_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
-            self.applyPatches(self.source_dir, patch_dir)
+            self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
+            self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
+            self.applyPatches(self.source_dir, self.patches_dir)
         self.virusCheck(self.workdir)
 
     def applyPatches(self, sourcedir, patchdir):
@@ -192,8 +206,6 @@ class WindowsBuild(object):
             setattr(self, entry, conf.get('naming', entry))
         if conf.has_option('naming', 'epoch'):
             self.epoch = conf.get('naming', 'epoch')
-        else:
-            self.epoch = None
 
         # [building] section
         self.platform = conf.get('building', 'platform')
@@ -311,6 +323,15 @@ class WindowsBuild(object):
             self.cmdBuild()
         else:
             self.bashBuild()
+        # move the zips of the SCM checkouts to their final locations
+        for src in ['sources.zip', 'spec.zip', 'patches.zip']:
+            srcpath = os.path.join(self.workdir, src)
+            if os.path.exists(srcpath):
+                dest = '%s-%s-%s-%s' % (self.name, self.version, self.release, src)
+                destpath = os.path.join(self.source_dir, dest)
+                os.rename(srcpath, destpath)
+                self.output[dest] = {'platforms': ['all'],
+                                     'flags': ['src']}
 
     def varname(self, name):
         """
