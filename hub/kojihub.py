@@ -8981,8 +8981,8 @@ class BuildRoot(object):
         """Update the list of archives in a buildroot.
         If project is True, the archives are project dependencies.  If False, they dependencies required to setup the
         build environment."""
-        if not context.opts.get('EnableMaven'):
-            raise koji.GenericError, "Maven support not enabled"
+        if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
+            raise koji.GenericError, "non-rpm support is not enabled"
         if self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         archives = set(archives)
@@ -9647,7 +9647,7 @@ class HostExports(object):
                 continue
             filepath = os.path.join(task_dir, relpath)
             metadata['relpath'] = os.path.dirname(relpath)
-            import_archive(filepath, build_info, 'win', metadata)
+            import_archive(filepath, build_info, 'win', metadata, buildroot_id=results['buildroot_id'])
 
         # move the logs to their final destination
         for relpath in results['logs']:
@@ -9808,6 +9808,15 @@ class HostExports(object):
         if task_id is not None:
             br.assertTask(task_id)
         return br.updateList(rpmlist)
+
+    def updateBuildrootArchives(self, brootid, task_id, archives, project=False):
+        host = Host()
+        host.verify()
+        Task(task_id).assertHost(host.id)
+        br = BuildRoot(brootid)
+        br.assertHost(host.id)
+        br.assertTask(task_id)
+        return br.updateArchiveList(archives, project)
 
     def updateMavenBuildRootList(self, brootid, task_id, mavenlist, ignore=None, project=False, ignore_unknown=False):
         if not context.opts.get('EnableMaven'):

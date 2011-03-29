@@ -192,6 +192,7 @@ def main(options, session):
     tm.cleanupAllVMs()
     while True:
         try:
+            tm.updateBuildroots(nolocal=True)
             tm.updateTasks()
             taken = tm.getNextTask()
             tm.cleanupExpiredVMs()
@@ -505,6 +506,30 @@ class VMExecTask(BaseTaskHandler):
         """
         return self.task_info
 
+    def initBuildroot(self, repo_id, platform):
+        """
+        Create the buildroot object on the hub.
+        """
+        # we're using platform as the arch, which is currently limited to
+        # 16 characters by the database schema
+        buildroot_id = self.session.host.newBuildRoot(repo_id, platform[:16], task_id=self.id)
+        # a VM doesn't require any additional initialization, so move it from INIT to BUILDING
+        self.session.host.setBuildRootState(buildroot_id, 'BUILDING', task_id=self.id)
+        return buildroot_id
+
+    def updateBuildrootFiles(self, buildroot_id, file_ids):
+        """
+        Update the list of files that were downloaded into the build environment.
+        """
+        return self.session.host.updateBuildrootArchives(buildroot_id, self.id,
+                                                         file_ids, project=True)
+
+    def expireBuildroot(self, buildroot_id):
+        """
+        Set the buildroot to the expired state.
+        """
+        return self.session.host.setBuildRootState(buildroot_id, 'EXPIRED', task_id=self.id)
+
     def getLatestBuild(self, tag, package, repo_id):
         """
         Get information about the latest build of package "package" in tag "tag".
@@ -712,6 +737,9 @@ class VMExecTask(BaseTaskHandler):
         self.server.register_function(self.getTaskInfo)
         self.server.register_function(self.closeTask)
         self.server.register_function(self.failTask)
+        self.server.register_function(self.initBuildroot)
+        self.server.register_function(self.updateBuildrootFiles)
+        self.server.register_function(self.expireBuildroot)
         self.server.register_function(self.getLatestBuild)
         self.server.register_function(self.getFileList)
         self.server.register_function(self.getFile)

@@ -463,7 +463,7 @@ class TaskManager(object):
         self.session.host.freeTasks(self.tasks.keys())
         self.session.host.updateHost(task_load=0.0,ready=False)
 
-    def updateBuildroots(self):
+    def updateBuildroots(self, nolocal=False):
         """Handle buildroot cleanup/maintenance
 
         - examine current buildroots on system
@@ -471,8 +471,9 @@ class TaskManager(object):
         - clean up as needed
             - /var/lib/mock
             - /etc/mock/koji
+
+        If nolocal is True, do not try to scan local buildroots.
         """
-        local_br = self._scanLocalBuildroots()
         #query buildroots in db that are not expired
         states = [ koji.BR_STATES[x] for x in ('INIT','WAITING','BUILDING') ]
         db_br = self.session.listBuildroots(hostID=self.host_id,state=tuple(states))
@@ -493,6 +494,9 @@ class TaskManager(object):
                 self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id,self.tasks.keys()))
                 self.session.host.setBuildRootState(id,st_expired)
                 continue
+        if nolocal:
+            return
+        local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
         local_only = [id for id in local_br.iterkeys() if not db_br.has_key(id)]
         if local_only:

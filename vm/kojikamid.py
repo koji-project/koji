@@ -82,6 +82,7 @@ class WindowsBuild(object):
         self.source_dir = None
         self.spec_dir = None
         self.patches_dir = None
+        self.buildroot_id = None
 
         # we initialize these here for clarity, but they are populated in loadConfig()
         self.name = None
@@ -276,6 +277,17 @@ class WindowsBuild(object):
             self.output[filename] = metadata
         self.logs.extend([e.strip() for e in conf.get('files', 'logs').split('\n') if e])
 
+    def initBuildroot(self):
+        """Create the buildroot object on the hub."""
+        repo_id = self.task_opts.get('repo_id')
+        if not repo_id:
+            raise BuildError, 'repo_id must be specified'
+        self.buildroot_id = self.server.initBuildroot(repo_id, self.platform)
+
+    def expireBuildroot(self):
+        """Set the buildroot object to expired on the hub."""
+        self.server.expireBuildroot(self.buildroot_id)
+
     def fetchFile(self, basedir, buildinfo, fileinfo, type):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
@@ -302,6 +314,7 @@ class WindowsBuild(object):
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
+        file_ids = []
         for buildreq, brinfo in self.buildrequires:
             # if no type is specified in the options, default to win
             brtype = brinfo.get('type', 'win')
@@ -316,6 +329,8 @@ class WindowsBuild(object):
             for fileinfo in buildfiles:
                 self.fetchFile(br_dir, buildinfo, fileinfo, brtype)
                 brfiles.append(fileinfo['localpath'])
+                file_ids.append(fileinfo['id'])
+        self.server.updateBuildrootFiles(self.buildroot_id, file_ids)
         self.virusCheck(self.buildreq_dir)
 
     def build(self):
@@ -454,7 +469,8 @@ class WindowsBuild(object):
                 'epoch': self.epoch,
                 'description': self.description, 'platform': self.platform,
                 'provides': self.provides,
-                'output': self.output, 'logs': self.logs}
+                'output': self.output, 'logs': self.logs,
+                'buildroot_id': self.buildroot_id}
 
     def run(self):
         """Run the entire build process"""
@@ -462,10 +478,12 @@ class WindowsBuild(object):
         self.updateClam()
         self.checkout()
         self.loadConfig()
+        self.initBuildroot()
         self.checkTools()
         self.fetchBuildReqs()
         self.build()
         self.checkBuild()
+        self.expireBuildroot()
         return self.gatherResults()
 
 def run(cmd, chdir=None, fatal=False, log=True):

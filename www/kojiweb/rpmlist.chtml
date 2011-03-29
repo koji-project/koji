@@ -21,11 +21,11 @@ buildrootID=$buildroot.id #slurp
 #end def
 
   #if $type == 'component'
-  <h4>Component RPMs of buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  <h4>Component RPMs of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></h4>
   #elif $type == 'image'
   <h4>RPMs installed in <a href="imageinfo?imageID=$image.id">$image.filename</a></h4>
   #else
-  <h4>RPMs built in buildroot $buildroot.tag_name-$buildroot.id-$buildroot.repo_id</h4>
+  <h4>RPMs built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></h4>
   #end if
 
   <table class="data-list">
