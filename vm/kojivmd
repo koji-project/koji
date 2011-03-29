@@ -601,14 +601,13 @@ class VMExecTask(BaseTaskHandler):
             remote_pi = koji.PathInfo(self.options.topurl)
             if type == 'rpm':
                 remote_url = remote_pi.build(buildinfo) + '/' + \
-                             remote_pi.rpm(fileinfo)
+                             fileinfo['localpath']
             elif type == 'maven':
-                # the relevant Maven info is included in the buildinfo
-                remote_url = remote_pi.mavenbuild(buildinfo, buildinfo) + '/' + \
-                             fileinfo['filename']
+                remote_url = remote_pi.mavenbuild(buildinfo) + '/' + \
+                             fileinfo['localpath']
             elif type == 'win':
                 remote_url = remote_pi.winbuild(buildinfo) + '/' + \
-                             remote_pi.winfile(fileinfo)
+                             fileinfo['localpath']
             else:
                 raise koji.BuildError, 'unsupported file type: %s' % type
             koji.ensuredir(os.path.dirname(localpath))
