@@ -302,7 +302,7 @@ $value
       <th>Buildroot#if $len($buildroots) > 1 then 's' else ''#</th>
       <td>
         #for $buildroot in $buildroots
-        <a href="buildrootinfo?buildrootID=$buildroot.id">#if $task.method == 'buildArch' then '/var/lib/mock/' else ''#$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a><br/>
+        <a href="buildrootinfo?buildrootID=$buildroot.id">#if $task.method == 'vmExec' then '' else '/var/lib/mock/'#$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a><br/>
         #end for
       </td>
     </tr>
