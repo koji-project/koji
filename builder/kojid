@@ -498,7 +498,10 @@ class BuildRoot(object):
             cmd.append('-P%s' % ','.join(profiles))
         if props:
             for name, value in props.items():
-                cmd.append('-D%s=%s' % (name, value))
+                if value:
+                    cmd.append('-D%s=%s' % (name, value))
+                else:
+                    cmd.append('-D%s' % name)
 
         rv = self.mock(cmd + ['dependency:resolve-plugins'])
         if rv:

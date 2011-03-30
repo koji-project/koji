@@ -1007,8 +1007,7 @@ def handle_maven_build(options, session, args):
     for prop in build_opts.properties:
         fields = prop.split('=', 1)
         if len(fields) != 2:
-            parser.error(_("Properties must be in name=value format"))
-            assert False
+            fields.append('')
         props[fields[0]] = fields[1]
     if props:
         opts['properties'] = props
