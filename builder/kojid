@@ -1069,6 +1069,8 @@ class MavenTask(MultiPlatformTask):
             build_opts['properties'] = opts['properties']
         if opts.get('patches'):
             build_opts['patches'] = opts['patches']
+        if opts.get('packages'):
+            build_opts['packages'] = opts['packages']
         if opts.get('jvm_options'):
             build_opts['jvm_options'] = opts['jvm_options']
         if opts.get('maven_options'):
@@ -1174,6 +1176,15 @@ class BuildMavenTask(BaseTaskHandler):
         buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
+
+        packages = opts.get('packages')
+        if packages:
+            rv = buildroot.mock(['--install'] + packages)
+            self.session.host.setBuildRootState(buildroot.id, 'BUILDING')
+            self.session.host.updateBuildRootList(buildroot.id, buildroot.getPackageList())
+            if rv:
+                buildroot.expire()
+                raise koji.BuildrootError, 'error installing packages, %s' % buildroot._mockResult(rv, logfile='mock_output.log')
 
         if not os.path.exists('%s/usr/bin/mvn' % buildroot.rootdir()):
             raise koji.BuildError, '/usr/bin/mvn was not found in the buildroot'

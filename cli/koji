@@ -952,6 +952,9 @@ def handle_maven_build(options, session, args):
     parser.add_option("-D", "--property", action="append",
                       dest="properties", metavar="NAME=VALUE", default=[],
                       help=_("Pass a system property to the Maven build"))
+    parser.add_option("-p", "--package", action="append",
+                      dest="packages", metavar="PACKAGE", default=[],
+                      help=_("Install an additional package into the buildroot"))
     parser.add_option("-J", "--jvm-option", action="append",
                       dest="jvm_options", metavar="OPTION", default=[],
                       help=_("Pass a command-line option to the JVM"))
@@ -993,7 +996,7 @@ def handle_maven_build(options, session, args):
     opts = {}
     if build_opts.debug:
         build_opts.maven_options.append('--debug')
-    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'goals', 'profiles', 'jvm_options', 'maven_options'):
+    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'goals', 'profiles', 'packages', 'jvm_options', 'maven_options'):
         val = getattr(build_opts, key)
         if val:
             opts[key] = val
