@@ -152,7 +152,8 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.config = self.session.getBuildConfig(self.tag_id, event=self.event_id)
 
-    def _new(self, tag, arch, task_id, repo_id=None, install_group='build', setup_dns=False, bind_opts=None, maven_opts=None):
+    def _new(self, tag, arch, task_id, repo_id=None, install_group='build',
+             setup_dns=False, bind_opts=None, maven_opts=None, maven_envs=None):
         """Create a brand new repo"""
         if not repo_id:
             raise koji.BuildrootError, "A repo id must be provided"
@@ -185,8 +186,9 @@ class BuildRoot(object):
         self.name = "%(tag_name)s-%(id)s-%(repoid)s" % vars(self)
         self.install_group = install_group
         self.setup_dns = setup_dns
-        self.maven_opts = maven_opts
         self.bind_opts = bind_opts
+        self.maven_opts = maven_opts
+        self.maven_envs = maven_envs
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -206,6 +208,7 @@ class BuildRoot(object):
         opts['use_host_resolv'] = self.setup_dns
         opts['install_group'] = self.install_group
         opts['maven_opts'] = self.maven_opts
+        opts['maven_envs'] = self.maven_envs
         opts['bind_opts'] = self.bind_opts
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
@@ -1067,6 +1070,8 @@ class MavenTask(MultiPlatformTask):
             build_opts['profiles'] = opts['profiles']
         if opts.get('properties'):
             build_opts['properties'] = opts['properties']
+        if opts.get('envs'):
+            build_opts['envs'] = opts['envs']
         if opts.get('patches'):
             build_opts['patches'] = opts['patches']
         if opts.get('packages'):
@@ -1172,7 +1177,7 @@ class BuildMavenTask(BaseTaskHandler):
             maven_opts.append('-Xmx2048m')
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id,
                               install_group='maven-build', setup_dns=True, repo_id=repo_id,
-                              maven_opts=' '.join(maven_opts))
+                              maven_opts=maven_opts, maven_envs=opts.get('envs'))
         buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()

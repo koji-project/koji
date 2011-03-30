@@ -952,6 +952,9 @@ def handle_maven_build(options, session, args):
     parser.add_option("-D", "--property", action="append",
                       dest="properties", metavar="NAME=VALUE", default=[],
                       help=_("Pass a system property to the Maven build"))
+    parser.add_option("-E", "--env", action="append",
+                      dest="envs", metavar="NAME=VALUE", default=[],
+                      help=_("Set an environment variable"))
     parser.add_option("-p", "--package", action="append",
                       dest="packages", metavar="PACKAGE", default=[],
                       help=_("Install an additional package into the buildroot"))
@@ -1009,6 +1012,15 @@ def handle_maven_build(options, session, args):
         props[fields[0]] = fields[1]
     if props:
         opts['properties'] = props
+    envs = {}
+    for env in build_opts.envs:
+        fields = env.split('=', 1)
+        if len(fields) != 2:
+            parser.error(_("Environment variables must be in NAME=VALUE format"))
+            assert False
+        envs[fields[0]] = fields[1]
+    if envs:
+        opts['envs'] = envs
     priority = None
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
