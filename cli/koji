@@ -5484,7 +5484,7 @@ def anon_handle_wait_repo(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
-                      help=_("Check that the given build (or a later build of the same package) is in the newly-generated repo (may be used multiple times)"))
+                      help=_("Check that the given build is in the newly-generated repo (may be used multiple times)"))
     parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
     parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
     parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"), default=options.quiet)
@@ -5527,7 +5527,7 @@ def anon_handle_wait_repo(options, session, args):
 
     while True:
         if builds and repo and repo != last_repo:
-            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event']):
+            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event'], latest=True):
                 if not suboptions.quiet:
                     print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
                 return
