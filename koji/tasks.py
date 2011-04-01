@@ -258,6 +258,14 @@ class BaseTaskHandler(object):
             for filename in files:
                 self.uploadFile(os.path.join(path, filename), relpath)
 
+    def chownTree(self, dirpath, uid, gid):
+        """chown the given path and all files and directories under
+           it to the given uid/gid."""
+        for path, dirs, files in os.walk(dirpath):
+            os.chown(path, uid, gid)
+            for filename in files:
+                os.chown(os.path.join(path, filename), uid, gid)
+
     def localPath(self, relpath):
         """Return a local path to a remote file.
 

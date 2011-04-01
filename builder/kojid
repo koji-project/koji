@@ -1207,16 +1207,6 @@ class BuildMavenTask(BaseTaskHandler):
         koji.ensuredir(repodir)
         koji.ensuredir(patchdir)
 
-        mockuid = None
-        try:
-            if self.options.mockuser:
-                if self.options.mockuser.isdigit():
-                    mockuid = pwd.getpwuid(int(self.options.mockuser)).pw_uid
-                else:
-                    mockuid = pwd.getpwnam(self.options.mockuser).pw_uid
-        except:
-            self.logger.warn('Could not get uid for mockuser: %s' % self.options.mockuser)
-
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
@@ -1252,13 +1242,13 @@ class BuildMavenTask(BaseTaskHandler):
                     raise koji.BuildError, 'error applying patches from %s, see patches.log for details' % self.opts.get('patches')
 
         # Set ownership of the entire source tree to the mock user
-        if mockuid != None:
-            cmd = ['/bin/chown', '-R', str(mockuid), scmdir, outputdir, repodir]
-            if self.opts.get('patches'):
-                cmd.append(patchdir)
-            ret = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=1, append=1)
-            if ret:
-                raise koji.BuildError, 'error changing ownership of the source, repo, and output directories'
+        uid = pwd.getpwnam(self.options.mockuser)[2]
+        gid = grp.getgrnam('mock')[2]
+        self.chownTree(scmdir, uid, gid)
+        self.chownTree(outputdir, uid, gid)
+        self.chownTree(repodir, uid, gid)
+        if self.opts.get('patches'):
+            self.chownTree(patchdir, uid, gid)
 
         build_pom = os.path.join(sourcedir, 'pom.xml')
         if not os.path.exists(build_pom):
@@ -1524,6 +1514,12 @@ class WrapperRPMTask(BaseTaskHandler):
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
         self.spec_sanity_checks(specfile)
+
+        # chown the specdir to the mock user, because srpm creation happens
+        # as an unprivileged user
+        uid = pwd.getpwnam(self.options.mockuser)[2]
+        gid = grp.getgrnam('mock')[2]
+        self.chownTree(specdir, uid, gid)
 
         #build srpm
         self.logger.debug("Running srpm build")
@@ -2154,10 +2150,7 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         # rpmbuild seems to complain if it's running in the "mock" group but
         # files are in a different group
         gid = grp.getgrnam('mock')[2]
-        for dirpath, dirnames, filenames in os.walk(scmdir):
-            os.chown(dirpath, uid, gid)
-            for filename in filenames:
-                os.chown(os.path.join(dirpath, filename), uid, gid)
+        self.chownTree(scmdir, uid, gid)
 
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
