@@ -154,7 +154,7 @@
 	  <tr>
 	    <th>$ext</th>
 	    <td>
-              #if $ext == $exts[0]
+              #if $task and $ext == $exts[0]
 	        #if $mavenbuild
                 (<a href="$nvrpath/data/logs/maven/">build logs</a>)
                 #elif $winbuild
