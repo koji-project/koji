@@ -258,13 +258,20 @@ class WindowsBuild(object):
         # each entry may contain shell-style globs, and one or more files
         # matching the glob is considered valid
         if conf.has_option('building', 'postbuild'):
-            self.postbuild.extend([e.strip() for e in conf.get('building', 'postbuild').split('\n') if e])
+            for entry in conf.get('building', 'postbuild').split('\n'):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                for var in ('name', 'version', 'release'):
+                    entry = entry.replace('$' + var, getattr(self, var))
+                self.postbuild.append(entry)
 
         # [files] section
         for entry in conf.get('files', 'output').split('\n'):
+            entry = entry.strip()
             if not entry:
                 continue
-            tokens = entry.strip().split(':')
+            tokens = entry.split(':')
             filename = tokens[0]
             for var in ('name', 'version', 'release'): 
                 filename = filename.replace('$' + var, getattr(self, var))
