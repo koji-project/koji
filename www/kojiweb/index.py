@@ -605,7 +605,10 @@ def taskinfo(req, taskID):
         values['perms'] = server.getUserPerms(req.currentUser['id'])
     else:
         values['perms'] = []
-    
+
+    topurl = req.get_options().get('KojiFilesURL', 'http://localhost/')
+    values['pathinfo'] = koji.PathInfo(topdir=topurl)
+
     return _genHTML(req, 'taskinfo.chtml')
 
 def imageinfo(req, imageID):
