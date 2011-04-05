@@ -54,10 +54,10 @@
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
     </tr>
     #end if
+    #if $files
     <tr>
       <th id="filelist">Files</th>
       <td class="container">
-        #if $len($files) > 0
         <table class="nested data-list">
           <tr>
             <td class="paginate" colspan="2">
@@ -90,11 +90,9 @@
           </tr>
           #end for
         </table>
-        #else
-        No files
-        #end if
       </td>
     </tr>
+    #end if
     <tr>
       <th id="buildrootlist">Component&nbsp;of</th>
       <td class="container">
