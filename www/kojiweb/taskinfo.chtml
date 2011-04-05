@@ -315,7 +315,6 @@ $value
       </td>
     </tr>
     #end if
-    #if not ($task.method == 'createLiveCD' or $task.method == 'createAppliance')
     <tr>
       <th>Parent</th>
         <td>
@@ -325,7 +324,7 @@ $value
       </td>
     </tr>
     <tr>
-      <th>Descendent Tasks</th>
+      <th>Descendants</th>
       <td class="tree">
         #if $len($descendents[$str($task.id)]) > 0
         <span class="root">$task.method</span>
@@ -333,7 +332,6 @@ $value
         $printChildren($task.id, $descendents)
       </td>
     </tr>
-    #end if
     <tr>
       <th>Waiting?</th><td>#if $task.waiting then 'yes' else 'no'#</td>
     </tr>
