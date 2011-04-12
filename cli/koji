@@ -1143,8 +1143,8 @@ def anon_handle_mock_config(options, session, args):
                       help=_("Specify mockdir"))
     parser.add_option("--topdir", metavar="DIR",
                       help=_("Specify topdir"))
-    parser.add_option("--topurl", metavar="URL",
-                      help=_("url under which Koji files are accessible"))
+    parser.add_option("--topurl", metavar="URL", default=options.topurl,
+                      help=_("URL under which Koji files are accessible"))
     parser.add_option("--distribution", default="Koji Testing",
                       help=_("Change the distribution macro"))
     parser.add_option("-o", metavar="FILE", dest="ofile", help=_("Output to a file"))
