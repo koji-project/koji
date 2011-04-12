@@ -5145,9 +5145,11 @@ def query_history(tables=None, **kwargs):
                 #clauses.append('EXTRACT(EPOCH FROM ev1.time) > %(after)s OR EXTRACT(EPOCH FROM ev2.time) > %(after)s')
             elif arg == 'afterEvent':
                 data['afterEvent'] = value
-                clauses.append('create_event > %(afterEvent)i OR revoke_event > %(afterEvent)i')
-                fields['create_event > %(afterEvent)i'] = '_created_after_event'
-                fields['revoke_event > %(afterEvent)i'] = '_revoked_after_event'
+                c_test = '%s.create_event > %%(afterEvent)i' % table
+                r_test = '%s.revoke_event > %%(afterEvent)i' % table
+                clauses.append(' OR '.join([c_test, r_test]))
+                fields[c_test] = '_created_after_event'
+                fields[r_test] = '_revoked_after_event'
             elif arg == 'before':
                 if not isinstance(value, basestring):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
@@ -5158,9 +5160,11 @@ def query_history(tables=None, **kwargs):
                 fields['ev2.time < %(before)s'] = '_revoked_before'
             elif arg == 'beforeEvent':
                 data['beforeEvent'] = value
-                clauses.append('create_event < %(beforeEvent)i OR revoke_event < %(beforeEvent)i')
-                fields['create_event < %(beforeEvent)i'] = '_created_before_event'
-                fields['revoke_event < %(beforeEvent)i'] = '_revoked_before_event'
+                c_test = '%s.create_event < %%(beforeEvent)i' % table
+                r_test = '%s.revoke_event < %%(beforeEvent)i' % table
+                clauses.append(' OR '.join([c_test, r_test]))
+                fields[c_test] = '_created_before_event'
+                fields[r_test] = '_revoked_before_event'
         if skip:
             continue
         fields, aliases = zip(*fields.items())
