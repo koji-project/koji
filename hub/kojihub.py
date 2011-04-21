@@ -6368,12 +6368,13 @@ class SourceTest(koji.policy.MatchTest):
                 #imported, no source to match against
                 return False
             task = Task(build['task_id'])
+            info = task.getInfo()
             params = task.getRequest()
             #signatures:
             # build - (src, target, opts=None)
             # maven - (url, target, opts=None)
             # winbuild - (name, source_url, target, opts=None)
-            if task['method'] == 'winbuild':
+            if info['method'] == 'winbuild':
                 data[self.field] = params[1]
             else:
                 data[self.field] = params[0]
