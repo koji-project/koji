@@ -517,12 +517,15 @@ class VMExecTask(BaseTaskHandler):
         self.session.host.setBuildRootState(buildroot_id, 'BUILDING', task_id=self.id)
         return buildroot_id
 
-    def updateBuildrootFiles(self, buildroot_id, file_ids):
+    def updateBuildrootFiles(self, buildroot_id, files, rpms):
         """
         Update the list of files that were downloaded into the build environment.
         """
-        return self.session.host.updateBuildrootArchives(buildroot_id, self.id,
-                                                         file_ids, project=True)
+        if files:
+            self.session.host.updateBuildrootArchives(buildroot_id, self.id,
+                                                      files, project=True)
+        if rpms:
+            self.session.host.updateBuildRootList(buildroot_id, rpms, task_id=self.id)
 
     def expireBuildroot(self, buildroot_id):
         """

@@ -8997,7 +8997,7 @@ class BuildRoot(object):
             raise koji.GenericError, "non-rpm support is not enabled"
         if self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
-        archives = set(archives)
+        archives = set([r['id'] for r in archives])
         current = set([r['id'] for r in self.getArchiveList()])
         new_archives = archives.difference(current)
         insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id, project_dep)

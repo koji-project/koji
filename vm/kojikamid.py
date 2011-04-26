@@ -321,7 +321,8 @@ class WindowsBuild(object):
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
-        file_ids = []
+        files = []
+        rpms = []
         for buildreq, brinfo in self.buildrequires:
             # if no type is specified in the options, default to win
             brtype = brinfo.get('type', 'win')
@@ -336,8 +337,11 @@ class WindowsBuild(object):
             for fileinfo in buildfiles:
                 self.fetchFile(br_dir, buildinfo, fileinfo, brtype)
                 brfiles.append(fileinfo['localpath'])
-                file_ids.append(fileinfo['id'])
-        self.server.updateBuildrootFiles(self.buildroot_id, file_ids)
+                if brtype == 'rpm':
+                    rpms.append(fileinfo)
+                else:
+                    files.append(fileinfo)
+        self.server.updateBuildrootFiles(self.buildroot_id, files, rpms)
         self.virusCheck(self.buildreq_dir)
 
     def build(self):
