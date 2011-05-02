@@ -2,6 +2,7 @@
 
 #This is a wrapper around mod_python.publisher so that we can trap some exceptions
 import koji
+import mod_python.apache
 import mod_python.publisher
 import sys
 import traceback
@@ -17,6 +18,8 @@ def publish_object(req, object):
     #except koji.ServerOffline:
     #    values = _initValues(req, 'Outage', 'outage')
     #    return old_publish_object(req, _genHTML(req, 'outage.chtml'))
+    except mod_python.apache.SERVER_RETURN:
+        raise
     except Exception:
         etype, e = sys.exc_info()[:2]
         if isinstance(e, koji.ServerOffline):
