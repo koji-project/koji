@@ -6827,14 +6827,7 @@ class RootExports(object):
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
-        if img_type == 'livecd':
-            task_type = 'buildLiveCD'
-        elif img_type == 'appliance':
-            task_type = 'buildAppliance'
-        else:
-            raise koji.GenericError, 'unsupported image type: %s' % img_type
-
-        return make_task(task_type, [name, version, arch, target, ksfile, opts], **taskOpts)
+        return make_task(img_type, [name, version, arch, target, ksfile, opts], **taskOpts)
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
     #

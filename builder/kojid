@@ -1751,7 +1751,7 @@ class BuildImageTask(BaseTaskHandler):
 
 
 class BuildApplianceTask(BuildImageTask):
-    Methods = ['buildAppliance']
+    Methods = ['appliance']
 
     def handler(self, name, version, arch, target, ksfile, opts=None):
         """Governing task for building an appliance"""
@@ -1815,7 +1815,7 @@ class BuildApplianceTask(BuildImageTask):
                                 results['name'])
 
 class BuildLiveCDTask(BuildImageTask):
-    Methods = ['buildLiveCD']
+    Methods = ['livecd']
 
     def handler(self, name, version, arch, target, ksfile, opts=None):
         """Governing task for building an appliance"""
