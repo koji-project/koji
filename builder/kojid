@@ -1735,7 +1735,7 @@ class TagBuildTask(BaseTaskHandler):
 
 class BuildImageTask(BaseTaskHandler):
 
-    def initImageBuild(self, name, version, target_info, opts):
+    def initImageBuild(self, name, version, release, target_info, opts):
         """create a build object for this image build"""
         pkg_cfg = self.session.getPackageConfig(target_info['dest_tag_name'],
              name)
@@ -1747,8 +1747,11 @@ class BuildImageTask(BaseTaskHandler):
             elif pkg_cfg['blocked']:
                 raise koji.BuildError, "package (image)  %s is blocked for tag %s" % (name, target_info['dest_tag_name'])
         return self.session.host.initImageBuild(self.id,
-            dict(name=name, version=version, epoch=0))
+            dict(name=name, version=version, release=release, epoch=0))
 
+    def getRelease(self, name, ver):
+        """return the next available release number for an N-V"""
+        return self.session.host.getNextRelease(dict(name=name, version=ver))
 
 class BuildApplianceTask(BuildImageTask):
     Methods = ['appliance']
@@ -1768,11 +1771,15 @@ class BuildApplianceTask(BuildImageTask):
 
         # build image
         try:
+            release = opts.get('release')
+            if not release:
+                release = self.getRelease(name, version)
             build_id = None
             if not opts.get('scratch'):
-                build_id = self.initImageBuild(name, version, target_info, opts)
+                build_id = self.initImageBuild(name, version, release,
+                    target_info, opts)
             create_task_id = self.session.host.subtask(method='createAppliance',
-                arglist=[name, version, arch, target_info, build_tag,
+                arglist=[name, version, release, arch, target_info, build_tag,
                     repo_info, ksfile, opts],
                 label='appliance', parent=self.id, arch=arch)
             results = self.wait(create_task_id)[create_task_id]
@@ -1832,12 +1839,17 @@ class BuildLiveCDTask(BuildImageTask):
 
         # build the image
         try:
+            release = opts.get('release')
+            if not release:
+                release = self.getRelease(name, version)
             build_id = None
             if not opts.get('scratch'):
-                build_id = self.initImageBuild(name, version, target_info, opts)
+                build_id = self.initImageBuild(name, version, release,
+                    target_info, opts)
             create_task_id = self.session.host.subtask(method='createLiveCD',
-                arglist=[name, version, arch, target_info, build_tag, repo_info,
-                ksfile, opts], label='livecd', parent=self.id, arch=arch)
+                arglist=[name, version, release, arch, target_info, build_tag,
+                repo_info, ksfile, opts],
+                label='livecd', parent=self.id, arch=arch)
             results = self.wait(create_task_id)[create_task_id]
             self.logger.info('image build task (%s) completed' % create_task_id)
             self.logger.info('results: %s' % results)
@@ -2052,7 +2064,7 @@ class ApplianceTask(ImageTask):
     Methods = ['createAppliance']
     _taskWeight = 1.5
 
-    def handler(self, name, version, arch, target_info, build_tag, repo_info, ksfile, opts=None):
+    def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         if opts == None:
             opts = {}
@@ -2071,11 +2083,13 @@ class ApplianceTask(ImageTask):
 
         cmd = ['/usr/bin/appliance-creator', '-c', kskoji, '-d', '-v', 
                '--logfile', app_log, '--cache', cachedir, '-o', odir]
-        for arg_name in ('version', 'name', 'release', 'vmem', 'vcpu',
-                         'format'):
+        for arg_name in ('vmem', 'vcpu', 'format'):
             arg = opts.get(arg_name)
             if arg != None: 
                 cmd.extend(['--%s' % arg_name, arg])
+        appname = '%s-%s-%s' % (name, version, release)
+        cmd.extend(['--name', appname])
+        cmd.extend(['--version', version, '--release', release])
 
         # Run appliance-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
@@ -2195,7 +2209,7 @@ class LiveCDTask(ImageTask):
 
         return manifest
 
-    def handler(self, name, version, arch, target_info, build_tag, repo_info, ksfile, opts=None):
+    def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         if opts == None:
             opts = {}
@@ -2212,9 +2226,8 @@ class LiveCDTask(ImageTask):
                '--logfile', livecd_log, '--cache', cachedir]
         # we set the fs label to the same as the isoname if it exists, 
         # taking at most 32 characters
-        name_opt = opts.get('isoname')
-        if name_opt:
-            cmd.extend(('-f', name_opt[:32]))
+        isoname = '%s-%s-%s' % (name, version, release)
+        cmd.extend(['-f', isoname[:32]])
 
         # Run livecd-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
@@ -2241,18 +2254,15 @@ class LiveCDTask(ImageTask):
         # copy the iso out of the chroot. If we were given an isoname,
         # this is where the renaming happens.
         self.logger.debug('uploading image: %s' % isosrc)
-        if name_opt:
-            isofile = name_opt
-            if not isofile.endswith('.iso'):
-                isofile += '.iso'
+        isoname += '.iso'
 
         # Generate the file manifest of the image, upload the results
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
         self.genISOManifest(isosrc, manifest)
         self.uploadFile(manifest)
-        self.uploadFile(isosrc, remoteName=isofile)
+        self.uploadFile(isosrc, remoteName=isoname)
 
-        imgdata = {'arch': arch, 'name': isofile}
+        imgdata = {'arch': arch, 'name': isoname}
         if not opts.get('scratch'):
             hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
                                             cachedir[1:]))

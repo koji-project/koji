@@ -9734,7 +9734,6 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        build_info['release'] = self.getNextRelease(build_info)
         data = build_info.copy()
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
