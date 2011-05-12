@@ -314,14 +314,6 @@ $value
       </td>
     </tr>
     #end if
-    #if ($task.method == 'livecd' or $task.method == 'appliance') and $image
-    <tr>
-      <th>Image</th>
-      <td>
-        <a href="imageinfo?imageID=$image.id">$image.filename</a><br/>
-      </td>
-    </tr>
-    #end if
     <tr>
       <th>Parent</th>
         <td>

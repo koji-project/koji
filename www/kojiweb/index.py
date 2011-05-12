@@ -598,8 +598,6 @@ def taskinfo(environ, taskID):
     elif task['method'] == 'buildMaven':
         buildTag = params[1]
         values['buildTag'] = buildTag
-    elif task['method'] == 'livecd' or task['method'] == 'appliance':
-        values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:
             buildTag = server.getTag(params[1])
@@ -1659,7 +1657,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
 
     elif imageID != None:
         imageID = int(imageID)
-        values['image'] = server.getImageInfo(imageID=imageID)
+        values['image'] = server.getArchive(imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             rpms =  kojiweb.util.paginateMethod(server, values, 'listRPMs',

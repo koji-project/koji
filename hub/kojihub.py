@@ -3667,6 +3667,12 @@ def get_archive(archive_id, strict=False):
       relpath
       platforms
       flags
+
+    If the archive is part of an image build, and it is the image file that
+    contains the root partitioning ('/'), there will be a additional fields:
+
+      rootid
+      arch
     """
     fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum')
     select = """SELECT %s FROM archiveinfo
@@ -3683,6 +3689,10 @@ def get_archive(archive_id, strict=False):
     if win_info:
         del win_info['archive_id']
         archive.update(win_info)
+    image_info = get_image_archive(archive_id)
+    if image_info:
+        del image_info['archive_id']
+        archive.update(image_info)
     return archive
 
 def get_maven_archive(archive_id, strict=False):
@@ -3714,6 +3724,28 @@ def get_win_archive(archive_id, strict=False):
     select = """SELECT %s FROM win_archives
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     return _singleRow(select, locals(), fields, strict=strict)
+
+def get_image_archive(archive_id, strict=False):
+    """
+    Retrieve image-specific information about an archive.
+    Returns a map containing the following keys:
+
+    archive_id: id of the build (integer)
+    arch: the architecture of the image
+    rootid: True if this image has the root '/' partition
+    """
+    fields = ('archive_id', 'arch')
+    select = """SELECT %s FROM image_archives
+    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
+    results = _singleRow(select, locals(), fields, strict=strict)
+    results['rootid'] = False
+    fields = ('image_id', 'rpm_id')
+    select = """SELECT %s FROM imageinfo_listing
+    WHERE image_id = %%(archive_id)i""" % ', '.join(fields)
+    rpms = _singleRow(select, locals(), fields, strict=strict)
+    if rpms:
+        results['rootid'] = True
+    return results
 
 def _get_zipfile_list(archive_id, zippath):
     """
@@ -6868,54 +6900,6 @@ class RootExports(object):
 
         return make_task(img_type, [name, version, arch, target, ksfile, opts], **taskOpts)
 
-    # Database access to get imageinfo values. Used in parts of kojiweb.
-    #
-    def getImageInfo(self, imageID=None, taskID=None, strict=False):
-        """
-        Return the row from imageinfo given an image_id OR build_root_id.
-        It is an error if neither are specified, and image_id takes precedence.
-        Filesize will be reported as a string if it exceeds the 32-bit signed
-        integer limit.
-        """
-        tables = ['imageinfo']
-        fields = ['imageinfo.id', 'filename', 'filesize', 'imageinfo.arch', 'mediatype',
-                  'imageinfo.task_id', 'buildroot.id', 'hash']
-        aliases = ['id', 'filename', 'filesize', 'arch', 'mediatype', 'task_id',
-                   'br_id', 'hash']
-        joins = ['buildroot ON imageinfo.task_id = buildroot.task_id']
-        if imageID:
-            clauses = ['imageinfo.id = %(imageID)i']
-        elif taskID:
-            clauses = ['imageinfo.task_id = %(taskID)i']
-        else:
-            raise koji.GenericError, 'either imageID or taskID must be specified'
-
-        query = QueryProcessor(columns=fields, tables=tables, clauses=clauses,
-                               values=locals(), joins=joins, aliases=aliases)
-        ret = query.executeOne()
-
-        if strict and not ret:
-            if imageID:
-                raise koji.GenericError, 'no image with ID: %i' % imageID
-            else:
-                raise koji.GenericError, 'no image for task ID: %i' % taskID
-
-        # find the accompanying xml file, if any
-        if ret != None and ret['mediatype'] != 'LiveCD ISO':
-            imagepath = os.path.join(koji.pathinfo.imageFinalPath(), 
-                                     koji.pathinfo.applianceRelPath(ret['id']))
-            out_files = os.listdir(imagepath)
-            for out_file in out_files:
-                if out_file.endswith('.xml'):
-                    ret['xmlfile'] = out_file
-
-        # additional tweaking
-        if ret:
-            # Always return filesize as a string instead of an int so XMLRPC 
-            # doesn't complain about 32-bit overflow
-            ret['filesize'] = str(ret['filesize'])
-        return ret
-
     def hello(self,*args):
         return "Hello World"
 
@@ -7511,6 +7495,7 @@ class RootExports(object):
     getArchive = staticmethod(get_archive)
     getMavenArchive = staticmethod(get_maven_archive)
     getWinArchive = staticmethod(get_win_archive)
+    getImageArchive = staticmethod(get_image_archive)
     listArchiveFiles = staticmethod(list_archive_files)
     getArchiveFile = staticmethod(get_archive_file)
 
