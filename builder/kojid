@@ -1788,9 +1788,7 @@ class BuildApplianceTask(BuildImageTask):
 
             # import the image (move it too)
             if not opts.get('scratch'):
-                results['id'] = self.session.host.importImage(create_task_id,
-                    build_id, results)
-                self.logger.info('image import complete: id %s' % results['id'])
+                self.session.host.importImage(create_task_id, build_id, results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -1811,15 +1809,16 @@ class BuildApplianceTask(BuildImageTask):
 
         # report results
         if opts.get('scratch'):
-            return 'Scratch appliance image created: %s' % \
-                   os.path.join(koji.pathinfo.work(),
-                                koji.pathinfo.taskrelpath(create_task_id),
-                                results['name'])
+            respath = os.path.join(koji.pathinfo.work(),
+                koji.pathinfo.taskrelpath(create_task_id))
+            report = 'scratch'
         else:
-            return 'Created appliance image: %s' % \
-                   os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.applianceRelPath(results['id']),
-                                results['name'])
+            respath = os.path.join(koji.pathinfo.imageFinalPath(),
+                koji.pathinfo.applianceRelPath(build_id))
+            report = ''
+        files = [os.path.join(respath, f) for f in results['files']]
+        report += 'appliance build results:\n%s' % '\n'.join(files)
+        return report
 
 class BuildLiveCDTask(BuildImageTask):
     Methods = ['livecd']
@@ -1856,9 +1855,7 @@ class BuildLiveCDTask(BuildImageTask):
 
             # import it (and move)
             if not opts.get('scratch'):
-                results['id'] = self.session.host.importImage(create_task_id,
-                    build_id, results)
-                self.logger.info('image import complete: id %s' % results['id'])
+                self.session.host.importImage(create_task_id, build_id, results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -1882,12 +1879,12 @@ class BuildLiveCDTask(BuildImageTask):
             return 'Scratch image created: %s' % \
                    os.path.join(koji.pathinfo.work(),
                                 koji.pathinfo.taskrelpath(create_task_id),
-                                results['name'])
+                                results['files'][0])
         else:
             return 'Created image: %s' % \
                    os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.livecdRelPath(results['id']),
-                                results['name'])
+                                koji.pathinfo.livecdRelPath(build_id),
+                                results['files'][0])
 
 # A generic task for building cd or disk images. Other handlers should inherit
 # this.
@@ -1957,7 +1954,38 @@ class ImageTask(BaseTaskHandler):
         self.uploadFile(kspath) # upload the original ks file
         return kspath # full absolute path to the file in the chroot
 
-    def prepareKickstart(self, repo_info, target_info, arch, broot, kspath):
+    def readKickstart(self, kspath, opts):
+        """
+        Read a kickstart file and save the ks object as a task member.
+
+        @args:
+            kspath: path to a kickstart file
+        @returns: None
+        """
+        # XXX: If the ks file came from a local path and has %include
+        #      macros, *-creator will fail because the included
+        #      kickstarts were not copied into the chroot. For now we
+        #      require users to flatten their kickstart file if submitting
+        #      the task with a local path.
+        #
+        #      Note that if an SCM URL was used instead, %include macros
+        #      may not be a problem if the included kickstarts are present
+        #      in the repository we checked out.
+        if opts.get('ksversion'):
+            version = ksparser.makeVersion(ksparser.stringToVersion(opts['ksversion']))
+        else:
+            version = ksparser.makeVersion()
+        self.ks = ksparser.KickstartParser(version)
+        try:
+            self.ks.readKickstart(kspath)
+        except IOError, e:
+            raise koji.LiveCDError("Failed to read kickstart file "
+                                   "'%s' : %s" % (kspath, e))
+        except kserrors.KickstartError, e:
+            raise koji.LiveCDError("Failed to parse kickstart file "
+                                    "'%s' : %s" % (kspath, e))
+
+    def prepareKickstart(self, repo_info, target_info, arch, broot, opts):
         """
         Process the ks file to be used for controlled image generation. This
         method also uploads the modified kickstart file to the task output
@@ -1972,42 +2000,17 @@ class ImageTask(BaseTaskHandler):
         @returns:
             absolute path to a processed kickstart file within the buildroot
         """
-        # XXX: If the ks file came from a local path and has %include
-        #      macros, *-creator will fail because the included
-        #      kickstarts were not copied into the chroot. For now we
-        #      require users to flatten their kickstart file if submitting
-        #      the task with a local path.
-        #
-        #      Note that if an SCM URL was used instead, %include macros
-        #      may not be a problem if the included kickstarts are present
-        #      in the repository we checked out.
-
         # Now we do some kickstart manipulation. If the user passed in a repo
         # url with --repo, then we substitute that in for the repo(s) specified
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
-        if self.opts.get('ksversion'):
-            version = ksparser.makeVersion(ksparser.stringToVersion(self.opts['ksversion']))
-        else:
-            version = ksparser.makeVersion()
-        ks = ksparser.KickstartParser(version)
-        repo_class = kscontrol.dataMap[ks.version]['RepoData']
-
-        try:
-            ks.readKickstart(kspath)
-        except IOError, e:
-            raise koji.LiveCDError("Failed to read kickstart file "
-                                   "'%s' : %s" % (kspath, e))
-        except kserrors.KickstartError, e:
-            raise koji.LiveCDError("Failed to parse kickstart file "
-                                    "'%s' : %s" % (kspath, e))
-
-        ks.handler.repo.repoList = [] # delete whatever the ks file told us
-        if self.opts.get('repo'):
-            user_repos = self.opts['repo'].split(',')
+        repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
+        self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        if opts.get('repo'):
+            user_repos = opts['repo'].split(',')
             index = 0
             for user_repo in user_repos:
-                ks.handler.repo.repoList.append(repo_class(baseurl=user_repo, name='koji-override-%i' % index))
+                self.ks.handler.repo.repoList.append(repo_class(baseurl=user_repo, name='koji-override-%i' % index))
                 index += 1
         else:
             path_info = koji.PathInfo(topdir=self.options.topurl)
@@ -2015,7 +2018,7 @@ class ImageTask(BaseTaskHandler):
                                       target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, arch)
             self.logger.debug('BASEURL: %s' % baseurl)
-            ks.handler.repo.repoList.append(repo_class(baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'], repo_info['id'])))
+            self.ks.handler.repo.repoList.append(repo_class(baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'], repo_info['id'])))
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
@@ -2023,7 +2026,7 @@ class ImageTask(BaseTaskHandler):
                               (target_info['build_tag_name'], self.id))
         kojikspath = os.path.join(broot.rootdir(), kskoji[1:])
         outfile = open(kojikspath, 'w')
-        outfile.write(str(ks.handler))
+        outfile.write(str(self.ks.handler))
         outfile.close()
 
         # put the new ksfile in the output directory
@@ -2064,6 +2067,16 @@ class ApplianceTask(ImageTask):
     Methods = ['createAppliance']
     _taskWeight = 1.5
 
+    def getRootDevice(self):
+        """
+        Return the device name for the / partition, as specified in the
+        kickstart file. Appliances should have this defined.
+        """
+        for part in self.ks.handler.partition.partitions:
+            if part.mountpoint == '/':
+                return part.disk
+        raise koji.ApplianceError, 'kickstart lacks a "/" mountpoint'
+
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         if opts == None:
@@ -2071,8 +2084,8 @@ class ApplianceTask(ImageTask):
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 
                                       'appliance-build')
         kspath = self.fetchKickstart(broot, ksfile)
-        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, 
-                                       kspath)
+        self.readKickstart(kspath, opts)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
         # Figure out appliance-creator arguments, let it fail if something
         # is wrong.
         odir = 'app-output'
@@ -2105,28 +2118,19 @@ class ApplianceTask(ImageTask):
                 results.append(os.path.join(broot.rootdir(), 'tmp', 
                                             directory, f))
         self.logger.debug('output: %s' % results)
-        # TODO: allow for multiple disk images to be generated
-        if len(results) > 2:
-            raise koji.ApplianceError, \
-                "Only one image is allowed for output! found: %s" % results
-
-        app_path = None
+        if len(results) == 0:
+            raise koji.ApplianceError, "Could not find image build results!"
+        imgdata = {'arch': arch, 'rootdev': self.getRootDevice()}
+        imgdata['files'] = []
         for ofile in results:
-            if ofile.endswith('.xml'):
-                self.uploadFile(ofile)
-            else:
-                app_path = ofile
-        if app_path == None:
-            raise koji.ApplianceError, "Could not find appliance image!"
-        self.uploadFile(app_path)
-        app_file = os.path.basename(app_path)
+            self.uploadFile(ofile)
+            imgdata['files'].append(os.path.basename(ofile))
 
         # TODO: get file manifest from the appliance
 
-        imgdata = {'arch': arch, 'name': app_file}
         if not opts.get('scratch'):
-            hdrlist = self.getImagePackages(
-                os.path.join(broot.rootdir(), cachedir[1:]))
+            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
+                cachedir[1:]))
             broot.markExternalRPMs(hdrlist)
             imgdata['rpmlist'] = hdrlist
  
@@ -2217,8 +2221,8 @@ class LiveCDTask(ImageTask):
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
             'livecd-build')
         kspath = self.fetchKickstart(broot, ksfile)
-        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot,
-            kspath)
+        self.readKickstart(kspath, opts)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
         cachedir = '/tmp/koji-livecd'   # arbitrary paths in chroot
         livecd_log = '/tmp/livecd.log'
@@ -2262,7 +2266,7 @@ class LiveCDTask(ImageTask):
         self.uploadFile(manifest)
         self.uploadFile(isosrc, remoteName=isoname)
 
-        imgdata = {'arch': arch, 'name': isoname}
+        imgdata = {'arch': arch, 'files': [isoname], 'rootdev': None}
         if not opts.get('scratch'):
             hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
                                             cachedir[1:]))

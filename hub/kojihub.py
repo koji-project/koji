@@ -4685,7 +4685,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
 
     filepath: full path to the archive file
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
-    type: type of the archive being imported.  Currently supported archive types: maven, win
+    type: type of the archive being imported.  Currently supported archive types: maven, win, image
     typeInfo: dict of type-specific information
     buildroot_id: the id of the buildroot the archive was built in (may be null)
     """
@@ -4779,6 +4779,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
                               build_type=type, filepath=filepath)
+    return archiveinfo
 
 def _import_archive_file(filepath, destdir):
     """
@@ -6583,33 +6584,33 @@ def importImageInternal(task_id, build_id, imgdata):
 
     imgdata is:
     arch - the arch if the image
-    name - file name of the image
+    files - files associated with the image (appliances have multiple files)
     rpmlist - the list of RPM NVRs installed into the image
+    rootdev - root device image that mounts "/"; the archive id of this image
+        is what is referenced in the imageinfo_listing table. livecds set this
+        to None.
     """
     host = Host()
     host.verify()
     task = Task(task_id)
 
-    # get these consistent...
-    relpath = os.path.join(koji.pathinfo.taskrelpath(task_id), imgdata['name'])
-    fullpath = os.path.join(koji.pathinfo.task(task_id), imgdata['name'])
-    koji.plugin.run_callbacks('preImport', type='image', image=imgdata,
-                              fullpath=fullpath)
+    koji.plugin.run_callbacks('preImport', type='image', image=imgdata)
 
     # import the build output
-    archivetype = get_archive_type(filename=relpath)
-    logger.info('image type is: %s' % archivetype)
-    if not archivetype:
-        raise koji.BuildError, 'Unsupported image type'
-    # TODO: import xml file too
     build_info = get_build(build_id, strict=True)
-    imgdata['relpath'] = os.path.dirname(relpath)
-    logger.info('importing image as an archive')
-    import_archive(fullpath, build_info, 'image', imgdata)
+    imgdata['relpath'] = koji.pathinfo.taskrelpath(task_id)
+    archives = []
+    for imgfile in imgdata['files']:
+        relpath = os.path.join(koji.pathinfo.taskrelpath(task_id), imgfile)
+        fullpath = os.path.join(koji.pathinfo.task(task_id), imgfile)
+        archivetype = get_archive_type(filename=relpath)
+        logger.debug('image type we are importing is: %s' % archivetype)
+        if not archivetype:
+            raise koji.BuildError, 'Unsupported image type'
+        archives.append(import_archive(fullpath, build_info, 'image', imgdata))
 
     # track the contents of the image
     rpm_ids = []
-    logger.info('figuring out where rpms came from')
     for an_rpm in imgdata['rpmlist']:
         location = an_rpm.get('location')
         if location:
@@ -6618,16 +6619,19 @@ def importImageInternal(task_id, build_id, imgdata):
             data = get_rpm(an_rpm, strict=True)
         rpm_ids.append(data['id'])
 
-    logger.info('getting imageID')
-    query = QueryProcessor(tables=('archiveinfo',), columns=('id',),
-                           clauses=('build_id = %(build_id)i',),
-                           values={'build_id': build_info['id']})
-    results = query.executeOne()
-    logger.info('imageID is %s' % results['id'])
+    archive_id = archives[0]['id'] # satisfies the livecd case
+    if imgdata.get('rootdev'):
+        # but we are importing an appliance
+        for a in archives:
+            if imgdata['rootdev'] in a['filename']:
+                archive_id = a['id']
+                break
+
+    logger.debug('root archive id is %s' % archive_id)
     q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
            VALUES (%(image_id)i,%(rpm_id)i)"""
     for rpm_id in rpm_ids:
-        _dml(q, {'image_id': results['id'], 'rpm_id': rpm_id})
+        _dml(q, {'image_id': archive_id, 'rpm_id': rpm_id})
     logger.info('updated imageinfo_listing')
 
     # update build table
@@ -6643,8 +6647,6 @@ def importImageInternal(task_id, build_id, imgdata):
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               fullpath=fullpath)
-
-    return results['id']
 
 #
 # XMLRPC Methods
