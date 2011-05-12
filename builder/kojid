@@ -1774,9 +1774,9 @@ class BuildApplianceTask(BuildImageTask):
             release = opts.get('release')
             if not release:
                 release = self.getRelease(name, version)
-            build_id = None
+            bld_info = None
             if not opts.get('scratch'):
-                build_id = self.initImageBuild(name, version, release,
+                bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
             create_task_id = self.session.host.subtask(method='createAppliance',
                 arglist=[name, version, release, arch, target_info, build_tag,
@@ -1788,22 +1788,23 @@ class BuildApplianceTask(BuildImageTask):
 
             # import the image (move it too)
             if not opts.get('scratch'):
-                self.session.host.importImage(create_task_id, build_id, results)
+                self.session.host.importImage(create_task_id, bld_info['id'],
+                    results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
         except:
             if not opts.get('scratch'):
                 #scratch builds do not get imported
-                if build_id:
-                    self.session.host.failBuild(self.id, build_id)
+                if bld_info:
+                    self.session.host.failBuild(self.id, bld_info['id'])
             # reraise the exception
             raise
 
         # tag it
         if not opts.get('scratch') and not opts.get('skip_tag'):
             tag_task_id = self.session.host.subtask(method='tagBuild',
-                arglist=[target_info['dest_tag'], build_id, False, None, True],
+                arglist=[target_info['dest_tag'], bld_info['id'], False, None, True],
                 label='tag', parent=self.id, arch='noarch')
             self.wait(tag_task_id)
 
@@ -1814,7 +1815,7 @@ class BuildApplianceTask(BuildImageTask):
             report = 'scratch'
         else:
             respath = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.applianceRelPath(build_id))
+                koji.pathinfo.applianceRelPath(bld_info))
             report = ''
         files = [os.path.join(respath, f) for f in results['files']]
         report += 'appliance build results:\n%s' % '\n'.join(files)
@@ -1841,9 +1842,9 @@ class BuildLiveCDTask(BuildImageTask):
             release = opts.get('release')
             if not release:
                 release = self.getRelease(name, version)
-            build_id = None
+            bld_info = None
             if not opts.get('scratch'):
-                build_id = self.initImageBuild(name, version, release,
+                bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
             create_task_id = self.session.host.subtask(method='createLiveCD',
                 arglist=[name, version, release, arch, target_info, build_tag,
@@ -1855,22 +1856,23 @@ class BuildLiveCDTask(BuildImageTask):
 
             # import it (and move)
             if not opts.get('scratch'):
-                self.session.host.importImage(create_task_id, build_id, results)
+                self.session.host.importImage(create_task_id, bld_info['id'],
+                    results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
         except:
             if not opts.get('scratch'):
                 #scratch builds do not get imported
-                if build_id:
-                    self.session.host.failBuild(self.id, build_id)
+                if bld_info:
+                    self.session.host.failBuild(self.id, bld_info['id'])
             # reraise the exception
             raise
 
         # tag it if necessary
         if not opts.get('scratch') and not opts.get('skip_tag'):
             tag_task_id = self.session.host.subtask(method='tagBuild',
-                arglist=[target_info['dest_tag'], build_id, False, None, True],
+                arglist=[target_info['dest_tag'], bld_info['id'], False, None, True],
                 label='tag', parent=self.id, arch='noarch')
             self.wait(tag_task_id)
 
@@ -1883,7 +1885,7 @@ class BuildLiveCDTask(BuildImageTask):
         else:
             return 'Created image: %s' % \
                    os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.livecdRelPath(build_id),
+                                koji.pathinfo.livecdRelPath(bld_info),
                                 results['files'][0])
 
 # A generic task for building cd or disk images. Other handlers should inherit

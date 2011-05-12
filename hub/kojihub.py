@@ -4767,10 +4767,10 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         insert.execute()
         if archivetype['name'] == 'iso':
             imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.livecdRelPath(archive_id))
+                koji.pathinfo.livecdRelPath(buildinfo))
         else:
             imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.applianceRelPath(archive_id))
+                koji.pathinfo.applianceRelPath(buildinfo))
         _import_archive_file(filepath, imgdir)
         # import log files?
     else:
@@ -9744,7 +9744,7 @@ class HostExports(object):
         build_id = new_build(data)
         data['id'] = build_id
         new_image_build(data)
-        return build_id
+        return data
 
     def initWinBuild(self, task_id, build_info, win_info):
         """

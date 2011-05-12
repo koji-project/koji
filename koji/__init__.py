@@ -1497,13 +1497,15 @@ class PathInfo(object):
         """Return the relative path for the task work directory"""
         return "tasks/%s/%s" % (task_id % 10000, task_id)
 
-    def livecdRelPath(self, image_id):
+    def livecdRelPath(self, build_info):
         """Return the relative path for the livecd image directory"""
-        return os.path.join('livecd', str(image_id % 10000), str(image_id))
+        return os.path.join('livecd', build_info['name'], build_info['version'],
+            build_info['release'])
 
-    def applianceRelPath(self, image_id):
+    def applianceRelPath(self, build_info):
         """Return the relative path for the appliance image directory"""
-        return os.path.join('appliance', str(image_id % 10000), str(image_id))
+        return os.path.join('appliance', build_info['name'],
+            build_info['version'], build_info['release'])
 
     def imageFinalPath(self):
         """Return the absolute path to where completed images can be found"""
