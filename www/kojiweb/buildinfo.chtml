@@ -154,13 +154,15 @@
 	  <tr>
 	    <th>$ext</th>
 	    <td>
-              #if $task and $ext == $exts[0]
+          #if $task and $ext == $exts[0]
 	        #if $mavenbuild
                 (<a href="$nvrpath/data/logs/maven/">build logs</a>)
-                #elif $winbuild
+            #elif $winbuild
                 (<a href="$nvrpath/data/logs/win/">build logs</a>)
+            #elif $imagebuild
+                (<a href="$imageBase/$nvrpath/data/logs/image">build logs</a>)
 	        #end if
-              #end if
+          #end if
 	    </td>
 	  </tr>
 	  #for $archive in $archivesByExt[$ext]
@@ -171,6 +173,8 @@
             $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.mavenbuild($build)/$pathinfo.mavenfile($archive)">download</a>)
             #elif $winbuild
             $pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.winbuild($build)/$pathinfo.winfile($archive)">download</a>)
+            #elif $imagebuild
+            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$imageBase/$nvrpath/$archive.filename">download</a>)
             #end if
 	    </td>
 	  </tr>

@@ -39,7 +39,7 @@
       <th>Size</th><td>$archive.size</td>
     </tr>
     <tr>
-      <th>MD5 Sum</th><td>$archive.md5sum</td>
+      <th>Checksum</th><td>$archive.checksum</td>
     </tr>
     #if $wininfo
     <tr>

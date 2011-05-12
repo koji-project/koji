@@ -666,24 +666,6 @@ def taskinfo(environ, taskID):
 
     return _genHTML(environ, 'taskinfo.chtml')
 
-def imageinfo(environ, imageID):
-    """Do some prep work and generate the imageinfo page for kojiweb."""
-    server = _getServer(environ)
-    values = _initValues(environ, 'Image Information')
-    imageURL = environ['koji.options']['KojiFilesURL'] + '/images'
-    imageID = int(imageID)
-    image = server.getImageInfo(imageID=imageID, strict=True)
-    values['image'] = image
-    values['title'] = image['filename'] + ' | Image Information'
-    values['buildroot'] = server.getBuildroot(image['br_id'], strict=True)
-    values['task'] = server.getTaskInfo(image['task_id'], request=True)
-    if image['mediatype'] == 'LiveCD ISO':
-        values['imageBase'] = imageURL + '/' + koji.pathinfo.livecdRelPath(image['id'])
-    else:
-        values['imageBase'] = imageURL + '/' + koji.pathinfo.applianceRelPath(image['id'])
-
-    return _genHTML(environ, 'imageinfo.chtml')
-
 def taskstatus(environ, taskID):
     server = _getServer(environ)
 
@@ -1100,10 +1082,13 @@ def buildinfo(environ, buildID):
     rpms.sort(_sortbyname)
     mavenbuild = server.getMavenBuild(buildID)
     winbuild = server.getWinBuild(buildID)
+    imagebuild = server.getImageBuild(buildID)
     if mavenbuild:
         archivetype = 'maven'
     elif winbuild:
         archivetype = 'win'
+    elif imagebuild:
+        archivetype = 'image'
     else:
         archivetype = None
     archives = server.listArchives(build['id'], type=archivetype, queryOpts={'order': 'filename'})
@@ -1177,6 +1162,7 @@ def buildinfo(environ, buildID):
     values['task'] = task
     values['mavenbuild'] = mavenbuild
     values['winbuild'] = winbuild
+    values['imagebuild'] = imagebuild
     values['archives'] = archives
     values['archivesByExt'] = archivesByExt
     
@@ -1200,7 +1186,12 @@ def buildinfo(environ, buildID):
 
     topurl = environ['koji.options']['KojiFilesURL']
     values['pathinfo'] = koji.PathInfo(topdir=topurl)
-
+    if imagebuild:
+        image_url = topurl + '/images' # XXX
+        if 'iso' in archivesByExt.keys():
+            values['imageBase'] = image_url + '/livecd'
+        else:
+            values['imageBase'] = image_url + '/appliance'
     return _genHTML(environ, 'buildinfo.chtml')
 
 def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):

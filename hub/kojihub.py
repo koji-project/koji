@@ -3481,6 +3481,30 @@ def get_win_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such Windows build: %s' % buildInfo
     return result
 
+def get_image_build(buildInfo, strict=False):
+    """
+    Retrieve image-specific information about a build.
+    buildInfo can be either a string (n-v-r) or an integer
+    (build ID). This function really only exists to verify a build
+    is an image build; there is no additional data.
+
+    Returns a map containing the following keys:
+    build_id: id of the build
+    """
+    build_id = find_build_id(buildInfo)
+    if not build_id:
+        if strict:
+            raise koji.GenericError, 'No matching build found: %s' % buildInfo
+        else:
+            return None
+    query = QueryProcessor(tables=('image_builds',), columns=('build_id',),
+                           clauses=('build_id = %(build_id)i',),
+                           values={'build_id': build_id})
+    result = query.executeOne()
+    if strict and not result:
+        raise koji.GenericError, 'no such image build: %s' % buildInfo
+    return result
+
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None):
     """
@@ -3513,7 +3537,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     those associated with additional metadata of the given type.
     Currently supported types are:
 
-    maven, win
+    maven, win, image
 
     If 'maven' is specified as a type, each returned map will contain
     these additional keys:
@@ -3528,6 +3552,12 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     relpath: the relative path where the file is located (string)
     platforms: space-separated list of platforms the file is suitable for use on (string)
     flags: space-separated list of flags used when building the file (fre, chk) (string)
+
+    if 'image' is specified as a type, each returned map will contain an
+    additional key:
+
+    arch: The architecture if the image itself, which may be different from the
+          task that generated it
 
     typeInfo is a dict that can be used to filter the output by type-specific info.
     For the 'maven' type, this dict may contain one or more of group_id, artifact_id, or version,
@@ -3603,6 +3633,13 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                         val = [val]
                     for v in val:
                         clauses.append(r"""%s ~ E'\\m%s\\M'""" % (key, v))
+    elif type == 'image':
+        joins.append('image_archives ON archiveinfo.id = image_archives.archive_id')
+        columns.extend(['image_archives.arch'])
+        aliases.extend(['arch'])
+        if typeInfo and typeInfo.get('arch'):
+            clauses.append('image_archives.%s = %%(%s)s' % (key, key))
+            values[key] = typeInfo[key]
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
@@ -7467,6 +7504,7 @@ class RootExports(object):
     getBuild = staticmethod(get_build)
     getMavenBuild = staticmethod(get_maven_build)
     getWinBuild = staticmethod(get_win_build)
+    getImageBuild = staticmethod(get_image_build)
     getArchiveTypes = staticmethod(get_archive_types)
     getArchiveType = staticmethod(get_archive_type)
     listArchives = staticmethod(list_archives)
