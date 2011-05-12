@@ -4742,38 +4742,39 @@ def handle_spin_livecd(options, session, args):
     """[admin] Create a live CD image given a kickstart file"""
 
     # Usage & option parsing.
-    usage = _("usage: %prog spin-livecd [options] <target> <arch> " +
-              "<kickstart-file>")
+    usage = _("usage: %prog spin-livecd [options] <name> <version> <target>" +
+              " <arch> <kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--wait", action="store_true",
-                      help=_("Wait on the livecd creation, even if running in the background"))
+        help=_("Wait on the livecd creation, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
-                      help=_("Don't wait on livecd creation"))
+        help=_("Don't wait on livecd creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
         help=_("Run the livecd creation task at a lower priority"))
-    parser.add_option("--isoname",
-        help=_("Use a custom name for the iso file"))
     parser.add_option("--ksurl", metavar="SCMURL",
         help=_("The URL to the SCM containing the kickstart file"))
     parser.add_option("--ksversion", metavar="VERSION",
         help=_("The syntax version used in the kickstart file"))
     parser.add_option("--scratch", action="store_true",
         help=_("Create a scratch LiveCD image"))
-    parser.add_option("--repo",
-        help=_("Specify a comma-separated list of repos that will override " +
-               "the repo used to install RPMs in the LiveCD image. The " +
+    parser.add_option("--repo", action="append",
+        help=_("Specify a repo that will override the repo used to install " +
+               "RPMs in the appliance. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
+    parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
-    if len(args) != 3:
-        parser.error(_("Three arguments are required: an architecture, " +
-                       "a build target, and a relative path to a " +
-                       "kickstart file."))
+    if len(args) != 5:
+        parser.error(_("Five arguments are required: a name, a version, an" +
+                       " architecture, a build target, and a relative path to" +
+                       " a kickstart file."))
         assert False
     _build_image(options, task_options, session, args, 'livecd')
 
@@ -4783,15 +4784,15 @@ def handle_spin_appliance(options, session, args):
     """[admin] Create an appliance given a kickstart file"""
 
     # Usage & option parsing
-    usage = _("usage: %prog spin-appliance [options] <target> <arch> " +
-              "<kickstart-file>")
+    usage = _("usage: %prog spin-appliance [options] <name> <version> " +
+              "<target> <arch> <kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--wait", action="store_true",
-                      help=_("Wait on the appliance creation, even if running in the background"))
+        help=_("Wait on the appliance creation, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
-                      help=_("Don't wait on appliance creation"))
+        help=_("Don't wait on appliance creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
@@ -4802,16 +4803,13 @@ def handle_spin_appliance(options, session, args):
         help=_("The syntax version used in the kickstart file"))
     parser.add_option("--scratch", action="store_true",
         help=_("Create a scratch appliance"))
-    parser.add_option("--repo",
-        help=_("Specify a comma-separated list of repos that will override " +
-               "the repo used to install RPMs in the appliance. The " +
+    parser.add_option("--repo", action="append",
+        help=_("Specify a repo that will override the repo used to install " +
+               "RPMs in the appliance. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
-    parser.add_option("--name", metavar="NAME", default=None,
-        help=_("Specify the appliance file name"))
-    parser.add_option("--version", metavar="VERSION", default=None,
-        help=_("Set an appliance version, used in .xml metadata"))
-    parser.add_option("--release", metavar="RELEASE", default=None,
-        help=_("Set an appliance release number, used in .xml metadata"))
+    parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
     parser.add_option("--vmem", metavar="VMEM", default=None,
         help=_("Set the amount of virtual memory in the appliance in MB, " +
                "default is 512"))
@@ -4825,10 +4823,10 @@ def handle_spin_appliance(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
-    if len(args) != 3:
-        parser.error(_("Three arguments are required: an architecture, " +
-                       "a build target, and a relative path to a " +
-                       "kickstart file."))
+    if len(args) != 5:
+        parser.error(_("Five arguments are required: a name, a version, " +
+                       "an architecture, a build target, and a relative path" +
+                       " to a kickstart file."))
         assert False
     _build_image(options, task_options, session, args, 'appliance')
 
@@ -4855,7 +4853,7 @@ def _build_image(options, task_opts, session, args, img_type):
     # We do some early sanity checking of the given target.
     # Kojid gets these values again later on, but we check now as a convenience
     # for the user.
-    target = args[0]
+    target = args[2]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
         raise koji.GenericError, _("Unknown build target: %s" % target)
@@ -4865,11 +4863,11 @@ def _build_image(options, task_opts, session, args, img_type):
                                    tmp_target['dest_tag_name'])
 
     # Set the architecture
-    arch = koji.canonArch(args[1])
+    arch = koji.canonArch(args[3])
 
     # Upload the KS file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
-    ksfile = args[2]
+    ksfile = args[4]
 
     if not task_opts.ksurl:
         serverdir = _unique_path('cli-' + img_type)
@@ -4879,14 +4877,14 @@ def _build_image(options, task_opts, session, args, img_type):
 
     hub_opts = {}
     for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-                'name', 'version', 'release', 'vmem', 'vcpu', 'format'):
+                'release', 'skip-tag', 'vmem', 'vcpu', 'format'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
 
     # finally, create the task.
-    task_id = session.buildImage(arch, target, ksfile, img_type, 
-                                  opts=hub_opts, priority=priority)
+    task_id = session.buildImage(args[0], args[1], arch, target, ksfile,
+                                 img_type, opts=hub_opts, priority=priority)
 
     if not options.quiet:
         print "Created task:", task_id
