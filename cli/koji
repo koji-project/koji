@@ -5415,7 +5415,7 @@ def anon_handle_download_build(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
-    parser.add_option("--type", help=_("Download archives of the given type, rather than rpms"))
+    parser.add_option("--type", help=_("Download archives of the given type, rather than rpms (maven, win, or image)"))
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("--key", help=_("Download rpms signed with the given key"))
@@ -5477,6 +5477,22 @@ def anon_handle_download_build(options, session, args):
             for archive in archives:
                 url = pathinfo.winbuild(info) + '/' + pathinfo.winfile(archive)
                 urls.append((url, pathinfo.winfile(archive)))
+        elif suboptions.type == 'image':
+            if not suboptions.topurl:
+                print "You must specify --topurl to download images"
+                return 1
+            pi = koji.PathInfo(topdir=suboptions.topurl)
+            for archive in archives:
+                if archive['type_extensions'] == 'iso':
+                    url = '%s/livecd/%s/%s/%s/%s' % (
+                        pi.imageFinalPath(), info['name'],
+                        info['version'], info['release'], archive['filename'])
+                    urls.append((url, archive['filename']))
+                else:
+                    url = '%s/appliance/%s/%s/%s/%s' % (
+                        pi.imageFinalPath(), info['name'], info['version'],
+                        info['release'], archive['filename'])
+                    urls.append((url, archive['filename']))
         else:
             # can't happen
             assert False
