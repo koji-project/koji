@@ -1733,6 +1733,61 @@ class TagBuildTask(BaseTaskHandler):
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
 
+class BuildApplianceTask(BaseTaskHandler):
+    Methods = ['buildAppliance']
+
+    def handler(self, arch, target, ksfile, opts=None):
+        """Governing task for building an appliance"""
+        target_info = self.session.getBuildTarget(target, strict=True)
+        build_tag = target_info['build_tag']
+        repo_info = self.session.getRepo(build_tag)
+
+        if not opts:
+            opts = {}
+        self.opts = opts
+
+        if not image_enabled:
+            self.logger.error("Appliance features require the following dependencies: pykickstart, and possibly python-hashlib")
+            raise koji.ApplianceError, 'Appliance functions not available'
+
+        create_task_id = self.session.host.subtask(method='createAppliance',
+            arglist=[arch, target_info, build_tag, repo_info, ksfile, opts],
+            label='appliance', parent=self.id arch=arch)
+        create_results = self.wait(create_task_id)
+        #if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
+        #    tag_task_id = self.session.host.subtask(method='tagBuild',
+        #        arglist=[target_info[dest_tag], create_results[build_id], 
+        #        False, None, True], label='tag', parent=self.id, arch='noarch')
+        #    self.wait(tag_task_id)
+
+class BuildLiveCDTask(BaseTaskHandler):
+    Methods = ['buildLiveCD']
+
+    def handler(self, arch, target, ksfile, opts=None):
+        """Governing task for building an appliance"""
+        target_info = self.session.getBuildTarget(target, strict=True)
+        build_tag = target_info['build_tag']
+        repo_info = self.session.getRepo(build_tag)
+
+        if not opts:
+            opts = {}
+        self.opts = opts
+        if not image_enabled:
+            self.logger.error("LiveCD features require the following dependencies: "
+                    "pykickstart, pycdio, and possibly python-hashlib")
+            raise koji.LiveCDError, 'LiveCD functions not available'
+
+        #build_id = self.session.host.initBuild(data)
+        create_task_id = self.session.host.subtask(method='createLiveCD',
+            arglist=[arch, target_info, build_tag, repo_info, ksfile, opts],
+            label='livecd', parent=self.id arch=arch)
+        create_results = self.wait(create_task_id)
+        #if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
+        #    tag_task_id = self.session.host.subtask(method='tagBuild',
+        #        arglist=[target_info[dest_tag], create_results[build_id], 
+        #        False, None, True], label='tag', parent=self.id, arch='noarch')
+        #    self.wait(tag_task_id)
+
 # A generic task for building cd or disk images. Other handlers should inherit
 # this.
 class ImageTask(BaseTaskHandler):
@@ -1921,24 +1976,12 @@ class ApplianceTask(ImageTask):
     Methods = ['createAppliance']
     _taskWeight = 1.5
 
-    def handler(self, arch, target, ksfile, opts=None):
+    def handler(self, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         img_type = {'raw': 'Raw Appliance',
                     'qcow': 'QCOW Image',
                     'qcow2': 'QCOW2 Image',
                     'vmx': 'VMWare Image'}
-
-        target_info = self.session.getBuildTarget(target, strict=True)
-        build_tag = target_info['build_tag']
-        repo_info = self.session.getRepo(build_tag)
-
-        if not opts:
-            opts = {}
-        self.opts = opts
-
-        if not image_enabled:
-            self.logger.error("Appliance features require the following dependencies: pykickstart, and possibly python-hashlib")
-            raise koji.ApplianceError, 'Appliance functions not available'
 
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 
                                       'appliance-build')
@@ -2102,20 +2145,7 @@ class LiveCDTask(ImageTask):
 
         return manifest
 
-    def handler(self, arch, target, ksfile, opts=None):
-
-        target_info = self.session.getBuildTarget(target, strict=True)
-        build_tag = target_info['build_tag']
-        repo_info = self.session.getRepo(build_tag)
-
-        if not opts:
-            opts = {}
-        self.opts = opts
-
-        if not image_enabled:
-            self.logger.error("LiveCD features require the following dependencies: "
-                    "pykickstart, pycdio, and possibly python-hashlib")
-            raise koji.LiveCDError, 'LiveCD functions not available'
+    def handler(self, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 'livecd-build')
         kspath = self.fetchKickstart(broot, ksfile)
