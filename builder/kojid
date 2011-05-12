@@ -1788,8 +1788,10 @@ class BuildApplianceTask(BuildImageTask):
 
             # import the image (move it too)
             if not opts.get('scratch'):
-                self.session.host.importImage(create_task_id, bld_info['id'],
+                self.session.host.importImage(self.id, bld_info['id'],
                     results)
+            else:
+                self.session.host.moveImageBuildToScratch(self.id, results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -1855,8 +1857,10 @@ class BuildLiveCDTask(BuildImageTask):
 
             # import it (and move)
             if not opts.get('scratch'):
-                self.session.host.importImage(create_task_id, bld_info['id'],
+                self.session.host.importImage(self.id, bld_info['id'],
                     results)
+            else:
+                self.session.host.moveImageBuildToScratch(self.id, results)
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -2121,7 +2125,14 @@ class ApplianceTask(ImageTask):
         self.logger.debug('output: %s' % results)
         if len(results) == 0:
             raise koji.ApplianceError, "Could not find image build results!"
-        imgdata = {'arch': arch, 'rootdev': self.getRootDevice()}
+        imgdata = {
+            'arch': arch,
+            'rootdev': self.getRootDevice(),
+            'task_id': self.id,
+            'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
+                     'appliance.log', os.path.basename(ksfile),
+                     os.path.basename(kskoji)]
+        }
         imgdata['files'] = []
         for ofile in results:
             self.uploadFile(ofile)
@@ -2267,7 +2278,14 @@ class LiveCDTask(ImageTask):
         self.uploadFile(manifest)
         self.uploadFile(isosrc, remoteName=isoname)
 
-        imgdata = {'arch': arch, 'files': [isoname], 'rootdev': None}
+        imgdata = {'arch': arch,
+            'files': [isoname],
+            'rootdev': None,
+            'task_id': self.id,
+            'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
+                     'livecd.log', os.path.basename(ksfile),
+                     os.path.basename(kskoji)]
+        }
         if not opts.get('scratch'):
             hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
                                             cachedir[1:]))

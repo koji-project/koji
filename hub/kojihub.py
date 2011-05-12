@@ -6662,16 +6662,18 @@ def importImageInternal(task_id, build_id, imgdata):
     host = Host()
     host.verify()
     task = Task(task_id)
+    task.assertHost(host.id)
 
     koji.plugin.run_callbacks('preImport', type='image', image=imgdata)
 
     # import the build output
     build_info = get_build(build_id, strict=True)
-    workpath = koji.pathinfo.task(task_id)
-    imgdata['relpath'] = koji.pathinfo.taskrelpath(task_id)
+    workpath = koji.pathinfo.task(imgdata['task_id'])
+    imgdata['relpath'] = koji.pathinfo.taskrelpath(imgdata['task_id'])
     archives = []
     for imgfile in imgdata['files']:
-        relpath = os.path.join(koji.pathinfo.taskrelpath(task_id), imgfile)
+        relpath = os.path.join(koji.pathinfo.taskrelpath(imgdata['task_id']),
+            imgfile)
         fullpath = os.path.join(workpath, imgfile)
         archivetype = get_archive_type(filename=relpath)
         logger.debug('image type we are importing is: %s' % archivetype)
@@ -6734,7 +6736,7 @@ def importImageInternal(task_id, build_id, imgdata):
     update.execute()
 
     # send email
-    build_notification(task_id, build_id)
+    build_notification(imgdata['task_id'], build_id)
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               fullpath=fullpath)
@@ -9590,6 +9592,24 @@ class HostExports(object):
                 koji.ensuredir(os.path.dirname(dest))
                 os.rename(filename, dest)
                 os.symlink(dest, filename)
+
+    def moveImageBuildToScratch(self, task_id, results):
+        """move a completed image scratch build into place"""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+        workdir = koji.pathinfo.task(results['task_id'])
+        scratchdir = koji.pathinfo.scratch()
+        username = get_user(task.getOwner())['name']
+        destdir = os.path.join(scratchdir, username,
+            'task_%s' % results['task_id'])
+        for img in results['files'] + results['logs']:
+            src = os.path.join(workdir, img)
+            dest = os.path.join(destdir, img)
+            koji.ensuredir(destdir)
+            os.rename(src, dest)
+            os.symlink(dest, src)
 
     def initBuild(self,data):
         """Create a stub build entry.
