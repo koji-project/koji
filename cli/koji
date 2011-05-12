@@ -4766,6 +4766,8 @@ def handle_spin_livecd(options, session, args):
                "RPMs in the appliance. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--specfile", metavar="URL",
+        help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     (task_options, args) = parser.parse_args(args)
@@ -4808,6 +4810,8 @@ def handle_spin_appliance(options, session, args):
                "RPMs in the appliance. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--specfile", metavar="URL",
+        help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--vmem", metavar="VMEM", default=None,
@@ -4877,7 +4881,7 @@ def _build_image(options, task_opts, session, args, img_type):
 
     hub_opts = {}
     for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-                'release', 'skip-tag', 'vmem', 'vcpu', 'format'):
+                'release', 'skip-tag', 'vmem', 'vcpu', 'format', 'specfile'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val

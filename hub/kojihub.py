@@ -9596,7 +9596,7 @@ class HostExports(object):
                 os.rename(filename, dest)
                 os.symlink(dest, filename)
 
-    def moveImageBuildToScratch(self, task_id, results):
+    def moveImageBuildToScratch(self, task_id, results, rpm_results):
         """move a completed image scratch build into place"""
         host = Host()
         host.verify()
@@ -9613,6 +9613,15 @@ class HostExports(object):
             koji.ensuredir(destdir)
             os.rename(src, dest)
             os.symlink(dest, src)
+        if rpm_results:
+            for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
+                    rpm_results['logs']:
+                src = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
+                                   relpath)
+                dest = os.path.join(destdir, 'rpms', relpath)
+                koji.ensuredir(os.path.dirname(dest))
+                os.rename(src, dest)
+                os.symlink(dest, src)
 
     def initBuild(self,data):
         """Create a stub build entry.
@@ -9947,12 +9956,16 @@ class HostExports(object):
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
 
-    def importImage(self, task_id, build_id, imgdata):
+    def importImage(self, task_id, build_id, imgdata, rpm_results):
         """
         Import a built image, populating the database with metadata and 
         moving the image to its final location.
         """
-        return importImageInternal(task_id, build_id, imgdata)
+        results = importImageInternal(task_id, build_id, imgdata)
+        if rpm_results:
+            _import_wrapper(rpm_results['task_id'],
+                get_build(build_id, strict=True), rpm_results)
+        return results
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.

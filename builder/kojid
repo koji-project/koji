@@ -1418,9 +1418,11 @@ class WrapperRPMTask(BaseBuildTask):
         if build:
             maven_info = self.session.getMavenBuild(build['id'], strict=False)
             win_info = self.session.getWinBuild(build['id'], strict=False)
+            image_info = self.session.getImageBuild(build['id'], strict=False)
         else:
             maven_info = None
             win_info = None
+            image_info = None
 
         # list of artifact paths relative to kojiroot (not exposed to the specfile)
         artifact_relpaths = []
@@ -1461,6 +1463,8 @@ class WrapperRPMTask(BaseBuildTask):
                 build_artifacts = self.session.listArchives(buildID=build['id'], type='maven')
             elif win_info:
                 build_artifacts = self.session.listArchives(buildID=build['id'], type='win')
+            elif image_info:
+                build_artifacts = self.session.listArchives(buildID=build['id'], type='image')
             else:
                 raise koji.BuildError, 'unsupported build type'
 
@@ -1480,11 +1484,23 @@ class WrapperRPMTask(BaseBuildTask):
                 elif win_info:
                     repopath = self.pathinfo.winfile(artifact)
                     relpath = os.path.join(self.pathinfo.winbuild(build), repopath)[1:]
-                    artifact_relpaths.append(relpath)
+                    all_artifacts_with_path.append(repopath)
+                elif image_info:
+                    if ext == '.iso':
+                        ipath = os.path.join(self.pathinfo.imageFinalPath(),
+                            self.pathinfo.livecdRelPath(build))
+                        relpath = os.path.join(ipath, artifact_name)[1:]
+                        repopath = relpath
+                    else:
+                        ipath = os.path.join(self.pathinfo.imageFinalPath(),
+                            self.pathinfo.applianceRelPath(build))
+                        relpath = os.path.join(ipath, artifact_name)[1:]
+                        repopath = relpath
                     all_artifacts_with_path.append(repopath)
                 else:
                     # can't happen
                     assert False
+                artifact_relpaths.append(relpath)
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
@@ -1499,6 +1515,8 @@ class WrapperRPMTask(BaseBuildTask):
                 values['maven_info'] = maven_info
             elif win_info:
                 values['win_info'] = win_info
+            elif image_info:
+                values['image_info'] = image_info
             else:
                 # can't happen
                 assert False
@@ -1513,6 +1531,8 @@ class WrapperRPMTask(BaseBuildTask):
             elif task['method'] == 'vmExec':
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
                 values['win_info'] = {'platform': task_result['platform']}
+            elif task['method'] == 'createLiveCD' or task['method'] == 'createAppliance':
+                self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
             else:
                 # can't happen
                 assert False
@@ -1733,7 +1753,7 @@ class TagBuildTask(BaseTaskHandler):
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
 
-class BuildImageTask(BaseTaskHandler):
+class BuildImageTask(MultiPlatformTask):
 
     def initImageBuild(self, name, version, release, target_info, opts):
         """create a build object for this image build"""
@@ -1786,12 +1806,21 @@ class BuildApplianceTask(BuildImageTask):
             self.logger.info('image build task (%s) completed' % create_task_id)
             self.logger.info('results: %s' % results)
 
+            # wrap in an RPM if asked
+            rpm_results = None
+            spec_url = opts.get('specfile')
+            if spec_url:
+                rpm_results = self.buildWrapperRPM(spec_url, create_task_id,
+                    self.session.getTag(build_tag), bld_info, repo_info['id'])
+
             # import the image (move it too)
             if not opts.get('scratch'):
                 self.session.host.importImage(self.id, bld_info['id'],
-                    results)
+                    results, rpm_results)
             else:
-                self.session.host.moveImageBuildToScratch(self.id, results)
+                self.session.host.moveImageBuildToScratch(self.id, results,
+                    rpm_results)
+
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -1855,12 +1884,21 @@ class BuildLiveCDTask(BuildImageTask):
             self.logger.info('image build task (%s) completed' % create_task_id)
             self.logger.info('results: %s' % results)
 
+            # wrap in an RPM if needed
+            spec_url = opts.get('specfile')
+            rpm_results = None
+            if spec_url:
+                rpm_results = self.buildWrapperRPM(spec_url, create_task_id,
+                    self.session.getTag(build_tag), bld_info, repo_info['id'])
+
             # import it (and move)
             if not opts.get('scratch'):
                 self.session.host.importImage(self.id, bld_info['id'],
-                    results)
+                    results, rpm_results)
             else:
-                self.session.host.moveImageBuildToScratch(self.id, results)
+                self.session.host.moveImageBuildToScratch(self.id, results,
+                    rpm_results)
+
         except (SystemExit,ServerExit,KeyboardInterrupt):
             #we do not trap these
             raise
@@ -2131,7 +2169,10 @@ class ApplianceTask(ImageTask):
             'task_id': self.id,
             'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
                      'appliance.log', os.path.basename(ksfile),
-                     os.path.basename(kskoji)]
+                     os.path.basename(kskoji)],
+            'name': name,
+            'version': version,
+            'release': release
         }
         imgdata['files'] = []
         for ofile in results:
@@ -2284,7 +2325,10 @@ class LiveCDTask(ImageTask):
             'task_id': self.id,
             'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
                      'livecd.log', os.path.basename(ksfile),
-                     os.path.basename(kskoji)]
+                     os.path.basename(kskoji)],
+            'name': name,
+            'version': version,
+            'release': release
         }
         if not opts.get('scratch'):
             hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
