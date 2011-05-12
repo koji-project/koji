@@ -9,7 +9,8 @@ DROP TABLE buildroot_listing;
 DROP TABLE imageinfo_listing;
 
 DROP TABLE rpminfo;
-DROP TABLE imageinfo;
+DROP TABLE image_builds;
+DROP TABLE image_archives;
 
 DROP TABLE group_package_listing;
 DROP TABLE group_req_listing;
@@ -474,16 +475,9 @@ CREATE TABLE buildroot (
 ) WITHOUT OIDS;
 
 -- track spun images (livecds, installation, VMs...)
-CREATE TABLE imageinfo (
-	id SERIAL NOT NULL PRIMARY KEY,
-        task_id INTEGER NOT NULL REFERENCES task(id),
-	filename TEXT NOT NULL,
-	filesize BIGINT NOT NULL,
-	arch VARCHAR(16) NOT NULL,
-	hash TEXT NOT NULL,
-	mediatype TEXT NOT NULL
+CREATE TABLE image_builds (
+    build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id)
 ) WITHOUT OIDS;
-CREATE INDEX imageinfo_task_id on imageinfo(task_id);
 
 -- this table associates tags with builds.  an entry here tags a package
 CREATE TABLE tag_listing (
@@ -645,14 +639,6 @@ CREATE TABLE buildroot_listing (
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
 
--- tracks the contents of an image
-CREATE TABLE imageinfo_listing (
-	image_id INTEGER NOT NULL REFERENCES imageinfo(id),
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
-	UNIQUE (image_id, rpm_id)
-) WITHOUT OIDS;
-CREATE INDEX imageinfo_listing_rpms on imageinfo_listing(rpm_id);
-
 CREATE TABLE log_messages (
     id SERIAL NOT NULL PRIMARY KEY,
     message TEXT NOT NULL,
@@ -724,6 +710,11 @@ insert into archivetypes (name, description, extensions) values ('cat', 'Windows
 insert into archivetypes (name, description, extensions) values ('msi', 'Windows Installer package', 'msi');
 insert into archivetypes (name, description, extensions) values ('pdb', 'Windows debug information', 'pdb');
 insert into archivetypes (name, description, extensions) values ('oem', 'Windows driver oem file', 'oem');
+insert into archivetypes (name, description, extensions) values ('iso', 'CD/DVD Image', 'iso');
+insert into archivetypes (name, description, extensions) values ('raw', 'Raw disk image', 'raw');
+insert into archivetypes (name, description, extensions) values ('qcow', 'QCOW image', 'qcow');
+insert into archivetypes (name, description, extensions) values ('qcow2', 'QCOW2 image', 'qcow2');
+insert into archivetypes (name, description, extensions) values ('vmx', 'VMX image', 'vmx');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
@@ -733,19 +724,33 @@ CREATE TABLE archiveinfo (
 	build_id INTEGER NOT NULL REFERENCES build (id),
 	buildroot_id INTEGER REFERENCES buildroot (id),
 	filename TEXT NOT NULL,
-	size INTEGER NOT NULL,
-	md5sum TEXT NOT NULL
+	size BIGINT NOT NULL,
+	checksum TEXT NOT NULL,
+	checksum_type INTEGER NOT NULL
 ) WITHOUT OIDS;
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
 CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
 CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
 
+-- tracks the contents of an image
+CREATE TABLE imageinfo_listing (
+	image_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	UNIQUE (image_id, rpm_id)
+) WITHOUT OIDS;
+CREATE INDEX imageinfo_listing_rpms on imageinfo_listing(rpm_id);
+
 CREATE TABLE maven_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
 	group_id TEXT NOT NULL,
         artifact_id TEXT NOT NULL,
         version TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE image_archives (
+    archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
+    arch VARCHAR(16) NOT NULL
 ) WITHOUT OIDS;
 
 CREATE TABLE buildroot_archives (
