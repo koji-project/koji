@@ -147,13 +147,15 @@ $value
         #if $len($params) > 4
         $printOpts($params[4])
         #end if
+        #elif $task.method == 'livecd' or $task.method == 'appliance'
+        <strong>Arch:</strong> $params[2]<br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
+        <strong>Kickstart File:</strong> $params[4]<br/>
+        $printOpts($params[5])
         #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
-        <strong>Arch:</strong> $params[0]<br/>
-        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
-        <strong>Kickstart File:</strong> $params[2]<br/>
-        #if $len($params) > 3
-        $printOpts($params[3])
-        #end if
+        <strong>Arch:</strong> $params[3]<br/>
+        <strong>Kickstart File:</strong> $params[7]<br/>
+        $printOpts($params[8])
         #elif $task.method == 'winbuild'
         <strong>VM:</strong> $params[0]<br/>
         <strong>SCM URL:</strong> $params[1]<br/>
@@ -312,7 +314,7 @@ $value
       </td>
     </tr>
     #end if
-    #if ($task.method == 'createLiveCD' or $task.method == 'createAppliance') and $image
+    #if ($task.method == 'livecd' or $task.method == 'appliance') and $image
     <tr>
       <th>Image</th>
       <td>
@@ -378,7 +380,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         <br/>
         #end for
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveCD', 'createAppliance', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo')
+            $task.method in ('buildSRPMFromSCM', 'buildArch', 'livecd', 'appliance', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo')
         <br/>
         <a href="watchlogs?taskID=$task.id">Watch logs</a>
         #end if

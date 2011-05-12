@@ -425,10 +425,10 @@ _TASKS = ['build',
           'buildNotification',
           'tagNotification',
           'dependantTask',
-          'createLiveCD',
-          'createAppliance']
+          'livecd',
+          'appliance']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance']
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo', 'wrapperRPM']
 
@@ -598,7 +598,7 @@ def taskinfo(environ, taskID):
     elif task['method'] == 'buildMaven':
         buildTag = params[1]
         values['buildTag'] = buildTag
-    elif task['method'] == 'createLiveCD' or task['method'] == 'createAppliance':
+    elif task['method'] == 'livecd' or task['method'] == 'appliance':
         values['image'] = server.getImageInfo(taskID=taskID)
     elif task['method'] == 'buildSRPMFromSCM':
         if len(params) > 1:

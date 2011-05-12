@@ -1812,13 +1812,12 @@ class BuildApplianceTask(BuildImageTask):
         if opts.get('scratch'):
             respath = os.path.join(koji.pathinfo.work(),
                 koji.pathinfo.taskrelpath(create_task_id))
-            report = 'scratch'
+            report = 'Scratch '
         else:
             respath = os.path.join(koji.pathinfo.imageFinalPath(),
                 koji.pathinfo.applianceRelPath(bld_info))
             report = ''
-        files = [os.path.join(respath, f) for f in results['files']]
-        report += 'appliance build results:\n%s' % '\n'.join(files)
+        report += 'appliance build results in: %s' % respath
         return report
 
 class BuildLiveCDTask(BuildImageTask):
