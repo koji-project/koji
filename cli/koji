@@ -2380,7 +2380,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
-    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven"))
+    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven, win, image"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
     parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))

@@ -1125,7 +1125,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     set latest=True to get only the latest build per package
 
     If type is not None, restrict the list to builds of the given type.  Currently the supported
-    types are 'maven' and 'win'.
+    types are 'maven', 'win', and 'image'.
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
@@ -1162,6 +1162,9 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     elif type == 'win':
         type_join = 'JOIN win_builds ON win_builds.build_id = tag_listing.build_id'
         fields.append(('win_builds.platform', 'platform'))
+    elif type == 'image':
+        type_join = 'JOIN image_builds ON image_builds.build_id = tag_listing.build_id'
+        fields.append(('image_builds.build_id', 'build_id'))
     else:
         raise koji.GenericError, 'unsupported build type: %s' % type
 
