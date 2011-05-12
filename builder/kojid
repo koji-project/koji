@@ -1733,10 +1733,27 @@ class TagBuildTask(BaseTaskHandler):
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
 
-class BuildApplianceTask(BaseTaskHandler):
+class BuildImageTask(BaseTaskHandler):
+
+    def initImageBuild(self, name, version, target_info, opts):
+        """create a build object for this image build"""
+        pkg_cfg = self.session.getPackageConfig(target_info['dest_tag_name'],
+             name)
+        self.logger.debug("%r" % pkg_cfg)
+        if not opts.get('skip_tag') and not opts.get('scratch'):
+            # Make sure package is on the list for this tag
+            if pkg_cfg is None:
+                raise koji.BuildError, "package (image) %s not in list for tag %s" % (name, target_info['dest_tag_name'])
+            elif pkg_cfg['blocked']:
+                raise koji.BuildError, "package (image)  %s is blocked for tag %s" % (name, target_info['dest_tag_name'])
+        return self.session.host.initImageBuild(self.id,
+            dict(name=name, version=version, epoch=0))
+
+
+class BuildApplianceTask(BuildImageTask):
     Methods = ['buildAppliance']
 
-    def handler(self, arch, target, ksfile, opts=None):
+    def handler(self, name, version, arch, target, ksfile, opts=None):
         """Governing task for building an appliance"""
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
@@ -1744,26 +1761,63 @@ class BuildApplianceTask(BaseTaskHandler):
 
         if not opts:
             opts = {}
-        self.opts = opts
 
         if not image_enabled:
             self.logger.error("Appliance features require the following dependencies: pykickstart, and possibly python-hashlib")
             raise koji.ApplianceError, 'Appliance functions not available'
 
-        create_task_id = self.session.host.subtask(method='createAppliance',
-            arglist=[arch, target_info, build_tag, repo_info, ksfile, opts],
-            label='appliance', parent=self.id arch=arch)
-        create_results = self.wait(create_task_id)
-        #if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
-        #    tag_task_id = self.session.host.subtask(method='tagBuild',
-        #        arglist=[target_info[dest_tag], create_results[build_id], 
-        #        False, None, True], label='tag', parent=self.id, arch='noarch')
-        #    self.wait(tag_task_id)
+        # build image
+        try:
+            build_id = None
+            if not opts.get('scratch'):
+                build_id = self.initImageBuild(name, version, target_info, opts)
+            create_task_id = self.session.host.subtask(method='createAppliance',
+                arglist=[name, version, arch, target_info, build_tag,
+                    repo_info, ksfile, opts],
+                label='appliance', parent=self.id, arch=arch)
+            results = self.wait(create_task_id)[create_task_id]
+            self.logger.info('image build task (%s) completed' % create_task_id)
+            self.logger.info('results: %s' % results)
 
-class BuildLiveCDTask(BaseTaskHandler):
+            # import the image (move it too)
+            if not opts.get('scratch'):
+                results['id'] = self.session.host.importImage(create_task_id,
+                    build_id, results)
+                self.logger.info('image import complete: id %s' % results['id'])
+        except (SystemExit,ServerExit,KeyboardInterrupt):
+            #we do not trap these
+            raise
+        except:
+            if not opts.get('scratch'):
+                #scratch builds do not get imported
+                if build_id:
+                    self.session.host.failBuild(self.id, build_id)
+            # reraise the exception
+            raise
+
+        # tag it
+        if not opts.get('scratch') and not opts.get('skip_tag'):
+            tag_task_id = self.session.host.subtask(method='tagBuild',
+                arglist=[target_info['dest_tag'], build_id, False, None, True],
+                label='tag', parent=self.id, arch='noarch')
+            self.wait(tag_task_id)
+
+        # report results
+        if opts.get('scratch'):
+            return 'Scratch appliance image created: %s' % \
+                   os.path.join(koji.pathinfo.work(),
+                                koji.pathinfo.taskrelpath(create_task_id),
+                                results['name'])
+        else:
+            return 'Created appliance image: %s' % \
+                   os.path.join(koji.pathinfo.imageFinalPath(),
+                                koji.pathinfo.applianceRelPath(results['id']),
+                                results['name'])
+
+class BuildLiveCDTask(BuildImageTask):
     Methods = ['buildLiveCD']
 
-    def handler(self, arch, target, ksfile, opts=None):
+    def handler(self, name, version, arch, target, ksfile, opts=None):
         """Governing task for building an appliance"""
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
@@ -1771,22 +1825,57 @@ class BuildLiveCDTask(BaseTaskHandler):
 
         if not opts:
             opts = {}
-        self.opts = opts
         if not image_enabled:
             self.logger.error("LiveCD features require the following dependencies: "
                     "pykickstart, pycdio, and possibly python-hashlib")
             raise koji.LiveCDError, 'LiveCD functions not available'
 
-        #build_id = self.session.host.initBuild(data)
-        create_task_id = self.session.host.subtask(method='createLiveCD',
-            arglist=[arch, target_info, build_tag, repo_info, ksfile, opts],
-            label='livecd', parent=self.id arch=arch)
-        create_results = self.wait(create_task_id)
-        #if not self.opts.get('scratch') and not self.opts.get('skip_tag'):
-        #    tag_task_id = self.session.host.subtask(method='tagBuild',
-        #        arglist=[target_info[dest_tag], create_results[build_id], 
-        #        False, None, True], label='tag', parent=self.id, arch='noarch')
-        #    self.wait(tag_task_id)
+        # build the image
+        try:
+            build_id = None
+            if not opts.get('scratch'):
+                build_id = self.initImageBuild(name, version, target_info, opts)
+            create_task_id = self.session.host.subtask(method='createLiveCD',
+                arglist=[name, version, arch, target_info, build_tag, repo_info,
+                ksfile, opts], label='livecd', parent=self.id, arch=arch)
+            results = self.wait(create_task_id)[create_task_id]
+            self.logger.info('image build task (%s) completed' % create_task_id)
+            self.logger.info('results: %s' % results)
+
+            # import it (and move)
+            if not opts.get('scratch'):
+                results['id'] = self.session.host.importImage(create_task_id,
+                    build_id, results)
+                self.logger.info('image import complete: id %s' % results['id'])
+        except (SystemExit,ServerExit,KeyboardInterrupt):
+            #we do not trap these
+            raise
+        except:
+            if not opts.get('scratch'):
+                #scratch builds do not get imported
+                if build_id:
+                    self.session.host.failBuild(self.id, build_id)
+            # reraise the exception
+            raise
+
+        # tag it if necessary
+        if not opts.get('scratch') and not opts.get('skip_tag'):
+            tag_task_id = self.session.host.subtask(method='tagBuild',
+                arglist=[target_info['dest_tag'], build_id, False, None, True],
+                label='tag', parent=self.id, arch='noarch')
+            self.wait(tag_task_id)
+
+        # report the results
+        if opts.get('scratch'):
+            return 'Scratch image created: %s' % \
+                   os.path.join(koji.pathinfo.work(),
+                                koji.pathinfo.taskrelpath(create_task_id),
+                                results['name'])
+        else:
+            return 'Created image: %s' % \
+                   os.path.join(koji.pathinfo.imageFinalPath(),
+                                koji.pathinfo.livecdRelPath(results['id']),
+                                results['name'])
 
 # A generic task for building cd or disk images. Other handlers should inherit
 # this.
@@ -1954,19 +2043,6 @@ class ImageTask(BaseTaskHandler):
                 hdrlist.append(hdr)
         return hdrlist
 
-    def getImageHash(self, img_path):
-        """return a sha256 hash of the given image file"""
-        sha256sum = hashlib.sha256()
-        image_fo = file(img_path, 'r')
-        while True:
-            data = image_fo.read(1048576)
-            sha256sum.update(data)
-            if not len(data):
-                break
-        hash = sha256sum.hexdigest()
-        self.logger.debug('digest: %s' % hash)
-        return hash
-
 # ApplianceTask begins with a mock chroot, and then installs appliance-tools 
 # into it via the appliance-build group. appliance-creator is then executed 
 # in the chroot to create the appliance image.
@@ -1976,20 +2052,16 @@ class ApplianceTask(ImageTask):
     Methods = ['createAppliance']
     _taskWeight = 1.5
 
-    def handler(self, arch, target_info, build_tag, repo_info, ksfile, opts=None):
+    def handler(self, name, version, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
-        img_type = {'raw': 'Raw Appliance',
-                    'qcow': 'QCOW Image',
-                    'qcow2': 'QCOW2 Image',
-                    'vmx': 'VMWare Image'}
-
+        if opts == None:
+            opts = {}
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 
                                       'appliance-build')
         kspath = self.fetchKickstart(broot, ksfile)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, 
                                        kspath)
-
-        # Figure out appliance-creator arguments, we let it fail if something
+        # Figure out appliance-creator arguments, let it fail if something
         # is wrong.
         odir = 'app-output'
         opath = os.path.join(broot.rootdir(), 'tmp', odir)
@@ -1999,8 +2071,9 @@ class ApplianceTask(ImageTask):
 
         cmd = ['/usr/bin/appliance-creator', '-c', kskoji, '-d', '-v', 
                '--logfile', app_log, '--cache', cachedir, '-o', odir]
-        for arg_name in ('version', 'name', 'release', 'vmem', 'vcpu', 'format'):
-            arg = self.opts.get(arg_name)
+        for arg_name in ('version', 'name', 'release', 'vmem', 'vcpu',
+                         'format'):
+            arg = opts.get(arg_name)
             if arg != None: 
                 cmd.extend(['--%s' % arg_name, arg])
 
@@ -2021,7 +2094,7 @@ class ApplianceTask(ImageTask):
         # TODO: allow for multiple disk images to be generated
         if len(results) > 2:
             raise koji.ApplianceError, \
-                "Only one disk image allowed for output! found: %s" % results
+                "Only one image is allowed for output! found: %s" % results
 
         app_path = None
         for ofile in results:
@@ -2031,43 +2104,20 @@ class ApplianceTask(ImageTask):
                 app_path = ofile
         if app_path == None:
             raise koji.ApplianceError, "Could not find appliance image!"
+        self.uploadFile(app_path)
         app_file = os.path.basename(app_path)
-
-        try:
-            filesize = os.path.getsize(app_path)
-        except OSError:
-            raise koji.LiveCDError, 'Could not get appliance file size'
-
-        # if filesize is greater than a 32-bit signed integer's range,
-        # the python XMLRPC module will break.
-        filesize = str(filesize)
 
         # TODO: get file manifest from the appliance
 
-        # Import info about the image into the database, unless 
-        # this is a scratch image.
-        if not self.opts.get('scratch'):
+        imgdata = {'arch': arch, 'name': app_file}
+        if not opts.get('scratch'):
             hdrlist = self.getImagePackages(
                 os.path.join(broot.rootdir(), cachedir[1:]))
-            hash = self.getImageHash(app_path)
             broot.markExternalRPMs(hdrlist)
-            itype = img_type[self.opts.get('format')]
-            self.uploadFile(app_path)
-            image_id = self.session.host.importImage(self.id, app_file, filesize, 
-                arch, itype, hash, hdrlist) # xml file automatically moved too
-        else:
-            self.uploadFile(app_path)
-
+            imgdata['rpmlist'] = hdrlist
+ 
         broot.expire()
-        if opts.get('scratch'):
-            return 'Scratch appliance image created: %s' % \
-                   os.path.join(koji.pathinfo.work(),
-                                koji.pathinfo.taskrelpath(self.id), app_file)
-        else:
-            return 'Created appliance image: %s' % \
-                   os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.applianceRelPath(image_id), 
-                                app_file)
+        return imgdata
 
 # LiveCDTask begins with a mock chroot, and then installs livecd-tools into it
 # via the livecd-build group. livecd-creator is then executed in the chroot
@@ -2145,18 +2195,24 @@ class LiveCDTask(ImageTask):
 
         return manifest
 
-    def handler(self, arch, target_info, build_tag, repo_info, ksfile, opts=None):
+    def handler(self, name, version, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
-        broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 'livecd-build')
+        if opts == None:
+            opts = {}
+
+        broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
+            'livecd-build')
         kspath = self.fetchKickstart(broot, ksfile)
-        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, kspath)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot,
+            kspath)
 
         cachedir = '/tmp/koji-livecd'   # arbitrary paths in chroot
         livecd_log = '/tmp/livecd.log'
-        cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v', '--logfile', livecd_log, '--cache', cachedir]
+        cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v',
+               '--logfile', livecd_log, '--cache', cachedir]
         # we set the fs label to the same as the isoname if it exists, 
         # taking at most 32 characters
-        name_opt = self.opts.get('isoname')
+        name_opt = opts.get('isoname')
         if name_opt:
             cmd.extend(('-f', name_opt[:32]))
 
@@ -2165,12 +2221,11 @@ class LiveCDTask(ImageTask):
         self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
         if rv:
             raise koji.LiveCDError, \
-                "Could not create LiveCD: %s" % parseStatus(rv, 'livecd-creator') + \
-                "; see root.log or livecd.log for more information"
+                'Could not create LiveCD: %s' % parseStatus(rv, 'livecd-creator') + '; see root.log or livecd.log for more information'
 
         # Find the resultant iso
-        # The cwd of the livecd-creator process is /tmp in the chroot, so that's
-        # where it writes the .iso
+        # The cwd of the livecd-creator process is /tmp in the chroot, so
+        # that is where it writes the .iso
         files = os.listdir(os.path.join(broot.rootdir(), 'tmp'))
         isofile = None
         for afile in files:
@@ -2181,53 +2236,31 @@ class LiveCDTask(ImageTask):
                     raise koji.LiveCDError, 'multiple .iso files found: %s and %s' % (isofile, afile)
         if not isofile:
             raise koji.LiveCDError, 'could not find iso file in chroot'
-
         isosrc = os.path.join(broot.rootdir(), 'tmp', isofile)
-        try:
-            filesize = os.path.getsize(isosrc)
-        except OSError:
-            self.logger.error('Could not find the ISO. Did livecd-creator ' +
-                              'complete without errors?')
-            raise koji.LiveCDError, 'missing image file: %s' % isosrc
 
-        # if filesize is greater than a 32-bit signed integer's range, the
-        # python XMLRPC module will break.
-        filesize = str(filesize)
-
-        # copy the iso out of the chroot. If we were given an isoname, this is
-        # where the renaming happens.
+        # copy the iso out of the chroot. If we were given an isoname,
+        # this is where the renaming happens.
         self.logger.debug('uploading image: %s' % isosrc)
         if name_opt:
             isofile = name_opt
             if not isofile.endswith('.iso'):
                 isofile += '.iso'
-        self.uploadFile(isosrc, remoteName=isofile)
 
-        # Generate the file manifest of the image
+        # Generate the file manifest of the image, upload the results
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
         self.genISOManifest(isosrc, manifest)
         self.uploadFile(manifest)
+        self.uploadFile(isosrc, remoteName=isofile)
 
-        if not self.opts.get('scratch'):
-
-            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(), cachedir[1:]))
-            hash = self.getImageHash(isosrc)
-
-            # Import info about the image into the database, unless this is a
-            # scratch image.
+        imgdata = {'arch': arch, 'name': isofile}
+        if not opts.get('scratch'):
+            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
+                                            cachedir[1:]))
+            imgdata ['rpmlist'] = hdrlist
             broot.markExternalRPMs(hdrlist)
-            image_id = self.session.host.importImage(self.id, isofile, filesize, arch,
-                                                'LiveCD ISO', hash, hdrlist)
 
         broot.expire()
-        if opts.get('scratch'):
-            return 'Scratch image created: %s' % \
-                   os.path.join(koji.pathinfo.work(),
-                                koji.pathinfo.taskrelpath(self.id), isofile)
-        else:
-            return 'Created image: %s' % \
-                   os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.livecdRelPath(image_id), isofile)
+        return imgdata
 
 class BuildSRPMFromSCMTask(BaseBuildTask):
 

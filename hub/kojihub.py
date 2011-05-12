@@ -1325,7 +1325,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
               ('archiveinfo.size', 'size'),
-              ('archiveinfo.md5sum', 'md5sum')]
+              ('archiveinfo.checksum', 'checksum')]
               
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
@@ -3482,7 +3482,7 @@ def get_win_build(buildInfo, strict=False):
     return result
 
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
-                  filename=None, size=None, md5sum=None, typeInfo=None, queryOpts=None):
+                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -3490,7 +3490,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     If componentBuildrootID is not null it will restrict the list to archives that were present in the
       buildroot with that ID.
     If hostID is not null it will restrict the list to archives built on the host with that ID.
-    If filename, size, and/or md5sum are not null it will filter the results to entries matching the provided values.
+    If filename, size, and/or checksum are not null it will filter the results to entries matching the provided values.
 
     Returns a list of maps containing the following keys:
 
@@ -3503,7 +3503,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     buildroot_id: id of the buildroot where this archive was built (integer)
     filename: name of the archive (string)
     size: size of the archive (integer)
-    md5sum: md5sum of the archive (string)
+    checksum: checksum of the archive (string)
 
     If componentBuildrootID is specified, then the map will also contain the following key:
     project: whether the archive was pulled in as a project dependency, or as part of the 
@@ -3541,9 +3541,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     tables = ['archiveinfo']
     joins = ['archivetypes on archiveinfo.type_id = archivetypes.id']
     columns = ['archiveinfo.id', 'archiveinfo.type_id', 'archiveinfo.build_id', 'archiveinfo.buildroot_id',
-               'archiveinfo.filename', 'archiveinfo.size', 'archiveinfo.md5sum',
+               'archiveinfo.filename', 'archiveinfo.size', 'archiveinfo.checksum',
                'archivetypes.name', 'archivetypes.description', 'archivetypes.extensions']
-    aliases = ['id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum',
+    aliases = ['id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum',
                'type_name', 'type_description', 'type_extensions']
     clauses = []
 
@@ -3571,9 +3571,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     if size is not None:
         clauses.append('size = %(size)i')
         values['size'] = size
-    if md5sum is not None:
-        clauses.append('md5sum = %(md5sum)s')
-        values['md5sum'] = md5sum
+    if checksum is not None:
+        clauses.append('checksum = %(checksum)s')
+        values['checksum'] = checksum
 
     if type is None:
         pass
@@ -3620,7 +3620,7 @@ def get_archive(archive_id, strict=False):
     buildroot_id: id of the buildroot where this archive was built (integer)
     filename: name of the archive (string)
     size: size of the archive (integer)
-    md5sum: md5sum of the archive (string)
+    checksum: checksum of the archive (string)
 
     If the archive is part of a Maven build, the following keys will be included:
       group_id
@@ -3631,7 +3631,7 @@ def get_archive(archive_id, strict=False):
       platforms
       flags
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum')
+    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum')
     select = """SELECT %s FROM archiveinfo
     WHERE id = %%(archive_id)i""" % ', '.join(fields)
     archive =  _singleRow(select, locals(), fields, strict=strict)
@@ -4661,6 +4661,23 @@ def new_win_build(build_info, win_info):
         insert.set(platform=win_info['platform'])
         insert.execute()
 
+def new_image_build(build_info):
+    """
+    Added Image metadata to an existing build. This is just the buildid so that
+    we can distinguish image builds from other types.
+    """
+    # We don't have to worry about updating an image build because the id is
+    # the only thing we care about, and that should never change if a build
+    # fails first and succeeds later on a resubmission.
+    query = QueryProcessor(tables=('image_builds',), columns=('build_id',),
+                           clauses=('build_id = %(build_id)i',),
+                           values={'build_id': build_info['id']})
+    result = query.executeOne()
+    if not result:
+        insert = InsertProcessor('image_builds')
+        insert.set(build_id=build_info['id'])
+        insert.execute()
+
 def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     """
     Import an archive file and associate it with a build.  The archive can
@@ -4690,7 +4707,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
             break
         m.update(contents)
     archivefp.close()
-    archiveinfo['md5sum'] = m.hexdigest()
+    archiveinfo['checksum'] = m.hexdigest()
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
                               build_type=type, filepath=filepath)
@@ -4743,6 +4760,19 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         if relpath:
             destdir = os.path.join(destdir, relpath)
         _import_archive_file(filepath, destdir)
+    elif type == 'image':
+        insert = InsertProcessor('image_archives')
+        insert.set(archive_id=archive_id)
+        insert.set(arch=typeInfo['arch'])
+        insert.execute()
+        if archivetype['name'] == 'iso':
+            imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
+                koji.pathinfo.livecdRelPath(archive_id))
+        else:
+            imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
+                koji.pathinfo.applianceRelPath(archive_id))
+        _import_archive_file(filepath, imgdir)
+        # import log files?
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
@@ -6543,42 +6573,44 @@ def rpmdiff(basepath, rpmlist):
             raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
                 (os.path.basename(first_rpm), output)
 
-def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+def importImageInternal(task_id, build_id, imgdata):
     """
     Import image info and the listing into the database, and move an image
     to the final resting place. The filesize may be reported as a string if it
     exceeds the 32-bit signed integer limit. This function will convert it if
-    need be. Not called for scratch images.
+    need be. This is the completeBuild for images; it should not be called for
+    scratch images.
+
+    imgdata is:
+    arch - the arch if the image
+    name - file name of the image
+    rpmlist - the list of RPM NVRs installed into the image
     """
-    imageinfo = {}
-    imageinfo['id'] = _singleValue("""SELECT nextval('imageinfo_id_seq')""")
-    imageinfo['task_id'] = task_id
-    imageinfo['filename'] = filename
-    imageinfo['filesize'] = int(filesize)
-    imageinfo['arch'] = arch
-    imageinfo['mediatype'] = mediatype
-    imageinfo['hash'] = hash
-    # TODO: add xmlfile field to the imageinfo table
+    host = Host()
+    host.verify()
+    task = Task(task_id)
 
-    filepath = os.path.join(koji.pathinfo.work(),
-                            koji.pathinfo.taskrelpath(task_id),
-                            filename)
+    # get these consistent...
+    relpath = os.path.join(koji.pathinfo.taskrelpath(task_id), imgdata['name'])
+    fullpath = os.path.join(koji.pathinfo.task(task_id), imgdata['name'])
+    koji.plugin.run_callbacks('preImport', type='image', image=imgdata,
+                              fullpath=fullpath)
 
-    koji.plugin.run_callbacks('preImport', type='image', image=imageinfo,
-                              filepath=filepath)
+    # import the build output
+    archivetype = get_archive_type(filename=relpath)
+    logger.info('image type is: %s' % archivetype)
+    if not archivetype:
+        raise koji.BuildError, 'Unsupported image type'
+    # TODO: import xml file too
+    build_info = get_build(build_id, strict=True)
+    imgdata['relpath'] = os.path.dirname(relpath)
+    logger.info('importing image as an archive')
+    import_archive(fullpath, build_info, 'image', imgdata)
 
-    q = """INSERT INTO imageinfo (id,task_id,filename,filesize,
-           arch,mediatype,hash)
-           VALUES (%(id)i,%(task_id)i,%(filename)s,%(filesize)i,
-           %(arch)s,%(mediatype)s,%(hash)s)
-        """
-    _dml(q, imageinfo)
-
-    q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
-           VALUES (%(image_id)i,%(rpm_id)i)"""
-
+    # track the contents of the image
     rpm_ids = []
-    for an_rpm in rpmlist:
+    logger.info('figuring out where rpms came from')
+    for an_rpm in imgdata['rpmlist']:
         location = an_rpm.get('location')
         if location:
             data = add_external_rpm(an_rpm, location, strict=False)
@@ -6586,45 +6618,33 @@ def importImageInternal(task_id, filename, filesize, arch, mediatype, hash, rpml
             data = get_rpm(an_rpm, strict=True)
         rpm_ids.append(data['id'])
 
-    image_id = imageinfo['id']
+    logger.info('getting imageID')
+    query = QueryProcessor(tables=('archiveinfo',), columns=('id',),
+                           clauses=('build_id = %(build_id)i',),
+                           values={'build_id': build_info['id']})
+    results = query.executeOne()
+    logger.info('imageID is %s' % results['id'])
+    q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
+           VALUES (%(image_id)i,%(rpm_id)i)"""
     for rpm_id in rpm_ids:
-        _dml(q, locals())
+        _dml(q, {'image_id': results['id'], 'rpm_id': rpm_id})
+    logger.info('updated imageinfo_listing')
 
-    koji.plugin.run_callbacks('postImport', type='image', image=imageinfo,
-                              filepath=filepath)
+    # update build table
+    st_complete = koji.BUILD_STATES['COMPLETE']
+    update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
+                             values={'build_id': build_id})
+    update.set(id=build_id, state=st_complete)
+    update.rawset(completion_time='now()')
+    update.execute()
 
-    return image_id
+    # send email
+    build_notification(task_id, build_id)
 
-def moveImageResults(task_id, image_id, arch, mediatype):
-    """
-    Move the image file from the work/task directory into its more
-    permanent resting place. This shouldn't be called for scratch images.
-    """
-    source_path = os.path.join(koji.pathinfo.work(),
-                               koji.pathinfo.taskrelpath(task_id))
-    if mediatype == 'LiveCD ISO':
-        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
-                                  koji.pathinfo.livecdRelPath(image_id))
-    else:
-        final_path = os.path.join(koji.pathinfo.imageFinalPath(),
-                                  koji.pathinfo.applianceRelPath(image_id))
-    log_path = os.path.join(final_path, 'data', 'logs', arch)
-    if os.path.exists(final_path) or os.path.exists(log_path):
-        raise koji.GenericError, "Error moving image: the final " + \
-            "destination already exists!"
-    koji.ensuredir(final_path)
-    koji.ensuredir(log_path)
+    koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
+                              fullpath=fullpath)
 
-    src_files = os.listdir(source_path)
-    for fname in src_files:
-        if fname.endswith('.log') or fname.endswith('.ks'):
-            dest_path = log_path
-        else:
-            dest_path = final_path
-        os.rename(os.path.join(source_path, fname),
-                  os.path.join(dest_path, fname))
-        os.symlink(os.path.join(dest_path, fname),
-                   os.path.join(source_path, fname))
+    return results['id']
 
 #
 # XMLRPC Methods
@@ -9079,8 +9099,8 @@ class BuildRoot(object):
         tables = ('archiveinfo',)
         joins = ('buildroot_archives ON archiveinfo.id = buildroot_archives.archive_id',)
         clauses = ('buildroot_archives.buildroot_id = %(id)i',)
-        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'md5sum', 'project_dep')
-        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'md5sum', 'project_dep')
+        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'checksum', 'project_dep')
+        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'project_dep')
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
                                values=self.data,
@@ -9569,30 +9589,7 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-
-        # find the last successful or deleted build of this N-V
-        values = {'name': build_info['name'],
-                  'version': build_info['version'],
-                  'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
-        query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
-                               columns=['build.id', 'release'],
-                               clauses=['name = %(name)s', 'version = %(version)s',
-                                        'state in %(states)s'],
-                               values=values,
-                               opts={'order': '-build.id', 'limit': 1})
-        result = query.executeOne()
-        release = None
-        if result:
-            release = result['release']
-
-        if not release:
-            release = '1'
-        elif release.isdigit():
-            release = str(int(release) + 1)
-        else:
-            raise koji.BuildError, 'Invalid release value for a Maven build: %s' % release
-        build_info['release'] = release
-
+        build_info['release'] = self.getNextRelease(build_info)
         data = build_info.copy()
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
@@ -9675,6 +9672,30 @@ class HostExports(object):
         # send email
         build_notification(task_id, build_id)
 
+    def getNextRelease(self, build_info):
+        """find the last successful or deleted build of this N-V"""
+        values = {'name': build_info['name'],
+                  'version': build_info['version'],
+                  'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
+        query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
+                               columns=['build.id', 'release'],
+                               clauses=['name = %(name)s', 'version = %(version)s',
+                                        'state in %(states)s'],
+                               values=values,
+                               opts={'order': '-build.id', 'limit': 1})
+        result = query.executeOne()
+        release = None
+        if result:
+            release = result['release']
+
+        if not release:
+            release = '1'
+        elif release.isdigit():
+            release = str(int(release) + 1)
+        else:
+            raise koji.BuildError, 'Invalid release value for a build: %s' % release
+        return release
+
     def importArchive(self, filepath, buildinfo, type, typeInfo):
         """
         Import an archive file and associate it with a build.  The archive can
@@ -9713,6 +9734,23 @@ class HostExports(object):
             raise koji.GenericError, 'wrapper rpms for %s have already been imported' % koji.buildLabel(build_info)
 
         _import_wrapper(task.id, build_info, rpm_results)
+
+    def initImageBuild(self, task_id, build_info):
+        """create a new in-progress image build"""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+        build_info['release'] = self.getNextRelease(build_info)
+        data = build_info.copy()
+        data['task_id'] = task_id
+        data['owner'] = task.getOwner()
+        data['state'] = koji.BUILD_STATES['BUILDING']
+        data['completion_time'] = None
+        build_id = new_build(data)
+        data['id'] = build_id
+        new_image_build(data)
+        return build_id
 
     def initWinBuild(self, task_id, build_info, win_info):
         """
@@ -9847,19 +9885,12 @@ class HostExports(object):
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
 
-    def importImage(self, task_id, filename, filesize, arch, mediatype, hash, rpmlist):
+    def importImage(self, task_id, build_id, imgdata):
         """
         Import a built image, populating the database with metadata and 
         moving the image to its final location.
         """
-        host = Host()
-        host.verify()
-        task = Task(task_id)
-        task.assertHost(host.id)
-        image_id = importImageInternal(task_id, filename, filesize, arch,
-                                       mediatype, hash, rpmlist)
-        moveImageResults(task_id, image_id, arch, mediatype)
-        return image_id
+        return importImageInternal(task_id, build_id, imgdata)
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.
