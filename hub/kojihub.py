@@ -6667,16 +6667,38 @@ def importImageInternal(task_id, build_id, imgdata):
 
     # import the build output
     build_info = get_build(build_id, strict=True)
+    workpath = koji.pathinfo.task(task_id)
     imgdata['relpath'] = koji.pathinfo.taskrelpath(task_id)
     archives = []
     for imgfile in imgdata['files']:
         relpath = os.path.join(koji.pathinfo.taskrelpath(task_id), imgfile)
-        fullpath = os.path.join(koji.pathinfo.task(task_id), imgfile)
+        fullpath = os.path.join(workpath, imgfile)
         archivetype = get_archive_type(filename=relpath)
         logger.debug('image type we are importing is: %s' % archivetype)
         if not archivetype:
             raise koji.BuildError, 'Unsupported image type'
         archives.append(import_archive(fullpath, build_info, 'image', imgdata))
+
+    # upload logs
+    logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
+    for logfile in logs:
+        logsrc = os.path.join(workpath, logfile)
+        if imgdata.get('rootdev'):
+            logdir = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.applianceRelPath(build_info),
+                                  'data/logs/image')
+        else:
+            logdir = os.path.join(koji.pathinfo.imageFinalPath(),
+                                  koji.pathinfo.livecdRelPath(build_info),
+                                  'data/logs/image')
+        koji.ensuredir(logdir)
+        final_path = os.path.join(logdir, os.path.basename(logfile))
+        if os.path.exists(final_path):
+            raise koji.GenericError("Error importing build log. %s already exists." % final_path)
+        if os.path.islink(logsrc) or not os.path.isfile(logsrc):
+            raise koji.GenericError("Error importing build log. %s is not a regular file." % logsrc)
+        os.rename(logsrc, final_path)
+        os.symlink(final_path, logsrc)
 
     # track the contents of the image
     rpm_ids = []
