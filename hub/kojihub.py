@@ -6790,7 +6790,7 @@ class RootExports(object):
 
     # Create the image task. Called from _build_image in the client.
     #
-    def buildImage (self, arch, target, ksfile, img_type, opts=None, priority=None):
+    def buildImage (self, name, version, arch, target, ksfile, img_type, opts=None, priority=None):
         """
         Create an image using a kickstart file and group package list.
         """
@@ -6808,13 +6808,13 @@ class RootExports(object):
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
         if img_type == 'livecd':
-            task_type = 'createLiveCD'
+            task_type = 'buildLiveCD'
         elif img_type == 'appliance':
-            task_type = 'createAppliance'
+            task_type = 'buildAppliance'
         else:
             raise koji.GenericError, 'unsupported image type: %s' % img_type
 
-        return make_task(task_type, [arch, target, ksfile, opts], **taskOpts)
+        return make_task(task_type, [name, version, arch, target, ksfile, opts], **taskOpts)
 
     # Database access to get imageinfo values. Used in parts of kojiweb.
     #
