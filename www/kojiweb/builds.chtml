@@ -57,6 +57,7 @@
           #if $winEnabled
           <option value="win" #if $type == 'win' then 'selected="selected"' else ''#>Windows</option>
           #end if
+          <option value="image" #if $type == 'image' then 'selected="selected"' else ''#>Image</option>
         </select>
         </td>
 	#end if

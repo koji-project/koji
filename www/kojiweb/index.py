@@ -426,11 +426,13 @@ _TASKS = ['build',
           'tagNotification',
           'dependantTask',
           'livecd',
-          'appliance']
+          'createLiveCD',
+          'appliance',
+          'createAppliance']
 # Tasks that can exist without a parent
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo', 'wrapperRPM']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo', 'wrapperRPM', 'livecd', 'appliance']
 
 def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
@@ -1238,7 +1240,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
     values['prefix'] = prefix
     
     values['order'] = order
-    if type in ('maven', 'win'):
+    if type in ('maven', 'win', 'image'):
         pass
     elif type == 'all':
         type = None

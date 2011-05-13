@@ -7825,6 +7825,9 @@ class RootExports(object):
             if typeInfo:
                 clauses.append('win_builds.platform = %(platform)s')
                 platform = typeInfo['platform']
+        elif type == 'image':
+            joins.append('image_builds ON build.id = image_builds.build_id')
+            fields.append(('image_builds.build_id', 'build_id'))
         else:
             raise koji.GenericError, 'unsupported build type: %s' % type
 
