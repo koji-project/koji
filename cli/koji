@@ -2136,10 +2136,11 @@ def handle_import_archive(options, session, args):
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
-    parser.add_option("--type", help=_("The type of archive being imported.  Currently supported types: maven, win"))
+    parser.add_option("--type", help=_("The type of archive being imported.  Currently supported types: maven, win, image"))
     parser.add_option("--type-info", help=_("Type-specific information to associate with the archives.  "
                                             "For Maven archives this should be a local path to a .pom file.  "
-                                            "For Windows archives this should be relpath:platforms[:flags]))"))
+                                            "For Windows archives this should be relpath:platforms[:flags]))  "
+                                            "Images need an arch"))
     (suboptions, args) = parser.parse_args(args)
 
     if not len(args) > 1:
@@ -2177,6 +2178,15 @@ def handle_import_archive(options, session, args):
         else:
             win_info['flags'] = []
         suboptions.type_info = win_info
+    elif suboptions.type == 'image':
+        if not (session.hasPerm('image-import') or session.hasPerm('admin')):
+            parser.error(_("This action requires the image-import privilege"))
+            assert False
+        if not suboptions.type_info:
+            parser.error(_("--type-info must be specified"))
+            assert False
+        image_info = {'arch': suboptions.type_info}
+        suboptions.type_info = image_info
     else:
         parser.error(_("Unsupported archive type: %s" % suboptions.type))
         assert False
@@ -2197,6 +2207,9 @@ def handle_import_archive(options, session, args):
             # We're importing, so we don't know what platform the build
             # was run on.  Use "import" as a placeholder.
             session.createWinBuild(buildinfo, {'platform': 'import'})
+        elif suboptions.type == 'image':
+            # --type-info should have an arch of the image
+            session.createImageBuild(buildinfo)
         else:
             # should get caught above
             assert False

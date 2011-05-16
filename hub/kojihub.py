@@ -7262,6 +7262,8 @@ class RootExports(object):
             if not context.opts.get('EnableWin'):
                 raise koji.GenericError, 'Windows support not enabled'
             context.session.assertPerm('win-import')
+        elif type == 'image':
+            context.session.assertPerm('image-import')
         else:
             koji.GenericError, 'unsupported archive type: %s' % type
         buildinfo = get_build(buildinfo, strict=True)
@@ -7321,6 +7323,18 @@ class RootExports(object):
             build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             build = get_build(build_id, strict=True)
         new_win_build(build, win_info)
+
+    def createImageBuild(self, build_info):
+        """
+        Associate image metadata with an existing build. The build must not
+        already have associated image metadata.
+        """
+        context.session.assertPerm('image-import')
+        build = get_build(build_info)
+        if not build:
+            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            build = get_build(build_id, strict=True)
+        new_image_build(build)
 
     def importRPM(self, path, basename):
         """Import an RPM into the database.
