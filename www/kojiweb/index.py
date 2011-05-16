@@ -1188,10 +1188,11 @@ def buildinfo(environ, buildID):
     values['pathinfo'] = koji.PathInfo(topdir=topurl)
     if imagebuild:
         image_url = topurl + '/images' # XXX
+        nvrpath = os.path.join(build['name'], build['version'], build['release'])
         if 'iso' in archivesByExt.keys():
-            values['imageBase'] = image_url + '/livecd'
+            values['imageBase'] = image_url + '/livecd/' + nvrpath
         else:
-            values['imageBase'] = image_url + '/appliance'
+            values['imageBase'] = image_url + '/appliance/' + nvrpath
     return _genHTML(environ, 'buildinfo.chtml')
 
 def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):

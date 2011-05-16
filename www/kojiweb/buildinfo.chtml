@@ -160,7 +160,7 @@
             #elif $winbuild
                 (<a href="$nvrpath/data/logs/win/">build logs</a>)
             #elif $imagebuild
-                (<a href="$imageBase/$nvrpath/data/logs/image">build logs</a>)
+                (<a href="$imageBase/data/logs/image">build logs</a>)
 	        #end if
           #end if
 	    </td>
@@ -174,7 +174,7 @@
             #elif $winbuild
             $pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.winbuild($build)/$pathinfo.winfile($archive)">download</a>)
             #elif $imagebuild
-            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$imageBase/$nvrpath/$archive.filename">download</a>)
+            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$imageBase/$archive.filename">download</a>)
             #end if
 	    </td>
 	  </tr>
