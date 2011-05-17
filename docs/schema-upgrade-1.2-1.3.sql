@@ -1,3 +1,7 @@
+-- upgrade script to migrate the Koji database schema
+-- from version 1.2 to 1.3
+
+BEGIN;
 
 -- external yum repos
 create table external_repo (
@@ -54,3 +58,5 @@ GRANT SELECT ON external_repo, external_repo_config, tag_external_repos TO PUBLI
 -- DROP TABLE rpmdeps;  
 -- DROP TABLE changelogs;
 -- DROP TABLE archivefiles;
+
+COMMIT;
