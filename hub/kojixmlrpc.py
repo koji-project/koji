@@ -27,6 +27,7 @@ import time
 import traceback
 import types
 import pprint
+import resource
 from xmlrpclib import loads,dumps,Fault
 from mod_python import apache
 
@@ -394,6 +395,18 @@ def load_config(req):
         ['EnableMaven', 'boolean', False],
         ['EnableWin', 'boolean', False],
 
+        ['RLIMIT_AS', 'string', None],
+        ['RLIMIT_CORE', 'string', None],
+        ['RLIMIT_CPU', 'string', None],
+        ['RLIMIT_DATA', 'string', None],
+        ['RLIMIT_FSIZE', 'string', None],
+        ['RLIMIT_MEMLOCK', 'string', None],
+        ['RLIMIT_NOFILE', 'string', None],
+        ['RLIMIT_NPROC', 'string', None],
+        ['RLIMIT_OFILE', 'string', None],
+        ['RLIMIT_RSS', 'string', None],
+        ['RLIMIT_STACK', 'string', None],
+
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],
         ['OfflineMessage', 'string', None],
@@ -566,6 +579,30 @@ def setup_logging(opts):
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
 
+def setup_rlimits(opts):
+    logger = logging.getLogger("koji")
+    for key in opts:
+        if not key.startswith('RLIMIT_') or not opts[key]:
+            continue
+        rcode = getattr(resource, key, None)
+        if rcode is None:
+            continue
+        orig = resource.getrlimit(rcode)
+        try:
+            limits = [int(x) for x in opts[key].split()]
+        except ValueError:
+            logger.error("Invalid resource limit: %s=%s", key, opts[key])
+            continue
+        if len(limits) not in (1,2):
+            logger.error("Invalid resource limit: %s=%s", key, opts[key])
+            continue
+        if len(limits) == 1:
+            limits.append(orig[1])
+        logger.warn('Setting resource limit: %s = %r', key, limits)
+        try:
+            resource.setrlimit(rcode, tuple(limits))
+        except ValueError, e:
+            logger.error("Unable to set %s: %s", key, e)
 
 #
 # mod_python handler
@@ -581,6 +618,7 @@ def handler(req, profiling=False):
         firstcall = False
         opts = load_config(req)
         setup_logging(opts)
+        setup_rlimits(opts)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
