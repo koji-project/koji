@@ -9872,7 +9872,7 @@ class HostExports(object):
                 if ignore_archive and fileinfo['size'] == ignore_archive['size']:
                     continue
                 elif tag_archive and fileinfo['size'] == tag_archive['size']:
-                    archives.append(tag_archive['id'])
+                    archives.append(tag_archive)
                 else:
                     if not ignore_unknown:
                         raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
