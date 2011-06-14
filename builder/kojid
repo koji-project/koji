@@ -751,7 +751,9 @@ class BuildTask(BaseTaskHandler):
             build_id = self.session.host.initBuild(data)
         #(initBuild raises an exception if there is a conflict)
         try:
+            self.extra_information = { "src": src, "data": data, "target": target }
             srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
+
             if opts.get('scratch'):
                 #scratch builds do not get imported
                 self.session.host.moveBuildToScratch(self.id,srpm,rpms,logs=logs)
@@ -2107,6 +2109,10 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
+    def patch_scm_source(self, sourcedir, logfile, opts):
+        # override if desired
+        pass
+
     def handler(self, url, build_tag, opts=None):
         # will throw a BuildError if the url is invalid
         scm = SCM(url)
@@ -2152,6 +2158,9 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         gid = grp.getgrnam('mock')[2]
         self.chownTree(scmdir, uid, gid)
 
+        # Hook for patching spec file in place
+        self.patch_scm_source(sourcedir, logfile, opts)
+
         # Find and verify that there is only one spec file.
         spec_files = glob.glob("%s/*.spec" % sourcedir)
         if len(spec_files) == 0:
@@ -2187,9 +2196,16 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
         #upload srpm and return
         self.uploadFile(srpm)
 
+        brootid = broot.id
+        log_files = glob.glob('%s/*.log' % broot.resultdir())
+
         broot.expire()
 
-        return {'srpm': "%s/%s" % (uploadpath, srpm_name)}
+        return {'srpm': "%s/%s" % (uploadpath, srpm_name),
+                'logs': ["%s/%s" % (uploadpath, os.path.basename(f)) 
+                                        for f in log_files],
+                'brootid': brootid,
+               }
 
 class TagNotificationTask(BaseTaskHandler):
     Methods = ['tagNotification']
