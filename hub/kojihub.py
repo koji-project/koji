@@ -4098,6 +4098,7 @@ def change_build_volume(build, volume, strict=True):
         newdir = koji.pathinfo.build(binfo)
         dir_moves.append([olddir, newdir])
     for olddir, newdir in dir_moves:
+        koji.ensuredir(os.path.dirname(newdir))
         shutil.copytree(olddir, newdir, symlinks=True)
 
     # Second, update the db
