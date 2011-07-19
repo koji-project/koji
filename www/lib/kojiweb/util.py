@@ -66,12 +66,12 @@ def _genHTML(req, fileName):
         req._values['currentUser'] = None
     req._values['authToken'] = _genToken(req)
     if not req._values.has_key('mavenEnabled'):
-        if '_session' in req._values:
+        if hasattr(req, '_session'):
             req._values['mavenEnabled'] = req._session.mavenEnabled()
         else:
             req._values['mavenEnabled'] = False
     if not req._values.has_key('winEnabled'):
-        if '_session' in req._values:
+        if hasattr(req, '_session'):
             req._values['winEnabled'] = req._session.winEnabled()
         else:
             req._values['winEnabled'] = False
