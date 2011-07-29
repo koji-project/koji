@@ -36,6 +36,19 @@ from mod_python import apache
 #       - maybe in two steps
 #       -
 
+
+RetryWhitelist = [
+    'host.taskWait',
+    'host.taskUnwait',
+    'host.taskSetWait',
+    'host.updateHost',
+    'host.setBuildRootState',
+    'repoExpire',
+    'repoDelete',
+    'repoProblem',
+]
+
+
 class Session(object):
 
     def __init__(self,args=None,hostip=None):
@@ -121,9 +134,11 @@ class Session(object):
                     #We only schedule a commit for dml operations, so if we find the
                     #callnum in the db then a previous attempt succeeded but failed to
                     #return. Data was changed, so we cannot simply try the call again.
-                    raise koji.RetryError, \
-                        "unable to retry call %d (method %s) for session %d" \
-                        % (callnum, getattr(context, 'method', 'UNKNOWN'), id)
+                    method = getattr(context, 'method', 'UNKNOWN')
+                    if method not in RetryWhitelist:
+                        raise koji.RetryError, \
+                            "unable to retry call %d (method %s) for session %d" \
+                            % (callnum, method, id)
 
         # read user data
         #historical note:
