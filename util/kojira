@@ -350,8 +350,10 @@ class RepoManager(object):
     def updateRepos(self):
         #check on tasks
         running_tasks = 0
+        our_tasks = {}
         for tag_id, task_id in self.tasks.items():
             tinfo = self.session.getTaskInfo(task_id)
+            our_tasks[task_id] = tinfo
             tstate = koji.TASK_STATES[tinfo['state']]
             if tstate == 'CLOSED':
                 self.logger.info("Finished: newRepo task %s for tag %s" % (task_id, tag_id))
@@ -361,12 +363,28 @@ class RepoManager(object):
                 self.logger.info("Problem: newRepo task %s for tag %s is %s" % (task_id, tag_id, tstate))
                 del self.tasks[tag_id]
                 continue
-            if not tinfo['waiting']:
+            if tinfo['waiting']:
+                self.logger.debug("Task %i is waiting", task_id)
+            else:
                 #the largest hub impact is from the first part of the newRepo task
                 #once it is waiting on subtasks, that part is over
                 running_tasks += 1
             #TODO [?] - implement a timeout for active tasks?
+        #check for untracked newRepo tasks
+        repo_tasks = self.session.listTasks(opts={'method':'newRepo',
+                            'state':([koji.TASK_STATES[s] for s in ('FREE', 'OPEN')])})
+        other_tasks = []
+        for tinfo in repo_tasks:
+            if tinfo['id'] in our_tasks:
+                continue
+            other_tasks.append(tinfo)
+            if tinfo['waiting']:
+                self.logger.debug("Untracked task %i is waiting", tinfo['id'])
+            else:
+                running_tasks += 1
         self.logger.debug("Current tasks: %r" % self.tasks)
+        if other_tasks:
+            self.logger.debug("Found %i untracked newRepo tasks" % len(other_tasks))
         self.logger.debug("Updating repos")
         self.readCurrentRepos()
         #check for stale repos
@@ -421,7 +439,7 @@ class RepoManager(object):
             if running_tasks >= self.options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached")
                 break
-            elif len(self.tasks) >= self.options.repo_tasks_limit:
+            elif len(self.tasks) + len(other_tasks) >= self.options.repo_tasks_limit:
                 self.logger.info("Repo task limit reached")
                 break
             tagname = tags[tag_id]
