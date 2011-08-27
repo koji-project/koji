@@ -28,6 +28,7 @@ import traceback
 import types
 import pprint
 import resource
+import xmlrpclib
 from xmlrpclib import getparser,dumps,Fault
 from koji.server import WSGIWrapper
 
@@ -38,6 +39,22 @@ import koji.plugin
 import koji.policy
 import koji.util
 from koji.context import context
+
+
+# Workaround to allow xmlrpclib deal with iterators
+class Marshaller(xmlrpclib.Marshaller):
+
+    dispatch = xmlrpclib.Marshaller.dispatch.copy()
+
+    def dump_generator(self, value, write):
+        dump = self.__dump
+        write("<value><array><data>\n")
+        for v in value:
+            dump(v, write)
+        write("</data></array></value>\n")
+    dispatch[types.GeneratorType] = dump_generator
+
+xmlrpclib.Marshaller = Marshaller
 
 
 class HandlerRegistry(object):

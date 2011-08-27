@@ -1115,7 +1115,7 @@ def list_tags(build=None, package=None, queryOpts=None):
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=locals(),
                            opts=queryOpts)
-    return query.execute()
+    return query.iterate()
 
 def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owner=None,type=None):
     """Returns a list of builds for specified tag
@@ -1244,31 +1244,30 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
               ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.build_id', 'build_id')]
+    fields, aliases = zip(*fields)
+    tables = ['rpminfo']
+    joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
+    clauses = [eventCondition(event), 'tag_id=%(tagid)s']
+    data = {}  #tagid added later
+    if package:
+        joins.append('build ON rpminfo.build_id = build.id')
+        joins.append('package ON package.id = build.pkg_id')
+        clauses.append('package.name = %(package)s')
+        data['package'] = package
     if rpmsigs:
         fields.append(('rpmsigs.sigkey', 'sigkey'))
-    q="""SELECT %s FROM rpminfo
-    JOIN tag_listing ON rpminfo.build_id = tag_listing.build_id
-    """ % ', '.join([pair[0] for pair in fields])
-    if package:
-        q += """JOIN build ON rpminfo.build_id = build.id
-        JOIN package ON package.id = build.pkg_id
-        """
-    if rpmsigs:
-        q += """LEFT OUTER JOIN rpmsigs on rpminfo.id = rpmsigs.rpm_id
-        """
-    q += """WHERE %s AND tag_id=%%(tagid)s
-    """ % eventCondition(event)
-    if package:
-        q += """AND package.name = %(package)s
-        """
+        joins.append('LEFT OUTER JOIN rpmsigs on rpminfo.id = rpmsigs.rpm_id')
     if arch:
+        data['arch'] = arch
         if isinstance(arch, basestring):
-            q += """AND rpminfo.arch = %(arch)s
-            """
+            clauses.append('rpminfo.arch = %(arch)s')
         elif isinstance(arch, (list, tuple)):
-            q += """AND rpminfo.arch IN %(arch)s\n"""
+            clauses.append('rpminfo.arch IN %(arch)s')
         else:
             raise koji.GenericError, 'invalid arch option: %s' % arch
+
+    query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                           columns=fields, aliases=aliases, values=data)
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
@@ -1285,7 +1284,8 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
             continue
         else:
             tags_seen[tagid] = 1
-        for rpminfo in _multiRow(q, locals(), [pair[1] for pair in fields]):
+        query.values['tagid'] = tagid
+        for rpminfo in query.execute():
             #note: we're checking against the build list because
             # it has been filtered by the package list. The tag
             # tools should endeavor to keep tag_listing sane w.r.t.
@@ -2452,7 +2452,7 @@ def tag_changed_since_event(event,taglist):
     clauses = ['update_event > %(event)i', 'tag_id IN %(taglist)s']
     query = QueryProcessor(tables=['tag_updates'], columns=['id'],
                             clauses=clauses, values=data,
-                            opts={'asList': True})
+                            opts={'limit': 1})
     if query.execute():
         return True
     #also check these versioned tables
@@ -2470,7 +2470,7 @@ def tag_changed_since_event(event,taglist):
                'tag_id IN %(taglist)s']
     for table in tables:
         query = QueryProcessor(tables=[table], columns=['tag_id'], clauses=clauses,
-                                values=data, opts={'asList': True})
+                                values=data, opts={'limit': 1})
         if query.execute():
             return True
     return False
@@ -5545,7 +5545,7 @@ def query_history(tables=None, **kwargs):
         fields, aliases = zip(*fields.items())
         query = QueryProcessor(columns=fields, aliases=aliases, tables=[table],
                                joins=joins, clauses=clauses, values=data)
-        ret[table] = query.execute()
+        ret[table] = query.iterate()
     return ret
 
 
@@ -5598,7 +5598,7 @@ def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None)
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=locals(),
                            opts=queryOpts)
-    return query.execute()
+    return query.iterate()
 
 def untagged_builds(name=None, queryOpts=None):
     """Returns the list of untagged builds"""
@@ -5624,7 +5624,7 @@ def untagged_builds(name=None, queryOpts=None):
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=locals(),
                            opts=queryOpts)
-    return query.execute()
+    return query.iterate()
 
 def build_map():
     """Map which builds were used in the buildroots of other builds
@@ -6306,6 +6306,7 @@ class QueryProcessor(object):
         self.tables = tables
         self.joins = joins
         self.clauses = clauses
+        self.cursors = 0
         if values:
             self.values = values
         else:
@@ -6427,6 +6428,31 @@ SELECT %(col_str)s
             return _fetchMulti(query, self.values)
         else:
             return _multiRow(query, self.values, (self.aliases or self.columns))
+
+
+    def iterate(self):
+        if self.opts.get('countOnly'):
+            return self.execute()
+        else:
+            return self._iterate(str(self), self.values.copy(), self.opts.get('asList'))
+
+    def _iterate(self, query, values, as_list=False):
+        cname = "qp_cursor_%s_%i" % (id(self), self.cursors)
+        self.cursors += 1
+        query = "DECLARE %s NO SCROLL CURSOR FOR %s" % (cname, self)
+        c = context.cnx.cursor()
+        c.execute(query, self.values)
+        c.close()
+        query = "FETCH 1000 FROM %s" % cname
+        while True:
+            if as_list:
+                buf = _fetchMulti(query, {})
+            else:
+                buf = _multiRow(query, {}, (self.aliases or self.columns))
+            if not buf:
+                return
+            for row in buf:
+                yield row
 
     def executeOne(self):
         results = self.execute()
@@ -8090,7 +8116,7 @@ class RootExports(object):
                                tables=tables, joins=joins, clauses=clauses,
                                values=locals(), opts=queryOpts)
 
-        return query.execute()
+        return query.iterate()
 
     def getLatestBuilds(self,tag,event=None,package=None,type=None):
         """List latest builds for tag (inheritance enabled)"""
@@ -8763,26 +8789,39 @@ class RootExports(object):
 
         query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
                                clauses=conditions, values=opts, opts=queryOpts)
-        tasks = query.execute()
+        tasks = query.iterate()
         if queryOpts and (queryOpts.get('countOnly') or queryOpts.get('asList')):
             # Either of the above options makes us unable to easily the decode
             # the xmlrpc data
             return tasks
 
-        if opts.get('decode'):
-            for task in tasks:
-                # decode xmlrpc data
-                for f in ('request','result'):
-                    if task[f]:
-                        try:
-                            if task[f].find('<?xml', 0, 10) == -1:
-                                #handle older base64 encoded data
-                                task[f] = base64.decodestring(task[f])
-                            data, method = xmlrpclib.loads(task[f])
-                        except xmlrpclib.Fault, fault:
-                            data = fault
-                        task[f] = data
+        if opts.get('decode') and not queryOpts.get('countOnly'):
+            if queryOpts.get('asList'):
+                keys = []
+                for n, f in aliases:
+                    if f in ('request','result'):
+                        keys.append(n)
+            else:
+                keys = ('request','result')
+            tasks = self._decode_tasks(tasks, keys)
+
         return tasks
+
+    def _decode_tasks(self, tasks, keys):
+        for task in tasks:
+            # decode xmlrpc data
+            for f in keys:
+                val = task[f]
+                if val:
+                    try:
+                        if val.find('<?xml', 0, 10) == -1:
+                            #handle older base64 encoded data
+                            val = base64.decodestring(val)
+                        data, method = xmlrpclib.loads(val)
+                    except xmlrpclib.Fault, fault:
+                        data = fault
+                    task[f] = data
+            yield task
 
     def taskReport(self, owner=None):
         """Return data on active or recent tasks"""
@@ -9263,7 +9302,7 @@ class RootExports(object):
                                aliases=aliases, tables=(table,),
                                joins=joins, clauses=(clause,),
                                values=locals(), opts=queryOpts)
-        return query.execute()
+        return query.iterate()
 
 
 class BuildRoot(object):
