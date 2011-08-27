@@ -909,7 +909,27 @@ class BuildTask(BaseTaskHandler):
                                        arch='noarch')
         self.wait(task_id)
 
-class BuildArchTask(BaseTaskHandler):
+
+class BaseBuildTask(BaseTaskHandler):
+    """Base class for tasks the create a build root"""
+
+    def checkHostArch(self, tag, hostdata):
+        if not isinstance(tag, dict):
+            tag = self.session.getTag(tag)
+        if tag and tag['arches']:
+            tag_arches = [koji.canonArch(a) for a in tag['arches'].split()]
+            host_arches = hostdata['arches'].split()
+            if not set(tag_arches).intersection(host_arches):
+                    self.logger.info('Task %s (%s): tag arches (%s) and ' \
+                                     'host arches (%s) are disjoint' % \
+                                     (self.id, self.method,
+                                      ', '.join(tag_arches), ', '.join(host_arches)))
+                    return False
+        #otherwise...
+        return True
+
+
+class BuildArchTask(BaseBuildTask):
 
     Methods = ['buildArch']
 
@@ -933,6 +953,10 @@ class BuildArchTask(BaseTaskHandler):
         # cap the adjustment at +4.5
         weight = self.weight() + min(4.5, adj)
         self.session.host.setTaskWeight(self.id, weight)
+
+    def checkHost(self, hostdata):
+        tag = self.params[1]
+        return self.checkHostArch(tag, hostdata)
 
     def srpm_sanity_checks(self, filename):
         header = koji.get_rpm_header(filename)
@@ -1140,7 +1164,7 @@ class MavenTask(MultiPlatformTask):
                                                     arch='noarch')
             self.wait(tag_task_id)
 
-class BuildMavenTask(BaseTaskHandler):
+class BuildMavenTask(BaseBuildTask):
 
     Methods = ['buildMaven']
 
@@ -1155,6 +1179,10 @@ class BuildMavenTask(BaseTaskHandler):
                 filepath = os.path.join(dirpath, filename)
                 zfo.write(filepath, filepath[roottrim:])
         zfo.close()
+
+    def checkHost(self, hostdata):
+        tag = self.params[1]
+        return self.checkHostArch(tag, hostdata)
 
     def handler(self, url, build_tag, opts=None):
         if opts is None:
@@ -1323,7 +1351,7 @@ class BuildMavenTask(BaseTaskHandler):
                 'logs': logs,
                 'files': output_files}
 
-class WrapperRPMTask(BaseTaskHandler):
+class WrapperRPMTask(BaseBuildTask):
     """Build a wrapper rpm around jars output from a Maven build.
     Can either be called as a subtask of a maven task or as a separate
     top-level task.  In the latter case it will permanently delete any
@@ -1346,6 +1374,10 @@ class WrapperRPMTask(BaseTaskHandler):
         for tag in ("packager", "distribution", "vendor"):
             if re.match("%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
+
+    def checkHost(self, hostdata):
+        tag = self.params[1]
+        return self.checkHostArch(tag, hostdata)
 
     def handler(self, spec_url, build_tag, build, task, opts=None):
         if not opts:
@@ -2095,7 +2127,7 @@ class LiveCDTask(ImageTask):
                    os.path.join(koji.pathinfo.imageFinalPath(),
                                 koji.pathinfo.livecdRelPath(image_id), isofile)
 
-class BuildSRPMFromSCMTask(BaseTaskHandler):
+class BuildSRPMFromSCMTask(BaseBuildTask):
 
     Methods = ['buildSRPMFromSCM']
     _taskWeight = 1.0
@@ -2112,6 +2144,10 @@ class BuildSRPMFromSCMTask(BaseTaskHandler):
     def patch_scm_source(self, sourcedir, logfile, opts):
         # override if desired
         pass
+
+    def checkHost(self, hostdata):
+        tag = self.params[1]
+        return self.checkHostArch(tag, hostdata)
 
     def handler(self, url, build_tag, opts=None):
         # will throw a BuildError if the url is invalid

@@ -1040,39 +1040,28 @@ class TaskManager(object):
         Returns True if successful, False otherwise
         """
         self.logger.info("Attempting to take task %s" % task['id'])
-        if task['method'] in ('buildArch', 'buildSRPMFromSCM', 'buildMaven', 'wrapperRPM') and \
-               task['arch'] == 'noarch':
-            task_info = self.session.getTaskInfo(task['id'], request=True)
-            if task['method'] in ('buildMaven', 'wrapperRPM'):
-                tag = task_info['request'][1]
-            else:
-                tag_id = task_info['request'][1]
-                tag = self.session.getTag(tag_id)
-            if tag and tag['arches']:
-                tag_arches = [koji.canonArch(a) for a in tag['arches'].split()]
-                host_arches = self.hostdata['arches'].split()
-                if not set(tag_arches).intersection(host_arches):
-                    self.logger.info('Skipping task %s (%s) because tag arches (%s) and ' \
-                                     'host arches (%s) are disjoint' % \
-                                     (task['id'], task['method'],
-                                      ', '.join(tag_arches), ', '.join(host_arches)))
-                    return False
-        data = self.session.host.openTask(task['id'])
-        if data is None:
-            self.logger.warn("Could not open")
-            return False
-        if not data.has_key('request') or data['request'] is None:
-            self.logger.warn("Task '%s' has no request" % task['id'])
-            return False
-        id = data['id']
-        request = data['request']
-        self.tasks[id] = data
-        params, method = xmlrpclib.loads(request)
+        method = task['method']
         if self.handlers.has_key(method):
             handlerClass = self.handlers[method]
         else:
             raise koji.GenericError, "No handler found for method '%s'" % method
-        handler = handlerClass(id,method,params,self.session,self.options)
+        task_info = self.session.getTaskInfo(task['id'], request=True)
+        if task_info.get('request') is None:
+            self.logger.warn("Task '%s' has no request" % task['id'])
+            return False
+        params = task_info['request']
+        handler = handlerClass(task_info['id'], method, params, self.session, self.options)
+        if hasattr(handler, 'checkHost'):
+            if not handler.checkHost(self.hostdata):
+                self.logger.info('Skipping task %s (%s) due to host check', task['id'], task['method'])
+                return False
+        data = self.session.host.openTask(task['id'])
+        if data is None:
+            self.logger.warn("Could not open")
+            return False
+        id = data['id']
+        request = data['request']
+        self.tasks[id] = data
         # set weight
         self.session.host.setTaskWeight(id,handler.weight())
         if handler.Foreground:
