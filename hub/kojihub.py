@@ -2172,7 +2172,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     repo_arches = {}
     if tinfo['arches']:
         for arch in tinfo['arches'].split():
-            repo_arches[koji.canonArch(arch)] = 1
+            arch = koji.canonArch(arch)
+            if arch in ['src','noarch']:
+                continue
+            repo_arches[arch] = 1
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     if event is None:
         event_id = _singleValue("SELECT get_event()")
@@ -2181,9 +2184,9 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         q = "SELECT time FROM events WHERE id=%(event)s"
         event_time = _singleValue(q, locals(), strict=True)
         event_id = event
-    q = """INSERT INTO repo(id, create_event, tag_id, state)
-    VALUES(%(repo_id)s, %(event_id)s, %(tag_id)s, %(state)s)"""
-    _dml(q,locals())
+    insert = InsertProcessor('repo')
+    insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state)
+    insert.execute()
     # Need to pass event_id because even though this is a single transaction,
     # it is possible to see the results of other committed transactions
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=True)
@@ -2192,30 +2195,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                   if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  #should not already exist
-    #index builds
-    builds = dict([[build['build_id'],build] for build in builds])
-    #index the packages by arch
-    packages = {}
-    for repoarch in repo_arches:
-        packages.setdefault(repoarch, [])
-    relpathinfo = koji.PathInfo(topdir='toplink')
-    for rpminfo in rpms:
-        if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
-            continue
-        arch = rpminfo['arch']
-        repoarch = koji.canonArch(arch)
-        if arch == 'src':
-            if not with_src:
-                continue
-        elif arch == 'noarch':
-            pass
-        elif repoarch not in repo_arches:
-            # Do not create a repo for arches not in the arch list for this tag
-            continue
-        build = builds[rpminfo['build_id']]
-        rpminfo['relpath'] = "%s/%s" % (relpathinfo.build(build), relpathinfo.rpm(rpminfo))
-        rpminfo['relpath'] = rpminfo['relpath'].lstrip('/')
-        packages.setdefault(repoarch,[]).append(rpminfo)
+
     #generate comps and groups.spec
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
@@ -2224,56 +2204,51 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     fo.write(comps)
     fo.close()
 
+    #get build dirs
+    relpathinfo = koji.PathInfo(topdir='toplink')
+    builddirs = {}
+    for build in builds:
+        relpath = relpathinfo.build(build)
+        builddirs[build['id']] = relpath.lstrip('/')
     #generate pkglist files
-    for arch in packages.iterkeys():
-        if arch in ['src','noarch']:
-            continue
-            # src and noarch special-cased -- see below
-        archdir = os.path.join(repodir, arch)
+    pkglist = {}
+    for repoarch in repo_arches:
+        archdir = os.path.join(repodir, repoarch)
         koji.ensuredir(archdir)
         # Make a symlink to our topdir
         top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist = file(os.path.join(repodir, arch, 'pkglist'), 'w')
-        logger.info("Creating package list for %s" % arch)
-        for rpminfo in packages[arch]:
-            pkglist.write(rpminfo['relpath'] + '\n')
-        #noarch packages
-        for rpminfo in packages.get('noarch',[]):
-            pkglist.write(rpminfo['relpath'] + '\n')
-        # srpms
-        if with_src:
-            srpmdir = "%s/%s" % (repodir,'src')
-            koji.ensuredir(srpmdir)
-            for rpminfo in packages.get('src',[]):
-                pkglist.write(rpminfo['relpath'] + '\n')
-        pkglist.close()
-        #write list of blocked packages
-        blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
-        logger.info("Creating blocked list for %s" % arch)
+        pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
+    #NOTE - rpms is now an iterator
+    for rpminfo in rpms:
+        if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
+            continue
+        relpath = "%s/%s\n" % (builddirs[rpminfo['build_id']], relpathinfo.rpm(rpminfo))
+        arch = rpminfo['arch']
+        if arch == 'src':
+            if with_src:
+                for repoarch in repo_arches:
+                    pkglist[repoarch].write(relpath)
+        elif arch == 'noarch':
+            for repoarch in repo_arches:
+                pkglist[repoarch].write(relpath)
+        else:
+            repoarch = koji.canonArch(arch)
+            if repoarch not in repo_arches:
+                # Do not create a repo for arches not in the arch list for this tag
+                continue
+            pkglist[repoarch].write(relpath)
+    for repoarch in repo_arches:
+        pkglist[repoarch].close()
+
+    #write blocked package lists
+    for repoarch in repo_arches:
+        blocklist = file(os.path.join(repodir, repoarch, 'blocklist'), 'w')
         for pkg in blocks:
             blocklist.write(pkg['package_name'])
             blocklist.write('\n')
         blocklist.close()
-
-    # if using an external repo, make sure we've created a directory and pkglist for
-    # every arch in the taglist, or any packages of that arch in the external repo
-    # won't be processed
-    if get_external_repo_list(tinfo['id'], event=event_id):
-        for arch in repo_arches:
-            pkglist = os.path.join(repodir, arch, 'pkglist')
-            if not os.path.exists(pkglist):
-                logger.info("Creating missing package list for %s" % arch)
-                koji.ensuredir(os.path.dirname(pkglist))
-                pkglist_fo = file(pkglist, 'w')
-                pkglist_fo.close()
-                blocklist = file(os.path.join(repodir, arch, 'blocklist'), 'w')
-                logger.info("Creating missing blocked list for %s" % arch)
-                for pkg in blocks:
-                    blocklist.write(pkg['package_name'])
-                    blocklist.write('\n')
-                blocklist.close()
 
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
         artifact_dirs = {}
