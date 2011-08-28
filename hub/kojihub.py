@@ -1274,31 +1274,32 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     # we can get duplicates if a package is multiply tagged.
     rpms = []
     tags_seen = {}
-    for tagid in taglist:
-        if tags_seen.has_key(tagid):
-            #certain inheritance trees can (legitimately) have the same tag
-            #appear more than once (perhaps once with a package filter and once
-            #without). The hard part of that was already done by readTaggedBuilds.
-            #We only need consider each tag once. Note how we use build_idx below.
-            #(Without this, we could report the same rpm twice)
-            continue
-        else:
-            tags_seen[tagid] = 1
-        query.values['tagid'] = tagid
-        for rpminfo in query.execute():
-            #note: we're checking against the build list because
-            # it has been filtered by the package list. The tag
-            # tools should endeavor to keep tag_listing sane w.r.t.
-            # the package list, but if there is disagreement the package
-            # list should take priority
-            build = build_idx.get(rpminfo['build_id'],None)
-            if build is None:
+    def _iter_rpms():
+        for tagid in taglist:
+            if tags_seen.has_key(tagid):
+                #certain inheritance trees can (legitimately) have the same tag
+                #appear more than once (perhaps once with a package filter and once
+                #without). The hard part of that was already done by readTaggedBuilds.
+                #We only need consider each tag once. Note how we use build_idx below.
+                #(Without this, we could report the same rpm twice)
                 continue
-            elif build['tag_id'] != tagid:
-                #wrong tag
-                continue
-            rpms.append(rpminfo)
-    return [rpms,builds]
+            else:
+                tags_seen[tagid] = 1
+            query.values['tagid'] = tagid
+            for rpminfo in query.iterate():
+                #note: we're checking against the build list because
+                # it has been filtered by the package list. The tag
+                # tools should endeavor to keep tag_listing sane w.r.t.
+                # the package list, but if there is disagreement the package
+                # list should take priority
+                build = build_idx.get(rpminfo['build_id'],None)
+                if build is None:
+                    continue
+                elif build['tag_id'] != tagid:
+                    #wrong tag
+                    continue
+                yield rpminfo
+    return [_iter_rpms(), builds]
 
 def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, type=None):
     """Returns a list of archives for specified tag
