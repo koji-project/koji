@@ -2777,7 +2777,7 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_support': 'maven_support',
               'tag_config.maven_include_all': 'maven_include_all'
              }
-    clauses = ['tag_config.active = true', eventCondition(event)]
+    clauses = [eventCondition(event, table='tag_config')]
     if isinstance(tagInfo, int):
         clauses.append("tag.id = %(tagInfo)i")
     elif isinstance(tagInfo, basestring):
