@@ -39,8 +39,12 @@ import time
 import traceback
 
 
-def getTag(session, tag, cache={}):
+
+tag_cache = {}
+
+def getTag(session, tag):
     """A caching version of the hub call"""
+    cache = tag_cache
     now = time.time()
     if tag in cache:
         ts, info = cache[tag]
