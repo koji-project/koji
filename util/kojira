@@ -174,11 +174,9 @@ class RepoManager(object):
         self.logger = logging.getLogger("koji.repo.manager")
 
     def printState(self):
-        for repo in self.repos.itervalues():
-            self.logger.debug("repo %s: tag=%s, state=%s" 
-                              % (repo.repo_id, repo.tag_id, koji.REPO_STATES[repo.state]))
+        self.logger.debug('Tracking %i repos', len(self.repos))
         for tag_id, task_id in self.tasks.iteritems():
-            self.logger.debug("task %s for tag %s" % (task_id, tag_id))
+            self.logger.debug("Tracking task %s for tag %s" % (task_id, tag_id))
 
     def readCurrentRepos(self):
         self.logger.debug("Reading current repo data")
@@ -210,6 +208,9 @@ class RepoManager(object):
                 #also no point in checking
                 continue
             to_check.append(repo)
+        if self.logger.isEnabledFor(logging.DEBUG):
+            skipped = set(self.repos).difference([r.repo_id for r in to_check])
+            self.logger.debug("Skipped check for repos: %r", skipped)
         if not to_check:
             return
         session.multicall = True
@@ -217,6 +218,7 @@ class RepoManager(object):
             self.session.tagChangedSinceEvent(repo.event_id, repo.taglist)
         for repo, [changed] in zip(to_check, session.multiCall(strict=True)):
             if changed:
+                self.logger.debug("Repo %i no longer current", repo.repo_id)
                 repo.current = False
 
     def pruneLocalRepos(self):
