@@ -28,6 +28,7 @@ import traceback
 import types
 import pprint
 import resource
+import os
 from xmlrpclib import loads,dumps,Fault
 from mod_python import apache
 
@@ -254,9 +255,11 @@ class ModXMLRPCRequestHandler(object):
         ret = func(*params,**opts)
 
         if self.logger.isEnabledFor(logging.DEBUG):
-            self.logger.debug("Completed method %s for session %s (#%s): %f seconds",
+            rusage = resource.getrusage(resource.RUSAGE_SELF)
+            self.logger.debug("Completed method %s for session %s (#%s): %f seconds, pid %s, rss %s, stime %f",
                             method, context.session.id, context.session.callnum,
-                            time.time()-start)
+                            time.time()-start, os.getpid(),
+                            rusage.ru_maxrss, rusage.ru_stime)
 
         return ret
 
