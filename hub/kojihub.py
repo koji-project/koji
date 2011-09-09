@@ -7048,7 +7048,7 @@ class RootExports(object):
                     stat_map = {}
                     for attr in dir(stat_info):
                         if attr.startswith('st_'):
-                            if attr == 'st_size':
+                            if attr == 'st_size' or attr == 'st_dev':
                                 stat_map[attr] = str(getattr(stat_info, attr))
                             else:
                                 stat_map[attr] = getattr(stat_info, attr)
