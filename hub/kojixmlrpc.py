@@ -22,13 +22,13 @@
 
 from ConfigParser import ConfigParser
 import logging
+import os
 import sys
 import time
 import traceback
 import types
 import pprint
 import resource
-import os
 from xmlrpclib import loads,dumps,Fault
 from mod_python import apache
 
@@ -227,6 +227,7 @@ class ModXMLRPCRequestHandler(object):
     def _dispatch(self,method,params):
         func = self._get_handler(method)
         context.method = method
+        context.params = params
         if not hasattr(context,"session"):
             #we may be called again by one of our meta-calls (like multiCall)
             #so we should only create a session if one does not already exist
@@ -244,21 +245,21 @@ class ModXMLRPCRequestHandler(object):
         # handle named parameters
         params,opts = koji.decode_args(*params)
 
-        if self.logger.isEnabledFor(logging.DEBUG):
-            self.logger.debug("Handling method %s for session %s (#%s)",
+        if self.logger.isEnabledFor(logging.INFO):
+            self.logger.info("Handling method %s for session %s (#%s)",
                             method, context.session.id, context.session.callnum)
-            if method != 'uploadFile':
+            if method != 'uploadFile' and self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug("Params: %s", pprint.pformat(params))
                 self.logger.debug("Opts: %s", pprint.pformat(opts))
             start = time.time()
 
         ret = func(*params,**opts)
 
-        if self.logger.isEnabledFor(logging.DEBUG):
+        if self.logger.isEnabledFor(logging.INFO):
             rusage = resource.getrusage(resource.RUSAGE_SELF)
-            self.logger.debug("Completed method %s for session %s (#%s): %f seconds, pid %s, rss %s, stime %f",
+            self.logger.info("Completed method %s for session %s (#%s): %f seconds, rss %s, stime %f",
                             method, context.session.id, context.session.callnum,
-                            time.time()-start, os.getpid(),
+                            time.time()-start,
                             rusage.ru_maxrss, rusage.ru_stime)
 
         return ret
@@ -296,6 +297,7 @@ class ModXMLRPCRequestHandler(object):
             req.allow_methods(['POST'],1)
             raise apache.SERVER_RETURN, apache.HTTP_METHOD_NOT_ALLOWED
 
+        context.connection = req.connection
         response = self._marshaled_dispatch(req.read())
 
         req.content_type = "text/xml"
@@ -392,7 +394,7 @@ def load_config(req):
         ['EnableFunctionDebug', 'boolean', False],
 
         ['LogLevel', 'string', 'WARNING'],
-        ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s %(name)s: %(message)s'],
+        ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s %(name)s: %(message)s'],
 
         ['MissingPolicyOk', 'boolean', True],
         ['EnableMaven', 'boolean', False],
@@ -409,6 +411,8 @@ def load_config(req):
         ['RLIMIT_OFILE', 'string', None],
         ['RLIMIT_RSS', 'string', None],
         ['RLIMIT_STACK', 'string', None],
+
+        ['MemoryWarnThreshold', 'integer', 5000],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],
@@ -529,6 +533,10 @@ class HubFormatter(logging.Formatter):
 
     def format(self, record):
         record.method = getattr(context, 'method', None)
+	if hasattr(context, 'connection'):
+            record.remoteaddr = "%s:%s" % (context.connection.remote_addr)
+        else:
+            record.remoteaddr = "?:?"
         if hasattr(context, 'session'):
             record.user_id = context.session.user_id
             record.session_id = context.session.id
@@ -615,6 +623,12 @@ firstcall = True
 ready = False
 opts = {}
 
+def get_memory_usage():
+    pagesize = resource.getpagesize()
+    statm = [pagesize*int(y)/1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    size, res, shr, text, lib, data, dirty = statm
+    return res - shr
+
 def handler(req, profiling=False):
     global firstcall, ready, registry, opts, plugins, policy
     if firstcall:
@@ -645,6 +659,8 @@ def handler(req, profiling=False):
         _profiling_req = None
     else:
         try:
+            memory_usage_at_start = get_memory_usage()
+
             if opts.get('ServerOffline'):
                 offline_reply(req, msg=opts.get("OfflineMessage", None))
                 return apache.OK
@@ -670,6 +686,12 @@ def handler(req, profiling=False):
                 context.cnx.rollback()
             elif context.commit_pending:
                 context.cnx.commit()
+            memory_usage_at_end = get_memory_usage()
+            if memory_usage_at_end - memory_usage_at_start > opts['MemoryWarnThreshold']:
+                paramstr = repr(context.params)
+                if len(paramstr) > 120:
+                    paramstr = paramstr[:117] + "..."
+                h.logger.warning("Memory usage of process %d grew from %d KiB to %d KiB (+%d KiB) processing request %s with args %s" % (os.getpid(), memory_usage_at_start, memory_usage_at_end, memory_usage_at_end - memory_usage_at_start, context.method, paramstr))
         finally:
             #make sure context gets cleaned up
             if hasattr(context,'cnx'):
