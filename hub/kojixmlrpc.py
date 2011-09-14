@@ -20,7 +20,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from ConfigParser import ConfigParser
+from ConfigParser import RawConfigParser
 import logging
 import os
 import sys
@@ -357,7 +357,7 @@ def load_config(req):
     if cf:
         # to aid in the transition from PythonOptions to hub.conf, we only load
         # the configfile if it is explicitly configured
-        config = ConfigParser()
+        config = RawConfigParser()
         config.read(cf)
     else:
         sys.stderr.write('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf\n')
