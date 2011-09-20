@@ -6269,6 +6269,9 @@ class QueryProcessor(object):
                 column values in query order, rather than the usual list of maps
         rowlock: if True, use "FOR UPDATE" to lock the queried rows
     """
+
+    iterchunksize = 1000
+
     def __init__(self, columns=None, aliases=None, tables=None,
                  joins=None, clauses=None, values=None, opts=None):
         self.columns = columns
@@ -6409,22 +6412,30 @@ SELECT %(col_str)s
     def iterate(self):
         if self.opts.get('countOnly'):
             return self.execute()
+        elif self.opts.get('limit') and self.opts['limit'] < self.iterchunksize:
+            return self.execute()
         else:
-            return self._iterate(str(self), self.values.copy(), self.opts.get('asList'))
+            fields = self.aliases or self.columns
+            fields = list(fields)
+            return self._iterate(str(self), self.values.copy(), fields,
+                                 self.iterchunksize, self.opts.get('asList'))
 
-    def _iterate(self, query, values, as_list=False):
+    def _iterate(self, query, values, fields, chunksize, as_list=False):
+        # We pass all this data into the generator so that the iterator works
+        # from the snapshot when it was generated. Otherwise reuse of the processor
+        # for similar queries could have unpredictable results.
         cname = "qp_cursor_%s_%i" % (id(self), self.cursors)
         self.cursors += 1
-        query = "DECLARE %s NO SCROLL CURSOR FOR %s" % (cname, self)
+        query = "DECLARE %s NO SCROLL CURSOR FOR %s" % (cname, query)
         c = context.cnx.cursor()
-        c.execute(query, self.values)
+        c.execute(query, values)
         c.close()
-        query = "FETCH 1000 FROM %s" % cname
+        query = "FETCH %i FROM %s" % (chunksize, cname)
         while True:
             if as_list:
                 buf = _fetchMulti(query, {})
             else:
-                buf = _multiRow(query, {}, (self.aliases or self.columns))
+                buf = _multiRow(query, {}, fields)
             if not buf:
                 return
             for row in buf:
