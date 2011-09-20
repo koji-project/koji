@@ -213,10 +213,15 @@ class ModXMLRPCRequestHandler(object):
 
     def _read_request(self, stream):
         parser, unmarshaller = getparser()
+        len = 0
+        maxlen = opts.get('MaxRequestLength', None)
         while True:
             chunk = stream.read(8192)
             if not chunk:
                 break
+            len += len(chunk)
+            if maxlen and len > maxlen:
+                raise koji.GenericError, 'Request too long'
             parser.feed(chunk)
         parser.close()
         return unmarshaller.close(), unmarshaller.getmethodname()
@@ -443,6 +448,7 @@ def load_config(environ):
         ['RLIMIT_STACK', 'string', None],
 
         ['MemoryWarnThreshold', 'integer', 5000],
+        ['MaxRequestLength', 'integer', 4194304],
 
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],
