@@ -26,7 +26,11 @@ import sys
 import pgdb
 import time
 import traceback
-from pgdb import _quoteparams
+_quoteparams = None
+try:
+    from pgdb import _quoteparams
+except ImportError:
+    pass
 assert pgdb.threadsafety >= 1
 import context
 
@@ -90,7 +94,13 @@ class CursorWrapper:
     def execute(self, operation, parameters=()):
         debug = self.logger.isEnabledFor(logging.DEBUG)
         if debug:
-            self.logger.debug(_quoteparams(operation,parameters))
+            if _quoteparams is not None:
+                quote = _quoteparams
+            elif hasattr(self.cursor, "_quoteparams"):
+                quote = self.cursor._quoteparams
+            else:
+                quote = lambda a,b: a % b
+            self.logger.debug(quote(operation, parameters))
             start = time.time()
         ret = self.cursor.execute(operation, parameters)
         if debug:
