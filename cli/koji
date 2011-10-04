@@ -1307,7 +1307,7 @@ def handle_import(options, session, args):
     elif options.src_epoch:
         try:
             options.src_epoch = int(options.src_epoch)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             parser.error(_("Invalid value for epoch: %s") % options.src_epoch)
             assert False
     activate_session(session)
