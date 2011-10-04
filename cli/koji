@@ -45,7 +45,6 @@ import socket
 import stat
 import string
 import time
-import urllib
 import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
 import xmlrpclib
@@ -2517,7 +2516,6 @@ def anon_handle_list_untagged(options, session, args):
         for x in session.buildMap():
             refs.setdefault(x['used'], {}).setdefault(x['built'], 1)
             refs2.setdefault(x['built'], {}).setdefault(x['used'], 1)
-        has_ref = {}
         #XXX - need to ignore refs to unreferenced builds
         for x in data:
             builds = refs.get(x['id'])
@@ -4204,7 +4202,6 @@ def handle_lock_tag(options, session, args):
         assert False
     activate_session(session)
     pdata = session.getAllPerms()
-    perms = dict([(p['id'], p['name']) for p in pdata])
     perm_ids = dict([(p['name'], p['id']) for p in pdata])
     perm = options.perm
     if perm is None:
@@ -5056,7 +5053,6 @@ def handle_list_tasks(options, session, args):
                 parent.setdefault('children',[])
                 parent['children'].append(t)
                 t['sub'] = True
-    seen = {}
     if not options.quiet:
         print_task_headers()
     for t in tasklist:
@@ -5211,8 +5207,6 @@ def handle_make_task(opts, session, args):
     activate_session(session)
 
     taskopts = {}
-    method = args[0]
-    taskargs = map(arg_filter,args[1:])
     for key in ('channel','priority','arch'):
         value = getattr(options,key,None)
         if value is not None:
@@ -5617,7 +5611,6 @@ def anon_handle_search(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
     parser.add_option("--exact", action="store_true", help=_("exact matches only"))
-    main_options = options
     (options, args) = parser.parse_args(args)
     if not args:
         parser.print_help()
