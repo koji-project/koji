@@ -1487,7 +1487,7 @@ def handle_import_sig(options, session, args):
             print "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data
             continue
         if rinfo.get('external_repo_id'):
-            print "Skipping external rpm:  %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" %rpminfo
+            print "Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo
             continue
         sighdr = koji.rip_rpm_sighdr(path)
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
@@ -2021,7 +2021,7 @@ def handle_list_signed(options, session, args):
         if rinfo is None:
             parser.error(_("No such RPM: %s") % options.rpm)
         if rinfo.get('external_repo_id'):
-            print "External rpm:  %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" %rpminfo
+            print "External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo
             return 1
         qopts['rpm_id'] = rinfo['id']
     if options.build:
