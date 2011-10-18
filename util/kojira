@@ -209,7 +209,8 @@ class RepoManager(object):
                 # no point in checking again
                 continue
             if repo.state not in (koji.REPO_READY, koji.REPO_INIT):
-                #also no point in checking
+                repo.current = False
+                #also no point in further checking
                 continue
             to_check.append(repo)
         if self.logger.isEnabledFor(logging.DEBUG):
