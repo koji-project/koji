@@ -519,9 +519,9 @@ class DependantTask(BaseTaskHandler):
             self.wait(subtasks, all=True)
 
 class MultiPlatformTask(BaseTaskHandler):
-    def buildWrapperRPM(self, spec_url, build_task_id, build_tag, build, repo_id, **opts):
+    def buildWrapperRPM(self, spec_url, build_task_id, build_target, build, repo_id, **opts):
         task = self.session.getTaskInfo(build_task_id)
-        arglist = [spec_url, build_tag, build, task, {'repo_id': repo_id}]
+        arglist = [spec_url, build_target, build, task, {'repo_id': repo_id}]
 
         rpm_task_id = self.session.host.subtask(method='wrapperRPM',
                                                 arglist=arglist,

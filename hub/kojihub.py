@@ -6663,8 +6663,8 @@ class RootExports(object):
     def wrapperRPM(self, build, url, target, priority=None, channel='maven', opts=None):
         """Create a top-level wrapperRPM task
 
-        build: The build to generate wrapper rpms for.  Must be in the COMPLETE state, and have
-               associated Maven jars.
+        build: The build to generate wrapper rpms for.  Must be in the COMPLETE state and have no
+               rpms already associated with it.
         url: SCM URL to a specfile fragment
         target: The build target to use when building the wrapper rpm.  The build_tag of the target will
                 be used to populate the buildroot in which the rpms are built.
@@ -6675,7 +6675,6 @@ class RootExports(object):
 
         returns the task ID
         """
-        context.session.assertPerm('admin')
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError, "Maven support not enabled"
 
@@ -6683,7 +6682,7 @@ class RootExports(object):
             opts = {}
 
         build = self.getBuild(build, strict=True)
-        if list_rpms(build['id']) and not opts.get('scratch'):
+        if list_rpms(build['id']) and not (opts.get('scratch') or opts.get('create_build')):
             raise koji.PreBuildError, 'wrapper rpms for %s have already been built' % koji.buildLabel(build)
         build_target = self.getBuildTarget(target)
         if not build_target:
@@ -6699,7 +6698,7 @@ class RootExports(object):
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         taskOpts['channel'] = channel
 
-        return make_task('wrapperRPM', [url, build_tag, build, None, opts], **taskOpts)
+        return make_task('wrapperRPM', [url, build_target, build, None, opts], **taskOpts)
 
     def winBuild(self, vm, url, target, opts=None, priority=None, channel='vm'):
         """
@@ -9595,8 +9594,8 @@ class HostExports(object):
         import_archive(filepath, buildinfo, type, typeInfo)
 
     def importWrapperRPMs(self, task_id, build_id, rpm_results):
-        """Import the wrapper rpms and associate them with the given build.  Any existing
-           rpms are deleted before import."""
+        """Import the wrapper rpms and associate them with the given build.  The build
+        must not have any existing rpms associated with it."""
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError, "Maven support not enabled"
         host = Host()

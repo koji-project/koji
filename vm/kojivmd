@@ -363,7 +363,7 @@ class WinBuildTask(MultiPlatformTask):
             rpm_results = None
             spec_url = opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, task_id, build_tag, build_info, repo_id,
+                rpm_results = self.buildWrapperRPM(spec_url, task_id, target_info, build_info, repo_id,
                                                    channel='default')
 
             if opts.get('scratch'):

@@ -1058,10 +1058,12 @@ def handle_maven_build(options, session, args):
         return watch_tasks(session,[task_id],quiet=options.quiet)
 
 def handle_wrapper_rpm(options, session, args):
-    """[admin] Build wrapper rpms for any jars associated with the build.  Any existing rpms will be deleted from the database and the filesystem."""
+    """Build wrapper rpms for any archives associated with a build."""
     usage = _("usage: %prog wrapper-rpm [options] target build-id|n-v-r URL")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--create-build", action="store_true", help=_("Create a new build to contain wrapper rpms"))
+    parser.add_option("--skip-tag", action="store_true", help=_("If creating a new build, don't tag it"))
     parser.add_option("--scratch", action="store_true", help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
     parser.add_option("--background", action="store_true", help=_("Run the build at a lower priority"))
@@ -1071,9 +1073,6 @@ def handle_wrapper_rpm(options, session, args):
         parser.error(_("You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment"))
         assert False
     activate_session(session)
-    if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
-        return 1
 
     target = args[0]
     build_id = args[1]
@@ -1084,6 +1083,10 @@ def handle_wrapper_rpm(options, session, args):
     if build_opts.background:
         priority = 5
     opts = {}
+    if build_opts.create_build:
+        opts['create_build'] = True
+    if build_opts.skip_tag:
+        opts['skip_tag'] = True
     if build_opts.scratch:
         opts['scratch'] = True
     task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)

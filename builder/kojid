@@ -1140,7 +1140,7 @@ class MavenTask(MultiPlatformTask):
             rpm_results = None
             spec_url = self.opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, self.build_task_id, build_tag, build_info, repo_id)
+                rpm_results = self.buildWrapperRPM(spec_url, self.build_task_id, target_info, build_info, repo_id)
 
             if self.opts.get('scratch'):
                 self.session.host.moveMavenBuildToScratch(self.id, maven_results, rpm_results)
@@ -1352,11 +1352,10 @@ class BuildMavenTask(BaseBuildTask):
                 'files': output_files}
 
 class WrapperRPMTask(BaseBuildTask):
-    """Build a wrapper rpm around jars output from a Maven build.
-    Can either be called as a subtask of a maven task or as a separate
-    top-level task.  In the latter case it will permanently delete any
-    existing rpms associated with the build and replace them with the
-    newly-built rpms."""
+    """Build a wrapper rpm around archives output from a Maven or Windows build.
+    May either be called as a subtask or as a separate
+    top-level task.  In the latter case it can either associate the new rpms
+    with the existing build or create a new build."""
 
     Methods = ['wrapperRPM']
 
@@ -1376,10 +1375,10 @@ class WrapperRPMTask(BaseBuildTask):
                 raise koji.BuildError, "%s is not allowed to be defined in spec file" % tag
 
     def checkHost(self, hostdata):
-        tag = self.params[1]
-        return self.checkHostArch(tag, hostdata)
+        target = self.params[1]
+        return self.checkHostArch(target['build_tag'], hostdata)
 
-    def handler(self, spec_url, build_tag, build, task, opts=None):
+    def handler(self, spec_url, build_target, build, task, opts=None):
         if not opts:
             opts = {}
 
@@ -1499,6 +1498,7 @@ class WrapperRPMTask(BaseBuildTask):
 
         repo_info = self.session.repoInfo(repo_id, strict=True)
         event_id = repo_info['create_event']
+        build_tag = self.session.getTag(build_target['build_tag'], strict=True)
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
 
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, install_group='wrapper-rpm-build', repo_id=repo_id)
@@ -1529,12 +1529,12 @@ class WrapperRPMTask(BaseBuildTask):
             localpath = self.localPath(relpath)
             # RPM requires all SOURCE files in the srpm to be in the same directory, so
             # we flatten any directory structure of the output files here.
-            # If multiple files in the build have the same basename, the last one
-            # listed will be the one that ends up in the srpm, which is rarely the right
-            # thing to do.  In this case the build should be putting the output into a
-            # zipfile or tarball so that rpmbuild can then expand it in %setup, which
-            # will preserve the directory structure.
-            shutil.copy(localpath, specdir)
+            # If multiple files in the build have the same basename, duplicate files will
+            # have their relative path prepended to their name, with / replaced with -.
+            destpath = os.path.join(specdir, os.path.basename(relpath))
+            if os.path.exists(destpath):
+                destpath = os.path.join(specdir, relpath.replace('/', '-'))
+            shutil.copy(localpath, destpath)
 
         # change directory to the specdir to the template can reference files there
         os.chdir(specdir)
@@ -1570,7 +1570,31 @@ class WrapperRPMTask(BaseBuildTask):
         shutil.move(srpm, self.workdir)
         srpm = os.path.join(self.workdir, os.path.basename(srpm))
 
-        buildroot.build(srpm)
+        self.new_build_id = None
+        if opts.get('create_build') and not opts.get('scratch'):
+            h = koji.get_rpm_header(srpm)
+            data = koji.get_header_fields(h, ['name', 'version', 'release', 'epoch'])
+            data['task_id'] = self.id
+            self.logger.info("Reading package config for %(name)s" % data)
+            pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
+            if not opts.get('skip_tag'):
+                # Make sure package is on the list for this tag
+                if pkg_cfg is None:
+                    raise koji.BuildError, "package %s not in list for tag %s" \
+                          % (data['name'], build_target['dest_tag_name'])
+                elif pkg_cfg['blocked']:
+                    raise koji.BuildError, "package %s is blocked for tag %s" \
+                          % (data['name'], build_target['dest_tag_name'])
+            self.new_build_id = self.session.host.initBuild(data)
+
+        try:
+            buildroot.build(srpm)
+        except (SystemExit, ServerExit, KeyboardInterrupt):
+            raise
+        except:
+            if self.new_build_id:
+                self.session.host.failBuild(self.id, self.new_build_id)
+                raise
 
         resultdir = buildroot.resultdir()
         srpm = None
@@ -1582,6 +1606,8 @@ class WrapperRPMTask(BaseBuildTask):
                 if not srpm:
                     srpm = filename
                 else:
+                    if self.new_build_id:
+                        self.session.host.failBuild(self.id, self.new_build_id)
                     raise koji.BuildError, 'multiple srpms found in %s: %s, %s' % \
                         (resultdir, srpm, filename)
             elif filename.endswith('.rpm'):
@@ -1589,27 +1615,64 @@ class WrapperRPMTask(BaseBuildTask):
             elif filename.endswith('.log'):
                 logs.append(filename)
             else:
+                if self.new_build_id:
+                    self.session.host.failBuild(self.id, self.new_build_id)
                 raise koji.BuildError, 'unexpected file found in %s: %s' % \
                     (resultdir, filename)
 
         if not srpm:
+            if self.new_build_id:
+                self.session.host.failBuild(self.id, self.new_build_id)
             raise koji.BuildError, 'no srpm found'
 
         if not rpms:
+            if self.new_build_id:
+                self.session.host.failBuild(self.id, self.new_build_id)
             raise koji.BuildError, 'no rpms found'
 
-        for rpm in [srpm] + rpms:
-            self.uploadFile(os.path.join(resultdir, rpm))
+        try:
+            for rpm in [srpm] + rpms:
+                self.uploadFile(os.path.join(resultdir, rpm))
+        except (SystemExit, ServerExit, KeyboardInterrupt):
+            raise
+        except:
+            if self.new_build_id:
+                self.session.host.failBuild(self.id, self.new_build_id)
+                raise
 
         results = {'buildroot_id': buildroot.id,
                    'srpm': srpm,
                    'rpms': rpms,
                    'logs': logs}
 
-        if not task and not opts.get('scratch'):
-            # Called as a standalone top-level task, so import the rpms now.
+        if not task:
+            # Called as a standalone top-level task, so handle the rpms now.
             # Otherwise we let the parent task handle it.
-            self.session.host.importWrapperRPMs(self.id, build['id'], results)
+            uploaddir = self.getUploadDir()
+            relsrpm = uploaddir + '/' + srpm
+            relrpms = [uploaddir + '/' + r for r in rpms]
+            rellogs = [uploaddir + '/' + l for l in logs]
+            if opts.get('scratch'):
+                self.session.host.moveBuildToScratch(self.id, relsrpm, relrpms, {'noarch': rellogs})
+            else:
+                if opts.get('create_build'):
+                    brmap = dict.fromkeys([relsrpm] + relrpms, buildroot.id)
+                    try:
+                        self.session.host.completeBuild(self.id, self.new_build_id,
+                                                        relsrpm, relrpms, brmap, {'noarch': rellogs})
+                    except (SystemExit, ServerExit, KeyboardInterrupt):
+                        raise
+                    except:
+                        self.session.host.failBuild(self.id, self.new_build_id)
+                        raise
+                    if not opts.get('skip_tag'):
+                        tag_task_id = self.session.host.subtask(method='tagBuild',
+                                                                arglist=[build_target['dest_tag'],
+                                                                         self.new_build_id, False, None, True],
+                                                                label='tag', parent=self.id, arch='noarch')
+                        self.wait(tag_task_id)
+                else:
+                    self.session.host.importWrapperRPMs(self.id, build['id'], results)
 
         # no need to upload logs, they've already been streamed to the hub
         # during the build process

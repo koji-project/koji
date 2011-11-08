@@ -2036,12 +2036,12 @@ def taskLabel(taskInfo):
             extra = build_tag['name']
     elif method == 'wrapperRPM':
         if taskInfo.has_key('request'):
-            build_tag = taskInfo['request'][1]
+            build_target = taskInfo['request'][1]
             build = taskInfo['request'][2]
             if build:
-                extra = '%s, %s' % (build_tag['name'], buildLabel(build))
+                extra = '%s, %s' % (build_target['name'], buildLabel(build))
             else:
-                extra = build_tag['name']
+                extra = build_target['name']
     elif method == 'winbuild':
         if taskInfo.has_key('request'):
             vm = taskInfo['request'][0]

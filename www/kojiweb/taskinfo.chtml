@@ -132,7 +132,12 @@ $value
         #end if
 	#elif $task.method == 'wrapperRPM'
 	<strong>Spec File URL:</strong> $params[0]<br/>
+	#if 'locked' in $buildTarget
+	#set $buildTag = $buildTarget
 	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+	#else
+	<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
+	#end if
 	#if $params[2]
 	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
 	#end if

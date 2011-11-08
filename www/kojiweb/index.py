@@ -375,7 +375,7 @@ _TASKS = ['build',
 # Tasks that can exist without a parent
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'createLiveCD', 'createAppliance']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'winbuild', 'newRepo', 'wrapperRPM']
 
 def tasks(req, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(req, 'Tasks', 'tasks')
@@ -574,8 +574,8 @@ def taskinfo(req, taskID):
         deps = [server.getTaskInfo(depID, request=True) for depID in params[0]]
         values['deps'] = deps
     elif task['method'] == 'wrapperRPM':
-        buildTag = params[1]
-        values['buildTag'] = buildTag
+        buildTarget = params[1]
+        values['buildTarget'] = buildTarget
         if params[3]:
             wrapTask = server.getTaskInfo(params[3]['id'], request=True)
             values['wrapTask'] = wrapTask
