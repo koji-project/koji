@@ -786,7 +786,7 @@ def _running_in_bg():
 
 def handle_build(options, session, args):
     "Build a package from source"
-    usage = _("usage: %prog build [options] target URL")
+    usage = _("usage: %prog build [options] target <srpm path or scm url>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--skip-tag", action="store_true",
