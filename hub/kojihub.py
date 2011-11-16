@@ -7617,7 +7617,7 @@ class RootExports(object):
         if userID != None:
             clauses.append('users.id = %(userID)i')
         if volumeID != None:
-            clauses.append('volume.id = %(packageID)i')
+            clauses.append('volume.id = %(volumeID)i')
         if taskID != None:
             if taskID == -1:
                 clauses.append('build.task_id IS NOT NULL')
