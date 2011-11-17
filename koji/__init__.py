@@ -1240,7 +1240,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     config_opts = {
         'root' : name,
         'basedir' : mockdir,
-        'target_arch' : arch,
+        'target_arch' : opts.get('target_arch', arch),
         'chroothome': '/builddir',
         # Use the group data rather than a generated rpm
         'chroot_setup_cmd': 'groupinstall %s' % opts.get('install_group', 'build'),
@@ -1297,8 +1297,8 @@ baseurl=%(url)s
     macros = {
         '%_topdir' : '%s/build' % config_opts['chroothome'],
         '%_rpmfilename' : '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
-        '%_host_cpu' : arch,
-        '%_host': '%s-%s' % (arch, opts.get('mockhost', 'koji-linux-gnu')),
+        '%_host_cpu' : opts.get('target_arch', arch),
+        '%_host': '%s-%s' % (opts.get('target_arch', arch), opts.get('mockhost', 'koji-linux-gnu')),
         '%vendor' : opts.get('vendor', 'Koji'),
         '%packager' : opts.get('packager', 'Koji'),
         '%distribution': opts.get('distribution', 'Unknown')
