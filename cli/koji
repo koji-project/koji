@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# coding=utf-8
 
 # command line interface for the Koji build system
 # Copyright (c) 2005-2008 Red Hat
@@ -64,6 +65,28 @@ if optparse.__version__ == "1.4.1+":
             sys.stderr.write(msg)
         sys.exit(2)
     OptionParser.error = _op_error
+
+greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
+             'bonjour',
+             'hallo',
+             'ciao',
+             'hola',
+            u'olá',
+            u'dobrý den',
+            u'zdravstvuite',
+            u'góðan daginn',
+             'hej',
+             'tervehdys',
+            u'grüezi',
+            u'céad míle fáilte',
+            u'hylô',
+            u'bună ziua',
+            u'jó napot',
+             'dobre dan',
+            u'你好',
+            u'こんにちは',
+            u'नमस्कार',
+            u'안녕하세요')
 
 def _(args):
     """Stub function for translation"""
@@ -136,6 +159,8 @@ def get_options():
     }
     cmd = args[0]
     cmd = aliases.get(cmd, cmd)
+    if cmd.lower() in greetings:
+        cmd = "moshimoshi"
     cmd = cmd.replace('-', '_')
     if globals().has_key('anon_handle_' + cmd):
         if not options.force_auth:
@@ -5627,6 +5652,22 @@ def anon_handle_search(options, session, args):
     data = session.search(pattern, type, matchType)
     for row in data:
         print row['name']
+
+def handle_moshimoshi(options, session, args):
+    "Introduce yourself"
+    usage = _("usage: %prog moshimoshi [options]")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False
+    activate_session(session)
+    u = session.getLoggedInUser()
+    print "%s, %s!" % (random.choice(greetings), u["name"],)
+    print ""
+    print "You are using the hub at %s" % (session.baseurl,)
+    if u.get("krb_principal", None) is not None:
+        print "Authenticated via Kerberos principal %s" % (u["krb_principal"])
 
 def handle_help(options, session, args):
     "List available commands"
