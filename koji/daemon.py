@@ -237,8 +237,16 @@ class SCM(object):
             query = query[:-1]
 
         # check for validity: params should be empty, query may be empty, everything else should be populated
-        if params or not (scheme and netloc and path and fragment):
-            raise koji.GenericError, 'Unable to parse SCM URL: %s' % self.url
+        if params :
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Param element %s should be empty.' % (self.url,param)
+        if not scheme :
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url
+        if not netloc :
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url
+        if not path :
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the path element.' % self.url
+        if not fragment :
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url
 
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
