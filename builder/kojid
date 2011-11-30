@@ -204,7 +204,7 @@ class BuildRoot(object):
         for k in ('repoid', 'tag_name'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'distribution', 'mockhost'):
+        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'distribution', 'mockhost', 'yum_proxy'):
             if hasattr(self.options, k):
                 opts[k] = getattr(self.options, k)
         opts['buildroot_id'] = self.id
@@ -2927,6 +2927,7 @@ def get_options():
                 'createrepo_update': True,
                 'pkgurl': None,
                 'allowed_scms': '',
+                'yum_proxy': None,
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
                                      'resolver-status.properties *.lastUpdated',
                 'failed_buildroot_lifetime' : 3600 * 4,

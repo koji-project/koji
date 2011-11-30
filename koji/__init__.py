@@ -1275,7 +1275,12 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
 
-    config_opts['yum.conf'] = """[main]
+    config_opts['yum.conf'] = "[main]\n"
+    # HTTP proxy for yum
+    if opts.get('yum_proxy'):
+        config_opts['yum.conf'] += "proxy=%s\n" % opts['yum_proxy']
+    # Rest of the yum options
+    config_opts['yum.conf'] += """
 cachedir=/var/cache/yum
 debuglevel=1
 logfile=/var/log/yum.log
