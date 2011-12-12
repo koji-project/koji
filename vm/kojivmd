@@ -624,7 +624,7 @@ class VMExecTask(BaseTaskHandler):
         from the server.  Returns an open file object.
         """
         # fileinfo['localpath'] is set by getFileList()
-        localpath = os.path.join(self.buildreq_dir, type, fileinfo['localpath'])
+        localpath = os.path.join(self.buildreq_dir, buildinfo['name'], type, fileinfo['localpath'])
         if not os.path.isfile(localpath):
             remote_pi = koji.PathInfo(self.options.topurl)
             if type == 'rpm':
