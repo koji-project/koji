@@ -531,7 +531,7 @@ class TaskManager(object):
                     if not task:
                         self.logger.warn("%s: invalid task %s" % (desc, br['task_id']))
                         continue
-                    if (task['state'] == koji.TASK_STATES['FAILED'] and age < 3600 * 4):
+                    if (task['state'] == koji.TASK_STATES['FAILED'] and age < self.options.failed_buildroot_lifetime):
                         #XXX - this could be smarter
                         # keep buildroots for failed tasks around for a little while
                         self.logger.debug("Keeping failed buildroot: %s" % desc)

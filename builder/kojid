@@ -2910,6 +2910,7 @@ def get_options():
                 'allowed_scms': '',
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
                                      'resolver-status.properties *.lastUpdated',
+                'failed_buildroot_lifetime' : 3600 * 4,
                 'cert': '/etc/kojid/client.crt',
                 'ca': '/etc/kojid/clientca.crt',
                 'serverca': '/etc/kojid/serverca.crt'}
