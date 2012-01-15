@@ -2917,7 +2917,7 @@ def get_options():
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
-                        'max_retries', 'offline_retry_interval']:
+                        'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime']:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
