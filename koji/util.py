@@ -15,6 +15,7 @@
 #    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import calendar
+from fnmatch import fnmatch
 import re
 import time
 import koji
@@ -106,6 +107,18 @@ def printList(l):
         ret += ', and '
         ret += l[-1]
         return ret
+
+def multi_fnmatch(s, patterns):
+    """Returns true if s matches any pattern in the list
+
+    If patterns is a string, it will be split() first
+    """
+    if isinstance(patterns, basestring):
+        patterns = patterns.split()
+    for pat in patterns:
+        if fnmatch(s, pat):
+            return True
+    return False
 
 def dslice(dict, keys, strict=True):
     """Returns a new dictionary containing only the specified keys"""

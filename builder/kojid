@@ -857,11 +857,15 @@ class BuildTask(BaseTaskHandler):
         subtasks = {}
         keep_srpm = True
         for arch in archlist:
+            if koji.util.multi_fnmatch(arch, self.options.literal_task_arches):
+                taskarch = arch
+            else:
+                taskarch = koji.canonArch(arch)
             subtasks[arch] = self.session.host.subtask(method='buildArch',
                                                        arglist=[srpm, build_tag, arch, keep_srpm, {'repo_id': repo_id}],
                                                        label=arch,
                                                        parent=self.id,
-                                                       arch=koji.canonArch(arch))
+                                                       arch=taskarch)
             keep_srpm = False
 
         self.logger.debug("Got subtasks: %r" % (subtasks))
@@ -2878,6 +2882,7 @@ def get_options():
             quit('invalid section found in config file: %s' % x)
     defaults = {'sleeptime': 15,
                 'maxjobs': 10,
+                'literal_task_arches': '',
                 'minspace': 8192,
                 'admin_emails': None,
                 'topdir': '/mnt/koji',
