@@ -3759,7 +3759,7 @@ _table_keys = {
 
 def anon_handle_list_history(options, session, args):
     "Display historical data"
-    usage = _("usage: %prog list-tag-history [options]")
+    usage = _("usage: %prog list-history [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--debug", action="store_true")
@@ -3776,6 +3776,9 @@ def anon_handle_list_history(options, session, args):
     parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
     parser.add_option("--after-event", metavar="EVENT_ID", type='int', help=_("Only show entries after event"))
+    parser.add_option("--active", action='store_true', help=_("Only show entries that are currently active"))
+    parser.add_option("--revoked", action='store_false', dest='active',
+                            help=_("Only show entries that are currently revoked"))
     parser.add_option("--context", action="store_true", help=_("Show related entries"))
     parser.add_option("-s", "--show", action="append", help=_("Show data from selected tables"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Show more detail"))
@@ -3797,6 +3800,8 @@ def anon_handle_list_history(options, session, args):
         kwargs['beforeEvent'] = options.before_event
     if options.after_event:
         kwargs['afterEvent'] = options.after_event
+    if options.active is not None:
+        kwargs['active'] = options.active
     tables = None
     if options.show:
         tables = []
