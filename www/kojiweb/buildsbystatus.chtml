@@ -37,17 +37,17 @@
     </tr>
     <tr class="row-odd taskclosed">
       <td>Succeeded</td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $numSucceeded#" height="15" class="graphrow" alt="graph row"/></td>
+      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numSucceeded#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$numSucceeded</td>
     </tr>
     <tr class="row-even taskfailed">
       <td>Failed</td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $numFailed#" height="15" class="graphrow" alt="graph row"/></td>
+      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numFailed#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$numFailed</td>
     </tr>
     <tr class="row-odd taskcanceled">
       <td>Canceled</td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $numCanceled#" height="15" class="graphrow" alt="graph row"/></td>
+      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numCanceled#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$numCanceled</td>
     </tr>
   </table>

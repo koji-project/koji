@@ -62,7 +62,7 @@
     #for $target in $targets
     <tr class="$util.rowToggle($self)">
       <td><a href="buildtargetinfo?name=$target.name">$target.name</a></td>
-      <td width="#echo $graphWidth + 5#"><img src="/koji-static/images/1px.gif" width="#echo $increment * $target.builds#" height="15" class="graphrow" alt="graph row"/></td>
+      <td width="#echo $graphWidth + 5#"><img src=$util.themePath('images/1px.gif') width="#echo $increment * $target.builds#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$target.builds</td>
     </tr>
     #end for

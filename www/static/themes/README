@@ -1,0 +1,5 @@
+Place static theme content under this directory
+
+Content under koji-static/theme/$NAME/ will be used instead of the normal
+files under koji-static/ if KojiTheme is set to $NAME. Any absent files
+will fall back to the normal koji-static/ path.

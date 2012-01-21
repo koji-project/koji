@@ -1,5 +1,6 @@
 #encoding utf-8
 #import koji
+#from kojiweb import util
 #import random
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -33,9 +34,9 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>$title | $siteName</title>
-    <link rel="shortcut icon" href="/koji-static/images/koji.ico"/>
-    <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="/koji-static/koji.css"/>
-    <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="/koji-static/debug.css"/>
+    <link rel="shortcut icon" href="$util.themePath('images/koji.ico')"/>
+    <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="$util.themePath('koji.css')"/>
+    <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="$util.themePath('debug.css')"/>
     <link rel="alternate" type="application/rss+xml" title="Koji: recent builds" href="/koji/recentbuilds"/>
   </head>
   <body id="$pageID">
@@ -45,7 +46,7 @@
 
         <!-- HEADER -->
         <div id="header">
-          <img src="/koji-static/images/koji.png" alt="Koji Logo" id="kojiLogo"/>
+          <img src="$util.themePath('images/koji.png')" alt="Koji Logo" id="kojiLogo"/>
 #set $localnavpath="/usr/share/koji-web/local/extra-nav.html"
 #if os.path.exists($localnavpath)
 #set $localnav="".join(open($localnavpath).readlines())

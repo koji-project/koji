@@ -21,16 +21,43 @@ except:
     SSL_Error = NoSuchException
 
 
+themeInfo = {}
+themeCache = {}
+
 def _initValues(req, title='Build System Info', pageID='summary'):
+    global themeInfo
+    global themeCache
     values = {}
     values['siteName'] = req.get_options().get('SiteName', 'Koji')
     values['title'] = title
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
+    theme = req.get_options().get('KojiTheme', None)
+    if theme:
+        themeCache.clear()
+        themeInfo['name'] = theme
+        themeInfo['staticdir'] = req.get_options().get('KojiStaticDir', '/usr/share/koji-web/static')
+    else:
+        themeInfo.clear()
 
     req._values = values
 
     return values
+
+def themePath(path):
+    global themeInfo
+    global themeCache
+    if not themeInfo:
+        return "/koji-static/%s" % path
+    if path in themeCache:
+        return themeCache[path]
+    themepath = os.path.join(themeInfo['staticdir'], 'themes', themeInfo['name'], path)
+    if os.path.exists(themepath):
+        ret = "/koji-static/themes/%s/%s" % (themeInfo['name'], path)
+    else:
+        ret = "/koji-static/%s" % path
+    themeCache[path] = ret
+    return ret
 
 class DecodeUTF8(Cheetah.Filters.Filter):
     def filter(self, *args, **kw):
@@ -135,9 +162,9 @@ def sortImage(template, sortKey, orderVar='order'):
     """
     orderVal = template.getVar(orderVar)
     if orderVal == sortKey:
-        return '<img src="/koji-static/images/gray-triangle-up.gif" class="sort" alt="ascending sort"/>'
+        return '<img src="%s" class="sort" alt="ascending sort"/>' % themePath("images/gray-triangle-up.gif")
     elif orderVal == '-' + sortKey:
-        return '<img src="/koji-static/images/gray-triangle-down.gif" class="sort" alt="descending sort"/>'
+        return '<img src="%s" class="sort" alt="descending sort"/>' % themePath("images/gray-triangle-down.gif")
     else:
         return ''
 
@@ -306,9 +333,9 @@ def stateName(stateID):
 
 def imageTag(name):
     """Return an img tag that loads an icon with the given name"""
-    return '<img class="stateimg" src="/koji-static/images/%s.png" title="%s" alt="%s"/>' \
-           % (name, name, name)
-    
+    return '<img class="stateimg" src="%s" title="%s" alt="%s"/>' \
+           % (themePath("images/%s.png" % name), name, name)
+
 def stateImage(stateID):
     """Return an IMG tag that loads an icon appropriate for
     the given state"""

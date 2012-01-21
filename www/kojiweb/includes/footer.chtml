@@ -1,8 +1,9 @@
+#from kojiweb import util
         </div>
 
         <p id="footer">
           Copyright &copy; 2006-2010 Red Hat
-          <a href="https://fedorahosted.org/koji/"><img src="/koji-static/images/powered-by-koji.png" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
+          <a href="https://fedorahosted.org/koji/"><img src="$util.themePath('images/powered-by-koji.png')" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
         </p>
 
 #set $localfooterpath="/usr/share/koji-web/local/extra-footer.html"
