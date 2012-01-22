@@ -32,31 +32,39 @@ def _initValues(req, title='Build System Info', pageID='summary'):
     values['title'] = title
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
-    theme = req.get_options().get('KojiTheme', None)
-    if theme:
-        themeCache.clear()
-        themeInfo['name'] = theme
-        themeInfo['staticdir'] = req.get_options().get('KojiStaticDir', '/usr/share/koji-web/static')
-    else:
-        themeInfo.clear()
+    themeCache.clear()
+    themeInfo.clear()
+    themeInfo['name'] = req.get_options().get('KojiTheme', None)
+    themeInfo['staticdir'] = req.get_options().get('KojiStaticDir', '/usr/share/koji-web/static')
 
     req._values = values
 
     return values
 
-def themePath(path):
+def themePath(path, local=False):
     global themeInfo
     global themeCache
-    if not themeInfo:
-        return "/koji-static/%s" % path
-    if path in themeCache:
-        return themeCache[path]
-    themepath = os.path.join(themeInfo['staticdir'], 'themes', themeInfo['name'], path)
-    if os.path.exists(themepath):
-        ret = "/koji-static/themes/%s/%s" % (themeInfo['name'], path)
+    local = bool(local)
+    if (path, local) in themeCache:
+        return themeCache[path, local]
+    if not themeInfo['name']:
+        if local:
+            ret = os.path.join(themeInfo['staticdir'], path)
+        else:
+            ret = "/koji-static/%s" % path
     else:
-        ret = "/koji-static/%s" % path
-    themeCache[path] = ret
+        themepath = os.path.join(themeInfo['staticdir'], 'themes', themeInfo['name'], path)
+        if os.path.exists(themepath):
+            if local:
+                ret = themepath
+            else:
+                ret = "/koji-static/themes/%s/%s" % (themeInfo['name'], path)
+        else:
+            if local:
+                ret = os.path.join(themeInfo['staticdir'], path)
+            else:
+                ret = "/koji-static/%s" % path
+    themeCache[path, local] = ret
     return ret
 
 class DecodeUTF8(Cheetah.Filters.Filter):

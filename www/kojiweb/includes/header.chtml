@@ -47,7 +47,7 @@
         <!-- HEADER -->
         <div id="header">
           <img src="$util.themePath('images/koji.png')" alt="Koji Logo" id="kojiLogo"/>
-#set $localnavpath="/usr/share/koji-web/local/extra-nav.html"
+#set $localnavpath=$util.themePath("extra-nav.html", local=True)
 #if os.path.exists($localnavpath)
 #set $localnav="".join(open($localnavpath).readlines())
 $localnav

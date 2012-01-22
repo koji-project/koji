@@ -6,7 +6,7 @@
           <a href="https://fedorahosted.org/koji/"><img src="$util.themePath('images/powered-by-koji.png')" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
         </p>
 
-#set $localfooterpath="/usr/share/koji-web/local/extra-footer.html"
+#set $localfooterpath=$util.themePath("extra-footer.html", local=True)
 #if os.path.exists($localfooterpath)
 #set $localfooter="".join(open($localfooterpath).readlines())
 $localfooter
