@@ -4098,6 +4098,10 @@ def change_build_volume(build, volume, strict=True):
         newdir = koji.pathinfo.build(binfo)
         dir_moves.append([olddir, newdir])
     for olddir, newdir in dir_moves:
+        # Remove old symlink if copying to base volume
+        if volinfo['name'] == 'DEFAULT' or volinfo['name'] is None:
+            if os.path.islink(newdir):
+                os.unlink(newdir)
         koji.ensuredir(os.path.dirname(newdir))
         shutil.copytree(olddir, newdir, symlinks=True)
 
@@ -4112,6 +4116,18 @@ def change_build_volume(build, volume, strict=True):
     # Third, delete the old content
     for olddir, newdir in dir_moves:
         koji.util.rmtree(olddir)
+
+    #Fourth, maintain a symlink if appropriate
+    if volinfo['name'] and volinfo['name'] != 'DEFAULT':
+        base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+        base_binfo = binfo.copy()
+        base_binfo['volume_id'] = base_vol['id']
+        base_binfo['volume_name'] = base_vol['name']
+        basedir = koji.pathinfo.build(base_binfo)
+        if os.path.islink(basedir):
+            os.unlink(basedir)
+        relpath = koji.util.relpath(newdir, os.path.dirname(basedir))
+        os.symlink(relpath, basedir)
 
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
 
