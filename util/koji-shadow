@@ -1233,8 +1233,12 @@ class BuildTracker(object):
 
     def tagSuccessful(self, nvr, tag):
         """tag completed builds into final tags"""
-        session.tagBuildBypass(tag, nvr)
-        print "tagged %s to %s" % (nvr, tag)
+        #TODO: check if there are other reasons why tagging may fail and handle them
+        try:
+            session.tagBuildBypass(tag, nvr)
+            print "tagged %s to %s" % (nvr, tag)
+        except koji.TagError:
+            print "NOTICE: %s already tagged in %s" % (nvr, tag)
 
 
 def main(args):
