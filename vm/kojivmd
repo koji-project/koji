@@ -34,7 +34,6 @@ import time
 import subprocess
 import libvirt
 import libxml2
-import virtinst
 import random
 import socket
 import SimpleXMLRPCServer
@@ -466,25 +465,55 @@ class VMExecTask(BaseTaskHandler):
         VM.  The original VM must be shutdown, or this will raise an error.
         """
         clone_name = self.CLONE_PREFIX + str(self.id) + '-' + name
-        design = virtinst.CloneManager.CloneDesign(conn)
-        design.original_guest = name
-        design.clone_name = clone_name
-        design.setup_original()
+        orig_vm = conn.lookupByName(name)
+        orig_paths = self.guestDisks(orig_vm)
 
-        i = 0
-        for orig_disk in design.original_devices:
-            new_disk = self.mkqcow2(clone_name, orig_disk, i)
-            design.clone_devices = new_disk
-            i += 1
+        cmd = ["virt-clone", "--debug",
+               "--original", name, "--name", clone_name,
+               "--preserve-data"]
 
-        design.setup_clone()
-        # The CloneManager API doesn't always fix the type= of the <driver/> entry in
-        # the XML (if it exists), so do it manually.
+        for idx in range(len(orig_paths)):
+            orig_disk = orig_paths[idx]
+            new_disk = self.mkqcow2(clone_name, orig_disk, idx)
+            cmd += ["--file", new_disk]
+
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, close_fds=True)
+        ret = proc.wait()
+        if ret:
+            output = proc.stdout.read()
+            raise koji.BuildError('unable to clone VM: '
+                                  '"%s" returned %s; output was: %s' %
+                                  (' '.join(cmd), ret, output))
+
+        # The CloneManager API doesn't always fix the type= of the
+        # <driver/> entry in the XML (if it exists), so do it manually.
         # Also set the cpus and mem parameters directly in the XML.
-        clone_xml = self.updateXML(design.clone_xml, opts)
+        newvm = conn.lookupByName(clone_name)
+        clone_xml = self.updateXML(newvm.XMLDesc(0), opts)
         conn.defineXML(clone_xml)
 
         return clone_name
+
+    def guestDisks(self, vm):
+        """
+        Parse cloneable disks out of the original VM XML
+        """
+        doc = libxml2.parseDoc(vm.XMLDesc(0))
+        ctx = doc.xpathNewContext()
+
+        ret = []
+        nodelist = ctx.xpathEval("/domain/devices/disk/source")
+        for node in nodelist:
+            for prop in node.properties:
+                if prop.name in ["file", "dev"]:
+                    ret.append(node.prop(prop.name))
+                    break
+
+        ctx.xpathFreeContext()
+        doc.freeDoc()
+
+        return ret
 
     def macAddr(self, vm):
         """
