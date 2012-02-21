@@ -34,6 +34,7 @@ except ImportError:
     pass
 import ConfigParser
 import base64
+import errno
 import koji
 import koji.util
 import fnmatch
@@ -5805,6 +5806,93 @@ def anon_handle_download_build(options, session, args):
         finally:
             os.close(out)
             file.close()
+def anon_handle_download_logs(options, session, args):
+    "Download a logs for package"
+
+    FAIL_LOG = "task_failed.log"
+    usage = _("usage: %prog download-logs [options] <task-id> [<task-id> ...]")
+    usage += _("\n       %prog download-logs [options] --nvr <n-v-r> [<n-v-r> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    usage += _("\nCreates special log with name %s if task failed." % FAIL_LOG)
+    parser = OptionParser(usage=usage)
+    parser.add_option("-r", "--recurse", action="store_true",
+                      help=_("Process children of this task as well"))
+    parser.add_option("--nvr", action="store_true",
+                      help=_("Get logs from n-v-r"))
+    parser.add_option("--only-log", action="append", metavar="NAME",
+                      help=_("Get only log matching NAME. May be used multiple times."))
+    (suboptions, args) = parser.parse_args(args)
+
+    if len(args) < 1:
+        parser.error(_("Please specify at least one task id or n-v-r"))
+
+    def silently_make_dirs(dir_names):
+        try:
+            os.makedirs(dir_names)
+        except OSError, ex:
+            #Skip existing directories (may be files too)
+            if ex.errno != errno.EEXIST:
+                raise
+        if not os.path.isdir(dir_names):
+            error(_("Failed to create directory %s" % dir_names))
+
+    def get_failed_task_output(task_id):
+        """Gets output only from failed tasks"""
+        try:
+            session.getTaskResult(task_id)
+        except koji.GenericError, ex:
+            return str(ex)
+
+        return None
+
+    def write_log(task_log_dir, filename, contents):
+        #Create directories only if there is any log file to write to
+        silently_make_dirs(task_log_dir)
+        full_filename = os.path.normpath(os.path.join(task_log_dir, filename))
+        sys.stderr.write("Downloading: %s\n" % full_filename)
+        open(full_filename, "w").write(contents)
+
+    def save_logs(task_id, only_log, parent_dir='.', recurse=True):
+        assert task_id == int(task_id), "Task id must be number: %r" % task_id
+        task_info = session.getTaskInfo(task_id)
+        if task_info is None:
+            error(_("No such task id: %i" % task_id))
+        files = session.listTaskOutput(task_id)
+        logs = []
+        for filename in files:
+            if not filename.endswith(".log"):
+                continue
+            if only_log and filename not in only_log:
+                continue
+            logs.append(filename)
+
+        task_log_dir = os.path.join(parent_dir,
+                                    "%s-%s" % (task_info["arch"], task_id))
+
+        if not only_log or (only_log and FAIL_LOG in only_log):
+            task_result = get_failed_task_output(task_id)
+            if task_result:
+                write_log(task_log_dir, FAIL_LOG, task_result)
+
+        for log_filename in logs:
+            output = session.downloadTaskOutput(task_id, log_filename, 0, -1)
+            write_log(task_log_dir, log_filename, output)
+
+        if recurse:
+            child_tasks = session.getTaskChildren(task_id)
+            for child_task in child_tasks:
+                save_logs(child_task['id'], only_log, task_log_dir, recurse)
+
+    for arg in args:
+        if suboptions.nvr:
+            binfo = session.getBuild(arg)
+            if binfo is None:
+                error(_("There is no build with n-v-r: %s" % arg))
+            assert binfo['task_id'], binfo
+            arg = binfo['task_id']
+            sys.stderr.write("Using task ID: %s\n" % arg)
+        save_logs(int(arg), suboptions.only_log, '.', suboptions.recurse)
+
 
 def anon_handle_wait_repo(options, session, args):
     "Wait for a repo to be regenerated"
