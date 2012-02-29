@@ -448,10 +448,13 @@ def watch_tasks(session,tasklist,quiet=False):
             time.sleep(options.poll_interval)
     except (KeyboardInterrupt):
         if tasks and not quiet:
+            progname = os.path.basename(sys.argv[0]) or 'koji'
+            tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
+                            for t in tasks.values() if not t.is_done()]
             print \
-"""Tasks still running. You can continue to watch with the 'koji watch-task' command.
+"""Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
-%s""" % '\n'.join(['%s: %s' % (t.str(), t.display_state(t.info)) for t in tasks.values() if not t.is_done()])
+%s""" % (progname, '\n'.join(tlist))
         rv = 1
     return rv
 
@@ -5656,7 +5659,7 @@ def handle_regen_repo(options, session, args):
         return watch_tasks(session, [task_id], quiet=options.quiet)
 
 def anon_handle_search(options, session, args):
-    "Search koji"
+    "Search the system"
     usage = _("usage: %prog search [options] search_type pattern")
     usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -5726,9 +5729,10 @@ def list_commands(show_admin=False):
                 continue
             desc = desc[8:]
         print "        %-25s %s" % (alias, desc)
-    print _('(Type "koji --help" for help about global options')
-    print _(' or "koji <command> --help" for help about a particular command\'s options')
-    print _(' or "koji help --admin" for help about privileged administrative commands.)')
+    progname = os.path.basename(sys.argv[0]) or 'koji'
+    print _('(Type "%s --help" for help about global options') % progname
+    print _(' or "%s <command> --help" for help about a particular command\'s options') % progname
+    print _(' or "%s help --admin" for help about privileged administrative commands.)') % progname
 
 def error(msg=None, code=1):
     if msg:
