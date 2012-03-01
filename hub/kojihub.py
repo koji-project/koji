@@ -9471,14 +9471,14 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
 
-        # find the last successful build of this N-V
+        # find the last successful or deleted build of this N-V
         values = {'name': build_info['name'],
                   'version': build_info['version'],
-                  'state': koji.BUILD_STATES['COMPLETE']}
+                  'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
         query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
                                columns=['build.id', 'release'],
                                clauses=['name = %(name)s', 'version = %(version)s',
-                                        'state = %(state)s'],
+                                        'state in %(states)s'],
                                values=values,
                                opts={'order': '-build.id', 'limit': 1})
         result = query.executeOne()
