@@ -54,6 +54,7 @@ from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
 from StringIO import StringIO
+from yum import repoMDObject
 
 #imports for LiveCD and Appliance handler
 image_enabled = False
@@ -552,8 +553,19 @@ class BuildRoot(object):
         pathinfo = koji.PathInfo(topdir='')
         #XXX - cheap hack to get relative paths
         repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
-        relpath = os.path.join(repodir, self.br_arch, 'repodata', 'pkgorigins.gz')
+        repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
+
         opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
+        fo = koji.openRemoteFile(repomdpath, **opts)
+        repodata = repoMDObject.RepoMD('foo')
+        try:
+            repodata.parse(fo)
+        except:
+            raise koji.BuildError, "Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch)
+        data  = repodata.getData('origin')
+        pkgorigins  = data.location[1]
+
+        relpath = os.path.join(repodir, self.br_arch, pkgorigins)
         fo = koji.openRemoteFile(relpath, **opts)
         #at this point we know there were external repos at the create event,
         #so there should be an origins file.
