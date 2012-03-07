@@ -6443,16 +6443,27 @@ def check_policy(name, data, default='deny', strict=False):
         result = ruleset.apply(data)
         if result is None:
             result = default
-        reason = ruleset.last_rule()
+            reason = 'not covered by policy'
+        else:
+            parts = result.split(None, 1)
+            parts.extend(['',''])
+            result, reason = parts[:2]
+            reason = reason.lower()
+    lastrule = ruleset.last_rule()
     if context.opts.get('KojiDebug', False):
-        log_error("policy %(name)s gave %(result)s, reason: %(reason)s" % locals())
-    if result.lower() == 'allow':
+        logger.error("policy %(name)s gave %(result)s, reason: %(reason)s, last rule: %(lastrule)s", locals())
+    if result == 'allow':
         return True, reason
+    if result != 'deny':
+        reason = 'error in policy'
+        logger.error("Invalid action in policy %s, rule: %s", name, lastrule)
     if not strict:
         return False, reason
-    err_str = "policy violation"
+    err_str = "policy violation (%s)" % name
+    if reason:
+        err_str += ": %s" % reason
     if context.opts.get('KojiDebug') or context.opts.get('VerbosePolicy'):
-        err_str += " -- %s" % reason
+        err_str += " [rule: %s]" % lastrule
     raise koji.ActionNotAllowed, err_str
 
 def assert_policy(name, data, default='deny'):
