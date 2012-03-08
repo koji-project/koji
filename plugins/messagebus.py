@@ -8,6 +8,8 @@ from koji.plugin import callbacks, callback, ignore_error
 import ConfigParser
 import logging
 import qpid.messaging
+import os
+import krbV
 
 MAX_KEY_LENGTH = 255
 CONFIG_FILE = '/etc/koji-hub/plugins/messagebus.conf'
@@ -33,9 +35,22 @@ def get_sender():
         url = 'amqps://'
     else:
         url = 'amqp://'
-    if config.get('broker', 'auth').lower() == 'plain':
+    auth = config.get('broker', 'auth')
+    if auth == 'PLAIN':
         url += config.get('broker', 'username') + '/'
         url += config.get('broker', 'password') + '@'
+    elif auth == 'GSSAPI':
+        ccname = 'MEMORY:messagebus'
+        os.environ['KRB5CCNAME'] = ccname
+        ctx = krbV.default_context()
+        ccache = krbV.CCache(name=ccname, context=ctx)
+        cprinc = krbV.Principal(name=config.get('broker', 'principal'), context=ctx)
+        ccache.init(principal=cprinc)
+        keytab = krbV.Keytab(name='FILE:' + config.get('broker', 'keytab'), context=ctx)
+        ccache.init_creds_keytab(principal=cprinc, keytab=keytab)
+    else:
+        raise koji.PluginError, 'unsupported auth type: %s' % auth
+
     url += config.get('broker', 'host') + ':'
     url += config.get('broker', 'port')
 
