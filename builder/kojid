@@ -71,6 +71,7 @@ except ImportError:
 def main(options, session):
     logger = logging.getLogger("koji.build")
     logger.info('Starting up')
+    koji.util.setup_rlimits(options.__dict__, logger)
     tm = TaskManager(options, session)
     tm.findHandlers(globals())
     tm.findHandlers(vars(koji.tasks))
@@ -2944,6 +2945,8 @@ def get_options():
                 defaults['plugin'] = value.split()
             elif name in defaults.keys():
                 defaults[name] = value
+            elif name.upper().startswith('RLIMIT_'):
+                defaults[name.upper()] = value
             else:
                 quit("unknown config option: %s" % name)
     for name, value in defaults.items():

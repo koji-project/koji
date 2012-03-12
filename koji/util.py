@@ -16,12 +16,14 @@
 
 import calendar
 from fnmatch import fnmatch
-import re
-import time
+import logging
 import koji
 import os
 import os.path
+import re
+import resource
 import stat
+import time
 
 try:
     from hashlib import md5 as md5_constructor
@@ -292,3 +294,28 @@ def isSuccess(rv):
         return True
     else:
         return False
+
+def setup_rlimits(opts, logger=None):
+    logger = logger or logging.getLogger("koji")
+    for key in opts:
+        if not key.startswith('RLIMIT_') or not opts[key]:
+            continue
+        rcode = getattr(resource, key, None)
+        if rcode is None:
+            continue
+        orig = resource.getrlimit(rcode)
+        try:
+            limits = [int(x) for x in opts[key].split()]
+        except ValueError:
+            logger.error("Invalid resource limit: %s=%s", key, opts[key])
+            continue
+        if len(limits) not in (1,2):
+            logger.error("Invalid resource limit: %s=%s", key, opts[key])
+            continue
+        if len(limits) == 1:
+            limits.append(orig[1])
+        logger.warn('Setting resource limit: %s = %r', key, limits)
+        try:
+            resource.setrlimit(rcode, tuple(limits))
+        except ValueError, e:
+            logger.error("Unable to set %s: %s", key, e)

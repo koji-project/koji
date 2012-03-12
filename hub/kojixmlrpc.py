@@ -41,6 +41,7 @@ import kojihub
 from kojihub import RootExports
 from kojihub import HostExports
 from koji.context import context
+from koji.util import setup_rlimits
 
 
 class HandlerRegistry(object):
@@ -589,31 +590,6 @@ def setup_logging(opts):
     handler.setFormatter(HubFormatter(opts['LogFormat']))
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)
-
-def setup_rlimits(opts):
-    logger = logging.getLogger("koji")
-    for key in opts:
-        if not key.startswith('RLIMIT_') or not opts[key]:
-            continue
-        rcode = getattr(resource, key, None)
-        if rcode is None:
-            continue
-        orig = resource.getrlimit(rcode)
-        try:
-            limits = [int(x) for x in opts[key].split()]
-        except ValueError:
-            logger.error("Invalid resource limit: %s=%s", key, opts[key])
-            continue
-        if len(limits) not in (1,2):
-            logger.error("Invalid resource limit: %s=%s", key, opts[key])
-            continue
-        if len(limits) == 1:
-            limits.append(orig[1])
-        logger.warn('Setting resource limit: %s = %r', key, limits)
-        try:
-            resource.setrlimit(rcode, tuple(limits))
-        except ValueError, e:
-            logger.error("Unable to set %s: %s", key, e)
 
 #
 # mod_python handler
