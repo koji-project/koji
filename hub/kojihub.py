@@ -8464,7 +8464,7 @@ class RootExports(object):
         are specified, only hosts with the given value for the respective field will
         be included."""
         fields = ('id', 'user_id', 'name', 'arches', 'task_load',
-                  'capacity', 'ready', 'enabled')
+                  'capacity', 'description', 'comment', 'ready', 'enabled')
 
         clauses = []
         joins = []
