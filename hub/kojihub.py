@@ -4088,6 +4088,25 @@ def change_build_volume(build, volume, strict=True):
     if not os.path.isdir(voldir):
         raise koji.GenericError, "Directory entry missing for volume %(name)s" % volinfo
 
+    #more sanity checks
+    for check_vol in list_volumes():
+        check_binfo = binfo.copy()
+        check_binfo['volume_id'] = check_vol['id']
+        check_binfo['volume_name'] = check_vol['name']
+        checkdir = koji.pathinfo.build(check_binfo)
+        if check_vol['id'] == binfo['volume_id']:
+            # the volume we are moving from
+            pass
+        elif check_vol['name'] == 'DEFAULT' and os.path.islink(checkdir):
+            # old convenience symlink
+            pass
+        elif check_vol['id'] == volinfo['id']:
+            # the volume we are moving to
+            if os.path.lexists(checkdir):
+                raise koji.GenericError, "Destination directory exists: %s" % checkdir
+        elif os.path.lexists(checkdir):
+            raise koji.GenericError, "Unexpected cross-volume content: %s" % checkdir
+
     # First copy the build dir(s)
     dir_moves = []
     old_binfo = binfo.copy()
