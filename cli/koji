@@ -234,14 +234,15 @@ def get_options():
     #pkgurl is obsolete
     if options.pkgurl:
         if options.topurl:
-            print "Warning: the pkgurl option is obsolete"
+            warn("Warning: the pkgurl option is obsolete")
         else:
             suggest = re.sub(r'/packages/?$', '', options.pkgurl)
             if suggest != options.pkgurl:
-                print "Warning: the pkgurl option is obsolete, using topurl=%r" % suggest
+                warn("Warning: the pkgurl option is obsolete, using topurl=%r"
+                     % suggest)
                 options.topurl = suggest
             else:
-                print "Warning: The pkgurl option is obsolete, please use topurl instead"
+                warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
     return options, cmd, args[1:]
 
