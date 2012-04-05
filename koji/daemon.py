@@ -1060,7 +1060,15 @@ class TaskManager(object):
         params = task_info['request']
         handler = handlerClass(task_info['id'], method, params, self.session, self.options)
         if hasattr(handler, 'checkHost'):
-            if not handler.checkHost(self.hostdata):
+            try:
+                valid_host = handler.checkHost(self.hostdata)
+            except (SystemExit,KeyboardInterrupt):
+                raise
+            except:
+                valid_host = False
+                self.logger.warn('Error during host check')
+                self.logger.warn(''.join(traceback.format_exception(*sys.exc_info())))
+            if not valid_host:
                 self.logger.info('Skipping task %s (%s) due to host check', task['id'], task['method'])
                 return False
         data = self.session.host.openTask(task['id'])
