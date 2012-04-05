@@ -88,9 +88,9 @@ def main(options, session):
         tm.restart_pending = True
     signal.signal(signal.SIGTERM,shutdown)
     signal.signal(signal.SIGUSR1,restart)
-    taken = False
     while 1:
         try:
+            taken = False
             tm.updateBuildroots()
             tm.updateTasks()
             taken = tm.getNextTask()
