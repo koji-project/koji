@@ -8088,11 +8088,11 @@ class RootExports(object):
 
     getUser = staticmethod(get_user)
 
-    def grantPermission(self, userinfo, permission):
+    def grantPermission(self, userinfo, permission, create=False):
         """Grant a permission to a user"""
         context.session.assertPerm('admin')
         user_id = get_user(userinfo,strict=True)['id']
-        perm = lookup_perm(permission, strict=True)
+        perm = lookup_perm(permission, strict=(not create), create=create)
         perm_id = perm['id']
         if perm['name'] in koji.auth.get_user_perms(user_id):
             raise koji.GenericError, 'user %s already has permission: %s' % (userinfo, perm['name'])

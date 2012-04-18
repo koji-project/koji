@@ -2211,6 +2211,7 @@ def handle_grant_permission(options, session, args):
     usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--new", action="store_true", help=_("Create a new permission"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
@@ -2225,8 +2226,11 @@ def handle_grant_permission(options, session, args):
             parser.error(_("No such user: %s" % n))
             assert False
         users.append(user)
+    kwargs = {}
+    if options.new:
+        kwargs['create'] = True
     for user in users:
-        session.grantPermission(user['name'], perm)
+        session.grantPermission(user['name'], perm, **kwargs)
 
 def handle_revoke_permission(options, session, args):
     "[admin] Revoke a permission from a user"
