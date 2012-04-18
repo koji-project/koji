@@ -310,6 +310,11 @@ class ApplianceError(GenericError):
     """Raised when Appliance Image creation fails"""
     faultCode = 1018
 
+class ParameterError(GenericError):
+    """Raised when an rpc call receives incorrect arguments"""
+    faultCode = 1019
+
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of

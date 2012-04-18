@@ -2382,17 +2382,20 @@ def anon_handle_list_api(options, session, args):
     tmplist.sort()
     funcs = [x[1] for x in tmplist]
     for x in funcs:
-        if x['args']:
+        if 'argdesc' in x:
+            args = x['argdesc']
+        elif x['args']:
+            # older servers may not provide argdesc
             expanded = []
             for arg in x['args']:
                 if type(arg) is str:
                     expanded.append(arg)
                 else:
                     expanded.append('%s=%s' % (arg[0], arg[1]))
-            args = ", ".join(expanded)
+            args = "(%s)" % ", ".join(expanded)
         else:
-            args = ""
-        print '%s(%s)' % (x['name'], args)
+            args = "()"
+        print '%s%s' % (x['name'], args)
         if x['doc']:
             print "  description: %s" % x['doc']
 
