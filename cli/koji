@@ -4084,14 +4084,21 @@ def anon_handle_taginfo(options, session, args):
     usage = _("usage: %prog taginfo [options] <tag> [<tag> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a tag"))
         assert False
     activate_session(session)
+    event = koji.util.eventFromOpts(session, options) or {}
+    if event:
+        event['timestr'] = time.asctime(time.localtime(event['ts']))
+        print "Querying at event %(id)i (%(timestr)s)" % event
     perms = dict([(p['id'], p['name']) for p in session.getAllPerms()])
     for tag in args:
-        info = session.getTag(tag)
+        info = session.getTag(tag, event=event.get('id'))
         if info is None:
             print "No such tag: %s\n" % tag
             continue
@@ -4102,15 +4109,15 @@ def anon_handle_taginfo(options, session, args):
         if info.get('perm_id') is not None:
             perm_id = info['perm_id']
             print "Required permission: %r" % perms.get(perm_id, perm_id)
-        dest_targets = session.getBuildTargets(destTagID=info['id'])
-        build_targets = session.getBuildTargets(buildTagID=info['id'])
         if session.mavenEnabled():
             print "Maven support?: %s" % (info['maven_support'] and 'yes' or 'no')
             print "Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no')
+        dest_targets = session.getBuildTargets(destTagID=info['id'], event=event.get('id'))
+        build_targets = session.getBuildTargets(buildTagID=info['id'], event=event.get('id'))
         repos = {}
         for target in dest_targets + build_targets:
             if not repos.has_key(target['build_tag']):
-                repo = session.getRepo(target['build_tag'])
+                repo = session.getRepo(target['build_tag'], event=event.get('id'))
                 if repo is None:
                     repos[target['build_tag']] = "no active repo"
                 else:
@@ -4125,13 +4132,13 @@ def anon_handle_taginfo(options, session, args):
             print "Targets that build from this tag:"
             for target in build_targets:
                 print "  %s" % target['name']
-        external_repos = session.getTagExternalRepos(tag_info=info['id'])
+        external_repos = session.getTagExternalRepos(tag_info=info['id'], event=event.get('id'))
         if external_repos:
             print "External repos:"
             for rinfo in external_repos:
                 print "  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo
         print "Inheritance:"
-        for parent in session.getInheritanceData(tag):
+        for parent in session.getInheritanceData(tag, event=event.get('id')):
             flags = ''
             for code,expr in (
                     ('M',parent['maxdepth'] is not None),

@@ -7788,12 +7788,12 @@ class RootExports(object):
 
     getGlobalInheritance = staticmethod(readGlobalInheritance)
 
-    def getInheritanceData(self,tag):
+    def getInheritanceData(self,tag,event=None):
         """Return inheritance data for tag"""
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
-        return readInheritanceData(tag)
+        return readInheritanceData(tag,event)
 
     def setInheritanceData(self,tag,data,clear=False):
         if not isinstance(tag,int):
@@ -8186,7 +8186,7 @@ class RootExports(object):
                     break
         return taginfo
 
-    def getRepo(self,tag,state=None):
+    def getRepo(self,tag,state=None,event=None):
         if isinstance(tag,int):
             id = tag
         else:
@@ -8196,9 +8196,13 @@ class RootExports(object):
         aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
-        if state is None:
-            state = koji.REPO_READY
-        clauses.append('repo.state = %(state)s' )
+        if event:
+            # the repo table doesn't have all the fields of a _config table, just create_event
+            clauses.append('create_event <= %(event)i')
+        else:
+            if state is None:
+                state = koji.REPO_READY
+            clauses.append('repo.state = %(state)s' )
 
         query = QueryProcessor(columns=fields, aliases=aliases,
                                tables=['repo'], joins=joins, clauses=clauses,
