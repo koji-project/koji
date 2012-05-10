@@ -4104,6 +4104,9 @@ def anon_handle_taginfo(options, session, args):
             print "Required permission: %r" % perms.get(perm_id, perm_id)
         dest_targets = session.getBuildTargets(destTagID=info['id'])
         build_targets = session.getBuildTargets(buildTagID=info['id'])
+        if session.mavenEnabled():
+            print "Maven support?: %s" % (info['maven_support'] and 'yes' or 'no')
+            print "Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no')
         repos = {}
         for target in dest_targets + build_targets:
             if not repos.has_key(target['build_tag']):
