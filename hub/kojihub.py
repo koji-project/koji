@@ -4704,6 +4704,10 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
             if koji.mavenLabel(pom_maveninfo) != koji.mavenLabel(typeInfo):
                 raise koji.BuildError, 'Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' % \
                     (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo))
+            # sanity check: the filename of the pom file must match <artifactId>-<version>.pom
+            if filename != '%(artifact_id)s-%(version)s.pom' % typeInfo:
+                raise koji.BuildError, 'Maven info (%s) is not consistent with pom filename (%s)' % \
+                      (koji.mavenLabel(typeInfo), filename)
 
         insert = InsertProcessor('maven_archives', data=dslice(typeInfo, ('group_id', 'artifact_id', 'version')))
         insert.set(archive_id=archive_id)
