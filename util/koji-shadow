@@ -1270,7 +1270,7 @@ if __name__ == "__main__":
     #XXX - config!
     remote_opts = {'anon_retry': True}
     for k in ('debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
+        remote_opts[k] = getattr(options,k)
     remote = koji.ClientSession(options.remote, remote_opts)
     rv = 0
     try:

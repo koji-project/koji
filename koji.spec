@@ -182,6 +182,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/koji-web
 %{_sysconfdir}/kojiweb
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/kojiweb.conf
+%config(noreplace) %{_sysconfdir}/kojiweb/web.conf
 
 %files builder
 %defattr(-,root,root)

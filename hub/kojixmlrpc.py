@@ -1,7 +1,5 @@
-# mod_python script
-
 # kojixmlrpc - an XMLRPC interface for koji.
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -29,17 +27,14 @@ import traceback
 import types
 import pprint
 import resource
-from xmlrpclib import loads,dumps,Fault
-from mod_python import apache
+from xmlrpclib import getparser,dumps,Fault
+from koji.server import WSGIWrapper
 
 import koji
 import koji.auth
 import koji.db
 import koji.plugin
 import koji.policy
-import kojihub
-from kojihub import RootExports
-from kojihub import HostExports
 from koji.context import context
 from koji.util import setup_rlimits
 
@@ -183,14 +178,21 @@ class ModXMLRPCRequestHandler(object):
         else:
             return self.handlers.get(name)
 
-    def _marshaled_dispatch(self, data):
+    def _read_request(self, stream):
+        parser, unmarshaller = getparser()
+        while True:
+            chunk = stream.read(8192)
+            if not chunk:
+                break
+            parser.feed(chunk)
+        parser.close()
+        return unmarshaller.close(), unmarshaller.getmethodname()
+
+    def _marshaled_dispatch(self, environ):
         """Dispatches an XML-RPC method from marshalled (XML) data."""
-
-        params, method = loads(data)
-
         start = time.time()
-        # generate response
         try:
+            params, method = self._read_request(environ['wsgi.input'])
             response = self._dispatch(method, params)
             # wrap response in a singleton tuple
             response = (response,)
@@ -292,41 +294,11 @@ class ModXMLRPCRequestHandler(object):
     def handle_request(self,req):
         """Handle a single XML-RPC request"""
 
-        start = time.time()
-        # XMLRPC uses POST only. Reject anything else
-        if req.method != 'POST':
-            req.allow_methods(['POST'],1)
-            raise apache.SERVER_RETURN, apache.HTTP_METHOD_NOT_ALLOWED
-
-        context.connection = req.connection
-        response = self._marshaled_dispatch(req.read())
-
-        req.content_type = "text/xml"
-        req.set_content_length(len(response))
-        req.write(response)
-        self.logger.debug("Returning %d bytes after %f seconds", len(response),
-                        time.time() - start)
+        pass
+        #XXX no longer used
 
 
-
-def dump_req(req):
-    data = [
-        "request: %s\n" % req.the_request,
-        "uri: %s\n" % req.uri,
-        "args: %s\n" % req.args,
-        "protocol: %s\n" % req.protocol,
-        "method: %s\n" % req.method,
-        "https: %s\n" % req.is_https(),
-        "auth_name: %s\n" % req.auth_name(),
-        "auth_type: %s\n" % req.auth_type(),
-        "headers:\n%s\n" % pprint.pformat(req.headers_in),
-    ]
-    for part in data:
-        sys.stderr.write(part)
-    sys.stderr.flush()
-
-
-def offline_reply(req, msg=None):
+def offline_reply(start_response, msg=None):
     """Send a ServerOffline reply"""
     faultCode = koji.ServerOffline.faultCode
     if msg is None:
@@ -334,11 +306,14 @@ def offline_reply(req, msg=None):
     else:
         faultString = msg
     response = dumps(Fault(faultCode, faultString))
-    req.content_type = "text/xml"
-    req.set_content_length(len(response))
-    req.write(response)
+    headers = [
+        ('Content-Length', str(len(response))),
+        ('Content-Type', "text/xml"),
+    ]
+    start_response('200 OK', headers)
+    return [response]
 
-def load_config(req):
+def load_config(environ):
     """Load configuration options
 
     Options are read from a config file. The config file location is
@@ -351,18 +326,21 @@ def load_config(req):
         - all PythonOptions (except ConfigFile) are now deprecated and support for them
           will disappear in a future version of Koji
     """
+    logger = logging.getLogger("koji")
     #get our config file
-    modpy_opts = req.get_options()
-    #cf = modpy_opts.get('ConfigFile', '/etc/koji-hub/hub.conf')
-    cf = modpy_opts.get('ConfigFile', None)
+    if 'modpy.opts' in environ:
+        modpy_opts = environ.get('modpy.opts')
+        cf = modpy_opts.get('ConfigFile', None)
+    else:
+        cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
+        modpy_opts = {}
     if cf:
         # to aid in the transition from PythonOptions to hub.conf, we only load
         # the configfile if it is explicitly configured
         config = RawConfigParser()
         config.read(cf)
     else:
-        sys.stderr.write('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf\n')
-        sys.stderr.flush()
+        logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
     cfgmap = [
         #option, type, default
         ['DBName', 'string', None],
@@ -534,8 +512,10 @@ class HubFormatter(logging.Formatter):
 
     def format(self, record):
         record.method = getattr(context, 'method', None)
-	if hasattr(context, 'connection'):
-            record.remoteaddr = "%s:%s" % (context.connection.remote_addr)
+        if hasattr(context, 'environ'):
+            record.remoteaddr = "%s:%s" % (
+                context.environ.get('REMOTE_ADDR', '?'),
+                context.environ.get('REMOTE_PORT', '?'))
         else:
             record.remoteaddr = "?:?"
         if hasattr(context, 'session'):
@@ -550,8 +530,21 @@ class HubFormatter(logging.Formatter):
             record.user_name = None
         return logging.Formatter.format(self, record)
 
+def setup_logging1():
+    """Set up basic logging, before options are loaded"""
+    global log_handler
+    logger = logging.getLogger("koji")
+    logger.setLevel(logging.WARNING)
+    #stderr logging (stderr goes to httpd logs)
+    log_handler = logging.StreamHandler()
+    log_format = '%(asctime)s [%(levelname)s] SETUP p=%(process)s %(name)s: %(message)s'
+    log_handler.setFormatter(HubFormatter(log_format))
+    log_handler.setLevel(logging.DEBUG)
+    logger.addHandler(log_handler)
 
-def setup_logging(opts):
+def setup_logging2(opts):
+    global log_handler
+    """Adjust logging based on configuration options"""
     #determine log level
     level = opts['LogLevel']
     valid_levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
@@ -585,19 +578,26 @@ def setup_logging(opts):
     elif default is None:
         #LogLevel did not configure a default level
         logger.setLevel(logging.WARNING)
-    #for now, just stderr logging (stderr goes to httpd logs)
-    handler = logging.StreamHandler()
-    handler.setFormatter(HubFormatter(opts['LogFormat']))
-    handler.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
+    #log_handler defined in setup_logging1
+    log_handler.setFormatter(HubFormatter(opts['LogFormat']))
+
+
+def load_scripts(environ):
+    """Update path and import our scripts files"""
+    global kojihub
+    scriptsdir = os.path.dirname(environ['SCRIPT_FILENAME'])
+    sys.path.insert(0, scriptsdir)
+    import kojihub
+
 
 #
 # mod_python handler
 #
 
-firstcall = True
-ready = False
-opts = {}
+def handler(req):
+    wrapper = WSGIWrapper(req)
+    return wrapper.run(application)
+
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
@@ -605,58 +605,80 @@ def get_memory_usage():
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 
-def handler(req, profiling=False):
-    global firstcall, ready, registry, opts, plugins, policy
-    if firstcall:
-        firstcall = False
-        opts = load_config(req)
-        setup_logging(opts)
+def server_setup(environ):
+    global opts, plugins, registry, policy
+    logger = logging.getLogger('koji')
+    try:
+        setup_logging1()
+        opts = load_config(environ)
+        setup_logging2(opts)
+        load_scripts(environ)
         setup_rlimits(opts)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
-        ready = True
-    if not ready:
-        #this will happen on subsequent passes if an error happens in the firstcall code
-        opts['ServerOffline'] = True
-        opts['OfflineMessage'] = 'server startup error'
-    if profiling:
-        import profile, pstats, StringIO, tempfile
-        global _profiling_req
-        _profiling_req = req
-        temp = tempfile.NamedTemporaryFile()
-        profile.run("import kojixmlrpc; kojixmlrpc.handler(kojixmlrpc._profiling_req, False)", temp.name)
-        stats = pstats.Stats(temp.name)
-        strstream = StringIO.StringIO()
-        sys.stdout = strstream
-        stats.sort_stats("time")
-        stats.print_stats()
-        req.write("<pre>" + strstream.getvalue() + "</pre>")
-        _profiling_req = None
-    else:
+        koji.db.provideDBopts(database = opts["DBName"],
+                              user = opts["DBUser"],
+                              password = opts.get("DBPass",None),
+                              host = opts.get("DBHost", None))
+    except Exception:
+        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+        logger.error(tb_str)
+        opts = {
+            'ServerOffline': True,
+            'OfflineMessage': 'server startup error',
+            }
+
+
+#
+# wsgi handler
+#
+
+firstcall = True
+
+def application(environ, start_response):
+    global firstcall
+    if firstcall:
+        server_setup(environ)
+        firstcall = False
+    # XMLRPC uses POST only. Reject anything else
+    if environ['REQUEST_METHOD'] != 'POST':
+        headers = [
+            ('Allow', 'POST'),
+        ]
+        start_response('405 Method Not Allowed', headers)
+        response = "Method Not Allowed\nThis is an XML-RPC server. Only POST requests are accepted."
+        headers = [
+            ('Content-Length', str(len(response))),
+            ('Content-Type', "text/plain"),
+        ]
+        return [response]
+    if opts.get('ServerOffline'):
+        return offline_reply(start_response, msg=opts.get("OfflineMessage", None))
+    # XXX check request length
+    # XXX most of this should be moved elsewhere
+    if 1:
         try:
+            start = time.time()
             memory_usage_at_start = get_memory_usage()
 
-            if opts.get('ServerOffline'):
-                offline_reply(req, msg=opts.get("OfflineMessage", None))
-                return apache.OK
             context._threadclear()
             context.commit_pending = False
             context.opts = opts
             context.handlers = HandlerAccess(registry)
-            context.req = req
+            context.environ = environ
             context.policy = policy
-            koji.db.provideDBopts(database = opts["DBName"],
-                                  user = opts["DBUser"],
-                                  password = opts.get("DBPass",None),
-                                  host = opts.get("DBHost", None))
             try:
                 context.cnx = koji.db.connect()
             except Exception:
-                offline_reply(req, msg="database outage")
-                return apache.OK
+                return offline_reply(start_response, msg="database outage")
             h = ModXMLRPCRequestHandler(registry)
-            h.handle_request(req)
+            response = h._marshaled_dispatch(environ)
+            headers = [
+                ('Content-Length', str(len(response))),
+                ('Content-Type', "text/xml"),
+            ]
+            start_response('200 OK', headers)
             if h.traceback:
                 #rollback
                 context.cnx.rollback()
@@ -668,6 +690,8 @@ def handler(req, profiling=False):
                 if len(paramstr) > 120:
                     paramstr = paramstr[:117] + "..."
                 h.logger.warning("Memory usage of process %d grew from %d KiB to %d KiB (+%d KiB) processing request %s with args %s" % (os.getpid(), memory_usage_at_start, memory_usage_at_end, memory_usage_at_end - memory_usage_at_start, context.method, paramstr))
+            h.logger.debug("Returning %d bytes after %f seconds", len(response),
+                        time.time() - start)
         finally:
             #make sure context gets cleaned up
             if hasattr(context,'cnx'):
@@ -676,13 +700,14 @@ def handler(req, profiling=False):
                 except Exception:
                     pass
             context._threadclear()
-    return apache.OK
+        return [response] #XXX
+
 
 def get_registry(opts, plugins):
     # Create and populate handler registry
     registry = HandlerRegistry()
-    functions = RootExports()
-    hostFunctions = HostExports()
+    functions = kojihub.RootExports()
+    hostFunctions = kojihub.HostExports()
     registry.register_instance(functions)
     registry.register_module(hostFunctions,"host")
     registry.register_function(koji.auth.login)
@@ -696,4 +721,3 @@ def get_registry(opts, plugins):
     for name in opts.get('Plugins', '').split():
         registry.register_plugin(plugins.get(name))
     return registry
-

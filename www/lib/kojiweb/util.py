@@ -1,3 +1,25 @@
+# utility functions for koji web interface
+#
+# Copyright (c) 2005-2012 Red Hat
+#
+#    Koji is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation;
+#    version 2.1 of the License.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this software; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Authors:
+#       Mike Bonnet <mikeb@redhat.com>
+#       Mike McLean <mikem@redhat.com>
+
 import Cheetah.Template
 import datetime
 import koji
@@ -24,20 +46,20 @@ except:
 themeInfo = {}
 themeCache = {}
 
-def _initValues(req, title='Build System Info', pageID='summary'):
+def _initValues(environ, title='Build System Info', pageID='summary'):
     global themeInfo
     global themeCache
     values = {}
-    values['siteName'] = req.get_options().get('SiteName', 'Koji')
+    values['siteName'] = environ['koji.options'].get('SiteName', 'Koji')
     values['title'] = title
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
     themeCache.clear()
     themeInfo.clear()
-    themeInfo['name'] = req.get_options().get('KojiTheme', None)
-    themeInfo['staticdir'] = req.get_options().get('KojiStaticDir', '/usr/share/koji-web/static')
+    themeInfo['name'] = environ['koji.options'].get('KojiTheme', None)
+    themeInfo['staticdir'] = environ['koji.options'].get('KojiStaticDir', '/usr/share/koji-web/static')
 
-    req._values = values
+    environ['koji.values'] = values
 
     return values
 
@@ -90,32 +112,32 @@ class XHTMLFilter(DecodeUTF8):
 
 TEMPLATES = {}
 
-def _genHTML(req, fileName):
-    reqdir = os.path.dirname(req.filename)
+def _genHTML(environ, fileName):
+    reqdir = os.path.dirname(environ['SCRIPT_FILENAME'])
     if os.getcwd() != reqdir:
         os.chdir(reqdir)
 
-    if hasattr(req, 'currentUser'):
-        req._values['currentUser'] = req.currentUser
+    if 'koji.currentUser' in environ:
+        environ['koji.values']['currentUser'] = environ['koji.currentUser']
     else:
-        req._values['currentUser'] = None
-    req._values['authToken'] = _genToken(req)
-    if not req._values.has_key('mavenEnabled'):
-        if hasattr(req, '_session'):
-            req._values['mavenEnabled'] = req._session.mavenEnabled()
+        environ['koji.values']['currentUser'] = None
+    environ['koji.values']['authToken'] = _genToken(environ)
+    if not environ['koji.values'].has_key('mavenEnabled'):
+        if 'koji.session' in environ:
+            environ['koji.values']['mavenEnabled'] = environ['koji.session'].mavenEnabled()
         else:
-            req._values['mavenEnabled'] = False
-    if not req._values.has_key('winEnabled'):
-        if hasattr(req, '_session'):
-            req._values['winEnabled'] = req._session.winEnabled()
+            environ['koji.values']['mavenEnabled'] = False
+    if not environ['koji.values'].has_key('winEnabled'):
+        if 'koji.session' in environ:
+            environ['koji.values']['winEnabled'] = environ['koji.session'].winEnabled()
         else:
-            req._values['winEnabled'] = False
+            environ['koji.values']['winEnabled'] = False
 
     tmpl_class = TEMPLATES.get(fileName)
     if not tmpl_class:
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
-    tmpl_inst = tmpl_class(namespaces=[req._values], filter=XHTMLFilter)
+    tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=XHTMLFilter)
     return tmpl_inst.respond().encode('utf-8', 'replace')
 
 def _truncTime():
@@ -123,21 +145,21 @@ def _truncTime():
     # truncate to the nearest 15 minutes
     return now.replace(minute=(now.minute / 15 * 15), second=0, microsecond=0)
 
-def _genToken(req, tstamp=None):
-    if hasattr(req, 'currentLogin') and req.currentLogin:
-        user = req.currentLogin
+def _genToken(environ, tstamp=None):
+    if 'koji.currentLogin' in environ and environ['koji.currentLogin']:
+        user = environ['koji.currentLogin']
     else:
         return ''
     if tstamp == None:
         tstamp = _truncTime()
-    return md5_constructor(user + str(tstamp) + req.get_options()['Secret']).hexdigest()[-8:]
+    return md5_constructor(user + str(tstamp) + environ['koji.options']['Secret'].value).hexdigest()[-8:]
 
-def _getValidTokens(req):
+def _getValidTokens(environ):
     tokens = []
     now = _truncTime()
     for delta in (0, 15, 30):
         token_time = now - datetime.timedelta(minutes=delta)
-        token = _genToken(req, token_time)
+        token = _genToken(environ, token_time)
         if token:
             tokens.append(token)
     return tokens

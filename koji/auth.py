@@ -1,5 +1,5 @@
 # authentication module
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -26,7 +26,6 @@ import krbV
 import koji
 import cgi      #for parse_qs
 from context import context
-from mod_python import apache
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -65,14 +64,15 @@ class Session(object):
         self.callnum = None
         #get session data from request
         if args is None:
-            req = getattr(context,'req',None)
-            args = getattr(req,'args',None)
+            environ = getattr(context,'environ',{})
+            args = environ.get('QUERY_STRING','')
             if not args:
                 self.message = 'no session args'
                 return
             args = cgi.parse_qs(args,strict_parsing=True)
         if hostip is None:
-            hostip = context.req.get_remote_host(apache.REMOTE_NOLOOKUP)
+            hostip = context.environ['REMOTE_ADDR']
+            #XXX - REMOTE_ADDR not promised by wsgi spec
             if hostip == '127.0.0.1':
                 hostip = socket.gethostbyname(socket.gethostname())
         try:
@@ -260,7 +260,8 @@ class Session(object):
             raise koji.GenericError, "Already logged in"
         hostip = opts.get('hostip')
         if hostip is None:
-            hostip = context.req.get_remote_host(apache.REMOTE_NOLOOKUP)
+            hostip = context.environ['REMOTE_ADDR']
+            #XXX - REMOTE_ADDR not promised by wsgi spec
             if hostip == '127.0.0.1':
                 hostip = socket.gethostbyname(socket.gethostname())
 
@@ -329,7 +330,8 @@ class Session(object):
 
         self.checkLoginAllowed(user_id)
 
-        hostip = context.req.connection.remote_ip
+        hostip = context.environ['REMOTE_ADDR']
+        #XXX - REMOTE_ADDR not promised by wsgi spec
         if hostip == '127.0.0.1':
             hostip = socket.gethostbyname(socket.gethostname())
 
@@ -354,15 +356,13 @@ class Session(object):
         # See: http://lists.planet-lab.org/pipermail/devel-community/2005-June/001084.html
         # local_ip seems to always be set to the same value as remote_ip,
         # so get the local ip via a different method
-        # local_ip = context.req.connection.local_ip
-        local_ip = socket.gethostbyname(context.req.hostname)
-        remote_ip = context.req.connection.remote_ip
+        local_ip = socket.gethostbyname(context.environ['SERVER_NAME'])
+        remote_ip = context.environ['REMOTE_ADDR']
+        #XXX - REMOTE_ADDR not promised by wsgi spec
 
         # it appears that calling setports() with *any* value results in authentication
         # failing with "Incorrect net address", so return 0 (which prevents
         # python-krbV from calling setports())
-        # local_port = context.req.connection.local_addr[1]
-        # remote_port = context.req.connection.remote_addr[1]
         local_port = 0
         remote_port = 0
 
@@ -372,14 +372,10 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError, "Already logged in"
 
-        # populate standard CGI variables
-        context.req.add_common_vars()
-        env = context.req.subprocess_env
-    
-        if env.get('HTTPS') != 'on':
+        if context.environ.get('HTTPS') not in ['on', '1']:
             raise koji.AuthError, 'cannot call sslLogin() via a non-https connection'
 
-        if env.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
+        if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
             raise koji.AuthError, 'could not verify client: %s' % env.get('SSL_CLIENT_VERIFY')
 
         name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
@@ -412,8 +408,9 @@ class Session(object):
                 raise koji.AuthError, 'Unknown user: %s' % username
 
         self.checkLoginAllowed(user_id)
-            
-        hostip = context.req.connection.remote_ip
+
+        hostip = context.environ['REMOTE_ADDR']
+        #XXX - REMOTE_ADDR not promised by wsgi spec
         if hostip == '127.0.0.1':
             hostip = socket.gethostbyname(socket.gethostname())
 
