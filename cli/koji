@@ -4115,20 +4115,25 @@ def anon_handle_taginfo(options, session, args):
         dest_targets = session.getBuildTargets(destTagID=info['id'], event=event.get('id'))
         build_targets = session.getBuildTargets(buildTagID=info['id'], event=event.get('id'))
         repos = {}
-        for target in dest_targets + build_targets:
-            if not repos.has_key(target['build_tag']):
-                repo = session.getRepo(target['build_tag'], event=event.get('id'))
-                if repo is None:
-                    repos[target['build_tag']] = "no active repo"
-                else:
-                    repos[target['build_tag']] = "repo#%(id)i: %(creation_time)s" % repo
+        if not event:
+            for target in dest_targets + build_targets:
+                if not repos.has_key(target['build_tag']):
+                    repo = session.getRepo(target['build_tag'])
+                    if repo is None:
+                        repos[target['build_tag']] = "no active repo"
+                    else:
+                        repos[target['build_tag']] = "repo#%(id)i: %(creation_time)s" % repo
         if dest_targets:
             print "Targets that build into this tag:"
             for target in dest_targets:
-                print "  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']])
+                if event:
+                    print "  %s (%s)" % (target['name'], target['build_tag_name'])
+                else:
+                    print "  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']])
         if build_targets:
             print "This tag is a buildroot for one or more targets"
-            print "Current repo: %s" % repos[info['id']]
+            if not event:
+                print "Current repo: %s" % repos[info['id']]
             print "Targets that build from this tag:"
             for target in build_targets:
                 print "  %s" % target['name']
