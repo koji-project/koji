@@ -111,24 +111,23 @@ class Dispatcher(object):
             - if ConfigFile is not set, opts are loaded from http config
             - if ConfigFile is set, then the http config must not provide Koji options
             - In a future version we will load the default hub config regardless
-            - all PythonOptions (except ConfigFile) are now deprecated and support for them
-              will disappear in a future version of Koji
+            - all PythonOptions (except koji.web.ConfigFile) are now deprecated and
+              support for them will disappear in a future version of Koji
         """
         modpy_opts = environ.get('modpy.opts', {})
         if 'modpy.opts' in environ:
             cf = modpy_opts.get('koji.web.ConfigFile', None)
+            # to aid in the transition from PythonOptions to web.conf, we do
+            # not check the config file by default, it must be configured
         else:
-            cf = environ.get('koji.web.ConfigFile', None)
-        if not cf:
-            cf = '/etc/kojiweb/web.conf'
-        if os.path.isfile(cf):
+            cf = environ.get('koji.web.ConfigFile', '/etc/kojiweb/web.conf')
+        if cf:
+            if not os.path.isfile(cf):
+                raise koji.GenericError, "Configuration missing: %s" % cf
             config = RawConfigParser()
             config.read(cf)
-        elif 'modpy.opts' not in environ:
-            # we have no config
-            raise koji.GenericError, "Server configuration not found"
         else:
-            cf = None
+            #can only happen under mod_python
             self.logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use web.conf')
         opts = {}
         for name, dtype, default in self.cfgmap:
