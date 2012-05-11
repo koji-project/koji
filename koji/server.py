@@ -69,6 +69,7 @@ class WSGIWrapper(object):
         environ = LazyDict(environ)
         environ.lazyset('modpy.env', self.env, [])
         environ.lazyset('modpy.opts', req.get_options, [])
+        environ.lazyset('modpy.conf', req.get_config, [])
         environ.lazyset('SCRIPT_NAME', self.script_name, [], cache=True)
         env_keys = ['SSL_CLIENT_VERIFY', 'HTTPS']
         for key in env_keys:

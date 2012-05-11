@@ -152,6 +152,9 @@ class Dispatcher(object):
                         opts[name] = modpy_opts.get(name)
                 else:
                     opts[name] = default
+        if 'modpy.conf' in environ:
+            debug = environ['modpy.conf'].get('PythonDebug', '0').lower()
+            opts['PythonDebug'] = (debug in ['yes', 'on', 'true', '1'])
         opts['Secret'] = koji.util.HiddenValue(opts['Secret'])
         self.options = opts
         return opts
