@@ -6470,6 +6470,7 @@ def check_policy(name, data, default='deny', strict=False):
         else:
             result = "deny"
         reason = "missing policy"
+        lastrule = ''
     else:
         result = ruleset.apply(data)
         if result is None:
@@ -6480,7 +6481,7 @@ def check_policy(name, data, default='deny', strict=False):
             parts.extend(['',''])
             result, reason = parts[:2]
             reason = reason.lower()
-    lastrule = ruleset.last_rule()
+        lastrule = ruleset.last_rule()
     if context.opts.get('KojiDebug', False):
         logger.error("policy %(name)s gave %(result)s, reason: %(reason)s, last rule: %(lastrule)s", locals())
     if result == 'allow':
