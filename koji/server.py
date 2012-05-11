@@ -67,16 +67,10 @@ class WSGIWrapper(object):
             #TODO - file_wrapper support
         }
         environ = LazyDict(environ)
-        if req.is_https():
-            environ['HTTPS'] = 'on'
-            environ['wsgi.url_scheme'] = 'https'
-        else:
-            environ['HTTPS'] = 'off'
-            environ['wsgi.url_scheme'] = 'http'
         environ.lazyset('modpy.env', self.env, [])
         environ.lazyset('modpy.opts', req.get_options, [])
         environ.lazyset('SCRIPT_NAME', self.script_name, [], cache=True)
-        env_keys = ['SSL_CLIENT_VERIFY']
+        env_keys = ['SSL_CLIENT_VERIFY', 'HTTPS']
         for key in env_keys:
             environ.lazyset(key, self.envget, [key])
         #gather the headers we care about
