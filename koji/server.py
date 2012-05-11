@@ -91,7 +91,7 @@ class WSGIWrapper(object):
         return self._env
 
     def envget(self, *args):
-        self.env().get(*args)
+        return self.env().get(*args)
 
     def script_name(self):
         uri = self.req.uri
