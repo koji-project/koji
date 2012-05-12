@@ -32,7 +32,7 @@ function maybeScroll(origHeight) {
     if ((window.pageYOffset + window.innerHeight) >= origHeight) {
         // Only scroll the window if we were already at the bottom
         // of the document
-        window.scroll(window.pageXOffset, document.height);
+        window.scroll(window.pageXOffset, document.body.clientHeight);
     }
 }
 
@@ -106,7 +106,7 @@ function getStatus() {
 
 function checkTasks() {
     if (tasks.length == 0) {
-	docHeight = document.height;
+	docHeight = document.body.clientHeight;
         logElement.appendChild(document.createTextNode("\n==> Task has completed <==\n"));
         maybeScroll(docHeight);
     } else {
@@ -162,7 +162,7 @@ function handleLog(event) {
 	content = req.responseText;
 	offsets[currentTaskID][currentLog] += content.length;
 	if (content.length > 0) {
-	    docHeight = document.height;
+	    docHeight = document.body.clientHeight;
 	    currlog = currentTaskID + ":" + currentLog;
 	    if (currlog != lastlog) {
 		logElement.appendChild(document.createTextNode("\n==> " + currlog + " <==\n"));
