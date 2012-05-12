@@ -71,8 +71,14 @@ class WSGIWrapper(object):
         environ.lazyset('modpy.opts', req.get_options, [])
         environ.lazyset('modpy.conf', req.get_config, [])
         environ.lazyset('SCRIPT_NAME', self.script_name, [], cache=True)
-        env_keys = ['SSL_CLIENT_VERIFY', 'HTTPS']
+        env_keys = ['SSL_CLIENT_VERIFY', 'HTTPS', 'SSL_CLIENT_S_DN']
         for key in env_keys:
+            environ.lazyset(key, self.envget, [key])
+        # The component of the DN used for the username is usually the CN,
+        # but it is configurable.
+        # Allow retrieval of some common DN components from the environment.
+        for comp in ['C', 'ST', 'L', 'O', 'OU', 'CN', 'Email']:
+            key = 'SSL_CLIENT_S_DN_' + comp
             environ.lazyset(key, self.envget, [key])
         #gather the headers we care about
         for key in req.headers_in:

@@ -376,15 +376,15 @@ class Session(object):
             raise koji.AuthError, 'cannot call sslLogin() via a non-https connection'
 
         if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-            raise koji.AuthError, 'could not verify client: %s' % env.get('SSL_CLIENT_VERIFY')
+            raise koji.AuthError, 'could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY')
 
         name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
-        client_name = env.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
+        client_name = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
         if not client_name:
             raise koji.AuthError, 'unable to get user information (%s) from client certificate' % name_dn_component
 
         if proxyuser:
-            client_dn = env.get('SSL_CLIENT_S_DN')
+            client_dn = context.environ.get('SSL_CLIENT_S_DN')
             proxy_dns = [dn.strip() for dn in context.opts.get('ProxyDNs', '').split('|')]
             if client_dn in proxy_dns:
                 # the SSL-authenticated user authorized to login other users
