@@ -2039,9 +2039,11 @@ def get_active_tasks(host=None):
         values['arches'] = host['arches'].split() + ['noarch']
         values['channels'] = host['channels']
         values['host_id'] = host['id']
-        clauses = ['''\
-(state = %(FREE)i AND arch IN %(arches)s AND channel_id IN %(channels)s)
-OR (state = %(ASSIGNED)i AND host_id = %(host_id)i)''']
+        clause = '(state = %(ASSIGNED)i AND host_id = %(host_id)i)'
+        if values['channels']:
+            clause += ''' OR (state = %(FREE)i AND arch IN %(arches)s \
+AND channel_id IN %(channels)s)'''
+        clauses = [clause]
     else:
         clauses = ['state IN (%(FREE)i,%(ASSIGNED)i)']
     queryOpts = {'limit' : 100, 'order' : 'priority,create_time'}
