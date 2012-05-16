@@ -34,7 +34,7 @@ Group: Applications/Internet
 License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
-Requires: mod_python
+Requires: mod_wsgi
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
 
@@ -118,7 +118,7 @@ Summary: Koji Web UI
 Group: Applications/Internet
 License: LGPLv2
 Requires: httpd
-Requires: mod_python
+Requires: mod_wsgi
 Requires: mod_auth_kerb
 Requires: postgresql-python
 Requires: python-cheetah
