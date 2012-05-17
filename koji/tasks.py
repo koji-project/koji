@@ -20,6 +20,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 import koji
+import koji.util
 import os
 import logging
 import xmlrpclib
@@ -143,7 +144,7 @@ class BaseTaskHandler(object):
         """Execute the task"""
         self.createWorkdir()
         try:
-            return self.handler(*self.params,**self.opts)
+            return koji.util.call_with_argcheck(self.handler, self.params, self.opts)
         finally:
             self.removeWorkdir()
 

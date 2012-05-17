@@ -16,13 +16,14 @@
 
 import calendar
 from fnmatch import fnmatch
-import logging
 import koji
+import logging
 import os
 import os.path
 import re
 import resource
 import stat
+import sys
 import time
 
 try:
@@ -130,6 +131,18 @@ def dslice(dict, keys, strict=True):
             #for strict we skip the has_key check and let the dict generate the KeyError
             ret[key] = dict[key]
     return ret
+
+def call_with_argcheck(func, args, kwargs):
+    """Call function, raising ParameterError if args do not match"""
+    try:
+        return func(*args, **kwargs)
+    except TypeError, e:
+        tb = sys.exc_info()[2]
+        while tb.tb_next:
+            tb = tb.tb_next
+        if tb.tb_frame.f_code == call_with_argcheck.func_code:
+            raise koji.ParameterError, e.message
+        raise
 
 
 class HiddenValue(object):

@@ -36,8 +36,8 @@ import koji.auth
 import koji.db
 import koji.plugin
 import koji.policy
+import koji.util
 from koji.context import context
-from koji.util import setup_rlimits
 
 
 class HandlerRegistry(object):
@@ -247,35 +247,6 @@ class ModXMLRPCRequestHandler(object):
         # handle named parameters
         params, opts = koji.decode_args(*params)
 
-        #check args against the function
-        f_args, f_varargs, f_varkw, f_defaults = inspect.getargspec(func)
-        if not f_varargs:
-            if f_varkw:
-                n_given = len(params)
-            else:
-                n_given = len(params) + len(opts)
-            if n_given > len(f_args):
-                raise koji.ParameterError, "%s() takes %i fixed arguments (%i given)" \
-                        % (method, len(f_args), n_given)
-        data = dict(zip(f_args, params))
-        for arg in opts:
-            if not f_varkw and arg not in f_args:
-                raise koji.ParameterError, "%s() got an unexpected keyword argument %r" \
-                        % (method, arg)
-            if arg in data:
-                raise koji.ParameterError, "%s() got a duplicate keyword argument %r" \
-                        % (method, arg)
-            else:
-                data[arg] = opts[arg]
-        if f_defaults:
-            for arg, val in f_defaults:
-                data.setdefault(arg, val)
-        for n, arg in enumerate(f_args):
-            if arg not in data:
-                # missing arg
-                raise koji.ParameterError, "%s() missing required argument %r (#%i)" \
-                        % (method, arg, n)
-
         if self.logger.isEnabledFor(logging.INFO):
             self.logger.info("Handling method %s for session %s (#%s)",
                             method, context.session.id, context.session.callnum)
@@ -284,7 +255,7 @@ class ModXMLRPCRequestHandler(object):
                 self.logger.debug("Opts: %s", pprint.pformat(opts))
             start = time.time()
 
-        ret = func(*params,**opts)
+        ret = koji.util.call_with_argcheck(func, params, opts)
 
         if self.logger.isEnabledFor(logging.INFO):
             rusage = resource.getrusage(resource.RUSAGE_SELF)
@@ -641,7 +612,7 @@ def server_setup(environ):
         opts = load_config(environ)
         setup_logging2(opts)
         load_scripts(environ)
-        setup_rlimits(opts)
+        koji.util.setup_rlimits(opts)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
