@@ -50,6 +50,7 @@ class HandlerRegistry(object):
         self.register_function(self.system_listMethods, name="system.listMethods")
         self.register_function(self.system_methodSignature, name="system.methodSignature")
         self.register_function(self.system_methodHelp, name="system.methodHelp")
+        self.argspec_cache = {}
 
     def register_function(self, function, name = None):
         if name is None:
@@ -99,16 +100,32 @@ class HandlerRegistry(object):
                     for cbtype in v.callbacks:
                         koji.plugin.register_callback(cbtype, v)
 
+    def getargspec(self, func):
+        ret = self.argspec_cache.get(func)
+        if ret:
+            return ret
+        ret = tuple(inspect.getargspec(func))
+        if inspect.ismethod(func) and func.im_self:
+            # bound method, remove first arg
+            args, varargs, varkw, defaults = ret
+            if args:
+                aname = args[0] #generally "self"
+                del args[0]
+                if defaults and aname in defaults:
+                    # shouldn't happen, but...
+                    del defaults[aname]
+        return ret
+
     def list_api(self):
         funcs = []
         for name,func in self.funcs.items():
             #the keys in self.funcs determine the name of the method as seen over xmlrpc
             #func.__name__ might differ (e.g. for dotted method names)
             args = self._getFuncArgs(func)
-            argspec = inspect.getargspec(func)
+            argspec = self.getargspec(func)
             funcs.append({'name': name,
                           'doc': func.__doc__,
-                          'argspec': tuple(argspec),
+                          'argspec': argspec,
                           'argdesc': inspect.formatargspec(*argspec),
                           'args': args})
         return funcs
@@ -135,7 +152,7 @@ class HandlerRegistry(object):
         func = self.funcs.get(method)
         if func is None:
             return ""
-        args = inspect.formatargspec(*inspect.getargspec(func))
+        args = inspect.formatargspec(*self.getargspec(func))
         ret = '%s%s' % (method, args)
         if func.__doc__:
             ret += "\ndescription: %s" % func.__doc__
