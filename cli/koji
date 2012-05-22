@@ -1178,6 +1178,7 @@ def anon_handle_mock_config(options, session, args):
                       help=_("URL under which Koji files are accessible"))
     parser.add_option("--distribution", default="Koji Testing",
                       help=_("Change the distribution macro"))
+    parser.add_option("--yum-proxy", help=_("Specify a yum proxy"))
     parser.add_option("-o", metavar="FILE", dest="ofile", help=_("Output to a file"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -1187,7 +1188,7 @@ def anon_handle_mock_config(options, session, args):
     name = args[0]
     arch = None
     opts = {}
-    for k in ('topdir', 'topurl', 'distribution', 'mockdir'):
+    for k in ('topdir', 'topurl', 'distribution', 'mockdir', 'yum_proxy'):
         if hasattr(options, k):
             opts[k] = getattr(options, k)
     if options.buildroot:
