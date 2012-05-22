@@ -970,7 +970,9 @@ def tagedit(environ, tagID):
         params['arches'] = form['arches'].value
         params['locked'] = bool(form.has_key('locked'))
         permission = form['permission'].value
-        if permission != 'none':
+        if permission == 'none':
+            params['perm'] = None
+        else:
             params['perm'] = int(permission)
         if mavenEnabled:
             params['maven_support'] = bool(form.has_key('maven_support'))
