@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.6.0
+Version: 1.7.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -236,6 +236,41 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Thu May 31 2012 Mike McLean <mikem at redhat.com> - 1.7.0-1
+- mod_wsgi support
+- mod_python support deprecated
+- kojiweb configuration file (web.conf)
+- split storage support (build volumes)
+- configurable resource limits (hub, web, and kojid)
+- drop pkgurl in favor of topurl
+- better approach to web themes
+- more helpful policy errors
+- clearer errors when rpc args do not match function signature
+- avoid retry errors on some common builder calls
+- don't rely on pgdb._quoteparams
+- avoid hosts taking special arch tasks they cannot handle
+- kojid: configure yum proxy
+- kojid: configure failed buildroot lifetime
+- kojid: literal_task_arches option
+- support for arm hardware floating point arches
+- maven build options: goals, envs, extra packages
+- store Maven build output under the standard build directory
+- make the list of files ignored in the local Maven repo configurable
+- add Maven information to taginfo
+- make kojira more efficient using multicalls and caching
+- speed up kojira startup
+- kojira: configurable sleep time
+- kojira: count untracked newRepo tasks towards limits
+- kojira: limit non-waiting newRepo tasks
+- gssapi support in the messagebus plugin
+- grant-permission --new
+- improved argument display for list-api command
+- moshimoshi
+- download task output directly from KojiFilesURL, rather than going through getfile
+- option to show buildroot data in rpminfo command
+- show search help on blank search command
+- wait-repo: wait for the build(s) to be the latest rather than just present
+
 * Thu Dec 16 2010 Mike McLean <mikem at redhat.com> - 1.6.0-1
 - extend debuginfo check to cover newer formats
 - ignore tasks that TaskManager does not have a handler for
