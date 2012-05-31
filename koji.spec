@@ -15,7 +15,7 @@ License: LGPLv2 and GPLv2+
 Summary: Build system tools
 Group: Applications/System
 URL: http://fedorahosted.org/koji
-Source: https://fedorahosted.org/releases/k/o/koji/koji-%{version}.tar.bz2
+Source: https://fedorahosted.org/released/koji/koji-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 Requires: python-krbV >= 1.0.13
