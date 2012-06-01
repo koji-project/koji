@@ -130,10 +130,10 @@ def _assertLogin(environ):
     if 'koji.currentLogin' not in environ or 'koji.currentUser' not in environ:
         raise StandardError, '_getServer() must be called before _assertLogin()'
     elif environ['koji.currentLogin'] and environ['koji.currentUser']:
-        if options.get('WebCert'):
+        if options['WebCert']:
             if not _sslLogin(environ, session, environ['koji.currentLogin']):
                 raise koji.AuthError, 'could not login %s via SSL' % environ['koji.currentLogin']
-        elif options.get('WebPrincipal'):
+        elif options['WebPrincipal']:
             if not _krbLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
                 raise koji.AuthError, 'could not login using principal: %s' % environ['koji.currentLogin']
         else:
@@ -157,8 +157,8 @@ def _assertLogin(environ):
 
 def _getServer(environ):
     opts = environ['koji.options']
-    session = koji.ClientSession(opts.get('KojiHubURL', 'http://localhost/kojihub'),
-                                 opts={'krbservice': opts.get('KrbService', 'host')})
+    session = koji.ClientSession(opts['KojiHubURL'],
+                                 opts={'krbservice': opts['KrbService']})
 
     environ['koji.currentLogin'] = _getUserCookie(environ)
     if environ['koji.currentLogin']:
@@ -220,7 +220,7 @@ def login(environ, page=None):
     options = environ['koji.options']
 
     # try SSL first, fall back to Kerberos
-    if options.get('WebCert'):
+    if options['WebCert']:
         if environ.get('HTTPS') not in ['on', 'yes', '1']:
             dest = 'login'
             if page:
@@ -241,7 +241,7 @@ def login(environ, page=None):
 
         authlogger.info('Successful SSL authentication by %s', username)
 
-    elif options.get('WebPrincipal'):
+    elif options['WebPrincipal']:
         principal = environ.get('REMOTE_USER')
         if not principal:
             raise koji.AuthError, 'configuration error: mod_auth_kerb should have performed authentication before presenting this page'
@@ -299,7 +299,7 @@ def index(environ, packageOrder='package_name', packageStart=None):
         values['notifs'] = notifs
         
     values['user'] = user
-    values['welcomeMessage'] = environ['koji.options'].get('KojiGreeting', 'Welcome to Koji Web')
+    values['welcomeMessage'] = environ['koji.options']['KojiGreeting']
     
     return _genHTML(environ, 'index.chtml')
 
@@ -661,7 +661,7 @@ def taskinfo(environ, taskID):
     else:
         values['perms'] = []
 
-    topurl = environ['koji.options'].get('KojiFilesURL', 'http://localhost/')
+    topurl = environ['koji.options']['KojiFilesURL']
     values['pathinfo'] = koji.PathInfo(topdir=topurl)
 
     return _genHTML(environ, 'taskinfo.chtml')
@@ -670,7 +670,7 @@ def imageinfo(environ, imageID):
     """Do some prep work and generate the imageinfo page for kojiweb."""
     server = _getServer(environ)
     values = _initValues(environ, 'Image Information')
-    imageURL = environ['koji.options'].get('KojiFilesURL', 'http://localhost') + '/images'
+    imageURL = environ['koji.options']['KojiFilesURL'] + '/images'
     imageID = int(imageID)
     image = server.getImageInfo(imageID=imageID, strict=True)
     values['image'] = image
@@ -1198,7 +1198,7 @@ def buildinfo(environ, buildID):
         else:
             values['estCompletion'] = None
 
-    topurl = environ['koji.options'].get('KojiFilesURL', 'http://localhost/')
+    topurl = environ['koji.options']['KojiFilesURL']
     values['pathinfo'] = koji.PathInfo(topdir=topurl)
 
     return _genHTML(environ, 'buildinfo.chtml')

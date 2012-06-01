@@ -65,9 +65,10 @@ class Dispatcher(object):
     cfgmap = [
         #option, type, default
         ['SiteName', 'string', None],
-        ['KojiHubURL', 'string', None],
-        ['KojiFilesURL', 'string', None],
+        ['KojiHubURL', 'string', 'http://localhost/kojihub'],
+        ['KojiFilesURL', 'string', 'http://localhost/kojifiles'],
         ['KojiTheme', 'string', None],
+        ['KojiGreeting', 'string', 'Welcome to Koji Web'],
 
         ['WebPrincipal', 'string', None],
         ['WebKeytab', 'string', '/etc/httpd.keytab'],
