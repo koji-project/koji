@@ -5651,12 +5651,18 @@ def handle_regen_repo(options, session, args):
             parser.error(_("No matching build target: " + tag))
             assert False
         tag = info['build_tag_name']
+        info = session.getTag(tag)
     else:
         info = session.getTag(tag)
         if not info:
             parser.error(_("No matching tag: " + tag))
             assert False
         tag = info['name']
+        targets = session.getBuildTargets(buildTagID=info['id'])
+        if not targets:
+            print "Warning: %s is not a build tag" % tag
+    if not info['arches']:
+        print "Warning: tag %s has an empty arch list" % info['name']
     task_id = session.newRepo(tag)
     print "Regenerating repo for tag " + tag
     if _running_in_bg() or suboptions.nowait:
