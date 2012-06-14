@@ -178,8 +178,8 @@ def _construct_url(environ, page):
     url_scheme = 'http'
     if environ.get('HTTPS') in ('on','yes','1'):
         url_scheme = 'https'
-    if (url_scheme == 'https' and port == 443) or \
-        (url_scheme == 'http' and port == 80):
+    if (url_scheme == 'https' and port == '443') or \
+        (url_scheme == 'http' and port == '80'):
         return "%s://%s%s" % (url_scheme, host, page)
     return "%s://%s:%s%s" % (url_scheme, host, port, page)
 
