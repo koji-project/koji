@@ -2332,42 +2332,6 @@ def anon_handle_latest_pkg(options, session, args):
         for line in output:
             print line
 
-def anon_handle_latest_by_tag(options, session, args):
-    "Print the latest packages for each tag"
-    usage = _("usage: %prog latest-by-tag [options] package [package...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
-    parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
-    (options, args) = parser.parse_args(args)
-    if len(args) == 0:
-        parser.error(_("A package name must be specified"))
-        assert False
-    activate_session(session)
-    pathinfo = koji.PathInfo()
-
-    for pkg in args:
-        tags = [x['name'] for x in session.listTags(package=pkg)]
-        tags.sort()
-
-        for tag in tags:
-            data = session.getLatestBuilds(tag, package=pkg)
-            if options.paths:
-                for x in data:
-                    x['path'] = pathinfo.build(x)
-                    x['tag_name'] = tag
-                fmt = "%(path)-40s  %(tag_name)-30s  %(owner_name)s"
-            else:
-                for x in data:
-                    x['tag_name'] = tag
-                fmt = "%(nvr)-40s  %(tag_name)-30s  %(owner_name)s"
-            if not options.quiet:
-                print "%-40s  %-30s  %s" % ("Build", "Tag", "Built by")
-                print "%s  %s  %s" % ("-"*40, "-"*30, "-"*16)
-                options.quiet = True
-
-            for datum in data:
-                print fmt % datum
 
 def anon_handle_list_api(options, session, args):
     "Print the list of XML-RPC APIs"
