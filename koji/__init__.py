@@ -1223,20 +1223,26 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     The generated config is compatible with mock >= 0.8.7
     """
     mockdir = opts.get('mockdir', '/var/lib/mock')
-    url = opts.get('url')
-    if not url:
+    if 'url' in opts:
+        # XXX does anything still use this opt?
+        urls = [opts['url']]
+    else:
         if not (repoid and tag_name):
             raise GenericError, "please provide a url or repo/tag"
-        topurl = opts.get('topurl')
-        if topurl:
+        topurls = opts.get('topurls')
+        if not topurls:
+            #cli command still passes plain topurl
+            topurl = opts.get('topurl')
+            if topurl:
+                topurls = [topurl]
+        if topurls:
             #XXX - PathInfo isn't quite right for this, but it will do for now
-            pathinfo = PathInfo(topdir=topurl)
-            repodir = pathinfo.repo(repoid,tag_name)
-            url = "%s/%s" % (repodir,arch)
+            pathinfos = [PathInfo(topdir=_u) for _u in topurls]
+            urls = ["%s/%s" % (_p.repo(repoid,tag_name), arch) for _p in pathinfos]
         else:
             pathinfo = PathInfo(topdir=opts.get('topdir', '/mnt/koji'))
             repodir = pathinfo.repo(repoid,tag_name)
-            url = "file://%s/%s" % (repodir,arch)
+            urls = ["file://%s/%s" % (repodir,arch)]
     if managed:
         buildroot_id = opts.get('buildroot_id')
 
@@ -1275,12 +1281,13 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
 
-    config_opts['yum.conf'] = "[main]\n"
+    #generate yum.conf
+    yc_parts = ["[main]\n"]
     # HTTP proxy for yum
     if opts.get('yum_proxy'):
-        config_opts['yum.conf'] += "proxy=%s\n" % opts['yum_proxy']
+        yc_parts.append("proxy=%s\n" % opts['yum_proxy'])
     # Rest of the yum options
-    config_opts['yum.conf'] += """\
+    yc_parts.append("""\
 cachedir=/var/cache/yum
 debuglevel=1
 logfile=/var/log/yum.log
@@ -1294,8 +1301,11 @@ assumeyes=1
 
 [build]
 name=build
-baseurl=%(url)s
-""" % locals()
+""")
+    yc_parts.append("baseurl=%s\n" % urls[0])
+    for url in urls[1:]:
+        yc_parts.append("        %s\n" % url)
+    config_opts['yum.conf'] = ''.join(yc_parts)
 
     plugin_conf = {
         'ccache_enable': False,

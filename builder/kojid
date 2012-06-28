@@ -204,7 +204,7 @@ class BuildRoot(object):
         for k in ('repoid', 'tag_name'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir', 'topurl', 'packager', 'vendor', 'distribution', 'mockhost', 'yum_proxy'):
+        for k in ('mockdir', 'topdir', 'topurl', 'topurls', 'packager', 'vendor', 'distribution', 'mockhost', 'yum_proxy'):
             if hasattr(self.options, k):
                 opts[k] = getattr(self.options, k)
         opts['buildroot_id'] = self.id
@@ -2977,6 +2977,12 @@ def get_options():
         msg = "the topurl option is required"
         logger.error(msg)
         parser.error(msg)
+
+    topurls = options.topurl.split()
+    options.topurls = topurls
+    if len(topurls) > 1:
+        # XXX - fix the rest of the code so this is not necessary
+        options.topurl = topurl[0]
 
     if options.pkgurl:
         logger.warning("The pkgurl option is obsolete")
