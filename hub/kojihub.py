@@ -2187,7 +2187,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     packages = {}
     for repoarch in repo_arches:
         packages.setdefault(repoarch, [])
-    relpathinfo = koji.PathInfo(topdir='')
+    relpathinfo = koji.PathInfo(topdir='toplink')
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
@@ -2220,6 +2220,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             # src and noarch special-cased -- see below
         archdir = os.path.join(repodir, arch)
         koji.ensuredir(archdir)
+        # Make a symlink to our topdir
+        top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
+        top_link = os.path.join(archdir, 'toplink')
+        os.symlink(top_relpath, top_link)
         pkglist = file(os.path.join(repodir, arch, 'pkglist'), 'w')
         logger.info("Creating package list for %s" % arch)
         for rpminfo in packages[arch]:

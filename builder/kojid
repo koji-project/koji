@@ -2710,7 +2710,7 @@ class CreaterepoTask(BaseTaskHandler):
 
     def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
-        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir, '-u', self.options.topurl]
+        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir]
         if pkglist is not None:
             cmd.extend(['-i', pkglist])
         if os.path.isfile(groupdata):
@@ -2737,7 +2737,7 @@ class CreaterepoTask(BaseTaskHandler):
         if pkglist is None:
             cmd.append(self.outdir)
         else:
-            cmd.append(self.options.topdir)
+            cmd.append(self.repodir)
 
         logfile = '%s/createrepo.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
