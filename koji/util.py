@@ -301,14 +301,17 @@ def _relpath(path, start=getattr(os.path, 'curdir', '.')):
     """Backport of os.path.relpath for python<2.6"""
 
     sep = getattr(os.path, 'sep', '/')
-    pardir = getattr(os.path, 'pardir', '...')
+    pardir = getattr(os.path, 'pardir', '..')
     if not path:
         raise ValueError("no path specified")
     start_list = [x for x in os.path.abspath(start).split(sep) if x]
     path_list = [x for x in os.path.abspath(path).split(sep) if x]
+    i = -1
     for i in range(min(len(start_list), len(path_list))):
         if start_list[i] != path_list[i]:
             break
+    else:
+        i += 1
     rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
     if not rel_list:
         return getattr(os.path, 'curdir', '.')
