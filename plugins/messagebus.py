@@ -166,5 +166,6 @@ def send_message(cbtype, *args, **kws):
     else:
         raise koji.PluginError, 'unsupported exchange type: %s' % exchange_type
 
-    sender.send(message)
+    sender.send(message, sync=False)
+    sender.sync(timeout=60)
     sender.close()
