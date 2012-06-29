@@ -55,7 +55,8 @@ def get_sender():
     url += config.get('broker', 'port')
 
     conn = qpid.messaging.Connection.establish(url,
-                                               sasl_mechanisms=config.get('broker', 'auth'))
+                                               sasl_mechanisms=config.get('broker', 'auth'),
+                                               heartbeat=60)
     sess = conn.session()
     tgt = """%s;
              { create: sender,
