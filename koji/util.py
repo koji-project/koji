@@ -149,7 +149,10 @@ class HiddenValue(object):
     """A wrapper that prevents a value being accidentally printed"""
 
     def __init__(self, value):
-        self.value = value
+        if isinstance(value, HiddenValue):
+            self.value = value.value
+        else:
+            self.value = value
 
     def __str__(self):
         return "[value hidden]"
