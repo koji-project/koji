@@ -2029,6 +2029,12 @@ def _module_info(url):
         return '%s:%s' % (repo_info, rev_info)
 
 def taskLabel(taskInfo):
+    try:
+        return _taskLabel(taskInfo)
+    except Exception:
+        return "malformed task"
+
+def _taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
     method = taskInfo['method']
     arch = taskInfo['arch']
