@@ -199,6 +199,14 @@ class RepoManager(object):
                 self.logger.info('Found repo %s, state=%s'
                                    %(repo_id, koji.REPO_STATES[data['state']]))
                 self.repos[repo_id] = ManagedRepo(self.session, self.options, data)
+        if len(self.repos) > len(repodata):
+            # This shouldn't normally happen, but might if someone else calls
+            # repoDelete or similar
+            active = set([r['id'] for r in repodata])
+            for repo_id in self.repos.keys():
+                if repo_id not in active:
+                    self.logger.info('Dropping entry for inactive repo: %s', repo_id)
+                    del self.repos[repo_id]
 
     def checkCurrentRepos(self):
         """Determine which repos are current"""
@@ -478,6 +486,7 @@ class RepoManager(object):
                     #try to delete
                     if repo.tryDelete():
                         n_deletes += 1
+                        del self.repos[repo.repo_id]
 
 
 def main(options, session):
