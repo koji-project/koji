@@ -931,9 +931,14 @@ class BuildTask(BaseTaskHandler):
 class BaseBuildTask(BaseTaskHandler):
     """Base class for tasks the create a build root"""
 
-    def checkHostArch(self, tag, hostdata):
-        if not isinstance(tag, dict):
-            tag = self.session.getTag(tag)
+    def checkHostArch(self, tag, hostdata, event=None):
+        tagref = tag
+        if isinstance(tag, dict):
+            tagref = tag.get['id']
+        opts = {}
+        if event is not None:
+            opts['event'] = event
+        tag = self.session.getBuildConfig(tagref, **opts)
         if tag and tag['arches']:
             tag_arches = [koji.canonArch(a) for a in tag['arches'].split()]
             host_arches = hostdata['arches'].split()
@@ -944,6 +949,8 @@ class BaseBuildTask(BaseTaskHandler):
                                       ', '.join(tag_arches), ', '.join(host_arches)))
                     return False
         #otherwise...
+        # This is in principle an error condition, but this is not a good place
+        # to fail. Instead we proceed and let the task fail normally.
         return True
 
 
