@@ -9782,7 +9782,7 @@ class HostExports(object):
         elif release.isdigit():
             release = str(int(release) + 1)
         else:
-            raise koji.BuildError, 'Invalid release value for a build: %s' % release
+            raise koji.BuildError, 'Unable to increment release value: %s' % release
         return release
 
     def importArchive(self, filepath, buildinfo, type, typeInfo):
