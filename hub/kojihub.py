@@ -2434,8 +2434,8 @@ def tag_changed_since_event(event,taglist):
     #first check the tag_updates table
     clauses = ['update_event > %(event)i', 'tag_id IN %(taglist)s']
     query = QueryProcessor(tables=['tag_updates'], columns=['id'],
-                            clauses=['update_event > %(event)i'],
-                            values=data, opts={'asList': True})
+                            clauses=clauses, values=data,
+                            opts={'asList': True})
     if query.execute():
         return True
     #also check these versioned tables
