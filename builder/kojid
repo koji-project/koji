@@ -934,7 +934,7 @@ class BaseBuildTask(BaseTaskHandler):
     def checkHostArch(self, tag, hostdata, event=None):
         tagref = tag
         if isinstance(tag, dict):
-            tagref = tag.get['id']
+            tagref = tag.get('id') or tag.get('name')
         opts = {}
         if event is not None:
             opts['event'] = event
