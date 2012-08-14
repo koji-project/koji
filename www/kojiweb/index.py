@@ -140,7 +140,7 @@ def _assertLogin(environ):
             raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
 
         # verify a valid authToken was passed in to avoid CSRF
-        authToken = environ['koji.form'].getvalue('a', '')
+        authToken = environ['koji.form'].getfirst('a', '')
         validTokens = _getValidTokens(environ)
         if authToken and authToken in validTokens:
             # we have a token and it's valid
@@ -315,13 +315,13 @@ def notificationedit(environ, notificationID):
     form = environ['koji.form']
 
     if form.has_key('save'):
-        package_id = form['package']
+        package_id = form.getfirst('package')
         if package_id == 'all':
             package_id = None
         else:
             package_id = int(package_id)
 
-        tag_id = form['tag']
+        tag_id = form.getfirst('tag')
         if tag_id == 'all':
             tag_id = None
         else:
@@ -331,9 +331,9 @@ def notificationedit(environ, notificationID):
             success_only = True
         else:
             success_only = False
-        
+
         server.updateNotification(notification['id'], package_id, tag_id, success_only)
-        
+
         _redirect(environ, 'index')
     elif form.has_key('cancel'):
         _redirect(environ, 'index')
@@ -352,21 +352,21 @@ def notificationedit(environ, notificationID):
 def notificationcreate(environ):
     server = _getServer(environ)
     _assertLogin(environ)
-    
+
     form = environ['koji.form']
 
     if form.has_key('add'):
         user = environ['koji.currentUser']
         if not user:
             raise koji.GenericError, 'not logged-in'
-        
-        package_id = form['package']
+
+        package_id = form.getfirst('package')
         if package_id == 'all':
             package_id = None
         else:
             package_id = int(package_id)
 
-        tag_id = form['tag']
+        tag_id = form.getfirst('tag')
         if tag_id == 'all':
             tag_id = None
         else:
@@ -376,9 +376,9 @@ def notificationcreate(environ):
             success_only = True
         else:
             success_only = False
-        
+
         server.createNotification(user['id'], package_id, tag_id, success_only)
-        
+
         _redirect(environ, 'index')
     elif form.has_key('cancel'):
         _redirect(environ, 'index')
@@ -1019,13 +1019,13 @@ def tagparent(environ, tagID, parentID, action):
         if form.has_key('add') or form.has_key('save'):
             newDatum = {}
             newDatum['parent_id'] = parent['id']
-            newDatum['priority'] = int(form['priority'])
-            maxdepth = form['maxdepth']
+            newDatum['priority'] = int(form.getfirst('priority'))
+            maxdepth = form.getfirst('maxdepth')
             maxdepth = len(maxdepth) > 0 and int(maxdepth) or None
             newDatum['maxdepth'] = maxdepth
             newDatum['intransitive'] = bool(form.has_key('intransitive'))
             newDatum['noconfig'] = bool(form.has_key('noconfig'))
-            newDatum['pkg_filter'] = form['pkg_filter'].value
+            newDatum['pkg_filter'] = form.getfirst('pkg_filter')
 
             data = server.getInheritanceData(tag['id'])
             data.append(newDatum)
@@ -1542,7 +1542,7 @@ def hostedit(environ, hostID):
         description = form['description'].value
         comment = form['comment'].value
         enabled = bool(form.has_key('enabled'))
-        channels = [f.value for f in form.getlist('channels')]
+        channels = form.getlist('channels')
 
         server.editHost(host['id'], arches=arches, capacity=capacity,
                         description=description, comment=comment)
@@ -1769,13 +1769,13 @@ def buildtargetedit(environ, targetID):
     form = environ['koji.form']
 
     if form.has_key('save'):
-        name = form['name'].value
-        buildTagID = int(form['buildTag'])
+        name = form.getfirst('name')
+        buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
         if buildTag == None:
             raise koji.GenericError, 'invalid tag ID: %i' % buildTagID
 
-        destTagID = int(form['destTag'])
+        destTagID = int(form.getfirst('destTag'))
         destTag = server.getTag(destTagID)
         if destTag == None:
             raise koji.GenericError, 'invalid tag ID: %i' % destTagID
@@ -1805,9 +1805,9 @@ def buildtargetcreate(environ):
         # Use the str .value field of the StringField object,
         # since xmlrpclib doesn't know how to marshal the StringFields
         # returned by mod_python
-        name = form['name'].value
-        buildTagID = int(form['buildTag'])
-        destTagID = int(form['destTag'])
+        name = form.getfirst('name')
+        buildTagID = int(form.getfirst('buildTag'))
+        destTagID = int(form.getfirst('destTag'))
 
         server.createBuildTarget(name, buildTagID, destTagID)
         target = server.getBuildTarget(name)
