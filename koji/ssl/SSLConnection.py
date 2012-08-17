@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Higher-level SSL objects used by rpclib
 #
 # Copyright (c) 2002 Red Hat, Inc.
