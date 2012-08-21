@@ -1328,8 +1328,9 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
               ('archiveinfo.size', 'size'),
-              ('archiveinfo.checksum', 'checksum')]
-              
+              ('archiveinfo.checksum', 'checksum'),
+              ('archiveinfo.checksum_type', 'checksum_type'),
+             ]
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
     clauses = [eventCondition(event), 'tag_listing.tag_id = %(tagid)i']
@@ -3531,6 +3532,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     filename: name of the archive (string)
     size: size of the archive (integer)
     checksum: checksum of the archive (string)
+    checksum_type: the checksum type (integer)
 
     If componentBuildrootID is specified, then the map will also contain the following key:
     project: whether the archive was pulled in as a project dependency, or as part of the 
@@ -3573,11 +3575,18 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     
     tables = ['archiveinfo']
     joins = ['archivetypes on archiveinfo.type_id = archivetypes.id']
-    columns = ['archiveinfo.id', 'archiveinfo.type_id', 'archiveinfo.build_id', 'archiveinfo.buildroot_id',
-               'archiveinfo.filename', 'archiveinfo.size', 'archiveinfo.checksum',
-               'archivetypes.name', 'archivetypes.description', 'archivetypes.extensions']
-    aliases = ['id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum',
-               'type_name', 'type_description', 'type_extensions']
+    fields = [('archiveinfo.id', 'id'),
+              ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.build_id', 'build_id'),
+              ('archiveinfo.buildroot_id', 'buildroot_id'),
+              ('archiveinfo.filename', 'filename'),
+              ('archiveinfo.size', 'size'),
+              ('archiveinfo.checksum', 'checksum'),
+              ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archivetypes.name', 'type_name'),
+              ('archivetypes.description', 'type_description'),
+              ('archivetypes.extensions', 'type_extensions'),
+            ]
     clauses = []
 
     if buildID is not None:
@@ -3590,14 +3599,13 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         joins.append('buildroot_archives on archiveinfo.id = buildroot_archives.archive_id')
         clauses.append('buildroot_archives.buildroot_id = %(component_buildroot_id)i')
         values['component_buildroot_id'] = componentBuildrootID
-        columns.extend(['buildroot_archives.buildroot_id', 'buildroot_archives.project_dep'])
-        aliases.extend(['component_buildroot_id', 'project'])
+        fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
+        fields.append(['buildroot_archives.project_dep', 'project'])
     if hostID is not None:
         joins.append('buildroot on archiveinfo.buildroot_id = buildroot.id')
         clauses.append('buildroot.host_id = %(host_id)i')
         values['host_id'] = hostID
-        columns.append('buildroot.host_id')
-        aliases.append('host_id')
+        fields.append(['buildroot.host_id', 'host_id'])
     if filename is not None:
         clauses.append('filename = %(filename)s')
         values['filename'] = filename
@@ -3612,8 +3620,11 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         pass
     elif type == 'maven':
         joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
-        columns.extend(['maven_archives.group_id', 'maven_archives.artifact_id', 'maven_archives.version'])
-        aliases.extend(['group_id', 'artifact_id', 'version'])
+        fields.extend([
+                ('maven_archives.group_id', 'group_id'),
+                ('maven_archives.artifact_id', 'artifact_id'),
+                ('maven_archives.version', 'version'),
+        ])
 
         if typeInfo:
             for key in ('group_id', 'artifact_id', 'version'):
@@ -3622,8 +3633,11 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                     values[key] = typeInfo[key]
     elif type == 'win':
         joins.append('win_archives ON archiveinfo.id = win_archives.archive_id')
-        columns.extend(['win_archives.relpath', 'win_archives.platforms', 'win_archives.flags'])
-        aliases.extend(['relpath', 'platforms', 'flags'])
+        fields.extend([
+                ('win_archives.relpath', 'relpath'),
+                ('win_archives.platforms', 'platforms'),
+                ('win_archives.flags', 'flags'),
+        ])
 
         if typeInfo:
             if 'relpath' in typeInfo:
@@ -3638,14 +3652,14 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                         clauses.append(r"""%s ~ E'\\m%s\\M'""" % (key, v))
     elif type == 'image':
         joins.append('image_archives ON archiveinfo.id = image_archives.archive_id')
-        columns.extend(['image_archives.arch'])
-        aliases.extend(['arch'])
+        fields.append(['image_archives.arch', 'arch'])
         if typeInfo and typeInfo.get('arch'):
             clauses.append('image_archives.%s = %%(%s)s' % (key, key))
             values[key] = typeInfo[key]
     else:
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
+    columns, aliases = zip(*fields)
     return QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           clauses=clauses, values=values, opts=queryOpts).execute()
 
@@ -3661,6 +3675,7 @@ def get_archive(archive_id, strict=False):
     filename: name of the archive (string)
     size: size of the archive (integer)
     checksum: checksum of the archive (string)
+    checksum_type: type of the checksum (integer)
 
     If the archive is part of a Maven build, the following keys will be included:
       group_id
@@ -3677,7 +3692,7 @@ def get_archive(archive_id, strict=False):
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum')
+    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'checksum_type')
     select = """SELECT %s FROM archiveinfo
     WHERE id = %%(archive_id)i""" % ', '.join(fields)
     archive =  _singleRow(select, locals(), fields, strict=strict)
@@ -4780,6 +4795,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         m.update(contents)
     archivefp.close()
     archiveinfo['checksum'] = m.hexdigest()
+    archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
                               build_type=type, filepath=filepath)
@@ -9161,8 +9177,17 @@ class BuildRoot(object):
         tables = ('archiveinfo',)
         joins = ('buildroot_archives ON archiveinfo.id = buildroot_archives.archive_id',)
         clauses = ('buildroot_archives.buildroot_id = %(id)i',)
-        columns = ('id', 'type_id', 'build_id', 'archiveinfo.buildroot_id', 'filename', 'size', 'checksum', 'project_dep')
-        aliases = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'project_dep')
+        fields = [('id', 'id'),
+                  ('type_id', 'type_id'),
+                  ('build_id', 'build_id'),
+                  ('archiveinfo.buildroot_id', 'buildroot_id'),
+                  ('filename', 'filename'),
+                  ('size', 'size'),
+                  ('checksum', 'checksum'),
+                  ('checksum_type', 'checksum_type'),
+                  ('project_dep', 'project_dep'),
+                 ]
+        columns, aliases = zip(*fields)
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
                                values=self.data,

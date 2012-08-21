@@ -215,6 +215,12 @@ TAG_UPDATE_TYPES = Enum((
     'MANUAL',
 ))
 
+CHECKSUM_TYPES = Enum((
+    'md5',
+    'sha1',
+    'sha256',
+))
+
 #PARAMETERS
 BASEDIR = '/mnt/koji'
 # default task priority
