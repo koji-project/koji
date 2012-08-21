@@ -3415,8 +3415,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
 
     # image specific constraints
     if imageID != None:
-       clauses.append('imageinfo_listing.image_id = %(imageID)i')
-       joins.append('imageinfo_listing ON rpminfo.id = imageinfo_listing.rpm_id')
+       clauses.append('image_listing.image_id = %(imageID)i')
+       joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
 
     if hostID != None:
         joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
@@ -3758,7 +3758,7 @@ def get_image_archive(archive_id, strict=False):
     results = _singleRow(select, locals(), fields, strict=strict)
     results['rootid'] = False
     fields = ('image_id', 'rpm_id')
-    select = """SELECT %s FROM imageinfo_listing
+    select = """SELECT %s FROM image_listing
     WHERE image_id = %%(archive_id)i""" % ', '.join(fields)
     rpms = _singleRow(select, locals(), fields, strict=strict)
     if rpms:
@@ -6675,7 +6675,7 @@ def importImageInternal(task_id, build_id, imgdata):
     files - files associated with the image (appliances have multiple files)
     rpmlist - the list of RPM NVRs installed into the image
     rootdev - root device image that mounts "/"; the archive id of this image
-        is what is referenced in the imageinfo_listing table. livecds set this
+        is what is referenced in the image_listing table. livecds set this
         to None.
     """
     host = Host()
@@ -6740,11 +6740,11 @@ def importImageInternal(task_id, build_id, imgdata):
                 break
 
     logger.debug('root archive id is %s' % archive_id)
-    q = """INSERT INTO imageinfo_listing (image_id,rpm_id)
+    q = """INSERT INTO image_listing (image_id,rpm_id)
            VALUES (%(image_id)i,%(rpm_id)i)"""
     for rpm_id in rpm_ids:
         _dml(q, {'image_id': archive_id, 'rpm_id': rpm_id})
-    logger.info('updated imageinfo_listing')
+    logger.info('updated image_listing')
 
     # update build table
     st_complete = koji.BUILD_STATES['COMPLETE']

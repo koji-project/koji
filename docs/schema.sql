@@ -6,7 +6,7 @@ DROP TABLE build_notifications;
 DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
-DROP TABLE imageinfo_listing;
+DROP TABLE image_listing;
 
 DROP TABLE rpminfo;
 DROP TABLE image_builds;
@@ -734,12 +734,12 @@ CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
 CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
 
 -- tracks the contents of an image
-CREATE TABLE imageinfo_listing (
+CREATE TABLE image_listing (
 	image_id INTEGER NOT NULL REFERENCES archiveinfo(id),
 	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
 	UNIQUE (image_id, rpm_id)
 ) WITHOUT OIDS;
-CREATE INDEX imageinfo_listing_rpms on imageinfo_listing(rpm_id);
+CREATE INDEX image_listing_rpms on image_listing(rpm_id);
 
 CREATE TABLE maven_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
