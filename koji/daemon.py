@@ -1075,19 +1075,31 @@ class TaskManager(object):
         if data is None:
             self.logger.warn("Could not open")
             return False
-        id = data['id']
+        task_id = data['id']
         request = data['request']
-        self.tasks[id] = data
+        self.tasks[task_id] = data
         # set weight
-        self.session.host.setTaskWeight(id,handler.weight())
+        try:
+            self.session.host.setTaskWeight(task_id, handler.weight())
+        except koji.ActionNotAllowed:
+            info2 = self.session.getTaskInfo(task['id'])
+            if info2['host_id'] != self.host_id:
+                self.logger.warn("Task %i was reassigned", task_id)
+                return False
+            state = koji.TASK_STATES[info2['state']]
+            if state != 'OPEN':
+                self.logger.warn("Task %i changed is %s", task_id, state)
+                return False
+            #otherwise...
+            raise
         if handler.Foreground:
             self.logger.info("running task in foreground")
             handler.setManager(self)
             self.runTask(handler)
         else:
             pid, session_id = self.forkTask(handler)
-            self.pids[id] = pid
-            self.subsessions[id] = session_id
+            self.pids[task_id] = pid
+            self.subsessions[task_id] = session_id
         return True
 
     def forkTask(self,handler):
