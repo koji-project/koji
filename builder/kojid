@@ -2989,7 +2989,7 @@ def get_options():
     options.topurls = topurls
     if len(topurls) > 1:
         # XXX - fix the rest of the code so this is not necessary
-        options.topurl = topurl[0]
+        options.topurl = topurls[0]
 
     if options.pkgurl:
         logger.warning("The pkgurl option is obsolete")
