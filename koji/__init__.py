@@ -1475,6 +1475,10 @@ class PathInfo(object):
             filepath = wininfo['relpath'] + '/' + filepath
         return filepath
 
+    def imagebuild(self, build):
+        """Return the directory where the image for the build are stored"""
+        return self.build(build) + '/images'
+
     def rpm(self,rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo
@@ -1502,20 +1506,6 @@ class PathInfo(object):
     def taskrelpath(self, task_id):
         """Return the relative path for the task work directory"""
         return "tasks/%s/%s" % (task_id % 10000, task_id)
-
-    def livecdRelPath(self, build_info):
-        """Return the relative path for the livecd image directory"""
-        return os.path.join('livecd', build_info['name'], build_info['version'],
-            build_info['release'])
-
-    def applianceRelPath(self, build_info):
-        """Return the relative path for the appliance image directory"""
-        return os.path.join('appliance', build_info['name'],
-            build_info['version'], build_info['release'])
-
-    def imageFinalPath(self):
-        """Return the absolute path to where completed images can be found"""
-        return os.path.join(self.topdir, 'images')
 
     def work(self):
         """Return the work dir"""

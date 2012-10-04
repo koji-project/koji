@@ -4853,12 +4853,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         insert.set(archive_id=archive_id)
         insert.set(arch=typeInfo['arch'])
         insert.execute()
-        if archivetype['name'] == 'iso':
-            imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.livecdRelPath(buildinfo))
-        else:
-            imgdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.applianceRelPath(buildinfo))
+        imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
         _import_archive_file(filepath, imgdir)
         # import log files?
     else:
@@ -6704,14 +6699,8 @@ def importImageInternal(task_id, build_id, imgdata):
     logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
     for logfile in logs:
         logsrc = os.path.join(workpath, logfile)
-        if imgdata.get('rootdev'):
-            logdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                                  koji.pathinfo.applianceRelPath(build_info),
-                                  'data/logs/image')
-        else:
-            logdir = os.path.join(koji.pathinfo.imageFinalPath(),
-                                  koji.pathinfo.livecdRelPath(build_info),
-                                  'data/logs/image')
+        logdir = os.path.join(koji.pathinfo.build(build_info),
+                              'data/logs/image')
         koji.ensuredir(logdir)
         final_path = os.path.join(logdir, os.path.basename(logfile))
         if os.path.exists(final_path):

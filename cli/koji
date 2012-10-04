@@ -5496,16 +5496,8 @@ def anon_handle_download_build(options, session, args):
                 return 1
             pi = koji.PathInfo(topdir=suboptions.topurl)
             for archive in archives:
-                if archive['type_extensions'] == 'iso':
-                    url = '%s/livecd/%s/%s/%s/%s' % (
-                        pi.imageFinalPath(), info['name'],
-                        info['version'], info['release'], archive['filename'])
-                    urls.append((url, archive['filename']))
-                else:
-                    url = '%s/appliance/%s/%s/%s/%s' % (
-                        pi.imageFinalPath(), info['name'], info['version'],
-                        info['release'], archive['filename'])
-                    urls.append((url, archive['filename']))
+                url = '%s/%s' % (pi.imagebuild(info), archive['filename'])
+                urls.append((url, archive['filename']))
         else:
             # can't happen
             assert False

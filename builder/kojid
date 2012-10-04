@@ -1486,16 +1486,9 @@ class WrapperRPMTask(BaseBuildTask):
                     relpath = os.path.join(self.pathinfo.winbuild(build), repopath)[1:]
                     all_artifacts_with_path.append(repopath)
                 elif image_info:
-                    if ext == '.iso':
-                        ipath = os.path.join(self.pathinfo.imageFinalPath(),
-                            self.pathinfo.livecdRelPath(build))
-                        relpath = os.path.join(ipath, artifact_name)[1:]
-                        repopath = relpath
-                    else:
-                        ipath = os.path.join(self.pathinfo.imageFinalPath(),
-                            self.pathinfo.applianceRelPath(build))
-                        relpath = os.path.join(ipath, artifact_name)[1:]
-                        repopath = relpath
+                    ipath = os.path.join(self.pathinfo.imagebuild(build))
+                    relpath = os.path.join(ipath, artifact_name)[1:]
+                    repopath = relpath
                     all_artifacts_with_path.append(repopath)
                 else:
                     # can't happen
@@ -1845,8 +1838,7 @@ class BuildApplianceTask(BuildImageTask):
                 koji.pathinfo.taskrelpath(create_task_id))
             report = 'Scratch '
         else:
-            respath = os.path.join(koji.pathinfo.imageFinalPath(),
-                koji.pathinfo.applianceRelPath(bld_info))
+            respath = koji.pathinfo.imagebuild(bld_info)
             report = ''
         report += 'appliance build results in: %s' % respath
         return report
@@ -1925,8 +1917,7 @@ class BuildLiveCDTask(BuildImageTask):
                                 results['files'][0])
         else:
             return 'Created image: %s' % \
-                   os.path.join(koji.pathinfo.imageFinalPath(),
-                                koji.pathinfo.livecdRelPath(bld_info),
+                   os.path.join(koji.pathinfo.imagebuild(bld_info),
                                 results['files'][0])
 
 # A generic task for building cd or disk images. Other handlers should inherit
