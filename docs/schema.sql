@@ -735,7 +735,7 @@ CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
 
 -- tracks the contents of an image
 CREATE TABLE image_listing (
-	image_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
 	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
 	UNIQUE (image_id, rpm_id)
 ) WITHOUT OIDS;
