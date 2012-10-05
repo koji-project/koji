@@ -411,6 +411,7 @@ def load_config(environ):
         ['MissingPolicyOk', 'boolean', True],
         ['EnableMaven', 'boolean', False],
         ['EnableWin', 'boolean', False],
+        ['EnableImageMigration', 'boolean', False],
 
         ['RLIMIT_AS', 'string', None],
         ['RLIMIT_CORE', 'string', None],

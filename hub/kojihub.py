@@ -34,6 +34,7 @@ import errno
 import logging
 import fcntl
 import fnmatch
+import hashlib
 from koji.util import md5_constructor
 from koji.util import sha1_constructor
 from koji.util import dslice
@@ -4765,6 +4766,148 @@ def new_image_build(build_info):
         insert.set(build_id=build_info['id'])
         insert.execute()
 
+def old_image_data(old_image_id):
+    """Return old image data for given id"""
+
+    values = dict(img_id = old_image_id)
+    tables = ['imageinfo']
+    fields = ['id', 'task_id', 'filename', 'filesize', 'arch', 'hash', 'mediatype']
+    clauses = ['imageinfo.id = %(img_id)i']
+
+    query = QueryProcessor(columns=fields, tables=tables, clauses=clauses,
+                           values=values)
+    ret = query.executeOne()
+
+    if not ret:
+        raise koji.GenericError, 'no old image with ID: %i' % imageID
+    return ret
+
+def check_old_image_files(old):
+    """Check for existence of files for old image data"""
+
+    parts = [koji.pathinfo.topdir, 'images']
+    if old['mediatype'] == 'LiveCD ISO':
+        parts.append('livecd')
+    else:
+        parts.append('appliance')
+    parts.extend([str(old['id'] % 10000), str(old['id'])])
+    img_dir = os.path.join(*parts)
+    img_path = os.path.join(img_dir, old['filename'])
+    if not os.path.exists(img_path):
+        raise koji.GenericError, "Image file is missing: %s" % img_path
+    if os.path.islink(img_path):
+        raise koji.GenericError, "Image file is a symlink: %s" % img_path
+    if not os.path.isfile(img_path):
+        raise koji.GenericError, "Not a regular file: %s" % img_path
+    img_size = os.path.getsize(img_path)
+    if img_size != old['filesize']:
+        raise koji.GenericError, "Size mismatch for %s (%i != %i)" % \
+                    (img_path, img_size, old['filesize'])
+    # old images always used sha256 hashes
+    sha256sum = hashlib.sha256()
+    image_fo = file(img_path, 'r')
+    while True:
+        data = image_fo.read(1048576)
+        sha256sum.update(data)
+        if not len(data):
+            break
+    img_hash = sha256sum.hexdigest()
+    if img_hash != old['hash']:
+        raise koji.GenericError, "Hash mismatch for %s (%i != %i)" % \
+                    (img_path, img_hash, old['hash'])
+    # file looks ok
+    old['path'] = img_path
+    old['dir'] = img_dir
+
+    # check for extra files, noting accompanying xml file
+    expected = [old['filename'], 'data']
+    extra = []
+    for out_file in os.listdir(img_dir):
+        if out_file in expected:
+            pass
+        elif out_file.endswith('.xml') and old['mediatype'] != 'LiveCD ISO':
+            if 'xmlfile' in old:
+                extra.append(out_file)
+            else:
+                old['xmlfile'] = out_file
+        else:
+            extra.append(out_file)
+    if extra:
+        raise koji.GenericError, "Unexpected files under %s: %r" % (img_dir, extra)
+
+
+def import_old_image(old, name, version):
+    """Import old image data into the new data model"""
+
+    # note: since this is a one-time migration tool, we are not triggering callbacks
+    # ^ XXX: except that some functions we call do
+
+    # build entry
+    task = Task(old['task_id'])
+    binfo = dict(name=name, version=version)
+    binfo['release'] = context.handlers.call('getNextRelease', binfo)
+    binfo['epoch'] = 0
+    binfo['task_id'] = old['task_id']
+    binfo['owner'] = task.getOwner()
+    binfo['state'] = koji.BUILD_STATES['COMPLETE']
+    binfo['completion_time'] = task.getInfo()['completion_time']
+    # ^ or should we leave it unset and use current time?
+    build_id = new_build(binfo)
+    binfo['id'] = build_id
+    new_image_build(binfo)
+
+    # figure out buildroot id
+    # the old schema did not track buildroot directly, so we have to infer
+    # by task id.
+    # If the task had multiple buildroots, we chose the latest
+    query = QueryProcessor(columns=['id'], tables=['buildroot'],
+                           clauses=['task_id=%(task_id)i'], values=old,
+                           opts={'order': '-id', 'limit': 1})
+    br_id = query.singleValue(strict=False)
+
+    # archives
+    archives = []
+    for fn in [old['filename'], old.get('xmlfile')]:
+        if not fn:
+            continue
+        fullpath = os.path.join(old['dir'], fn)
+        archivetype = get_archive_type(filename=fn)
+        logger.debug('image type we are migrating is: %s' % archivetype)
+        if not archivetype:
+            raise koji.BuildError, 'Unsupported image type'
+        imgdata = dict(arch=old['arch'])
+        archives.append(import_archive(fullpath, binfo, 'image', imgdata, buildroot_id=br_id))
+
+    # deal with contents listing
+    archive_id = archives[0]['id']
+    logger.debug('root archive id is %s' % archive_id)
+    query = QueryProcessor(columns=['rpm_id'], tables=['imageinfo_listing'],
+                           clauses=['image_id=%(id)i'], values=old,
+                           opts={'asList': True})
+    rpm_ids = [r[0] for r in query.execute()]
+    insert = InsertProcessor('image_listing')
+    insert.set(image_id=archive_id)
+    for rpm_id in rpm_ids:
+        insert.set(rpm_id=rpm_id)
+        insert.execute()
+    logger.info('updated image_listing')
+
+    # grab old logs
+    old_log_dir = os.path.join(old['dir'], 'data', 'logs', old['arch'])
+    logdir = os.path.join(koji.pathinfo.build(binfo), 'data/logs/image')
+    for logfile in os.listdir(old_log_dir):
+        logsrc = os.path.join(old_log_dir, logfile)
+        koji.ensuredir(logdir)
+        final_path = os.path.join(logdir, logfile)
+        if os.path.exists(final_path):
+            raise koji.GenericError("Error importing build log. %s already exists." % final_path)
+        if os.path.islink(logsrc) or not os.path.isfile(logsrc):
+            raise koji.GenericError("Error importing build log. %s is not a regular file." % logsrc)
+        os.rename(logsrc, final_path)
+        os.symlink(final_path, logsrc)
+
+    return binfo
+
 def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     """
     Import an archive file and associate it with a build.  The archive can
@@ -6935,6 +7078,18 @@ class RootExports(object):
 
         return make_task(img_type, [name, version, arch, target, ksfile, opts], **taskOpts)
 
+    def migrateImage(self, old_image_id, name, version):
+        """Migrate an old image to the new schema
+
+        This call must be enabled via hub.conf (the EnableImageMigration setting)
+        """
+        context.session.assertPerm('admin')
+        if not context.opts.get('EnableImageMigration'):
+            raise koji.GenericError, 'Image migration not enabled'
+        old = old_image_data(old_image_id)
+        check_old_image_files(old)
+        return import_old_image(old, name, version)
+
     def hello(self,*args):
         return "Hello World"
 
@@ -6957,6 +7112,9 @@ class RootExports(object):
 
     def winEnabled(self):
         return bool(context.opts.get('EnableWin'))
+
+    def imageMigrationEnabled(self):
+        return bool(context.opts.get('EnableImageMigration'))
 
     def showSession(self):
         return "%s" % context.session
