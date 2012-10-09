@@ -3685,8 +3685,15 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
     columns, aliases = zip(*fields)
-    return QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
+    ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           clauses=clauses, values=values, opts=queryOpts).execute()
+    if queryOpts and 'asList' in queryOpts:
+        key = aliases.index('size')
+    else:
+        key = 'size'
+    for row in ret:
+        row[key] = koji.encode_int(row[key])
+    return ret
 
 def get_archive(archive_id, strict=False):
     """
