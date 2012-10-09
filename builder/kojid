@@ -1764,7 +1764,7 @@ class BuildImageTask(MultiPlatformTask):
 
     def getRelease(self, name, ver):
         """return the next available release number for an N-V"""
-        return self.session.host.getNextRelease(dict(name=name, version=ver))
+        return self.session.getNextRelease(dict(name=name, version=ver))
 
 class BuildApplianceTask(BuildImageTask):
     Methods = ['appliance']

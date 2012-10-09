@@ -3266,6 +3266,30 @@ def get_build(buildInfo, strict=False):
         ret = dict(zip([pair[1] for pair in fields], result))
         return ret
 
+def get_next_release(build_info):
+    """find the last successful or deleted build of this N-V"""
+    values = {'name': build_info['name'],
+              'version': build_info['version'],
+              'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
+    query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
+                           columns=['build.id', 'release'],
+                           clauses=['name = %(name)s', 'version = %(version)s',
+                                    'state in %(states)s'],
+                           values=values,
+                           opts={'order': '-build.id', 'limit': 1})
+    result = query.executeOne()
+    release = None
+    if result:
+        release = result['release']
+
+    if not release:
+        release = '1'
+    elif release.isdigit():
+        release = str(int(release) + 1)
+    else:
+        raise koji.BuildError, 'Unable to increment release value: %s' % release
+    return release
+
 def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
@@ -4845,7 +4869,7 @@ def import_old_image(old, name, version):
     # build entry
     task = Task(old['task_id'])
     binfo = dict(name=name, version=version)
-    binfo['release'] = context.handlers.call('getNextRelease', binfo)
+    binfo['release'] = get_next_release(binfo)
     binfo['epoch'] = 0
     binfo['task_id'] = old['task_id']
     binfo['owner'] = task.getOwner()
@@ -7693,6 +7717,7 @@ class RootExports(object):
     listTags = staticmethod(list_tags)
 
     getBuild = staticmethod(get_build)
+    getNextRelease = staticmethod(get_next_release)
     getMavenBuild = staticmethod(get_maven_build)
     getWinBuild = staticmethod(get_win_build)
     getImageBuild = staticmethod(get_image_build)
@@ -9853,7 +9878,7 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        build_info['release'] = self.getNextRelease(build_info)
+        build_info['release'] = get_next_release(build_info)
         data = build_info.copy()
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
@@ -9935,30 +9960,6 @@ class HostExports(object):
 
         # send email
         build_notification(task_id, build_id)
-
-    def getNextRelease(self, build_info):
-        """find the last successful or deleted build of this N-V"""
-        values = {'name': build_info['name'],
-                  'version': build_info['version'],
-                  'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
-        query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
-                               columns=['build.id', 'release'],
-                               clauses=['name = %(name)s', 'version = %(version)s',
-                                        'state in %(states)s'],
-                               values=values,
-                               opts={'order': '-build.id', 'limit': 1})
-        result = query.executeOne()
-        release = None
-        if result:
-            release = result['release']
-
-        if not release:
-            release = '1'
-        elif release.isdigit():
-            release = str(int(release) + 1)
-        else:
-            raise koji.BuildError, 'Unable to increment release value: %s' % release
-        return release
 
     def importArchive(self, filepath, buildinfo, type, typeInfo):
         """
