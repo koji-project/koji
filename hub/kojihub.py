@@ -4874,8 +4874,6 @@ def import_old_image(old, name, version):
     binfo['task_id'] = old['task_id']
     binfo['owner'] = task.getOwner()
     binfo['state'] = koji.BUILD_STATES['COMPLETE']
-    binfo['completion_time'] = task.getInfo()['completion_time']
-    # ^ or should we leave it unset and use current time?
     build_id = new_build(binfo)
     binfo['id'] = build_id
     new_image_build(binfo)
