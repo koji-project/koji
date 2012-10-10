@@ -340,6 +340,11 @@ class BaseTaskHandler(object):
         """
         repo_info = self.session.getRepo(tag)
         if not repo_info:
+            #make sure there is a target
+            taginfo = self.session.getTag(tag, strict=True)
+            targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
+            if not targets:
+                raise koji.BuildError, 'no repo (and no target) for tag %s' % taginfo['name']
             #wait for it
             task_id = self.session.host.subtask(method='waitrepo',
                                                 arglist=[tag, None, None],
