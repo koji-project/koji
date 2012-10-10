@@ -1773,7 +1773,7 @@ class BuildApplianceTask(BuildImageTask):
         """Governing task for building an appliance"""
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
-        repo_info = self.session.getRepo(build_tag)
+        repo_info = self.getRepo(build_tag)
 
         if not opts:
             opts = {}
@@ -1850,7 +1850,7 @@ class BuildLiveCDTask(BuildImageTask):
         """Governing task for building an appliance"""
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
-        repo_info = self.session.getRepo(build_tag)
+        repo_info = self.getRepo(build_tag)
 
         if not opts:
             opts = {}
