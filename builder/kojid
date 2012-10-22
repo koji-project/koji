@@ -2115,6 +2115,7 @@ class ApplianceTask(ImageTask):
 
         if opts == None:
             opts = {}
+        self.opts = opts
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch, 
                                       'appliance-build')
         kspath = self.fetchKickstart(broot, ksfile)
@@ -2261,6 +2262,7 @@ class LiveCDTask(ImageTask):
 
         if opts == None:
             opts = {}
+        self.opts = opts
 
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
             'livecd-build')
