@@ -2041,7 +2041,9 @@ class ImageTask(BaseTaskHandler):
         repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
         self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
         if opts.get('repo'):
-            user_repos = opts['repo'].split(',')
+            user_repos = opts['repo']
+            if isinstance(user_repos, basestring):
+                user_repos = user_repos.split(',')
             index = 0
             for user_repo in user_repos:
                 self.ks.handler.repo.repoList.append(repo_class(baseurl=user_repo, name='koji-override-%i' % index))
