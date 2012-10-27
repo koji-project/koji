@@ -130,6 +130,8 @@ def get_options():
                       help=_("blacklist rules"))
     parser.add_option("--rules-ignorelist",
                       help=_("Rules: list of packages to ignore"))
+    parser.add_option("--rules-excludelist",
+                      help=_("Rules: list of packages to are excluded using ExcludeArch or ExclusiveArch"))
     parser.add_option("--rules-includelist",
                       help=_("Rules: list of packages to always include"))
     parser.add_option("--rules-protectlist",
@@ -566,6 +568,7 @@ class BuildTracker(object):
         self.whitelist = None
         self.greylist = None
         self.ignorelist = []
+        self.excludelist = []
         self.includelist = []
         self.protectlist = []
         self.substitute_idx = {}
@@ -578,10 +581,16 @@ class BuildTracker(object):
             self.greylist = options.config.get('rules', 'greylist').split()
         if options.config.has_option('rules', 'ignorelist'):
             self.ignorelist = options.config.get('rules', 'ignorelist').split()
+        if options.config.has_option('rules', 'excludelist'):
+            self.excludelist = options.config.get('rules', 'excludelist').split()
         if options.config.has_option('rules', 'includelist'):
             self.includelist = options.config.get('rules', 'includelist').split()
         if options.config.has_option('rules', 'protectlist'):
             self.protectlist = options.config.get('rules', 'protectlist').split()
+
+        # merge the excludelist (script generated) to the ignorelist (manually maintained)
+        self.ignorelist = self.ignorelist + self.excludelist
+
         if options.config.has_option('rules', 'substitutions'):
             #At present this is a simple multi-line format
             #one substitution per line
