@@ -713,10 +713,11 @@ class BuildTracker(object):
         else:
             tail = ""
         head = " " * depth
-        if build.name in self.ignorelist:
-            print "%sIgnored Build: %s%s" % (head, build.nvr, tail)
-            build.setState('ignore')
-            return build
+        for ignored in self.ignorelist:
+    	    if (build.name == ignored) or fnmatch.fnmatch(build.name, ignored):
+                print "%sIgnored Build: %s%s" % (head, build.nvr, tail)
+                build.setState('ignore')
+                return build
         check = self.checkFilter(build, grey=None)
         if check is None:
             #greylisted builds are ok as deps, but not primary builds
