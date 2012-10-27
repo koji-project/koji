@@ -1230,7 +1230,8 @@ class BuildTracker(object):
         initial_avail = len(self.state_idx['common'])
         self.report_brief()
         while True:
-            if not self.state_idx['missing'] and not self.state_idx['pending']:
+            if (not self.state_idx['missing'] and not self.state_idx['pending']) or \
+               (options.prefer_new and not self.state_idx['pending']):
                 #we're done
                 break
             changed1 = self.checkJobs(tag)
