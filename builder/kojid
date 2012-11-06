@@ -2909,6 +2909,7 @@ def get_options():
                 'literal_task_arches': '',
                 'minspace': 8192,
                 'admin_emails': None,
+                'log_level': None,
                 'topdir': '/mnt/koji',
                 'topurl': None,
                 'workdir': '/tmp/koji',
@@ -3012,12 +3013,17 @@ if __name__ == "__main__":
     koji.add_file_logger("koji", "/var/log/kojid.log")
     #note we're setting logging params for all of koji*
     options = get_options()
+    if options.log_level:
+        lvl = getattr(logging, options.log_level, None)
+        if lvl is None:
+            quit("Invalid log level: %s" % options.log_level)
+        logging.getLogger("koji").setLevel(lvl)
+    else:
+        logging.getLogger("koji").setLevel(logging.WARN)
     if options.debug:
         logging.getLogger("koji").setLevel(logging.DEBUG)
     elif options.verbose:
         logging.getLogger("koji").setLevel(logging.INFO)
-    else:
-        logging.getLogger("koji").setLevel(logging.WARN)
     if options.debug_task:
         logging.getLogger("koji.build.BaseTaskHandler").setLevel(logging.DEBUG)
     if options.admin_emails:

@@ -1914,7 +1914,10 @@ class ClientSession(object):
                     if tries > max_retries:
                         raise
                     #otherwise keep retrying
-                    self.logger.debug("Try #%d for call %d (%s) failed: %s", tries, self.callnum, name, e)
+                    if self.logger.isEnabledFor(logging.DEBUG):
+                        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+                        self.logger.debug(tb_str)
+                    self.logger.info("Try #%d for call %d (%s) failed: %s", tries, self.callnum, name, e)
                 time.sleep(interval)
             #not reached
 
