@@ -23,7 +23,7 @@
 import koji
 import koji.tasks
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, parseStatus
+from koji.util import md5_constructor, adler32_constructor, parseStatus
 import os
 import signal
 import logging
@@ -39,6 +39,13 @@ import xmlrpclib
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
     if not fd:
+        return
+
+    if logger is None:
+        logger = logging.getLogger('koji.daemon')
+
+    if session.opts.get('use_fast_upload'):
+        fast_incremental_upload(session, fname, fd, path, retries, logger)
         return
 
     while True:
@@ -62,10 +69,31 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
                 time.sleep(10)
                 continue
             else:
-                if logger:
-                    logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
-                else:
-                    sys.stderr.write("Error uploading file %s to %s at offset %d\n" % (fname, path, offset))
+                logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
+                break
+
+def fast_incremental_upload(session, fname, fd, path, retries, logger):
+    """Like incremental_upload, but use the fast upload mechanism"""
+
+    while True:
+        offset = fd.tell()
+        contents = fd.read(65536)
+        if not contents:
+            break
+        hexdigest = adler32_constructor(contents).hexdigest()
+
+        tries = 0
+        while True:
+            result = session.rawUpload(contents, offset, path, fname, overwrite=True)
+            if result['hexdigest'] == hexdigest:
+                break
+
+            if tries <= retries:
+                tries += 1
+                time.sleep(10)
+                continue
+            else:
+                logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
                 break
 
 def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None, env=None):

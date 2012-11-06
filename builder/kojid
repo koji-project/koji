@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Koji build daemon
-# Copyright (c) 2005-2010 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -2933,6 +2933,9 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
+                'keepalive' : True,
+                'timeout' : None,
+                'use_fast_upload': True,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
                 'pkgurl': None,
@@ -2947,12 +2950,14 @@ def get_options():
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
-                        'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime']:
+                        'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime',
+                        'timeout',]:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'createrepo_skip_stat', 'createrepo_update']:
+            elif name in ['offline_retry', 'createrepo_skip_stat', 'createrepo_update',
+                          'keepalive', 'use_fast_upload',]:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -3021,7 +3026,9 @@ if __name__ == "__main__":
     #build session options
     session_opts = {}
     for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug',
-              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
+              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval',
+              'keepalive', 'timeout', 'use_fast_upload',
+             ):
         v = getattr(options, k, None)
         if v is not None:
             session_opts[k] = v

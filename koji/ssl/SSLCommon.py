@@ -100,12 +100,30 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
         self._timeout = timeout
 
     def connect(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        con = SSL.Connection(self.ssl_ctx, sock)
-        self.sock = SSLConnection.SSLConnection(con)
-        if sys.version_info[:3] >= (2, 3, 0):
-            self.sock.settimeout(self._timeout)
-        self.sock.connect((self.host, self.port))
+        for res in socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            print res
+            try:
+                sock = socket.socket(af, socktype, proto)
+                con = SSL.Connection(self.ssl_ctx, sock)
+                self.sock = SSLConnection.SSLConnection(con)
+                if sys.version_info[:3] >= (2, 3, 0):
+                    self.sock.settimeout(self._timeout)
+                self.sock.connect(sa)
+                print self.sock.getpeername()
+                if self.debuglevel > 0:
+                    print "connect: (%s, %s) [ssl]" % (self.host, self.port)
+            except socket.error, msg:
+                if self.debuglevel > 0:
+                    print 'connect fail:', (self.host, self.port)
+                if self.sock:
+                    self.sock.close()
+                self.sock = None
+                continue
+            break
+        else:
+            raise socket.error, "failed to connect"
+
 
 
 class PlgHTTPS(httplib.HTTP):

@@ -204,12 +204,12 @@ class ModXMLRPCRequestHandler(object):
         parser.close()
         return unmarshaller.close(), unmarshaller.getmethodname()
 
-    def _marshaled_dispatch(self, environ):
-        """Dispatches an XML-RPC method from marshalled (XML) data."""
-        start = time.time()
+    def _wrap_handler(self, handler, environ):
+        """Catch exceptions and encode response of handler"""
+
+        # generate response
         try:
-            params, method = self._read_request(environ['wsgi.input'])
-            response = self._dispatch(method, params)
+            response = handler(environ)
             # wrap response in a singleton tuple
             response = (response,)
             response = dumps(response, methodresponse=1, allow_none=1)
@@ -243,10 +243,18 @@ class ModXMLRPCRequestHandler(object):
 
         return response
 
-    def _dispatch(self,method,params):
-        func = self._get_handler(method)
-        context.method = method
-        context.params = params
+    def handle_upload(self, environ):
+        #uploads can't be in a multicall
+        context.method = None
+        self.check_session()
+        self.enforce_lockout()
+        return kojihub.handle_upload(environ)
+
+    def handle_rpc(self, environ):
+        params, method = self._read_request(environ['wsgi.input'])
+        return self._dispatch(method, params)
+
+    def check_session(self):
         if not hasattr(context,"session"):
             #we may be called again by one of our meta-calls (like multiCall)
             #so we should only create a session if one does not already exist
@@ -255,12 +263,21 @@ class ModXMLRPCRequestHandler(object):
                 context.session.validate()
             except koji.AuthLockError:
                 #might be ok, depending on method
-                if method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
+                if context.method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
                     raise
-            if context.opts.get('LockOut') and \
-                   method not in ('login', 'krbLogin', 'sslLogin', 'logout'):
-                if not context.session.hasPerm('admin'):
-                    raise koji.ServerOffline, "Server disabled for maintenance"
+
+    def enforce_lockout(self):
+        if context.opts.get('LockOut') and \
+            context.method not in ('login', 'krbLogin', 'sslLogin', 'logout') and \
+            not context.session.hasPerm('admin'):
+                raise koji.ServerOffline, "Server disabled for maintenance"
+
+    def _dispatch(self, method, params):
+        func = self._get_handler(method)
+        context.method = method
+        context.params = params
+        self.check_session()
+        self.enforce_lockout()
         # handle named parameters
         params, opts = koji.decode_args(*params)
 
@@ -689,7 +706,10 @@ def application(environ, start_response):
             except Exception:
                 return offline_reply(start_response, msg="database outage")
             h = ModXMLRPCRequestHandler(registry)
-            response = h._marshaled_dispatch(environ)
+            if environ['CONTENT_TYPE'] == 'application/octet-stream':
+                response = h._wrap_handler(h.handle_upload, environ)
+            else:
+                response = h._wrap_handler(h.handle_rpc, environ)
             headers = [
                 ('Content-Length', str(len(response))),
                 ('Content-Type', "text/xml"),

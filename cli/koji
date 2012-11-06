@@ -2,7 +2,7 @@
 # coding=utf-8
 
 # command line interface for the Koji build system
-# Copyright (c) 2005-2008 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,7 @@ import koji
 import koji.util
 import fnmatch
 from koji.util import md5_constructor
+import logging
 import os
 import re
 import pprint
@@ -184,6 +185,9 @@ def get_options():
         'anon_retry' : None,
         'offline_retry' : None,
         'offline_retry_interval' : None,
+        'keepalive' : True,
+        'timeout' : None,
+        'use_fast_upload': False,
         'poll_interval': 5,
         'krbservice': 'host',
         'cert': '~/.koji/client.crt',
@@ -206,10 +210,10 @@ def get_options():
                     #options *can* be set via the config file. Such options should
                     #not have a default value set in the option parser.
                     if defaults.has_key(name):
-                        if name in ('anon_retry', 'offline_retry'):
+                        if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
                             defaults[name] = config.getboolean(progname, name)
                         elif name in ('max_retries', 'retry_interval',
-                                      'offline_retry_interval', 'poll_interval'):
+                                      'offline_retry_interval', 'poll_interval', 'timeout'):
                             try:
                                 defaults[name] = int(value)
                             except ValueError:
@@ -5774,10 +5778,23 @@ if __name__ == "__main__":
     global options
     options, command, args = get_options()
 
+    logger = logging.getLogger("koji")
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    if options.debug:
+        logger.setLevel(logging.DEBUG)
+        print "DEBUG"
+    elif options.quiet:
+        logger.setLevel(logging.ERROR)
+    else:
+        logger.setLevel(logging.WARN)
+
     session_opts = {}
     for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug', 'max_retries',
                 'retry_interval', 'offline_retry', 'offline_retry_interval',
-                'anon_retry'):
+                'anon_retry', 'keepalive', 'timeout', 'use_fast_upload'):
         value = getattr(options,k)
         if value is not None:
             session_opts[k] = value

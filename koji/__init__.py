@@ -1,7 +1,7 @@
 # Python module
 # Common functions
 
-# Copyright (c) 2005-2007 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -28,7 +28,9 @@ except ImportError:
     sys.stderr.flush()
 import base64
 import datetime
+import errno
 from fnmatch import fnmatch
+import httplib
 import logging
 import logging.handlers
 from koji.util import md5_constructor
@@ -41,6 +43,7 @@ import rpm
 import shutil
 import signal
 import socket
+import ssl.SSLCommon
 import struct
 import tempfile
 import time
@@ -50,11 +53,10 @@ import urllib2
 import urlparse
 import util
 import xmlrpclib
-from xmlrpclib import loads, Fault
 import xml.sax
 import xml.sax.handler
-import ssl.XMLRPCServerProxy
-import OpenSSL.SSL
+from xmlrpclib import loads, dumps, Fault
+#import OpenSSL.SSL
 import zipfile
 
 def _(args):
@@ -235,7 +237,7 @@ class GenericError(Exception):
                 return str(self.__dict__)
 ## END kojikamid dup
 
-class LockConflictError(GenericError):
+class LockError(GenericError):
     """Raised when there is a lock conflict"""
     faultCode = 1001
 
@@ -1549,23 +1551,50 @@ class ClientSession(object):
             opts = {}
         else:
             opts = opts.copy()
-        self.opts = opts
-        self.proxyOpts = {'allow_none':1}
-        if self.opts.get('debug_xmlrpc'):
-            self.proxyOpts['verbose'] = 1
-        if self.opts.get('certs'):
-            self.proxyOpts['certs'] = self.opts['certs']
-            self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
-        else:
-            self.proxyClass = xmlrpclib.ServerProxy
-        if self.opts.get('timeout'):
-            self.proxyOpts['timeout'] = self.opts['timeout']
         self.baseurl = baseurl
-        self.origurl = None
+        self.opts = opts
+        self._connection = None
+        self._setup_connection()
         self.setSession(sinfo)
         self.multicall = False
         self._calls = []
         self.logger = logging.getLogger('koji')
+
+    def _setup_connection(self):
+        uri = urlparse.urlsplit(self.baseurl)
+        scheme = uri[0]
+        self._host, _port = urllib.splitport(uri[1])
+        self.explicit_port = bool(_port)
+        self._path = uri[2]
+        default_port = 80
+        if self.opts.get('certs'):
+            ctx = ssl.SSLCommon.CreateSSLContext(self.opts['certs'])
+            cnxOpts = {'ssl_context' : ctx}
+            cnxClass = ssl.SSLCommon.PlgHTTPSConnection
+            default_port = 443
+        elif scheme == 'https':
+            cnxOpts = {}
+            cnxClass = httplib.HTTPSConnection
+            default_port = 443
+        elif scheme == 'http':
+            cnxOpts = {}
+            cnxClass = httplib.HTTPConnection
+        else:
+            raise IOError, "unsupported XML-RPC protocol"
+        # set a default 12 hour connection timeout.
+        # Some Koji operations can take a long time to return, but after 12
+        # hours we can assume something is seriously wrong.
+        timeout = self.opts.setdefault('timeout',  60 * 60 * 12)
+        self._timeout_compat = False
+        if timeout:
+            if sys.version_info[:3] < (2, 6, 0) and 'ssl_context' not in cnxOpts:
+                self._timeout_compat = True
+            else:
+                cnxOpts['timeout'] = timeout
+        self._port = (_port and int(_port) or default_port)
+        self._cnxOpts = cnxOpts
+        self._cnxClass = cnxClass
+        self._close_connection()
 
     def setSession(self,sinfo):
         """Set the session info
@@ -1574,22 +1603,12 @@ class ClientSession(object):
         if sinfo is None:
             self.logged_in = False
             self.callnum = None
-            # undo state changes made by ssl_login()
-            if self.origurl:
-                self.baseurl = self.origurl
-                self.origurl = None
-            self.opts.pop('certs', None)
-            self.proxyOpts.pop('certs', None)
-            self.opts.pop('timeout', None)
-            self.proxyOpts.pop('timeout', None)
-            self.proxyClass = xmlrpclib.ServerProxy
-            url = self.baseurl
+            # do we need to do anything else here?
+            self._setup_connection()
         else:
             self.logged_in = True
             self.callnum = 0
-            url = "%s?%s" %(self.baseurl,urllib.urlencode(sinfo))
         self.sinfo = sinfo
-        self.proxy = self.proxyClass(url,**self.proxyOpts)
 
     def login(self,opts=None):
         sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
@@ -1671,46 +1690,52 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
-        servername = urlparse.urlparse(self.baseurl)[1]
-        portspec = servername.find(':')
-        if portspec != -1:
-            servername = servername[:portspec]
+        servername = self._host
+        #portspec = servername.find(':')
+        #if portspec != -1:
+        #    servername = servername[:portspec]
         realm = cprinc.realm
         service = self.opts.get('krbservice', 'host')
 
         return '%s/%s@%s' % (service, servername, realm)
 
     def ssl_login(self, cert, ca, serverca, proxyuser=None):
-        if not self.baseurl.startswith('https:'):
-            self.origurl = self.baseurl
-            self.baseurl = self.baseurl.replace('http:', 'https:', 1)
-        
         certs = {}
         certs['key_and_cert'] = cert
         certs['ca_cert'] = ca
         certs['peer_ca_cert'] = serverca
 
+        ctx = ssl.SSLCommon.CreateSSLContext(certs)
+        self._cnxOpts = {'ssl_context' : ctx}
         # 60 second timeout during login
-        # Append /login to the URL so we can only require client certs to be sent on login requests
-        self.proxy = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy(self.baseurl + '/ssllogin', certs, timeout=60, **self.proxyOpts)
-        sinfo = self.callMethod('sslLogin', proxyuser)
+        old_timeout = self._cnxOpts.get('timeout')
+        self._cnxOpts['timeout'] = 60
+        try:
+            self._cnxClass = ssl.SSLCommon.PlgHTTPSConnection
+            if self._port == 80 and not self.explicit_port:
+                self._port = 443
+            sinfo = self.callMethod('sslLogin', proxyuser)
+        finally:
+            if old_timeout is None:
+                del self._cnxOpts['timeout']
+            else:
+                self._cnxOpts['timeout'] = old_timeout
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
 
-        self.proxyClass = ssl.XMLRPCServerProxy.PlgXMLRPCServerProxy
-        self.opts['certs'] = self.proxyOpts['certs'] = certs
-        # 12 hour connection timeout.  Some Koji operations can take a long time to return,
-        # but after 12 hours we can assume something is seriously wrong.
-        self.opts['timeout'] = self.proxyOpts['timeout'] = 60 * 60 * 12
+        self.opts['certs'] = certs
         self.setSession(sinfo)
 
         return True
-        
+
     def logout(self):
         if not self.logged_in:
             return
         try:
-            self.proxy.logout()
+            # bypass _callMethod (no retries)
+            # XXX - is that really what we want?
+            handler, headers, request = self._prepCall('logout', ())
+            self._sendCall(handler, headers, request)
         except AuthExpired:
             #this can happen when an exclusive session is forced
             pass
@@ -1740,30 +1765,123 @@ class ClientSession(object):
         """compatibility wrapper for _callMethod"""
         return self._callMethod(name, args, opts)
 
-    def _callMethod(self, name, args, kwargs):
+    def _prepCall(self, name, args, kwargs=None):
         #pass named opts in a way the server can understand
+        if kwargs is None:
+            kwargs = {}
+        if name == 'rawUpload':
+            return self._prepUpload(*args, **kwargs)
         args = encode_args(*args,**kwargs)
+        if self.logged_in:
+            sinfo = self.sinfo.copy()
+            sinfo['callnum'] = self.callnum
+            self.callnum += 1
+            handler = "%s?%s" % (self._path, urllib.urlencode(sinfo))
+        elif name == 'sslLogin':
+            handler = self._path + '/ssllogin'
+        else:
+            handler = self._path
+        request = dumps(args, name, allow_none=1)
+        headers = [
+            # connection class handles Host
+            ('User-Agent', 'koji/1.7'),  #XXX
+            ('Content-Type', 'text/xml'),
+            ('Content-Length', len(request)),
+        ]
+        return handler, headers, request
+
+    def _sendCall(self, handler, headers, request):
+        # handle expired connections
+        for i in (0, 1):
+            try:
+                return self._sendOneCall(handler, headers, request)
+            except socket.error, e:
+                self._close_connection()
+                if i or getattr(e, 'errno', None) not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+                    raise
+            except httplib.BadStatusLine:
+                self._close_connection()
+                if i:
+                    raise
+
+
+    def _sendOneCall(self, handler, headers, request):
+        cnx = self._get_connection()
+        if self.opts.get('debug_xmlrpc', False):
+            cnx.set_debuglevel(1)
+        cnx.putrequest('POST', handler)
+        for n, v in headers:
+            cnx.putheader(n, v)
+        cnx.endheaders()
+        cnx.send(request)
+        response = cnx.getresponse()
+        ret = self._read_xmlrpc_response(response)
+        response.close()
+        return ret
+
+    def _get_connection(self):
+        key = (self._cnxClass, self._host, self._port)
+        if self._connection and self.opts.get('keepalive'):
+            if key == self._connection[0]:
+                cnx = self._connection[1]
+            if getattr(cnx, 'sock', None):
+                return cnx
+        cnx = self._cnxClass(self._host, self._port, **self._cnxOpts)
+        self._connection = (key, cnx)
+        if self._timeout_compat:
+            # in python < 2.6 httplib does not support the timeout option
+            # but socket supports it since 2.3
+            cnx.connect()
+            cnx.sock.settimeout(self.opts['timeout'])
+        return cnx
+
+    def _close_connection(self):
+        if self._connection:
+            self._connection[1].close()
+            self._connection = None
+
+    def _read_xmlrpc_response(self, response):
+        #XXX honor debug_xmlrpc
+        if response.status != 200:
+            if (response.getheader("content-length", 0)):
+                response.read()
+            raise xmlrpclib.ProtocolError(self._host + handler,
+                        response.status, response.reason, response.msg)
+        p, u = xmlrpclib.getparser()
+        while True:
+            chunk = response.read(8192)
+            if not chunk:
+                break
+            if self.opts.get('debug_xmlrpc', False):
+                print "body: %r" % chunk
+            p.feed(chunk)
+        p.close()
+        result = u.close()
+        if len(result) == 1:
+            result = result[0]
+        return result
+
+    def _callMethod(self, name, args, kwargs=None):
+        """Make a call to the hub with retries and other niceties"""
 
         if self.multicall:
+            if kwargs is None:
+                kwargs = {}
+            args = encode_args(*args, **kwargs)
             self._calls.append({'methodName': name, 'params': args})
             return MultiCallInProgress
         else:
-            if self.logged_in:
-                sinfo = self.sinfo.copy()
-                sinfo['callnum'] = self.callnum
-                self.callnum += 1
-                url = "%s?%s" %(self.baseurl,urllib.urlencode(sinfo))
-                proxy = self.proxyClass(url,**self.proxyOpts)
-            else:
-                proxy = self.proxy
+            handler, headers, request = self._prepCall(name, args, kwargs)
             tries = 0
+            self.retries = 0
             debug = self.opts.get('debug',False)
             max_retries = self.opts.get('max_retries',30)
             interval = self.opts.get('retry_interval',20)
             while True:
                 tries += 1
+                self.retries += 1
                 try:
-                    return proxy.__getattr__(name)(*args)
+                    return self._sendCall(handler, headers, request)
                 #basically, we want to retry on most errors, with a few exceptions
                 #  - faults (this means the call completed and failed)
                 #  - SystemExit, KeyboardInterrupt
@@ -1776,8 +1894,7 @@ class ClientSession(object):
                     if isinstance(err, ServerOffline):
                         if self.opts.get('offline_retry',False):
                             secs = self.opts.get('offline_retry_interval', interval)
-                            if debug:
-                                self.logger.debug("Server offline. Retrying in %i seconds" % secs)
+                            self.logger.debug("Server offline. Retrying in %i seconds", secs)
                             time.sleep(secs)
                             #reset try count - this isn't a typical error, this is a running server
                             #correctly reporting an outage
@@ -1788,6 +1905,7 @@ class ClientSession(object):
                     #(depending on the python version, these may or may not be subclasses of Exception)
                     raise
                 except Exception, e:
+                    self._close_connection()
                     if not self.logged_in:
                         #in the past, non-logged-in sessions did not retry. For compatibility purposes
                         #this behavior is governed by the anon_retry opt.
@@ -1796,8 +1914,7 @@ class ClientSession(object):
                     if tries > max_retries:
                         raise
                     #otherwise keep retrying
-                    if debug:
-                        self.logger.debug("Try #%d for call %d (%s) failed: %s" % (tries, self.callnum, name, e))
+                    self.logger.debug("Try #%d for call %d (%s) failed: %s", tries, self.callnum, name, e)
                 time.sleep(interval)
             #not reached
 
@@ -1837,8 +1954,85 @@ class ClientSession(object):
         #    raise AttributeError, "no attribute %r" % name
         return VirtualMethod(self._callMethod,name)
 
+    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=1048576):
+        if not self.logged_in:
+            raise ActionNotAllowed, 'You must be logged in to upload files'
+        if name is None:
+            name = os.path.basename(localfile)
+        self.logger.debug("Fast upload: %s to %s/%s", localfile, path, name)
+        size = os.stat(localfile).st_size
+        fo = file(localfile, 'rb')
+        ofs = 0
+        size = os.path.getsize(localfile)
+        start = time.time()
+        if callback:
+            callback(0, size, 0, 0, 0)
+        problems = False
+        full_chksum = util.adler32_constructor()
+        while True:
+            lap = time.time()
+            chunk = fo.read(blocksize)
+            if not chunk:
+                break
+            result = self._callMethod('rawUpload', (chunk, ofs, path, name))
+            if self.retries > 1:
+                problems = True
+            hexdigest = util.adler32_constructor(chunk).hexdigest()
+            full_chksum.update(chunk)
+            if result['size'] != len(chunk):
+                raise GenericError, "server returned wrong chunk size: %s != %s" % (result['size'], len(chunk))
+            if result['hexdigest'] != hexdigest:
+                raise GenericError, 'upload checksum failed: %s != %s' \
+                        % (result['hexdigest'], hexdigest)
+            ofs += len(chunk)
+            now = time.time()
+            t1 = max(now - lap, 0.00001)
+            t2 = max(now - start, 0.00001)
+            # max is to prevent possible divide by zero in callback function
+            if callback:
+                callback(ofs, size, len(chunk), t1, t2)
+        if ofs != size:
+            self.logger.error("Local file changed size: %s, %s -> %s", localfile, size, ofs)
+        chk_opts = {}
+        if problems:
+            chk_opts['verify'] = 'adler32'
+        result = self._callMethod('checkUpload', (path, name), chk_opts)
+        if int(result['size']) != ofs:
+            raise koji.GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
+                    % (path, name, result['sumlength'], ofs)
+        if problems and result['hexdigest'] != full_chksum.hexdigest():
+            raise koji.GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
+                    % (path, name, result['hexdigest'], full_chksum.hexdigest())
+        self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
+
+    def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False):
+        """prep a rawUpload call"""
+        if not self.logged_in:
+            raise ActionNotAllowed, "you must be logged in to upload"
+        args = self.sinfo.copy()
+        args['callnum'] = self.callnum
+        args['filename'] = name
+        args['filepath'] = path
+        args['fileverify'] = verify
+        args['offset'] = str(offset)
+        if overwrite:
+            args['overwrite'] = "1"
+        size = len(chunk)
+        self.callnum += 1
+        handler = "%s?%s" % (self._path, urllib.urlencode(args))
+        headers = [
+            ('User-Agent', 'koji/1.7'),  #XXX
+            ("Content-Type", "application/octet-stream"),
+            ("Content-length", str(size)),
+        ]
+        request = chunk
+        return handler, headers, request
+
     def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=1048576):
         """upload a file in chunks using the uploadFile call"""
+        if self.opts.get('use_fast_upload'):
+            self.fastUpload(localfile, path, name, callback, blocksize)
+            return
         # XXX - stick in a config or something
         start=time.time()
         retries=3

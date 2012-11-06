@@ -25,6 +25,7 @@ import resource
 import stat
 import sys
 import time
+from zlib import adler32
 
 try:
     from hashlib import md5 as md5_constructor
@@ -403,3 +404,28 @@ def setup_rlimits(opts, logger=None):
             resource.setrlimit(rcode, tuple(limits))
         except ValueError, e:
             logger.error("Unable to set %s: %s", key, e)
+
+class adler32_constructor(object):
+
+    #mimicing the hashlib constructors
+    def __init__(self, arg=''):
+        self._value = adler32(arg) & 0xffffffffL
+        #the bitwise and works around a bug in some versions of python
+        #see: http://bugs.python.org/issue1202
+
+    def update(self, arg):
+        self._value = adler32(arg, self._value) & 0xffffffffL
+
+    def digest(self):
+        return self._value
+
+    def hexdigest(self):
+        return "%08x" % self._value
+
+    def copy(self):
+        dup = adler32_constructor()
+        dup._value = self._value
+        return dup
+
+    digest_size = 4
+    block_size = 1      #I think
