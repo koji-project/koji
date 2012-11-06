@@ -5785,7 +5785,6 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     if options.debug:
         logger.setLevel(logging.DEBUG)
-        print "DEBUG"
     elif options.quiet:
         logger.setLevel(logging.ERROR)
     else:

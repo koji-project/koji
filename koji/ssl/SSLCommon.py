@@ -102,7 +102,6 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
     def connect(self):
         for res in socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
-            print res
             try:
                 sock = socket.socket(af, socktype, proto)
                 con = SSL.Connection(self.ssl_ctx, sock)
@@ -110,7 +109,6 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
                 if sys.version_info[:3] >= (2, 3, 0):
                     self.sock.settimeout(self._timeout)
                 self.sock.connect(sa)
-                print self.sock.getpeername()
                 if self.debuglevel > 0:
                     print "connect: (%s, %s) [ssl]" % (self.host, self.port)
             except socket.error, msg:
