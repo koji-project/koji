@@ -1065,7 +1065,7 @@ class BuildTracker(object):
         #TODO       ...and verify repo
         repo_id, event_id = session.getTaskResult(task_id)
         #kick off build
-        task_id = session.build(src, None, opts={'repo_id': repo_id} )
+        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=5 )
         return task_id
 
     def report(self):
