@@ -1815,8 +1815,10 @@ class ClientSession(object):
         cnx.endheaders()
         cnx.send(request)
         response = cnx.getresponse()
-        ret = self._read_xmlrpc_response(response)
-        response.close()
+        try:
+            ret = self._read_xmlrpc_response(response)
+        finally:
+            response.close()
         return ret
 
     def _get_connection(self):
