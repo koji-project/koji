@@ -10136,6 +10136,7 @@ def get_verify_class(verify):
 def handle_upload(environ):
     """Handle file upload via POST request"""
     logger = logging.getLogger('koji.upload')
+    start = time.time()
     if not context.session.logged_in:
         raise koji.ActionNotAllowed, 'you must be logged-in to upload a file'
     args = cgi.parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
@@ -10178,12 +10179,6 @@ def handle_upload(environ):
     finally:
         # this will also remove our lock
         os.close(fd)
-    if verify:
-        s = 'Upload complete. Size=%i, digest(%s)=%s' \
-                % (size, verify, chksum.hexdigest())
-    else:
-        s = 'Upload complete. Size=%i' % size
-    logger.debug(s)
     ret = {
         'size' : koji.encode_int(size),
         'fileverify' : verify,
@@ -10192,7 +10187,10 @@ def handle_upload(environ):
     if verify:
         # unsigned 32bit - could be too big for xmlrpc
         ret['hexdigest'] = chksum.hexdigest()
-        logger.info("Reporting: %r", ret)
+    logger.debug("Upload result: %r", ret)
+    logger.info("Completed upload for session %s (#%s): %f seconds, %i bytes, %s",
+                    context.session.id, context.session.callnum,
+                    time.time()-start, size, fn)
     return ret
 
 #koji.add_sys_logger("koji")
