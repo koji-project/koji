@@ -714,7 +714,7 @@ class BuildTracker(object):
             tail = ""
         head = " " * depth
         for ignored in self.ignorelist:
-    	    if (build.name == ignored) or fnmatch.fnmatch(build.name, ignored):
+            if (build.name == ignored) or fnmatch.fnmatch(build.name, ignored):
                 print "%sIgnored Build: %s%s" % (head, build.nvr, tail)
                 build.setState('ignore')
                 return build
