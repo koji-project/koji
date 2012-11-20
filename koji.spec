@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.7.0
+Version: 1.7.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -236,6 +236,27 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Nov 19 2012 Mike McLean <mikem at redhat.com> - 1.7.1-1
+- improved upload mechanism
+- koji-shadow enhancements
+- handle multiple topurl values in kojid
+- fix form handling
+- mount all of /dev for image tasks
+- avoid error messages on canceled/reassigned tasks
+- handle unauthenticated case in moshimoshi
+- fix the tag_updates query in tag_changed_since_event
+- stop tracking deleted repos in kojira
+- don't die on malformed tasks
+- fix bugs in our relpath backport
+- avoid baseurl option in createrepo
+- message bus plugin: use timeout and heartbeat
+- add maven and win to the supported cli search types
+- remove latest-by-tag command
+- fix noreplace setting for web.conf
+- add sanity checks to regen-repo command
+- debuginfo and source options for regen-repo command
+- make taginfo command compatible with older koji servers
+
 * Thu May 31 2012 Mike McLean <mikem at redhat.com> - 1.7.0-1
 - mod_wsgi support
 - mod_python support deprecated
