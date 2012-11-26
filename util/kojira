@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Koji Repository Administrator (kojira)
-# Copyright (c) 2005-2010 Red Hat
+# Copyright (c) 2005-2012 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -27,9 +27,10 @@ except ImportError:
 import sys
 import os
 import koji
-from koji.tasks import safe_rmtree
+from koji.util import rmtree, parseStatus
 from optparse import OptionParser
 from ConfigParser import ConfigParser
+import errno
 import fnmatch
 import logging
 import logging.handlers
@@ -60,9 +61,10 @@ def getTag(session, tag):
 
 class ManagedRepo(object):
 
-    def __init__(self, session, options, data):
-        self.session = session
-        self.options = options
+    def __init__(self, manager, data):
+        self.manager = manager
+        self.session = manager.session
+        self.options = manager.options
         self.logger = logging.getLogger("koji.repo")
         self.current = True
         self.repo_id = data['id']
@@ -154,7 +156,7 @@ class ManagedRepo(object):
             return False
         self.logger.info("Deleted repo %s" % self.repo_id)
         self.state = koji.REPO_DELETED
-        safe_rmtree(path, strict=False)
+        self.manager.rmtree(path)
         return True
 
     def ready(self):
@@ -175,12 +177,78 @@ class RepoManager(object):
         self.repos = {}
         self.tasks = {}
         self.tag_use_stats = {}
+        self.delete_pids = {}
+        self.delete_queue = []
         self.logger = logging.getLogger("koji.repo.manager")
 
     def printState(self):
-        self.logger.debug('Tracking %i repos', len(self.repos))
+        self.logger.debug('Tracking %i repos, %i child processes', len(self.repos), len(self.delete_pids))
         for tag_id, task_id in self.tasks.iteritems():
-            self.logger.debug("Tracking task %s for tag %s" % (task_id, tag_id))
+            self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
+        for pid, desc in self.delete_pids.iteritems():
+            self.logger.debug("Delete job %s: %r", pid, desc)
+
+    def rmtree(self, path):
+        """Spawn (or queue) and rmtree job"""
+        self.logger.info("Queuing rmtree job for %s", path)
+        self.delete_queue.append(path)
+        self.checkQueue()
+
+    def checkQueue(self):
+        finished = [pid for pid in self.delete_pids if self.waitPid(pid)]
+        for pid in finished:
+            path = self.delete_pids[pid]
+            self.logger.info("Completed rmtree job for %s", path)
+            del self.delete_pids[pid]
+        while self.delete_queue and len(self.delete_pids) <= self.options.max_delete_processes:
+            path = self.delete_queue.pop(0)
+            pid = self._rmtree(path)
+            self.logger.info("Started rmtree (pid %i) for %s", pid, path)
+            self.delete_pids[pid] = path
+
+    def waitPid(self, pid):
+        # XXX - can we unify with TaskManager?
+        prefix = "pid %i (%s)" % (pid, self.delete_pids.get(pid))
+        try:
+            (childpid, status) = os.waitpid(pid, os.WNOHANG)
+        except OSError, e:
+            if e.errno != errno.ECHILD:
+                #should not happen
+                raise
+            #otherwise assume the process is gone
+            self.logger.info("%s: %s" % (prefix, e))
+            return True
+        if childpid != 0:
+            self.logger.info(parseStatus(status, prefix))
+            return True
+        return False
+
+    def _rmtree(self, path):
+        pid = os.fork()
+        if pid:
+            return pid
+        # no return
+        try:
+            status = 1
+            self.session._forget()
+            try:
+                rmtree(path)
+                status = 0
+            except Exception:
+                logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+                logging.shutdown()
+        finally:
+            os._exit(status)
+
+    def killChildren(self):
+        # XXX - unify with TaskManager?
+        sig = signal.SIGTERM
+        for pid in self.delete_pids:
+            try:
+                os.kill(pid, sig)
+            except OSError, e:
+                if e.errno != errno.ESRCH:
+                    logger.error("Unable to kill process %s", pid)
 
     def readCurrentRepos(self):
         self.logger.debug("Reading current repo data")
@@ -198,7 +266,7 @@ class RepoManager(object):
             else:
                 self.logger.info('Found repo %s, state=%s'
                                    %(repo_id, koji.REPO_STATES[data['state']]))
-                self.repos[repo_id] = ManagedRepo(self.session, self.options, data)
+                self.repos[repo_id] = ManagedRepo(self, data)
         if len(self.repos) > len(repodata):
             # This shouldn't normally happen, but might if someone else calls
             # repoDelete or similar
@@ -238,9 +306,11 @@ class RepoManager(object):
         """Scan filesystem for repos and remove any deleted ones
 
         Also, warn about any oddities"""
+        if self.delete_pids:
+            #skip
+            return
         self.logger.debug("Scanning filesystem for repos")
         topdir = "%s/repos" % pathinfo.topdir
-        count = 0
         for tag in os.listdir(topdir):
             tagdir = "%s/%s" % (topdir, tag)
             if not os.path.isdir(tagdir):
@@ -250,9 +320,6 @@ class RepoManager(object):
                 self.logger.warn("Unexpected directory (no such tag): %s" % tagdir)
                 continue
             for repo_id in os.listdir(tagdir):
-                if count >= self.options.prune_batch_size:
-                    #this keeps us from spending too much time on this at one time
-                    return
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
                     continue
@@ -273,9 +340,8 @@ class RepoManager(object):
                     if not self.options.ignore_stray_repos:
                         age = time.time() - dir_ts
                         if age > self.options.deleted_repo_lifetime:
-                            count += 1
                             self.logger.info("Removing unexpected directory (no such repo): %s" % repodir)
-                            safe_rmtree(repodir, strict=False)
+                            self.rmtree(repodir)
                     continue
                 if rinfo['tag_name'] != taginfo['name']:
                     self.logger.warn("Tag name mismatch: %s" % repodir)
@@ -284,9 +350,8 @@ class RepoManager(object):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
                     if age > self.options.deleted_repo_lifetime:
                         #XXX should really be called expired_repo_lifetime
-                        count += 1
                         logger.info("Removing stray repo (state=%s): %s" % (koji.REPO_STATES[rinfo['state']], repodir))
-                        safe_rmtree(repodir, strict=False)
+                        self.rmtree(repodir)
                         pass
 
     def tagUseStats(self, tag_id):
@@ -480,8 +545,6 @@ class RepoManager(object):
                     if repo.ready():
                         repo.expire()
             for repo in repolist:
-                if n_deletes >= self.options.delete_batch_size:
-                    break
                 if repo.expired():
                     #try to delete
                     if repo.tryDelete():
@@ -499,6 +562,7 @@ def main(options, session):
     while True:
         try:
             repomgr.updateRepos()
+            repomgr.checkQueue()
             repomgr.printState()
             repomgr.pruneLocalRepos()
         except KeyboardInterrupt:
@@ -519,9 +583,10 @@ def main(options, session):
             logger.warn("User exit")
             break
     try:
-        session.logout()
+        repomgr.checkQueue()
+        repomgr.killChildren()
     finally:
-        sys.exit()
+        session.logout()
 
 def get_options():
     """process options from command line and config file"""
@@ -582,8 +647,7 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
-                'prune_batch_size': 4,
-                'delete_batch_size': 3,
+                'max_delete_processes': 4,
                 'max_repo_tasks' : 2,
                 'repo_tasks_limit' : 10,
                 'deleted_repo_lifetime': 7*24*3600,
@@ -594,8 +658,9 @@ def get_options():
                 'serverca': '/etc/kojira/serverca.crt'
                 }
     if config.has_section(section):
-        int_opts = ('prune_batch_size', 'deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
-                    'delete_batch_size', 'retry_interval', 'max_retries', 'offline_retry_interval')
+        int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
+                    'retry_interval', 'max_retries', 'offline_retry_interval',
+                    'max_delete_processes',)
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
