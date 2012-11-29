@@ -557,6 +557,8 @@ class RepoManager(object):
                     if repo.ready():
                         repo.expire()
             for repo in repolist:
+                if n_deletes >= self.options.delete_batch_size:
+                    break
                 if repo.expired():
                     #try to delete
                     if repo.tryDelete():
@@ -663,6 +665,7 @@ def get_options():
                 'max_repo_tasks' : 4,
                 'max_repo_tasks_maven' : 2,
                 'repo_tasks_limit' : 10,
+                'delete_batch_size' : 3,
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
                 'sleeptime' : 15,
@@ -673,7 +676,7 @@ def get_options():
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
-                    'max_delete_processes', 'max_repo_tasks_maven', )
+                    'max_delete_processes', 'max_repo_tasks_maven', 'delete_batch_size', )
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
