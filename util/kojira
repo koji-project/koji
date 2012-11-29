@@ -430,6 +430,7 @@ class RepoManager(object):
     def updateRepos(self):
         #check on tasks
         running_tasks = 0
+        running_tasks_maven = 0
         our_tasks = {}
         for tag_id, task_id in self.tasks.items():
             tinfo = self.session.getTaskInfo(task_id)
@@ -443,12 +444,15 @@ class RepoManager(object):
                 self.logger.info("Problem: newRepo task %s for tag %s is %s" % (task_id, tag_id, tstate))
                 del self.tasks[tag_id]
                 continue
+            taginfo = getTag(self.session, tag_id)
             if tinfo['waiting']:
                 self.logger.debug("Task %i is waiting", task_id)
             else:
                 #the largest hub impact is from the first part of the newRepo task
                 #once it is waiting on subtasks, that part is over
                 running_tasks += 1
+                if taginfo.get('maven_support'):
+                    running_tasks_maven += 1
             #TODO [?] - implement a timeout for active tasks?
         #check for untracked newRepo tasks
         repo_tasks = self.session.listTasks(opts={'method':'newRepo',
@@ -462,6 +466,7 @@ class RepoManager(object):
                 self.logger.debug("Untracked task %i is waiting", tinfo['id'])
             else:
                 running_tasks += 1
+                # TODO - determine tag and maven support
         self.logger.debug("Current tasks: %r" % self.tasks)
         if other_tasks:
             self.logger.debug("Found %i untracked newRepo tasks" % len(other_tasks))
@@ -523,6 +528,8 @@ class RepoManager(object):
                 self.logger.info("Repo task limit reached")
                 break
             tagname = tags[tag_id]
+            if running_tasks_maven >= self.options.max_repo_tasks_maven:
+                continue
             taskopts = {}
             for pat in self.options.debuginfo_tags.split():
                 if fnmatch.fnmatch(tagname, pat):
@@ -533,9 +540,14 @@ class RepoManager(object):
                     taskopts['src'] = True
                     break
             task_id = self.session.newRepo(tagname, **taskopts)
+            taginfo = getTag(self.session, tag_id)
             running_tasks += 1
+            if taginfo.get('maven_support'):
+                running_tasks_maven += 1
             self.logger.info("Created newRepo task %s for tag %s (%s)" % (task_id, tag_id, tags[tag_id]))
             self.tasks[tag_id] = task_id
+        if running_tasks_maven >= self.options.max_repo_tasks_maven:
+            self.logger.info("Maximum number of maven repo tasks reached")
         #some cleanup
         n_deletes = 0
         for tag_id, repolist in tag_repos.items():
@@ -648,7 +660,8 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'max_delete_processes': 4,
-                'max_repo_tasks' : 2,
+                'max_repo_tasks' : 4,
+                'max_repo_tasks_maven' : 2,
                 'repo_tasks_limit' : 10,
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
@@ -660,7 +673,7 @@ def get_options():
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
-                    'max_delete_processes',)
+                    'max_delete_processes', 'max_repo_tasks_maven', )
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
