@@ -43,19 +43,19 @@ import traceback
 
 tag_cache = {}
 
-def getTag(session, tag):
+def getTag(session, tag, event=None):
     """A caching version of the hub call"""
     cache = tag_cache
     now = time.time()
-    if tag in cache:
-        ts, info = cache[tag]
+    if (tag, event) in cache:
+        ts, info = cache[(tag,event)]
         if now - ts < 600:
             #use the cache
             return info
-    info = session.getTag(tag)
+    info = session.getTag(tag, event=event)
     if info:
-        cache[info['id']] = (now, info)
-        cache[info['name']] = (now, info)
+        cache[(info['id'], event)] = (now, info)
+        cache[(info['name'], event)] = (now, info)
     return info
 
 
@@ -123,6 +123,8 @@ class ManagedRepo(object):
     def tryDelete(self):
         """Remove the repo from disk, if possible"""
         tag_info = getTag(self.session, self.tag_id)
+        if not tag_info:
+            tag_info = getTag(self.session, self.tag_id, self.event_id)
         if not tag_info:
             self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' % 
                              (self.tag_id, self.repo_id))
@@ -315,17 +317,13 @@ class RepoManager(object):
             tagdir = "%s/%s" % (topdir, tag)
             if not os.path.isdir(tagdir):
                 continue
-            taginfo = getTag(self.session, tag)
-            if taginfo is None:
-                self.logger.warn("Unexpected directory (no such tag): %s" % tagdir)
-                continue
             for repo_id in os.listdir(tagdir):
-                repodir = "%s/%s" % (tagdir, repo_id)
-                if not os.path.isdir(repodir):
-                    continue
                 try:
                     repo_id = int(repo_id)
                 except ValueError:
+                    continue
+                repodir = "%s/%s" % (tagdir, repo_id)
+                if not os.path.isdir(repodir):
                     continue
                 if self.repos.has_key(repo_id):
                     #we're already managing it, no need to deal with it here
@@ -343,8 +341,8 @@ class RepoManager(object):
                             self.logger.info("Removing unexpected directory (no such repo): %s" % repodir)
                             self.rmtree(repodir)
                     continue
-                if rinfo['tag_name'] != taginfo['name']:
-                    self.logger.warn("Tag name mismatch: %s" % repodir)
+                if rinfo['tag_name'] != tag:
+                    self.logger.warn("Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
                     continue
                 if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
