@@ -156,6 +156,9 @@ class WindowsBuild(object):
         roottrim = len(rootdir) - len(rootbase)
         zfo = zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED)
         for dirpath, dirnames, filenames in os.walk(rootdir):
+            for skip in ['CVS', '.svn', '.git']:
+                if skip in dirnames:
+                    dirnames.remove(skip)
             for filename in filenames:
                 filepath = os.path.join(dirpath, filename)
                 zfo.write(filepath, filepath[roottrim:])
