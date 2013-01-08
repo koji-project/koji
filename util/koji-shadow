@@ -649,21 +649,26 @@ class BuildTracker(object):
             return -1
 
     def newerBuild(self, build, tag):
-        #XXX:  secondary arches need a policy to say if we have newer builld localy it will be the substitute
-        localLatestBuild = session.getLatestBuilds(tag, package=str(build.name))
-        if not localLatestBuild == []:
-            parentevr = (str(build.epoch), build.version,  build.release)
-            parentnvr = (str(build.name), build.version,  build.release)
-            latestevr =  (str(localLatestBuild[0]['epoch']), localLatestBuild[0]['version'], localLatestBuild[0]['release'])
+        #XXX:  secondary arches need a policy to say if we have newer build localy it will be the substitute
+        localBuilds = session.listTagged(tag, inherit=True, package=str(build.name))
+        newer = None
+        parentevr = (str(build.epoch), build.version,  build.release)
+        parentnvr = (str(build.name), build.version,  build.release)
+        for b in localBuilds:
+            latestevr =  (str(b['epoch']), b['version'], b['release'])
             newestRPM = self.rpmvercmp( parentevr, latestevr)
             if options.debug:
                 print "remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM)
             if newestRPM == -1:
-                #the local is newer
-                info = session.getBuild("%s-%s-%s" % (str(localLatestBuild[0]['name']), localLatestBuild[0]['version'], localLatestBuild[0]['release'] ))
-                if info:
-                    build = LocalBuild(info)
-                    self.substitute_idx[parentnvr] = build
+                newer = b
+            else:
+                break
+        #the local is newer
+        if newer is not None:
+            info = session.getBuild("%s-%s-%s" % (str(newer['name']), newer['version'], newer['release'] ))
+            if info:
+                build = LocalBuild(info)
+                self.substitute_idx[parentnvr] = build
                 return build
         return None
 
