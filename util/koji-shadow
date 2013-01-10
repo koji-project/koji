@@ -745,7 +745,7 @@ class BuildTracker(object):
                 if depth > 0:
                     print "%sDep replaced: %s->%s" % (head, build.nvr, replace)
                     return build
-            if options.prefer_new and (depth > 0) and not (options.build or build.state == "common"):
+            if options.prefer_new and (depth > 0) and (tag is not None) and not (build.state == "common"):
                 latestBuild = self.newerBuild(build, tag)
                 if latestBuild != None:
                     build.substitute = latestBuild.nvr
