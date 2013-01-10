@@ -5219,8 +5219,6 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
 
 def write_signed_rpm(an_rpm, sigkey, force=False):
     """Write a signed copy of the rpm"""
-    context.session.assertPerm('sign')
-    #XXX - still not sure if this is the right restriction
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
         raise koji.GenericError, "Not an internal rpm: %s (from %s)" \
@@ -8323,6 +8321,12 @@ class RootExports(object):
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
     writeSignedRPM = staticmethod(write_signed_rpm)
+
+    def writeSignedRPM(an_rpm, sigkey, force=False):
+        """Write a signed copy of the rpm"""
+        context.session.assertPerm('sign')
+        #XXX - still not sure if this is the right restriction
+        return write_signed_rpm(an_rpm, sigkey, force)
 
     def addRPMSig(self, an_rpm, data):
         """Store a signature header for an rpm
