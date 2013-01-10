@@ -8320,9 +8320,8 @@ class RootExports(object):
         return headers
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
-    writeSignedRPM = staticmethod(write_signed_rpm)
 
-    def writeSignedRPM(an_rpm, sigkey, force=False):
+    def writeSignedRPM(self, an_rpm, sigkey, force=False):
         """Write a signed copy of the rpm"""
         context.session.assertPerm('sign')
         #XXX - still not sure if this is the right restriction
