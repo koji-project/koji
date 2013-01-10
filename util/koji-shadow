@@ -1259,15 +1259,21 @@ class BuildTracker(object):
 
 def main(args):
     tracker = BuildTracker()
-    #binfo = remote.getBuild(args[0], strict=True)
-    #tracker.scanBuild(binfo['id'])
-    tag=None
+    try:
+        tag = args[0]
+    except IndexError:
+        tag = None
+
     if options.build:
         binfo = remote.getBuild(options.build, strict=True)
-        tracker.scanBuild(binfo['id'])
+        tracker.scanBuild(binfo['id'], tag=tag)
     else:
-        tag = args[0]
-        tracker.scanTag(tag)
+        if tag is None:
+            print "Tag is required"
+            return
+        else:
+            print "Working on tag %s" % (tag)
+	    tracker.scanTag(tag)
     tracker.report()
     tracker.runRebuilds(tag)
 
