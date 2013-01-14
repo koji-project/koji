@@ -3789,6 +3789,8 @@ def get_image_archive(archive_id, strict=False):
     select = """SELECT %s FROM image_archives
     WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     results = _singleRow(select, locals(), fields, strict=strict)
+    if not results:
+        return None
     results['rootid'] = False
     fields = ('image_id', 'rpm_id')
     select = """SELECT %s FROM image_listing

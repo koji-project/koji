@@ -137,7 +137,7 @@
         #end if
       </td>
     </tr>
-    #if $archive.rootid
+    #if 'rootid' in $archive and $archive.rootid
     <tr>
       <th colspan="2"><a href="rpmlist?imageID=$archive.id&amp;type=image" title="RPMs that where installed to the image">Installed RPMs</a></th>
     </tr>
