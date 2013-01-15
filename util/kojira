@@ -526,8 +526,6 @@ class RepoManager(object):
                 self.logger.info("Repo task limit reached")
                 break
             tagname = tags[tag_id]
-            if running_tasks_maven >= self.options.max_repo_tasks_maven:
-                continue
             taskopts = {}
             for pat in self.options.debuginfo_tags.split():
                 if fnmatch.fnmatch(tagname, pat):
@@ -537,8 +535,11 @@ class RepoManager(object):
                 if fnmatch.fnmatch(tagname, pat):
                     taskopts['src'] = True
                     break
-            task_id = self.session.newRepo(tagname, **taskopts)
             taginfo = getTag(self.session, tag_id)
+            if taginfo.get('maven_support'):
+                if running_tasks_maven >= self.options.max_repo_tasks_maven:
+                    continue
+            task_id = self.session.newRepo(tagname, **taskopts)
             running_tasks += 1
             if taginfo.get('maven_support'):
                 running_tasks_maven += 1
