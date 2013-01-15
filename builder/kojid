@@ -1804,7 +1804,7 @@ class BuildApplianceTask(BuildImageTask):
             spec_url = opts.get('specfile')
             if spec_url:
                 rpm_results = self.buildWrapperRPM(spec_url, create_task_id,
-                    self.session.getTag(build_tag), bld_info, repo_info['id'])
+                    target_info, bld_info, repo_info['id'])
 
             # import the image (move it too)
             if not opts.get('scratch'):
@@ -1881,7 +1881,7 @@ class BuildLiveCDTask(BuildImageTask):
             rpm_results = None
             if spec_url:
                 rpm_results = self.buildWrapperRPM(spec_url, create_task_id,
-                    self.session.getTag(build_tag), bld_info, repo_info['id'])
+                    target_info, bld_info, repo_info['id'])
 
             # import it (and move)
             if not opts.get('scratch'):
