@@ -1484,16 +1484,16 @@ class WrapperRPMTask(BaseBuildTask):
                 elif win_info:
                     repopath = self.pathinfo.winfile(artifact)
                     relpath = os.path.join(self.pathinfo.winbuild(build), repopath)[1:]
+                    artifact_relpaths.append(relpath)
                     all_artifacts_with_path.append(repopath)
                 elif image_info:
-                    ipath = os.path.join(self.pathinfo.imagebuild(build))
+                    ipath = self.pathinfo.imagebuild(build)
                     relpath = os.path.join(ipath, artifact_name)[1:]
-                    repopath = relpath
-                    all_artifacts_with_path.append(repopath)
+                    artifact_relpaths.append(relpath)
+                    all_artifacts_with_path.append(artifact_name)
                 else:
                     # can't happen
                     assert False
-                artifact_relpaths.append(relpath)
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
