@@ -7324,7 +7324,7 @@ class RootExports(object):
             try:
                 fcntl.lockf(fd, fcntl.LOCK_SH|fcntl.LOCK_NB)
             except IOError, e:
-                koji.LockError, e
+                raise koji.LockError, e
             st = os.fstat(fd)
             if not stat.S_ISREG(st.st_mode):
                 raise koji.GenericError, "Not a regular file: %s" % fn
@@ -7344,7 +7344,7 @@ class RootExports(object):
                     length += len(chunk)
                     chksum.update(chunk)
                     chunk = os.read(fd, 8192)
-                data['sumlength'] = length
+                data['sumlength'] = koji.encode_int(length)
                 data['hexdigest'] = chksum.hexdigest()
             return data
         finally:
