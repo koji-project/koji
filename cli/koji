@@ -4056,6 +4056,7 @@ def anon_handle_list_history(options, session, args):
     parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
     parser.add_option("--after-event", metavar="EVENT_ID", type='int', help=_("Only show entries after event"))
+    parser.add_option("--watch", action="store_true", help=_("Monitor history data"))
     parser.add_option("--active", action='store_true', help=_("Only show entries that are currently active"))
     parser.add_option("--revoked", action='store_false', dest='active',
                             help=_("Only show entries that are currently revoked"))
@@ -4092,48 +4093,61 @@ def anon_handle_list_history(options, session, args):
 
     activate_session(session)
 
-    histdata = session.queryHistory(tables=tables, **kwargs)
-    timeline = []
-    def distinguish_match(x, name):
-        """determine if create or revoke event matched"""
-        if options.context:
-            return True
-        name = "_" + name
-        ret = True
-        for key in x:
-            if key.startswith(name):
-                ret = ret and x[key]
-        return ret
-    for table in histdata:
-        hist = histdata[table]
-        for x in hist:
-            if x['revoke_event'] is not None:
-                if distinguish_match(x, 'revoked'):
-                    timeline.append((x['revoke_event'], table, 0, x.copy()))
-                #pprint.pprint(timeline[-1])
-            if distinguish_match(x, 'created'):
-                timeline.append((x['create_event'], table, 1, x))
-    timeline.sort()
-    #group edits together
-    new_timeline = []
-    last_event = None
-    edit_index = {}
-    for entry in timeline:
-        event_id, table, create, x = entry
-        if event_id != last_event:
-            edit_index = {}
-            last_event = event_id
-        key = tuple([x[k] for k in _table_keys[table]])
-        prev = edit_index.get((table, event_id), {}).get(key)
-        if prev:
-            prev[-1].setdefault('.related', []).append(entry)
+    pprint.pprint(vars(options))
+    if options.watch:
+        if not kwargs.get('afterEvent') and not kwargs.get('after'):
+            kwargs['afterEvent'] = session.getLastEvent()['id']
+
+    while True:
+        histdata = session.queryHistory(tables=tables, **kwargs)
+        timeline = []
+        def distinguish_match(x, name):
+            """determine if create or revoke event matched"""
+            if options.context:
+                return True
+            name = "_" + name
+            ret = True
+            for key in x:
+                if key.startswith(name):
+                    ret = ret and x[key]
+            return ret
+        for table in histdata:
+            hist = histdata[table]
+            for x in hist:
+                if x['revoke_event'] is not None:
+                    if distinguish_match(x, 'revoked'):
+                        timeline.append((x['revoke_event'], table, 0, x.copy()))
+                    #pprint.pprint(timeline[-1])
+                if distinguish_match(x, 'created'):
+                    timeline.append((x['create_event'], table, 1, x))
+        timeline.sort()
+        #group edits together
+        new_timeline = []
+        last_event = None
+        edit_index = {}
+        for entry in timeline:
+            event_id, table, create, x = entry
+            if event_id != last_event:
+                edit_index = {}
+                last_event = event_id
+            key = tuple([x[k] for k in _table_keys[table]])
+            prev = edit_index.get((table, event_id), {}).get(key)
+            if prev:
+                prev[-1].setdefault('.related', []).append(entry)
+            else:
+                edit_index.setdefault((table, event_id), {})[key] = entry
+                new_timeline.append(entry)
+        for entry in new_timeline:
+            if options.debug:
+                print "%r" % list(entry)
+            _print_histline(entry, options=options)
+        if not options.watch:
+            break
         else:
-            edit_index.setdefault((table, event_id), {})[key] = entry
-            new_timeline.append(entry)
-    for entry in new_timeline:
-        if options.debug:
-            print "%r" % list(entry)
-        _print_histline(entry, options=options)
+            time.sleep(5)
+            # repeat query for later events
+            if last_event:
+                kwargs['afterEvent'] = last_event
 
 def _handleMap(lines, data, prefix=''):
     for key, val in data.items():
