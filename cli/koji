@@ -157,6 +157,10 @@ def get_options():
         'cancel-task' : 'cancel',
         'cxl' : 'cancel',
         'list-commands' : 'help',
+        'move-pkg': 'move-build',
+        'latest-pkg': 'latest-build',
+        'tag-pkg': 'tag-build',
+        'untag-pkg': 'untag-build'
     }
     cmd = args[0]
     cmd = aliases.get(cmd, cmd)
@@ -2276,9 +2280,9 @@ def handle_revoke_permission(options, session, args):
     for user in users:
         session.revokePermission(user['name'], perm)
 
-def anon_handle_latest_pkg(options, session, args):
-    "Print the latest packages for a tag"
-    usage = _("usage: %prog latest-pkg [options] tag package [package...]")
+def anon_handle_latest_build(options, session, args):
+    "Print the latest builds for a tag"
+    usage = _("usage: %prog latest-build [options] tag package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
@@ -5266,9 +5270,9 @@ def handle_make_task(opts, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=opts.quiet)
 
-def handle_tag_pkg(opts, session, args):
-    "Apply a tag to one or more packages"
-    usage = _("usage: %prog tag-pkg [options] <tag> <pkg> [<pkg>...]")
+def handle_tag_build(opts, session, args):
+    "Apply a tag to one or more builds"
+    usage = _("usage: %prog tag-build [options] <tag> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--force", action="store_true", help=_("force operation"))
@@ -5290,9 +5294,9 @@ def handle_tag_pkg(opts, session, args):
         session.logout()
         return watch_tasks(session,tasks,quiet=opts.quiet)
 
-def handle_move_pkg(opts, session, args):
-    "'Move' one or more packages between tags"
-    usage = _("usage: %prog move-pkg [options] <tag1> <tag2> <pkg> [<pkg>...]")
+def handle_move_build(opts, session, args):
+    "'Move' one or more builds between tags"
+    usage = _("usage: %prog move-build [options] <tag1> <tag2> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--force", action="store_true", help=_("force operation"))
@@ -5336,9 +5340,9 @@ def handle_move_pkg(opts, session, args):
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet)
 
-def handle_untag_pkg(options, session, args):
-    "Remove a tag from one or more packages"
-    usage = _("usage: %prog untag-pkg [options] <tag> <pkg> [<pkg>...]")
+def handle_untag_build(options, session, args):
+    "Remove a tag from one or more builds"
+    usage = _("usage: %prog untag-build [options] <tag> <pkg> [<pkg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
