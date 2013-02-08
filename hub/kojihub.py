@@ -2273,33 +2273,38 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     if context.opts.get('EnableMaven') and tinfo['maven_support']:
         artifact_dirs = {}
+        dir_links = set()
         for archive in maven_tag_archives(tinfo['id'], event_id):
             buildinfo = {'name': archive['build_name'],
                          'version': archive['build_version'],
                          'release': archive['build_release'],
                          'epoch': archive['build_epoch']}
-            _populate_maven_repodir(buildinfo, archive, repodir, artifact_dirs)
+            srcdir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
+                                  koji.pathinfo.mavenrepo(archive))
+            destlink = os.path.join(repodir, 'maven',
+                                    koji.pathinfo.mavenrepo(archive))
+            dest_parent = os.path.dirname(destlink)
+            relpath = koji.util.relpath(srcdir, dest_parent)
+            dir_links.add((relpath, destlink))
+            artifact_dirs.setdefault(dest_parent, set()).add((archive['group_id'],
+                                                              archive['artifact_id'],
+                                                              archive['version']))
+        created_dirs = set()
+        for srcpath, destlink in dir_links:
+            dest_parent = os.path.dirname(destlink)
+            if not dest_parent in created_dirs:
+                koji.ensuredir(dest_parent)
+                created_dirs.add(dest_parent)
+            try:
+                os.symlink(srcpath, destlink)
+            except:
+                log_error('Error linking %s to %s' % (destlink, srcpath))
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
                               event=event, repo_id=repo_id)
     return [repo_id, event_id]
-
-def _populate_maven_repodir(buildinfo, archiveinfo, repodir, artifact_dirs):
-    src = os.path.join(koji.pathinfo.mavenbuild(buildinfo), koji.pathinfo.mavenfile(archiveinfo))
-    destdir = os.path.join(repodir, 'maven', koji.pathinfo.mavenrepo(archiveinfo))
-    koji.ensuredir(destdir)
-    filename = archiveinfo['filename']
-    # assume all artifacts we import have .md5 and .sha1 files associated with them in the global repo
-    for suffix in ('', '.md5', '.sha1'):
-        try:
-            os.symlink(src + suffix, os.path.join(destdir, filename + suffix))
-        except:
-            log_error('Error linking %s to %s' % (src + suffix, os.path.join(destdir, filename + suffix)))
-    artifact_dirs.setdefault(os.path.dirname(destdir), set()).add((archiveinfo['group_id'],
-                                                                   archiveinfo['artifact_id'],
-                                                                   archiveinfo['version']))
 
 def _write_maven_repo_metadata(destdir, artifacts):
     # Sort the list so that the highest version number comes last.
