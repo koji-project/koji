@@ -2280,7 +2280,9 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             buildinfo = {'name': archive['build_name'],
                          'version': archive['build_version'],
                          'release': archive['build_release'],
-                         'epoch': archive['build_epoch']}
+                         'epoch': archive['build_epoch'],
+                         'volume_name': archive['volume_name'],
+                        }
             srcdir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
                                   koji.pathinfo.mavenrepo(archive))
             destlink = os.path.join(repodir, 'maven',
