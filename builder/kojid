@@ -221,7 +221,7 @@ class BuildRoot(object):
         fo.write(output)
         fo.close()
 
-    def writeMavenSettings(self, localrepodir, destfile):
+    def writeMavenSettings(self, destfile):
         """
         Write the Maven settings.xml file to the specified destination.
         """
@@ -230,13 +230,11 @@ class BuildRoot(object):
 
         pi = koji.PathInfo(topdir=self.options.topurl)
         repourl = pi.repo(repo_id, tag_name) + '/maven'
-        localrepo = localrepodir[len(self.rootdir()):]
 
         settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                       http://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <localRepository>%(localrepo)s</localRepository>
   <interactiveMode>false</interactiveMode>
   <mirrors>
     <mirror>
@@ -491,11 +489,11 @@ class BuildRoot(object):
 
         return packages
 
-    def mavenBuild(self, sourcedir, outputdir, repodir, settingsfile,
+    def mavenBuild(self, sourcedir, outputdir, repodir,
                    props=None, profiles=None, options=None, goals=None):
         self.session.host.setBuildRootState(self.id, 'BUILDING')
         cmd = ['--no-clean', '--chroot', '--unpriv', '--cwd', sourcedir[len(self.rootdir()):], '--',
-               '/usr/bin/mvn', '-s', settingsfile, '-C']
+               '/usr/bin/mvn', '-C']
         if options:
             cmd.extend(options)
         if profiles:
@@ -1257,7 +1255,8 @@ class BuildMavenTask(BaseBuildTask):
 
         scmdir = '%s/maven/build' % buildroot.rootdir()
         outputdir = '%s/maven/output' % buildroot.rootdir()
-        repodir = '%s/maven/repo' % buildroot.rootdir()
+        m2dir = '%s/builddir/.m2' % buildroot.rootdir()
+        repodir = '%s/builddir/.m2/repository' % buildroot.rootdir()
         patchdir = '%s/maven/patches' % buildroot.rootdir()
 
         koji.ensuredir(scmdir)
@@ -1304,7 +1303,7 @@ class BuildMavenTask(BaseBuildTask):
         gid = grp.getgrnam('mock')[2]
         self.chownTree(scmdir, uid, gid)
         self.chownTree(outputdir, uid, gid)
-        self.chownTree(repodir, uid, gid)
+        self.chownTree(m2dir, uid, gid)
         if self.opts.get('patches'):
             self.chownTree(patchdir, uid, gid)
 
@@ -1322,10 +1321,10 @@ class BuildMavenTask(BaseBuildTask):
             os.rename(os.path.join(outputdir, 'patches.zip'),
                       os.path.join(outputdir, maven_label + '-patches.zip'))
 
-        settingsfile = '/maven/settings.xml'
-        buildroot.writeMavenSettings(repodir, settingsfile)
+        settingsfile = '/builddir/.m2/settings.xml'
+        buildroot.writeMavenSettings(settingsfile)
 
-        buildroot.mavenBuild(sourcedir, outputdir, repodir, settingsfile,
+        buildroot.mavenBuild(sourcedir, outputdir, repodir,
                              props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
                              options=self.opts.get('maven_options'), goals=self.opts.get('goals'))
 
