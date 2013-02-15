@@ -2084,6 +2084,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
               ('build.release', 'build_release'), ('build.epoch', 'build_epoch'),
               ('build.state', 'state'), ('build.task_id', 'task_id'),
               ('build.owner', 'owner'),
+              ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('archiveinfo.id', 'id'), ('archiveinfo.type_id', 'type_id'),
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'), ('archiveinfo.size', 'size'),
@@ -2096,6 +2097,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     tables = ['tag_listing']
     joins = ['tag ON tag_listing.tag_id = tag.id',
              'build ON tag_listing.build_id = build.id',
+             'volume ON build.volume_id = volume.id',
              'package ON build.pkg_id = package.id',
              'archiveinfo ON build.id = archiveinfo.build_id',
              'maven_archives ON archiveinfo.id = maven_archives.archive_id']
