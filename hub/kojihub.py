@@ -3693,12 +3693,13 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           clauses=clauses, values=values, opts=queryOpts).execute()
-    if queryOpts and 'asList' in queryOpts:
-        key = aliases.index('size')
-    else:
-        key = 'size'
-    for row in ret:
-        row[key] = koji.encode_int(row[key])
+    if not queryOpts.get('countOnly'):
+        if queryOpts and 'asList' in queryOpts:
+            key = aliases.index('size')
+        else:
+            key = 'size'
+        for row in ret:
+            row[key] = koji.encode_int(row[key])
     return ret
 
 def get_archive(archive_id, strict=False):
