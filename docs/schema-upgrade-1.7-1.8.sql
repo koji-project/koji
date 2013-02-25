@@ -44,5 +44,6 @@ insert into archivetypes (name, description, extensions) values ('raw', 'Raw dis
 insert into archivetypes (name, description, extensions) values ('qcow', 'QCOW image', 'qcow');
 insert into archivetypes (name, description, extensions) values ('qcow2', 'QCOW2 image', 'qcow2');
 insert into archivetypes (name, description, extensions) values ('vmx', 'VMX image', 'vmx');
+insert into archivetypes (name, description, extensions) values ('xsd', 'XML Schema Definition', 'xsd');
 
 COMMIT;
