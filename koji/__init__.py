@@ -435,14 +435,23 @@ def safe_xmlrpc_loads(s):
 
 def ensuredir(directory):
     """Create directory, if necessary."""
-    try:
+    if os.path.exists(directory):
         if not os.path.isdir(directory):
-            os.makedirs(directory)
-    except OSError:
-        #thrown when dir already exists (could happen in a race)
-        if not os.path.isdir(directory):
-            #something else must have gone wrong
-            raise
+            raise OSError, "Not a directory: %s" % directory
+    else:
+        head, tail = os.path.split(directory)
+        if not tail and head == directory:
+            # can only happen if directory == '/' or equivalent
+            # (which obviously should not happen)
+            raise OSError, "root directory missing? %s" % directory
+        ensuredir(head)
+        try:
+            os.mkdir(directory)
+        except OSError:
+            #thrown when dir already exists (could happen in a race)
+            if not os.path.isdir(directory):
+                #something else must have gone wrong
+                raise
     return directory
 
 ## END kojikamid dup
