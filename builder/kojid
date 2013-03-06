@@ -1580,6 +1580,7 @@ class WrapperRPMTask(BaseBuildTask):
         os.chdir(specdir)
         contents = Cheetah.Template.Template(file=spec_template,
                                              searchList=[values]).respond()
+        contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
         specfd = file(specfile, 'w')
