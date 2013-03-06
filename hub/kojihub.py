@@ -3697,7 +3697,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           clauses=clauses, values=values, opts=queryOpts).execute()
-    if not queryOpts.get('countOnly'):
+    if not (queryOpts and queryOpts.get('countOnly')):
         if queryOpts and 'asList' in queryOpts:
             key = aliases.index('size')
         else:
