@@ -1277,7 +1277,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # don't encourage network access from the chroot
         'use_host_resolv': opts.get('use_host_resolv', False),
         # Don't let a build last more than 24 hours
-        'rpmbuild_timeout': 86400
+        'rpmbuild_timeout': opts.get('rpmbuild_timeout', 86400)
     }
 
     # bind_opts are used to mount parts (or all of) /dev if needed.

@@ -222,7 +222,7 @@ class BuildRoot(object):
         for k in ('repoid', 'tag_name'):
             if hasattr(self, k):
                 opts[k] = getattr(self, k)
-        for k in ('mockdir', 'topdir', 'topurl', 'topurls', 'packager', 'vendor', 'distribution', 'mockhost', 'yum_proxy'):
+        for k in ('mockdir', 'topdir', 'topurl', 'topurls', 'packager', 'vendor', 'distribution', 'mockhost', 'yum_proxy', 'rpmbuild_timeout'):
             if hasattr(self.options, k):
                 opts[k] = getattr(self.options, k)
         opts['buildroot_id'] = self.id
@@ -3667,6 +3667,7 @@ def get_options():
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
                                      'resolver-status.properties *.lastUpdated',
                 'failed_buildroot_lifetime' : 3600 * 4,
+                'rpmbuild_timeout' : 3600 * 24,
                 'cert': '/etc/kojid/client.crt',
                 'ca': '/etc/kojid/clientca.crt',
                 'serverca': '/etc/kojid/serverca.crt'}
@@ -3674,7 +3675,7 @@ def get_options():
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
                         'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime',
-                        'timeout',]:
+                        'timeout', 'rpmbuild_timeout',]:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
