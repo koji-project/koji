@@ -221,12 +221,13 @@ class BuildRoot(object):
         fo.write(output)
         fo.close()
 
-    def writeMavenSettings(self, destfile):
+    def writeMavenSettings(self, destfile, outputdir):
         """
         Write the Maven settings.xml file to the specified destination.
         """
         repo_id = self.repoid
         tag_name = self.tag_name
+        deploy_dir = outputdir[len(self.rootdir()):]
 
         pi = koji.PathInfo(topdir=self.options.topurl)
         repourl = pi.repo(repo_id, tag_name) + '/maven'
@@ -244,6 +245,17 @@ class BuildRoot(object):
       <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>
+  <profiles>
+    <profile>
+      <id>koji-output</id>
+      <properties>
+        <altDeploymentRepository>koji-output::default::file://%(deploy_dir)s</altDeploymentRepository>
+      </properties>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>koji-output</activeProfile>
+  </activeProfiles>
 </settings>
 """ % locals()
         fo = file(self.rootdir() + destfile, 'w')
@@ -515,7 +527,7 @@ class BuildRoot(object):
 
         if goals:
             cmd.extend(goals)
-        cmd.extend(['deploy', '-DaltDeploymentRepository=koji-output::default::file://%s' % outputdir[len(self.rootdir()):]])
+        cmd.extend(['deploy'])
         rv = self.mock(cmd)
 
         # plugin dependencies will be ignored
@@ -1322,7 +1334,7 @@ class BuildMavenTask(BaseBuildTask):
                       os.path.join(outputdir, maven_label + '-patches.zip'))
 
         settingsfile = '/builddir/.m2/settings.xml'
-        buildroot.writeMavenSettings(settingsfile)
+        buildroot.writeMavenSettings(settingsfile, outputdir)
 
         buildroot.mavenBuild(sourcedir, outputdir, repodir,
                              props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
