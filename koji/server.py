@@ -67,6 +67,7 @@ class WSGIWrapper(object):
             #TODO - file_wrapper support
         }
         environ = LazyDict(environ)
+        environ.lazyset('wsgi.url_scheme', self.get_scheme, [])
         environ.lazyset('modpy.env', self.env, [])
         environ.lazyset('modpy.opts', req.get_options, [])
         environ.lazyset('modpy.conf', req.get_config, [])
@@ -106,6 +107,12 @@ class WSGIWrapper(object):
             uri = uri[:-len(path_info)]
             uri = uri.rstrip('/')
         return uri
+
+    def get_scheme(self):
+        if self.envget('HTTPS') in ('yes', 'on', '1'):
+            return 'https'
+        else:
+            return 'http'
 
     def no_write(self, string):
         """a fake write() callable returned by start_response

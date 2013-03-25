@@ -372,8 +372,8 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError, "Already logged in"
 
-        if context.environ.get('HTTPS') not in ['on', '1']:
-            raise koji.AuthError, 'cannot call sslLogin() via a non-https connection'
+        if context.environ['wsgi.url_scheme'] != 'https':
+            raise koji.AuthError, 'cannot call sslLogin() via a non-https connection: %s' % context.environ['wsgi.url_scheme']
 
         if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
             raise koji.AuthError, 'could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY')
