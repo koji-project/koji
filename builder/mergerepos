@@ -28,6 +28,7 @@ import shutil
 import sys
 import tempfile
 import yum
+import yum.misc
 from optparse import OptionParser
 
 # Expand a canonical arch to the full list of
@@ -86,6 +87,12 @@ def parse_args(args):
         sys.exit(1)
 
     return opts
+
+
+def make_const_func(value):
+    """Return a function that returns the given value"""
+    return lambda *a: value
+
 
 class RepoMerge(object):
     def __init__(self, repolist, arches, groupfile, blocked, outputdir):
@@ -165,8 +172,15 @@ class RepoMerge(object):
         include_srpms = {}
 
         # calculating what "builds" (srpms) we're allowing into the repo
-        for repo in repos:
+        for reponum, repo in enumerate(repos):
             for pkg in repo.sack:
+                if reponum == 0 and not pkg.basepath:
+                    # this is the first repo (i.e. the koji repo) and appears
+                    # to be using relative urls
+                    #XXX - kind of a hack, but yum leaves us little choice
+                    #force the pkg object to report a relative location
+                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
+                    pkg._return_remote_location = make_const_func(loc)
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
                 if include_srpms.has_key(srpm_name):
                     other_srpm, other_repoid = include_srpms[srpm_name]

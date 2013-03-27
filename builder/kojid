@@ -2882,11 +2882,10 @@ class CreaterepoTask(BaseTaskHandler):
 
     def merge_repos(self, external_repos, arch, groupdata):
         repos = []
-        if os.path.isdir(self.datadir):
-            localdir = '%s/repo_%s_premerge' % (self.workdir, self.repo_id)
-            os.rename(self.outdir, localdir)
-            koji.ensuredir(self.outdir)
-            repos.append('file://' + localdir + '/')
+        localdir = '%s/repo_%s_premerge' % (self.workdir, self.repo_id)
+        os.rename(self.outdir, localdir)
+        koji.ensuredir(self.outdir)
+        repos.append('file://' + localdir + '/')
 
         for repo in external_repos:
             ext_url = repo['url']
