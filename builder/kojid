@@ -2780,11 +2780,8 @@ class NewRepoTask(BaseTaskHandler):
         else:
             oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_READY)
         subtasks = {}
-        external_repos = self.session.getExternalRepoList(tinfo['id'], event=event)
         for arch in arches:
             arglist = [repo_id, arch, oldrepo]
-            if external_repos:
-                arglist.append(external_repos)
             subtasks[arch] = self.session.host.subtask(method='createrepo',
                                                        arglist=arglist,
                                                        label=arch,
@@ -2807,7 +2804,7 @@ class CreaterepoTask(BaseTaskHandler):
     Methods = ['createrepo']
     _taskWeight = 1.5
 
-    def handler(self, repo_id, arch, oldrepo, external_repos=None):
+    def handler(self, repo_id, arch, oldrepo):
         #arch is the arch of the repo, not the task
         rinfo = self.session.repoInfo(repo_id, strict=True)
         if rinfo['state'] != koji.REPO_INIT:
