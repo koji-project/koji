@@ -236,7 +236,7 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
-* Mon Apr  1 2012 Mike McLean <mikem at redhat.com> - 1.8.0-1
+* Mon Apr  1 2013 Mike McLean <mikem at redhat.com> - 1.8.0-1
 - refactor how images are stored and tracked (images as builds)
 - delete repos in background
 - limit concurrent maven regens
