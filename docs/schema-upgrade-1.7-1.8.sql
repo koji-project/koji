@@ -1,5 +1,4 @@
 -- schema migration from version 1.7 to 1.8
--- (in progress)
 -- note: this update will require additional steps, please see the migration doc
 
 BEGIN;
