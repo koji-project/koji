@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.7.1
+Version: 1.8.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -236,6 +236,27 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Apr  1 2012 Mike McLean <mikem at redhat.com> - 1.8.0-1
+- refactor how images are stored and tracked (images as builds)
+- delete repos in background
+- limit concurrent maven regens
+- let kojira delete repos for deleted tags
+- check for a target before waiting on a repo
+- don't append to artifact_relpaths twice in the case of Maven builds
+- Use standard locations for maven settings and local repository
+- Specify altDeploymentRepository for Maven in settings.xml NOT on command line
+- rather than linking to each artifact from the Maven repo, link the version directory
+- handle volumes in maven repos
+- fix integer overflow issue in checkUpload handler
+- koji-shadow adjustments
+- change default ssl timeout to 60 seconds
+- rewrite ensuredir function to avoid os.makedirs race
+- rename -pkg commands to -build
+- implement remove-pkg for the cli
+- a little more room to edit host comments
+- use wsgi.url_scheme instead of HTTPS
+- handle relative-to-koji urls in mergerepos
+
 * Mon Nov 19 2012 Mike McLean <mikem at redhat.com> - 1.7.1-1
 - improved upload mechanism
 - koji-shadow enhancements
