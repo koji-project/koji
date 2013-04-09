@@ -618,6 +618,20 @@ class Session(object):
 
         return user_id
 
+    def setKrbPrincipal(self, name, krb_principal):
+        usertype = koji.USERTYPES['NORMAL']
+        status = koji.USER_STATUS['NORMAL']
+        update = """UPDATE users SET krb_principal = %(krb_principal)s WHERE name = %(name)s AND usertype = %(usertype)i AND status = %(status)i RETURNING user_id"""
+        cursor = context.cnx.cursor()
+        cursor.execute(insert, locals())
+        r = cursor.fetchall()
+        if len(r) != 1:
+            context.cnx.rollback()
+            raise koji.AuthError, 'could not automatically associate Kerberos Principal with existing user %s' % (name,)
+        else:
+            context.cnx.commit()
+            return r[0][0]
+
     def createUserFromKerberos(self, krb_principal):
         """Create a new user, based on the Kerberos principal.  Their
         username will be everything before the "@" in the principal.
@@ -627,7 +641,19 @@ class Session(object):
             raise koji.AuthError, 'invalid Kerberos principal: %s' % krb_principal
         user_name = krb_principal[:atidx]
 
-        return self.createUser(user_name, krb_principal=krb_principal)
+        # check if user already exists
+        c = context.cnx.cursor()
+        q = """SELECT krb_principal FROM users
+        WHERE name = %(user_name)s"""
+        c.execute(q,locals())
+        r = c.fetchone()
+        if not r:
+            return self.createUser(user_name, krb_principal=krb_principal)
+        else:
+            existing_user_krb = r[0]
+            if existing_user_krb is not None:
+                raise koji.AuthError, 'user %s already associated with other Kerberos principal: %s' % (user_name, existing_user_krb)
+            return self.setKrbPrincipal(user_name, krb_principal)
 
 def get_user_groups(user_id):
     """Get user groups
