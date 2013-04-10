@@ -1823,7 +1823,7 @@ class ClientSession(object):
         cnx.send(request)
         response = cnx.getresponse()
         try:
-            ret = self._read_xmlrpc_response(response)
+            ret = self._read_xmlrpc_response(response, handler)
         finally:
             response.close()
         return ret
@@ -1849,7 +1849,7 @@ class ClientSession(object):
             self._connection[1].close()
             self._connection = None
 
-    def _read_xmlrpc_response(self, response):
+    def _read_xmlrpc_response(self, response, handler=''):
         #XXX honor debug_xmlrpc
         if response.status != 200:
             if (response.getheader("content-length", 0)):
