@@ -15,18 +15,17 @@ CREATE TABLE image_builds (
     build_id INTEGER NOT NULL PRIMARY KEY REFERENCES build(id)
 ) WITHOUT OIDS;
 
-CREATE TABLE image_listing (
-       image_id INTEGER NOT NULL REFERENCES archiveinfo(id),
-       rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
-       UNIQUE (image_id, rpm_id)
-) WITHOUT OIDS;
-CREATE INDEX image_listing_rpms on image_listing(rpm_id);
-
 CREATE TABLE image_archives (
     archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
     arch VARCHAR(16) NOT NULL
 ) WITHOUT OIDS;
 
+CREATE TABLE image_listing (
+       image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
+       rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+       UNIQUE (image_id, rpm_id)
+) WITHOUT OIDS;
+CREATE INDEX image_listing_rpms on image_listing(rpm_id);
 
 -- alter archiveinfo
 ALTER TABLE archiveinfo ALTER COLUMN size TYPE BIGINT;
