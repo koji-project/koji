@@ -444,7 +444,9 @@ def ensuredir(directory):
             # can only happen if directory == '/' or equivalent
             # (which obviously should not happen)
             raise OSError, "root directory missing? %s" % directory
-        ensuredir(head)
+        if head:
+            ensuredir(head)
+        # note: if head is blank, then we've reached the top of a relative path
         try:
             os.mkdir(directory)
         except OSError:
