@@ -140,6 +140,8 @@ def get_options():
                       help=_("tag sucessful builds into the tag we are building, default is to not tag"))
     parser.add_option("--arches",
                       help=_("arches to use when creating tags"))
+    parser.add_option("--priority", type="int", default=5,
+                      help=_("priority to set for submitted builds"))
 
     #parse once to get the config file
     (options, args) = parser.parse_args()
@@ -1080,7 +1082,7 @@ class BuildTracker(object):
         #TODO       ...and verify repo
         repo_id, event_id = session.getTaskResult(task_id)
         #kick off build
-        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=5 )
+        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=options.priority )
         return task_id
 
     def report(self):
