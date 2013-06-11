@@ -24,12 +24,6 @@ import logging
 import sys
 import traceback
 
-# set this up for use by the plugins
-# we want log output to go to Apache's error_log
-logger = logging.getLogger('koji.plugin')
-logger.addHandler(logging.StreamHandler(sys.stderr))
-logger.setLevel(logging.INFO)
-
 # the available callback hooks and a list
 # of functions to be called for each event
 callbacks = {
@@ -164,9 +158,9 @@ def run_callbacks(cbtype, *args, **kws):
         try:
             func(cbtype, *args, **kws)
         except:
-            tb = ''.join(traceback.format_exception(*sys.exc_info()))
-            msg = 'Error running %s callback from %s: %s' % (cbtype, func.__module__, tb)
+            msg = 'Error running %s callback from %s' % (cbtype, func.__module__)
             if getattr(func, 'failure_is_an_option', False):
-                logging.getLogger('koji.plugin').warn('%s: %s' % (msg, tb))
+                logging.getLogger('koji.plugin').warn(msg, exc_info=True)
             else:
-                raise koji.CallbackError, msg
+                tb = ''.join(traceback.format_exception(*sys.exc_info()))
+                raise koji.CallbackError, '%s:\n%s' % (msg, tb)
