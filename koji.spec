@@ -180,8 +180,8 @@ rm -rf $RPM_BUILD_ROOT
 %files web
 %defattr(-,root,root)
 %{_datadir}/koji-web
+%dir %{_sysconfdir}/kojiweb
 %config(noreplace) %{_sysconfdir}/kojiweb/web.conf
-%{_sysconfdir}/kojiweb
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/kojiweb.conf
 
 %files builder
