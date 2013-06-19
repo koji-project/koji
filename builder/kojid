@@ -1321,13 +1321,29 @@ class BuildMavenTask(BaseBuildTask):
         settingsfile = '/builddir/.m2/settings.xml'
         buildroot.writeMavenSettings(settingsfile, outputdir)
 
+        pomfile = 'pom.xml'
+        maven_options = self.opts.get('maven_options', [])
+        for i, opt in enumerate(maven_options):
+            if opt == '-f' or opt == '--file':
+                if len(maven_options) > (i + 1):
+                    pomfile = maven_options[i + 1]
+                    break
+                else:
+                    raise koji.BuildError, '%s option requires a file path' % opt
+            elif opt.startswith('-f=') or opt.startswith('--file='):
+                pomfile = opt.split('=', 1)[1]
+                break
+            elif opt.startswith('-f'):
+                pomfile = opt[2:]
+                break
+
         buildroot.mavenBuild(sourcedir, outputdir, repodir,
                              props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
                              options=self.opts.get('maven_options'), goals=self.opts.get('goals'))
 
-        build_pom = os.path.join(sourcedir, 'pom.xml')
+        build_pom = os.path.join(sourcedir, pomfile)
         if not os.path.exists(build_pom):
-            raise koji.BuildError, 'no pom.xml found in checkout'
+            raise koji.BuildError, '%s does not exist' % pomfile
         pom_info = koji.parse_pom(build_pom)
         maven_info = koji.pom_to_maven_info(pom_info)
         maven_label = koji.mavenLabel(maven_info)
