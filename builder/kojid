@@ -480,8 +480,7 @@ class BuildRoot(object):
                     if fnmatch(repofile, pattern):
                         ignore = True
                         break
-                if relpath == '' and (fnmatch(repofile, '*-sources.zip') or
-                                      fnmatch(repofile, '*-patches.zip')):
+                if relpath == '' and repofile in ['sources.zip', 'patches.zip']:
                     # special-case the archives of the sources and patches, since we drop them in
                     # root of the output directory
                     ignore = True
@@ -1319,6 +1318,13 @@ class BuildMavenTask(BaseBuildTask):
         if self.opts.get('patches'):
             self.chownTree(patchdir, uid, gid)
 
+        settingsfile = '/builddir/.m2/settings.xml'
+        buildroot.writeMavenSettings(settingsfile, outputdir)
+
+        buildroot.mavenBuild(sourcedir, outputdir, repodir,
+                             props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
+                             options=self.opts.get('maven_options'), goals=self.opts.get('goals'))
+
         build_pom = os.path.join(sourcedir, 'pom.xml')
         if not os.path.exists(build_pom):
             raise koji.BuildError, 'no pom.xml found in checkout'
@@ -1332,13 +1338,6 @@ class BuildMavenTask(BaseBuildTask):
         if self.opts.get('patches'):
             os.rename(os.path.join(outputdir, 'patches.zip'),
                       os.path.join(outputdir, maven_label + '-patches.zip'))
-
-        settingsfile = '/builddir/.m2/settings.xml'
-        buildroot.writeMavenSettings(settingsfile, outputdir)
-
-        buildroot.mavenBuild(sourcedir, outputdir, repodir,
-                             props=self.opts.get('properties'), profiles=self.opts.get('profiles'),
-                             options=self.opts.get('maven_options'), goals=self.opts.get('goals'))
 
         logs = ['checkout.log']
         if self.opts.get('patches'):
