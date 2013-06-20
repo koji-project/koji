@@ -332,7 +332,7 @@ class WinBuildTask(MultiPlatformTask):
 
         subopts['repo_id'] = repo_id
 
-        task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem'], strict=False)
+        task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem', 'static_mac'], strict=False)
         task_id = self.session.host.subtask(method='vmExec',
                                             arglist=[name, [source_url, build_tag['name'], subopts], task_opts],
                                             label=name[:255],
@@ -468,14 +468,17 @@ class VMExecTask(BaseTaskHandler):
         orig_vm = conn.lookupByName(name)
         orig_paths = self.guestDisks(orig_vm)
 
-        cmd = ["virt-clone", "--debug",
-               "--original", name, "--name", clone_name,
+        cmd = ["virt-clone", "--original", name, "--name", clone_name,
                "--preserve-data"]
 
         for idx in range(len(orig_paths)):
             orig_disk = orig_paths[idx]
             new_disk = self.mkqcow2(clone_name, orig_disk, idx)
             cmd += ["--file", new_disk]
+
+        if opts.get('static_mac'):
+            orig_mac = self.macAddr(orig_vm)
+            cmd += ["--mac", orig_mac]
 
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
