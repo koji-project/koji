@@ -457,6 +457,7 @@ class VMExecTask(BaseTaskHandler):
         VM.  The original VM must be shutdown, or this will raise an error.
         """
         clone_name = self.CLONE_PREFIX + str(self.id) + '-' + name
+        clone_name = clone_name[:50]
         orig_vm = conn.lookupByName(name)
         orig_paths = self.guestDisks(orig_vm)
 
