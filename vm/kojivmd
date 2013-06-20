@@ -464,8 +464,7 @@ class VMExecTask(BaseTaskHandler):
         cmd = ["virt-clone", "--original", name, "--name", clone_name,
                "--preserve-data"]
 
-        for idx in range(len(orig_paths)):
-            orig_disk = orig_paths[idx]
+        for idx, orig_disk in enumerate(orig_paths):
             new_disk = self.mkqcow2(clone_name, orig_disk, idx)
             cmd += ["--file", new_disk]
 
@@ -497,7 +496,7 @@ class VMExecTask(BaseTaskHandler):
         ctx = doc.xpathNewContext()
 
         ret = []
-        nodelist = ctx.xpathEval("/domain/devices/disk/source")
+        nodelist = ctx.xpathEval('/domain/devices/disk[@device="disk" and @type="file"]/source')
         for node in nodelist:
             for prop in node.properties:
                 if prop.name in ["file", "dev"]:
