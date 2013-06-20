@@ -417,9 +417,9 @@ class VMExecTask(BaseTaskHandler):
         new_path = os.path.join(self.options.imagedir, new_name)
         cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk, new_path]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            output = proc.stdout.read()
             raise koji.BuildError, 'unable to create qcow2 image, "%s" returned %s; output was: %s' % \
                   (' '.join(cmd), ret, output)
         vm_user = pwd.getpwnam(self.options.vmuser)
@@ -479,9 +479,9 @@ class VMExecTask(BaseTaskHandler):
 
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
+        output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            output = proc.stdout.read()
             raise koji.BuildError('unable to clone VM: '
                                   '"%s" returned %s; output was: %s' %
                                   (' '.join(cmd), ret, output))
