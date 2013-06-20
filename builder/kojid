@@ -480,7 +480,7 @@ class BuildRoot(object):
                     if fnmatch(repofile, pattern):
                         ignore = True
                         break
-                if relpath == '' and repofile in ['sources.zip', 'patches.zip']:
+                if relpath == '' and repofile in ['scm-sources.zip', 'patches.zip']:
                     # special-case the archives of the sources and patches, since we drop them in
                     # root of the output directory
                     ignore = True
@@ -1282,7 +1282,7 @@ class BuildMavenTask(BaseBuildTask):
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
 
         # zip up pristine sources for auditing purposes
-        self._zip_dir(sourcedir, os.path.join(outputdir, 'sources.zip'))
+        self._zip_dir(sourcedir, os.path.join(outputdir, 'scm-sources.zip'))
 
         # Checkout out patches, if present
         if self.opts.get('patches'):
@@ -1346,14 +1346,15 @@ class BuildMavenTask(BaseBuildTask):
             raise koji.BuildError, '%s does not exist' % pomfile
         pom_info = koji.parse_pom(build_pom)
         maven_info = koji.pom_to_maven_info(pom_info)
-        maven_label = koji.mavenLabel(maven_info)
 
         # give the zip files more descriptive names
-        os.rename(os.path.join(outputdir, 'sources.zip'),
-                  os.path.join(outputdir, maven_label + '-sources.zip'))
+        os.rename(os.path.join(outputdir, 'scm-sources.zip'),
+                  os.path.join(outputdir, maven_info['artifact_id'] + '-' +
+                               maven_info['version'] + '-scm-sources.zip'))
         if self.opts.get('patches'):
             os.rename(os.path.join(outputdir, 'patches.zip'),
-                      os.path.join(outputdir, maven_label + '-patches.zip'))
+                      os.path.join(outputdir, maven_info['artifact_id'] + '-' +
+                                   maven_info['version'] + '-patches.zip'))
 
         logs = ['checkout.log']
         if self.opts.get('patches'):
