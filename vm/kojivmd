@@ -427,7 +427,7 @@ class VMExecTask(BaseTaskHandler):
         return new_path
 
     def updateXML(self, xml, opts):
-        """Fix areas of the clone XML that CloneDesign doesn't handle, or gets wrong"""
+        """Update the VM xml to reflect the task options"""
         doc = libxml2.parseDoc(xml)
         ctx = doc.xpathNewContext()
         if opts.get('cpus'):
@@ -445,14 +445,6 @@ class VMExecTask(BaseTaskHandler):
             curr_mem_node = ctx.xpathEval('/domain/currentMemory')[0]
             if str(mem) != curr_mem_node.getContent():
                 curr_mem_node.setContent(str(mem))
-        disks = ctx.xpathEval('/domain/devices/disk[@device="disk" and @type="file"]')
-        for disk in disks:
-            drivers = disk.xpathEval('driver')
-            if drivers and drivers[0].hasProp('type'):
-                source = disk.xpathEval('source')[0]
-                srcfile = os.path.basename(source.prop('file'))
-                if srcfile.startswith(self.CLONE_PREFIX) and srcfile.endswith(self.QCOW2_EXT):
-                    drivers[0].setProp('type', 'qcow2')
         fixed_xml = str(doc)
         ctx.xpathFreeContext()
         doc.freeDoc()
@@ -489,9 +481,7 @@ class VMExecTask(BaseTaskHandler):
                                   '"%s" returned %s; output was: %s' %
                                   (' '.join(cmd), ret, output))
 
-        # The CloneManager API doesn't always fix the type= of the
-        # <driver/> entry in the XML (if it exists), so do it manually.
-        # Also set the cpus and mem parameters directly in the XML.
+        # Set the cpus and mem parameters directly in the XML.
         newvm = conn.lookupByName(clone_name)
         clone_xml = self.updateXML(newvm.XMLDesc(0), opts)
         conn.defineXML(clone_xml)
