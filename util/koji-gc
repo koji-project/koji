@@ -828,7 +828,10 @@ def handle_prune():
             continue
         pkghist = {}
         for h in history:
-            pkghist.setdefault(h['name'], []).append(h)
+            if taginfo['maven_include_all'] and h['maven_build_id']:
+                pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
+            else:
+                pkghist.setdefault(h['name'], []).append(h)
         pkgs = pkghist.keys()
         pkgs.sort()
         for pkg in pkgs:

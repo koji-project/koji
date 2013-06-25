@@ -5526,13 +5526,15 @@ def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None)
               'tag_listing.create_event', 'tag_listing.revoke_event',
               'tag_listing.creator_id', 'tag_listing.revoker_id',
               'creator.name', 'revoker.name',
-              'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',)
+              'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',
+              'maven_builds.build_id', 'win_builds.build_id')
     aliases = ('build_id', 'name', 'version', 'release',
               'tag_id', 'tag_name', 'active',
               'create_event', 'revoke_event',
               'creator_id', 'revoker_id',
               'creator_name', 'revoker_name',
-              'create_ts', 'revoke_ts',)
+              'create_ts', 'revoke_ts',
+              'maven_build_id', 'win_build_id')
     st_complete = koji.BUILD_STATES['COMPLETE']
     tables = ['tag_listing']
     joins = ["tag ON tag.id = tag_listing.tag_id",
@@ -5541,7 +5543,9 @@ def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None)
              "events AS ev1 ON ev1.id = tag_listing.create_event",
              "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event",
              "users AS creator ON creator.id = tag_listing.creator_id",
-             "LEFT OUTER JOIN users AS revoker ON revoker.id = tag_listing.revoker_id", ]
+             "LEFT OUTER JOIN users AS revoker ON revoker.id = tag_listing.revoker_id",
+             "LEFT OUTER JOIN maven_builds ON maven_builds.build_id = build.id",
+             "LEFT OUTER JOIN win_builds ON win_builds.build_id = build.id"]
     clauses = []
     if tag is not None:
         tag_id = get_tag_id(tag, strict=True)
