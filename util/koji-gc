@@ -792,11 +792,11 @@ def handle_prune():
     if options.debug:
         pprint.pprint(policies.ruleset)
     #get tags
-    tags = [(t['name'], t) for t in session.listTags()]
-    tags.sort()
+    tags = session.listTags(queryOpts={'order': 'name'})
     untagged = {}
     build_ids = {}
-    for tagname, taginfo in tags:
+    for taginfo in tags:
+        tagname = taginfo['name']
         if tagname == options.trashcan_tag:
             if options.debug:
                 print "Skipping trashcan tag: %s" % tagname
@@ -821,16 +821,13 @@ def handle_prune():
         if options.debug:
             print "Pruning tag: %s" % tagname
         #get builds
-        history = session.tagHistory(tag=tagname)
+        history = session.tagHistory(tag=tagname, active=True, queryOpts={'order': '-create_ts'})
         if not history:
             if options.debug:
                 print "No history for %s" % tagname
             continue
-        history = [(h['create_ts'], h) for h in history if h['active']]
-        history.sort()
-        history.reverse()  #newest first
         pkghist = {}
-        for ts, h in history:
+        for h in history:
             pkghist.setdefault(h['name'], []).append(h)
         pkgs = pkghist.keys()
         pkgs.sort()

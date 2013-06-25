@@ -5514,7 +5514,7 @@ def query_history(tables=None, **kwargs):
     return ret
 
 
-def tag_history(build=None, tag=None, package=None, queryOpts=None):
+def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None):
     """Returns historical tag data
 
     package: only for given package
@@ -5552,6 +5552,10 @@ def tag_history(build=None, tag=None, package=None, queryOpts=None):
     if package is not None:
         pkg_id = get_package_id(package, strict=True)
         clauses.append("package.id = %(pkg_id)i")
+    if active is True:
+        clauses.append("tag_listing.active is true")
+    elif active is False:
+        clauses.append("tag_listing.active is not true")
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=locals(),
                            opts=queryOpts)
