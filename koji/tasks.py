@@ -64,11 +64,21 @@ def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
     #safe remove: with -xdev the find cmd will not cross filesystems
     #             (though it will cross bind mounts from the same filesystem)
+    if unmount:
+        umount_all(path)
+    if os.path.isfile(path) or os.path.islink(path):
+        logger.debug("Removing: %s" % path)
+        try:
+            os.remove(path)
+        except:
+            if strict:
+                raise
+            else:
+                logger.warn("Error removing: %s", exc_info=True)
+        return
     if not os.path.exists(path):
         logger.debug("No such path: %s" % path)
         return
-    if unmount:
-        umount_all(path)
     #first rm -f non-directories
     logger.debug('Scrubbing files in %s' % path)
     rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % path)
