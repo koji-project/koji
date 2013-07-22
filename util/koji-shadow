@@ -473,7 +473,7 @@ class TrackedBuild(object):
         if brs and bad:
             print "Warning: some rpms for %s lacked buildroots:" % self.nvr
             for rinfo in bad:
-                print "    %(name)-%(version)-%(release).%(arch)" % rinfo
+                print "    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
         return brs.keys()
 
     def getDeps(self):
