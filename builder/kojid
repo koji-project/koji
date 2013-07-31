@@ -180,7 +180,11 @@ class BuildRoot(object):
         elif repo_state != 'READY':
             raise koji.BuildrootError, "Requested repo (%i) is %s" % (repo_id, repo_state)
         self.br_arch = koji.canonArch(arch)
-        self.target_arch = arch
+        # armhfp is not a valid arch according to autoconf
+        if arch == 'armhfp':
+            self.target_arch = 'arm'
+        else:
+            self.target_arch = arch
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
         id = self.session.host.newBuildRoot(self.repoid, self.br_arch, task_id=task_id)
         if id is None:
