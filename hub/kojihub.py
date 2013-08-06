@@ -6662,7 +6662,7 @@ class UserInGroupTest(koji.policy.BaseSimpleTest):
     """Check if user is in group(s)
 
     args are treated as patterns and matched against group name
-    true is user is in /any/ matching group
+    true if user is in /any/ matching group
     """
     name = "user_in_group"
     def run(self, data):
@@ -6682,7 +6682,7 @@ class HasPermTest(koji.policy.BaseSimpleTest):
     """Check if user has permission(s)
 
     args are treated as patterns and matched against permission name
-    true is user has /any/ matching permission
+    true if user has /any/ matching permission
     """
     name = "has_perm"
     def run(self, data):
