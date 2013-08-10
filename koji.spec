@@ -1,5 +1,12 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
+%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+%global use_systemd 1
+%else
+%global use_systemd 0
+%global install_opt TYPE=sysv
+%endif
+
 %define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if "x%{?testbuild}" == "x1"
@@ -23,6 +30,10 @@ Requires: rpm-python
 Requires: pyOpenSSL
 Requires: python-urlgrabber
 BuildRequires: python
+%if %{use_systemd}
+BuildRequires: systemd
+BuildRequires: pkgconfig
+%endif
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
@@ -63,11 +74,17 @@ License: LGPLv2 and GPLv2+
 #mergerepos (from createrepo) is GPLv2+
 Requires: %{name} = %{version}-%{release}
 Requires: mock >= 0.9.14
+Requires(pre): /usr/sbin/useradd
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%else
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
-Requires(pre): /usr/sbin/useradd
+%endif
 Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
@@ -135,7 +152,7 @@ koji-web is a web UI to the Koji system.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make DESTDIR=$RPM_BUILD_ROOT install
+make DESTDIR=$RPM_BUILD_ROOT %{?install_opt} install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -192,14 +209,31 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojid
 %dir %{_libexecdir}/kojid
 %{_libexecdir}/kojid/mergerepos
+%if %{use_systemd}
+%{_unitdir}/kojid.service
+%else
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
+%endif
 %dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
 %attr(-,kojibuilder,kojibuilder) %{_sysconfdir}/mock/koji
 
 %pre builder
 /usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
+
+%if %{use_systemd}
+
+%post builder
+%systemd_post kojid.service
+
+%preun builder
+%systemd_preun kojid.service
+
+%postun builder
+%systemd_postun kojid.service
+
+%else
 
 %post builder
 /sbin/chkconfig --add kojid
@@ -209,6 +243,7 @@ if [ $1 = 0 ]; then
   /sbin/service kojid stop &> /dev/null
   /sbin/chkconfig --del kojid
 fi
+%endif
 
 %files vm
 %defattr(-,root,root)
