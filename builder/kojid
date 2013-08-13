@@ -520,7 +520,7 @@ class BuildRoot(object):
                 else:
                     cmd.append('-D%s' % name)
 
-        rv = self.mock(cmd + ['dependency:resolve-plugins'])
+        rv = self.mock(cmd + ['org.apache.maven.plugins:maven-dependency-plugin:resolve-plugins'])
         if rv:
             self.expire()
             raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv, logfile='root.log')
