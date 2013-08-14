@@ -4145,6 +4145,9 @@ def anon_handle_taginfo(options, session, args):
             continue
         print "Tag: %(name)s [%(id)d]" %info
         print "Arches: %(arches)s" %info
+        group_list = [x['name'] for x in session.getTagGroups(info['id'], **event_opts)]
+        group_list.sort()
+        print "Groups: " + ', '.join(group_list)
         if info.get('locked'):
             print 'LOCKED'
         if info.get('perm_id') is not None:
