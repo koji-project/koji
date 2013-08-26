@@ -152,6 +152,11 @@ $value
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
         <strong>Kickstart File:</strong> $params[4]<br/>
         $printOpts($params[5])
+        #elif $task.method == 'baseImage'
+        <strong>Arches:</strong> #echo ', '.join($params[2])#<br/>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
+        <strong>Installation Tree:</strong> $params[4]<br/>
+        $printOpts($params[5])
         #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
         #if $len($params) > 4:
         ## new method signature
@@ -169,6 +174,11 @@ $value
         $printOpts($params[3])
         #end if
         #end if
+        #elif $task.method == 'createBaseImage'
+        #set $target = $params[4]
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
+        <strong>Install Tree:</strong> $params[7]<br/>
+        $printOpts($params[8])
         #elif $task.method == 'winbuild'
         <strong>VM:</strong> $params[0]<br/>
         <strong>SCM URL:</strong> $params[1]<br/>
@@ -359,6 +369,8 @@ $value
     <tr>
       <th>Result</th>
       <td>
+        <a href="#" collapse" id="toggle-result" style="display: none;">Show results</a>
+        <div id="result">
         #if $excClass
           <pre>
           #if $hasattr($result, 'faultString')
@@ -372,6 +384,7 @@ ${excClass.__name__}: $cgi.escape($str($result))
         #else
         $printValue('', $result)
         #end if
+        </div>
       </td>
     </tr>
     <tr>
@@ -392,5 +405,26 @@ ${excClass.__name__}: $cgi.escape($str($result))
       </td>
     </tr>
   </table>
+
+  <script type="text/javascript">
+    (function() {
+       var r = document.getElementById('result'),
+       t = document.getElementById('toggle-result');
+       r.style.display = 'none';
+       t.style.display = 'block';
+       t.text = 'Show result';
+       t.onclick = function(e) {
+         if(r.style.display == 'none') {
+           r.style.display = 'block';
+           t.text = 'Hide result';
+           }
+         else {
+           r.style.display = 'none';
+           t.text = 'Show result';
+         }
+         return false;
+       };
+    })();
+  </script>
 
 #include "includes/footer.chtml"
