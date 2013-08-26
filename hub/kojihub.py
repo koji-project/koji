@@ -54,7 +54,6 @@ import xmlrpclib
 import zipfile
 from koji.context import context
 
-
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):
@@ -6862,9 +6861,6 @@ def importImageInternal(task_id, build_id, imgdata):
     arch - the arch if the image
     files - files associated with the image (appliances have multiple files)
     rpmlist - the list of RPM NVRs installed into the image
-    rootdev - root device image that mounts "/"; the archive id of this image
-        is what is referenced in the image_listing table. livecds set this
-        to None.
     """
     host = Host()
     host.verify()
@@ -6879,10 +6875,8 @@ def importImageInternal(task_id, build_id, imgdata):
     imgdata['relpath'] = koji.pathinfo.taskrelpath(imgdata['task_id'])
     archives = []
     for imgfile in imgdata['files']:
-        relpath = os.path.join(koji.pathinfo.taskrelpath(imgdata['task_id']),
-            imgfile)
         fullpath = os.path.join(workpath, imgfile)
-        archivetype = get_archive_type(filename=relpath)
+        archivetype = get_archive_type(imgfile)
         logger.debug('image type we are importing is: %s' % archivetype)
         if not archivetype:
             raise koji.BuildError, 'Unsupported image type'
@@ -6903,7 +6897,8 @@ def importImageInternal(task_id, build_id, imgdata):
         os.rename(logsrc, final_path)
         os.symlink(final_path, logsrc)
 
-    # track the contents of the image
+    # record all of the RPMs installed in the image(s)
+    # verify they were built in Koji or in an external repo
     rpm_ids = []
     for an_rpm in imgdata['rpmlist']:
         location = an_rpm.get('location')
@@ -6913,28 +6908,16 @@ def importImageInternal(task_id, build_id, imgdata):
             data = get_rpm(an_rpm, strict=True)
         rpm_ids.append(data['id'])
 
-    archive_id = archives[0]['id'] # satisfies the livecd case
-    if imgdata.get('rootdev'):
-        # but we are importing an appliance
-        for a in archives:
-            if imgdata['rootdev'] in a['filename']:
-                archive_id = a['id']
-                break
-
-    logger.debug('root archive id is %s' % archive_id)
+    # associate those RPMs with the image
     q = """INSERT INTO image_listing (image_id,rpm_id)
            VALUES (%(image_id)i,%(rpm_id)i)"""
-    for rpm_id in rpm_ids:
-        _dml(q, {'image_id': archive_id, 'rpm_id': rpm_id})
-    logger.info('updated image_listing')
-
-    # update build table
-    st_complete = koji.BUILD_STATES['COMPLETE']
-    update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
-                             values={'build_id': build_id})
-    update.set(id=build_id, state=st_complete)
-    update.rawset(completion_time='now()')
-    update.execute()
+    for archive in archives:
+        sys.stderr.write('working on archive %s' % archive)
+        if archive['filename'].endswith('xml'):
+            continue
+        sys.stderr.write('associating installed rpms with %s' % archive['id'])
+        for rpm_id in rpm_ids:
+            _dml(q, {'image_id': archive['id'], 'rpm_id': rpm_id})
 
     # send email
     build_notification(imgdata['task_id'], build_id)
@@ -7106,7 +7089,7 @@ class RootExports(object):
 
     # Create the image task. Called from _build_image in the client.
     #
-    def buildImage (self, name, version, arch, target, ksfile, img_type, opts=None, priority=None):
+    def buildImage(self, name, version, arch, target, ksfile, img_type, opts=None, priority=None):
         """
         Create an image using a kickstart file and group package list.
         """
@@ -7127,6 +7110,29 @@ class RootExports(object):
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
         return make_task(img_type, [name, version, arch, target, ksfile, opts], **taskOpts)
+
+    # Create the image task. Called from _build_image_oz in the client.
+    #
+    def buildImageOz(self, name, version, arches, target, inst_tree, img_type, opts=None, priority=None):
+        """
+        Create an image using a kickstart file and group package list.
+        """
+
+        if img_type not in ('baseImage',):
+            raise koji.GenericError, 'Unrecognized image type: %s' % img_type
+
+        context.session.assertPerm(img_type)
+
+        taskOpts = {'channel': 'image'}
+        if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed, \
+                               'only admins may create high-priority tasks'
+
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+
+        return make_task(img_type, [name, version, arches, target, inst_tree, opts], **taskOpts)
 
     def migrateImage(self, old_image_id, name, version):
         """Migrate an old image to the new schema
@@ -9844,32 +9850,36 @@ class HostExports(object):
                 os.rename(filename, dest)
                 os.symlink(dest, filename)
 
-    def moveImageBuildToScratch(self, task_id, results, rpm_results):
+    def moveImageBuildToScratch(self, task_id, results):
         """move a completed image scratch build into place"""
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        workdir = koji.pathinfo.task(results['task_id'])
-        scratchdir = koji.pathinfo.scratch()
-        username = get_user(task.getOwner())['name']
-        destdir = os.path.join(scratchdir, username,
-            'task_%s' % results['task_id'])
-        for img in results['files'] + results['logs']:
-            src = os.path.join(workdir, img)
-            dest = os.path.join(destdir, img)
-            koji.ensuredir(destdir)
-            os.rename(src, dest)
-            os.symlink(dest, src)
-        if rpm_results:
-            for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
-                    rpm_results['logs']:
-                src = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
-                                   relpath)
-                dest = os.path.join(destdir, 'rpms', relpath)
-                koji.ensuredir(os.path.dirname(dest))
+        logger.debug('scratch image results: %s' % results)
+        for sub_results in results.values():
+            workdir = koji.pathinfo.task(sub_results['task_id'])
+            scratchdir = koji.pathinfo.scratch()
+            username = get_user(task.getOwner())['name']
+            destdir = os.path.join(scratchdir, username,
+                'task_%s' % sub_results['task_id'])
+            for img in sub_results['files'] + sub_results['logs']:
+                src = os.path.join(workdir, img)
+                dest = os.path.join(destdir, img)
+                koji.ensuredir(destdir)
+                logger.debug('renaming %s to %s' % (src, dest))
                 os.rename(src, dest)
                 os.symlink(dest, src)
+            if sub_results.has_key('rpmresults'):
+                rpm_results = sub_results['rpmresults']
+                for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
+                        rpm_results['logs']:
+                    src = os.path.join(koji.pathinfo.task(
+                        rpm_results['task_id']), relpath)
+                    dest = os.path.join(destdir, 'rpms', relpath)
+                    koji.ensuredir(os.path.dirname(dest))
+                    os.rename(src, dest)
+                    os.symlink(dest, src)
 
     def initBuild(self,data):
         """Create a stub build entry.
@@ -9898,6 +9908,21 @@ class HostExports(object):
         result = import_build(srpm, rpms, brmap, task_id, build_id, logs=logs)
         build_notification(task_id, build_id)
         return result
+
+    def completeImageBuild(self, task_id, build_id, results):
+        """Set an image build to the COMPLETE state"""
+        host = Host()
+        host.verify()
+        task = Task(task_id)
+        task.assertHost(host.id)
+        self.importImage(task_id, build_id, results)
+
+        st_complete = koji.BUILD_STATES['COMPLETE']
+        update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
+                                 values={'build_id': build_id})
+        update.set(id=build_id, state=st_complete)
+        update.rawset(completion_time='now()')
+        update.execute()
 
     def initMavenBuild(self, task_id, build_info, maven_info):
         """Create a new in-progress Maven build
@@ -10180,16 +10205,17 @@ class HostExports(object):
             _untag_build(fromtag,build,user_id=user_id,force=force,strict=True)
         _tag_build(tag,build,user_id=user_id,force=force)
 
-    def importImage(self, task_id, build_id, imgdata, rpm_results):
+    def importImage(self, task_id, build_id, results):
         """
         Import a built image, populating the database with metadata and 
         moving the image to its final location.
         """
-        results = importImageInternal(task_id, build_id, imgdata)
-        if rpm_results:
-            _import_wrapper(rpm_results['task_id'],
-                get_build(build_id, strict=True), rpm_results)
-        return results
+        for sub_results in results.values():
+            importImageInternal(task_id, build_id, sub_results)
+            if sub_results.has_key('rpmresults'):
+                rpm_results = sub_results['rpmresults']
+                _import_wrapper(rpm_results['task_id'],
+                    get_build(build_id, strict=True), rpm_results)
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.
