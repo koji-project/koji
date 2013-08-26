@@ -4825,7 +4825,7 @@ def handle_spin_livecd(options, session, args):
         help=_("Create a scratch LiveCD image"))
     parser.add_option("--repo", action="append",
         help=_("Specify a repo that will override the repo used to install " +
-               "RPMs in the appliance. May be used multiple times. The " +
+               "RPMs in the LiveCD. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--specfile", metavar="URL",
@@ -4896,10 +4896,64 @@ def handle_spin_appliance(options, session, args):
         assert False
     _build_image(options, task_options, session, args, 'appliance')
 
+def handle_image_build(options, session, args):
+    """Create a disk image given an install tree"""
+
+    # Usage & option parsing
+    usage = _("usage: %prog image-build [options] <name> <version> " +
+              "<target> <install-tree-url> <arch> [<arch>...]")
+    usage += _("\n(Specify the --help global option for a list of other " +
+               "help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--wait", action="store_true",
+        help=_("Wait on the image creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+        help=_("Don't wait on image creation"))
+    parser.add_option("--noprogress", action="store_true",
+        help=_("Do not display progress of the upload"))
+    parser.add_option("--background", action="store_true",
+        help=_("Run the image creation task at a lower priority"))
+    parser.add_option("--ksurl", metavar="SCMURL",
+        help=_("The URL to the SCM containing the kickstart file"))
+    parser.add_option("--ksversion", metavar="VERSION",
+        help=_("The syntax version used in the kickstart file"))
+    parser.add_option("--kickstart", help="Path to a local kickstart file")
+    parser.add_option("--distro",
+        help="specify the RPM based distribution the image will be based on")
+    parser.add_option("--scratch", action="store_true",
+        help=_("Create a scratch image"))
+    parser.add_option("--format", default=[], action="append",
+        help=_("Convert results to one or more formats " +
+               "(vmdk, qcow, qcow2, vdi), this option may be used multiple " +
+               "times. By default, specifying this option will omit the " +
+               "raw disk image (which is 10G in size) from the build " +
+               "results. If you really want it included with converted " +
+               "images, pass in 'raw' as an option."))
+    parser.add_option("--repo", action="append",
+        help=_("Specify a repo that will override the repo used to install " +
+               "RPMs in the image. May be used multiple times. The " +
+               "build tag repo associated with the target is the default."))
+    parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--specfile", metavar="URL",
+        help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag package"))
+    (task_options, args) = parser.parse_args(args)
+    if len(args) < 5:
+        parser.error(_("At least tive arguments are required: a name, " +
+                       "a version, a build target, a URL to an " +
+                       "install tree, and 1 or more architectures."))
+        assert False
+    if not task_options.ksurl and not task_options.kickstart:
+        parser.error('You must specify --kickstart')
+    if not task_options.distro:
+        parser.error('You must specify --distro. Examples: Fedora-16, RHEL-6.4')
+    _build_image_oz(options, task_options, session, args, 'baseImage')
+
 def _build_image(options, task_opts, session, args, img_type):
     """
     A private helper function that houses common CLI code for building
-    images.
+    images with chroot-based tools.
     """
 
     if img_type not in ('livecd', 'appliance'):
@@ -4950,6 +5004,73 @@ def _build_image(options, task_opts, session, args, img_type):
 
     # finally, create the task.
     task_id = session.buildImage(args[0], args[1], arch, target, ksfile,
+                                 img_type, opts=hub_opts, priority=priority)
+
+    if not options.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+    else:
+        return
+
+def _build_image_oz(options, task_opts, session, args, img_type):
+    """
+    A private helper function that houses common CLI code for building
+    images with Oz and ImageFactory
+    """
+
+    if img_type not in ('baseImage',):
+        raise koji.GenericError, 'Unrecognized image type: %s' % img_type
+    activate_session(session)
+
+    # Set the task's priority. Users can only lower it with --background.
+    priority = None
+    if task_opts.background:
+        # relative to koji.PRIO_DEFAULT; higher means a "lower" priority.
+        priority = 5
+    if _running_in_bg() or task_opts.noprogress:
+        callback = None
+    else:
+        callback = _progress_callback
+
+    # We do some early sanity checking of the given target.
+    # Kojid gets these values again later on, but we check now as a convenience
+    # for the user.
+    target = args[2]
+    tmp_target = session.getBuildTarget(target)
+    if not tmp_target:
+        raise koji.GenericError, _("Unknown build target: %s" % target)
+    dest_tag = session.getTag(tmp_target['dest_tag'])
+    if not dest_tag:
+        raise koji.GenericError, _("Unknown destination tag: %s" %
+                                   tmp_target['dest_tag_name'])
+
+    # Set the architectures
+    arches = []
+    for arch in args[4:]:
+        arches.append(koji.canonArch(arch))
+
+    # Upload the KS file to the staging area.
+    # If it's a URL, it's kojid's job to go get it when it does the checkout.
+    ksfile = task_opts.kickstart
+    if ksfile:
+        serverdir = _unique_path('cli-' + img_type)
+        session.uploadWrapper(ksfile, serverdir, callback=callback)
+        task_opts.kickstart = os.path.join('work', serverdir,
+            os.path.basename(ksfile))
+        print
+
+    hub_opts = {}
+    for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
+                'release', 'skip-tag', 'specfile', 'distro', 'format'):
+        val = getattr(task_opts, opt, None)
+        if val is not None:
+            hub_opts[opt] = val
+
+    # finally, create the task.
+    task_id = session.buildImageOz(args[0], args[1], arches, target, args[3],
                                  img_type, opts=hub_opts, priority=priority)
 
     if not options.quiet:
