@@ -760,6 +760,9 @@ def handle_add_pkg(options, session, args):
     if not options.owner:
         parser.error(_("Please specify an owner for the package(s)"))
         assert False
+    if not session.getUser(options.owner):
+        print "User %s does not exist" % options.owner
+        return 1
     activate_session(session)
     tag = args[0]
     opts = {}
