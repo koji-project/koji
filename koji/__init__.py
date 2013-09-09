@@ -1835,8 +1835,8 @@ class ClientSession(object):
         if self._connection and self.opts.get('keepalive'):
             if key == self._connection[0]:
                 cnx = self._connection[1]
-            if getattr(cnx, 'sock', None):
-                return cnx
+                if getattr(cnx, 'sock', None):
+                    return cnx
         cnx = self._cnxClass(self._host, self._port, **self._cnxOpts)
         self._connection = (key, cnx)
         if self._timeout_compat:
