@@ -10206,6 +10206,15 @@ class HostExports(object):
         host.verify()
         check_policy(name, data, default=default, strict=True)
 
+    def evalPolicy(self, name, data):
+        """Evaluate named policy with given data and return the result"""
+        host = Host()
+        host.verify()
+        ruleset = context.policy.get(name)
+        if not ruleset:
+            raise koji.GenericError, "no such policy: %s" % name
+        return ruleset.apply(data)
+
     def newBuildRoot(self, repo, arch, task_id=None):
         host = Host()
         host.verify()
