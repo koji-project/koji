@@ -342,6 +342,11 @@ class Dispatcher(object):
             values['tb_long'] = tb_long
         else:
             values['tb_long'] = "Full tracebacks disabled"
+        # default these koji values to false so the _genHTML doesn't try to look
+        # them up (which will fail badly if the hub is offline)
+        # FIXME - we need a better fix for this
+        environ['koji.values'].setdefault('mavenEnabled', False)
+        environ['koji.values'].setdefault('winEnabled', False)
         result = _genHTML(environ, 'error.chtml')
         headers = [
             ('Allow', 'GET, POST, HEAD'),
