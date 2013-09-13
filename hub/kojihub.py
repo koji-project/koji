@@ -1906,10 +1906,12 @@ def readTagGroups(tag,event=None,inherit=True,incl_pkgs=True,incl_reqs=True):
     groups = get_tag_groups(tag,event,inherit,incl_pkgs,incl_reqs)
     for group in groups.values():
         #filter blocked entries and collapse to a list
-        group['packagelist'] = filter(lambda x: not x['blocked'],
-                                      group['packagelist'].values())
-        group['grouplist'] = filter(lambda x: not x['blocked'],
-                                    group['grouplist'].values())
+        if 'packagelist' in group:
+            group['packagelist'] = filter(lambda x: not x['blocked'],
+                                          group['packagelist'].values())
+        if 'grouplist' in group:
+            group['grouplist'] = filter(lambda x: not x['blocked'],
+                                        group['grouplist'].values())
     #filter blocked entries and collapse to a list
     return filter(lambda x: not x['blocked'],groups.values())
 
