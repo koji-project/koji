@@ -4889,6 +4889,7 @@ def handle_spin_appliance(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
+    print 'spin-appliance is deprecated and will be replaced with image-build'
     if len(args) != 5:
         parser.error(_("Five arguments are required: a name, a version, " +
                        "an architecture, a build target, and a relative path" +
@@ -4898,8 +4899,7 @@ def handle_spin_appliance(options, session, args):
 
 def handle_image_build(options, session, args):
     """Create a disk image given an install tree"""
-
-    # Usage & option parsing
+    formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
     usage += _("\n(Specify the --help global option for a list of other " +
@@ -4911,6 +4911,8 @@ def handle_image_build(options, session, args):
         help=_("Don't wait on image creation"))
     parser.add_option("--noprogress", action="store_true",
         help=_("Do not display progress of the upload"))
+    parser.add_option("--disk-size", default=10,
+        help=_("Set the disk device size in gigabytes"))
     parser.add_option("--background", action="store_true",
         help=_("Run the image creation task at a lower priority"))
     parser.add_option("--ksurl", metavar="SCMURL",
@@ -4924,10 +4926,10 @@ def handle_image_build(options, session, args):
         help=_("Create a scratch image"))
     parser.add_option("--format", default=[], action="append",
         help=_("Convert results to one or more formats " +
-               "(vmdk, qcow, qcow2, vdi), this option may be used multiple " +
-               "times. By default, specifying this option will omit the " +
-               "raw disk image (which is 10G in size) from the build " +
-               "results. If you really want it included with converted " +
+               "(%s), this option may be used " % ', '.join(formats) +
+               "multiple times. By default, specifying this option will " +
+               "omit the raw disk image (which is 10G in size) from the " +
+               "build results. If you really want it included with converted " +
                "images, pass in 'raw' as an option."))
     parser.add_option("--repo", action="append",
         help=_("Specify a repo that will override the repo used to install " +
@@ -4997,7 +4999,7 @@ def _build_image(options, task_opts, session, args, img_type):
 
     hub_opts = {}
     for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-                'release', 'skip-tag', 'vmem', 'vcpu', 'format', 'specfile'):
+                'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
@@ -5064,7 +5066,8 @@ def _build_image_oz(options, task_opts, session, args, img_type):
 
     hub_opts = {}
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
-                'release', 'skip-tag', 'specfile', 'distro', 'format'):
+                'release', 'skip_tag', 'specfile', 'distro', 'format',
+                'disk_size'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
