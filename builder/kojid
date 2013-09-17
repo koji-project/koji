@@ -1862,6 +1862,7 @@ class BuildBaseImageTask(BuildImageTask):
                         spec_url, subtask, target_info, bld_info,
                         repo_info['id'])
 
+            self.logger.debug('Image Results for hub: %s' % results)
             if opts.get('scratch'):
                 self.session.host.moveImageBuildToScratch(self.id, results)
             else:
@@ -2641,8 +2642,11 @@ class OzImageTask(BaseTaskHandler):
         """
         template += """</os>
     <description>%s OS</description>
+    <disk>
+        <size>%sG</size>
+    </disk>
 </template>
-""" % imgname
+""" % (imgname, self.opts.get('disk_size'))
         return template
 
     def parseDistro(self, distro):
@@ -2716,15 +2720,145 @@ class BaseImageTask(OzImageTask):
                 return part.disk
         raise koji.ApplianceError, 'kickstart lacks a "/" mountpoint'
 
+    def format_deps(self, formats):
+        """
+        Return a dictionary where the keys are the image formats we need to
+        build/convert, and the values are booleans that indicate whether the
+        output should be included in the task results.
+
+        Some image formats require others to be processed first, which is why
+        we have to do this. rhevm-ova requires rhevm, but if the user did not
+        request it, we should not pass it back up.
+        """
+        supported = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova')
+        for f in formats:
+            if f not in supported:
+                raise koji.ApplianceError('Invalid format: %s' % f)
+        f_dict = dict((f, True) for f in formats)
+
+        # If a user requests 1 or more image formats (with --format) we do not
+        # by default include the raw disk image in the results, because it is
+        # 10G in size. To override this behavior, the user must specify
+        # "--format raw" in their command. If --format was not used at all,
+        # then we do include the raw disk image by itself.
+        if len(formats) == 0:
+            # we only want a raw disk image (no format option given)
+            f_dict['raw'] = True
+        else:
+            f_dict['raw'] = False
+        self.logger.debug('Image delivery plan: %s' % f_dict)
+        return f_dict
+
+    def do_images(self, arch, template, ozlog, imgname):
+        """
+        Call out to ImageFactory to build the image(s) we want. Returns a dict
+        of details for each image type we had to ask ImageFactory to build
+        {format: dispatcher object}
+        """
+        def do_target_image(base_id, image_type):
+            try:
+                target = bd.builder_for_target_image(image_type,
+                    image_id=base_id, template=None, parameters={})
+                target.target_thread.join()
+            except:
+                tlog.removeHandler(fhandler)
+                self.uploadFile(ozlog)
+            self.logger.debug(
+                'Target image results: %s' % target.target_image.status)
+            if target.target_image.status == 'FAILED':
+                if not self.session.checkUpload('', os.path.basename(ozlog)):
+                    tlog.removeHandler(fhandler)
+                    self.uploadFile(ozlog)
+                raise koji.ApplianceError('Image status is %s: %s' % (
+                    target.target_image.status,
+                    target.target_image.status_detail))
+            return target
+
+        fhandler = logging.FileHandler(ozlog)
+        bd = BuildDispatcher()
+        tlog = logging.getLogger()
+        tlog.setLevel(logging.DEBUG)
+        tlog.addHandler(fhandler)
+        images = {}
+        params = {'install_script': str(self.ks.handler)} #ks contents
+        random.seed() # necessary to ensure a unique mac address
+        try:
+            base = bd.builder_for_base_image(template, parameters=params)
+            base.base_thread.join()
+        except:
+            # upload log even if we failed to help diagnose an issue
+            tlog.removeHandler(fhandler)
+            self.uploadFile(ozlog)
+        self.logger.debug('Base image results: %s' % base.base_image.status)
+        if base.base_image.status == 'FAILED':
+            scrnshot = self.getScreenshot()
+            if scrnshot:
+                ext = scrnshot[-3:]
+                self.uploadFile(scrnshot, remoteName='screenshot.%s' % ext)
+            base.os_plugin.abort() # forcibly tear down the VM
+            # TODO abort when a task is CANCELLED
+            if not self.session.checkUpload('', os.path.basename(ozlog)):
+                tlog.removeHandler(fhandler)
+                self.uploadFile(ozlog)
+
+            raise koji.ApplianceError('Image status is %s: %s' %
+                (base.base_image.status, base.base_image.status_detail))
+        lxml = self.fixImageXML('raw', imgname,
+            'libvirt-%s-%s.xml' % ('raw', arch),
+            base.base_image.parameters['libvirt_xml'])
+        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % arch)
+        tdl = open(tdl_path, 'w')
+        tdl.write(base.base_image.template)
+        tdl.close()
+        self.uploadFile(tdl_path)
+        images['raw'] = {'image': base.base_image.data, 'libvirt': lxml,
+                         'tdl': os.path.basename(tdl_path),
+                         'icicle': base.base_image.icicle}
+
+        # target-image type images
+        for format in ('rhevm-ova', 'vsphere-ova'):
+            # assumes self.formats is pre-populated with rhevm/vsphere if the
+            # "ova" format for them was requested with --format only
+            if format not in self.formats:
+                continue
+            targ = do_target_image(base.base_image.identifier,
+                format.replace('-ova', ''))
+            # Target images do not have their own modified libvirt xml files.
+            # They may not even be bootable with libvirt.
+            lxml = self.fixImageXML(format, imgname,
+                'libvirt-%s-%s.xml' % (format, arch),
+                base.base_image.parameters['libvirt_xml'])
+            targ2 = do_target_image(targ.target_image.identifier, 'OVA')
+            images[format] = {'libvirt': lxml, 'image': targ2.target_image.data}
+        tlog.removeHandler(fhandler)
+        self.uploadFile(ozlog)
+
+        # qemu-img conversions
+        for format in ('qcow', 'qcow2', 'vdi', 'vmdk'):
+            if format not in self.formats:
+                continue
+            newimg = os.path.join(self.workdir, imgname + '.%s' % format)
+            cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
+                format, base.base_image.data, newimg]
+            if format in ('qcow', 'qcow2'):
+                cmd.insert(2, '-c') # enable compression for qcow images
+            conlog = os.path.join(self.workdir,
+                'qemu-img-%s-%s.log' % (format, arch))
+            log_output(self.session, cmd[0], cmd, conlog,
+                self.getUploadDir(), logerror=1)
+            lxml = self.fixImageXML(format, imgname,
+                'libvirt-%s-%s.xml' % (format, arch),
+                base.base_image.parameters['libvirt_xml'])
+            images[format] = {'image': newimg, 'libvirt': lxml}
+
+        return images
+
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, inst_tree, opts=None):
 
         if opts == None:
             opts = {}
         self.opts = opts
-        formats = opts.get('format')
-        for f in formats:
-            if f not in ('vmdk', 'qcow', 'qcow2', 'vdi', 'raw'):
-                raise koji.ApplianceError('Invalid format: %s' % f)
+        self.formats = self.format_deps(opts.get('format'))
 
         # First, prepare the kickstart to use the repos we tell it
         kspath = self.fetchKickstart()
@@ -2745,35 +2879,14 @@ class BaseImageTask(OzImageTask):
         # the likelihood of image tasks clashing here is very small)
         rm = ReservationManager()
         rm._listen_port = rm.MIN_PORT + self.id % (rm.MAX_PORT - rm.MIN_PORT)
-
-        # invoke ImageFactory, capture its logging
         ozlogname = 'oz-%s.log' % arch
         ozlog = os.path.join(self.workdir, ozlogname)
-        fhandler = logging.FileHandler(ozlog)
-        bd = BuildDispatcher()
-        tlog = logging.getLogger()
-        tlog.setLevel(logging.DEBUG)
-        tlog.addHandler(fhandler)
-        params = {'install_script': str(self.ks.handler)} #ks contents
-        random.seed() # necessary to ensure a unique mac address
-        try:
-            ozif = bd.builder_for_base_image(template, parameters=params)
-            ozif.base_thread.join()
-        finally:
-            # upload log even if we failed to help diagnose an issue
-            tlog.removeHandler(fhandler)
-            self.uploadFile(ozlog)
-        if ozif.base_image.status == 'FAILED':
-            scrnshot = self.getScreenshot()
-            if scrnshot:
-                ext = scrnshot[-3:]
-                self.uploadFile(scrnshot, remoteName='screenshot.%s' % ext)
-            ozif.os_plugin.abort() # forcibly tear down the VM
-            # TODO do this when a task is CANCELLED
-            raise koji.ApplianceError('Image status is %s: %s' %
-                (ozif.base_image.status, ozif.base_image.status_detail))
+
+        # invoke the image builds
+        images = self.do_images(arch, template, ozlog, imgname)
 
         # structure the results to pass back to the hub:
+        tdl_path = images['raw']['tdl']
         imgdata = {
             'arch': arch,
             'task_id': self.id,
@@ -2783,15 +2896,14 @@ class BaseImageTask(OzImageTask):
             'version': version,
             'release': release,
             'rpmlist': [],
-            'files': []
+            'files': [os.path.basename(tdl_path)]
         }
-
         # record the RPMs that were installed
         if not opts.get('scratch'):
             fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
                 'payloadhash', 'buildtime')
-            icicle = xml.dom.minidom.parseString(ozif.base_image.icicle)
-            self.logger.debug('ICICLE: %s' % ozif.base_image.icicle)
+            icicle = xml.dom.minidom.parseString(images['raw']['icicle'])
+            self.logger.debug('ICICLE: %s' % images['raw']['icicle'])
             for p in icicle.getElementsByTagName('extra'):
                 bits = p.firstChild.nodeValue.split(',')
                 rpm = {
@@ -2814,49 +2926,19 @@ class BaseImageTask(OzImageTask):
                 self.id, repo_id=repo_info['id'])
             br.markExternalRPMs(imgdata['rpmlist'])
 
-        # If a user requests 1 or more image formats (with --format) we do not
-        # by default include the raw disk image in the results, because it is
-        # 10G in size. To override this behavior, the user must specify
-        # "--format raw" in their command. If --format was not used at all,
-        # then we do include the raw disk image by itself.
-        if len(formats) == 0:
-            # we only want a raw disk image (no format option given)
-            formats.append('raw')
-        for f in formats:
-            if f == 'raw':
-                newimg = os.path.join(self.workdir, imgname + '.raw')
-                imgdata['files'].append(os.path.basename(newimg))
-                self.uploadFile(ozif.base_image.data,
-                    remoteName=os.path.basename(newimg))
-                lxml = self.fixImageXML(f, imgname,
-                    'libvirt-%s-%s.xml' % (f, arch),
-                    ozif.base_image.parameters['libvirt_xml'])
-                self.uploadFile(lxml)
-                imgdata['files'].append(os.path.basename(lxml))
+        # upload the results
+        for format in (f for f in self.formats.keys() if self.formats[f]):
+            lxml = images[format]['libvirt']
+            newimg = images[format]['image']
+            if 'ova' in format:
+                newname = imgname + '.' + format.replace('-', '.')
             else:
-                # transform the image to the desired format(s)
-                newimg = os.path.join(self.workdir, imgname + '.%s' % f)
-                cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
-                    f, ozif.base_image.data, newimg]
-                if f in ('qcow', 'qcow2'):
-                    cmd.insert(2, '-c') # enable compression for qcow images
-                log_output(self.session, cmd[0], cmd,
-                    os.path.join(self.workdir, 'qemu-img-%s-%s.log' % (f, arch)),
-                    self.getUploadDir(), logerror=1)
-                imgdata['files'].append(os.path.basename(newimg))
-                self.uploadFile(newimg)
-                lxml = self.fixImageXML(f, imgname,
-                    'libvirt-%s-%s.xml' % (f, arch),
-                    ozif.base_image.parameters['libvirt_xml'])
-                self.uploadFile(lxml)
-                imgdata['files'].append(os.path.basename(lxml))
+                newname = imgname + '.' + format
+            imgdata['files'].append(os.path.basename(lxml))
+            self.uploadFile(lxml)
+            imgdata['files'].append(os.path.basename(newname))
+            self.uploadFile(newimg, remoteName=newname)
 
-        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % arch)
-        tdl = open(tdl_path, 'w')
-        tdl.write(ozif.base_image.template)
-        tdl.close()
-        self.uploadFile(tdl_path)
-        imgdata['files'].append(os.path.basename(tdl_path))
         # no need to delete anything since self.workdir will get scrubbed
         return imgdata
 
