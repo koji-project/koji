@@ -7113,16 +7113,11 @@ class RootExports(object):
 
     # Create the image task. Called from _build_image_oz in the client.
     #
-    def buildImageOz(self, name, version, arches, target, inst_tree, img_type, opts=None, priority=None):
+    def buildImageOz(self, name, version, arches, target, inst_tree, opts=None, priority=None):
         """
         Create an image using a kickstart file and group package list.
         """
-
-        if img_type not in ('baseImage',):
-            raise koji.GenericError, 'Unrecognized image type: %s' % img_type
-
-        context.session.assertPerm(img_type)
-
+        context.session.assertPerm('image')
         taskOpts = {'channel': 'image'}
         if priority:
             if priority < 0:
@@ -7132,7 +7127,7 @@ class RootExports(object):
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
-        return make_task(img_type, [name, version, arches, target, inst_tree, opts], **taskOpts)
+        return make_task('image', [name, version, arches, target, inst_tree, opts], **taskOpts)
 
     def migrateImage(self, old_image_id, name, version):
         """Migrate an old image to the new schema

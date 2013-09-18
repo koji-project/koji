@@ -1563,7 +1563,7 @@ class WrapperRPMTask(BaseBuildTask):
             elif task['method'] == 'vmExec':
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
                 values['win_info'] = {'platform': task_result['platform']}
-            elif task['method'] in ('createLiveCD', 'createAppliance', 'createBaseImage'):
+            elif task['method'] in ('createLiveCD', 'createAppliance', 'createImage'):
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
             else:
                 # can't happen
@@ -1807,7 +1807,7 @@ class BuildImageTask(MultiPlatformTask):
         return self.session.getNextRelease(dict(name=name, version=ver))
 
 class BuildBaseImageTask(BuildImageTask):
-    Methods = ['baseImage']
+    Methods = ['image']
 
     def handler(self, name, version, arches, target, inst_tree, opts=None):
         """Governing task for building an appliance using Oz"""
@@ -1841,7 +1841,7 @@ class BuildBaseImageTask(BuildImageTask):
             for arch in arches:
                 inst_url = inst_tree.replace('$arch', arch)
                 subtasks[arch] = self.session.host.subtask(
-                    method='createBaseImage',
+                    method='createImage',
                     arglist=[name, version, release, arch, target_info,
                     build_tag, repo_info, inst_url, opts],
                     label=arch, parent=self.id, arch=arch)
@@ -1944,8 +1944,7 @@ class BuildApplianceTask(BuildImageTask):
 
             # import the image (move it too)
             if not opts.get('scratch'):
-                self.session.host.importImage(self.id, bld_info['id'],
-                    results, rpm_results)
+                self.session.host.completeImageBuild(self.id, bld_info['id'], results)
             else:
                 self.session.host.moveImageBuildToScratch(self.id, results)
 
@@ -2023,8 +2022,7 @@ class BuildLiveCDTask(BuildImageTask):
 
             # import it (and move)
             if not opts.get('scratch'):
-                self.session.host.importImage(self.id, bld_info['id'],
-                    results, rpm_results)
+                self.session.host.completeImageBuild(self.id, bld_info['id'], results)
             else:
                 self.session.host.moveImageBuildToScratch(self.id, results)
 
@@ -2213,22 +2211,22 @@ class ImageTask(BaseTaskHandler):
         Read RPM header information from the yum cache available in the 
         given path. Returns a list of dictionaries for each RPM included.
         """
-        repos = os.listdir(os.path.join(cachepath))
-        if len(repos) == 0:
-            raise koji.LiveCDError, 'No repos found in yum cache!'
+        found = False
         hdrlist = []
         fields = ['name', 'version', 'release', 'epoch', 'arch', \
                   'buildtime', 'sigmd5']
-        for repo in repos:
-            pkgpath = os.path.join(cachepath, repo, 'packages')
-            pkgs = os.listdir(pkgpath)
-            for pkg in pkgs:
-                pkgfile = os.path.join(pkgpath, pkg)
-                hdr = koji.get_header_fields(pkgfile, fields)
-                hdr['size'] = os.path.getsize(pkgfile)
-                hdr['payloadhash'] = koji.hex_string(hdr['sigmd5'])
-                del hdr['sigmd5']
-                hdrlist.append(hdr)
+        for root, dirs, files in os.walk(cachepath):
+            for f in files:
+                if fnmatch(f, '*.rpm'):
+                    pkgfile = os.path.join(root, f)
+                    hdr = koji.get_header_fields(pkgfile, fields)
+                    hdr['size'] = os.path.getsize(pkgfile)
+                    hdr['payloadhash'] = koji.hex_string(hdr['sigmd5'])
+                    del hdr['sigmd5']
+                    hdrlist.append(hdr)
+                    found = True
+        if not found:
+            raise koji.LiveCDError, 'No repos found in yum cache!'
         return hdrlist
 
 # ApplianceTask begins with a mock chroot, and then installs appliance-tools 
@@ -2707,7 +2705,7 @@ class OzImageTask(BaseTaskHandler):
 
 class BaseImageTask(OzImageTask):
 
-    Methods = ['createBaseImage']
+    Methods = ['createImage']
     _taskWeight = 1.5
 
     def getRootDevice(self):
