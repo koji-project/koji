@@ -96,7 +96,7 @@ Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
 Requires: libvirt-python
 Requires: libxml2-python
-Requires: python-virtinst
+Requires: /usr/bin/virt-clone
 Requires: qemu-img
 
 %description vm
