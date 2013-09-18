@@ -79,6 +79,8 @@ def get_options():
                       help=_("use alternate configuration file"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
+    parser.add_option("--krbservice", default="host",
+                      help=_("the service name of the principal being used by the hub"))
     parser.add_option("--runas", metavar="USER",
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
@@ -105,6 +107,8 @@ def get_options():
                       help=_("don't send notifications"))
     parser.add_option("--send-mail", action='store_true', dest="mail",
                       help=_("send notifications"))
+    parser.add_option("--email-domain", default="fedoraproject.org",
+                      help=_("Email domain appended to Koji username for notifications"))
     parser.add_option("--from-addr", default="Koji Build System <buildsys@example.com>",
                       help=_("From address for notifications"))
     parser.add_option("--action", help=_("action(s) to take"))
@@ -155,6 +159,7 @@ def get_options():
         cfgmap = [
             ['keytab', None, 'string'],
             ['principal', None, 'string'],
+            ['krbservice', None, 'string'],
             ['runas', None, 'string'],
             ['user', None, 'string'],
             ['password', None, 'string'],
@@ -166,6 +171,7 @@ def get_options():
             ['weburl', None, 'string'],
             ['smtp_host', None, 'string'],
             ['from_addr', None, 'string'],
+            ['email_domain', None, 'string'],
             ['mail', None, 'boolean'],
             ['delay', None, 'string'],
             ['unprotected_keys', None, 'string'],
@@ -415,7 +421,7 @@ refer to the document linked above for instructions."""
     else:
         msg['Subject'] = "%i builds marked for deletion" % len(builds)
     msg['From'] = options.from_addr
-    msg['To'] = "%s@fedoraproject.org" % owner_name  #XXX!
+    msg['To'] = "%s@%s" % owner_name, options.email_domain  #XXX!
     msg['X-Koji-Builder'] = owner_name
     if options.test:
         if options.debug:
@@ -921,7 +927,7 @@ if __name__ == "__main__":
     options, args = get_options()
 
     session_opts = {}
-    for k in ('user', 'password', 'debug_xmlrpc', 'debug'):
+    for k in ('user', 'password', 'krbservice', 'email_domain', 'debug_xmlrpc', 'debug'):
         session_opts[k] = getattr(options,k)
     if options.network_hack:
         socket.setdefaulttimeout(180)
