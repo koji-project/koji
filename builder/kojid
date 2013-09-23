@@ -1385,11 +1385,6 @@ class BuildMavenTask(BaseBuildTask):
                 root, ext = os.path.splitext(filename)
                 if ext == '.log':
                     logs.append(os.path.join(reldir, filename))
-                elif ext == '.md5' or \
-                        ext == '.sha1' or \
-                        filename == 'maven-metadata.xml':
-                    # metadata, we'll recreate that ourselves
-                    pass
                 else:
                     output_files.setdefault(reldir, []).append(filename)
 
