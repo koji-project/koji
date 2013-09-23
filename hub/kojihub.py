@@ -2288,22 +2288,22 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                                   koji.pathinfo.mavenrepo(archive))
             destlink = os.path.join(repodir, 'maven',
                                     koji.pathinfo.mavenrepo(archive))
+            dir_links.add((srcdir, destlink))
             dest_parent = os.path.dirname(destlink)
-            relpath = koji.util.relpath(srcdir, dest_parent)
-            dir_links.add((relpath, destlink))
             artifact_dirs.setdefault(dest_parent, set()).add((archive['group_id'],
                                                               archive['artifact_id'],
                                                               archive['version']))
         created_dirs = set()
-        for srcpath, destlink in dir_links:
+        for srcdir, destlink in dir_links:
             dest_parent = os.path.dirname(destlink)
             if not dest_parent in created_dirs:
                 koji.ensuredir(dest_parent)
                 created_dirs.add(dest_parent)
+            relpath = koji.util.relpath(srcdir, dest_parent)
             try:
-                os.symlink(srcpath, destlink)
+                os.symlink(relpath, destlink)
             except:
-                log_error('Error linking %s to %s' % (destlink, srcpath))
+                log_error('Error linking %s to %s' % (destlink, relpath))
         for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
