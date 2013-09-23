@@ -9989,11 +9989,24 @@ class HostExports(object):
                 raise koji.BuildError, 'multiple .pom files in %s: %s' % (relpath, ', '.join(poms))
 
             for filename in files:
+                if os.path.splitext(filename)[1] in ('.md5', '.sha1'):
+                    # metadata, we'll recreate that ourselves
+                    continue
+                filepath = os.path.join(maven_task_dir, relpath, filename)
+                if filename == 'maven-metadata.xml':
+                    # We want the maven-metadata.xml to be present in the build dir
+                    # so that it's a valid Maven repo, but we don't want to track it
+                    # in the database because we regenerate it when creating tag repos.
+                    # So we special-case it here.
+                    destdir = os.path.join(koji.pathinfo.mavenbuild(build_info),
+                                           relpath)
+                    _import_archive_file(filepath, destdir)
+                    _generate_maven_metadata(destdir)
+                    continue
                 archivetype = get_archive_type(filename)
                 if not archivetype:
                     # Unknown archive type, skip it
                     continue
-                filepath = os.path.join(maven_task_dir, relpath, filename)
                 import_archive(filepath, build_info, 'maven', dir_maven_info, maven_buildroot_id)
 
         # move the logs to their final destination
