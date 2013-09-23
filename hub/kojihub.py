@@ -2338,7 +2338,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
     mdfile = file(os.path.join(destdir, 'maven-metadata.xml'), 'w')
     mdfile.write(contents)
     mdfile.close()
-    _generate_maven_metadata(artifactinfo, destdir)
+    _generate_maven_metadata(destdir)
 
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
@@ -5016,7 +5016,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
                                 koji.pathinfo.mavenrepo(typeInfo))
         _import_archive_file(filepath, mavendir)
-        _generate_maven_metadata(maveninfo, mavendir)
+        _generate_maven_metadata(mavendir)
     elif type == 'win':
         wininfo = get_win_build(buildinfo, strict=True)
 
@@ -5068,7 +5068,7 @@ def _import_archive_file(filepath, destdir):
     os.rename(filepath, final_path)
     os.symlink(final_path, filepath)
 
-def _generate_maven_metadata(maveninfo, mavendir):
+def _generate_maven_metadata(mavendir):
     """
     Generate md5 and sha1 sums for every file in mavendir, if it doesn't already exist.
     Checksum files will be named <filename>.md5 and <filename>.sha1.
