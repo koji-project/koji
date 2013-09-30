@@ -64,15 +64,21 @@ try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
     import pykickstart.errors as kserrors
+    import hashlib
+    import iso9660 # from pycdio
+    image_enabled = True
+except ImportError:
+    pass
+
+ozif_enabled = False
+try:
     from imgfac.BuildDispatcher import BuildDispatcher
     from imgfac.PluginManager import PluginManager
     from imgfac.ReservationManager import ReservationManager
-    import hashlib
-    import iso9660 # from pycdio
     plugin_mgr = PluginManager('/etc/imagefactory/plugins.d')
     plugin_mgr.load()
     from imgfac.ApplicationConfiguration import ApplicationConfiguration
-    image_enabled = True
+    ozif_enabled = True
 except ImportError:
     pass
 
@@ -1818,9 +1824,9 @@ class BuildBaseImageTask(BuildImageTask):
         if not opts:
             opts = {}
 
-        if not image_enabled:
-            self.logger.error("Appliance features require the following dependencies: pykickstart, imagefactory, oz and possibly python-hashlib")
-            raise koji.ApplianceError, 'Appliance functions not available'
+        if not ozif_enabled:
+            self.logger.error("ImageFactory features require the following dependencies: pykickstart, imagefactory, oz and possibly python-hashlib")
+            raise koji.ApplianceError, 'ImageFactory functions not available'
 
         # build image(s)
         try:
@@ -2046,14 +2052,14 @@ class BuildLiveCDTask(BuildImageTask):
 
         # report the results
         if opts.get('scratch'):
-            return 'Scratch image created: %s' % \
-                   os.path.join(koji.pathinfo.work(),
-                                koji.pathinfo.taskrelpath(create_task_id),
-                                results['files'][0])
+            respath = os.path.join(koji.pathinfo.work(),
+                koji.pathinfo.taskrelpath(create_task_id))
+            report = 'Scratch '
         else:
-            return 'Created image: %s' % \
-                   os.path.join(koji.pathinfo.imagebuild(bld_info),
-                                results['files'][0])
+            respath = koji.pathinfo.imagebuild(bld_info)
+            report = ''
+        report += 'livecd build results in: %s' % respath
+        return report
 
 # A generic task for building cd or disk images using chroot-based tools.
 # Other chroot-based image handlers should inherit this.
