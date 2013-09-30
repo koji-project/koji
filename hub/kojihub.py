@@ -6919,9 +6919,6 @@ def importImageInternal(task_id, build_id, imgdata):
         for rpm_id in rpm_ids:
             _dml(q, {'image_id': archive['id'], 'rpm_id': rpm_id})
 
-    # send email
-    build_notification(imgdata['task_id'], build_id)
-
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               fullpath=fullpath)
 
@@ -9918,6 +9915,8 @@ class HostExports(object):
         update.set(id=build_id, state=st_complete)
         update.rawset(completion_time='now()')
         update.execute()
+        # send email
+        build_notification(results['task_id'], build_id)
 
     def initMavenBuild(self, task_id, build_info, maven_info):
         """Create a new in-progress Maven build
