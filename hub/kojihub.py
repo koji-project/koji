@@ -9916,7 +9916,7 @@ class HostExports(object):
         update.rawset(completion_time='now()')
         update.execute()
         # send email
-        build_notification(results['task_id'], build_id)
+        build_notification(task_id, build_id)
 
     def initMavenBuild(self, task_id, build_info, maven_info):
         """Create a new in-progress Maven build
