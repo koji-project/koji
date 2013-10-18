@@ -175,9 +175,7 @@ def _getServer(environ):
 def _construct_url(environ, page):
     port = environ['SERVER_PORT']
     host = environ['SERVER_NAME']
-    url_scheme = 'http'
-    if environ.get('HTTPS') in ('on','yes','1'):
-        url_scheme = 'https'
+    url_scheme = environ['wsgi.url_scheme']
     if (url_scheme == 'https' and port == '443') or \
         (url_scheme == 'http' and port == '80'):
         return "%s://%s%s" % (url_scheme, host, page)
@@ -221,7 +219,7 @@ def login(environ, page=None):
 
     # try SSL first, fall back to Kerberos
     if options['WebCert']:
-        if environ.get('HTTPS') not in ['on', 'yes', '1']:
+        if environ['wsgi.url_scheme'] != 'https':
             dest = 'login'
             if page:
                 dest = dest + '?page=' + page
