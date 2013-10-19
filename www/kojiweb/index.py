@@ -50,6 +50,8 @@ def _setUserCookie(environ, user):
     # include the current time in the cookie so we can verify that
     # someone is not using an expired cookie
     value = user + ':' + str(int(time.time()))
+    if not options['Secret'].value:
+        raise koji.AuthError, 'Unable to authenticate, server secret not configured'
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     value = "%s:%s" % (shasum.hexdigest(), value)
@@ -85,6 +87,8 @@ def _getUserCookie(environ):
         authlogger.warn('malformed user cookie: %s' % value)
         return None
     sig, value = parts
+    if not options['Secret'].value:
+        raise koji.AuthError, 'Unable to authenticate, server secret not configured'
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     if shasum.hexdigest() != sig:
