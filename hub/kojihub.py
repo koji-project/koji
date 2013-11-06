@@ -3755,6 +3755,7 @@ def get_archive(archive_id, strict=False):
     if image_info:
         del image_info['archive_id']
         archive.update(image_info)
+    archive['size'] = koji.encode_int(archive['size'])
     return archive
 
 def get_maven_archive(archive_id, strict=False):
