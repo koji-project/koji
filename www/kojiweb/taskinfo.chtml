@@ -152,7 +152,7 @@ $value
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
         <strong>Kickstart File:</strong> $params[4]<br/>
         $printOpts($params[5])
-        #elif $task.method == 'baseImage'
+        #elif $task.method == 'image'
         <strong>Arches:</strong> #echo ', '.join($params[2])#<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
         <strong>Installation Tree:</strong> $params[4]<br/>
@@ -174,7 +174,7 @@ $value
         $printOpts($params[3])
         #end if
         #end if
-        #elif $task.method == 'createBaseImage'
+        #elif $task.method == 'createImage'
         #set $target = $params[4]
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
         <strong>Install Tree:</strong> $params[7]<br/>
