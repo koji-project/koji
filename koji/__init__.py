@@ -2318,10 +2318,23 @@ def _taskLabel(taskInfo):
                 nvrs = taskInfo['request'][2]
                 if isinstance(nvrs, list):
                     extra += ', ' + ', '.join(nvrs)
-    elif method in ('createLiveCD', 'createAppliance'):
+    elif method in ('livecd', 'appliance', 'image'):
         if taskInfo.has_key('request'):
-            arch, target, ksfile = taskInfo['request'][:3]
-            extra = '%s, %s, %s' % (target, arch, os.path.basename(ksfile))
+            stuff = taskInfo['request']
+            if method == 'image':
+                kickstart = os.path.basename(stuff[-1]['kickstart'])
+            else:
+                kickstart = os.path.basename(stuff[4])
+            extra = '%s, %s-%s, %s' % (stuff[3], stuff[0], stuff[1], kickstart)
+    elif method in ('createLiveCD', 'createAppliance', 'createImage'):
+        if taskInfo.has_key('request'):
+            stuff = taskInfo['request']
+            if method == 'createImage':
+                kickstart = os.path.basename(stuff[-1]['kickstart'])
+            else:
+                kickstart = os.path.basename(stuff[7])
+            extra = '%s, %s-%s-%s, %s, %s' % (stuff[4]['name'], stuff[0],
+                stuff[1], stuff[2], kickstart, stuff[3])
     elif method == 'restart':
         if taskInfo.has_key('request'):
             host = taskInfo['request'][0]
