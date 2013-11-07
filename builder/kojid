@@ -1414,8 +1414,6 @@ class BuildMavenTask(BaseBuildTask):
                 if os.path.isfile(filepath) and os.stat(filepath).st_size > 0:
                     # only files with content get uploaded to the hub
                     logs.append(filename)
-            else:
-                raise koji.BuildError, 'unknown file type: %s' % filename
 
         buildroot.expire()
 
