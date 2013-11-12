@@ -2616,12 +2616,20 @@ def anon_handle_list_groups(options, session, args):
     usage = _("usage: %prog list-groups [options] <tag> [group]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1 or len(args) > 2:
         parser.error(_("Incorrect number of arguments"))
         assert False
     opts = {}
     activate_session(session)
+    event = koji.util.eventFromOpts(session, options)
+    if event:
+        opts['event'] = event['id']
+        event['timestr'] = time.asctime(time.localtime(event['ts']))
+        print "Querying at event %(id)i (%(timestr)s)" % event
     tags = dict([(x['id'], x['name']) for x in session.listTags()])
     tmp_list = [(x['name'], x) for x in session.getTagGroups(args[0], **opts)]
     tmp_list.sort()
