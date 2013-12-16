@@ -487,24 +487,20 @@ class BuildRoot(object):
         - maven_info: a dict of Maven info containing the groupId, artifactId, and version fields
         - files: a list of files associated with that POM
         """
-        patterns = self.options.maven_repo_ignore.split()
         packages = []
         for path, dirs, files in os.walk(repodir):
             relpath = path[len(repodir) + 1:]
             maven_files = []
             for repofile in files:
-                ignore = False
-                for pattern in patterns:
-                    if fnmatch(repofile, pattern):
-                        ignore = True
-                        break
+                if koji.util.multi_fnmatch(repofile, self.options.maven_repo_ignore) or \
+                        koji.util.multi_fnmatch(os.path.join(relpath, repofile), self.options.maven_repo_ignore):
+                    continue
                 if relpath == '' and repofile in ['scm-sources.zip', 'patches.zip']:
                     # special-case the archives of the sources and patches, since we drop them in
                     # root of the output directory
-                    ignore = True
-                if not ignore:
-                    maven_files.append({'path': relpath, 'filename': repofile,
-                                        'size': os.path.getsize(os.path.join(path, repofile))})
+                    continue
+                maven_files.append({'path': relpath, 'filename': repofile,
+                                    'size': os.path.getsize(os.path.join(path, repofile))})
             if maven_files:
                 path_comps = relpath.split('/')
                 if len(path_comps) < 3:
