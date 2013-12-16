@@ -1322,7 +1322,7 @@ class BuildMavenTask(BaseBuildTask):
                 raise koji.BuildError, 'no patches found at %s' % self.opts.get('patches')
             patches.sort()
             for patch in patches:
-                cmd = ['/usr/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchcheckoutdir, patch)]
+                cmd = ['/usr/bin/patch', '--verbose', '--no-backup-if-mismatch', '-d', sourcedir, '-p1', '-i', os.path.join(patchcheckoutdir, patch)]
                 ret = log_output(self.session, cmd[0], cmd, patchlog, uploadpath, logerror=1, append=1)
                 if ret:
                     raise koji.BuildError, 'error applying patches from %s, see patches.log for details' % self.opts.get('patches')
