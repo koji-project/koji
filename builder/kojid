@@ -468,7 +468,7 @@ class BuildRoot(object):
             for h in ts.dbMatch():
                 pkg = koji.get_header_fields(h,fields)
                 #skip our fake packages
-                if pkg['name'] == 'buildsys-build':
+                if pkg['name'] in ['buildsys-build', 'gpg-pubkey']:
                     #XXX config
                     continue
                 pkg['payloadhash'] = koji.hex_string(pkg['sigmd5'])
@@ -2914,6 +2914,8 @@ class BaseImageTask(OzImageTask):
                     'payloadhash':  bits[6],
                     'buildtime':    int(bits[7])
                 }
+                if rpm['name'] in ['buildsys-build', 'gpg-pubkey']:
+                    continue
                 if bits[4] == '(none)':
                     rpm['epoch'] = None
                 else:
