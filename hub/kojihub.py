@@ -6572,7 +6572,7 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     def run(self, data):
         args = self.str.split()[1:]
         if data.has_key('build_tag'):
-            tagname = get_tag(data['build_tag'])
+            tagname = get_tag(data['build_tag'], strict=True)['name']
             for pattern in args:
                 if fnmatch.fnmatch(tagname, pattern):
                     return True
