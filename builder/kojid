@@ -2728,7 +2728,7 @@ class BaseImageTask(OzImageTask):
         we have to do this. rhevm-ova requires rhevm, but if the user did not
         request it, we should not pass it back up.
         """
-        supported = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova')
+        supported = ('raw', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova')
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -2742,7 +2742,7 @@ class BaseImageTask(OzImageTask):
         if len(formats) == 0:
             # we only want a raw disk image (no format option given)
             f_dict['raw'] = True
-        else:
+        elif 'raw' not in f_dict.keys():
             f_dict['raw'] = False
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
