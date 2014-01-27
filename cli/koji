@@ -2986,6 +2986,12 @@ def anon_handle_buildinfo(options, session, args):
             for archive in win_archives:
                 print os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive))
         rpms = session.listRPMs(buildID=info['id'])
+        image_info = session.getImageBuild(info['id'])
+        img_archives = session.listArchives(buildID=info['id'], type='image')
+        if img_archives:
+            print 'Image archives:'
+            for archive in img_archives:
+                print os.path.join(koji.pathinfo.imagebuild(info), archive['filename'])
         if rpms:
             print "RPMs:"
             for rpm in rpms:
