@@ -4935,9 +4935,15 @@ def handle_image_build(options, session, args):
         help=_("The syntax version used in the kickstart file"))
     parser.add_option("--kickstart", help="Path to a local kickstart file")
     parser.add_option("--distro",
-        help="specify the RPM based distribution the image will be based on")
+        help="specify the RPM based distribution the image will be based on " +
+             "in the format RHEL-X.Y, CentOS-X.Y, SL-X.Y, or Fedora-NN. " +
+             "The packages for the Distro you choose must have been built in " +
+             "this system.")
     parser.add_option("--scratch", action="store_true",
         help=_("Create a scratch image"))
+    parser.add_option("--ova-option", action="append",
+        help=_("Override a value in the OVA description XML. Provide a value " +
+               "in a name=value format, such as 'ovf_memory_mb=6144'"))
     parser.add_option("--format", default=[], action="append",
         help=_("Convert results to one or more formats " +
                "(%s), this option may be used " % ', '.join(formats) +
@@ -5078,7 +5084,7 @@ def _build_image_oz(options, task_opts, session, args):
     hub_opts = {}
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
                 'release', 'skip_tag', 'specfile', 'distro', 'format',
-                'disk_size'):
+                'disk_size', 'ova_option'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val

@@ -2753,10 +2753,11 @@ class BaseImageTask(OzImageTask):
         of details for each image type we had to ask ImageFactory to build
         {format: dispatcher object}
         """
-        def do_target_image(base_id, image_type):
+        def do_target_image(base_id, image_type, ova_opts={}):
+            self.logger.debug('ova_opts: %s' % ova_opts)
             try:
                 target = bd.builder_for_target_image(image_type,
-                    image_id=base_id, template=None, parameters={})
+                    image_id=base_id, template=None, parameters=ova_opts)
                 target.target_thread.join()
             except:
                 tlog.removeHandler(fhandler)
@@ -2814,6 +2815,9 @@ class BaseImageTask(OzImageTask):
                          'icicle': base.base_image.icicle}
 
         # target-image type images
+        ova_opts = {}
+        if self.opts.get('ova_option'):
+            ova_opts = dict([o.split('=') for o in self.opts.get('ova_option')])
         for format in ('rhevm-ova', 'vsphere-ova'):
             # assumes self.formats is pre-populated with rhevm/vsphere if the
             # "ova" format for them was requested with --format only
@@ -2826,7 +2830,8 @@ class BaseImageTask(OzImageTask):
             lxml = self.fixImageXML(format, imgname,
                 'libvirt-%s-%s.xml' % (format, arch),
                 base.base_image.parameters['libvirt_xml'])
-            targ2 = do_target_image(targ.target_image.identifier, 'OVA')
+            targ2 = do_target_image(targ.target_image.identifier, 'OVA',
+                 ova_opts=ova_opts)
             images[format] = {'libvirt': lxml, 'image': targ2.target_image.data}
         tlog.removeHandler(fhandler)
         self.uploadFile(ozlog)
