@@ -651,7 +651,7 @@ class TaskManager(object):
             if id is None or name is None:
                 continue
             # see if there's a dir for the buildroot
-            vardir = "/var/lib/mock/%s" % name
+            vardir = os.path.join(self.options.mockdir, name)
             #XXX
             buildroots[id] = {}
             buildroots[id]['name'] = name
