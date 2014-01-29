@@ -2656,6 +2656,10 @@ class OzImageTask(BaseTaskHandler):
             return distro.split('.')
         elif distro.startswith('Fedora'):
             return distro.split('-')
+        elif distro.startswith('CentOS'):
+            return distro.split('.')
+        elif distro.startswith('SL'):
+            return distro.split('.')
         else:
             raise BuildError('Unknown or supported distro given: %s' % distro)
 
