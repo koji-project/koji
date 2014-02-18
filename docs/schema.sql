@@ -715,7 +715,10 @@ insert into archivetypes (name, description, extensions) values ('iso', 'CD/DVD 
 insert into archivetypes (name, description, extensions) values ('raw', 'Raw disk image', 'raw');
 insert into archivetypes (name, description, extensions) values ('qcow', 'QCOW image', 'qcow');
 insert into archivetypes (name, description, extensions) values ('qcow2', 'QCOW2 image', 'qcow2');
-insert into archivetypes (name, description, extensions) values ('vmx', 'VMX image', 'vmx');
+insert into archivetypes (name, description, extensions) values ('vmdk', 'vSphere image', 'vmdk');
+insert into archivetypes (name, description, extensions) values ('ova', 'OVA image', 'ova');
+insert into archivetypes (name, description, extensions) values ('ks', 'Kickstart', 'ks');
+insert into archivetypes (name, description, extensions) values ('cfg', 'Configuration file', 'cfg');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?

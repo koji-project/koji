@@ -2897,13 +2897,14 @@ class BaseImageTask(OzImageTask):
         imgdata = {
             'arch': arch,
             'task_id': self.id,
-            'logs': [ozlogname, os.path.basename(kspath),
-                     os.path.basename(kskoji)],
+            'logs': [ozlogname],
             'name': name,
             'version': version,
             'release': release,
             'rpmlist': [],
-            'files': [os.path.basename(tdl_path)]
+            'files': [os.path.basename(tdl_path),
+                      os.path.basename(kspath),
+                      os.path.basename(kskoji)]
         }
         # record the RPMs that were installed
         if not opts.get('scratch'):
