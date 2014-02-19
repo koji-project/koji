@@ -2732,7 +2732,7 @@ class BaseImageTask(OzImageTask):
         we have to do this. rhevm-ova requires rhevm, but if the user did not
         request it, we should not pass it back up.
         """
-        supported = ('raw', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova')
+        supported = ('raw', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker')
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -2819,6 +2819,10 @@ class BaseImageTask(OzImageTask):
                          'icicle': base.base_image.icicle}
 
         # target-image type images
+        if 'docker' in self.formats:
+            targ = do_target_image(base.base_image.identifier, 'docker')
+            images['docker'] = {'image': targ.target_image.data}
+
         ova_opts = {}
         if self.opts.get('ova_option'):
             ova_opts = dict([o.split('=') for o in self.opts.get('ova_option')])
@@ -2938,14 +2942,17 @@ class BaseImageTask(OzImageTask):
 
         # upload the results
         for format in (f for f in self.formats.keys() if self.formats[f]):
-            lxml = images[format]['libvirt']
             newimg = images[format]['image']
             if 'ova' in format:
                 newname = imgname + '.' + format.replace('-', '.')
+            elif format == 'docker':
+                newname = imgname + '.' + 'tar.gz'
             else:
                 newname = imgname + '.' + format
-            imgdata['files'].append(os.path.basename(lxml))
-            self.uploadFile(lxml)
+            if format != 'docker':
+                lxml = images[format]['libvirt']
+                imgdata['files'].append(os.path.basename(lxml))
+                self.uploadFile(lxml)
             imgdata['files'].append(os.path.basename(newname))
             self.uploadFile(newimg, remoteName=newname)
 
