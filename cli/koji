@@ -4946,34 +4946,22 @@ def handle_image_build(options, session, args):
                'docker')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
-    usage += _("\n(Specify the --help global option for a list of other " +
+    usage += _("\n       %prog image-build --config FILE")
+    usage += _("\n\n(Specify the --help global option for a list of other " +
                "help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--wait", action="store_true",
-        help=_("Wait on the image creation, even if running in the background"))
-    parser.add_option("--nowait", action="store_false", dest="wait",
-        help=_("Don't wait on image creation"))
-    parser.add_option("--noprogress", action="store_true",
-        help=_("Do not display progress of the upload"))
-    parser.add_option("--disk-size", default=10,
-        help=_("Set the disk device size in gigabytes"))
     parser.add_option("--background", action="store_true",
         help=_("Run the image creation task at a lower priority"))
-    parser.add_option("--ksurl", metavar="SCMURL",
-        help=_("The URL to the SCM containing the kickstart file"))
-    parser.add_option("--ksversion", metavar="VERSION",
-        help=_("The syntax version used in the kickstart file"))
-    parser.add_option("--kickstart", help="Path to a local kickstart file")
+    parser.add_option("--config",
+        help=_("Use a configuration file to define image-build options " +
+               "instead of command line options (they will be ignored)."))
+    parser.add_option("--disk-size", default=10,
+        help=_("Set the disk device size in gigabytes"))
     parser.add_option("--distro",
-        help="specify the RPM based distribution the image will be based on " +
-             "in the format RHEL-X.Y, CentOS-X.Y, SL-X.Y, or Fedora-NN. " +
-             "The packages for the Distro you choose must have been built in " +
-             "this system.")
-    parser.add_option("--scratch", action="store_true",
-        help=_("Create a scratch image"))
-    parser.add_option("--ova-option", action="append",
-        help=_("Override a value in the OVA description XML. Provide a value " +
-               "in a name=value format, such as 'ovf_memory_mb=6144'"))
+        help=_("specify the RPM based distribution the image will be based " +
+             "on with the format RHEL-X.Y, CentOS-X.Y, SL-X.Y, or Fedora-NN. " +
+             "The packages for the Distro you choose must have been built " +
+             "in this system."))
     parser.add_option("--format", default=[], action="append",
         help=_("Convert results to one or more formats " +
                "(%s), this option may be used " % ', '.join(formats) +
@@ -4981,25 +4969,75 @@ def handle_image_build(options, session, args):
                "omit the raw disk image (which is 10G in size) from the " +
                "build results. If you really want it included with converted " +
                "images, pass in 'raw' as an option."))
+    parser.add_option("--kickstart", help=_("Path to a local kickstart file"))
+    parser.add_option("--ksurl", metavar="SCMURL",
+        help=_("The URL to the SCM containing the kickstart file"))
+    parser.add_option("--ksversion", metavar="VERSION",
+        help=_("The syntax version used in the kickstart file"))
+    parser.add_option("--noprogress", action="store_true",
+        help=_("Do not display progress of the upload"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+        help=_("Don't wait on image creation"))
+    parser.add_option("--ova-option", action="append",
+        help=_("Override a value in the OVA description XML. Provide a value " +
+               "in a name=value format, such as 'ovf_memory_mb=6144'"))
+    parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--repo", action="append",
         help=_("Specify a repo that will override the repo used to install " +
                "RPMs in the image. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
-    parser.add_option("--release", help=_("Forcibly set the release field"))
-    parser.add_option("--specfile", metavar="URL",
-        help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--scratch", action="store_true",
+        help=_("Create a scratch image"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
+    parser.add_option("--specfile", metavar="URL",
+        help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
+    parser.add_option("--wait", action="store_true",
+        help=_("Wait on the image creation, even if running in the background"))
+
     (task_options, args) = parser.parse_args(args)
-    if len(args) < 5:
-        parser.error(_("At least tive arguments are required: a name, " +
-                       "a version, a build target, a URL to an " +
-                       "install tree, and 1 or more architectures."))
-        assert False
+
+    if task_options.config:
+        if not os.path.exists(task_options.config):
+            parser.error(_("%s not found!" % task_options.config))
+        section = 'image-build'
+        config = ConfigParser.ConfigParser()
+        conf_fd = open(task_options.config)
+        config.readfp(conf_fd)
+        conf_fd.close()
+        if not config.has_section(section):
+            parser.error(_("single section called [%s] is required" % section))
+        # pluck out the positional arguments first
+        args = []
+        for arg in ('name', 'version', 'target', 'install_tree'):
+            args.append(config.get(section, arg))
+            config.remove_option(section, arg)
+        args.extend(config.get(section, 'arches').split(','))
+        config.remove_option(section, 'arches')
+        # turn comma-separated options into lists
+        for arg in ('repo', 'format'):
+            if config.has_option(section, arg):
+                setattr(task_options, arg, config.get(section, arg).split(','))
+                config.remove_option(section, arg)
+        # ova_option is newline separated, handle that
+        if config.has_option(section, 'ova_option'):
+            task_options.ova_option = \
+                config.get(section, 'ova_option').splitlines()
+            config.remove_option(section, 'ova_option')
+        # handle everything else
+        for k, v in config.items(section):
+            setattr(task_options, k, v)
+    else:
+        if len(args) < 5:
+            parser.error(_("At least five arguments are required: a name, " +
+                           "a version, a build target, a URL to an " +
+                           "install tree, and 1 or more architectures."))
     if not task_options.ksurl and not task_options.kickstart:
-        parser.error('You must specify --kickstart')
+        parser.error(_('You must specify --kickstart'))
     if not task_options.distro:
-        parser.error('You must specify --distro. Examples: Fedora-16, RHEL-6.4')
+        parser.error(
+            _("You must specify --distro. Examples: Fedora-16, RHEL-6.4, " +
+              "SL-6.4 or CentOS-6.4"))
     _build_image_oz(options, task_options, session, args)
 
 def _build_image(options, task_opts, session, args, img_type):
@@ -5103,8 +5141,8 @@ def _build_image_oz(options, task_opts, session, args):
 
     # Upload the KS file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
-    ksfile = task_opts.kickstart
-    if ksfile:
+    if not task_opts.ksurl:
+        ksfile = task_opts.kickstart
         serverdir = _unique_path('cli-image')
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         task_opts.kickstart = os.path.join('work', serverdir,
