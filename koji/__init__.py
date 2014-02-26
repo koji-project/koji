@@ -2049,11 +2049,21 @@ class ClientSession(object):
         if self.opts.get('use_fast_upload'):
             self.fastUpload(localfile, path, name, callback, blocksize)
             return
-        # XXX - stick in a config or something
-        start=time.time()
-        retries=3
         if name is None:
             name = os.path.basename(localfile)
+
+        # check if server supports fast upload
+        try:
+            check = self._callMethod('checkUpload', (path, name))
+        except GenericError:
+            pass
+        else:
+            self.fastUpload(localfile, path, name, callback, blocksize)
+            return
+
+        start=time.time()
+        # XXX - stick in a config or something
+        retries=3
         fo = file(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
