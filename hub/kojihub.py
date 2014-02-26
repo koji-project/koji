@@ -7124,6 +7124,8 @@ class RootExports(object):
                                'only admins may create high-priority tasks'
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        if not opts.has_key('scratch') and not opts.has_key('ksurl'):
+            raise koji.ActionNotAllowed, 'Non-scratch builds must provide ksurl'
 
         return make_task('image', [name, version, arches, target, inst_tree, opts], **taskOpts)
 
