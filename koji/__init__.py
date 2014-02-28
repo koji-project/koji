@@ -1245,11 +1245,12 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     """
     mockdir = opts.get('mockdir', '/var/lib/mock')
     if 'url' in opts:
-        # XXX does anything still use this opt?
+        from warnings import warn
+        warn('The url option for genMockConfig is deprecated', DeprecationWarning)
         urls = [opts['url']]
     else:
         if not (repoid and tag_name):
-            raise GenericError, "please provide a url or repo/tag"
+            raise GenericError, "please provide a repo and tag"
         topurls = opts.get('topurls')
         if not topurls:
             #cli command still passes plain topurl
