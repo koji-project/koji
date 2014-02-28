@@ -435,6 +435,7 @@ def watch_tasks(session,tasklist,quiet=False):
         return
     if not quiet:
         print "Watching tasks (this may be safely interrupted)..."
+    sys.stdout.flush()
     rv = 0
     try:
         tasks = {}
@@ -467,6 +468,7 @@ def watch_tasks(session,tasklist,quiet=False):
                     display_task_results(tasks)
                 break
 
+            sys.stdout.flush()
             time.sleep(options.poll_interval)
     except (KeyboardInterrupt):
         if tasks and not quiet:
