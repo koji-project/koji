@@ -652,7 +652,6 @@ class TaskManager(object):
                 continue
             # see if there's a dir for the buildroot
             vardir = os.path.join(self.options.mockdir, name)
-            #XXX
             buildroots[id] = {}
             buildroots[id]['name'] = name
             buildroots[id]['cfg'] = fn
