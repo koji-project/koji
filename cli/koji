@@ -1220,6 +1220,7 @@ def anon_handle_mock_config(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", help=_("Specify the arch"))
     parser.add_option("--tag", help=_("Create a mock config for a tag"))
+    parser.add_option("--target", help=_("Create a mock config for a build target"))
     parser.add_option("--task", help=_("Duplicate the mock config of a previous task"))
     parser.add_option("--latest", action="store_true", help=_("use the latest redirect url"))
     parser.add_option("--buildroot", help=_("Duplicate the mock config for the specified buildroot id"))
@@ -1295,8 +1296,24 @@ def anon_handle_mock_config(options, session, args):
                 print _("Could not get a repo for tag: %(name)s") % tag
                 return 1
             opts['repoid'] = repo['id']
+    elif options.target:
+        if not options.arch:
+            print _("Please specify an arch")
+            return 1
+        target = session.getBuildTarget(options.target)
+        if not target:
+            parser.error(_("Invalid target: %s" % options.target))
+        opts['tag_name'] = target['build_tag_name']
+        if options.latest:
+            opts['repoid'] = 'latest'
+        else:
+            repo = session.getRepo(target['build_tag'])
+            if not repo:
+                print _("Could not get a repo for tag: %(name)s") % opts['tag_name']
+                return 1
+            opts['repoid'] = repo['id']
     else:
-        parser.error(_("Please specify one of: --tag, --task, --buildroot"))
+        parser.error(_("Please specify one of: --tag, --target, --task, --buildroot"))
         assert False
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
