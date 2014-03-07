@@ -284,8 +284,9 @@ class BuildRoot(object):
         """Run mock"""
         mockpath = getattr(self.options,"mockpath","/usr/bin/mock")
         cmd = [mockpath, "-r", self.mockcfg]
-        if self.options.debug_mock:
-            cmd.append('--debug')
+        #if self.options.debug_mock:
+        #    cmd.append('--debug')
+        # TODO: should we pass something like --verbose --trace instead?
         cmd.extend(args)
         self.logger.info(' '.join(cmd))
         workdir = getattr(self, 'workdir', None)
@@ -3612,7 +3613,8 @@ def get_options():
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
                       help="show xmlrpc debug output")
     parser.add_option("--debug-mock", action="store_true", default=False,
-                      help="show mock debug output")
+                     #obsolete option
+                      help=SUPPRESS_HELP)
     parser.add_option("--skip-main", action="store_true", default=False,
                       help="don't actually run main")
     parser.add_option("--maxjobs", type='int', help="Specify maxjobs")
@@ -3737,6 +3739,8 @@ def get_options():
 
     if options.pkgurl:
         logger.warning("The pkgurl option is obsolete")
+    if options.debug_mock:
+        logger.warning("The debug-mock option is obsolete")
 
     return options
 
