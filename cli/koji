@@ -34,7 +34,6 @@ except ImportError:
     pass
 import ConfigParser
 import base64
-import errno
 import koji
 import koji.util
 import fnmatch
@@ -48,6 +47,7 @@ import socket
 import stat
 import string
 import time
+import traceback
 import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
 import xmlrpclib
@@ -5806,6 +5806,8 @@ def anon_handle_download_build(options, session, args):
         finally:
             os.close(out)
             file.close()
+
+
 def anon_handle_download_logs(options, session, args):
     "Download a logs for package"
 
@@ -5819,40 +5821,55 @@ def anon_handle_download_logs(options, session, args):
                       help=_("Process children of this task as well"))
     parser.add_option("--nvr", action="store_true",
                       help=_("Get logs from n-v-r"))
-    parser.add_option("--only-log", action="append", metavar="NAME",
-                      help=_("Get only log matching NAME. May be used multiple times."))
+    parser.add_option("-m", "--match", action="append", metavar="PATTERN",
+                      help=_("Get only log matching PATTERN. May be used multiple times."))
+    parser.add_option("-c", "--continue", action="store_true", dest="cont",
+                      help=_("Continue previous download"))
+    parser.add_option("-d", "--dir", metavar="DIRECTORY", default='kojilogs',
+                      help=_("Write logs to DIRECTORY"))
     (suboptions, args) = parser.parse_args(args)
 
     if len(args) < 1:
         parser.error(_("Please specify at least one task id or n-v-r"))
 
-    def silently_make_dirs(dir_names):
-        try:
-            os.makedirs(dir_names)
-        except OSError, ex:
-            #Skip existing directories (may be files too)
-            if ex.errno != errno.EEXIST:
-                raise
-        if not os.path.isdir(dir_names):
-            error(_("Failed to create directory %s" % dir_names))
-
-    def get_failed_task_output(task_id):
+    def write_fail_log(task_log_dir, task_id):
         """Gets output only from failed tasks"""
         try:
-            session.getTaskResult(task_id)
-        except koji.GenericError, ex:
-            return str(ex)
+            result = session.getTaskResult(task_id)
+            # with current code, failed task results should always be faults,
+            # but that could change in the future
+            content = pprint.pformat(result)
+        except koji.GenericError:
+            etype, e = sys.exc_info()[:2]
+            content = ''.join(traceback.format_exception_only(etype, e))
+        full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
+        koji.ensuredir(os.path.dirname(full_filename))
+        sys.stdout.write("Writing: %s\n" % full_filename)
+        file(full_filename, 'w').write(content)
 
-        return None
-
-    def write_log(task_log_dir, filename, contents):
+    def download_log(task_log_dir, task_id, filename, blocksize=102400):
         #Create directories only if there is any log file to write to
-        silently_make_dirs(task_log_dir)
         full_filename = os.path.normpath(os.path.join(task_log_dir, filename))
-        sys.stderr.write("Downloading: %s\n" % full_filename)
-        open(full_filename, "w").write(contents)
+        koji.ensuredir(os.path.dirname(full_filename))
+        contents = 'IGNORE ME!'
+        if suboptions.cont and os.path.exists(full_filename):
+            sys.stdout.write("Continuing: %s\n" % full_filename)
+            fd = file(full_filename, 'ab')
+            offset = fd.tell()
+        else:
+            sys.stdout.write("Downloading: %s\n" % full_filename)
+            fd = file(full_filename, 'wb')
+            offset = 0
+        try:
+            while contents:
+                contents = session.downloadTaskOutput(task_id, filename, offset, blocksize)
+                offset += len(contents)
+                if contents:
+                    fd.write(contents)
+        finally:
+            fd.close()
 
-    def save_logs(task_id, only_log, parent_dir='.', recurse=True):
+    def save_logs(task_id, match, parent_dir='.', recurse=True):
         assert task_id == int(task_id), "Task id must be number: %r" % task_id
         task_info = session.getTaskInfo(task_id)
         if task_info is None:
@@ -5862,36 +5879,44 @@ def anon_handle_download_logs(options, session, args):
         for filename in files:
             if not filename.endswith(".log"):
                 continue
-            if only_log and filename not in only_log:
+            if match and not koji.util.multi_fnmatch(filename, match):
                 continue
             logs.append(filename)
 
         task_log_dir = os.path.join(parent_dir,
                                     "%s-%s" % (task_info["arch"], task_id))
 
-        if not only_log or (only_log and FAIL_LOG in only_log):
-            task_result = get_failed_task_output(task_id)
-            if task_result:
-                write_log(task_log_dir, FAIL_LOG, task_result)
+        state =  koji.TASK_STATES[task_info['state']]
+        if state == 'FAILED':
+            if not match or koji.util.multi_fnmatch(FAIL_LOG, match):
+                write_fail_log(task_log_dir, task_id)
+        elif state not in ['CLOSED', 'CANCELED']:
+            sys.stderr.write(_("Warning: task %s is %s\n") % (task_id, state))
 
         for log_filename in logs:
-            output = session.downloadTaskOutput(task_id, log_filename, 0, -1)
-            write_log(task_log_dir, log_filename, output)
+            download_log(task_log_dir, task_id, log_filename)
 
         if recurse:
             child_tasks = session.getTaskChildren(task_id)
             for child_task in child_tasks:
-                save_logs(child_task['id'], only_log, task_log_dir, recurse)
+                save_logs(child_task['id'], match, task_log_dir, recurse)
 
     for arg in args:
         if suboptions.nvr:
+            suboptions.recurse = True
             binfo = session.getBuild(arg)
             if binfo is None:
                 error(_("There is no build with n-v-r: %s" % arg))
             assert binfo['task_id'], binfo
             arg = binfo['task_id']
-            sys.stderr.write("Using task ID: %s\n" % arg)
-        save_logs(int(arg), suboptions.only_log, '.', suboptions.recurse)
+            sys.stdout.write("Using task ID: %s\n" % arg)
+        else:
+            try:
+                task_id = int(arg)
+            except ValueError:
+                error(_("Task id must be number: %r") % task_id)
+                continue
+            save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
 
 def anon_handle_wait_repo(options, session, args):
