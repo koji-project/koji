@@ -1247,10 +1247,11 @@ def handle_call(options, session, args):
 
 def anon_handle_mock_config(options, session, args):
     "Create a mock config"
-    usage = _("usage: %prog mock-config [options] name")
+    usage = _("usage: %prog mock-config [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--arch", help=_("Specify the arch"))
+    parser.add_option("-a", "--arch", help=_("Specify the arch"))
+    parser.add_option("-n", "--name", help=_("Specify the name for the buildroot"))
     parser.add_option("--tag", help=_("Create a mock config for a tag"))
     parser.add_option("--target", help=_("Create a mock config for a build target"))
     parser.add_option("--task", help=_("Duplicate the mock config of a previous task"))
@@ -1267,11 +1268,13 @@ def anon_handle_mock_config(options, session, args):
     parser.add_option("--yum-proxy", help=_("Specify a yum proxy"))
     parser.add_option("-o", metavar="FILE", dest="ofile", help=_("Output to a file"))
     (options, args) = parser.parse_args(args)
-    if len(args) != 1:
-        parser.error(_("Please specify a name for your buildroot"))
-        assert False
     activate_session(session)
-    name = args[0]
+    if args:
+        #for historical reasons, we also accept buildroot name as first arg
+        if not options.name:
+            options.name = args[0]
+        else:
+            parser.error(_("Name already specified via option"))
     arch = None
     opts = {}
     for k in ('topdir', 'topurl', 'distribution', 'mockdir', 'yum_proxy'):
@@ -1307,6 +1310,7 @@ def anon_handle_mock_config(options, session, args):
             opts['repoid'] = brootinfo['repo_id']
         opts['tag_name'] = brootinfo['tag_name']
         arch = brootinfo['arch']
+        def_name = "%s-task_%i" % (opts['tag_name'], task_id)
     elif options.tag:
         if not options.arch:
             print _("Please specify an arch")
@@ -1328,6 +1332,7 @@ def anon_handle_mock_config(options, session, args):
                 print _("Could not get a repo for tag: %(name)s") % tag
                 return 1
             opts['repoid'] = repo['id']
+        def_name = "%(tag_name)s-repo_%(repoid)s" % opts
     elif options.target:
         if not options.arch:
             print _("Please specify an arch")
@@ -1347,6 +1352,10 @@ def anon_handle_mock_config(options, session, args):
     else:
         parser.error(_("Please specify one of: --tag, --target, --task, --buildroot"))
         assert False
+    if options.name:
+        name = options.name
+    else:
+        name = "%(tag_name)s-repo_%(repoid)s" % opts
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
         fo = file(options.ofile, 'w')
