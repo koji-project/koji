@@ -5751,7 +5751,7 @@ def anon_handle_download_build(options, session, args):
     if suboptions.latestfrom:
         # We want the latest build, not a specific build
         try:
-            builds = session.listTagged(suboptions.latestfrom, latest=True, package=build)
+            builds = session.listTagged(suboptions.latestfrom, latest=True, package=build, type=suboptions.type)
         except koji.GenericError, data:
             print "Error finding latest build: %s" % data
             return 1
