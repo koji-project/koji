@@ -34,6 +34,7 @@ except ImportError:
     pass
 import ConfigParser
 import base64
+import errno
 import koji
 import koji.util
 import fnmatch
@@ -111,6 +112,23 @@ def arg_filter(arg):
         return ARGMAP[arg]
     #handle lists/dicts?
     return arg
+
+
+def config_directory_contents(dir_name):
+    configs = []
+    try:
+        conf_dir_contents = os.listdir(dir_name)
+    except OSError, exception:
+        if exception.errno != errno.ENOENT:
+            raise
+    else:
+        for name in sorted(conf_dir_contents):
+            if not name.endswith('.conf'):
+                continue
+            config_full_name = os.path.join(dir_name, name)
+            configs.append(config_full_name)
+    return configs
+
 
 def get_options():
     """process options from command line and config file"""
@@ -202,18 +220,25 @@ def get_options():
         'serverca': '~/.koji/serverca.crt', 
         'authtype': None
         }
-    # grab settings from /etc/koji.conf first, and allow them to be
-    # overridden by user config
+    #note: later config files override earlier ones
     progname = os.path.basename(sys.argv[0]) or 'koji'
-    configs = []
+    configs = config_directory_contents('/etc/koji.conf.d')
     if os.access('/etc/koji.conf', os.F_OK):
         configs.append('/etc/koji.conf')
     if options.configFile:
         fn = os.path.expanduser(options.configFile)
-        if not os.access(fn, os.F_OK):
-            parser.error("No such file: %s" % fn)
-        configs.append(fn)
+        if os.path.isdir(fn):
+            contents = config_directory_contents(fn)
+            if not contents:
+                parser.error("No config files found in directory: %s" % fn)
+            configs.extend(contents)
+        else:
+            if not os.access(fn, os.F_OK):
+                parser.error("No such file: %s" % fn)
+            configs.append(fn)
     else:
+        user_config_dir = os.path.expanduser("~/.koji/config.d")
+        configs.extend(config_directory_contents(user_config_dir))
         fn = os.path.expanduser("~/.koji/config")
         if os.access(fn, os.F_OK):
             configs.append(fn)

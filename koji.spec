@@ -145,6 +145,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/*
 %{python_sitelib}/%{name}
 %config(noreplace) %{_sysconfdir}/koji.conf
+%dir %{_sysconfdir}/koji.conf.d
 %doc docs Authors COPYING LGPL
 
 %files hub
