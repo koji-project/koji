@@ -621,9 +621,9 @@ class Session(object):
     def setKrbPrincipal(self, name, krb_principal):
         usertype = koji.USERTYPES['NORMAL']
         status = koji.USER_STATUS['NORMAL']
-        update = """UPDATE users SET krb_principal = %(krb_principal)s WHERE name = %(name)s AND usertype = %(usertype)i AND status = %(status)i RETURNING user_id"""
+        update = """UPDATE users SET krb_principal = %(krb_principal)s WHERE name = %(name)s AND usertype = %(usertype)i AND status = %(status)i RETURNING users.id"""
         cursor = context.cnx.cursor()
-        cursor.execute(insert, locals())
+        cursor.execute(update, locals())
         r = cursor.fetchall()
         if len(r) != 1:
             context.cnx.rollback()
