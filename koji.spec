@@ -8,7 +8,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.8.0
+Version: 1.9.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -237,6 +237,9 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
+* Mon Mar 24 2014 Mike McLean <mikem at redhat.com> - 1.9.0-1
+- 1.9.0 release
+
 * Mon Apr  1 2013 Mike McLean <mikem at redhat.com> - 1.8.0-1
 - refactor how images are stored and tracked (images as builds)
 - delete repos in background
