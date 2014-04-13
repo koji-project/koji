@@ -3361,6 +3361,9 @@ def handle_add_target(options, session, args):
     if not chkbuildtag:
         print "Build tag does not exist: %s" % build_tag
         return 1
+    if not chkbuildtag.get("arches", None):
+        print "Build tag has no arches: %s" % build_tag
+        return 1
     if not chkdesttag:
         print "Destination tag does not exist: %s" % dest_tag
         return 1
@@ -3397,7 +3400,18 @@ def handle_edit_target(options, session, args):
         targetInfo['name'] = options.rename
     if options.build_tag:
         targetInfo['build_tag_name'] = options.build_tag
+        chkbuildtag = session.getTag(options.build_tag)
+        if not chkbuildtag:
+            print "Build tag does not exist: %s" % options.build_tag
+            return 1
+        if not chkbuildtag.get("arches", None):
+            print "Build tag has no arches: %s" % options.build_tag
+            return 1
     if options.dest_tag:
+        chkdesttag = session.getTag(options.dest_tag)
+        if not chkdesttag:
+            print "Destination tag does not exist: %s" % options.dest_tag
+            return 1
         targetInfo['dest_tag_name'] = options.dest_tag
 
     session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'], targetInfo['build_tag_name'], targetInfo['dest_tag_name'])
