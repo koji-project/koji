@@ -2654,7 +2654,10 @@ class OzImageTask(BaseTaskHandler):
         image on.
         """
         if distro.startswith('RHEL'):
-            return distro.split('.')
+            major, minor = distro.split('.')
+            if major == 'RHEL-5':
+                minor = 'U' + minor
+            return major, minor
         elif distro.startswith('Fedora'):
             return distro.split('-')
         elif distro.startswith('CentOS'):
