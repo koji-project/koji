@@ -2824,7 +2824,8 @@ class BaseImageTask(OzImageTask):
 
         # target-image type images
         if 'docker' in self.formats:
-            targ = do_target_image(base.base_image.identifier, 'docker')
+            targ = do_target_image(base.base_image.identifier, 'docker',
+                ova_opts={'compress': 'gzip'})
             images['docker'] = {'image': targ.target_image.data}
 
         ova_opts = {}
