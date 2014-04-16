@@ -1824,6 +1824,7 @@ class BuildBaseImageTask(BuildImageTask):
             raise koji.ApplianceError, 'ImageFactory functions not available'
 
         # build image(s)
+        bld_info = None
         try:
             release = opts.get('release')
             if not release:
@@ -1832,7 +1833,6 @@ class BuildBaseImageTask(BuildImageTask):
                 raise koji.ApplianceError('The Version may not have a hyphen')
             if '-' in release:
                 raise koji.ApplianceError('The Release may not have a hyphen')
-            bld_info = None
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
