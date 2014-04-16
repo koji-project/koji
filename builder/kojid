@@ -2813,13 +2813,7 @@ class BaseImageTask(OzImageTask):
         lxml = self.fixImageXML('raw', imgname,
             'libvirt-%s-%s.xml' % ('raw', arch),
             base.base_image.parameters['libvirt_xml'])
-        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % arch)
-        tdl = open(tdl_path, 'w')
-        tdl.write(base.base_image.template)
-        tdl.close()
-        self.uploadFile(tdl_path)
         images['raw'] = {'image': base.base_image.data, 'libvirt': lxml,
-                         'tdl': os.path.basename(tdl_path),
                          'icicle': base.base_image.icicle}
 
         # target-image type images
@@ -2889,6 +2883,12 @@ class BaseImageTask(OzImageTask):
         self.logger.debug('IF config object: %s' % config)
         ApplicationConfiguration(configuration=config)
 
+        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % arch)
+        tdl = open(tdl_path, 'w')
+        tdl.write(template)
+        tdl.close()
+        self.uploadFile(tdl_path)
+
         # ImageFactory picks a port to the guest VM using a rolling integer.
         # This is a problem for concurrency, so we override the port it picks
         # here using the task ID. (not a perfect solution but good enough:
@@ -2900,9 +2900,9 @@ class BaseImageTask(OzImageTask):
 
         # invoke the image builds
         images = self.do_images(arch, template, ozlog, imgname)
+        images['raw']['tdl'] = os.path.basename(tdl_path),
 
         # structure the results to pass back to the hub:
-        tdl_path = images['raw']['tdl']
         imgdata = {
             'arch': arch,
             'task_id': self.id,
