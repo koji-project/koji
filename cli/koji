@@ -5074,14 +5074,17 @@ def handle_image_build(options, session, args):
             if config.has_option(section, arg):
                 setattr(task_options, arg, config.get(section, arg).split(','))
                 config.remove_option(section, arg)
-        # ova_option is newline separated, handle that
-        if config.has_option(section, 'ova_option'):
-            task_options.ova_option = \
-                config.get(section, 'ova_option').splitlines()
-            config.remove_option(section, 'ova_option')
         # handle everything else
         for k, v in config.items(section):
             setattr(task_options, k, v)
+
+        # ova-options belong in their own section
+        section = 'ova-options'
+        if config.has_section(section):
+            task_options.ova_option = []
+            for k, v in config.items(section):
+                task_options.ova_option.append('%s=%s' % (k, v))
+
     else:
         if len(args) < 5:
             parser.error(_("At least five arguments are required: a name, " +
