@@ -48,6 +48,12 @@ EXPAND_ARCHES = {
     'sh4': ['sh4a']
     }
 
+MULTILIB_ARCHES = {
+    'x86_64': 'i386',
+    'ppc64': 'ppc',
+    's390x': 's390'
+    }
+
 def parse_args(args):
     """Parse our opts/args"""
     usage = """
@@ -77,6 +83,14 @@ def parse_args(args):
     for arch in opts.arches[:]:
         if EXPAND_ARCHES.has_key(arch):
             opts.arches.extend(EXPAND_ARCHES[arch])
+
+    # support multilib repos
+    for arch in opts.arches[:]:
+        multilib_arch = MULTILIB_ARCHES.get(arch)
+        if multilib_arch:
+            opts.arches.append(multilib_arch)
+            if multilib_arch in EXPAND_ARCHES:
+                opts.arches.extend(EXPAND_ARCHES[multilib_arch])
 
     # always include noarch
     if not 'noarch' in opts.arches:
