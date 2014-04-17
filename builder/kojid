@@ -2787,7 +2787,8 @@ class BaseImageTask(OzImageTask):
         tlog.setLevel(logging.DEBUG)
         tlog.addHandler(fhandler)
         images = {}
-        params = {'install_script': str(self.ks.handler)} #ks contents
+        params = {'install_script': str(self.ks.handler),
+                  'offline_icicle': True}
         random.seed() # necessary to ensure a unique mac address
         try:
             base = bd.builder_for_base_image(template, parameters=params)
