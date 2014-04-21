@@ -107,10 +107,16 @@ Summary: Koji virtual machine management daemon
 Group: Applications/System
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%else
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
+%endif
 Requires: libvirt-python
 Requires: libxml2-python
 Requires: /usr/bin/virt-clone
@@ -250,10 +256,27 @@ fi
 %{_sbindir}/kojivmd
 #dir %{_datadir}/kojivmd
 %{_datadir}/kojivmd/kojikamid
+%if %{use_systemd}
+%{_unitdir}/kojivmd.service
+%else
 %{_initrddir}/kojivmd
 %config(noreplace) %{_sysconfdir}/sysconfig/kojivmd
+%endif
 %dir %{_sysconfdir}/kojivmd
 %config(noreplace) %{_sysconfdir}/kojivmd/kojivmd.conf
+
+%if %{use_systemd}
+
+%post vm
+%systemd_post kojivmd.service
+
+%preun vm
+%systemd_preun kojivmd.service
+
+%postun vm
+%systemd_postun kojivmd.service
+
+%else
 
 %post vm
 /sbin/chkconfig --add kojivmd
@@ -263,6 +286,7 @@ if [ $1 = 0 ]; then
   /sbin/service kojivmd stop &> /dev/null
   /sbin/chkconfig --del kojivmd
 fi
+%endif
 
 %post utils
 /sbin/chkconfig --add kojira
