@@ -2165,6 +2165,7 @@ def search(environ, start=None, order='name'):
     form = environ['koji.form']
     if form.has_key('terms') and form['terms']:
         terms = form['terms'].value
+        terms = terms.strip()
         type = form['type'].value
         match = form['match'].value
         values['terms'] = terms
