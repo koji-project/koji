@@ -1932,7 +1932,9 @@ class ClientSession(object):
                         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                         self.logger.debug(tb_str)
                     self.logger.info("Try #%d for call %d (%s) failed: %s", tries, self.callnum, name, e)
-                time.sleep(interval)
+                if tries > 1:
+                    # first retry is immediate, after that we honor retry_interval
+                    time.sleep(interval)
             #not reached
 
     def multiCall(self, strict=False):
