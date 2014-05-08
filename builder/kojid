@@ -2608,7 +2608,7 @@ class OzImageTask(BaseTaskHandler):
             'imgdir': os.path.join(self.workdir, 'scratch_images'),
             'tmpdir': os.path.join(self.workdir, 'oz-tmp'),
             'verbose' : True,
-            'timeout': 3600,
+            'timeout': 7200,
             'output': 'log',
             'raw': False,
             'debug': True,
