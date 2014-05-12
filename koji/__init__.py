@@ -1973,7 +1973,7 @@ class ClientSession(object):
         #    raise AttributeError, "no attribute %r" % name
         return VirtualMethod(self._callMethod,name)
 
-    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=1048576):
+    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=1048576, overwrite=False):
         if not self.logged_in:
             raise ActionNotAllowed, 'You must be logged in to upload files'
         if name is None:
@@ -1993,7 +1993,7 @@ class ClientSession(object):
             chunk = fo.read(blocksize)
             if not chunk:
                 break
-            result = self._callMethod('rawUpload', (chunk, ofs, path, name))
+            result = self._callMethod('rawUpload', (chunk, ofs, path, name), {'overwrite':overwrite})
             if self.retries > 1:
                 problems = True
             hexdigest = util.adler32_constructor(chunk).hexdigest()
@@ -2047,10 +2047,10 @@ class ClientSession(object):
         request = chunk
         return handler, headers, request
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=1048576):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=1048576, overwrite=True):
         """upload a file in chunks using the uploadFile call"""
         if self.opts.get('use_fast_upload'):
-            self.fastUpload(localfile, path, name, callback, blocksize)
+            self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
             return
         if name is None:
             name = os.path.basename(localfile)
@@ -2058,10 +2058,12 @@ class ClientSession(object):
         # check if server supports fast upload
         try:
             check = self._callMethod('checkUpload', (path, name))
+            # fast upload was introduced in 1.7.1, earlier servers will not
+            # recognise this call and return an error
         except GenericError:
             pass
         else:
-            self.fastUpload(localfile, path, name, callback, blocksize)
+            self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
             return
 
         start=time.time()
