@@ -419,7 +419,8 @@ class BuildRoot(object):
                 self.expire()
                 raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
 
-        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir]
+        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir,
+                '--target', 'noarch']
 
         rv = self.mock(args)
 
