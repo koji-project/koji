@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 # koji-shadow: a tool to shadow builds between koji instances
-# Copyright (c) 2007-2008 Red Hat
+# Copyright (c) 2007-2014 Red Hat
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -15,10 +15,11 @@
 #
 #    You should have received a copy of the GNU Lesser General Public
 #    License along with this software; if not, write to the Free Software
-#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
+#       Dennis Gilmore <dennis@ausil.us>
 
 try:
     import krbV
@@ -26,14 +27,12 @@ except ImportError:
     pass
 import koji
 import ConfigParser
-from email.MIMEText import MIMEText
 import fnmatch
 import optparse
 import os
 import pprint
 import random
 import shutil
-import smtplib
 import socket   # for socket.error and socket.setdefaulttimeout
 import string
 import sys
@@ -77,9 +76,10 @@ def get_options():
                       help=_("use alternate configuration file"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--krbservice", help=_("the service name of the principal being used by the hub"))
+    parser.add_option("--krbservice", help=_("the service name of the"
+                                             " principal being used by the hub"))
     parser.add_option("--runas", metavar="USER",
-                      help=_("run as the specified user (requires special privileges)"))
+             help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
     parser.add_option("--noauth", action="store_true", default=False,
@@ -287,7 +287,8 @@ def ensure_connection(session):
     except xmlrpclib.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+        warn(_("WARNING: The server is at API version %d and the client is at "
+               "%d" % (ret, koji.API_VERSION)))
 
 def activate_session(session):
     """Test and login the session is applicable"""
@@ -368,7 +369,7 @@ class TrackedBuild(object):
                 if rinfo['arch'] == 'src':
                     self.srpm = rinfo
             self.getExtraArches()
-            self.getDeps()   #sets deps, br_tag, base, order, (maybe state)
+            self.getDeps() #sets deps, br_tag, base, order, (maybe state)
 
     def updateState(self):
         """Update state from local hub
@@ -487,7 +488,7 @@ class TrackedBuild(object):
         self.order = buildroots[-1]
         seen = {}       #used to avoid scanning the same buildroot twice
         builds = {}     #track which builds we need for a rebuild
-        bases = {}       #track base install for buildroots
+        bases = {}      #track base install for buildroots
         tags = {}       #track buildroot tag(s)
         remote.multicall = True
         unpack = []
@@ -542,7 +543,7 @@ class TrackedBuild(object):
         else:
             tag = tags.keys()[0]
         self.deps = builds
-        self.revised_deps = None  #BuildTracker will set this later
+        self.revised_deps = None #BuildTracker will set this later
         self.br_tag = tag
         self.base = base
 
@@ -637,7 +638,7 @@ class BuildTracker(object):
                     return grey
         return default
 
-    def rpmvercmp (self,  (e1, v1, r1), (e2, v2, r2)):
+    def rpmvercmp(self, (e1, v1, r1), (e2, v2, r2)):
         """find out which build is newer"""
         rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
         if rc == 1:
@@ -654,11 +655,11 @@ class BuildTracker(object):
         #XXX:  secondary arches need a policy to say if we have newer build localy it will be the substitute
         localBuilds = session.listTagged(tag, inherit=True, package=str(build.name))
         newer = None
-        parentevr = (str(build.epoch), build.version,  build.release)
-        parentnvr = (str(build.name), build.version,  build.release)
+        parentevr = (str(build.epoch), build.version, build.release)
+        parentnvr = (str(build.name), build.version, build.release)
         for b in localBuilds:
-            latestevr =  (str(b['epoch']), b['version'], b['release'])
-            newestRPM = self.rpmvercmp( parentevr, latestevr)
+            latestevr = (str(b['epoch']), b['version'], b['release'])
+            newestRPM = self.rpmvercmp(parentevr, latestevr)
             if options.debug:
                 print "remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM)
             if newestRPM == -1:
@@ -667,7 +668,7 @@ class BuildTracker(object):
                 break
         #the local is newer
         if newer is not None:
-            info = session.getBuild("%s-%s-%s" % (str(newer['name']), newer['version'], newer['release'] ))
+            info = session.getBuild("%s-%s-%s" % (str(newer['name']), newer['version'], newer['release']))
             if info:
                 build = LocalBuild(info)
                 self.substitute_idx[parentnvr] = build
@@ -859,7 +860,7 @@ class BuildTracker(object):
             old_umask = os.umask(002)
             try:
                 koji.ensuredir(os.path.dirname(dst))
-                os.chown(os.path.dirname(dst), 48, 48)  #XXX - hack
+                os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
                 print "Downloading %s to %s" % (url, dst)
                 fsrc = urllib2.urlopen(url)
                 fdst = file(fn, 'w')
@@ -978,7 +979,7 @@ class BuildTracker(object):
                     owner = order[-1][1]
                 else:
                     #just use ourselves
-                    owner=session.getLoggedInUser()['id']
+                    owner = session.getLoggedInUser()['id']
                 missing_pkgs.append((name, owner))
         #check build list
         cur_builds = {}
@@ -1019,8 +1020,8 @@ class BuildTracker(object):
                 drop_groups.append(group['name'])
         if build_group:
             #fix build group package list based on base of build to shadow
-            needed = dict([(n,1) for n in build.base])
-            current = dict([(p['package'],1) for p in build_group['packagelist']])
+            needed = dict([(n, 1) for n in build.base])
+            current = dict([(p['package'], 1) for p in build_group['packagelist']])
             add_pkgs = [n for n in needed if not current.has_key(n)]
             drop_pkgs = [n for n in current if not needed.has_key(n)]
             #no group deps needed/allowed
@@ -1082,7 +1083,7 @@ class BuildTracker(object):
         #TODO       ...and verify repo
         repo_id, event_id = session.getTaskResult(task_id)
         #kick off build
-        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=options.priority )
+        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=options.priority)
         return task_id
 
     def report(self):
@@ -1275,7 +1276,7 @@ def main(args):
             return
         else:
             print "Working on tag %s" % (tag)
-	    tracker.scanTag(tag)
+            tracker.scanTag(tag)
     tracker.report()
     tracker.runRebuilds(tag)
 
@@ -1286,7 +1287,7 @@ if __name__ == "__main__":
 
     session_opts = {}
     for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
+        session_opts[k] = getattr(options, k)
     session = koji.ClientSession(options.server, session_opts)
     if not options.noauth:
         activate_session(session)
@@ -1294,7 +1295,7 @@ if __name__ == "__main__":
     #XXX - config!
     remote_opts = {'anon_retry': True}
     for k in ('debug_xmlrpc', 'debug'):
-        remote_opts[k] = getattr(options,k)
+        remote_opts[k] = getattr(options, k)
     remote = koji.ClientSession(options.remote, remote_opts)
     rv = 0
     try:
