@@ -719,6 +719,7 @@ insert into archivetypes (name, description, extensions) values ('vmdk', 'vSpher
 insert into archivetypes (name, description, extensions) values ('ova', 'OVA image', 'ova');
 insert into archivetypes (name, description, extensions) values ('ks', 'Kickstart', 'ks');
 insert into archivetypes (name, description, extensions) values ('cfg', 'Configuration file', 'cfg');
+insert into archivetypes (name, description, extensions) values ('vdi', 'VirtualBox Virtual Disk Image', 'vdi');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
