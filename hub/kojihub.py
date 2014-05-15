@@ -8726,6 +8726,9 @@ class RootExports(object):
                 ['createdAfter', 'create_time', '>'],
                 ['startedBefore', 'start_time', '<'],
                 ['startedAfter', 'start_time', '>'],
+                ['completeBefore', 'completion_time', '<'],
+                ['completeAfter', 'completion_time', '>'],
+                # and a couple aliases for api compat:
                 ['completedBefore', 'completion_time', '<'],
                 ['completedAfter', 'completion_time', '>'],
             ]
