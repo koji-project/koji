@@ -2325,7 +2325,7 @@ def _taskLabel(taskInfo):
     elif method == 'dependantTask':
         if taskInfo.has_key('request'):
             extra = ', '.join([subtask[0] for subtask in taskInfo['request'][1]])
-    elif method == 'chainbuild':
+    elif method in ('chainbuild', 'chainmaven'):
         if taskInfo.has_key('request'):
             extra = taskInfo['request'][1]
     elif method == 'waitrepo':

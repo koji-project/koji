@@ -133,6 +133,14 @@ def dslice(dict, keys, strict=True):
             ret[key] = dict[key]
     return ret
 
+def dslice_ex(dict, keys, strict=True):
+    """Returns a new dictionary with only the specified keys removed"""
+    ret = dict.copy()
+    for key in keys:
+        if strict or ret.has_key(key):
+            del ret[key]
+    return ret
+
 def call_with_argcheck(func, args, kwargs={}):
     """Call function, raising ParameterError if args do not match"""
     try:
@@ -429,3 +437,24 @@ class adler32_constructor(object):
 
     digest_size = 4
     block_size = 1      #I think
+
+def tsort(parts):
+    """Given a partial ordering, return a totally ordered list.
+
+    part is a dict of partial orderings.  Each value is a set,
+    which the key depends on.
+
+    The return value is a list of sets, each of which has only
+    dependencies on items in previous entries in the list."""
+    parts = parts.copy()
+    result = []
+    while True:
+        level = set([name for name, deps in parts.iteritems() if not deps])
+        if not level:
+            break
+        result.append(level)
+        parts = dict([(name, deps - level) for name, deps in parts.iteritems()
+                      if name not in level])
+    if parts:
+        raise ValueError, 'total ordering not possible'
+    return result

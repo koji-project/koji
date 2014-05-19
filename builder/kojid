@@ -33,7 +33,7 @@ import logging
 import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM
 from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
-from koji.util import parseStatus, isSuccess
+from koji.util import parseStatus, isSuccess, dslice, dslice_ex
 import os
 import pwd
 import grp
@@ -50,6 +50,7 @@ import traceback
 import xml.dom.minidom
 import xmlrpclib
 import zipfile
+import copy
 import Cheetah.Template
 from ConfigParser import ConfigParser
 from fnmatch import fnmatch
@@ -169,7 +170,7 @@ class BuildRoot(object):
         self.config = self.session.getBuildConfig(self.tag_id, event=self.event_id)
 
     def _new(self, tag, arch, task_id, repo_id=None, install_group='build',
-             setup_dns=False, bind_opts=None, maven_opts=None, maven_envs=None):
+             setup_dns=False, bind_opts=None, maven_opts=None, maven_envs=None, deps=None):
         """Create a brand new repo"""
         if not repo_id:
             raise koji.BuildrootError, "A repo id must be provided"
@@ -210,6 +211,7 @@ class BuildRoot(object):
         self.bind_opts = bind_opts
         self.maven_opts = maven_opts
         self.maven_envs = maven_envs
+        self.deps = deps
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -243,6 +245,7 @@ class BuildRoot(object):
         """
         Write the Maven settings.xml file to the specified destination.
         """
+        task_id = self.task_id
         repo_id = self.repoid
         tag_name = self.tag_name
         deploy_dir = outputdir[len(self.rootdir()):]
@@ -250,6 +253,7 @@ class BuildRoot(object):
         pi = koji.PathInfo(topdir=self.options.topurl)
         repourl = pi.repo(repo_id, tag_name) + '/maven'
 
+        mirror_spec = '*'
         settings = """<settings xmlns="http://maven.apache.org/POM/4.0.0"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
@@ -260,22 +264,61 @@ class BuildRoot(object):
       <id>koji-maven-repo-%(tag_name)s-%(repo_id)i</id>
       <name>Koji-managed Maven repository (%(tag_name)s-%(repo_id)i)</name>
       <url>%(repourl)s</url>
-      <mirrorOf>*</mirrorOf>
+      <mirrorOf>%(mirror_spec)s</mirrorOf>
     </mirror>
   </mirrors>
   <profiles>
     <profile>
-      <id>koji-output</id>
+      <id>koji-task-%(task_id)s</id>
       <properties>
         <altDeploymentRepository>koji-output::default::file://%(deploy_dir)s</altDeploymentRepository>
-      </properties>
+      </properties>"""
+        if self.deps:
+            settings += """
+      <repositories>"""
+            for dep in self.deps:
+                if isinstance(dep, (int, long)):
+                    # dep is a task ID, the url points to the task output directory
+                    dep_url = pi.task(dep)
+                    dep_repo_id = 'koji-task-%s' % dep
+                    dep_repo_name = 'Repository for Koji task %s' % dep
+                    snapshots = 'true'
+                else:
+                    # dep is a build NVR, the url points to the build output directory
+                    build = koji.parse_NVR(dep)
+                    dep_url = pi.mavenbuild(build)
+                    dep_repo_id = 'koji-build-%s' % dep
+                    dep_repo_name = 'Repository for Koji build %s' % dep
+                    snapshots = 'false'
+                mirror_spec += ',!' + dep_repo_id
+                settings += """
+        <repository>
+          <id>%(dep_repo_id)s</id>
+          <name>%(dep_repo_name)s</name>
+          <url>%(dep_url)s</url>
+          <layout>default</layout>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+            <checksumPolicy>fail</checksumPolicy>
+          </releases>
+          <snapshots>
+            <enabled>%(snapshots)s</enabled>
+            <updatePolicy>never</updatePolicy>
+            <checksumPolicy>fail</checksumPolicy>
+          </snapshots>
+        </repository>""" % locals()
+            settings += """
+      </repositories>"""
+        settings += """
     </profile>
   </profiles>
   <activeProfiles>
-    <activeProfile>koji-output</activeProfile>
+    <activeProfile>koji-task-%(task_id)s</activeProfile>
   </activeProfiles>
 </settings>
-""" % locals()
+"""
+        settings = settings % locals()
         fo = file(self.rootdir() + destfile, 'w')
         fo.write(settings)
         fo.close()
@@ -538,7 +581,8 @@ class BuildRoot(object):
             raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv, logfile='root.log')
 
         self.session.host.updateMavenBuildRootList(self.id, self.task_id,
-                                                   self.getMavenPackageList(repodir), project=False)
+                                                   self.getMavenPackageList(repodir), project=False,
+                                                   extra_deps=self.deps)
 
         if goals:
             cmd.extend(goals)
@@ -553,7 +597,8 @@ class BuildRoot(object):
             ignore_unknown = True
         self.session.host.updateMavenBuildRootList(self.id, self.task_id, self.getMavenPackageList(repodir),
                                                    ignore=self.getMavenPackageList(outputdir),
-                                                   project=True, ignore_unknown=ignore_unknown)
+                                                   project=True, ignore_unknown=ignore_unknown,
+                                                   extra_deps=self.deps)
         if rv:
             self.expire()
             raise koji.BuildrootError, 'error building Maven package, %s' % self._mockResult(rv, logfile='root.log')
@@ -1142,23 +1187,10 @@ class MavenTask(MultiPlatformTask):
             else:
                 raise koji.BuildError, 'no repo for tag %s' % build_tag['name']
 
-        build_opts = {'repo_id': repo_id}
-        if opts.get('goals'):
-            build_opts['goals'] = opts['goals']
-        if opts.get('profiles'):
-            build_opts['profiles'] = opts['profiles']
-        if opts.get('properties'):
-            build_opts['properties'] = opts['properties']
-        if opts.get('envs'):
-            build_opts['envs'] = opts['envs']
-        if opts.get('patches'):
-            build_opts['patches'] = opts['patches']
-        if opts.get('packages'):
-            build_opts['packages'] = opts['packages']
-        if opts.get('jvm_options'):
-            build_opts['jvm_options'] = opts['jvm_options']
-        if opts.get('maven_options'):
-            build_opts['maven_options'] = opts['maven_options']
+        build_opts = dslice(opts, ['goals', 'profiles', 'properties', 'envs', 'patches',
+                                   'packages', 'jvm_options', 'maven_options', 'deps'],
+                            strict=False)
+        build_opts['repo_id'] = repo_id
 
         self.build_task_id = self.session.host.subtask(method='buildMaven',
                                                        arglist=[url, build_tag, build_opts],
@@ -1263,7 +1295,8 @@ class BuildMavenTask(BaseBuildTask):
             maven_opts.append('-Xmx2048m')
         buildroot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id,
                               install_group='maven-build', setup_dns=True, repo_id=repo_id,
-                              maven_opts=maven_opts, maven_envs=opts.get('envs'))
+                              maven_opts=maven_opts, maven_envs=opts.get('envs'),
+                              deps=opts.get('deps'))
         buildroot.workdir = self.workdir
         self.logger.debug("Initializing buildroot")
         buildroot.init()
@@ -1758,6 +1791,169 @@ class WrapperRPMTask(BaseBuildTask):
         buildroot.expire()
 
         return results
+
+class ChainMavenTask(MultiPlatformTask):
+
+    Methods = ['chainmaven']
+
+    _taskWeight = 0.2
+
+    def handler(self, builds, target, opts=None):
+        """Run a sequence of Maven builds in dependency order"""
+        if not opts:
+            opts = {}
+        target_info = self.session.getBuildTarget(target)
+        if not target_info:
+            raise koji.BuildError, 'unknown build target: %s' % target
+        dest_tag = self.session.getTag(target_info['dest_tag'], strict=True)
+
+        if not (opts.get('scratch') or opts.get('skip_tag')):
+            for package in builds:
+                dest_cfg = self.session.getPackageConfig(dest_tag['id'], package)
+                # Make sure package is on the list for this tag
+                if dest_cfg is None:
+                    raise koji.BuildError, "package %s not in list for tag %s" \
+                        % (package, dest_tag['name'])
+                elif dest_cfg['blocked']:
+                    raise koji.BuildError, "package %s is blocked for tag %s" \
+                        % (package, dest_tag['name'])
+
+        depmap = {}
+        for package, params in builds.items():
+            depmap[package] = set(params.get('buildrequires', []))
+
+        todo = copy.deepcopy(depmap)
+        running = {}
+        done = {}
+
+        while True:
+            ready = [package for package, deps in todo.items() if not deps]
+            if not ready and not running:
+                break
+            for package in ready:
+                params = builds[package]
+                task_deps = list(self.depset(package, depmap, done))
+                task_url = params['scmurl']
+                task_opts = dslice_ex(params, ['scmurl', 'buildrequires'], strict=False)
+                if task_deps:
+                    task_opts['deps'] = task_deps
+                if not (opts.get('scratch') or opts.get('force')):
+                    # check for a duplicate build (a build performed with the
+                    # same scmurl and options)
+                    dup_build = self.get_duplicate_build(dest_tag['name'], package, task_url, task_opts)
+                    # if we find one, mark the package as built and remote
+                    # it from todo
+                    if dup_build:
+                        done[package] = dup_build['nvr']
+                        for deps in todo.values():
+                            deps.discard(package)
+                        del todo[package]
+                        continue
+                task_opts.update(dslice(opts, ['skip_tag', 'scratch'], strict=False))
+                if opts.get('debug'):
+                    task_opts.setdefault('maven_options', []).append('--debug')
+                task_id = self.subtask('maven', [task_url, target, task_opts],
+                                       label=package)
+                running[task_id] = package
+                del todo[package]
+            try:
+                results = self.wait()
+            except (xmlrpclib.Fault, koji.GenericError), e:
+                # One task has failed, wait for the rest to complete before the
+                # chainmaven task fails.  self.wait(all=True) will thrown an exception.
+                self.wait(all=True)
+                assert False
+            # if we get here, results is a map whose keys are the ids of tasks
+            # that have completed successfully
+            for task_id in results:
+                if task_id in running:
+                    package = running.pop(task_id)
+                    if opts.get('scratch'):
+                        children = self.session.getTaskChildren(task_id)
+                        for child in children:
+                            # we want the ID of the buildMaven task because the
+                            # output dir of that task is where the Maven repo is
+                            if child['method'] == 'buildMaven':
+                                done[package] = child['id']
+                                break
+                        else:
+                            raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
+                    else:
+                        task_builds = self.session.listBuilds(taskID=task_id)
+                        if not task_builds:
+                            raise koji.BuildError, 'could not find build for task %s' % task_id
+                        done[package] = task_builds[0]['nvr']
+                    for deps in todo.values():
+                        deps.discard(package)
+
+        if todo:
+            # should never happen, the client should have checked for circular dependencies
+            raise koji.BuildError, 'unable to run chain build, circular dependencies'
+
+    def depset(self, package, depmap, done):
+        deps = set()
+        for dep in depmap[package]:
+            deps.add(done[dep])
+            deps.update(self.depset(dep, depmap, done))
+        return deps
+
+    def dicts_equal(self, a, b):
+        """Check if two dicts are equal.  They are considered equal if they
+        have the same keys and those keys have the same values.  If a value is
+        list, it will be considered equal to a list with the same values in
+        a different order."""
+        akeys = a.keys()
+        bkeys = b.keys()
+        if sorted(akeys) != sorted(bkeys):
+            return False
+        for key in akeys:
+            aval = a.get(key)
+            bval = b.get(key)
+            if type(aval) != type(bval):
+                return False
+            if isinstance(aval, dict):
+                if not self.dicts_equal(aval, bval):
+                    return False
+            elif isinstance(aval, list):
+                if not sorted(aval) == sorted(bval):
+                    return False
+            else:
+                if not aval == bval:
+                    return False
+        return True
+
+    def get_duplicate_build(self, tag, package, scmurl, task_opts):
+        """Find the latest build of package in tag and compare it to the
+        scmurl and task_opts.  If they're identical, return the build."""
+        builds = self.session.getLatestBuilds(tag, package=package)
+        if not builds:
+            return None
+        build = builds[0]
+        if not build['task_id']:
+            return None
+        build_task = session.getTaskInfo(build['task_id'], request=True)
+        request = build_task['request']
+        if request[0] != scmurl:
+            return False
+        if len(request) > 2:
+            build_opts = request[2]
+            # filter out maven options that don't affect the build output
+            # to avoid unnecessary rebuilds
+            if 'maven_options' in build_opts:
+                maven_options = build_opts['maven_options']
+                for opt in ['-e', '--errors', '-q', '--quiet',
+                            '-V', '--show-version', '-X', '--debug']:
+                    if opt in maven_options:
+                        maven_options.remove(opt)
+                if not maven_options:
+                    del build_opts['maven_options']
+        else:
+            build_opts = {}
+        if not self.dicts_equal(dslice_ex(build_opts, ['skip_tag', 'scratch'], strict=False),
+                                task_opts):
+            return None
+        # everything matches
+        return build
 
 class TagBuildTask(BaseTaskHandler):
 

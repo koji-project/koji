@@ -1186,6 +1186,105 @@ def handle_wrapper_rpm(options, session, args):
         session.logout()
         return watch_tasks(session,[task_id],quiet=options.quiet)
 
+def handle_maven_chain(options, session, args):
+    "Run a set of Maven builds in dependency order"
+    usage = _("usage: %prog maven-chain [options] target config")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("Do not attempt to tag builds"))
+    parser.add_option("--scratch", action="store_true",
+                      help=_("Perform scratch builds"))
+    parser.add_option("--debug", action="store_true",
+                      help=_("Run Maven build in debug mode"))
+    parser.add_option("--force", action="store_true",
+                      help=_("Force rebuilds of all packages"))
+    parser.add_option("--nowait", action="store_true",
+                      help=_("Don't wait on build"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
+    (build_opts, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Exactly two arguments (a build target and a config file) are required"))
+        assert False
+    activate_session(session)
+    target = args[0]
+    build_target = session.getBuildTarget(target)
+    if not build_target:
+        parser.error(_("Unknown build target: %s" % target))
+    dest_tag = session.getTag(build_target['dest_tag'])
+    if not dest_tag:
+        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+    if dest_tag['locked'] and not build_opts.scratch:
+        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+    opts = {}
+    for key in ('skip_tag', 'scratch', 'debug', 'force'):
+        val = getattr(build_opts, key)
+        if val:
+            opts[key] = val
+    config = ConfigParser.ConfigParser()
+    conf_fd = file(args[1])
+    config.readfp(conf_fd)
+    conf_fd.close()
+    builds = {}
+    depmap = {}
+    for package in config.sections():
+        params = {}
+        for name, value in config.items(package):
+            value = value.strip()
+            if not value:
+                continue
+            if name in ['scmurl', 'patches', 'specfile']:
+                # single-valued options
+                pass
+            elif name in ['buildrequires', 'goals', 'profiles', 'packages',
+                          'jvm_options', 'maven_options']:
+                # multi-valued options
+                value = value.split()
+            elif name == 'properties':
+                props = {}
+                for prop in value.splitlines():
+                    fields = prop.split('=', 1)
+                    if len(fields) != 2:
+                        fields.append('')
+                    props[fields[0]] = fields[1]
+                value = props
+            elif name == 'envs':
+                envs = {}
+                for env in value.splitlines():
+                    fields = env.split('=', 1)
+                    if len(fields) != 2:
+                        parser.error(_("Environment variables must be in NAME=VALUE format"))
+                        assert False
+                    envs[fields[0]] = fields[1]
+                value = envs
+            else:
+                parser.error(_("Unknown option: %s") % name)
+                assert False
+            params[name] = value
+        if not 'scmurl' in params:
+            parser.error(_("%s is missing the scmurl parameter") % package)
+            assert False
+        depmap[package] = set(params.get('buildrequires', []))
+        builds[package] = params
+    try:
+        order = koji.util.tsort(depmap)
+    except ValueError, e:
+        # if there is no possible build order, fail fast
+        print parser.error(_("Unable to run chain build, circular dependencies"))
+        assert False
+    priority = None
+    if build_opts.background:
+        priority = 5
+    task_id = session.chainMaven(builds, target, opts, priority=priority)
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if _running_in_bg() or build_opts.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+
 def handle_resubmit(options, session, args):
     """Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] taskID")

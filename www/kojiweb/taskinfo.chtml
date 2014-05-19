@@ -147,6 +147,15 @@ $value
         #if $len($params) > 4
         $printOpts($params[4])
         #end if
+        #elif $task.method == 'chainmaven'
+        <strong>Builds:</strong><br/>
+        <table>
+        #for $key, $val in $params[0].items()
+        <tr><td><strong>$key:</strong></td><td>$printMap($val)</td></tr>
+        #end for
+        </table>
+        <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        $printOpts($params[2])
         #elif $task.method == 'livecd' or $task.method == 'appliance'
         <strong>Arch:</strong> $params[2]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
