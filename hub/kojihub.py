@@ -10342,25 +10342,47 @@ class HostExports(object):
         repo = repo_info(br.data['repo_id'], strict=True)
         tag = get_tag(repo['tag_id'], strict=True)
         tag_archives = maven_tag_archives(tag['id'], event_id=repo['create_event'])
-        ignore_paths = []
+
+        if not ignore:
+            ignore = []
         if not extra_deps:
             extra_deps = []
+        task_deps = {}
         for dep in extra_deps:
             if isinstance(dep, (int, long)):
-                for taskfile in list_task_output(dep):
-                    if os.path.splitext(taskfile)[1] not in ['.log', '.md5', '.sha1']:
-                        ignore_paths.append(taskfile)
+                task_output = list_task_output(dep, stat=True)
+                for filepath, filestats in task_output.iteritems():
+                    if os.path.splitext(filepath)[1] in ['.log', '.md5', '.sha1']:
+                        continue
+                    tokens = filepath.split('/')
+                    if len(tokens) < 4:
+                        # should never happen in a Maven repo
+                        continue
+                    filename = tokens.pop()
+                    maven_info = {}
+                    maven_info['version'] = tokens.pop()
+                    maven_info['artifact_id'] = tokens.pop()
+                    maven_info['group_id'] = '.'.join(tokens)
+                    maven_label = koji.mavenLabel(maven_info)
+                    fileinfo = {'filename': filename,
+                                'size': int(filestats['st_size'])}
+                    if maven_label in task_deps:
+                        task_deps[maven_label]['files'].append(fileinfo)
+                    else:
+                        task_deps[maven_label] = {'maven_info': maven_info,
+                                                  'files': [fileinfo]}
             else:
                 build = get_build(dep, strict=True)
                 build_archives = list_archives(buildID=build['id'], type='maven')
                 tag_archives.extend(build_archives)
+        ignore.extend(task_deps.values())
+
         archives_by_label = {}
         for archive in tag_archives:
             maven_label = koji.mavenLabel(archive)
             archives_by_label.setdefault(maven_label, {})[archive['filename']] = archive
 
-        if not ignore:
-            ignore = []
+        SNAPSHOT_RE = re.compile(r'-\d{8}\.\d{6}-\d+')
         ignore_by_label = {}
         for entry in ignore:
             ignore_info = entry['maven_info']
@@ -10368,7 +10390,14 @@ class HostExports(object):
             if not ignore_by_label.has_key(ignore_label):
                 ignore_by_label[ignore_label] = {}
             for fileinfo in entry['files']:
-                ignore_by_label[ignore_label][fileinfo['filename']] = fileinfo
+                filename = fileinfo['filename']
+                ignore_by_label[ignore_label][filename] = fileinfo
+                if SNAPSHOT_RE.search(filename):
+                    # the task output snapshot versions, which means the
+                    # local repo will contain the same file with both
+                    # -SNAPSHOT and -{timestamp} in the name
+                    snapname = SNAPSHOT_RE.sub('-SNAPSHOT', filename)
+                    ignore_by_label[ignore_label][snapname] = fileinfo
 
         archives = []
         for entry in mavenlist:
@@ -10383,8 +10412,6 @@ class HostExports(object):
                 if tag_archive and fileinfo['size'] == tag_archive['size']:
                     archives.append(tag_archive)
                 elif ignore_archive and fileinfo['size'] == ignore_archive['size']:
-                    pass
-                elif os.path.join(fileinfo['path'], fileinfo['filename']) in ignore_paths:
                     pass
                 else:
                     if not ignore_unknown:

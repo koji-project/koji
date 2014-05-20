@@ -1203,6 +1203,8 @@ class MavenTask(MultiPlatformTask):
         build_info = None
         if not self.opts.get('scratch'):
             maven_info = maven_results['maven_info']
+            if maven_info['version'].endswith('-SNAPSHOT'):
+                raise koji.BuildError, '-SNAPSHOT versions are only supported in scratch builds'
             build_info = koji.maven_info_to_nvr(maven_info)
 
             if not self.opts.get('skip_tag'):
