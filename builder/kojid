@@ -1834,11 +1834,8 @@ class ChainMavenTask(MultiPlatformTask):
                 break
             for package in ready:
                 params = builds[package]
-                task_deps = list(self.depset(package, depmap, done))
                 task_url = params['scmurl']
                 task_opts = dslice_ex(params, ['scmurl', 'buildrequires'], strict=False)
-                if task_deps:
-                    task_opts['deps'] = task_deps
                 if not (opts.get('scratch') or opts.get('force')):
                     # check for a duplicate build (a build performed with the
                     # same scmurl and options)
@@ -1851,6 +1848,9 @@ class ChainMavenTask(MultiPlatformTask):
                             deps.discard(package)
                         del todo[package]
                         continue
+                task_deps = list(self.depset(package, depmap, done))
+                if task_deps:
+                    task_opts['deps'] = task_deps
                 task_opts.update(dslice(opts, ['skip_tag', 'scratch'], strict=False))
                 if opts.get('debug'):
                     task_opts.setdefault('maven_options', []).append('--debug')
