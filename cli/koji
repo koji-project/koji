@@ -4153,6 +4153,14 @@ def _parseTaskParams(session, method, task_id):
             lines.append("Task: %s %s" % (params[3]['id'], koji.taskLabel(params[3])))
         if len(params) > 4:
             _handleOpts(lines, params[4])
+    elif method == 'chainmaven':
+        lines.append("Builds:")
+        for package, opts in params[0].items():
+            lines.append("  " + package)
+            _handleMap(lines, opts, prefix="  ")
+        lines.append("Build Target: %s" % params[1])
+        if len(params) > 2:
+            _handleOpts(lines, params[2])
     elif method == 'winbuild':
         lines.append("VM: %s" % params[0])
         lines.append("SCM URL: %s" % params[1])

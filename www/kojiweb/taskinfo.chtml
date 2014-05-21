@@ -155,7 +155,9 @@ $value
         #end for
         </table>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
+        #if $len($params) > 2
         $printOpts($params[2])
+        #end if
         #elif $task.method == 'livecd' or $task.method == 'appliance'
         <strong>Arch:</strong> $params[2]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
