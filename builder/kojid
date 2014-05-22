@@ -1820,13 +1820,13 @@ class ChainMavenTask(MultiPlatformTask):
                     raise koji.BuildError, "package %s is blocked for tag %s" \
                         % (package, dest_tag['name'])
 
-        depmap = {}
+        self.depmap = {}
         for package, params in builds.items():
-            depmap[package] = set(params.get('buildrequires', []))
+            self.depmap[package] = set(params.get('buildrequires', []))
 
-        todo = copy.deepcopy(depmap)
+        todo = copy.deepcopy(self.depmap)
         running = {}
-        done = {}
+        self.done = {}
 
         while True:
             ready = [package for package, deps in todo.items() if not deps]
@@ -1834,57 +1834,82 @@ class ChainMavenTask(MultiPlatformTask):
                 break
             for package in ready:
                 params = builds[package]
-                task_url = params['scmurl']
-                task_opts = dslice_ex(params, ['scmurl', 'buildrequires'], strict=False)
+                buildtype = params.get('type', 'maven')
                 if not (opts.get('scratch') or opts.get('force')):
                     # check for a duplicate build (a build performed with the
                     # same scmurl and options)
-                    dup_build = self.get_duplicate_build(dest_tag['name'], package, task_url, task_opts)
-                    # if we find one, mark the package as built and remote
-                    # it from todo
+                    dup_build = self.get_duplicate_build(dest_tag['name'], package, params)
+                    # if we find one, mark the package as built and remove it from todo
                     if dup_build:
-                        done[package] = dup_build['nvr']
+                        self.done[package] = dup_build['nvr']
                         for deps in todo.values():
                             deps.discard(package)
                         del todo[package]
                         continue
-                task_deps = list(self.depset(package, depmap, done))
-                if task_deps:
-                    task_opts['deps'] = task_deps
+                task_url = params['scmurl']
+                task_opts = dslice_ex(params, ['scmurl', 'buildrequires', 'type'], strict=False)
                 task_opts.update(dslice(opts, ['skip_tag', 'scratch'], strict=False))
-                if opts.get('debug'):
-                    task_opts.setdefault('maven_options', []).append('--debug')
-                task_id = self.subtask('maven', [task_url, target, task_opts],
-                                       label=package)
+
+                if buildtype == 'maven':
+                    task_deps = list(self.depset(package))
+                    if task_deps:
+                        task_opts['deps'] = task_deps
+                    if opts.get('debug'):
+                        task_opts.setdefault('maven_options', []).append('--debug')
+                    task_id = self.subtask('maven', [task_url, target, task_opts],
+                                           label=package)
+                elif buildtype == 'wrapper':
+                    pkg_to_wrap = params['buildrequires'][0]
+                    if opts.get('scratch'):
+                        task_id_to_wrap = self.done[pkg_to_wrap]
+                        task_to_wrap = self.session.getTaskInfo(task_id_to_wrap, request=True)
+                        build_to_wrap = None
+                    else:
+                        nvr_to_wrap = self.done[pkg_to_wrap]
+                        build_to_wrap = self.session.getBuild(nvr_to_wrap, strict=True)
+                        task_to_wrap = None
+                    target_info = self.session.getBuildTarget(target, strict=True)
+                    repo_info = self.getRepo(target_info['build_tag'])
+                    task_opts['repo_id'] = repo_info['id']
+                    task_id = self.subtask('wrapperRPM', [task_url, target_info,
+                                                          build_to_wrap, task_to_wrap,
+                                                          task_opts],
+                                           label=package)
+                else:
+                    raise koji.BuilError, 'unsupported build type: %s' % buildtype
+
                 running[task_id] = package
                 del todo[package]
             try:
                 results = self.wait()
             except (xmlrpclib.Fault, koji.GenericError), e:
                 # One task has failed, wait for the rest to complete before the
-                # chainmaven task fails.  self.wait(all=True) will thrown an exception.
+                # chainmaven task fails.  self.wait(all=True) should thrown an exception.
                 self.wait(all=True)
-                assert False
+                raise
             # if we get here, results is a map whose keys are the ids of tasks
             # that have completed successfully
             for task_id in results:
                 if task_id in running:
                     package = running.pop(task_id)
                     if opts.get('scratch'):
-                        children = self.session.getTaskChildren(task_id)
-                        for child in children:
-                            # we want the ID of the buildMaven task because the
-                            # output dir of that task is where the Maven repo is
-                            if child['method'] == 'buildMaven':
-                                done[package] = child['id']
-                                break
+                        if builds[package].get('type') == 'wrapper':
+                            self.done[package] = task_id
                         else:
-                            raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
+                            children = self.session.getTaskChildren(task_id)
+                            for child in children:
+                                # we want the ID of the buildMaven task because the
+                                # output dir of that task is where the Maven repo is
+                                if child['method'] == 'buildMaven':
+                                    self.done[package] = child['id']
+                                    break
+                            else:
+                                raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
                     else:
                         task_builds = self.session.listBuilds(taskID=task_id)
                         if not task_builds:
                             raise koji.BuildError, 'could not find build for task %s' % task_id
-                        done[package] = task_builds[0]['nvr']
+                        self.done[package] = task_builds[0]['nvr']
                     for deps in todo.values():
                         deps.discard(package)
 
@@ -1892,11 +1917,11 @@ class ChainMavenTask(MultiPlatformTask):
             # should never happen, the client should have checked for circular dependencies
             raise koji.BuildError, 'unable to run chain build, circular dependencies'
 
-    def depset(self, package, depmap, done):
+    def depset(self, package):
         deps = set()
-        for dep in depmap[package]:
-            deps.add(done[dep])
-            deps.update(self.depset(dep, depmap, done))
+        for dep in self.depmap[package]:
+            deps.add(self.done[dep])
+            deps.update(self.depset(dep))
         return deps
 
     def dicts_equal(self, a, b):
@@ -1924,7 +1949,7 @@ class ChainMavenTask(MultiPlatformTask):
                     return False
         return True
 
-    def get_duplicate_build(self, tag, package, scmurl, task_opts):
+    def get_duplicate_build(self, tag, package, params):
         """Find the latest build of package in tag and compare it to the
         scmurl and task_opts.  If they're identical, return the build."""
         builds = self.session.getLatestBuilds(tag, package=package)
@@ -1935,23 +1960,37 @@ class ChainMavenTask(MultiPlatformTask):
             return None
         build_task = session.getTaskInfo(build['task_id'], request=True)
         request = build_task['request']
-        if request[0] != scmurl:
-            return False
+        if request[0] != params['scmurl']:
+            return None
+        if params.get('type') == 'wrapper':
+            wrapped_build = request[2]
+            pkg_to_wrap = params['buildrequires'][0]
+            nvr_to_wrap = self.done[pkg_to_wrap]
+            if wrapped_build['nvr'] != nvr_to_wrap:
+                return None
+            # For a wrapper-rpm build, the only parameters that really matter
+            # are the scmurl and the wrapped NVR.  These both match, so
+            # return the existing build.
+            return build
         if len(request) > 2:
             build_opts = request[2]
-            # filter out maven options that don't affect the build output
-            # to avoid unnecessary rebuilds
-            if 'maven_options' in build_opts:
-                maven_options = build_opts['maven_options']
+        else:
+            build_opts = {}
+        task_opts = dslice_ex(params, ['scmurl', 'buildrequires', 'type'], strict=False)
+        # filter out options that don't affect the build output
+        # to avoid unnecessary rebuilds
+        for opts in [build_opts, task_opts]:
+            if 'maven_options' in opts:
+                maven_options = opts['maven_options']
                 for opt in ['-e', '--errors', '-q', '--quiet',
                             '-V', '--show-version', '-X', '--debug']:
                     if opt in maven_options:
                         maven_options.remove(opt)
                 if not maven_options:
-                    del build_opts['maven_options']
-        else:
-            build_opts = {}
-        if not self.dicts_equal(dslice_ex(build_opts, ['skip_tag', 'scratch'], strict=False),
+                    del opts['maven_options']
+            if 'jvm_options' in opts:
+                del opts['jvm_options']
+        if not self.dicts_equal(dslice_ex(build_opts, ['skip_tag', 'scratch', 'deps'], strict=False),
                                 task_opts):
             return None
         # everything matches

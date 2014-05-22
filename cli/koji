@@ -1186,6 +1186,60 @@ def handle_wrapper_rpm(options, session, args):
         session.logout()
         return watch_tasks(session,[task_id],quiet=options.quiet)
 
+def _maven_params(parser, opts, items):
+    params = {}
+    for name, value in items:
+        value = value.strip()
+        if not value:
+            continue
+        if name in ['scmurl', 'patches', 'specfile']:
+            # single-valued options
+            pass
+        elif name in ['buildrequires', 'goals', 'profiles', 'packages',
+                      'jvm_options', 'maven_options']:
+            # multi-valued options
+            value = value.split()
+        elif name == 'properties':
+            props = {}
+            for prop in value.splitlines():
+                fields = prop.split('=', 1)
+                if len(fields) != 2:
+                    fields.append('')
+                props[fields[0]] = fields[1]
+            value = props
+        elif name == 'envs':
+            envs = {}
+            for env in value.splitlines():
+                fields = env.split('=', 1)
+                if len(fields) != 2:
+                    parser.error(_("Environment variables must be in NAME=VALUE format"))
+                envs[fields[0]] = fields[1]
+            value = envs
+        elif name == 'type':
+            continue
+        else:
+            parser.error(_("Unknown option: %s") % name)
+        params[name] = value
+    return params
+
+def _wrapper_params(parser, opts, items):
+    params = {}
+    for name, value in items:
+        if name == 'scmurl':
+            pass
+        elif name == 'buildrequires':
+            value = value.split()
+            if len(value) != 1:
+                parser.error(_("A wrapper-rpm must depend on exactly one package"))
+        elif name == 'type':
+            pass
+        else:
+            parser.error(_("Unknown option: %s") % name)
+        params[name] = value
+    if not opts.get('scratch'):
+        params['create_build'] = True
+    return params
+
 def handle_maven_chain(options, session, args):
     "Run a set of Maven builds in dependency order"
     usage = _("usage: %prog maven-chain [options] target config")
@@ -1211,12 +1265,12 @@ def handle_maven_chain(options, session, args):
     target = args[0]
     build_target = session.getBuildTarget(target)
     if not build_target:
-        parser.error(_("Unknown build target: %s" % target))
+        parser.error(_("Unknown build target: %s") % target)
     dest_tag = session.getTag(build_target['dest_tag'])
     if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        parser.error(_("Unknown destination tag: %s") % build_target['dest_tag_name'])
     if dest_tag['locked'] and not build_opts.scratch:
-        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+        parser.error(_("Destination tag %s is locked") % dest_tag['name'])
     opts = {}
     for key in ('skip_tag', 'scratch', 'debug', 'force'):
         val = getattr(build_opts, key)
@@ -1230,38 +1284,16 @@ def handle_maven_chain(options, session, args):
     depmap = {}
     for package in config.sections():
         params = {}
-        for name, value in config.items(package):
-            value = value.strip()
-            if not value:
-                continue
-            if name in ['scmurl', 'patches', 'specfile']:
-                # single-valued options
-                pass
-            elif name in ['buildrequires', 'goals', 'profiles', 'packages',
-                          'jvm_options', 'maven_options']:
-                # multi-valued options
-                value = value.split()
-            elif name == 'properties':
-                props = {}
-                for prop in value.splitlines():
-                    fields = prop.split('=', 1)
-                    if len(fields) != 2:
-                        fields.append('')
-                    props[fields[0]] = fields[1]
-                value = props
-            elif name == 'envs':
-                envs = {}
-                for env in value.splitlines():
-                    fields = env.split('=', 1)
-                    if len(fields) != 2:
-                        parser.error(_("Environment variables must be in NAME=VALUE format"))
-                        assert False
-                    envs[fields[0]] = fields[1]
-                value = envs
-            else:
-                parser.error(_("Unknown option: %s") % name)
-                assert False
-            params[name] = value
+        if config.has_option(package, 'type'):
+            buildtype = config.get(package, 'type')
+        else:
+            buildtype = 'maven'
+        if buildtype == 'maven':
+            params = _maven_params(parser, opts, config.items(package))
+        elif buildtype == 'wrapper':
+            params = _wrapper_params(parser, opts, config.items(package))
+        else:
+            parser.error(_("Unsupported build type: %s") % buildtype)
         if not 'scmurl' in params:
             parser.error(_("%s is missing the scmurl parameter") % package)
             assert False
