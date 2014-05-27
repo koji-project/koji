@@ -9500,7 +9500,8 @@ class Host(object):
         c = context.cnx.cursor()
         q = """
         SELECT id,state FROM task
-        WHERE parent=%(parent)s AND awaited = TRUE"""
+        WHERE parent=%(parent)s AND awaited = TRUE
+        FOR UPDATE"""
         c.execute(q,locals())
         canceled = koji.TASK_STATES['CANCELED']
         closed = koji.TASK_STATES['CLOSED']
