@@ -1881,7 +1881,7 @@ class ChainMavenTask(MultiPlatformTask):
                 running[task_id] = package
                 del todo[package]
             try:
-                results = self.wait()
+                results = self.wait(running.keys())
             except (xmlrpclib.Fault, koji.GenericError), e:
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
@@ -1890,28 +1890,27 @@ class ChainMavenTask(MultiPlatformTask):
             # if we get here, results is a map whose keys are the ids of tasks
             # that have completed successfully
             for task_id in results:
-                if task_id in running:
-                    package = running.pop(task_id)
-                    if opts.get('scratch'):
-                        if builds[package].get('type') == 'wrapper':
-                            self.done[package] = task_id
-                        else:
-                            children = self.session.getTaskChildren(task_id)
-                            for child in children:
-                                # we want the ID of the buildMaven task because the
-                                # output dir of that task is where the Maven repo is
-                                if child['method'] == 'buildMaven':
-                                    self.done[package] = child['id']
-                                    break
-                            else:
-                                raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
+                package = running.pop(task_id)
+                if opts.get('scratch'):
+                    if builds[package].get('type') == 'wrapper':
+                        self.done[package] = task_id
                     else:
-                        task_builds = self.session.listBuilds(taskID=task_id)
-                        if not task_builds:
-                            raise koji.BuildError, 'could not find build for task %s' % task_id
-                        self.done[package] = task_builds[0]['nvr']
-                    for deps in todo.values():
-                        deps.discard(package)
+                        children = self.session.getTaskChildren(task_id)
+                        for child in children:
+                            # we want the ID of the buildMaven task because the
+                            # output dir of that task is where the Maven repo is
+                            if child['method'] == 'buildMaven':
+                                self.done[package] = child['id']
+                                break
+                        else:
+                            raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
+                else:
+                    task_builds = self.session.listBuilds(taskID=task_id)
+                    if not task_builds:
+                        raise koji.BuildError, 'could not find build for task %s' % task_id
+                    self.done[package] = task_builds[0]['nvr']
+                for deps in todo.values():
+                    deps.discard(package)
 
         if todo:
             # should never happen, the client should have checked for circular dependencies
