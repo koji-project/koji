@@ -3657,7 +3657,7 @@ def get_options():
                 'log_level': None,
                 'topdir': '/mnt/koji',
                 'topurl': None,
-                'workdir': '/tmp/koji',
+                'workdir': '/var/tmp/koji',
                 'pluginpath': '/usr/lib/koji-builder-plugins',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',
