@@ -293,6 +293,12 @@ def ensure_connection(session):
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
+
+    # convert to absolute paths
+    options.auth_cert  = os.path.expanduser(options.auth_cert)
+    options.auth_ca  = os.path.expanduser(options.auth_ca)
+    options.serverca  = os.path.expanduser(options.serverca)
+
     if options.noauth:
         #skip authentication
         pass
