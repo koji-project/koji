@@ -2711,7 +2711,7 @@ class OzImageTask(BaseTaskHandler):
     def fetchKickstart(self):
         """
         Retrieve the kickstart file we were given (locally or remotely) and
-        upload it.
+        upload it to the hub.
 
         Note that if the KS file existed locally, then "ksfile" is a relative
         path to it in the /mnt/koji/work directory. If not, then it is still
@@ -2720,7 +2720,8 @@ class OzImageTask(BaseTaskHandler):
         url with --ksurl.
 
         @args: None, use self.opts for options
-        @returns: absolute path to the retrieved kickstart file
+        @returns:
+            absolute path to the retrieved kickstart file
         """
         ksfile = self.opts.get('kickstart')
         self.logger.debug("ksfile = %s" % ksfile)
@@ -2751,14 +2752,8 @@ class OzImageTask(BaseTaskHandler):
         @returns: None
         """
         # XXX: If the ks file came from a local path and has %include
-        #      macros, *-creator will fail because the included
-        #      kickstarts were not copied into the chroot. For now we
-        #      require users to flatten their kickstart file if submitting
-        #      the task with a local path.
-        #
-        #      Note that if an SCM URL was used instead, %include macros
-        #      may not be a problem if the included kickstarts are present
-        #      in the repository we checked out.
+        #      macros, Oz will fail because it can only handle flat files.
+        #      We require users to flatten their kickstart file.
         if self.opts.get('ksversion'):
             version = ksparser.makeVersion(
                 ksparser.stringToVersion(self.opts['ksversion']))
@@ -2775,16 +2770,15 @@ class OzImageTask(BaseTaskHandler):
             raise koji.BuildError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
 
-    def prepareKickstart(self, repo_info, target_info, arch):
+    def prepareKickstart(self, repo_info, target_info):
         """
         Process the ks file to be used for controlled image generation. This
         method also uploads the modified kickstart file to the task output
-        area.
+        area on the hub..
 
         @args:
             target_info: a sesion.getBuildTarget() object
             repo_info: session.getRepo() object
-            arch: canonical architecture name
         @returns:
             absolute path to a processed kickstart file
         """
@@ -2794,12 +2788,13 @@ class OzImageTask(BaseTaskHandler):
         # repo associated with the target passed in initially.
         self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
         repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
+        # TODO: sensibly use "url" and "repo" commands in kickstart
         if self.opts.get('repo'):
             # the user used --repo at least once
             user_repos = self.opts.get('repo')
             index = 0
             for user_repo in user_repos:
-                repo_url = user_repo.replace('$arch', arch)
+                repo_url = user_repo.replace('$arch', self.arch)
                 self.ks.handler.repo.repoList.append(repo_class(
                     baseurl=repo_url, name='koji-override-%i' % index))
                 index += 1
@@ -2808,7 +2803,7 @@ class OzImageTask(BaseTaskHandler):
             path_info = koji.PathInfo(topdir=self.options.topurl)
             repopath = path_info.repo(repo_info['id'],
                                       target_info['build_tag_name'])
-            baseurl = '%s/%s' % (repopath, arch)
+            baseurl = '%s/%s' % (repopath, self.arch)
             self.logger.debug('BASEURL: %s' % baseurl)
             self.ks.handler.repo.repoList.append(repo_class(
                 baseurl=baseurl, name='koji-override-0'))
@@ -2831,7 +2826,14 @@ class OzImageTask(BaseTaskHandler):
     def makeConfig(self):
         """
         Generate a configuration dict for ImageFactory. This will override
-        anything in the /etc config files.
+        anything in the /etc config files. We do this forcibly so that it is
+        impossible for Koji to use any image caches or leftover metadata from
+        other images created by the service.
+
+        @args: none
+        @returns:
+            a dictionary used for configuring ImageFactory to built an image
+            the way we want
         """
         return {
             #Oz specific
@@ -2852,9 +2854,14 @@ class OzImageTask(BaseTaskHandler):
               'storage_path': os.path.join(self.workdir, 'output_image')},
         }
 
-    def makeTemplate(self, imgname, arch, inst_tree):
+    def makeTemplate(self, inst_tree):
         """
-        Generate a simple template for ImageFactory
+        Generate a simple "TDL" for ImageFactory to build an image with.
+
+        @args:
+            inst_tree - a string, a URL to the install tree (a compose)
+        @returns:
+            An XML string that imagefactory can consume
         """
         # we have to split this up so the variable substitution works
         distname, distver = self.parseDistro(self.opts.get('distro'))
@@ -2867,7 +2874,7 @@ class OzImageTask(BaseTaskHandler):
             <install type='url'>
                 <url>%s</url>
             </install>
-        """ % (imgname, distname, distver, arch, inst_tree)
+        """ % (self.imgname, distname, distver, self.arch, inst_tree)
         template += """<icicle>
                 <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
             </icicle>
@@ -2878,13 +2885,54 @@ class OzImageTask(BaseTaskHandler):
         <size>%sG</size>
     </disk>
 </template>
-""" % (imgname, self.opts.get('disk_size'))
+""" % (self.imgname, self.opts.get('disk_size'))
+        return template
+
+    def makeDockerUtilTemplate(self, inst_tree, pkg_group):
+        """
+        Generate a "TDL" for ImageFactory to build a utility image to run
+        docker commands on a docker image.
+
+        @args:
+            inst_tree - a string, a URL to the install tree (a compose)
+        @returns:
+            An XML string that imagefactory can consume
+        """
+        distname, distver = self.parseDistro(self.opts.get('distro'))
+        template = """<template>
+    <name>koji-%s-utility</name>
+        <os>
+            <name>%s</name>
+            <version>%s</version>
+            <arch>%s</arch>
+            <install type='url'>
+                <url>%s</url>
+            </install>
+        """ % (self.id, distname, distver, self.arch, inst_tree)
+        template += """<icicle>
+                <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
+            </icicle>
+        """
+        # TODO: this should be defined by a docker-build package group
+        template += """</os>
+    <description>koji-%s-utility</description>
+    <packages>
+        <package name='docker'/>
+        <package name='libguestfs-tools'/>
+    </packages>
+</template>
+""" % self.id
         return template
 
     def parseDistro(self, distro):
         """
         Figure out the distribution name and version we are going to build an
         image on.
+
+        args:
+            a string of the form: RHEL-X.Y, Fedora-NN, CentOS-X.Y, or SL-X.Y
+        returns:
+            a 2-element list, depends on the distro where the split happened
         """
         if distro.startswith('RHEL'):
             major, minor = distro.split('.')
@@ -2900,7 +2948,8 @@ class OzImageTask(BaseTaskHandler):
         else:
             raise BuildError('Unknown or supported distro given: %s' % distro)
 
-    def fixImageXML(self, format, imgname, filename, xmltext):
+    def fixImageXML(self, format, filename, xmltext):
+
         """
         The XML generated by Oz/ImageFactory knows nothing about the name
         or image format conversions Koji does. We fix those values in the
@@ -2909,18 +2958,18 @@ class OzImageTask(BaseTaskHandler):
 
         @args:
             format = raw, qcow2, vmdk, etc... a string representation
-            name = the (file) name of the image
+            filename = the name of the XML file we will save this too
             xmltext = the libvirt XML to start with
         @return:
             an absolute path to the modified XML
         """
         newxml = xml.dom.minidom.parseString(xmltext)
         ename = newxml.getElementsByTagName('name')[0]
-        ename.firstChild.nodeValue = imgname
+        ename.firstChild.nodeValue = self.imgname
         esources = newxml.getElementsByTagName('source')
         for e in esources:
             if e.hasAttribute('file'):
-                e.setAttribute('file', '%s.%s' % (imgname, format))
+                e.setAttribute('file', '%s.%s' % (self.imgname, format))
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
         xml_path = os.path.join(self.workdir, filename)
@@ -2933,6 +2982,9 @@ class OzImageTask(BaseTaskHandler):
         """
         Locate a screenshot taken by libvirt in the case of build failure,
         if it exists. If it does, return the path, else return None.
+
+        @args: none
+        @returns: a path to a screenshot take by libvirt
         """
         shotdir = os.path.join(self.workdir, 'oz_screenshots')
         screenshot = None
@@ -2947,7 +2999,7 @@ class OzImageTask(BaseTaskHandler):
 class BaseImageTask(OzImageTask):
 
     Methods = ['createImage']
-    _taskWeight = 1.5
+    _taskWeight = 2.0
 
     def getRootDevice(self):
         """
@@ -2959,7 +3011,38 @@ class BaseImageTask(OzImageTask):
                 return part.disk
         raise koji.ApplianceError, 'kickstart lacks a "/" mountpoint'
 
-    def format_deps(self, formats):
+    def _makeDockerCmds(self, tags):
+        """
+        When building a docker image, we call docker commands on it from
+        within the "utility" image. ImageFactory accepts an XML string that
+        describes what commands to run, which is what this method returns.
+
+        @args: None
+            tags- a list of tags to apply to the docker image
+        @returns:
+            an XML string with docker commands
+        """
+        # TODO: set up the file name correctly
+        # TODO: set up the image id in docker correctly
+        cmds = """<template>
+    <commands>
+        <command name='mount'>mount /dev/vdb1 /mnt</command>
+        <command name='dockerstart'>/usr/bin/systemctl start docker</command>
+        <command name='taroutimport'>LIBGUESTFS_BACKEND=direct virt-tar-out -a /mnt/input_image.raw / - | docker import - </command>"""
+        idx = 0
+        for tag in tags:
+            cmds += """
+        <command name='docker-tag%s'>docker tag %s ...</command>""" % (idx, tag)
+            idx += 1
+        cmds += """
+        <command name='save'>docker save %s > /mnt/docker-output.img</command>
+    </commands>
+</template>
+""" % self.imgname
+        self.logger.debug('docker command template: %s' % cmds)
+        return cmds
+
+    def _format_deps(self, formats):
         """
         Return a dictionary where the keys are the image formats we need to
         build/convert, and the values are booleans that indicate whether the
@@ -2988,136 +3071,266 @@ class BaseImageTask(OzImageTask):
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
 
-    def do_images(self, arch, template, ozlog, imgname):
+    def do_images(self, template, inst_tree):
         """
         Call out to ImageFactory to build the image(s) we want. Returns a dict
         of details for each image type we had to ask ImageFactory to build
-        {format: dispatcher object}
         """
-        def do_target_image(base_id, image_type, ova_opts={}):
-            self.logger.debug('ova_opts: %s' % ova_opts)
-            try:
-                target = bd.builder_for_target_image(image_type,
-                    image_id=base_id, template=None, parameters=ova_opts)
-                target.target_thread.join()
-            except:
-                tlog.removeHandler(fhandler)
-                self.uploadFile(ozlog)
-            self.logger.debug(
-                'Target image results: %s' % target.target_image.status)
-            if target.target_image.status == 'FAILED':
-                if not self.session.checkUpload('', os.path.basename(ozlog)):
-                    tlog.removeHandler(fhandler)
-                    self.uploadFile(ozlog)
-                raise koji.ApplianceError('Image status is %s: %s' % (
-                    target.target_image.status,
-                    target.target_image.status_detail))
-            return target
-
-        fhandler = logging.FileHandler(ozlog)
-        bd = BuildDispatcher()
-        tlog = logging.getLogger()
-        tlog.setLevel(logging.DEBUG)
-        tlog.addHandler(fhandler)
+        fcalls = {'raw':   self._buildBase,
+                  'vmdk':  self._buildConvert,
+                  'vdi':   self._buildConvert,
+                  'qcow':  self._buildConvert,
+                  'qcow2': self._buildConvert,
+                  'rhevm-ova':   self._buildOVA,
+                  'vsphere-ova': self._buildOVA,
+                  'docker':      self._buildIndirect
+        }
+        # add a handler to the logger so that we capture ImageFactory's logging
+        self.fhandler = logging.FileHandler(self.ozlog)
+        self.bd = BuildDispatcher()
+        self.tlog = logging.getLogger()
+        self.tlog.setLevel(logging.DEBUG)
+        self.tlog.addHandler(self.fhandler)
         images = {}
+        random.seed() # necessary to ensure a unique mac address
+        # if we need a utility image for the indirection plugin we create it
+        # we do not join() this until later
+        # Future: 'livecd' will be in here
+        if 'docker' in self.formats:
+            self.session.host.setTaskWeight(self.id, 3.0)
+            self.util_img = self._buildDockerUtility(inst_tree)
         params = {'install_script': str(self.ks.handler),
                   'offline_icicle': True}
-        random.seed() # necessary to ensure a unique mac address
-        try:
-            base = bd.builder_for_base_image(template, parameters=params)
-            base.base_thread.join()
-        except:
-            # upload log even if we failed to help diagnose an issue
-            tlog.removeHandler(fhandler)
-            self.uploadFile(ozlog)
-        self.logger.debug('Base image results: %s' % base.base_image.status)
-        if base.base_image.status == 'FAILED':
+        # build the base (raw) image
+        self.base_img = self._buildBase(template, params)
+        images['raw'] = {'image': self.base_img.base_image.data,
+                         'icicle': self.base_img.base_image.icicle}
+        # Do the rest of the image types (everything but raw)
+        for format in self.formats:
+            if format == 'raw':
+                continue
+            self.logger.info('dispatching %s image builder' % format)
+            images[format] = fcalls[format](format)
+        imginfo = self._processXML(images)
+        self.tlog.removeHandler(self.fhandler)
+        self.uploadFile(self.ozlog)
+        return imginfo
+
+    def _processXML(self, images):
+        """
+        Produce XML that libvirt can import to create a domain based on image(s)
+        we produced. We save the location of the XML file in the dictionary
+        it corresponds to here.
+
+        @args:
+            images - a dict where the keys are image formats, and the values
+                are dicts with details about the image (location, icicle, etc)
+        @returns:
+            a dictionary just like "images" but with a new key called "libvirt"
+            that points to the path of the XML file for that image
+        """
+        imginfo = {}
+        for fmt in images.keys():
+            imginfo[fmt] = images[fmt]
+            lxml = self.fixImageXML(fmt, 'libvirt-%s-%s.xml' % (fmt, self.arch),
+                self.base_img.base_image.parameters['libvirt_xml'])
+            imginfo[fmt]['libvirt'] = lxml
+        return imginfo
+
+    def _checkImageState(self, image):
+        """
+        Query ImageFactory for details of a dispatched image build. If it is
+        FAILED we raise an exception.
+
+        @args:
+            image - a build dispatcher object returned by a BuildDispatcher
+        @returns: nothing
+        """
+        if image.target_image:
+            status = image.target_image.status
+            details = image.target_image.status_detail
+        else:
+            status = image.base_image.status
+            details = image.base_image.status_detail
+        self.logger.debug('check image results: %s' % status)
+        if status == 'FAILED':
             scrnshot = self.getScreenshot()
             if scrnshot:
                 ext = scrnshot[-3:]
                 self.uploadFile(scrnshot, remoteName='screenshot.%s' % ext)
-            base.os_plugin.abort() # forcibly tear down the VM
+            image.os_plugin.abort() # forcibly tear down the VM
             # TODO abort when a task is CANCELLED
-            if not self.session.checkUpload('', os.path.basename(ozlog)):
-                tlog.removeHandler(fhandler)
-                self.uploadFile(ozlog)
-
+            if not self.session.checkUpload('', os.path.basename(self.ozlog)):
+                self.tlog.removeHandler(self.fhandler)
+                self.uploadFile(self.ozlog)
             raise koji.ApplianceError('Image status is %s: %s' %
-                (base.base_image.status, base.base_image.status_detail))
-        lxml = self.fixImageXML('raw', imgname,
-            'libvirt-%s-%s.xml' % ('raw', arch),
-            base.base_image.parameters['libvirt_xml'])
-        images['raw'] = {'image': base.base_image.data, 'libvirt': lxml,
-                         'icicle': base.base_image.icicle}
+                (status, details))
 
-        # target-image type images
-        if 'docker' in self.formats:
-            targ = do_target_image(base.base_image.identifier, 'docker',
-                ova_opts={'compress': 'gzip'})
-            images['docker'] = {'image': targ.target_image.data}
+    def _buildDockerUtility(self, inst_tree):
+        """
+        Build a utility image used for the indirection plugin later. Docker
+        and eventually liveCDs will use this. The utility image provides an
+        environment where we will run post-build commands on the base image
+        we generated.
 
-        ova_opts = {}
+        @args:
+            inst_tree - a string URL to an install tree (a compose)
+        @returns:
+            a dict with some details about the image
+        """
+        #dtemp = self.makeDockerUtilTemplate(inst_tree, 'docker-build')
+        dtemp = self.makeDockerUtilTemplate('http://download.lab.bos.redhat.com/rel-eng/RHEL-7.0-20140507.0/compose/Server/x86_64/os', 'docker-build')
+        # TODO: enable this and store it properly
+        # pkgs = [x['packagelist'] for x in brew.getTagGroups('rhel-7.0-build') if x['name'] == 'livecd-build'][0]
+        # print '\n'.join([p['package'] for p in pkgs])
+        dparams = {'generate_icicle': False}
+        utilname = 'koji-%s-util' % self.id
+        return self._buildBase(dtemp, dparams, wait=False)
+
+    def _buildBase(self, template, params, wait=True):
+        """
+        Build a base image using ImageFactory. This is a "raw" image.
+
+        @args:
+            template - an XML string for the TDL
+            params - a dict that controls some ImageFactory settings
+            wait - call join() on the building thread if True
+        @returns:
+            a dict with some metadata about the image (includes an icicle)
+        """
+        # TODO: test the failure case where IF itself throws an exception
+        #       ungracefully (missing a plugin for example)
+        #       may need to still upload ozlog and remove the log handler
+        self.logger.info('dispatching a baseimg builder')
+        self.logger.debug('templates: %s' % template)
+        self.logger.debug('params: %s' % params)
+        base = self.bd.builder_for_base_image(template, parameters=params)
+        if wait:
+            base.base_thread.join()
+            self._checkImageState(base)
+        return base
+
+    def _buildOVA(self, format):
+        """
+        Build an OVA target image. This is a format supported by RHEV and
+        vSphere
+
+        @args:
+            format - a string representing the image format, "rhevm-ova"
+        @returns
+            a dict with some metadata about the image
+        """
+        img_opts = {}
         if self.opts.get('ova_option'):
-            ova_opts = dict([o.split('=') for o in self.opts.get('ova_option')])
-        for format in ('rhevm-ova', 'vsphere-ova'):
-            # assumes self.formats is pre-populated with rhevm/vsphere if the
-            # "ova" format for them was requested with --format only
-            if format not in self.formats:
-                continue
-            targ = do_target_image(base.base_image.identifier,
-                format.replace('-ova', ''))
-            # Target images do not have their own modified libvirt xml files.
-            # They may not even be bootable with libvirt.
-            lxml = self.fixImageXML(format, imgname,
-                'libvirt-%s-%s.xml' % (format, arch),
-                base.base_image.parameters['libvirt_xml'])
-            targ2 = do_target_image(targ.target_image.identifier, 'OVA',
-                 ova_opts=ova_opts)
-            images[format] = {'libvirt': lxml, 'image': targ2.target_image.data}
-        tlog.removeHandler(fhandler)
-        self.uploadFile(ozlog)
+            img_opts = dict([o.split('=') for o in self.opts.get('ova_option')])
+        targ = self._do_target_image(self.base_img.base_image.identifier,
+            format.replace('-ova', ''))
+        targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
+            img_opts=img_opts)
+        return {'image': targ2.target_image.data}
 
-        # qemu-img conversions
-        for format in ('qcow', 'qcow2', 'vdi', 'vmdk'):
-            if format not in self.formats:
-                continue
-            newimg = os.path.join(self.workdir, imgname + '.%s' % format)
-            cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
-                format, base.base_image.data, newimg]
-            if format in ('qcow', 'qcow2'):
-                cmd.insert(2, '-c') # enable compression for qcow images
-            conlog = os.path.join(self.workdir,
-                'qemu-img-%s-%s.log' % (format, arch))
-            log_output(self.session, cmd[0], cmd, conlog,
-                self.getUploadDir(), logerror=1)
-            lxml = self.fixImageXML(format, imgname,
-                'libvirt-%s-%s.xml' % (format, arch),
-                base.base_image.parameters['libvirt_xml'])
-            images[format] = {'image': newimg, 'libvirt': lxml}
+    def _do_target_image(self, base_id, image_type, img_opts={}):
+        """
+        A generic method for building what ImageFactory calls "target images".
+        These are images based on a raw disk that was built before using the
+        _buildBase method.
 
-        return images
+        @args:
+            base_id - a string ID of the image to build off of
+            image_type - a string representing the target type. ImageFactory
+                uses this to figure out what plugin to run
+            img_opts - a dict of additional options that specific to the target
+                type we pass in via image_type
+        @returns:
+            A Builder() object from ImageFactory that contains information
+            about the image building include state and progress.
+        """
+        # TODO: test the failure case where IF itself throws an exception
+        #       ungracefully (missing a plugin for example)
+        #       may need to still upload ozlog and remove the log handler
+        self.logger.debug('img_opts: %s' % img_opts)
+        target = self.bd.builder_for_target_image(image_type,
+            image_id=base_id, template=None, parameters=img_opts)
+        target.target_thread.join()
+        self._checkImageState(target)
+        return target
+
+    def _buildConvert(self, format):
+        """
+        Build an image by converting the format using qemu-img. This is method
+        enables a variety of formats like qcow, qcow2, vmdk, and vdi.
+
+        @args:
+            format - a string representing the image format, "qcow2"
+        @returns
+            a dict with some metadata about the image
+        """
+
+        newimg = os.path.join(self.workdir, self.imgname + '.%s' % format)
+        cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
+            format, self.base_img.base_image.data, newimg]
+        if format in ('qcow', 'qcow2'):
+            cmd.insert(2, '-c') # enable compression for qcow images
+        conlog = os.path.join(self.workdir,
+            'qemu-img-%s-%s.log' % (format, self.arch))
+        log_output(self.session, cmd[0], cmd, conlog,
+            self.getUploadDir(), logerror=1)
+        return {'image': newimg}
+
+    def _buildIndirect(self, format):
+        """
+        "Indirect" images are target images that use the indirection plugin.
+        This plugin makes use of an additional guest, and launches that to run
+        commands on the base image we built earlier. The image that backs the
+        modifying guest is called the "utility" image, which we built before.
+
+        @args:
+            format - a string representing the image format, "qcow2"
+        @returns
+            a dict with some metadata about the image
+        """
+        # Future: livecd will be introduced here too
+        # we should have waited for and checked the base image already
+        # TODO: log the shit out of this new stuff
+        # TODO: test the failure case where IF itself throws an exception
+        #       ungracefully (missing a plugin for example)
+        #       may need to still upload ozlog and remove the log handler
+        self.util_img.base_thread.join()
+        self._checkImageState(self.util_img)
+        params = {
+            'compress': 'gzip',
+            'utility_image': self.util_img.base_image.identifier,
+            'utility_customizations': self._makeDockerCmds([self.imgname])
+        }
+        targ = self.bd.builder_for_target_image('indirection',
+            image_id=self.base.base_image.identifier,
+            template=None, parameters=params)
+        targ.target_thread.join()
+        self._checkImageState(targ)
+        return {'image': targ.target_image.data}
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, inst_tree, opts=None):
 
         if opts == None:
             opts = {}
+        self.arch = arch
         self.opts = opts
-        self.formats = self.format_deps(opts.get('format'))
+        self.formats = self._format_deps(opts.get('format'))
 
         # First, prepare the kickstart to use the repos we tell it
         kspath = self.fetchKickstart()
         self.readKickstart(kspath)
-        kskoji = self.prepareKickstart(repo_info, target_info, arch)
+        kskoji = self.prepareKickstart(repo_info, target_info)
 
         # auto-generate a TDL file and config dict for ImageFactory
-        imgname = '%s-%s-%s.%s' % (name, version, release, arch)
-        template = self.makeTemplate(imgname, arch, inst_tree)
+        self.imgname = '%s-%s-%s.%s' % (name, version, release, self.arch)
+        template = self.makeTemplate(inst_tree)
         self.logger.debug('oz template: %s' % template)
         config = self.makeConfig()
         self.logger.debug('IF config object: %s' % config)
         ApplicationConfiguration(configuration=config)
 
-        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % arch)
+        tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % self.arch)
         tdl = open(tdl_path, 'w')
         tdl.write(template)
         tdl.close()
@@ -3129,16 +3342,16 @@ class BaseImageTask(OzImageTask):
         # the likelihood of image tasks clashing here is very small)
         rm = ReservationManager()
         rm._listen_port = rm.MIN_PORT + self.id % (rm.MAX_PORT - rm.MIN_PORT)
-        ozlogname = 'oz-%s.log' % arch
-        ozlog = os.path.join(self.workdir, ozlogname)
+        ozlogname = 'oz-%s.log' % self.arch
+        self.ozlog = os.path.join(self.workdir, ozlogname)
 
         # invoke the image builds
-        images = self.do_images(arch, template, ozlog, imgname)
+        images = self.do_images(template, inst_tree)
         images['raw']['tdl'] = os.path.basename(tdl_path),
 
         # structure the results to pass back to the hub:
         imgdata = {
-            'arch': arch,
+            'arch': self.arch,
             'task_id': self.id,
             'logs': [ozlogname],
             'name': name,
@@ -3175,7 +3388,7 @@ class BaseImageTask(OzImageTask):
                     rpm['epoch'] = int(bits[4])
                 imgdata['rpmlist'].append(rpm)
             # TODO: hack to make this work for now, need to refactor
-            br = BuildRoot(self.session, self.options, build_tag, arch,
+            br = BuildRoot(self.session, self.options, build_tag, self.arch,
                 self.id, repo_id=repo_info['id'])
             br.markExternalRPMs(imgdata['rpmlist'])
 
@@ -3183,11 +3396,11 @@ class BaseImageTask(OzImageTask):
         for format in (f for f in self.formats.keys() if self.formats[f]):
             newimg = images[format]['image']
             if 'ova' in format:
-                newname = imgname + '.' + format.replace('-', '.')
+                newname = self.imgname + '.' + format.replace('-', '.')
             elif format == 'docker':
-                newname = imgname + '.' + 'tar.gz'
+                newname = self.imgname + '.' + 'tar.gz'
             else:
-                newname = imgname + '.' + format
+                newname = self.imgname + '.' + format
             if format != 'docker':
                 lxml = images[format]['libvirt']
                 imgdata['files'].append(os.path.basename(lxml))
