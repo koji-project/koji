@@ -1835,10 +1835,17 @@ class ChainMavenTask(MultiPlatformTask):
             for package in ready:
                 params = builds[package]
                 buildtype = params.get('type', 'maven')
+                task_url = params['scmurl']
+                task_opts = dslice_ex(params, ['scmurl', 'buildrequires', 'type'], strict=False)
+                if buildtype == 'maven':
+                    task_deps = list(self.depset(package))
+                    if task_deps:
+                        task_opts['deps'] = task_deps
+
                 if not (opts.get('scratch') or opts.get('force')):
                     # check for a duplicate build (a build performed with the
                     # same scmurl and options)
-                    dup_build = self.get_duplicate_build(dest_tag['name'], package, params)
+                    dup_build = self.get_duplicate_build(dest_tag['name'], package, params, task_opts)
                     # if we find one, mark the package as built and remove it from todo
                     if dup_build:
                         self.done[package] = dup_build['nvr']
@@ -1846,14 +1853,9 @@ class ChainMavenTask(MultiPlatformTask):
                             deps.discard(package)
                         del todo[package]
                         continue
-                task_url = params['scmurl']
-                task_opts = dslice_ex(params, ['scmurl', 'buildrequires', 'type'], strict=False)
                 task_opts.update(dslice(opts, ['skip_tag', 'scratch'], strict=False))
 
                 if buildtype == 'maven':
-                    task_deps = list(self.depset(package))
-                    if task_deps:
-                        task_opts['deps'] = task_deps
                     if opts.get('debug'):
                         task_opts.setdefault('maven_options', []).append('--debug')
                     task_id = self.subtask('maven', [task_url, target, task_opts],
@@ -1948,7 +1950,7 @@ class ChainMavenTask(MultiPlatformTask):
                     return False
         return True
 
-    def get_duplicate_build(self, tag, package, params):
+    def get_duplicate_build(self, tag, package, params, task_opts):
         """Find the latest build of package in tag and compare it to the
         scmurl and task_opts.  If they're identical, return the build."""
         builds = self.session.getLatestBuilds(tag, package=package)
@@ -1972,10 +1974,10 @@ class ChainMavenTask(MultiPlatformTask):
             # return the existing build.
             return build
         if len(request) > 2:
-            build_opts = request[2]
+            build_opts = dslice_ex(request[2], ['skip_tag', 'scratch'], strict=False)
         else:
             build_opts = {}
-        task_opts = dslice_ex(params, ['scmurl', 'buildrequires', 'type'], strict=False)
+        task_opts = copy.deepcopy(task_opts)
         # filter out options that don't affect the build output
         # to avoid unnecessary rebuilds
         for opts in [build_opts, task_opts]:
@@ -1989,8 +1991,7 @@ class ChainMavenTask(MultiPlatformTask):
                     del opts['maven_options']
             if 'jvm_options' in opts:
                 del opts['jvm_options']
-        if not self.dicts_equal(dslice_ex(build_opts, ['skip_tag', 'scratch', 'deps'], strict=False),
-                                task_opts):
+        if not self.dicts_equal(build_opts, task_opts):
             return None
         # everything matches
         return build
