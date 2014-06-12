@@ -241,7 +241,10 @@ class BaseTaskHandler(object):
             # main process will wake us up with SIGUSR2
             self.logger.debug("...waking up")
         self.logger.debug("Finished waiting")
-        return dict(self.session.host.taskWaitResults(self.id,finished))
+        if all:
+            return dict(self.session.host.taskWaitResults(self.id, subtasks))
+        else:
+            return dict(self.session.host.taskWaitResults(self.id, finished))
 
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
