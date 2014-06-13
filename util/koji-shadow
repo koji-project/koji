@@ -108,6 +108,8 @@ def get_options():
                       help=_("url of remote XMLRPC server"))
     parser.add_option("--prefer-new", action="store_true", default=False,
                       help=_("if there is a newer build locally prefer it for deps"))
+    parser.add_option("--import-noarch-only", action="store_true", default=False,
+                      help=_("Only import missing noarch builds"))
     parser.add_option("--import-noarch", action="store_true",
                       help=_("import missing noarch builds rather than rebuilding"))
     parser.add_option("--link-imports", action="store_true",
@@ -779,8 +781,10 @@ class BuildTracker(object):
         #  !! Cases where importing a noarch is /not/ ok must occur
         #     before this point
         #
-        elif options.import_noarch and build.isNoarch():
+        elif (options.import_noarch or options.import_noarch_only) and build.isNoarch():
             self.importBuild(build, tag)
+        elif options.import_noarch_only and not build.isNoarch():
+            print "%sSkipping archful build: %s" % (head, build.nvr)
         elif build.state == "noroot":
             #Can't rebuild it, this is what substitutions are for
             print "%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail)
