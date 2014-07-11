@@ -309,27 +309,19 @@ def ensure_connection(session):
 
 def print_task_headers():
     """Print the column headers"""
-    print "ID    Pri  Owner        State    Arch       Name"
+    print "ID       Pri  Owner                State    Arch       Name"
 
 def print_task(task,depth=0):
     """Print a task"""
     task = task.copy()
     task['state'] = koji.TASK_STATES.get(task['state'],'BADSTATE')
-    fmt1 = "%(id)-5s %(priority)-4s %(owner)-12s %(state)-8s %(arch)-10s "
-    fmt2 = "%(method)s"
+    fmt = "%(id)-8s %(priority)-4s %(owner_name)-20s %(state)-8s %(arch)-10s "
     if depth:
         indent = "  "*(depth-1) + " +"
     else:
         indent = ''
-    if task.get('host'):
-        fmt3 = ' [%(host)s]'
-    else:
-        fmt3 = ''
-    if task.get('build_id'):
-        fmt4 = ' %(build_name)s-%(build_version)s-%(build_release)s'
-    else:
-        fmt4 = ''
-    print ''.join([fmt1 % task, indent, fmt2 % task, fmt3 % task, fmt4 % task])
+    label = koji.taskLabel(task)
+    print ''.join([fmt % task, indent, label])
 
 def print_task_recurse(task,depth=0):
     """Print a task and its children"""
@@ -5535,18 +5527,53 @@ def handle_list_tasks(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
+    parser.add_option("--user", help=_("Only tasks for this user"))
+    parser.add_option("--arch", help=_("Only tasks for this architecture"))
+    parser.add_option("--method", help=_("Only tasks of this method"))
+    parser.add_option("--channel", help=_("Only tasks in this channel"))
+    parser.add_option("--host", help=_("Only tasks for this host"))
     parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"), default=options.quiet)
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
         assert False
     activate_session(session)
+    callopts = {
+        'state' : [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+        'decode' : True,
+    }
     if options.mine:
-        id = session.getLoggedInUser()['id']
-    else:
-        id = None
-    tasklist = session.taskReport(owner=id)
-    #tasks are pre-sorted
+        user = session.getLoggedInUser()
+        if not user:
+            print "Unable to determine user"
+            sys.exit(1)
+        callopts['owner'] = user['id']
+    if options.user:
+        user = session.getUser(options.user)
+        if not user:
+            print "No such user: %s" % options.user
+            sys.exit(1)
+        callopts['owner'] = user['id']
+    if options.arch:
+        arches = options.arch.replace(',',' ').split()
+        callopts['arch'] = arches
+    if options.method:
+        callopts['method'] = options.method
+    if options.channel:
+        chan = session.getChannel(options.channel)
+        if not chan:
+            print "No such channel: %s" % options.channel
+            sys.exit(1)
+        callopts['channel_id'] = chan['id']
+    if options.host:
+        host = session.getHost(options.host)
+        if not host:
+            print "No such host: %s" % options.host
+            sys.exit(1)
+        callopts['host_id'] = host['id']
+    #tasklist = session.taskReport(owner=id)
+    qopts = {'order' : 'priority,create_time'}
+    tasklist = session.listTasks(callopts, qopts)
     tasks = dict([(x['id'], x) for x in tasklist])
     #thread the tasks
     if not tasklist:
