@@ -6424,7 +6424,7 @@ SELECT %(col_str)s
         # We pass all this data into the generator so that the iterator works
         # from the snapshot when it was generated. Otherwise reuse of the processor
         # for similar queries could have unpredictable results.
-        cname = "qp_cursor_%s_%i" % (id(self), self.cursors)
+        cname = "qp_cursor_%s_%i_%i" % (id(self), os.getpid(), self.cursors)
         self.cursors += 1
         query = "DECLARE %s NO SCROLL CURSOR FOR %s" % (cname, query)
         c = context.cnx.cursor()
