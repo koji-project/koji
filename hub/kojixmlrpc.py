@@ -213,14 +213,14 @@ class ModXMLRPCRequestHandler(object):
 
     def _read_request(self, stream):
         parser, unmarshaller = getparser()
-        len = 0
+        rlen = 0
         maxlen = opts.get('MaxRequestLength', None)
         while True:
             chunk = stream.read(8192)
             if not chunk:
                 break
-            len += len(chunk)
-            if maxlen and len > maxlen:
+            rlen += len(chunk)
+            if maxlen and rlen > maxlen:
                 raise koji.GenericError, 'Request too long'
             parser.feed(chunk)
         parser.close()
