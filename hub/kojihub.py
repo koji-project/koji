@@ -2109,53 +2109,57 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
                            clauses=clauses, opts={'order': order},
                            columns=[f[0] for f in fields],
                            aliases=[f[1] for f in fields])
-    results = []
     included = {}
     included_archives = set()
-    for tag_id in taglist:
-        taginfo = get_tag(tag_id, strict=True, event=event_id)
-        query.values['tag_id'] = tag_id
-        archives = query.execute()
-        for archive in archives:
-            pkg = packages.get(archive['pkg_id'])
-            if not pkg or pkg['blocked']:
-                continue
-            # 4 possibilities:
-            # 1: we have never seen this group_id:artifact_id before
-            #  - add it to the results, and it to the included dict
-            # 2: we have seen the group_id:artifact_id before, but a different version
-            #  - if the taginfo['maven_include_all'] is true, add it to the results and
-            #    append it to the included_versions dict, otherwise skip it
-            # 3: we have seen the group_id:artifact_id before, with the same version, from
-            #    a different build
-            #  - this is a different revision of the same GAV, ignore it because a more
-            #    recently-tagged build has already been included
-            # 4: we have seen the group_id:artifact_id before, with the same version, from
-            #    the same build
-            #  - it is another artifact from a build we're already including, so include it
-            #    as well
-            ga = '%(group_id)s:%(artifact_id)s' % archive
-            included_versions = included.get(ga)
-            if not included_versions:
-                included[ga] = {archive['version']: archive['build_id']}
-                included_archives.add(archive['id'])
-                results.append(archive)
-                continue
-            included_build = included_versions.get(archive['version'])
-            if not included_build:
-                if taginfo['maven_include_all']:
-                    included_versions[archive['version']] = archive['build_id']
+    # these indexes eat into the memory savings of the generator, but it's only
+    # group_id/artifact_id/version/build_id/archive_id, which is much smaller than
+    # the full query
+    # ballpark estimate: 20-25% of total, less with heavy duplication of indexed values
+    def _iter_archives():
+        for tag_id in taglist:
+            taginfo = get_tag(tag_id, strict=True, event=event_id)
+            query.values['tag_id'] = tag_id
+            archives = query.iterate()
+            for archive in archives:
+                pkg = packages.get(archive['pkg_id'])
+                if not pkg or pkg['blocked']:
+                    continue
+                # 4 possibilities:
+                # 1: we have never seen this group_id:artifact_id before
+                #  - yield it, and add to the included dict
+                # 2: we have seen the group_id:artifact_id before, but a different version
+                #  - if the taginfo['maven_include_all'] is true, yield it and
+                #    append it to the included_versions dict, otherwise skip it
+                # 3: we have seen the group_id:artifact_id before, with the same version, from
+                #    a different build
+                #  - this is a different revision of the same GAV, ignore it because a more
+                #    recently-tagged build has already been included
+                # 4: we have seen the group_id:artifact_id before, with the same version, from
+                #    the same build
+                #  - it is another artifact from a build we're already including, so include it
+                #    as well
+                ga = '%(group_id)s:%(artifact_id)s' % archive
+                included_versions = included.get(ga)
+                if not included_versions:
+                    included[ga] = {archive['version']: archive['build_id']}
                     included_archives.add(archive['id'])
-                    results.append(archive)
-                continue
-            if included_build != archive['build_id']:
-                continue
-            # make sure we haven't already seen this archive somewhere else in the
-            # tag hierarchy
-            if archive['id'] not in included_archives:
-                included_archives.add(archive['id'])
-                results.append(archive)
-    return results
+                    yield archive
+                    continue
+                included_build = included_versions.get(archive['version'])
+                if not included_build:
+                    if taginfo['maven_include_all']:
+                        included_versions[archive['version']] = archive['build_id']
+                        included_archives.add(archive['id'])
+                        yield archive
+                    continue
+                if included_build != archive['build_id']:
+                    continue
+                # make sure we haven't already seen this archive somewhere else in the
+                # tag hierarchy
+                if archive['id'] not in included_archives:
+                    included_archives.add(archive['id'])
+                    yield archive
+    return _iter_archives()
 
 def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     """Create a new repo entry in the INIT state, return full repo data
