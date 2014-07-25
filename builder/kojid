@@ -2749,7 +2749,8 @@ class OzImageTask(BaseTaskHandler):
 
         @args:
             kspath: path to a kickstart file
-        @returns: None
+        @returns:
+            a kickstart object returned by pykickstart
         """
         # XXX: If the ks file came from a local path and has %include
         #      macros, Oz will fail because it can only handle flat files.
@@ -2759,35 +2760,36 @@ class OzImageTask(BaseTaskHandler):
                 ksparser.stringToVersion(self.opts['ksversion']))
         else:
             version = ksparser.makeVersion()
-        self.ks = ksparser.KickstartParser(version)
+        ks = ksparser.KickstartParser(version)
         self.logger.debug('attempting to read kickstart: %s' % kspath)
         try:
-            self.ks.readKickstart(kspath)
+            ks.readKickstart(kspath)
         except IOError, e:
             raise koji.BuildError("Failed to read kickstart file "
                                    "'%s' : %s" % (kspath, e))
         except kserrors.KickstartError, e:
             raise koji.BuildError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
+        return ks
 
-    def prepareKickstart(self, repo_info, target_info):
+    def prepareKickstart(self, kspath):
         """
         Process the ks file to be used for controlled image generation. This
         method also uploads the modified kickstart file to the task output
-        area on the hub..
+        area on the hub.
 
         @args:
-            target_info: a sesion.getBuildTarget() object
-            repo_info: session.getRepo() object
+            kspath: a path to a kickstart file
         @returns:
-            absolute path to a processed kickstart file
+            a kickstart object with koji-specific modifications
         """
+        ks = self.readKickstart(kspath)
         # Now we do some kickstart manipulation. If the user passed in a repo
         # url with --repo, then we substitute that in for the repo(s) specified
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
-        self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
-        repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
+        ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        repo_class = kscontrol.dataMap[ks.version]['RepoData']
         # TODO: sensibly use "url" and "repo" commands in kickstart
         if self.opts.get('repo'):
             # the user used --repo at least once
@@ -2795,33 +2797,41 @@ class OzImageTask(BaseTaskHandler):
             index = 0
             for user_repo in user_repos:
                 repo_url = user_repo.replace('$arch', self.arch)
-                self.ks.handler.repo.repoList.append(repo_class(
+                ks.handler.repo.repoList.append(repo_class(
                     baseurl=repo_url, name='koji-override-%i' % index))
                 index += 1
         else:
             # --repo was not given, so we use the target's build repo
             path_info = koji.PathInfo(topdir=self.options.topurl)
-            repopath = path_info.repo(repo_info['id'],
-                                      target_info['build_tag_name'])
+            repopath = path_info.repo(self.repo_info['id'],
+                self.target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, self.arch)
             self.logger.debug('BASEURL: %s' % baseurl)
-            self.ks.handler.repo.repoList.append(repo_class(
+            ks.handler.repo.repoList.append(repo_class(
                 baseurl=baseurl, name='koji-override-0'))
+        return ks
 
-        # Write out the new ks file. Note that things may not be in the same
-        # order and comments in the original ks file may be lost.
-        kskoji = os.path.join(self.workdir, 'koji-image-%s-%i.ks' %
-                              (target_info['build_tag_name'], self.id))
-        self.logger.debug('modified ks file: %s' % kskoji)
-        outfile = open(kskoji, 'w')
-        outfile.write(str(self.ks.handler))
+    def writeKickstart(self, ksobj, ksname):
+        """
+        Write out the new ks file. Note that things may not be in the same
+        order and comments in the original ks file may be lost.
+
+        @args:
+            ksobj: a pykickstart object of what we want to write
+            ksname: file name for the kickstart
+        @returns:
+            an absolute path to the kickstart file we wrote
+        """
+        kspath = os.path.join(self.workdir, ksname)
+        outfile = open(kspath, 'w')
+        outfile.write(str(ksobj.handler))
         outfile.close()
 
         # put the new ksfile in the output directory
-        if not os.path.exists(kskoji):
-            raise koji.BuildError, "KS file missing: %s" % kskoji
-        self.uploadFile(kskoji) # upload the modified ks file
-        return kskoji
+        if not os.path.exists(kspath):
+            raise koji.BuildError, "KS file missing: %s" % kspath
+        self.uploadFile(kspath) # upload the modified ks file
+        return kspath
 
     def makeConfig(self):
         """
@@ -2854,16 +2864,20 @@ class OzImageTask(BaseTaskHandler):
               'storage_path': os.path.join(self.workdir, 'output_image')},
         }
 
-    def makeTemplate(self, inst_tree):
+    def makeTemplate(self, name, inst_tree):
         """
         Generate a simple "TDL" for ImageFactory to build an image with.
 
         @args:
-            inst_tree - a string, a URL to the install tree (a compose)
+            name: a name for the image
+            inst_tree: a string, a URL to the install tree (a compose)
         @returns:
             An XML string that imagefactory can consume
         """
         # we have to split this up so the variable substitution works
+        # XXX: using a packages section (which we don't) will have IF boot the
+        #      image and attempt to ssh in. This breaks docker image creation.
+        # TODO: intelligently guess the distro based on the install tree URL
         distname, distver = self.parseDistro(self.opts.get('distro'))
         template = """<template>
     <name>%s</name>
@@ -2874,54 +2888,19 @@ class OzImageTask(BaseTaskHandler):
             <install type='url'>
                 <url>%s</url>
             </install>
-        """ % (self.imgname, distname, distver, self.arch, inst_tree)
+        """ % (name, distname, distver, self.arch, inst_tree)
         template += """<icicle>
                 <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
             </icicle>
         """
+        # TODO: intelligently guess the size based on the kickstart file
         template += """</os>
     <description>%s OS</description>
     <disk>
         <size>%sG</size>
     </disk>
 </template>
-""" % (self.imgname, self.opts.get('disk_size'))
-        return template
-
-    def makeDockerUtilTemplate(self, inst_tree, pkg_group):
-        """
-        Generate a "TDL" for ImageFactory to build a utility image to run
-        docker commands on a docker image.
-
-        @args:
-            inst_tree - a string, a URL to the install tree (a compose)
-        @returns:
-            An XML string that imagefactory can consume
-        """
-        distname, distver = self.parseDistro(self.opts.get('distro'))
-        template = """<template>
-    <name>koji-%s-utility</name>
-        <os>
-            <name>%s</name>
-            <version>%s</version>
-            <arch>%s</arch>
-            <install type='url'>
-                <url>%s</url>
-            </install>
-        """ % (self.id, distname, distver, self.arch, inst_tree)
-        template += """<icicle>
-                <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
-            </icicle>
-        """
-        # TODO: this should be defined by a docker-build package group
-        template += """</os>
-    <description>koji-%s-utility</description>
-    <packages>
-        <package name='docker'/>
-        <package name='libguestfs-tools'/>
-    </packages>
-</template>
-""" % self.id
+""" % (name, self.opts.get('disk_size'))
         return template
 
     def parseDistro(self, distro):
@@ -3001,47 +2980,6 @@ class BaseImageTask(OzImageTask):
     Methods = ['createImage']
     _taskWeight = 2.0
 
-    def getRootDevice(self):
-        """
-        Return the device name for the / partition, as specified in the
-        kickstart file. Appliances should have this defined.
-        """
-        for part in self.ks.handler.partition.partitions:
-            if part.mountpoint == '/':
-                return part.disk
-        raise koji.ApplianceError, 'kickstart lacks a "/" mountpoint'
-
-    def _makeDockerCmds(self, tags):
-        """
-        When building a docker image, we call docker commands on it from
-        within the "utility" image. ImageFactory accepts an XML string that
-        describes what commands to run, which is what this method returns.
-
-        @args: None
-            tags- a list of tags to apply to the docker image
-        @returns:
-            an XML string with docker commands
-        """
-        # TODO: set up the file name correctly
-        # TODO: set up the image id in docker correctly
-        cmds = """<template>
-    <commands>
-        <command name='mount'>mount /dev/vdb1 /mnt</command>
-        <command name='dockerstart'>/usr/bin/systemctl start docker</command>
-        <command name='taroutimport'>LIBGUESTFS_BACKEND=direct virt-tar-out -a /mnt/input_image.raw / - | docker import - </command>"""
-        idx = 0
-        for tag in tags:
-            cmds += """
-        <command name='docker-tag%s'>docker tag %s ...</command>""" % (idx, tag)
-            idx += 1
-        cmds += """
-        <command name='save'>docker save %s > /mnt/docker-output.img</command>
-    </commands>
-</template>
-""" % self.imgname
-        self.logger.debug('docker command template: %s' % cmds)
-        return cmds
-
     def _format_deps(self, formats):
         """
         Return a dictionary where the keys are the image formats we need to
@@ -3049,8 +2987,7 @@ class BaseImageTask(OzImageTask):
         output should be included in the task results.
 
         Some image formats require others to be processed first, which is why
-        we have to do this. rhevm-ova requires rhevm, but if the user did not
-        request it, we should not pass it back up.
+        we have to do this. raw files in particular may not be kept.
         """
         supported = ('raw', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker')
         for f in formats:
@@ -3071,7 +3008,7 @@ class BaseImageTask(OzImageTask):
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
 
-    def do_images(self, template, inst_tree):
+    def do_images(self, ks, template, inst_tree):
         """
         Call out to ImageFactory to build the image(s) we want. Returns a dict
         of details for each image type we had to ask ImageFactory to build
@@ -3083,7 +3020,7 @@ class BaseImageTask(OzImageTask):
                   'qcow2': self._buildConvert,
                   'rhevm-ova':   self._buildOVA,
                   'vsphere-ova': self._buildOVA,
-                  'docker':      self._buildIndirect
+                  'docker':      self._buildDocker
         }
         # add a handler to the logger so that we capture ImageFactory's logging
         self.fhandler = logging.FileHandler(self.ozlog)
@@ -3093,13 +3030,7 @@ class BaseImageTask(OzImageTask):
         self.tlog.addHandler(self.fhandler)
         images = {}
         random.seed() # necessary to ensure a unique mac address
-        # if we need a utility image for the indirection plugin we create it
-        # we do not join() this until later
-        # Future: 'livecd' will be in here
-        if 'docker' in self.formats:
-            self.session.host.setTaskWeight(self.id, 3.0)
-            self.util_img = self._buildDockerUtility(inst_tree)
-        params = {'install_script': str(self.ks.handler),
+        params = {'install_script': str(ks.handler),
                   'offline_icicle': True}
         # build the base (raw) image
         self.base_img = self._buildBase(template, params)
@@ -3166,26 +3097,6 @@ class BaseImageTask(OzImageTask):
             raise koji.ApplianceError('Image status is %s: %s' %
                 (status, details))
 
-    def _buildDockerUtility(self, inst_tree):
-        """
-        Build a utility image used for the indirection plugin later. Docker
-        and eventually liveCDs will use this. The utility image provides an
-        environment where we will run post-build commands on the base image
-        we generated.
-
-        @args:
-            inst_tree - a string URL to an install tree (a compose)
-        @returns:
-            a dict with some details about the image
-        """
-        #dtemp = self.makeDockerUtilTemplate(inst_tree, 'docker-build')
-        dtemp = self.makeDockerUtilTemplate('http://download.lab.bos.redhat.com/rel-eng/RHEL-7.0-20140507.0/compose/Server/x86_64/os', 'docker-build')
-        # TODO: enable this and store it properly
-        # pkgs = [x['packagelist'] for x in brew.getTagGroups('rhel-7.0-build') if x['name'] == 'livecd-build'][0]
-        # print '\n'.join([p['package'] for p in pkgs])
-        dparams = {'generate_icicle': False}
-        utilname = 'koji-%s-util' % self.id
-        return self._buildBase(dtemp, dparams, wait=False)
 
     def _buildBase(self, template, params, wait=True):
         """
@@ -3217,7 +3128,7 @@ class BaseImageTask(OzImageTask):
 
         @args:
             format - a string representing the image format, "rhevm-ova"
-        @returns
+        @returns:
             a dict with some metadata about the image
         """
         img_opts = {}
@@ -3228,6 +3139,21 @@ class BaseImageTask(OzImageTask):
         targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
             img_opts=img_opts)
         return {'image': targ2.target_image.data}
+
+    def _buildDocker(self, format):
+        """
+        Build a base docker image. This image will be tagged with the NVR.A
+        automatically because we name it that way in the ImageFactory TDL.
+
+        @args:
+            format - the string "docker"
+        @returns:
+            a dict with some metadata about the image
+        """
+        img_opts = {'compress': 'gzip'}
+        targ = self._do_target_image(self.base_img.base_image.identifier,
+            'docker', img_opts=img_opts)
+        return {'image': targ.target_image.data}
 
     def _do_target_image(self, base_id, image_type, img_opts={}):
         """
@@ -3277,54 +3203,26 @@ class BaseImageTask(OzImageTask):
             self.getUploadDir(), logerror=1)
         return {'image': newimg}
 
-    def _buildIndirect(self, format):
-        """
-        "Indirect" images are target images that use the indirection plugin.
-        This plugin makes use of an additional guest, and launches that to run
-        commands on the base image we built earlier. The image that backs the
-        modifying guest is called the "utility" image, which we built before.
-
-        @args:
-            format - a string representing the image format, "qcow2"
-        @returns
-            a dict with some metadata about the image
-        """
-        # Future: livecd will be introduced here too
-        # we should have waited for and checked the base image already
-        # TODO: log the shit out of this new stuff
-        # TODO: test the failure case where IF itself throws an exception
-        #       ungracefully (missing a plugin for example)
-        #       may need to still upload ozlog and remove the log handler
-        self.util_img.base_thread.join()
-        self._checkImageState(self.util_img)
-        params = {
-            'compress': 'gzip',
-            'utility_image': self.util_img.base_image.identifier,
-            'utility_customizations': self._makeDockerCmds([self.imgname])
-        }
-        targ = self.bd.builder_for_target_image('indirection',
-            image_id=self.base.base_image.identifier,
-            template=None, parameters=params)
-        targ.target_thread.join()
-        self._checkImageState(targ)
-        return {'image': targ.target_image.data}
-
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, inst_tree, opts=None):
 
         if opts == None:
             opts = {}
         self.arch = arch
+        self.target_info = target_info
+        self.repo_info = repo_info
         self.opts = opts
         self.formats = self._format_deps(opts.get('format'))
 
         # First, prepare the kickstart to use the repos we tell it
         kspath = self.fetchKickstart()
-        self.readKickstart(kspath)
-        kskoji = self.prepareKickstart(repo_info, target_info)
+        ks = self.prepareKickstart(kspath)
+        kskoji = self.writeKickstart(ks,
+            os.path.join(self.workdir, 'koji-%s-%i-base.ks' %
+            (self.target_info['build_tag_name'], self.id)))
 
         # auto-generate a TDL file and config dict for ImageFactory
         self.imgname = '%s-%s-%s.%s' % (name, version, release, self.arch)
-        template = self.makeTemplate(inst_tree)
+        template = self.makeTemplate(self.imgname, inst_tree)
         self.logger.debug('oz template: %s' % template)
         config = self.makeConfig()
         self.logger.debug('IF config object: %s' % config)
@@ -3346,7 +3244,7 @@ class BaseImageTask(OzImageTask):
         self.ozlog = os.path.join(self.workdir, ozlogname)
 
         # invoke the image builds
-        images = self.do_images(template, inst_tree)
+        images = self.do_images(ks, template, inst_tree)
         images['raw']['tdl'] = os.path.basename(tdl_path),
 
         # structure the results to pass back to the hub:
@@ -3389,7 +3287,7 @@ class BaseImageTask(OzImageTask):
                 imgdata['rpmlist'].append(rpm)
             # TODO: hack to make this work for now, need to refactor
             br = BuildRoot(self.session, self.options, build_tag, self.arch,
-                self.id, repo_id=repo_info['id'])
+                self.id, repo_id=self.repo_info['id'])
             br.markExternalRPMs(imgdata['rpmlist'])
 
         # upload the results
