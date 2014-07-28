@@ -10372,7 +10372,17 @@ class HostExports(object):
 
         repo = repo_info(br.data['repo_id'], strict=True)
         tag = get_tag(repo['tag_id'], strict=True)
-        tag_archives = maven_tag_archives(tag['id'], event_id=repo['create_event'])
+        maven_build_index = {}
+        # Index the maven_tag_archives result by group_id:artifact_id:version
+        # The function ensures that each g:a:v maps to a single build id.
+        # The generator returned by maven_tag_archives can create a lot of data,
+        # but this index will only consume a fraction of that.
+        for archive in maven_tag_archives(tag['id'], event_id=repo['create_event']):
+            # unfortunately pgdb does not appear to intern strings, but still
+            # better not to create any new ones
+            maven_build_index.setdefault(
+                archive['group_id'], {}).setdefault(
+                    archive['artifact_id'], {})[archive['version']] = archive['build_id']
 
         if not ignore:
             ignore = []
@@ -10404,14 +10414,13 @@ class HostExports(object):
                                                   'files': [fileinfo]}
             else:
                 build = get_build(dep, strict=True)
-                build_archives = list_archives(buildID=build['id'], type='maven')
-                tag_archives.extend(build_archives)
-        ignore.extend(task_deps.values())
+                for archive in list_archives(buildID=build['id'], type='maven'):
+                    maven_build_index.setdefault(
+                        archive['group_id'], {}).setdefault(
+                            archive['artifact_id'], {}).setdefault(
+                                archive['version'], archive['build_id'])
 
-        archives_by_label = {}
-        for archive in tag_archives:
-            maven_label = koji.mavenLabel(archive)
-            archives_by_label.setdefault(maven_label, {})[archive['filename']] = archive
+        ignore.extend(task_deps.values())
 
         SNAPSHOT_RE = re.compile(r'-\d{8}\.\d{6}-\d+')
         ignore_by_label = {}
@@ -10435,11 +10444,24 @@ class HostExports(object):
             maven_info = entry['maven_info']
             maven_label = koji.mavenLabel(maven_info)
             ignore_archives = ignore_by_label.get(maven_label, {})
-            label_archives = archives_by_label.get(maven_label, {})
+            build_id = maven_build_index.get(
+                        maven_info['group_id'], {}).get(
+                            maven_info['artifact_id'], {}).get(
+                                maven_info['version'])
+            if not build_id:
+                if not ignore_unknown:
+                    raise koji.BuildrootError, 'Unmatched maven g:a:v in build environment: ' \
+                        '%(group_id)s:%(artifact_id)s:%(version)s' % maven_info
+                build_archives = {}
+            else:
+                tinfo = dslice(maven_info, ['group_id', 'artifact_id', 'version'])
+                build_archives = list_archives(type='maven', typeInfo=tinfo)
+                # index by filename
+                build_archives = dict([(a['filename'], a) for a in build_archives])
 
             for fileinfo in entry['files']:
                 ignore_archive = ignore_archives.get(fileinfo['filename'])
-                tag_archive = label_archives.get(fileinfo['filename'])
+                tag_archive = build_archives.get(fileinfo['filename'])
                 if tag_archive and fileinfo['size'] == tag_archive['size']:
                     archives.append(tag_archive)
                 elif ignore_archive and fileinfo['size'] == ignore_archive['size']:
