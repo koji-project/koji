@@ -10380,9 +10380,14 @@ class HostExports(object):
         for archive in maven_tag_archives(tag['id'], event_id=repo['create_event']):
             # unfortunately pgdb does not appear to intern strings, but still
             # better not to create any new ones
-            maven_build_index.setdefault(
-                archive['group_id'], {}).setdefault(
-                    archive['artifact_id'], {})[archive['version']] = archive['build_id']
+            idx_build = \
+                maven_build_index.setdefault(
+                    archive['group_id'], {}).setdefault(
+                        archive['artifact_id'], {}).setdefault(
+                            archive['version'], archive['build_id'])
+            if idx_build != archive['build_id']:
+                logger.error("Found multiple builds for %(group_id)s:%(artifact_id)s:%(version)s. Current build: %(build_id)i", archive)
+                logger.error("Indexed build id was %i", idx_build)
 
         if not ignore:
             ignore = []
@@ -10415,10 +10420,14 @@ class HostExports(object):
             else:
                 build = get_build(dep, strict=True)
                 for archive in list_archives(buildID=build['id'], type='maven'):
-                    maven_build_index.setdefault(
-                        archive['group_id'], {}).setdefault(
-                            archive['artifact_id'], {}).setdefault(
-                                archive['version'], archive['build_id'])
+                    idx_build = \
+                        maven_build_index.setdefault(
+                            archive['group_id'], {}).setdefault(
+                                archive['artifact_id'], {}).setdefault(
+                                    archive['version'], archive['build_id'])
+                    if idx_build != archive['build_id']:
+                        logger.error("Found multiple builds for %(group_id)s:%(artifact_id)s:%(version)s. Current build: %(build_id)i", archive)
+                        logger.error("Indexed build id was %i", idx_build)
 
         ignore.extend(task_deps.values())
 
