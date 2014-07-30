@@ -10468,6 +10468,13 @@ class HostExports(object):
                     pass
                 else:
                     if not ignore_unknown:
+                        logger.error("Unknown file for %(group_id)s:%(artifact_id)s:%(version)s", maven_info)
+                        if build_id:
+                            build = get_build(build_id)
+                            logger.error("g:a:v supplied by build %(nvr)s", build)
+                            logger.error("Build supplies %i archives: %r", len(build_archives), build_archives.keys())
+                        if tag_archive:
+                            logger.error("Size mismatch, br: %i, db: %i", fileinfo['size'], tag_archive['size'])
                         raise koji.BuildrootError, 'Unknown file in build environment: %s, size: %s' % \
                               ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size'])
 
