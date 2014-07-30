@@ -10464,7 +10464,7 @@ class HostExports(object):
                 build_archives = {}
             else:
                 tinfo = dslice(maven_info, ['group_id', 'artifact_id', 'version'])
-                build_archives = list_archives(type='maven', typeInfo=tinfo)
+                build_archives = list_archives(buildID=build_id, type='maven', typeInfo=tinfo)
                 # index by filename
                 build_archives = dict([(a['filename'], a) for a in build_archives])
 
