@@ -10426,8 +10426,9 @@ class HostExports(object):
                                 archive['artifact_id'], {}).setdefault(
                                     archive['version'], archive['build_id'])
                     if idx_build != archive['build_id']:
-                        logger.error("Found multiple builds for %(group_id)s:%(artifact_id)s:%(version)s. Current build: %(build_id)i", archive)
-                        logger.error("Indexed build id was %i", idx_build)
+                        logger.error("Overriding build for %(group_id)s:%(artifact_id)s:%(version)s.", archive)
+                        logger.error("Current build is %s, new build is %s.", idx_build, archive['build_id'])
+                        maven_build_index[archive['group_id']][archive['artifact_id']][archive['version']] = archive['build_id']
 
         ignore.extend(task_deps.values())
 
