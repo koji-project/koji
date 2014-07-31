@@ -5113,7 +5113,7 @@ def handle_spin_appliance(options, session, args):
         help=_("Set the number of virtual cpus in the appliance, " +
                "default is 1"))
     parser.add_option("--format", metavar="DISK_FORMAT", default='raw',
-        help=_("Disk format, default is raw. Other options are raw-xz, qcow, " +
+        help=_("Disk format, default is raw. Other options are qcow, " +
                "qcow2, and vmx."))
 
     (task_options, args) = parser.parse_args(args)
@@ -5130,7 +5130,7 @@ def handle_spin_appliance(options, session, args):
 def handle_image_build(options, session, args):
     """Create a disk image given an install tree"""
     formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova',
-               'docker', 'raw-xz')
+               'docker')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
     usage += _("\n       %prog image-build --config FILE")

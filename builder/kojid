@@ -2969,7 +2969,7 @@ class BaseImageTask(OzImageTask):
         we have to do this. rhevm-ova requires rhevm, but if the user did not
         request it, we should not pass it back up.
         """
-        supported = ('raw', 'raw-xz', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker')
+        supported = ('raw', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker')
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -3095,27 +3095,6 @@ class BaseImageTask(OzImageTask):
                 base.base_image.parameters['libvirt_xml'])
             images[format] = {'image': newimg, 'libvirt': lxml}
 
-        # xz compress the raw disk image if asked for
-        for format in ('raw-xz',):
-            if format not in self.formats:
-                continue
-            newimg = os.path.join(self.workdir, imgname + 'raw.xz')
-            rawimg = os.path.join(self.workdir, imgname + 'raw')
-            cmd = ['/bin/cp', base.base_image.data, rawimg]
-            conlog = os.path.join(self.workdir,
-                'xz-cp-%s-%s.log' % (format, arch))
-            log_output(self.session, cmd[0], cmd, conlog,
-                self.getUploadDir(), logerror=1)
-            cmd = ['/usr/bin/xz', '-z', rawimg]
-            conlog = os.path.join(self.workdir,
-                'xz-%s-%s.log' % (format, arch))
-            log_output(self.session, cmd[0], cmd, conlog,
-                self.getUploadDir(), logerror=1)
-            lxml = self.fixImageXML(format, imgname,
-                'libvirt-%s-%s.xml' % (format, arch),
-                base.base_image.parameters['libvirt_xml'])
-            images[format] = {'image': newimg, 'libvirt': lxml}
-
         return images
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, inst_tree, opts=None):
@@ -3207,8 +3186,6 @@ class BaseImageTask(OzImageTask):
                 newname = imgname + '.' + format.replace('-', '.')
             elif format == 'docker':
                 newname = imgname + '.' + 'tar.gz'
-            elif format == 'raw-xz':
-                newname = imgname + '.' + 'raw.xz'
             else:
                 newname = imgname + '.' + format
             if format != 'docker':
