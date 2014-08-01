@@ -6421,15 +6421,16 @@ SELECT %(col_str)s
         else:
             fields = self.aliases or self.columns
             fields = list(fields)
-            return self._iterate(str(self), self.values.copy(), fields,
+            cname = "qp_cursor_%s_%i_%i" % (id(self), os.getpid(), self.cursors)
+            self.cursors += 1
+            logger.debug('Setting up query iterator. cname=%r', cname)
+            return self._iterate(cname, str(self), self.values.copy(), fields,
                                  self.iterchunksize, self.opts.get('asList'))
 
-    def _iterate(self, query, values, fields, chunksize, as_list=False):
+    def _iterate(self, cname, query, values, fields, chunksize, as_list=False):
         # We pass all this data into the generator so that the iterator works
         # from the snapshot when it was generated. Otherwise reuse of the processor
         # for similar queries could have unpredictable results.
-        cname = "qp_cursor_%s_%i_%i" % (id(self), os.getpid(), self.cursors)
-        self.cursors += 1
         query = "DECLARE %s NO SCROLL CURSOR FOR %s" % (cname, query)
         c = context.cnx.cursor()
         c.execute(query, values)
@@ -6441,9 +6442,12 @@ SELECT %(col_str)s
             else:
                 buf = _multiRow(query, {}, fields)
             if not buf:
-                return
+                break
             for row in buf:
                 yield row
+        c = context.cnx.cursor()
+        c.execute("CLOSE %s" % cname)
+        c.close()
 
     def executeOne(self):
         results = self.execute()
