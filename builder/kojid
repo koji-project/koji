@@ -2387,9 +2387,9 @@ class ImageTask(BaseTaskHandler):
         #      may not be a problem if the included kickstarts are present
         #      in the repository we checked out.
         if opts.get('ksversion'):
-            version = ksparser.makeVersion(ksparser.stringToVersion(opts['ksversion']))
+            version = ksparser.version.makeVersion(ksparser.stringToVersion(opts['ksversion']))
         else:
-            version = ksparser.makeVersion()
+            version = ksparser.version.makeVersion()
         self.ks = ksparser.KickstartParser(version)
         try:
             self.ks.readKickstart(kspath)
@@ -2768,10 +2768,10 @@ class OzImageTask(BaseTaskHandler):
         #      macros, Oz will fail because it can only handle flat files.
         #      We require users to flatten their kickstart file.
         if self.opts.get('ksversion'):
-            version = ksparser.makeVersion(
+            version = ksparser.version.makeVersion(
                 ksparser.stringToVersion(self.opts['ksversion']))
         else:
-            version = ksparser.makeVersion()
+            version = ksparser.version.makeVersion()
         ks = ksparser.KickstartParser(version)
         self.logger.debug('attempting to read kickstart: %s' % kspath)
         try:
