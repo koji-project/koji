@@ -1565,12 +1565,30 @@ def handle_restart_hosts(options, session, args):
         return
 
 
+def linked_upload(localfile, path, name=None):
+    """Link a file into the (locally writable) workdir, bypassing upload"""
+    old_umask = os.umask(002)
+    try:
+        if name is None:
+            name = os.path.basename(localfile)
+        dest_dir = os.path.join(koji.pathinfo.work(), path)
+        dst = os.path.join(dest_dir, name)
+        koji.ensuredir(dest_dir)
+        # fix uid/gid to keep httpd happy
+        st = os.stat(koji.pathinfo.work())
+        os.chown(dest_dir, st.st_uid, st.st_gid)
+        print "Linking rpm to: %s" % dst
+        os.link(localfile, dst)
+    finally:
+        os.umask(old_umask)
+
+
 def handle_import(options, session, args):
     "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] package [package...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink the rpm"))
+    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
     parser.add_option("--src-epoch", help=_("When auto-creating builds, use this epoch"))
@@ -1631,13 +1649,7 @@ def handle_import(options, session, args):
             return
         serverdir = _unique_path('cli-import')
         if options.link:
-            old_umask = os.umask(002)
-            dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, os.path.basename(path))
-            koji.ensuredir(os.path.dirname(dst))
-            os.chown(os.path.dirname(dst), 48, 48)  #XXX - hack
-            print "Linking rpm to: %s" % dst
-            os.link(path, dst)
-            os.umask(old_umask)
+            linked_upload(path, serverdir)
         else:
             print _("uploading %s...") % path,
             sys.stdout.flush()
@@ -2376,6 +2388,7 @@ def handle_import_archive(options, session, args):
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
+    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--type", help=_("The type of archive being imported.  Currently supported types: maven, win, image"))
     parser.add_option("--type-info", help=_("Type-specific information to associate with the archives.  "
                                             "For Maven archives this should be a local path to a .pom file.  "
@@ -2462,7 +2475,10 @@ def handle_import_archive(options, session, args):
             callback = None
         else:
             callback = _progress_callback
-        session.uploadWrapper(filepath, serverdir, callback=callback)
+        if suboptions.link:
+            linked_upload(filepath, serverdir)
+        else:
+            session.uploadWrapper(filepath, serverdir, callback=callback)
         print
         serverpath = "%s/%s" % (serverdir, filename)
         session.importArchive(serverpath, buildinfo, suboptions.type, suboptions.type_info)
