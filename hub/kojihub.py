@@ -8740,6 +8740,8 @@ class RootExports(object):
         """
         if not opts:
             opts = {}
+        if not queryOpts:
+            queryOpts = {}
 
         tables = ['task']
         joins = ['users ON task.owner = users.id']
