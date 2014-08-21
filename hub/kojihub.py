@@ -1244,7 +1244,6 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
               ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.build_id', 'build_id')]
-    fields, aliases = zip(*fields)
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
     clauses = [eventCondition(event), 'tag_id=%(tagid)s']
@@ -1266,6 +1265,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
         else:
             raise koji.GenericError, 'invalid arch option: %s' % arch
 
+    fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
                            columns=fields, aliases=aliases, values=data)
 
