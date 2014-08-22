@@ -10466,8 +10466,9 @@ class HostExports(object):
                                 maven_info['version'])
             if not build_id:
                 if not ignore_unknown:
-                    raise koji.BuildrootError, 'Unmatched maven g:a:v in build environment: ' \
-                        '%(group_id)s:%(artifact_id)s:%(version)s' % maven_info
+                    # just warn for now. might be in ignore list. the loop below will check.
+                    logger.warning('Unmatched maven g:a:v in build environment: '
+                                   '%(group_id)s:%(artifact_id)s:%(version)s', maven_info)
                 build_archives = {}
             else:
                 tinfo = dslice(maven_info, ['group_id', 'artifact_id', 'version'])
