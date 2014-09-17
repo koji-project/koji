@@ -7190,6 +7190,26 @@ class RootExports(object):
 
     # Create the image task. Called from _build_image_oz in the client.
     #
+    def buildImageIndirection(self, opts=None, priority=None):
+        """
+        Create an image using two other images and an indirection template
+        """
+        context.session.assertPerm('image')
+        taskOpts = {'channel': 'image'}
+        if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed, \
+                               'only admins may create high-priority tasks'
+
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        if not opts.has_key('scratch') and not opts.has_key('indirection_template_url'):
+            raise koji.ActionNotAllowed, 'Non-scratch builds must provide url for the indirection template'
+
+        return make_task('indirectionimage', [ opts ], **taskOpts)
+
+    # Create the image task. Called from _build_image_oz in the client.
+    #
     def buildImageOz(self, name, version, arches, target, inst_tree, opts=None, priority=None):
         """
         Create an image using a kickstart file and group package list.
