@@ -3780,7 +3780,7 @@ class NewRepoTask(BaseTaskHandler):
         #see if we can find a previous repo to update from
         #only shadowbuild tags should start with SHADOWBUILD, their repos are auto
         #expired.  so lets get the most recent expired tag for newRepo shadowbuild tasks.
-        if tag.startswith('SHADOWBUILD'):
+        if tinfo['name'].startswith('SHADOWBUILD'):
             oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_EXPIRED)
         else:
             oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_READY)
