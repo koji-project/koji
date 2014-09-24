@@ -2048,6 +2048,14 @@ class BuildBaseImageTask(BuildImageTask):
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
         repo_info = self.getRepo(build_tag)
+        #check requested arches against build tag
+        buildconfig = self.session.getBuildConfig(build_tag)
+        if not buildconfig['arches']:
+            raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
+        tag_archlist = [koji.canonArch(a) for a in buildconfig['arches'].split()]
+        for arch in arches:
+            if koji.canonArch(arch) not in tag_archlist:
+                raise koji.BuildError, "Invalid arch for build tag: %s" % arch
 
         if not opts:
             opts = {}
@@ -2153,6 +2161,14 @@ class BuildApplianceTask(BuildImageTask):
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
         repo_info = self.getRepo(build_tag)
+        #check requested arch against build tag
+        buildconfig = self.session.getBuildConfig(build_tag)
+        if not buildconfig['arches']:
+            raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
+        tag_archlist = [koji.canonArch(a) for a in buildconfig['arches'].split()]
+        if koji.canonArch(arch) not in tag_archlist:
+            raise koji.BuildError, "Invalid arch for build tag: %s" % arch
+
 
         if not opts:
             opts = {}
@@ -2231,6 +2247,13 @@ class BuildLiveCDTask(BuildImageTask):
         target_info = self.session.getBuildTarget(target, strict=True)
         build_tag = target_info['build_tag']
         repo_info = self.getRepo(build_tag)
+        #check requested arch against build tag
+        buildconfig = self.session.getBuildConfig(build_tag)
+        if not buildconfig['arches']:
+            raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
+        tag_archlist = [koji.canonArch(a) for a in buildconfig['arches'].split()]
+        if koji.canonArch(arch) not in tag_archlist:
+            raise koji.BuildError, "Invalid arch for build tag: %s" % arch
 
         if not opts:
             opts = {}
