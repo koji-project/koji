@@ -3600,7 +3600,7 @@ class BuildIndirectionImageTask(OzImageTask):
         try:
             return self._do_indirection(opts, base_factory_image, utility_factory_image,
                                  indirection_template, tlog, ozlog, fhandler,
-                                 bld_info, target_info)
+                                 bld_info, target_info, bd)
         except:
             if not opts.get('scratch'):
                 #scratch builds do not get imported
@@ -3612,7 +3612,7 @@ class BuildIndirectionImageTask(OzImageTask):
 
     def _do_indirection(self, opts, base_factory_image, utility_factory_image,
                         indirection_template, tlog, ozlog, fhandler, bld_info,
-                        target_info):
+                        target_info, bd):
         # TODO: The next several lines are shared with the handler for other Factory tasks
         #       refactor in such a way that this can be a helper in OzImageTask
 
