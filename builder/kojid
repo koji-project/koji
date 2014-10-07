@@ -3632,25 +3632,26 @@ class BuildIndirectionImageTask(OzImageTask):
                   'results_location': results_loc }
         random.seed() # necessary to ensure a unique mac address
         try:
-            # Embedded deep debug option - if template is just the string MOCK
-            # skip the actual build and create a mock target image instead
-            if utility_customizations.strip() == "MOCK":
-                target = Builder()
-                target_image = TargetImage()
-                pim = PersistentImageManager.default_manager()
-                pim.add_image(target_image)
-                target.target_image = target_image
-                open(target_image.data, "w").write("Mock build from task ID: %s" %
-                                             (str(self.id)))
-                target_image.status='COMPLETE'
-            else: 
-                target = bd.builder_for_target_image('indirection',
-                    image_id=base_factory_image.identifier, 
-                    parameters=params)
-                target.target_thread.join()
-        except Exception, e:
-            self.logger.debug("Exception encountered during target build")
-            self.logger.exception(e)
+            try:
+                # Embedded deep debug option - if template is just the string MOCK
+                # skip the actual build and create a mock target image instead
+                if utility_customizations.strip() == "MOCK":
+                    target = Builder()
+                    target_image = TargetImage()
+                    pim = PersistentImageManager.default_manager()
+                    pim.add_image(target_image)
+                    target.target_image = target_image
+                    open(target_image.data, "w").write("Mock build from task ID: %s" %
+                                                 (str(self.id)))
+                    target_image.status='COMPLETE'
+                else: 
+                    target = bd.builder_for_target_image('indirection',
+                        image_id=base_factory_image.identifier, 
+                        parameters=params)
+                    target.target_thread.join()
+            except Exception, e:
+                self.logger.debug("Exception encountered during target build")
+                self.logger.exception(e)
         finally:
             # upload log even if we failed to help diagnose an issue
             tlog.removeHandler(fhandler)
