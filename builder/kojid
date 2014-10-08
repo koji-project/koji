@@ -3625,9 +3625,11 @@ class BuildIndirectionImageTask(OzImageTask):
 
         utility_customizations = open(indirection_template).read()
         results_loc = opts.get('results_loc', None)
+        if results_loc[0] != "/":
+            results_loc = "/" + results_loc
         params = {'utility_image': str(utility_factory_image.identifier),
                   'utility_customizations': utility_customizations,
-                  'results_loc': results_loc }
+                  'results_location': results_loc }
         random.seed() # necessary to ensure a unique mac address
         try:
             # Embedded deep debug option - if template is just the string MOCK
