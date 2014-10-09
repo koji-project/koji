@@ -3436,7 +3436,7 @@ class BuildIndirectionImageTask(OzImageTask):
         self.uploadFile(final_path) # upload the original ks file
         return final_path # absolute path to the ks file
 
-    def handler(self, opts=None):
+    def handler(self, opts):
         """Governing task for building an image with two other images using Factory Indirection"""
         # TODO: Add mode of operation where full build details are given for
         #       either base or utility or both, then spawn subtasks to do them first
