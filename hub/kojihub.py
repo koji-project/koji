@@ -6780,6 +6780,8 @@ class SourceTest(koji.policy.MatchTest):
             # winbuild - (name, source_url, target, opts=None)
             if info['method'] == 'winbuild':
                 data[self.field] = params[1]
+            elif info['method'] == 'indirectionimage':
+                return False
             else:
                 data[self.field] = params[0]
         else:
