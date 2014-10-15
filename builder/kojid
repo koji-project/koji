@@ -1836,6 +1836,7 @@ class ChainMavenTask(MultiPlatformTask):
         todo = copy.deepcopy(self.depmap)
         running = {}
         self.done = {}
+        self.results = []
 
         while True:
             ready = [package for package, deps in todo.items() if not deps]
@@ -1861,6 +1862,7 @@ class ChainMavenTask(MultiPlatformTask):
                         for deps in todo.values():
                             deps.discard(package)
                         del todo[package]
+                        self.results.append('%s previously built from %s' % (dup_build['nvr'], task_url))
                         continue
                 task_opts.update(dslice(opts, ['skip_tag', 'scratch'], strict=False))
 
@@ -1902,6 +1904,7 @@ class ChainMavenTask(MultiPlatformTask):
             # that have completed successfully
             for task_id in results:
                 package = running.pop(task_id)
+                task_url = builds[package]['scmurl']
                 if opts.get('scratch'):
                     if builds[package].get('type') == 'wrapper':
                         self.done[package] = task_id
@@ -1915,17 +1918,22 @@ class ChainMavenTask(MultiPlatformTask):
                                 break
                         else:
                             raise koji.BuildError, 'could not find buildMaven subtask of %s' % task_id
+                    self.results.append('%s built from %s by task %s' % \
+                                        (package, task_url, task_id))
                 else:
                     task_builds = self.session.listBuilds(taskID=task_id)
                     if not task_builds:
                         raise koji.BuildError, 'could not find build for task %s' % task_id
-                    self.done[package] = task_builds[0]['nvr']
+                    task_build = task_builds[0]
+                    self.done[package] = task_build['nvr']
+                    self.results.append('%s built from %s' % (task_build['nvr'], task_url))
                 for deps in todo.values():
                     deps.discard(package)
 
         if todo:
             # should never happen, the client should have checked for circular dependencies
             raise koji.BuildError, 'unable to run chain build, circular dependencies'
+        return self.results
 
     def depset(self, package):
         deps = set()
