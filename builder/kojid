@@ -1851,7 +1851,7 @@ class ChainMavenTask(MultiPlatformTask):
                     if task_deps:
                         task_opts['deps'] = task_deps
 
-                if not (opts.get('scratch') or opts.get('force')):
+                if not opts.get('force'):
                     # check for a duplicate build (a build performed with the
                     # same scmurl and options)
                     dup_build = self.get_duplicate_build(dest_tag['name'], package, params, task_opts)
@@ -1871,13 +1871,13 @@ class ChainMavenTask(MultiPlatformTask):
                                            label=package)
                 elif buildtype == 'wrapper':
                     pkg_to_wrap = params['buildrequires'][0]
-                    if opts.get('scratch'):
-                        task_id_to_wrap = self.done[pkg_to_wrap]
-                        task_to_wrap = self.session.getTaskInfo(task_id_to_wrap, request=True)
+                    to_wrap = self.done[pkg_to_wrap]
+
+                    if isinstance(to_wrap, (int, long)):
+                        task_to_wrap = self.session.getTaskInfo(to_wrap, request=True)
                         build_to_wrap = None
                     else:
-                        nvr_to_wrap = self.done[pkg_to_wrap]
-                        build_to_wrap = self.session.getBuild(nvr_to_wrap, strict=True)
+                        build_to_wrap = self.session.getBuild(to_wrap, strict=True)
                         task_to_wrap = None
                     target_info = self.session.getBuildTarget(target, strict=True)
                     repo_info = self.getRepo(target_info['build_tag'])
