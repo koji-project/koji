@@ -579,7 +579,7 @@ class BuildRoot(object):
             cmd.append('-P%s' % ','.join(profiles))
         if props:
             for name, value in props.items():
-                if value:
+                if value is not None:
                     cmd.append('-D%s=%s' % (name, value))
                 else:
                     cmd.append('-D%s' % name)

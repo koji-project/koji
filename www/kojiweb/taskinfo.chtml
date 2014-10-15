@@ -15,9 +15,15 @@ $value
   #end if
 #end def
 
+#def printProperties($props)
+  #echo ', '.join([$v is not None and '%s=%s' % ($n, $v) or $str($n) for $n, $v in $props.items()])
+#end def
+
 #def printMap($vals, $prefix='')
   #for $key, $value in $vals.items()
-  #if $key != '__starstar'
+  #if $key == 'properties'
+  ${prefix}properties&nbsp;=&nbsp;$printProperties($value)
+  #elif $key != '__starstar'
   $prefix$key&nbsp;=&nbsp;$printValue($key, $value)<br/>
   #end if
   #end for  

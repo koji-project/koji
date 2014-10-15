@@ -1114,7 +1114,7 @@ def handle_maven_build(options, session, args):
     for prop in build_opts.properties:
         fields = prop.split('=', 1)
         if len(fields) != 2:
-            fields.append('')
+            fields.append(None)
         props[fields[0]] = fields[1]
     if props:
         opts['properties'] = props
@@ -1199,7 +1199,7 @@ def _maven_params(parser, opts, items):
             for prop in value.splitlines():
                 fields = prop.split('=', 1)
                 if len(fields) != 2:
-                    fields.append('')
+                    fields.append(None)
                 props[fields[0]] = fields[1]
             value = props
         elif name == 'envs':
