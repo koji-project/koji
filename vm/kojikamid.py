@@ -727,6 +727,10 @@ def main():
         thread.daemon = True
         thread.start()
 
+        # xmlrpclib is not thread-safe, create a new ServerProxy
+        # instance so we're not sharing with the stream_logs thread
+        server = get_mgmt_server()
+
         build = WindowsBuild(server)
         builds.append(build)
         results = build.run()
