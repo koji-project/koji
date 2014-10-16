@@ -25,6 +25,7 @@ import resource
 import stat
 import sys
 import time
+import ConfigParser
 from zlib import adler32
 
 try:
@@ -458,3 +459,96 @@ def tsort(parts):
     if parts:
         raise ValueError, 'total ordering not possible'
     return result
+
+def _maven_params(config, package, scratch=False):
+    params = {}
+    for name, value in config.items(package):
+        value = value.strip()
+        if not value:
+            continue
+        if name in ['scmurl', 'patches', 'specfile']:
+            # single-valued options
+            pass
+        elif name in ['buildrequires', 'goals', 'profiles', 'packages',
+                      'jvm_options', 'maven_options']:
+            # multi-valued options
+            value = value.split()
+        elif name == 'properties':
+            props = {}
+            for prop in value.splitlines():
+                fields = prop.split('=', 1)
+                if len(fields) != 2:
+                    fields.append(None)
+                props[fields[0]] = fields[1]
+            value = props
+        elif name == 'envs':
+            envs = {}
+            for env in value.splitlines():
+                fields = env.split('=', 1)
+                if len(fields) != 2:
+                    raise ValueError, "Environment variables must be in NAME=VALUE format"
+                envs[fields[0]] = fields[1]
+            value = envs
+        elif name == 'type':
+            continue
+        else:
+            raise ValueError, "Unknown option: %s" % name
+        params[name] = value
+    return params
+
+def _wrapper_params(config, package, scratch=False):
+    params = {}
+    for name, value in config.items(package):
+        if name == 'scmurl':
+            pass
+        elif name == 'buildrequires':
+            value = value.split()
+            if len(value) != 1:
+                raise ValueError, "A wrapper-rpm must depend on exactly one package"
+        elif name == 'type':
+            pass
+        else:
+            raise ValueError, "Unknown option: %s" % name
+        params[name] = value
+    if not scratch:
+        params['create_build'] = True
+    return params
+
+def parse_maven_chain(confs, scratch=False):
+    """
+    Parse maven-chain config.
+
+    confs is a list of paths to config files.
+
+    Return a map whose keys are package names and values are config parameters.
+    """
+    if not isinstance(confs, (list, tuple)):
+        confs = [confs]
+    config = ConfigParser.ConfigParser()
+    for conf in confs:
+        conf_fd = file(conf)
+        config.readfp(conf_fd)
+        conf_fd.close()
+    builds = {}
+    for package in config.sections():
+        params = {}
+        buildtype = 'maven'
+        if config.has_option(package, 'type'):
+            buildtype = config.get(package, 'type')
+        if buildtype == 'maven':
+            params = _maven_params(config, package, scratch)
+        elif buildtype == 'wrapper':
+            params = _wrapper_params(config, package, scratch)
+        else:
+            raise ValueError, "Unsupported build type: %s" % buildtype
+        if not 'scmurl' in params:
+            raise ValueError, "%s is missing the scmurl parameter" % package
+        builds[package] = params
+    depmap = {}
+    for package, params in builds.items():
+        depmap[package] = set(params.get('buildrequires', []))
+    try:
+        order = tsort(depmap)
+    except ValueError, e:
+        raise ValueError, 'No possible build order, missing/circular dependencies'
+    return builds

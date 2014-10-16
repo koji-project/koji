@@ -1181,60 +1181,6 @@ def handle_wrapper_rpm(options, session, args):
         session.logout()
         return watch_tasks(session,[task_id],quiet=options.quiet)
 
-def _maven_params(parser, opts, items):
-    params = {}
-    for name, value in items:
-        value = value.strip()
-        if not value:
-            continue
-        if name in ['scmurl', 'patches', 'specfile']:
-            # single-valued options
-            pass
-        elif name in ['buildrequires', 'goals', 'profiles', 'packages',
-                      'jvm_options', 'maven_options']:
-            # multi-valued options
-            value = value.split()
-        elif name == 'properties':
-            props = {}
-            for prop in value.splitlines():
-                fields = prop.split('=', 1)
-                if len(fields) != 2:
-                    fields.append(None)
-                props[fields[0]] = fields[1]
-            value = props
-        elif name == 'envs':
-            envs = {}
-            for env in value.splitlines():
-                fields = env.split('=', 1)
-                if len(fields) != 2:
-                    parser.error(_("Environment variables must be in NAME=VALUE format"))
-                envs[fields[0]] = fields[1]
-            value = envs
-        elif name == 'type':
-            continue
-        else:
-            parser.error(_("Unknown option: %s") % name)
-        params[name] = value
-    return params
-
-def _wrapper_params(parser, opts, items):
-    params = {}
-    for name, value in items:
-        if name == 'scmurl':
-            pass
-        elif name == 'buildrequires':
-            value = value.split()
-            if len(value) != 1:
-                parser.error(_("A wrapper-rpm must depend on exactly one package"))
-        elif name == 'type':
-            pass
-        else:
-            parser.error(_("Unknown option: %s") % name)
-        params[name] = value
-    if not opts.get('scratch'):
-        params['create_build'] = True
-    return params
-
 def handle_maven_chain(options, session, args):
     "Run a set of Maven builds in dependency order"
     usage = _("usage: %prog maven-chain [options] target config...")
@@ -1271,36 +1217,10 @@ def handle_maven_chain(options, session, args):
         val = getattr(build_opts, key)
         if val:
             opts[key] = val
-    config = ConfigParser.ConfigParser()
-    for configfile in args[1:]:
-        conf_fd = file(configfile)
-        config.readfp(conf_fd)
-        conf_fd.close()
-    builds = {}
-    depmap = {}
-    for package in config.sections():
-        params = {}
-        if config.has_option(package, 'type'):
-            buildtype = config.get(package, 'type')
-        else:
-            buildtype = 'maven'
-        if buildtype == 'maven':
-            params = _maven_params(parser, opts, config.items(package))
-        elif buildtype == 'wrapper':
-            params = _wrapper_params(parser, opts, config.items(package))
-        else:
-            parser.error(_("Unsupported build type: %s") % buildtype)
-        if not 'scmurl' in params:
-            parser.error(_("%s is missing the scmurl parameter") % package)
-            assert False
-        depmap[package] = set(params.get('buildrequires', []))
-        builds[package] = params
     try:
-        order = koji.util.tsort(depmap)
+        builds = koji.util.parse_maven_chain(args[1:], scratch=opts.get('scratch'))
     except ValueError, e:
-        # if there is no possible build order, fail fast
-        print parser.error(_("Unable to run chain build, unresolved or circular dependencies"))
-        assert False
+        parser.error(e.args[0])
     priority = None
     if build_opts.background:
         priority = 5
