@@ -299,16 +299,17 @@ class RepoManager(object):
             self.logger.debug("Skipped check for repos: %r", skipped)
         if not to_check:
             return
-        session.multicall = True
+        #session.multicall = True
         for repo in to_check:
-            self.session.tagChangedSinceEvent(repo.event_id, repo.taglist)
-        for repo, [changed] in zip(to_check, session.multiCall(strict=True)):
+            changed = session.tagChangedSinceEvent(repo.event_id, repo.taglist)
+        #for repo, [changed] in zip(to_check, session.multiCall(strict=True)):
             if changed:
-                self.logger.debug("Repo %i no longer current", repo.repo_id)
+                self.logger.info("Repo %i no longer current", repo.repo_id)
                 repo.current = False
 
     def currencyChecker(self, session):
-        """Continually repos for currency. Runs as a separate thread"""
+        """Continually checks repos for currency. Runs as a separate thread"""
+        self.logger.info('currencyChecker starting')
         while True:
             self.checkCurrentRepos(session)
             time.sleep(self.options.sleeptime)
