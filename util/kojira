@@ -574,6 +574,14 @@ class RepoManager(object):
                         n_deletes += 1
                         del self.repos[repo.repo_id]
 
+def start_currency_checker(session, repomgr):
+    subsession = session.subsession()
+    thread = threading.Thread(name='currencyChecker',
+                        target=repomgr.currencyChecker, args=(subsession,))
+    thread.setDaemon(True)
+    thread.start()
+    subsession._forget()
+    return thread
 
 def main(options, session):
     repomgr = RepoManager(options, session)
@@ -581,14 +589,8 @@ def main(options, session):
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
-    # set up currency checker thread
-    subsession = session.subsession()
-    curr_chk_thread = threading.Thread(name='currencyChecker',
-                        target=repomgr.currencyChecker, args=(subsession,))
-    curr_chk_thread.setDaemon(True)
-    curr_chk_thread.start()
-    subsession._forget()
-    del subsession
+    curr_chk_thread = start_currency_checker(session, repomgr)
+    # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
     while True:
         try:
@@ -596,6 +598,9 @@ def main(options, session):
             repomgr.checkQueue()
             repomgr.printState()
             repomgr.pruneLocalRepos()
+            if not curr_chk_thread.isAlive():
+                self.logger.error("Currency checker thread died. Restarting it.")
+                curr_chk_thread = start_currency_checker(session, repomgr)
         except KeyboardInterrupt:
             logger.warn("User exit")
             break
