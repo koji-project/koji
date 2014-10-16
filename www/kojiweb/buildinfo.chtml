@@ -59,7 +59,7 @@
       </td>
     </tr>
     <tr>
-      <th>Started</th><td>$util.formatTimeLong($build.creation_time)</td>
+      <th>Started</th><td>$util.formatTimeLong($start_time)</td>
     </tr>
     #if $build.state == $koji.BUILD_STATES.BUILDING
     #if $estCompletion
