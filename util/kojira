@@ -311,12 +311,15 @@ class RepoManager(object):
         """Continually checks repos for currency. Runs as a separate thread"""
         self.logger.info('currencyChecker starting')
         try:
-            while True:
-                self.checkCurrentRepos(session)
-                time.sleep(self.options.sleeptime)
-        except:
-            logger.exception('Error in currency checker thread')
-            raise
+            try:
+                while True:
+                    self.checkCurrentRepos(session)
+                    time.sleep(self.options.sleeptime)
+            except:
+                logger.exception('Error in currency checker thread')
+                raise
+        finally:
+            session.logout()
 
     def pruneLocalRepos(self):
         """Scan filesystem for repos and remove any deleted ones
