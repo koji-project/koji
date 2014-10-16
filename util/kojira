@@ -37,6 +37,7 @@ import logging.handlers
 import pprint
 import signal
 import time
+import threading
 import traceback
 
 
@@ -278,8 +279,10 @@ class RepoManager(object):
                     self.logger.info('Dropping entry for inactive repo: %s', repo_id)
                     del self.repos[repo_id]
 
-    def checkCurrentRepos(self):
+    def checkCurrentRepos(self, session=None):
         """Determine which repos are current"""
+        if session is None:
+            session = self.session
         to_check = []
         for repo_id in self.repos:
             repo = self.repos[repo_id]
@@ -303,6 +306,12 @@ class RepoManager(object):
             if changed:
                 self.logger.debug("Repo %i no longer current", repo.repo_id)
                 repo.current = False
+
+    def currencyChecker(self, session):
+        """Continually repos for currency. Runs as a separate thread"""
+        while True:
+            self.checkCurrentRepos(session)
+            time.sleep(self.options.sleeptime)
 
     def pruneLocalRepos(self):
         """Scan filesystem for repos and remove any deleted ones
@@ -489,7 +498,7 @@ class RepoManager(object):
         #we need to determine:
         #  - which tags need a new repo
         #  - if any repos seem to be broken
-        self.checkCurrentRepos()
+        #self.checkCurrentRepos now runs continually in a separate thread
         regen = []
         for tag_id in tags.iterkeys():
             covered = False
@@ -571,6 +580,14 @@ def main(options, session):
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM,shutdown)
+    # set up currency checker thread
+    subsession = session.subsession()
+    curr_chk_thread = threading.Thread(name='currencyChecker',
+                        target=repomgr.currencyChecker, args=(subsession,))
+    curr_chk_thread.setDaemon(True)
+    curr_chk_thread.start()
+    subsession._forget()
+    del subsession
     logger.info("Entering main loop")
     while True:
         try:
