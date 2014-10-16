@@ -4093,7 +4093,6 @@ def anon_handle_list_history(options, session, args):
 
     activate_session(session)
 
-    pprint.pprint(vars(options))
     if options.watch:
         if not kwargs.get('afterEvent') and not kwargs.get('after'):
             kwargs['afterEvent'] = session.getLastEvent()['id']
