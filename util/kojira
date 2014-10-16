@@ -587,7 +587,6 @@ def start_currency_checker(session, repomgr):
                         target=repomgr.currencyChecker, args=(subsession,))
     thread.setDaemon(True)
     thread.start()
-    subsession._forget()
     return thread
 
 def main(options, session):
