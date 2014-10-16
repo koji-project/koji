@@ -583,22 +583,11 @@ class BuildRoot(object):
                     cmd.append('-D%s=%s' % (name, value))
                 else:
                     cmd.append('-D%s' % name)
-
-        rv = self.mock(cmd + ['org.apache.maven.plugins:maven-dependency-plugin:resolve-plugins'])
-        if rv:
-            self.expire()
-            raise koji.BuildrootError, 'error resolving plugin dependencies, %s' % self._mockResult(rv, logfile='root.log')
-
-        self.session.host.updateMavenBuildRootList(self.id, self.task_id,
-                                                   self.getMavenPackageList(repodir), project=False,
-                                                   extra_deps=self.deps)
-
         if goals:
             cmd.extend(goals)
         cmd.extend(['deploy'])
         rv = self.mock(cmd)
 
-        # plugin dependencies will be ignored
         # if the deploy command failed, don't raise an error on unknown artifacts, because that
         # will mask the underlying failure
         ignore_unknown = False
