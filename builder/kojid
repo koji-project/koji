@@ -245,6 +245,49 @@ class BuildRoot(object):
         fo.write(output)
         fo.close()
 
+    def _repositoryEntries(self, pi, plugin=False):
+        entries = []
+        if plugin:
+            tag_name = 'pluginRepository'
+            id_suffix = 'plugin-repo'
+            name_prefix = 'Plugin repository for Koji'
+        else:
+            tag_name = 'repository'
+            id_suffix = 'repo'
+            name_prefix = 'Repository for Koji'
+        for dep in self.deps:
+            if isinstance(dep, (int, long)):
+                # dep is a task ID, the url points to the task output directory
+                repo_type = 'task'
+                dep_url = pi.task(dep)
+                snapshots = 'true'
+            else:
+                # dep is a build NVR, the url points to the build output directory
+                repo_type = 'build'
+                build = koji.parse_NVR(dep)
+                dep_url = pi.mavenbuild(build)
+                snapshots = 'false'
+            repo_id = 'koji-%(repo_type)s-%(dep)s-%(id_suffix)s' % locals()
+            entry = """
+        <%(tag_name)s>
+          <id>%(repo_id)s</id>
+          <name>%(name_prefix)s %(repo_type)s %(dep)s</name>
+          <url>%(dep_url)s</url>
+          <layout>default</layout>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+            <checksumPolicy>fail</checksumPolicy>
+          </releases>
+          <snapshots>
+            <enabled>%(snapshots)s</enabled>
+            <updatePolicy>never</updatePolicy>
+            <checksumPolicy>fail</checksumPolicy>
+          </snapshots>
+        </%(tag_name)s>""" % locals()
+            entries.append((repo_id, entry))
+        return entries
+
     def writeMavenSettings(self, destfile, outputdir):
         """
         Write the Maven settings.xml file to the specified destination.
@@ -280,40 +323,17 @@ class BuildRoot(object):
         if self.deps:
             settings += """
       <repositories>"""
-            for dep in self.deps:
-                if isinstance(dep, (int, long)):
-                    # dep is a task ID, the url points to the task output directory
-                    dep_url = pi.task(dep)
-                    dep_repo_id = 'koji-task-%s' % dep
-                    dep_repo_name = 'Repository for Koji task %s' % dep
-                    snapshots = 'true'
-                else:
-                    # dep is a build NVR, the url points to the build output directory
-                    build = koji.parse_NVR(dep)
-                    dep_url = pi.mavenbuild(build)
-                    dep_repo_id = 'koji-build-%s' % dep
-                    dep_repo_name = 'Repository for Koji build %s' % dep
-                    snapshots = 'false'
+            for dep_repo_id, dep_repo_entry in self._repositoryEntries(pi):
                 mirror_spec += ',!' + dep_repo_id
-                settings += """
-        <repository>
-          <id>%(dep_repo_id)s</id>
-          <name>%(dep_repo_name)s</name>
-          <url>%(dep_url)s</url>
-          <layout>default</layout>
-          <releases>
-            <enabled>true</enabled>
-            <updatePolicy>never</updatePolicy>
-            <checksumPolicy>fail</checksumPolicy>
-          </releases>
-          <snapshots>
-            <enabled>%(snapshots)s</enabled>
-            <updatePolicy>never</updatePolicy>
-            <checksumPolicy>fail</checksumPolicy>
-          </snapshots>
-        </repository>""" % locals()
+                settings += dep_repo_entry
             settings += """
-      </repositories>"""
+      </repositories>
+      <pluginRepositories>"""
+            for dep_repo_id, dep_repo_entry in self._repositoryEntries(pi, plugin=True):
+                mirror_spec += ',!' + dep_repo_id
+                settings += dep_repo_entry
+            settings += """
+      </pluginRepositories>"""
         settings += """
     </profile>
   </profiles>
