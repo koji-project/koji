@@ -91,18 +91,29 @@ class CursorWrapper:
     def fetchall(self,*args,**kwargs):
         return self._timed_call('fetchall',args,kwargs)
 
+    def quote(self, operation, parameters):
+        if _quoteparams is not None:
+            quote = _quoteparams
+        elif hasattr(self.cursor, "_quoteparams"):
+            quote = self.cursor._quoteparams
+        else:
+            quote = lambda a,b: a % b
+        try:
+            return quote(operation, parameters)
+        except Exception:
+            self.logger.exception('Unable to quote query:\n%s\nParameters: %s', operation, parameters)
+            return "INVALID QUERY"
+
     def execute(self, operation, parameters=()):
         debug = self.logger.isEnabledFor(logging.DEBUG)
         if debug:
-            if _quoteparams is not None:
-                quote = _quoteparams
-            elif hasattr(self.cursor, "_quoteparams"):
-                quote = self.cursor._quoteparams
-            else:
-                quote = lambda a,b: a % b
-            self.logger.debug(quote(operation, parameters))
+            self.logger.debug(self.quote(operation, parameters))
             start = time.time()
-        ret = self.cursor.execute(operation, parameters)
+        try:
+            ret = self.cursor.execute(operation, parameters)
+        except Exception:
+            self.logger.error('Query failed. Query was: %s', self.quote(operation, parameters))
+            raise
         if debug:
             self.logger.debug("Execute operation completed in %.4f seconds", time.time() - start)
         return ret
