@@ -284,8 +284,12 @@ class RepoManager(object):
         if session is None:
             session = self.session
         to_check = []
-        for repo_id in self.repos:
-            repo = self.repos[repo_id]
+        repo_ids = self.repos.keys()
+        for repo_id in repo_ids:
+            repo = self.repos.get(repo_id)
+            if repo is None:
+                # removed by main thread
+                continue
             if not repo.current:
                 # no point in checking again
                 continue
@@ -295,7 +299,7 @@ class RepoManager(object):
                 continue
             to_check.append(repo)
         if self.logger.isEnabledFor(logging.DEBUG):
-            skipped = set(self.repos).difference([r.repo_id for r in to_check])
+            skipped = set(repo_ids).difference([r.repo_id for r in to_check])
             self.logger.debug("Skipped check for repos: %r", skipped)
         if not to_check:
             return
@@ -605,7 +609,7 @@ def main(options, session):
             repomgr.printState()
             repomgr.pruneLocalRepos()
             if not curr_chk_thread.isAlive():
-                self.logger.error("Currency checker thread died. Restarting it.")
+                logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
         except KeyboardInterrupt:
             logger.warn("User exit")
