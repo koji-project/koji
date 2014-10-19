@@ -73,8 +73,11 @@ class ManagedRepo(object):
         self.event_ts = data['create_ts']
         self.tag_id = data['tag_id']
         self.state = data['state']
+        self.expire_ts = None
         if koji.REPO_STATES[self.state] in ['EXPIRED', 'DELETED', 'PROBLEM']:
             self.current = False
+            self.expire_ts = time.time()
+            # TODO use hub data to find the actual expiration time
         self.first_seen = time.time()
         if self.current:
             order = self.session.getFullInheritance(self.tag_id, event=self.event_id)
@@ -295,6 +298,8 @@ class RepoManager(object):
                 continue
             if repo.state not in (koji.REPO_READY, koji.REPO_INIT):
                 repo.current = False
+                if repo.expire_ts is None:
+                    repo.expire_ts = time.time()
                 #also no point in further checking
                 continue
             to_check.append(repo)
@@ -310,6 +315,7 @@ class RepoManager(object):
             if changed:
                 self.logger.info("Repo %i no longer current", repo.repo_id)
                 repo.current = False
+                repo.expire_ts = time.time()
 
     def currencyChecker(self, session):
         """Continually checks repos for currency. Runs as a separate thread"""
@@ -532,8 +538,13 @@ class RepoManager(object):
             #figure out how old existing repo is
             ts = 0
             for repo in tag_repos.get(tag_id, []):
-                if repo.event_ts > ts:
-                    ts = repo.event_ts
+                if repo.expire_ts:
+                    if repo.expire_ts > ts:
+                        ts = repo.expire_ts
+                else:
+                    self.logger.warning("No expire timestamp for repo: %s", repo.repo_id)
+            if ts == 0:
+                ts = time.time()
             regen.append((ts, tag_id))
         #factor in tag use stats
         regen = self.adjustRegenOrder(regen)
