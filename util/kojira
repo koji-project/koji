@@ -518,6 +518,7 @@ class RepoManager(object):
         #  - if any repos seem to be broken
         #self.checkCurrentRepos now runs continually in a separate thread
         regen = []
+        expire_times = {}
         for tag_id in tags.iterkeys():
             covered = False
             for repo in tag_repos.get(tag_id,[]):
@@ -543,6 +544,7 @@ class RepoManager(object):
                         ts = repo.expire_ts
                 else:
                     self.logger.warning("No expire timestamp for repo: %s", repo.repo_id)
+            expire_times[tag_id] = ts
             if ts == 0:
                 ts = time.time()
             regen.append((ts, tag_id))
@@ -550,7 +552,7 @@ class RepoManager(object):
         regen = self.adjustRegenOrder(regen)
         self.logger.debug("order: %s", regen)
         # i.e. tags with oldest (or no) repos get precedence
-        for ts, tag_id in regen:
+        for score, tag_id in regen:
             if running_tasks >= self.options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached")
                 break
@@ -575,7 +577,12 @@ class RepoManager(object):
             running_tasks += 1
             if taginfo.get('maven_support'):
                 running_tasks_maven += 1
-            self.logger.info("Created newRepo task %s for tag %s (%s)" % (task_id, tag_id, tags[tag_id]))
+            expire_ts = expire_times[tag_id]
+            if expire_ts == 0:
+                time_expired = '???'
+            else:
+                time_expired = "%.1f" % (time.time() - expire_ts)
+            self.logger.info("Created newRepo task %s for tag %s (%s), expired for %s sec" % (task_id, tag_id, tags[tag_id], time_expired))
             self.tasks[tag_id] = task_id
         if running_tasks_maven >= self.options.max_repo_tasks_maven:
             self.logger.info("Maximum number of maven repo tasks reached")
