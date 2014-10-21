@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # koji-gc: a garbage collection tool for Koji
-# Copyright (c) 2007, 2008 Red Hat
+# Copyright (c) 2007-2014 Red Hat, Inc.
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>

@@ -1,5 +1,5 @@
 # Koji callback for sending notifications about events to a messagebus (amqp broker)
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009-2014 Red Hat, Inc.
 #
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>

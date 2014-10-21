@@ -1,7 +1,7 @@
 # Python library
 
 # kojihub - library for koji's XMLRPC interface
-# Copyright (c) 2005-2010 Red Hat
+# Copyright (c) 2005-2014 Red Hat, Inc.
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -19,6 +19,7 @@
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
+#       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
 import base64

@@ -1,6 +1,6 @@
 # Koji callback for extracting Maven artifacts (.pom and .jar files)
 # from an rpm and making them available via the Koji-managed Maven repo.
-# Copyright (c) 2010 Red Hat, Inc.
+# Copyright (c) 2010-2014 Red Hat, Inc.
 #
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>

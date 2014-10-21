@@ -1,5 +1,5 @@
 # koji plugin module
-# Copyright (c) 2008 Red Hat
+# Copyright (c) 2008-2014 Red Hat, Inc.
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -17,6 +17,7 @@
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
+#       Mike Bonnet <mikeb@redhat.com>
 
 import imp
 import koji

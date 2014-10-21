@@ -2,7 +2,7 @@
         </div>
 
         <p id="footer">
-          Copyright &copy; 2006-2010 Red Hat
+          Copyright &copy; 2006-2014 Red Hat, Inc.
           <a href="https://fedorahosted.org/koji/"><img src="$util.themePath('images/powered-by-koji.png')" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
         </p>
 

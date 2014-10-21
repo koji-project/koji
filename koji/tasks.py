@@ -1,6 +1,6 @@
 # Task definitions used by various Koji daemons
 
-# Copyright (c) 2010 Red Hat, Inc.
+# Copyright (c) 2010-2014 Red Hat, Inc.
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
@@ -18,6 +18,7 @@
 
 # Authors:
 #       Mike McLean <mikem@redhat.com>
+#       Mike Bonnet <mikeb@redhat.com>
 
 import koji
 import koji.util

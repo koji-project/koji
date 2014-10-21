@@ -1,5 +1,5 @@
 # Example Koji callback
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009-2014 Red Hat, Inc.
 # This callback simply logs all of its args using the logging module
 #
 # Authors:

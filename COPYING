@@ -1,5 +1,5 @@
-    Koji - a system for building and tracking RPMS.
-    Copyright (c) 2007 Red Hat
+    Koji - a system for building and tracking software.
+    Copyright (c) 2007-2014 Red Hat, Inc.
 
     Koji is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # koji-shadow: a tool to shadow builds between koji instances
-# Copyright (c) 2007-2014 Red Hat
+# Copyright (c) 2007-2014 Red Hat, Inc.
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public

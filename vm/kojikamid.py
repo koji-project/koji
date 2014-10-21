@@ -2,7 +2,7 @@
 
 # Koji daemon that runs in a Windows VM and executes commands associated
 # with a task.
-# Copyright (c) 2010 Red Hat
+# Copyright (c) 2010-2014 Red Hat, Inc.
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
