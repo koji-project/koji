@@ -142,8 +142,10 @@ def dslice_ex(dict, keys, strict=True):
             del ret[key]
     return ret
 
-def call_with_argcheck(func, args, kwargs={}):
+def call_with_argcheck(func, args, kwargs=None):
     """Call function, raising ParameterError if args do not match"""
+    if kwargs is None:
+        kwargs = {}
     try:
         return func(*args, **kwargs)
     except TypeError, e:

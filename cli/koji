@@ -31,7 +31,6 @@ try:
     import ast
 except ImportError:
     ast = None
-    pass
 import ConfigParser
 import base64
 import errno
@@ -5202,7 +5201,7 @@ def _build_image_indirection(options, task_opts, session, args):
 
     tmp_target = session.getBuildTarget(task_opts.target)
     if not tmp_target:
-        raise koji.GenericError, _("Unknown build target: %s" % target)
+        raise koji.GenericError, _("Unknown build target: %s" % tmp_target)
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
         raise koji.GenericError, _("Unknown destination tag: %s" %
