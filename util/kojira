@@ -414,7 +414,12 @@ class RepoManager(object):
         """
         if not data:
             return []
-        self.logger.info("Got %i tags for regeneration", len(data))
+        n_maven = 0
+        for ts, tag_id in data:
+            taginfo = getTag(self.session, tag_id)
+            if taginfo.get('maven_support'):
+                n_maven += 1
+        self.logger.info("Got %i tags for regeneration (%i maven tags)", len(data), n_maven)
         if len(data) == 1:
             return data[:]
         data = [(ts, tag_id, self.tagUseStats(tag_id)) for ts, tag_id in data]
