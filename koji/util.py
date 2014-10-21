@@ -460,65 +460,81 @@ def tsort(parts):
         raise ValueError, 'total ordering not possible'
     return result
 
-def _maven_params(config, package, scratch=False):
-    params = {}
-    for name, value in config.items(package):
-        value = value.strip()
-        if not value:
-            continue
-        if name in ['scmurl', 'patches', 'specfile']:
-            # single-valued options
-            pass
-        elif name in ['buildrequires', 'goals', 'profiles', 'packages',
-                      'jvm_options', 'maven_options']:
-            # multi-valued options
-            value = value.split()
-        elif name == 'properties':
-            props = {}
-            for prop in value.splitlines():
-                fields = prop.split('=', 1)
-                if len(fields) != 2:
-                    fields.append(None)
-                props[fields[0]] = fields[1]
-            value = props
-        elif name == 'envs':
-            envs = {}
-            for env in value.splitlines():
-                fields = env.split('=', 1)
-                if len(fields) != 2:
-                    raise ValueError, "Environment variables must be in NAME=VALUE format"
-                envs[fields[0]] = fields[1]
-            value = envs
-        elif name == 'type':
-            continue
-        else:
-            raise ValueError, "Unknown option: %s" % name
-        params[name] = value
-    return params
+class MavenConfigOptAdapter(object):
+    """
+    Wrap a ConfigParser so it looks like a optparse.Values instance
+    used by maven-build.
+    """
+    MULTILINE = ['properties', 'envs']
+    MULTIVALUE = ['goals', 'profiles', 'packages',
+                   'jvm_options', 'maven_options', 'buildrequires']
 
-def _wrapper_params(config, package, scratch=False):
+    def __init__(self, conf, section):
+        self._conf = conf
+        self._section = section
+
+    def __getattr__(self, name):
+        if self._conf.has_option(self._section, name):
+            value = self._conf.get(self._section, name)
+            if name in self.MULTIVALUE:
+                value = value.split()
+            elif name in self.MULTILINE:
+                value = value.splitlines()
+            return value
+        raise AttributeError, name
+
+def maven_opts(values, chain=False, scratch=False):
+    """
+    Convert the argument (an optparse.Values object) to a dict of build options
+    suitable for passing to maven-build or maven-chain.
+    """
+    opts = {}
+    for key in ('scmurl', 'patches', 'specfile', 'goals', 'profiles', 'packages',
+                'jvm_options', 'maven_options'):
+        val = getattr(values, key, None)
+        if val:
+            opts[key] = val
+    props = {}
+    for prop in getattr(values, 'properties', []):
+        fields = prop.split('=', 1)
+        if len(fields) != 2:
+            fields.append(None)
+        props[fields[0]] = fields[1]
+    if props:
+        opts['properties'] = props
+    envs = {}
+    for env in getattr(values, 'envs', []):
+        fields = env.split('=', 1)
+        if len(fields) != 2:
+            raise ValueError, "Environment variables must be in NAME=VALUE format"
+        envs[fields[0]] = fields[1]
+    if envs:
+        opts['envs'] = envs
+    if chain:
+        val = getattr(values, 'buildrequires', [])
+        if val:
+            opts['buildrequires'] = val
+    if scratch and not chain:
+        opts['scratch'] = True
+    return opts
+
+def maven_params(config, package, chain=False, scratch=False):
+    values = MavenConfigOptAdapter(config, package)
+    return maven_opts(values, chain=chain, scratch=scratch)
+
+def wrapper_params(config, package, chain=False, scratch=False):
     params = {}
-    for name, value in config.items(package):
-        if name == 'scmurl':
-            pass
-        elif name == 'buildrequires':
-            value = value.split()
-            if len(value) != 1:
-                raise ValueError, "A wrapper-rpm must depend on exactly one package"
-        elif name == 'type':
-            pass
-        else:
-            raise ValueError, "Unknown option: %s" % name
-        params[name] = value
+    values = MavenConfigOptAdapter(config, package)
+    params['type'] = getattr(values, 'type', None)
+    params['scmurl'] = getattr(values, 'scmurl', None)
+    params['buildrequires'] = getattr(values, 'buildrequires', [])
     if not scratch:
         params['create_build'] = True
     return params
 
-def parse_maven_chain(confs, scratch=False):
+def parse_maven_params(confs, chain=False, scratch=False):
     """
-    Parse maven-chain config.
-
-    confs is a list of paths to config files.
+    Parse .ini files that contain parameters to launch a Maven build.
 
     Return a map whose keys are package names and values are config parameters.
     """
@@ -536,14 +552,49 @@ def parse_maven_chain(confs, scratch=False):
         if config.has_option(package, 'type'):
             buildtype = config.get(package, 'type')
         if buildtype == 'maven':
-            params = _maven_params(config, package, scratch)
+            params = maven_params(config, package, chain=chain, scratch=scratch)
         elif buildtype == 'wrapper':
-            params = _wrapper_params(config, package, scratch)
+            params = wrapper_params(config, package, chain=chain, scratch=scratch)
+            if len(params.get('buildrequires')) != 1:
+                raise ValueError, "A wrapper-rpm must depend on exactly one package"
         else:
             raise ValueError, "Unsupported build type: %s" % buildtype
         if not 'scmurl' in params:
             raise ValueError, "%s is missing the scmurl parameter" % package
         builds[package] = params
+    if not builds:
+        raise ValueError, "No sections found in: %s" % ', '.join(confs)
+    return builds
+
+def parse_maven_param(confs, chain=False, scratch=False, section=None):
+    """
+    Parse .ini files that contain parameters to launch a Maven build.
+
+    Return a map that contains a single entry corresponding to the given
+    section of the .ini file.  If the config file only contains a single
+    section, section does not need to be specified.
+    """
+    if not isinstance(confs, (list, tuple)):
+        confs = [confs]
+    builds = parse_maven_params(confs, chain=chain, scratch=scratch)
+    if section:
+        if section in builds:
+            builds = {section: builds[section]}
+        else:
+            raise ValueError, "Section %s does not exist in: %s" % (section, ', '.join(confs))
+    elif len(builds) > 1:
+        raise ValueError, "Multiple sections in: %s, you must specify the section" % ', '.join(confs)
+    return builds
+
+def parse_maven_chain(confs, scratch=False):
+    """
+    Parse maven-chain config.
+
+    confs is a path to a config file or a list of paths to config files.
+
+    Return a map whose keys are package names and values are config parameters.
+    """
+    builds = parse_maven_params(confs, chain=True, scratch=scratch)
     depmap = {}
     for package, params in builds.items():
         depmap[package] = set(params.get('buildrequires', []))

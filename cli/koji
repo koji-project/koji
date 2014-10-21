@@ -1071,6 +1071,11 @@ def handle_maven_build(options, session, args):
     parser.add_option("-M", "--maven-option", action="append",
                       dest="maven_options", metavar="OPTION", default=[],
                       help=_("Pass a command-line option to Maven"))
+    parser.add_option("--ini", action="append",
+                      dest="inis", metavar="CONFIG", default=[],
+                      help=_("Pass build parameters via a .ini file"))
+    parser.add_option("-s", "--section",
+                      help=_("Get build parameters from this section of the .ini"))
     parser.add_option("--debug", action="store_true",
                       help=_("Run Maven build in debug mode"))
     parser.add_option("--specfile", action="store", metavar="URL",
@@ -1086,9 +1091,12 @@ def handle_maven_build(options, session, args):
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
-    if len(args) != 2:
-        parser.error(_("Exactly two arguments (a build target and a SCM URL) are required"))
-        assert False
+    if build_opts.inis:
+        if len(args)!= 1:
+            parser.error(_("Exactly one argument (a build target) is required"))
+    else:
+        if len(args) != 2:
+            parser.error(_("Exactly two arguments (a build target and a SCM URL) are required"))
     activate_session(session)
     target = args[0]
     build_target = session.getBuildTarget(target)
@@ -1099,34 +1107,25 @@ def handle_maven_build(options, session, args):
         parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
     if dest_tag['locked'] and not build_opts.scratch:
         parser.error(_("Destination tag %s is locked" % dest_tag['name']))
-    source = args[1]
-    if '://' not in source:
-        parser.error(_("Invalid SCM URL: %s" % source))
-        assert False
-    opts = {}
+    if build_opts.inis:
+        try:
+            params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
+                                                 section=build_opts.section)
+        except ValueError, e:
+            parser.error(e.args[0])
+        opts = params.values()[0]
+        if opts.pop('type', 'maven') != 'maven':
+            parser.error(_("Section %s does not contain a maven-build config") % params.keys()[0])
+        source = opts.pop('scmurl')
+    else:
+        source = args[1]
+        if '://' not in source:
+            parser.error(_("Invalid SCM URL: %s" % source))
+        opts = koji.util.maven_opts(build_opts, scratch=build_opts.scratch)
     if build_opts.debug:
-        build_opts.maven_options.append('--debug')
-    for key in ('skip_tag', 'scratch', 'specfile', 'patches', 'goals', 'profiles', 'packages', 'jvm_options', 'maven_options'):
-        val = getattr(build_opts, key)
-        if val:
-            opts[key] = val
-    props = {}
-    for prop in build_opts.properties:
-        fields = prop.split('=', 1)
-        if len(fields) != 2:
-            fields.append(None)
-        props[fields[0]] = fields[1]
-    if props:
-        opts['properties'] = props
-    envs = {}
-    for env in build_opts.envs:
-        fields = env.split('=', 1)
-        if len(fields) != 2:
-            parser.error(_("Environment variables must be in NAME=VALUE format"))
-            assert False
-        envs[fields[0]] = fields[1]
-    if envs:
-        opts['envs'] = envs
+        opts.setdefault('maven_options', []).append('--debug')
+    if build_opts.skip_tag:
+        opts['skip_tag'] = True
     priority = None
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
@@ -1146,22 +1145,47 @@ def handle_wrapper_rpm(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--create-build", action="store_true", help=_("Create a new build to contain wrapper rpms"))
+    parser.add_option("--ini", action="append",
+                      dest="inis", metavar="CONFIG", default=[],
+                      help=_("Pass build parameters via a .ini file"))
+    parser.add_option("-s", "--section",
+                      help=_("Get build parameters from this section of the .ini"))
     parser.add_option("--skip-tag", action="store_true", help=_("If creating a new build, don't tag it"))
     parser.add_option("--scratch", action="store_true", help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
     parser.add_option("--background", action="store_true", help=_("Run the build at a lower priority"))
 
     (build_opts, args) = parser.parse_args(args)
-    if len(args) < 3:
-        parser.error(_("You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment"))
-        assert False
+    if build_opts.inis:
+        if len(args)!= 1:
+            parser.error(_("Exactly one argument (a build target) is required"))
+    else:
+        if len(args) < 3:
+            parser.error(_("You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment"))
     activate_session(session)
 
     target = args[0]
-    build_id = args[1]
-    if build_id.isdigit():
-        build_id = int(build_id)
-    url = args[2]
+    if build_opts.inis:
+        try:
+            params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
+                                                 section=build_opts.section)
+        except ValueError, e:
+            parser.error(e.args[0])
+        opts = params.values()[0]
+        if opts.get('type') != 'wrapper':
+            parser.error(_("Section %s does not contain a wrapper-rpm config") % params.keys()[0])
+        url = opts['scmurl']
+        package = opts['buildrequires'][0]
+        target_info = session.getBuildTarget(target, strict=True)
+        latest_builds = session.getLatestBuilds(target_info['dest_tag'], package=package)
+        if not latest_builds:
+            parser.error(_("No build of %s in %s") % (package, target_info['dest_tag_name']))
+        build_id = latest_builds[0]['nvr']
+    else:
+        build_id = args[1]
+        if build_id.isdigit():
+            build_id = int(build_id)
+        url = args[2]
     priority = None
     if build_opts.background:
         priority = 5
