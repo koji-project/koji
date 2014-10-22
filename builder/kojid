@@ -2898,6 +2898,7 @@ class OzImageTask(BaseTaskHandler):
             'debug': True,
             'image_manager': 'file',
             'plugins': '/etc/imagefactory/plugins.d',
+            'rhevm_image_format': 'qcow2',
             'tdl_require_root_pw': False,
             'image_manager_args': {
               'storage_path': os.path.join(self.workdir, 'output_image')},
