@@ -277,9 +277,9 @@ class BaseTaskHandler(object):
         """chown the given path and all files and directories under
            it to the given uid/gid."""
         for path, dirs, files in os.walk(dirpath):
-            os.chown(path, uid, gid)
+            os.lchown(path, uid, gid)
             for filename in files:
-                os.chown(os.path.join(path, filename), uid, gid)
+                os.lchown(os.path.join(path, filename), uid, gid)
 
     def localPath(self, relpath):
         """Return a local path to a remote file.
