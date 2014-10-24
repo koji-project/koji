@@ -455,6 +455,10 @@ class BuildRoot(object):
 
     def build_srpm(self, specfile, sourcedir, source_cmd):
         self.session.host.setBuildRootState(self.id,'BUILDING')
+        if self.options.support_rpm_source_layout:
+            sources_dir = "%s/SOURCES" % sourcedir
+	else:
+	    sources_dir = sourcedir
         if source_cmd:
             # call the command defined by source_cmd in the chroot so any required files not stored in
             # the SCM can be retrieved
@@ -466,7 +470,7 @@ class BuildRoot(object):
                 self.expire()
                 raise koji.BuildError, "error retrieving sources, %s" % self._mockResult(rv)
 
-        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sourcedir,
+        args = ['--no-clean', '--buildsrpm', '--spec', specfile, '--sources', sources_dir,
                 '--target', 'noarch']
 
         rv = self.mock(args)
@@ -3794,10 +3798,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
 
         #build srpm
         self.logger.debug("Running srpm build")
-        sources_dir = "%s/SOURCES" % sourcedir
-        if not self.options.support_rpm_source_layout or not os.path.isdir(sources_dir):
-            sources_dir = sourcedir
-        broot.build_srpm(spec_file, sources_dir, scm.source_cmd)
+        broot.build_srpm(spec_file, sourcedir, scm.source_cmd)
 
         srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
         if len(srpms) == 0:
