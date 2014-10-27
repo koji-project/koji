@@ -149,7 +149,9 @@ class ManagedRepo(object):
                 self.logger.error("Can't stat repo directory: %s, %s" % (path, e.strerror))
                 return False
         else:
-            age = time.time() - max(self.event_ts, mtime)
+            times = [self.event_ts, mtime, self.first_seen, self.expire_ts]
+            times = [ts for ts in times if ts is not None]
+            age = time.time() - max(times)
             if age < self.options.deleted_repo_lifetime:
                 #XXX should really be called expired_repo_lifetime
                 return False
