@@ -36,6 +36,8 @@ callbacks = {
     'postBuildStateChange':   [],
     'preImport':              [],
     'postImport':             [],
+    'preRPMSign':             [],
+    'postRPMSign':            [],
     'preTag':                 [],
     'postTag':                [],
     'preUntag':               [],
