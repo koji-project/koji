@@ -2718,9 +2718,9 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     # Does the parent exist?
     if parent:
         parent_tag = get_tag(parent)
-        parent_id = parent_tag['id']
         if not parent_tag:
             raise koji.GenericError("Parent tag '%s' could not be found" % parent)
+        parent_id = parent_tag['id']
     else:
         parent_id = None
 
