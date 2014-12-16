@@ -3238,7 +3238,7 @@ class BaseImageTask(OzImageTask):
         @returns:
             a dict with some metadata about the image
         """
-        img_opts = {'compress': 'gzip'}
+        img_opts = {'compress': 'xz'}
         targ = self._do_target_image(self.base_img.base_image.identifier,
             'docker', img_opts=img_opts)
         return {'image': targ.target_image.data}
