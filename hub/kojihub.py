@@ -5454,11 +5454,17 @@ def query_history(tables=None, **kwargs):
                 data['build_id'] = get_build(value, strict=True)['id']
                 clauses.append("build.id = %(build_id)i")
             elif arg == 'package':
-                if 'package' not in joined:
+                pkg_field_name = "%s.package" % table
+                if 'package' in joined:
+                    data['pkg_id'] = get_package_id(value, strict=True)
+                    clauses.append("package.id = %(pkg_id)i")
+                elif pkg_field_name in fields:
+                    # e.g. group_package_listing
+                    data['group_package'] = str(value)
+                    clauses.append("%s = %%(group_package)s" % pkg_field_name)
+                else:
                     skip = True
                     break
-                data['pkg_id'] = get_package_id(value, strict=True)
-                clauses.append("package.id = %(pkg_id)i")
             elif arg == 'user':
                 if 'users' not in joined:
                     skip = True
