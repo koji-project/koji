@@ -1436,6 +1436,22 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
     return fo
 
 
+def config_directory_contents(dir_name):
+    configs = []
+    try:
+        conf_dir_contents = os.listdir(dir_name)
+    except OSError, exception:
+        if exception.errno != errno.ENOENT:
+            raise
+    else:
+        for name in sorted(conf_dir_contents):
+            if not name.endswith('.conf'):
+                continue
+            config_full_name = os.path.join(dir_name, name)
+            configs.append(config_full_name)
+    return configs
+
+
 class PathInfo(object):
     # ASCII numbers and upper- and lower-case letter for use in tmpdir()
     ASCII_CHARS = [chr(i) for i in range(48, 58) + range(65, 91) + range(97, 123)]

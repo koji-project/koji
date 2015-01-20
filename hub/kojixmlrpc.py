@@ -382,20 +382,30 @@ def load_config(environ):
           will disappear in a future version of Koji
     """
     logger = logging.getLogger("koji")
-    #get our config file
+    #get our config file(s)
     if 'modpy.opts' in environ:
         modpy_opts = environ.get('modpy.opts')
         cf = modpy_opts.get('ConfigFile', None)
-    else:
-        cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
-        modpy_opts = {}
-    if cf:
+        cfdir =  modpy_opts.get('ConfigDir', None)
         # to aid in the transition from PythonOptions to hub.conf, we only load
         # the configfile if it is explicitly configured
-        config = RawConfigParser()
-        config.read(cf)
+        if not cf and not cfdir:
+            logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
     else:
-        logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
+        cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
+        cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
+        modpy_opts = {}
+    if cfdir:
+        configs = koji.config_directory_contents(cfdir)
+    else:
+        configs = []
+    if cf and os.path.isfile(cf):
+        configs.append(cf)
+    if configs:
+        config = RawConfigParser()
+        config.read(configs)
+    else:
+        config = None
     cfgmap = [
         #option, type, default
         ['DBName', 'string', None],
@@ -456,7 +466,7 @@ def load_config(environ):
     ]
     opts = {}
     for name, dtype, default in cfgmap:
-        if cf:
+        if config:
             key = ('hub', name)
             if config.has_option(*key):
                 if dtype == 'integer':
@@ -481,7 +491,7 @@ def load_config(environ):
         opts['DBHost'] = opts['DBhost']
     # load policies
     # (only from config file)
-    if cf and config.has_section('policy'):
+    if config and config.has_section('policy'):
         #for the moment, we simply transfer the policy conf to opts
         opts['policy'] = dict(config.items('policy'))
     else:

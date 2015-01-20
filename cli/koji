@@ -115,22 +115,6 @@ def arg_filter(arg):
     return arg
 
 
-def config_directory_contents(dir_name):
-    configs = []
-    try:
-        conf_dir_contents = os.listdir(dir_name)
-    except OSError, exception:
-        if exception.errno != errno.ENOENT:
-            raise
-    else:
-        for name in sorted(conf_dir_contents):
-            if not name.endswith('.conf'):
-                continue
-            config_full_name = os.path.join(dir_name, name)
-            configs.append(config_full_name)
-    return configs
-
-
 def get_options():
     """process options from command line and config file"""
 
@@ -225,13 +209,13 @@ def get_options():
         'authtype': None
         }
     #note: later config files override earlier ones
-    configs = config_directory_contents('/etc/koji.conf.d')
+    configs = koji.config_directory_contents('/etc/koji.conf.d')
     if os.access('/etc/koji.conf', os.F_OK):
         configs.append('/etc/koji.conf')
     if options.configFile:
         fn = os.path.expanduser(options.configFile)
         if os.path.isdir(fn):
-            contents = config_directory_contents(fn)
+            contents = koji.config_directory_contents(fn)
             if not contents:
                 parser.error("No config files found in directory: %s" % fn)
             configs.extend(contents)
@@ -241,7 +225,7 @@ def get_options():
             configs.append(fn)
     else:
         user_config_dir = os.path.expanduser("~/.koji/config.d")
-        configs.extend(config_directory_contents(user_config_dir))
+        configs.extend(koji.config_directory_contents(user_config_dir))
         fn = os.path.expanduser("~/.koji/config")
         if os.access(fn, os.F_OK):
             configs.append(fn)
