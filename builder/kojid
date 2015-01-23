@@ -2370,10 +2370,9 @@ class ImageTask(BaseTaskHandler):
         """
 
         # Here we configure mock to bind mount a set of /dev directories
-        bind_opts = {'dirs' : {
-                         '/dev' : '/dev',
-                         '/selinux' : '/selinux'}
-                    }
+        bind_opts = {'dirs' : {'/dev' : '/dev',}}
+        if os.path.exists('/selinux'):
+            bind_opts['dirs']['/selinux'] = '/selinux'
         rootopts = {'install_group': inst_group,
                     'setup_dns': True,
                     'repo_id': repoinfo['id'],
