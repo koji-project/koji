@@ -2035,6 +2035,8 @@ def get_all_arches():
     """Return a list of all (canonical) arches available from hosts"""
     ret = {}
     for (arches,) in _fetchMulti('SELECT arches FROM host', {}):
+        if arches is None:
+            continue
         for arch in arches.split():
             #in a perfect world, this list would only include canonical
             #arches, but not all admins will undertand that.
