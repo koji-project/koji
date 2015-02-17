@@ -146,12 +146,11 @@ class TimeoutCounter:
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:
-        print "Usage: python XMLRPCServerProxy.py key_and_cert ca_cert peer_ca_cert"
+        print "Usage: python XMLRPCServerProxy.py key_and_cert peer_ca_cert"
         sys.exit(1)
 
     certs = {}
     certs['key_and_cert'] = sys.argv[1]
-    certs['ca_cert'] = sys.argv[2]
     certs['peer_ca_cert'] = sys.argv[3]
 
     tm = TimeoutCounter()

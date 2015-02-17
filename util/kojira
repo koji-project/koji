@@ -727,7 +727,7 @@ def get_options():
                 #XXX should really be called expired_repo_lifetime
                 'sleeptime' : 15,
                 'cert': '/etc/kojira/client.crt',
-                'ca': '/etc/kojira/clientca.crt',
+                'ca': '',  # FIXME: unused, remove in next major release
                 'serverca': '/etc/kojira/serverca.crt'
                 }
     if config.has_section(section):
@@ -735,7 +735,7 @@ def get_options():
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'max_repo_tasks_maven', 'delete_batch_size', )
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
-                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
+                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
         for name in config.options(section):
             if name in int_opts:
@@ -797,7 +797,7 @@ if  __name__ == "__main__":
     session = koji.ClientSession(options.server,session_opts)
     if os.path.isfile(options.cert):
         # authenticate using SSL client certificates
-        session.ssl_login(options.cert, options.ca, options.serverca)
+        session.ssl_login(options.cert, None, options.serverca)
     elif options.user:
         # authenticate using user/password
         session.login()

@@ -122,10 +122,9 @@ def _krbLogin(environ, session, principal):
 def _sslLogin(environ, session, username):
     options = environ['koji.options']
     client_cert = options['WebCert']
-    client_ca = options['ClientCA']
     server_ca = options['KojiHubCA']
 
-    return session.ssl_login(client_cert, client_ca, server_ca,
+    return session.ssl_login(client_cert, None, server_ca,
                              proxyuser=username)
 
 def _assertLogin(environ):

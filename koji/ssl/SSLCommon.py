@@ -31,16 +31,14 @@ def our_verify(connection, x509, errNum, errDepth, preverifyOK):
 
 def CreateSSLContext(certs):
     key_and_cert = certs['key_and_cert']
-    ca_cert = certs['ca_cert']
     peer_ca_cert = certs['peer_ca_cert']
-    for f in key_and_cert, ca_cert, peer_ca_cert:
+    for f in key_and_cert, peer_ca_cert:
         if f and not os.access(f, os.R_OK):
             raise StandardError, "%s does not exist or is not readable" % f
 
     ctx = SSL.Context(SSL.SSLv23_METHOD)   # Use best possible TLS Method
     ctx.use_certificate_file(key_and_cert)
     ctx.use_privatekey_file(key_and_cert)
-    ctx.load_client_ca(ca_cert)
     ctx.load_verify_locations(peer_ca_cert)
     verify = SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT
     ctx.set_verify(verify, our_verify)

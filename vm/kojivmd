@@ -130,7 +130,7 @@ def get_options():
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
                 'cert': '/etc/kojivmd/client.crt',
-                'ca': '/etc/kojivmd/clientca.crt',
+                'ca': '',  # FIXME: Remove in next major release
                 'serverca': '/etc/kojivmd/serverca.crt'}
     if config.has_section('kojivmd'):
         for name, value in config.items('kojivmd'):
@@ -1066,7 +1066,7 @@ if __name__ == "__main__":
     if os.path.isfile(options.cert):
         try:
             # authenticate using SSL client certificates
-            session.ssl_login(options.cert, options.ca,
+            session.ssl_login(options.cert, None,
                               options.serverca)
         except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)

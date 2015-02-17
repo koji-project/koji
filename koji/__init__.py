@@ -1745,8 +1745,9 @@ class ClientSession(object):
     def ssl_login(self, cert, ca, serverca, proxyuser=None):
         certs = {}
         certs['key_and_cert'] = cert
-        certs['ca_cert'] = ca
         certs['peer_ca_cert'] = serverca
+        # FIXME: ca is not useful here and therefore ignored, can be removed
+        # when API is changed
 
         ctx = ssl.SSLCommon.CreateSSLContext(certs)
         self._cnxOpts = {'ssl_context' : ctx}

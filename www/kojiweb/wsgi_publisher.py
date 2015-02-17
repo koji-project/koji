@@ -77,7 +77,6 @@ class Dispatcher(object):
         ['KrbService', 'string', 'host'],
 
         ['WebCert', 'string', None],
-        ['ClientCA', 'string', '/etc/kojiweb/clientca.crt'],
         ['KojiHubCA', 'string', '/etc/kojiweb/kojihubca.crt'],
 
         ['PythonDebug', 'boolean', False],

@@ -4543,7 +4543,7 @@ def get_options():
                 'failed_buildroot_lifetime' : 3600 * 4,
                 'rpmbuild_timeout' : 3600 * 24,
                 'cert': '/etc/kojid/client.crt',
-                'ca': '/etc/kojid/clientca.crt',
+                'ca': '',  # FIXME: Unused, remove in next major release
                 'serverca': '/etc/kojid/serverca.crt'}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
@@ -4642,7 +4642,7 @@ if __name__ == "__main__":
     if os.path.isfile(options.cert):
         try:
             # authenticate using SSL client certificates
-            session.ssl_login(options.cert, options.ca,
+            session.ssl_login(options.cert, None,
                               options.serverca)
         except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)

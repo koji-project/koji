@@ -211,7 +211,7 @@ def get_options():
         'poll_interval': 5,
         'krbservice': 'host',
         'cert': '~/.koji/client.crt',
-        'ca': '~/.koji/clientca.crt',
+        'ca': '',  # FIXME: remove in next major release
         'serverca': '~/.koji/serverca.crt',
         'authtype': None
         }
@@ -265,7 +265,7 @@ def get_options():
     for name, value in defaults.iteritems():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
-    dir_opts = ('topdir', 'cert', 'ca', 'serverca')
+    dir_opts = ('topdir', 'cert', 'serverca')
     for name in dir_opts:
         # expand paths here, so we don't have to worry about it later
         value = os.path.expanduser(getattr(options, name))
@@ -6831,7 +6831,7 @@ def activate_session(session):
         pass
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
-        session.ssl_login(options.cert, options.ca, options.serverca, proxyuser=options.runas)
+        session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
     elif options.authtype == "password" or options.user and options.authtype is None:
         # authenticate using user/password
         session.login()
