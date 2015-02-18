@@ -9524,7 +9524,10 @@ class Host(object):
         if id is None:
             id = remote_id
         if id is None:
-            raise koji.AuthError, "No host specified"
+            if context.session.logged_in:
+                raise koji.AuthError, "User %i is not a host" % context.session.user_id
+            else:
+                raise koji.AuthError, "Not logged in"
         self.id = id
         self.same_host = (id == remote_id)
 
