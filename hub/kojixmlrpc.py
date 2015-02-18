@@ -386,9 +386,12 @@ def load_config(environ):
     if 'modpy.opts' in environ:
         modpy_opts = environ.get('modpy.opts')
         cf = modpy_opts.get('ConfigFile', None)
-        cfdir =  modpy_opts.get('ConfigDir', None)
         # to aid in the transition from PythonOptions to hub.conf, we only load
         # the configfile if it is explicitly configured
+        if cf == '/etc/koji-hub/hub.conf':
+            cfdir =  modpy_opts.get('ConfigDir', '/etc/koji-hub/hub.conf.d')
+        else:
+            cfdir =  modpy_opts.get('ConfigDir', None)
         if not cf and not cfdir:
             logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
     else:
