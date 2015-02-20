@@ -22,7 +22,7 @@ $value
 #def printMap($vals, $prefix='')
   #for $key, $value in $vals.items()
   #if $key == 'properties'
-  ${prefix}properties&nbsp;=&nbsp;$printProperties($value)
+  ${prefix}properties&nbsp;=&nbsp;$printProperties($value)<br/>
   #elif $key != '__starstar'
   $prefix$key&nbsp;=&nbsp;$printValue($key, $value)<br/>
   #end if
