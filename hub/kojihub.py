@@ -1125,6 +1125,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=True to get only the latest build per package
+    set latest=N to get only the N latest tagged RPMs
 
     If type is not None, restrict the list to builds of the given type.  Currently the supported
     types are 'maven', 'win', and 'image'.
@@ -1206,10 +1207,10 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
                 # list should take priority
                 continue
             if latest:
-                if seen.has_key(pkgid):
+                if (latest is True and seen.has_key(pkgid)) or seen.get(pkgid, 0) >= latest:
                     #only take the first (note ordering in query above)
                     continue
-                seen[pkgid] = 1
+                seen[pkgid] = seen.get(pkgid, 0) + 1
             builds.append(build)
 
     return builds
@@ -1220,6 +1221,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=False to get all tagged RPMS (not just from the latest builds)
+    set latest=N to get only the N latest tagged RPMs
 
     If type is not None, restrict the list to rpms from builds of the given type.  Currently the
     supported types are 'maven' and 'win'.
@@ -1309,6 +1311,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     set inherit=True to follow inheritance
     set event to query at a time in the past
     set latest=False to get all tagged archives (not just from the latest builds)
+    set latest=N to get only the N latest tagged RPMs
 
     If type is not None, restrict the listing to archives of the given type.  Currently
     the supported types are 'maven' and 'win'.
