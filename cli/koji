@@ -2578,6 +2578,7 @@ def anon_handle_list_tagged(options, session, args):
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
+    parser.add_option("--latest-n", type='int', metavar="N", help=_("Only show the latest N builds/rpms"))
     parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
@@ -2601,6 +2602,8 @@ def anon_handle_list_tagged(options, session, args):
     opts = {}
     for key in ('latest','inherit'):
         opts[key] = getattr(options, key)
+    if options.latest_n is not None:
+        opts['latest'] = options.latest_n
     if package:
         opts['package'] = package
     if options.arch:
