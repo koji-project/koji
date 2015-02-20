@@ -2037,6 +2037,9 @@ def handle_prune_signed_copies(options, session, args):
                     #warn about this
                     print "Skipping %s. Not a regular file" % signedpath
                     continue
+                if st.st_mtime > cutoff_ts:
+                    print "Skipping %s. File newer than cutoff" % signedpath
+                    continue
                 if options.test:
                     print "Would have unlinked: %s" % signedpath
                 else:
