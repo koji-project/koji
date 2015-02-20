@@ -1133,6 +1133,9 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
 
+    if not isinstance(latest, (int, long, float)):
+        latest = bool(latest)
+
     taglist = [tag]
     if inherit:
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
@@ -1208,7 +1211,8 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
                 continue
             if latest:
                 if (latest is True and seen.has_key(pkgid)) or seen.get(pkgid, 0) >= latest:
-                    #only take the first (note ordering in query above)
+                    # only take the first N entries
+                    # (note ordering in query above)
                     continue
                 seen[pkgid] = seen.get(pkgid, 0) + 1
             builds.append(build)
