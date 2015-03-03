@@ -3382,7 +3382,7 @@ class BaseImageTask(OzImageTask):
             if 'ova' in format or format == 'raw-xz':
                 newname = self.imgname + '.' + format.replace('-', '.')
             elif format == 'docker':
-                newname = self.imgname + '.' + 'tar.gz'
+                newname = self.imgname + '.' + 'tar.xz'
             else:
                 newname = self.imgname + '.' + format
             if format != 'docker':
