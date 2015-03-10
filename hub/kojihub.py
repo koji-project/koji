@@ -3176,7 +3176,7 @@ def get_user(userInfo=None,strict=False):
         raise koji.GenericError, 'invalid type for userInfo: %s' % type(userInfo)
     return _singleRow(q,locals(),fields,strict=strict)
 
-def find_build_id(X):
+def find_build_id(X, strict=False):
     if isinstance(X,int) or isinstance(X,long):
         return X
     elif isinstance(X,str):
@@ -3201,7 +3201,10 @@ def find_build_id(X):
     r=c.fetchone()
     #log_error("%r" % r )
     if not r:
-        return None
+        if strict:
+            raise koji.GenericError, 'No matching build found: %r' % X
+        else:
+            return None
     return r[0]
 
 def get_build(buildInfo, strict=False):
@@ -3231,12 +3234,9 @@ def get_build(buildInfo, strict=False):
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
     """
-    buildID = find_build_id(buildInfo)
+    buildID = find_build_id(buildInfo, strict=strict)
     if buildID == None:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
+        return None
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
@@ -3475,12 +3475,9 @@ def get_maven_build(buildInfo, strict=False):
     """
     fields = ('build_id', 'group_id', 'artifact_id', 'version')
 
-    build_id = find_build_id(buildInfo)
+    build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
+        return None
     query = """SELECT %s
     FROM maven_builds
     WHERE build_id = %%(build_id)i""" % ', '.join(fields)
@@ -3498,12 +3495,9 @@ def get_win_build(buildInfo, strict=False):
     """
     fields = ('build_id', 'platform')
 
-    build_id = find_build_id(buildInfo)
+    build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
+        return None
     query = QueryProcessor(tables=('win_builds',), columns=fields,
                            clauses=('build_id = %(build_id)i',),
                            values={'build_id': build_id})
@@ -3522,12 +3516,9 @@ def get_image_build(buildInfo, strict=False):
     Returns a map containing the following keys:
     build_id: id of the build
     """
-    build_id = find_build_id(buildInfo)
+    build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
-        if strict:
-            raise koji.GenericError, 'No matching build found: %s' % buildInfo
-        else:
-            return None
+        return None
     query = QueryProcessor(tables=('image_builds',), columns=('build_id',),
                            clauses=('build_id = %(build_id)i',),
                            values={'build_id': build_id})
@@ -8268,7 +8259,7 @@ class RootExports(object):
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
         if not isinstance(build, int):
             #lookup build id
-            build = self.findBuildID(build)
+            build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
 
     getRPM = staticmethod(get_rpm)
