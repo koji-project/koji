@@ -31,6 +31,7 @@ install:
 
 	mkdir -p $(DESTDIR)/etc/koji-hub
 	install -p -m 644 hub.conf $(DESTDIR)/etc/koji-hub/hub.conf
+	mkdir -p $(DESTDIR)/etc/koji-hub/hub.conf.d
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
 	for p in $(PYFILES) ; do \

@@ -156,6 +156,7 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/kojihub.conf
 %dir %{_sysconfdir}/koji-hub
 %config(noreplace) %{_sysconfdir}/koji-hub/hub.conf
+%dir %{_sysconfdir}/koji-hub/hub.conf.d
 
 %files hub-plugins
 %defattr(-,root,root)
@@ -184,6 +185,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_sysconfdir}/kojiweb
 %config(noreplace) %{_sysconfdir}/kojiweb/web.conf
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/kojiweb.conf
+%dir %{_sysconfdir}/kojiweb/web.conf.d
 
 %files builder
 %defattr(-,root,root)
