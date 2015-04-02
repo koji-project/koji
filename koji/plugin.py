@@ -118,12 +118,12 @@ def export_in(module, alias=None):
     """
     def dec(f):
         if alias is None:
-            alias = "%s.%s" % (module, f.__name__)
+            local_alias = "%s.%s" % (module, f.__name__)
         else:
-            alias = "%s.%s" % (module, alias)
+            local_alias = "%s.%s" % (module, alias)
         setattr(f, 'exported', True)
         setattr(f, 'export_module', module)
-        setattr(f, 'export_alias', alias)
+        setattr(f, 'export_alias', local_alias)
         return f
     return dec
 
