@@ -6,7 +6,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -276,7 +276,7 @@ class WindowsBuild(object):
                 continue
             tokens = entry.split(':')
             filename = tokens[0]
-            for var in ('name', 'version', 'release'): 
+            for var in ('name', 'version', 'release'):
                 filename = filename.replace('$' + var, getattr(self, var))
             metadata = {}
             metadata['platforms'] = tokens[1].split(',')
@@ -589,7 +589,7 @@ def get_mgmt_server():
                  macaddr, gateway, MANAGER_PORT)
     server = xmlrpclib.ServerProxy('http://%s:%s/' %
                                    (gateway, MANAGER_PORT), allow_none=True)
-    # we would set a timeout on the socket here, but that is apparently not 
+    # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)

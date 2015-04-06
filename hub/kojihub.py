@@ -5,7 +5,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -3442,8 +3442,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
 
     # image specific constraints
     if imageID != None:
-       clauses.append('image_listing.image_id = %(imageID)i')
-       joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
+        clauses.append('image_listing.image_id = %(imageID)i')
+        joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
 
     if hostID != None:
         joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
@@ -3553,7 +3553,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     checksum_type: the checksum type (integer)
 
     If componentBuildrootID is specified, then the map will also contain the following key:
-    project: whether the archive was pulled in as a project dependency, or as part of the 
+    project: whether the archive was pulled in as a project dependency, or as part of the
              build environment setup (boolean)
 
     If 'type' is specified, then the archives listed will be limited
@@ -3590,7 +3590,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     an empty list is returned.
     """
     values = {}
-    
+
     tables = ['archiveinfo']
     joins = ['archivetypes on archiveinfo.type_id = archivetypes.id']
     fields = [('archiveinfo.id', 'id'),
@@ -6060,7 +6060,7 @@ def get_notification_recipients(build, tag_id, state):
     for this tag and the user who submitted the build.  The list will not contain
     duplicates.
     """
-    
+
     clauses = []
 
     if build:
@@ -7653,7 +7653,7 @@ class RootExports(object):
         """
         Import an archive file and associate it with a build.  The archive can
         be any non-rpm filetype supported by Koji.
-        
+
         filepath: path to the archive file (relative to the Koji workdir)
         buildinfo: information about the build to associate the archive with
                    May be a string (NVR), integer (buildID), or dict (containing keys: name, version, release)
@@ -8698,7 +8698,7 @@ class RootExports(object):
             raise koji.GenericError, 'user already exists: %s' % username
         if krb_principal and get_user(krb_principal):
             raise koji.GenericError, 'user with this Kerberos principal already exists: %s' % krb_principal
-        
+
         return context.session.createUser(username, status=status, krb_principal=krb_principal)
 
     def enableUser(self, username):
@@ -8707,14 +8707,14 @@ class RootExports(object):
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
         set_user_status(user, koji.USER_STATUS['NORMAL'])
-    
+
     def disableUser(self, username):
         """Disable logins by the specified user"""
         user = get_user(username)
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
-    
+
     #group management calls
     newGroup = staticmethod(new_group)
     addGroupMember = staticmethod(add_group_member)
@@ -9364,11 +9364,11 @@ class RootExports(object):
         notificationUser = self.getUser(user_id)
         if not notificationUser:
             raise koji.GenericError, 'invalid user ID: %s' % user_id
-        
+
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError, 'user %s cannot create notifications for user %s' % \
                   (currentUser['name'], notificationUser['name'])
-        
+
         email = '%s@%s' % (notificationUser['name'], context.opts['EmailDomain'])
         insert = """INSERT INTO build_notifications
         (user_id, package_id, tag_id, success_only, email)
@@ -10217,7 +10217,7 @@ class HostExports(object):
             if len(poms) == 0:
                 pass
             elif len(poms) == 1:
-                # This directory has a .pom file, so get the Maven group_id, 
+                # This directory has a .pom file, so get the Maven group_id,
                 # artifact_id, and version from it and associate those with
                 # the artifacts in this directory
                 pom_path = os.path.join(maven_task_dir, relpath, poms[0])
@@ -10458,7 +10458,7 @@ class HostExports(object):
 
     def importImage(self, task_id, build_id, results):
         """
-        Import a built image, populating the database with metadata and 
+        Import a built image, populating the database with metadata and
         moving the image to its final location.
         """
         for sub_results in results.values():

@@ -187,4 +187,3 @@ class InputWrapper(object):
         while line:
             yield line
             line = self.readline()
-

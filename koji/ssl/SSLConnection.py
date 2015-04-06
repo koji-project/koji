@@ -156,4 +156,3 @@ class PlgFileObject(socket._fileobject):
                 self._sock.close()
         finally:
             self._sock = None
-

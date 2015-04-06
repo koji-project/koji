@@ -319,5 +319,3 @@ class RunRootTask(tasks.BaseTaskHandler):
                 os.unlink(fn)
             except OSError:
                 pass
-
-

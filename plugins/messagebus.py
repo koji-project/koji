@@ -22,19 +22,19 @@ session = None
 target = None
 
 def connect_timeout(host, port, timeout):
-  for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-    af, socktype, proto, canonname, sa = res
-    sock = socket.socket(af, socktype, proto)
-    sock.settimeout(timeout)
-    try:
-      sock.connect(sa)
-      break
-    except socket.error, msg:
-      sock.close()
-  else:
-    # If we got here then we couldn't connect (yet)
-    raise
-  return sock
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = socket.socket(af, socktype, proto)
+        sock.settimeout(timeout)
+        try:
+            sock.connect(sa)
+            break
+        except socket.error, msg:
+            sock.close()
+    else:
+        # If we got here then we couldn't connect (yet)
+        raise
+    return sock
 
 class tlstimeout(qpid.messaging.transports.tls):
     def __init__(self, conn, host, port):

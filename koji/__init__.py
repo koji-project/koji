@@ -5,7 +5,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -990,7 +990,7 @@ def parse_pom(path=None, contents=None):
         raise GenericError, 'either a path to a pom file or the contents of a pom file must be specified'
 
     # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
-    
+
     contents = fixEncoding(contents)
 
     try:

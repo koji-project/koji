@@ -286,7 +286,7 @@ def index(environ, packageOrder='package_name', packageStart=None):
     if user:
         packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                                 start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
-        
+
         notifs = server.getBuildNotifications(user['id'])
         notifs.sort(kojiweb.util.sortByKeyFunc('id'))
         # XXX Make this a multicall
@@ -294,21 +294,21 @@ def index(environ, packageOrder='package_name', packageStart=None):
             notif['package'] = None
             if notif['package_id']:
                 notif['package'] = server.getPackage(notif['package_id'])
-    
+
             notif['tag'] = None
             if notif['tag_id']:
                 notif['tag'] = server.getTag(notif['tag_id'])
         values['notifs'] = notifs
-        
+
     values['user'] = user
     values['welcomeMessage'] = environ['koji.options']['KojiGreeting']
-    
+
     return _genHTML(environ, 'index.chtml')
 
 def notificationedit(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
-    
+
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
     if notification == None:
@@ -399,7 +399,7 @@ def notificationcreate(environ):
 def notificationdelete(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
-    
+
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
     if not notification:
@@ -491,7 +491,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     if view in ('tree', 'toplevel'):
         opts['parent'] = None
-    
+
     if state == 'active':
         opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
     elif state == 'all':
@@ -531,7 +531,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': opts},
                                         start=start, dataName='tasks', prefix='task', order=order)
-    
+
     if view == 'tree':
         server.multicall = True
         for task in tasks:
@@ -577,7 +577,7 @@ def taskinfo(environ, taskID):
         values['parent'] = parent
     else:
         values['parent'] = None
-    
+
     descendents = server.getTaskDescendents(task['id'], request=True)
     values['descendents'] = descendents
 
@@ -641,7 +641,7 @@ def taskinfo(environ, taskID):
             values['wrapTask'] = wrapTask
     elif task['method'] == 'restartVerify':
         values['rtask'] = server.getTaskInfo(params[0], request=True)
-    
+
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
             result = server.getTaskResult(task['id'])
@@ -688,7 +688,7 @@ def taskstatus(environ, taskID):
 def resubmittask(environ, taskID):
     server = _getServer(environ)
     _assertLogin(environ)
-    
+
     taskID = int(taskID)
     newTaskID = server.resubmitTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % newTaskID)
@@ -817,13 +817,13 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values['prefix'] = prefix
     inherited = int(inherited)
     values['inherited'] = inherited
-    
+
     packages = kojiweb.util.paginateResults(server, values, 'listPackages',
                                             kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
                                             start=start, dataName='packages', prefix='package', order=order)
-    
+
     values['chars'] = _PREFIX_CHARS
-    
+
     return _genHTML(environ, 'packages.chtml')
 
 def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time', buildStart=None):
@@ -840,7 +840,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
 
     values['package'] = package
     values['packageID'] = package['id']
-    
+
     tags = kojiweb.util.paginateMethod(server, values, 'listTags', kw={'package': package['id']},
                                        start=tagStart, dataName='tags', prefix='tag', order=tagOrder)
     builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'packageID': package['id']},
@@ -966,7 +966,7 @@ def tagedit(environ, tagID):
             params['maven_include_all'] = bool(form.has_key('maven_include_all'))
 
         server.editTag2(tag['id'], **params)
-        
+
         _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
     elif form.has_key('cancel'):
         _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
@@ -1016,7 +1016,7 @@ def tagparent(environ, tagID, parentID, action):
 
             data = server.getInheritanceData(tag['id'])
             data.append(newDatum)
-                
+
             server.setInheritanceData(tag['id'], data)
         elif form.has_key('cancel'):
             pass
@@ -1039,7 +1039,7 @@ def tagparent(environ, tagID, parentID, action):
                 values['inheritanceData'] = inheritanceData[0]
             else:
                 raise koji.GenericError, 'tag %i has tag %i listed as a parent more than once' % (tag['id'], parent['id'])
-            
+
             return _genHTML(environ, 'tagparent.chtml')
     elif action == 'remove':
         data = server.getInheritanceData(tag['id'])
@@ -1076,7 +1076,7 @@ def buildinfo(environ, buildID):
     server = _getServer(environ)
 
     buildID = int(buildID)
-    
+
     build = server.getBuild(buildID)
 
     values['title'] = koji.buildLabel(build) + ' | Build Info'
@@ -1170,7 +1170,7 @@ def buildinfo(environ, buildID):
     values['imagebuild'] = imagebuild
     values['archives'] = archives
     values['archivesByExt'] = archivesByExt
-    
+
     values['noarch_log_dest'] = noarch_log_dest
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
@@ -1243,7 +1243,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
     if prefix not in _PREFIX_CHARS:
         prefix = None
     values['prefix'] = prefix
-    
+
     values['order'] = order
     if type in ('maven', 'win', 'image'):
         pass
@@ -1274,7 +1274,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
                                                                                'type': type,
                                                                                'state': state, 'prefix': prefix},
                                              start=start, dataName='builds', prefix='build', order=order)
-    
+
     values['chars'] = _PREFIX_CHARS
 
     return _genHTML(environ, 'builds.chtml')
@@ -1295,7 +1295,7 @@ def users(environ, order='name', start=None, prefix=None):
                                         start=start, dataName='users', prefix='user', order=order)
 
     values['chars'] = _PREFIX_CHARS
-    
+
     return _genHTML(environ, 'users.chtml')
 
 def userinfo(environ, userID, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None):
@@ -1314,10 +1314,10 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None, bu
 
     packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
                                             start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
-    
+
     builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
                                          start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
-    
+
     return _genHTML(environ, 'userinfo.chtml')
 
 def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
@@ -1360,7 +1360,7 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     values['build'] = build
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
-    
+
     files = kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],
                                         start=fileStart, dataName='files', prefix='file', order=fileOrder)
 
@@ -1408,7 +1408,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
 
     values['rpm'] = None
     values['archive'] = None
-    
+
     if rpmID:
         rpmID = int(rpmID)
         rpm = server.getRPM(rpmID)
@@ -1439,7 +1439,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
 def cancelbuild(environ, buildID):
     server = _getServer(environ)
     _assertLogin(environ)
-    
+
     buildID = int(buildID)
     build = server.getBuild(buildID)
     if build == None:
@@ -1468,7 +1468,7 @@ def hosts(environ, state='enabled', start=None, order='name'):
     values['state'] = state
 
     hosts = server.listHosts(**args)
-    
+
     server.multicall = True
     for host in hosts:
         server.getLastHostUpdate(host['id'])
@@ -1518,7 +1518,7 @@ def hostinfo(environ, hostID=None, userID=None):
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
         values['perms'] = []
-    
+
     return _genHTML(environ, 'hostinfo.chtml')
 
 def hostedit(environ, hostID):
@@ -1630,7 +1630,7 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
 
     values['buildroot'] = buildroot
     values['task'] = task
-    
+
     return _genHTML(environ, 'buildrootinfo.chtml')
 
 def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nvr'):
@@ -1714,13 +1714,13 @@ def buildtargets(environ, start=None, order='name'):
 
     targets = kojiweb.util.paginateMethod(server, values, 'getBuildTargets',
                                           start=start, dataName='targets', prefix='target', order=order)
-    
+
     values['order'] = order
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
         values['perms'] = []
-    
+
     return _genHTML(environ, 'buildtargets.chtml')
 
 def buildtargetinfo(environ, targetID=None, name=None):
@@ -1733,7 +1733,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
         target = server.getBuildTarget(targetID)
     elif name != None:
         target = server.getBuildTarget(name)
-    
+
     if target == None:
         raise koji.GenericError, 'invalid build target: %s' % (targetID or name)
 
@@ -1785,7 +1785,7 @@ def buildtargetedit(environ, targetID):
         values = _initValues(environ, 'Edit Build Target', 'buildtargets')
         tags = server.listTags()
         tags.sort(_sortbyname)
-        
+
         values['target'] = target
         values['tags'] = tags
 
@@ -1810,7 +1810,7 @@ def buildtargetcreate(environ):
 
         if target == None:
             raise koji.GenericError, 'error creating build target "%s"' % name
-        
+
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
     elif form.has_key('cancel'):
         _redirect(environ, 'buildtargets')
@@ -1860,7 +1860,7 @@ def buildsbyuser(environ, start=None, order='-builds'):
         user['builds'] = numBuilds
         if numBuilds > maxBuilds:
             maxBuilds = numBuilds
-    
+
     values['order'] = order
 
     graphWidth = 400.0
@@ -1893,14 +1893,14 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
         host['rpms'] = numRPMs
         if numRPMs > maxRPMs:
             maxRPMs = numRPMs
-    
+
     values['hostArch'] = hostArch
     hostArchList = server.getAllArches()
     hostArchList.sort()
     values['hostArchList'] = hostArchList
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
-    
+
     if order == None:
         order = '-rpms'
     values['order'] = order
@@ -1947,11 +1947,11 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
     server = _getServer(environ)
 
     maxTasks = 1
-    
+
     hostArchFilter = hostArch
     if hostArchFilter == 'ix86':
         hostArchFilter = ['i386', 'i486', 'i586', 'i686']
-    
+
     hosts = server.listHosts(arches=hostArchFilter)
 
     server.multicall = True
@@ -1963,12 +1963,12 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
         host['tasks'] = numTasks
         if numTasks > maxTasks:
             maxTasks = numTasks
-    
+
     values['hostArch'] = hostArch
     hostArchList = server.getAllArches()
     hostArchList.sort()
     values['hostArchList'] = hostArchList
-    
+
     values['order'] = order
 
     graphWidth = 400.0
@@ -1984,7 +1984,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
     server = _getServer(environ)
 
     maxTasks = 1
-    
+
     users = server.listUsers()
 
     server.multicall = True
@@ -1996,7 +1996,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
         user['tasks'] = numTasks
         if numTasks > maxTasks:
             maxTasks = numTasks
-        
+
     values['order'] = order
 
     graphWidth = 400.0
@@ -2025,7 +2025,7 @@ def buildsbystatus(environ, days='7'):
     server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['FAILED'], taskID=-1, queryOpts={'countOnly': True})
     server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['CANCELED'], taskID=-1, queryOpts={'countOnly': True})
     [[numSucceeded], [numFailed], [numCanceled]] = server.multiCall()
-    
+
     values['numSucceeded'] = numSucceeded
     values['numFailed'] = numFailed
     values['numCanceled'] = numCanceled
@@ -2070,7 +2070,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
         if builds > maxBuilds:
             maxBuilds = builds
 
-    kojiweb.util.paginateList(values, targets.values(), start, 'targets', 'target', order)    
+    kojiweb.util.paginateList(values, targets.values(), start, 'targets', 'target', order)
 
     values['order'] = order
 
@@ -2140,7 +2140,7 @@ def recentbuilds(environ, user=None, tag=None, package=None):
             task = None
         builds[i]['task'] = task
         builds[i]['changelog'] = clogs[i][0]
-    
+
     values['tag'] = tagObj
     values['user'] = userObj
     values['package'] = packageObj
@@ -2197,7 +2197,7 @@ def search(environ, start=None, order='name'):
             raise koji.GenericError, 'unknown search type: %s' % type
         values['infoURL'] = infoURL
         values['order'] = order
-        
+
         results = kojiweb.util.paginateMethod(server, values, 'search', args=(terms, type, match),
                                               start=start, dataName='results', prefix='result', order=order)
         if not start and len(results) == 1:
