@@ -461,39 +461,49 @@ create table tag_external_repos (
 	UNIQUE (tag_id, external_repo_id, active)
 );
 
+
+-- data for content generators
+CREATE TABLE content_generator (
+	id SERIAL PRIMARY KEY,
+	name TEXT
+) WITHOUT OIDS;
+
+CREATE TABLE cg_users (
+	cg_id INTEGER NOT NULL REFERENCES content_generator (id),
+	user_id INTEGER NOT NULL REFERENCES users (id),
+	PRIMARY KEY (cg_id, user_id)
+-- XXX: should we version this?
+) WITHOUT OIDS;
+
+
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (
 	id SERIAL NOT NULL PRIMARY KEY,
 	br_type INTEGER NOT NULL
+	cg_id INTEGER REFERENCES content_generator (id),
+	cg_version version TEXT,
+	--^ XXX should cg_version be integer? array?
+	CONSTRAINT cg_sane CHECK (
+		(cg_id IS NULL AND cg_version IS NULL)
+		OR (cg_id IS NOT NULL AND cg_version IS NOT NULL)),
+	container_type TEXT,
+	-- XXX should container_type be lookup table or perhaps a lib Enum?
+	container_arch TEXT,
+	CONSTRAINT cg_sane CHECK (
+		(container_type IS NULL AND container_arch IS NULL)
+		OR (container_type IS NOT NULL AND container_arch IS NOT NULL)),
+	host_os TEXT,
+	host_arch TEXT
 ) WITHOUT OIDS;
 
 CREATE TABLE standard_buildroot (
 	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	repo_id INTEGER NOT NULL REFERENCES repo (id),
-	arch VARCHAR(16) NOT NULL,
 	task_id INTEGER NOT NULL REFERENCES task (id),
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	retire_event INTEGER,
 	state INTEGER
-) WITHOUT OIDS;
-
-CREATE TABLE buildroot_host_info (
-	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
-	os TEXT NOT NULL,
-	arch TEXT NOT NULL
-) WITHOUT OIDS;
-
-CREATE TABLE buildroot_cg_info (
-	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
-	name TEXT NOT NULL,
-	version TEXT NOT NULL
-) WITHOUT OIDS;
-
-CREATE TABLE buildroot_container_info (
-	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
-	ctype TEXT NOT NULL,
-	arch TEXT NOT NULL
 ) WITHOUT OIDS;
 
 CREATE TABLE buildroot_tools_info (
@@ -505,8 +515,11 @@ CREATE TABLE buildroot_tools_info (
 
 CREATE TABLE buildroot_extra_info (
 	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
-	info TEXT NOT NULL
---           ^ we'll eventually make this a json type when we require newer postgres
+	key TEXT NOT NULL,
+	value TEXT NOT NULL,
+	v_type INTEGER,
+	-- XXX is it worth having the v_type field?
+	PRIMARY KEY (buildroot_id, key)
 ) WITHOUT OIDS;
 
 
