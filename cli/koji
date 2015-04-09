@@ -5243,7 +5243,7 @@ def _build_image_indirection(options, task_opts, session, args):
 def handle_image_build(options, session, args):
     """Create a disk image given an install tree"""
     formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova',
-               'docker', 'raw-xz')
+               'vagrant-virtualbox', 'vagrant-libvirt', 'docker', 'raw-xz')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
     usage += _("\n       %prog image-build --config FILE")
