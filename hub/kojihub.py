@@ -4100,7 +4100,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         queryOpts - query options
     """
     fields = [('buildroot.id', 'id'), ('buildroot.arch', 'arch'), ('buildroot.state', 'state'),
-              ('buildroot.dirtyness', 'dirtyness'), ('buildroot.task_id', 'task_id'),
+              ('buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
               ('repo.id', 'repo_id'), ('repo.state', 'repo_state'),
               ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),

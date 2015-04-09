@@ -210,6 +210,11 @@ BR_STATES = Enum((
     'EXPIRED',
 ))
 
+BR_TYPES = Enum((
+    'STANDARD',
+    'EXTERNAL',
+))
+
 TAG_UPDATE_TYPES = Enum((
     'VOLUME_CHANGE',
     'IMPORT',

@@ -464,15 +464,51 @@ create table tag_external_repos (
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (
 	id SERIAL NOT NULL PRIMARY KEY,
+	br_type INTEGER NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE standard_buildroot (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	repo_id INTEGER NOT NULL REFERENCES repo (id),
 	arch VARCHAR(16) NOT NULL,
 	task_id INTEGER NOT NULL REFERENCES task (id),
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	retire_event INTEGER,
-	state INTEGER,
-	dirtyness INTEGER
+	state INTEGER
 ) WITHOUT OIDS;
+
+CREATE TABLE buildroot_host_info (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+	os TEXT NOT NULL,
+	arch TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE buildroot_cg_info (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+	name TEXT NOT NULL,
+	version TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE buildroot_container_info (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+	ctype TEXT NOT NULL,
+	arch TEXT NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE buildroot_tools_info (
+	buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
+	tool TEXT NOT NULL,
+	version TEXT NOT NULL,
+	PRIMARY KEY (buildroot_id, tool)
+) WITHOUT OIDS;
+
+CREATE TABLE buildroot_extra_info (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+	info TEXT NOT NULL
+--           ^ we'll eventually make this a json type when we require newer postgres
+) WITHOUT OIDS;
+
 
 -- track spun images (livecds, installation, VMs...)
 CREATE TABLE image_builds (
