@@ -4110,8 +4110,9 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         queryOpts - query options
     """
     fields = [('buildroot.id', 'id'),
-              ('buildroot.host_arch', 'host_arch'),
-              ('buildroot.host_arch', 'arch'), #alias for back compat
+              ('buildroot.container_arch', 'container_arch'),
+              ('buildroot.container_arch', 'arch'), #alias for back compat
+              ('buildroot.container_type', 'container_type'),
               ('standard_buildroot.state', 'state'),
               ('standard_buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
