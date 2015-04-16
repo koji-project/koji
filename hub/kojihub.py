@@ -4933,7 +4933,7 @@ def import_old_image(old, name, version):
     # the old schema did not track buildroot directly, so we have to infer
     # by task id.
     # If the task had multiple buildroots, we chose the latest
-    query = QueryProcessor(columns=['id'], tables=['buildroot'],
+    query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
                            clauses=['task_id=%(task_id)i'], values=old,
                            opts={'order': '-id', 'limit': 1})
     br_id = query.singleValue(strict=False)
@@ -5737,15 +5737,17 @@ def build_references(build_id, limit=None):
         ret['images'].extend(image_ids)
 
     # find timestamp of most recent use in a buildroot
-    q = """SELECT buildroot.create_event
-    FROM buildroot_listing
-        JOIN buildroot ON buildroot_listing.buildroot_id = buildroot.id
-    WHERE buildroot_listing.rpm_id = %(rpm_id)s
-    ORDER BY buildroot.create_event DESC
-    LIMIT 1"""
+    query = QueryProcessor(
+                fields=['standard_buildroot.create_event']
+                tables=['buildroot_listing'],
+                joins=['standard_buildroot ON buildroot_listing.buildroot_id = buildroot.id'],
+                clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
+                opts={'order': '-standard_buildroot.create_event', 'limit': 1})
+                )
     event_id = -1
     for (rpm_id,) in rpm_ids:
-        tmp_id = _singleValue(q, locals(), strict=False)
+        query.values={'rpm_id': rpm_id}
+        tmp_id = query.singleValue(strict=False)
         if tmp_id is not None and tmp_id > event_id:
             event_id = tmp_id
     if event_id == -1:
@@ -5806,6 +5808,10 @@ def delete_build(build, strict=True, min_ref_age=604800):
     if refs['archives']:
         if strict:
             raise koji.GenericError, "Cannot delete build, used in archive buildroots: %s" % refs['archives']
+        return False
+    if refs['images']:
+        if strict:
+            raise koji.GenericError, "Cannot delete build, used in images: %r" % refs['images']
         return False
     if refs['last_used']:
         age = time.time() - refs['last_used']
@@ -9386,21 +9392,38 @@ class BuildRoot(object):
             self.load(id)
 
     def load(self,id):
-        fields = ('id', 'host_id', 'repo_id', 'arch', 'task_id',
-                    'create_event', 'retire_event', 'state')
-        q = """SELECT %s FROM buildroot WHERE id=%%(id)i""" % (",".join(fields))
-        data = _singleRow(q,locals(),fields,strict=False)
-        if data == None:
+        fields = {
+            'buildroot_id': 'id',
+            'host_id': 'host_id',
+            'repo_id': 'repo_id',
+            'buildroot.container_arch': 'arch',
+            'task_id': 'task_id',
+            'create_event': 'create_event',
+            'retire_event': 'retire_event',
+            'state': 'state'}
+        fields, aliases = zip(*fields)
+        query = QueryProcessor(fields = fields, aliases=aliases,
+                    tables=['standard_buildroot'],
+                    joins=['buildroot ON buildroot.id=standard_buildroot.buildroot_id'],
+                    clauses=['id=%(id)s'], opts={'asList':True})
+        data = query.execute()
+        if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
-        self.data = data
+        self.data = data[0]
 
-    def new(self, host, repo, arch, task_id=None):
+    def new(self, host, repo, arch, task_id=None, ctype='chroot'):
         state = koji.BR_STATES['INIT']
-        id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
-        q = """INSERT INTO buildroot(id,host_id,repo_id,arch,state,task_id)
-        VALUES (%(id)i,%(host)i,%(repo)i,%(arch)s,%(state)i,%(task_id)s)"""
-        _dml(q,locals())
+        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        insert = InsertProcessor('buildroot', data={'id': br_id})
+        insert.set(container_arch=arch, container_type=ctype)
+        insert.set(br_type=koji.BR_TYPES['standard'])
+        insert.execute()
+        # and now the other table
+        insert = InsertProcessor('standard_buildroot')
+        insert.set(buildroot_id=br_id)
+        insert.set(host_id=host, repo_id=repo, task_id=task_id, state=state)
+        insert.execute()
         self.load(id)
         return self.id
 
@@ -9434,7 +9457,7 @@ class BuildRoot(object):
         if state == koji.BR_STATES['INIT']:
             #we do not re-init buildroots
             raise koji.GenericError, "Cannot change buildroot state to INIT"
-        q = """SELECT state,retire_event FROM buildroot WHERE id=%(id)s FOR UPDATE"""
+        q = """SELECT state,retire_event FROM standard_buildroot WHERE id=%(id)s FOR UPDATE"""
         lstate,retire_event = _fetchSingle(q,locals(),strict=True)
         if koji.BR_STATES[lstate] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
@@ -9446,7 +9469,7 @@ class BuildRoot(object):
         set = "state=%(state)s"
         if koji.BR_STATES[state] == 'EXPIRED':
             set += ",retire_event=get_event()"
-        update = """UPDATE buildroot SET %s WHERE id=%%(id)s""" % set
+        update = """UPDATE standard_buildroot SET %s WHERE id=%%(id)s""" % set
         _dml(update,locals())
         self.data['state'] = state
 
