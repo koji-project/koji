@@ -4109,8 +4109,11 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         buildrootID - only the specified buildroot
         queryOpts - query options
     """
-    fields = [('buildroot.id', 'id'), ('buildroot.arch', 'arch'), ('buildroot.state', 'state'),
-              ('buildroot.task_id', 'task_id'),
+    fields = [('buildroot.id', 'id'),
+              ('buildroot.host_arch', 'host_arch'),
+              ('buildroot.host_arch', 'arch'), #alias for back compat
+              ('standard_buildroot.state', 'state'),
+              ('standard_buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
               ('repo.id', 'repo_id'), ('repo.state', 'repo_state'),
               ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
@@ -4121,11 +4124,12 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('repo_create.id', 'repo_create_event_id'), ('repo_create.time', 'repo_create_event_time')]
 
     tables = ['buildroot']
-    joins=['host ON host.id = buildroot.host_id',
-           'repo ON repo.id = buildroot.repo_id',
+    joins=['LEFT OUTER JOIN standard_buildroot ON buildroot_id = buildroot.id',
+           'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
+           'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
            'tag ON tag.id = repo.tag_id',
-           'events AS create_events ON create_events.id = buildroot.create_event',
-           'LEFT OUTER JOIN events AS retire_events ON buildroot.retire_event = retire_events.id',
+           'LEFT OUTER JOIN events AS create_events ON create_events.id = standard_buildroot.create_event',
+           'LEFT OUTER JOIN events AS retire_events ON standard_buildroot.retire_event = retire_events.id',
            'events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
@@ -4140,9 +4144,9 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         clauses.append('tag.id = %(tagID)i')
     if state != None:
         if isinstance(state, list) or isinstance(state, tuple):
-            clauses.append('buildroot.state IN %(state)s')
+            clauses.append('standard_buildroot.state IN %(state)s')
         else:
-            clauses.append('buildroot.state = %(state)i')
+            clauses.append('standard_buildroot.state = %(state)i')
     if rpmID != None:
         joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
@@ -4151,7 +4155,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
     if taskID != None:
-        clauses.append('buildroot.task_id = %(taskID)i')
+        clauses.append('standard_buildroot.task_id = %(taskID)i')
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=tables, joins=joins, clauses=clauses, values=locals(),
