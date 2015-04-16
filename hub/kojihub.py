@@ -3453,8 +3453,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
        joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
 
     if hostID != None:
-        joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
-        clauses.append('buildroot.host_id = %(hostID)i')
+        joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.id')
+        clauses.append('standard_buildroot.host_id = %(hostID)i')
     if arches != None:
         if isinstance(arches, list) or isinstance(arches, tuple):
             clauses.append('rpminfo.arch IN %(arches)s')
