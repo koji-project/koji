@@ -3534,7 +3534,7 @@ def get_image_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such image build: %s' % buildInfo
     return result
 
-def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
+def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None):
     """
     Retrieve information about archives.
@@ -3626,6 +3626,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         values['component_buildroot_id'] = componentBuildrootID
         fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
         fields.append(['buildroot_archives.project_dep', 'project'])
+    if imageID != None:
+       clauses.append('image_archive_listing.image_id = %(imageID)i')
+       joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
     if hostID is not None:
         joins.append('buildroot on archiveinfo.buildroot_id = buildroot.id')
         clauses.append('buildroot.host_id = %(host_id)i')
