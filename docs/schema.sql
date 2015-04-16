@@ -7,6 +7,7 @@ DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
 DROP TABLE image_listing;
+DROP TABLE image_archive_listing;
 
 DROP TABLE rpminfo;
 DROP TABLE image_builds;
@@ -20,6 +21,9 @@ DROP TABLE groups;
 DROP TABLE tag_listing;
 DROP TABLE tag_packages;
 
+DROP TABLE buildroot_extra_info;
+DROP TABLE buildroot_tools_info;
+DROP TABLE standard_buildroot;
 DROP TABLE buildroot;
 DROP TABLE repo;
 
@@ -39,6 +43,9 @@ DROP TABLE host;
 
 DROP TABLE channels;
 DROP TABLE package;
+
+DROP TABLE cg_users;
+DROP TABLE content_generator;
 
 DROP TABLE user_groups;
 DROP TABLE user_perms;
@@ -823,6 +830,15 @@ CREATE TABLE image_listing (
 	UNIQUE (image_id, rpm_id)
 ) WITHOUT OIDS;
 CREATE INDEX image_listing_rpms on image_listing(rpm_id);
+
+-- track the archive contents of an image
+CREATE TABLE image_archive_listing (
+	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	UNIQUE (image_id, archive_id)
+) WITHOUT OIDS;
+CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
+
 
 CREATE TABLE buildroot_archives (
 	buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),
