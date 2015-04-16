@@ -5678,6 +5678,18 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = idx.values()
 
+    ret['images'] = []
+    # find images that contain the build rpms
+    fields = ['image_id']
+    clauses = ['image_listing.rpm_id = %(rpm_id)s']
+    # TODO: join in other tables to provide something more than image id
+    query = QueryProcessor(columns=fields, tables=['image_listing'], clauses=clauses,
+                           opts={'asList': True})
+    for (rpm_id,) in rpm_ids:
+        query.values = {'rpm_id': rpm_id}
+        image_ids = [i[0] for i in query.execute()]
+        ret['images'].extend(image_ids)
+
     # find archives whose buildroots we were in
     q = """SELECT id FROM archiveinfo WHERE build_id = %(build_id)i"""
     archive_ids = _fetchMulti(q, locals())
@@ -5698,6 +5710,17 @@ def build_references(build_id, limit=None):
         if limit is not None and len(idx) > limit:
             break
     ret['archives'] = idx.values()
+
+    # find images that contain the build archives
+    fields = ['image_id']
+    clauses = ['image_archive_listing.archive_id = %(archive_id)s']
+    # TODO: join in other tables to provide something more than image id
+    query = QueryProcessor(columns=fields, tables=['image_archive_listing'], clauses=clauses,
+                           opts={'asList': True})
+    for (archive_id,) in archive_ids:
+        query.values = {'archive_id': archive_id}
+        image_ids = [i[0] for i in query.execute()]
+        ret['images'].extend(image_ids)
 
     # find timestamp of most recent use in a buildroot
     q = """SELECT buildroot.create_event
