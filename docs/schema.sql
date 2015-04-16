@@ -489,14 +489,12 @@ CREATE TABLE buildroot (
 	br_type INTEGER NOT NULL
 	cg_id INTEGER REFERENCES content_generator (id),
 	cg_version version TEXT,
-	--^ XXX should cg_version be integer? array?
 	CONSTRAINT cg_sane CHECK (
 		(cg_id IS NULL AND cg_version IS NULL)
 		OR (cg_id IS NOT NULL AND cg_version IS NOT NULL)),
 	container_type TEXT,
-	-- XXX should container_type be lookup table or perhaps a lib Enum?
 	container_arch TEXT,
-	CONSTRAINT cg_sane CHECK (
+	CONSTRAINT container_sane CHECK (
 		(container_type IS NULL AND container_arch IS NULL)
 		OR (container_type IS NOT NULL AND container_arch IS NOT NULL)),
 	host_os TEXT,
@@ -524,8 +522,6 @@ CREATE TABLE buildroot_extra_info (
 	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
 	key TEXT NOT NULL,
 	value TEXT NOT NULL,
-	v_type INTEGER,
-	-- XXX is it worth having the v_type field?
 	PRIMARY KEY (buildroot_id, key)
 ) WITHOUT OIDS;
 
