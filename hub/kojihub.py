@@ -3630,10 +3630,10 @@ def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildro
        clauses.append('image_archive_listing.image_id = %(imageID)i')
        joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
     if hostID is not None:
-        joins.append('buildroot on archiveinfo.buildroot_id = buildroot.id')
-        clauses.append('buildroot.host_id = %(host_id)i')
+        joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.id')
+        clauses.append('standard_buildroot.host_id = %(host_id)i')
         values['host_id'] = hostID
-        fields.append(['buildroot.host_id', 'host_id'])
+        fields.append(['standard_buildroot.host_id', 'host_id'])
     if filename is not None:
         clauses.append('filename = %(filename)s')
         values['filename'] = filename
