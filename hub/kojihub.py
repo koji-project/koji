@@ -2395,12 +2395,19 @@ def repo_expire_older(tag_id, event_id):
 
 def repo_references(repo_id):
     """Return a list of buildroots that reference the repo"""
-    fields = ('id', 'host_id', 'create_event', 'state')
-    q = """SELECT %s FROM buildroot WHERE repo_id=%%(repo_id)s
-    AND retire_event IS NULL""" % ','.join(fields)
+    fields = {
+        'buildroot_id': 'id',
+        'host_id': 'host_id',
+        'create_event': 'create_event',
+        'state': 'state'}
+    fields, aliases = zip(*fields.items())
+    values = {'repo_id': repo_id}
+    clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
+    query = QueryProcessor(fields=fields, aliases=aliases, tables=['standard_buildroot'],
+                clauses=clauses, values=values, queryOpts = {'asList':True})
     #check results for bad states
     ret = []
-    for data in _multiRow(q, locals(), fields):
+    for data in query.execute():
         if data['state'] == koji.BR_STATES['EXPIRED']:
             log_error("Error: buildroot %(id)s expired, but has no retire_event" % data)
             continue
