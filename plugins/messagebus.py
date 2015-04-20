@@ -168,6 +168,8 @@ def get_message_headers(msgtype, *args, **kws):
         headers['tag'] = kws['tag']['name']
         headers['package'] = kws['package']['name']
     elif msgtype == 'TaskStateChange':
+        headers['id'] = kws['info']['id']
+        headers['parent'] = kws['info']['parent']
         headers['method'] = kws['info']['method']
         headers['attribute'] = kws['attribute']
         headers['old'] = kws['old']
