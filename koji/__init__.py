@@ -323,6 +323,9 @@ class ParameterError(GenericError):
     """Raised when an rpc call receives incorrect arguments"""
     faultCode = 1019
 
+class ImportError(GenericError):
+    """Raised when an import fails"""
+    faultCode = 1020
 
 class MultiCallInProgress(object):
     """
