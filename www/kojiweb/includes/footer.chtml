@@ -8,8 +8,7 @@
 
 #set $localfooterpath=$util.themePath("extra-footer.html", local=True)
 #if os.path.exists($localfooterpath)
-#set $localfooter="".join(open($localfooterpath).readlines())
-$localfooter
+#include $localfooterpath
 #end if
 
       </div>
