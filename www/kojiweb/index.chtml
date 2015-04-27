@@ -50,7 +50,8 @@
       <th>State</th>
     </tr>
     #for $task in $tasks
-    <tr class="$util.rowToggle($self)">
+    #set $scratch = $util.taskScratchClass($task)
+    <tr class="$util.rowToggle($self) $scratch">
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
       <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>

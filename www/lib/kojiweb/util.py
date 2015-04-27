@@ -458,6 +458,19 @@ def rowToggle(template):
     else:
         return 'row-even'
 
+
+def taskScratchClass(task_object):
+    """ Return a css class indicating whether or not this task is a scratch
+    build.
+    """
+    request = task_object['request']
+    if len(request) >= 3:
+        opts = request[2]
+        if opts.get('scratch'):
+            return "scratch"
+    return ""
+
+
 _fileFlags = {1: 'configuration',
               2: 'documentation',
               4: 'icon',
