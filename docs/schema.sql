@@ -519,7 +519,7 @@ CREATE TABLE buildroot_tools_info (
 ) WITHOUT OIDS;
 
 CREATE TABLE buildroot_extra_info (
-	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+	buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
 	key TEXT NOT NULL,
 	value TEXT NOT NULL,
 	PRIMARY KEY (buildroot_id, key)
