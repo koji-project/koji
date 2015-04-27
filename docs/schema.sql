@@ -488,7 +488,7 @@ CREATE TABLE buildroot (
 	id SERIAL NOT NULL PRIMARY KEY,
 	br_type INTEGER NOT NULL
 	cg_id INTEGER REFERENCES content_generator (id),
-	cg_version version TEXT,
+	cg_version TEXT,
 	CONSTRAINT cg_sane CHECK (
 		(cg_id IS NULL AND cg_version IS NULL)
 		OR (cg_id IS NOT NULL AND cg_version IS NOT NULL)),

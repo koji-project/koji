@@ -1,6 +1,9 @@
 BEGIN;
 
 -- New tables
+
+SELECT now(), 'Creating new tables' as msg;
+
 CREATE TABLE content_generator (
        id SERIAL PRIMARY KEY,
        name TEXT
@@ -36,23 +39,66 @@ CREATE TABLE image_archive_listing (
 CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
 
 
-CREATE TABLE standard_buildroot (
-       buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
-       host_id INTEGER NOT NULL REFERENCES host(id),
-       repo_id INTEGER NOT NULL REFERENCES repo (id),
-       task_id INTEGER NOT NULL REFERENCES task (id),
-       create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
-       retire_event INTEGER,
-       state INTEGER
-) WITHOUT OIDS;
+--CREATE TABLE standard_buildroot (
+--       buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
+--       host_id INTEGER NOT NULL REFERENCES host(id),
+--       repo_id INTEGER NOT NULL REFERENCES repo (id),
+--       task_id INTEGER NOT NULL REFERENCES task (id),
+--       create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+--       retire_event INTEGER,
+--       state INTEGER
+--) WITHOUT OIDS;
 
 -- the more complicated stuff
 
-INSERT INTO
-    standard_buildroot(buildroot_id, host_id, repo_id, task_id, create_event, retire_event, state)
-SELECT id, host_id, repo_id, task_id, create_event, retire_event, state from buildroot;
+SELECT now(), 'Copying buildroot to standard_buildroot' as msg;
+-- CREATE TABLE standard_buildroot AS TABLE buildroot;
+CREATE TABLE standard_buildroot AS SELECT id,host_id,repo_id,task_id,create_event,retire_event,state from buildroot;
+
+SELECT now(), 'Fixing up standard_buildroot table' as msg;
+-- ALTER TABLE standard_buildroot DROP COLUMN dirtyness;
+-- ALTER TABLE standard_buildroot DROP COLUMN arch;
+ALTER TABLE standard_buildroot RENAME id TO buildroot_id;
+ALTER TABLE standard_buildroot ALTER COLUMN buildroot_id SET NOT NULL;
+ALTER TABLE standard_buildroot ALTER COLUMN host_id SET NOT NULL;
+ALTER TABLE standard_buildroot ALTER COLUMN repo_id SET NOT NULL;
+ALTER TABLE standard_buildroot ALTER COLUMN task_id SET NOT NULL;
+ALTER TABLE standard_buildroot ALTER COLUMN create_event SET NOT NULL;
+ALTER TABLE standard_buildroot ALTER COLUMN create_event SET DEFAULT get_event();
+SELECT now(), 'Fixing up standard_buildroot table, foreign key constraints' as msg;
+ALTER TABLE standard_buildroot ADD CONSTRAINT brfk FOREIGN KEY (buildroot_id) REFERENCES buildroot(id);
+ALTER TABLE standard_buildroot ADD CONSTRAINT hfk FOREIGN KEY (host_id) REFERENCES host(id);
+ALTER TABLE standard_buildroot ADD CONSTRAINT rfk FOREIGN KEY (repo_id) REFERENCES repo(id);
+ALTER TABLE standard_buildroot ADD CONSTRAINT tfk FOREIGN KEY (task_id) REFERENCES task(id);
+ALTER TABLE standard_buildroot ADD CONSTRAINT efk FOREIGN KEY (create_event) REFERENCES events(id) ;
+SELECT now(), 'Fixing up standard_buildroot table, primary key' as msg;
+ALTER TABLE standard_buildroot ADD PRIMARY KEY (buildroot_id);
+
+
+SELECT now(), 'Altering buildroot table (dropping columns)' as msg;
+ALTER TABLE buildroot DROP COLUMN host_id;
+ALTER TABLE buildroot DROP COLUMN repo_id;
+ALTER TABLE buildroot DROP COLUMN task_id;
+ALTER TABLE buildroot DROP COLUMN create_event;
+ALTER TABLE buildroot DROP COLUMN retire_event;
+ALTER TABLE buildroot DROP COLUMN state;
+ALTER TABLE buildroot DROP COLUMN dirtyness;
+
+SELECT now(), 'Altering buildroot table (adding columns)' as msg;
+ALTER TABLE buildroot ADD COLUMN br_type INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE buildroot ADD COLUMN cg_id INTEGER REFERENCES content_generator (id);
+ALTER TABLE buildroot ADD COLUMN cg_version TEXT;
+ALTER TABLE buildroot ADD COLUMN container_type TEXT;
+ALTER TABLE buildroot ADD COLUMN host_os TEXT;
+
+SELECT now(), 'Altering buildroot table (altering columns)' as msg;
+ALTER TABLE buildroot RENAME arch TO container_arch;
+ALTER TABLE buildroot ALTER COLUMN container_arch TYPE TEXT;
+ALTER TABLE buildroot ALTER COLUMN br_type DROP DEFAULT;
 
 
 
+-- TODO
 
+ROLLBACK;  -- XXX
 
