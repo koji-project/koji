@@ -78,7 +78,7 @@
           <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
           #if $tag or $user
           <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
-          <td><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
+          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
           <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
           #end if
         </tr>
