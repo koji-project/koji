@@ -13,7 +13,6 @@ CREATE TABLE cg_users (
        cg_id INTEGER NOT NULL REFERENCES content_generator (id),
        user_id INTEGER NOT NULL REFERENCES users (id),
        PRIMARY KEY (cg_id, user_id)
--- XXX: should we version this?
 ) WITHOUT OIDS;
 
 CREATE TABLE buildroot_tools_info (
@@ -39,25 +38,14 @@ CREATE TABLE image_archive_listing (
 CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
 
 
---CREATE TABLE standard_buildroot (
---       buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
---       host_id INTEGER NOT NULL REFERENCES host(id),
---       repo_id INTEGER NOT NULL REFERENCES repo (id),
---       task_id INTEGER NOT NULL REFERENCES task (id),
---       create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
---       retire_event INTEGER,
---       state INTEGER
---) WITHOUT OIDS;
-
 -- the more complicated stuff
 
 SELECT now(), 'Copying buildroot to standard_buildroot' as msg;
--- CREATE TABLE standard_buildroot AS TABLE buildroot;
 CREATE TABLE standard_buildroot AS SELECT id,host_id,repo_id,task_id,create_event,retire_event,state from buildroot;
+-- doing it this way and fixing up after is *much* faster than creating the empty table
+-- and using insert..select to populate
 
 SELECT now(), 'Fixing up standard_buildroot table' as msg;
--- ALTER TABLE standard_buildroot DROP COLUMN dirtyness;
--- ALTER TABLE standard_buildroot DROP COLUMN arch;
 ALTER TABLE standard_buildroot RENAME id TO buildroot_id;
 ALTER TABLE standard_buildroot ALTER COLUMN buildroot_id SET NOT NULL;
 ALTER TABLE standard_buildroot ALTER COLUMN host_id SET NOT NULL;
@@ -96,9 +84,5 @@ ALTER TABLE buildroot RENAME arch TO container_arch;
 ALTER TABLE buildroot ALTER COLUMN container_arch TYPE TEXT;
 ALTER TABLE buildroot ALTER COLUMN br_type DROP DEFAULT;
 
-
-
--- TODO
-
-ROLLBACK;  -- XXX
+COMMIT;
 
