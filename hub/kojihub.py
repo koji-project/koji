@@ -5739,12 +5739,11 @@ def build_references(build_id, limit=None):
 
     # find timestamp of most recent use in a buildroot
     query = QueryProcessor(
-                fields=['standard_buildroot.create_event']
+                fields=['standard_buildroot.create_event'],
                 tables=['buildroot_listing'],
                 joins=['standard_buildroot ON buildroot_listing.buildroot_id = buildroot.id'],
                 clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
                 opts={'order': '-standard_buildroot.create_event', 'limit': 1})
-                )
     event_id = -1
     for (rpm_id,) in rpm_ids:
         query.values={'rpm_id': rpm_id}
