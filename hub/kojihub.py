@@ -2403,7 +2403,7 @@ def repo_references(repo_id):
     fields, aliases = zip(*fields.items())
     values = {'repo_id': repo_id}
     clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
-    query = QueryProcessor(fields=fields, aliases=aliases, tables=['standard_buildroot'],
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
                 clauses=clauses, values=values, queryOpts = {'asList':True})
     #check results for bad states
     ret = []
@@ -5739,9 +5739,9 @@ def build_references(build_id, limit=None):
 
     # find timestamp of most recent use in a buildroot
     query = QueryProcessor(
-                fields=['standard_buildroot.create_event'],
+                columns=['standard_buildroot.create_event'],
                 tables=['buildroot_listing'],
-                joins=['standard_buildroot ON buildroot_listing.buildroot_id = buildroot.id'],
+                joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
                 clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
                 opts={'order': '-standard_buildroot.create_event', 'limit': 1})
     event_id = -1
@@ -9401,11 +9401,12 @@ class BuildRoot(object):
             'create_event': 'create_event',
             'retire_event': 'retire_event',
             'state': 'state'}
-        fields, aliases = zip(*fields)
-        query = QueryProcessor(fields = fields, aliases=aliases,
+        fields, aliases = zip(*fields.items())
+        query = QueryProcessor(columns=fields, aliases=aliases,
                     tables=['standard_buildroot'],
                     joins=['buildroot ON buildroot.id=standard_buildroot.buildroot_id'],
-                    clauses=['id=%(id)s'], opts={'asList':True})
+                    values={'id': id},
+                    clauses=['id=%(id)s'])
         data = query.execute()
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
@@ -9417,14 +9418,14 @@ class BuildRoot(object):
         br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
         insert = InsertProcessor('buildroot', data={'id': br_id})
         insert.set(container_arch=arch, container_type=ctype)
-        insert.set(br_type=koji.BR_TYPES['standard'])
+        insert.set(br_type=koji.BR_TYPES['STANDARD'])
         insert.execute()
         # and now the other table
         insert = InsertProcessor('standard_buildroot')
         insert.set(buildroot_id=br_id)
         insert.set(host_id=host, repo_id=repo, task_id=task_id, state=state)
         insert.execute()
-        self.load(id)
+        self.load(br_id)
         return self.id
 
     def verifyTask(self,task_id):
@@ -9457,7 +9458,7 @@ class BuildRoot(object):
         if state == koji.BR_STATES['INIT']:
             #we do not re-init buildroots
             raise koji.GenericError, "Cannot change buildroot state to INIT"
-        q = """SELECT state,retire_event FROM standard_buildroot WHERE id=%(id)s FOR UPDATE"""
+        q = """SELECT state,retire_event FROM standard_buildroot WHERE buildroot_id=%(id)s FOR UPDATE"""
         lstate,retire_event = _fetchSingle(q,locals(),strict=True)
         if koji.BR_STATES[lstate] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
@@ -9469,7 +9470,7 @@ class BuildRoot(object):
         set = "state=%(state)s"
         if koji.BR_STATES[state] == 'EXPIRED':
             set += ",retire_event=get_event()"
-        update = """UPDATE standard_buildroot SET %s WHERE id=%%(id)s""" % set
+        update = """UPDATE standard_buildroot SET %s WHERE buildroot_id=%%(id)s""" % set
         _dml(update,locals())
         self.data['state'] = state
 
