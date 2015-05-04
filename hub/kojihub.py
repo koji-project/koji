@@ -5756,11 +5756,11 @@ def build_references(build_id, limit=None):
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
 
-    q = """SELECT buildroot.create_event
+    q = """SELECT standard_buildroot.create_event
     FROM buildroot_archives
-        JOIN buildroot ON buildroot_archives.buildroot_id = buildroot.id
+        JOIN standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id
     WHERE buildroot_archives.archive_id = %(archive_id)i
-    ORDER BY buildroot.create_event DESC
+    ORDER BY standard_buildroot.create_event DESC
     LIMIT 1"""
     event_id = -1
     for (archive_id,) in archive_ids:
@@ -9406,7 +9406,7 @@ class BuildRoot(object):
                     tables=['standard_buildroot'],
                     joins=['buildroot ON buildroot.id=standard_buildroot.buildroot_id'],
                     values={'id': id},
-                    clauses=['id=%(id)s'])
+                    clauses=['buildroot_id=%(id)s'])
         data = query.execute()
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
