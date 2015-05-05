@@ -3049,7 +3049,7 @@ class BaseImageTask(OzImageTask):
         Some image formats require others to be processed first, which is why
         we have to do this. raw files in particular may not be kept.
         """
-        supported = ('raw', 'raw-xz', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt')
+        supported = ('raw', 'raw-xz', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vpc')
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -3079,6 +3079,7 @@ class BaseImageTask(OzImageTask):
                   'vdi':   self._buildConvert,
                   'qcow':  self._buildConvert,
                   'qcow2': self._buildConvert,
+                  'vpc':   self._buildConvert,
                   'rhevm-ova':   self._buildOVA,
                   'vsphere-ova': self._buildOVA,
                   'vagrant-virtualbox': self._buildOVA,
@@ -3289,7 +3290,11 @@ class BaseImageTask(OzImageTask):
         @returns
             a dict with some metadata about the image
         """
-        newimg = os.path.join(self.workdir, self.imgname + '.%s' % format)
+        self.logger.debug('converting an image to "%s"' % format)
+        ofmt = format
+        if format == 'vpc':
+            ofmt = 'vhd'
+        newimg = os.path.join(self.workdir, self.imgname + '.%s' % ofmt)
         cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
             format, self.base_img.base_image.data, newimg]
         if format in ('qcow', 'qcow2'):
@@ -3399,6 +3404,8 @@ class BaseImageTask(OzImageTask):
                 newname = self.imgname + '.' + format + '.box'
             elif format == 'docker':
                 newname = self.imgname + '.' + 'tar.xz'
+            elif format == 'vpc':
+                newname = self.imgname + '.' + 'vhd'
             else:
                 newname = self.imgname + '.' + format
             if format != 'docker':
