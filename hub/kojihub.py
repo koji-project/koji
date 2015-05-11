@@ -41,7 +41,6 @@ from koji.util import md5_constructor
 from koji.util import sha1_constructor
 from koji.util import dslice
 import os
-import random
 import re
 import rpm
 import shutil
