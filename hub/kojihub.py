@@ -708,8 +708,12 @@ def writeInheritanceData(tag_id, changes, clear=False):
         insert.make_create()
         insert.execute()
 
-def readFullInheritance(tag_id,event=None,reverse=False,stops={},jumps={}):
+def readFullInheritance(tag_id,event=None,reverse=False,stops=None,jumps=None):
     """Returns a list representing the full, ordered inheritance from tag"""
+    if stops is None:
+        stops = {}
+    if jumps is None:
+        jumps = {}
     order = []
     readFullInheritanceRecurse(tag_id,event,order,stops,{},{},0,None,False,[],reverse,jumps)
     return order
@@ -8369,7 +8373,11 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return writeInheritanceData(tag,data,clear=clear)
 
-    def getFullInheritance(self,tag,event=None,reverse=False,stops={},jumps={}):
+    def getFullInheritance(self,tag,event=None,reverse=False,stops=None,jumps=None):
+        if stops is None:
+            stops = {}
+        if jumps is None:
+            jumps = {}
         if not isinstance(tag,int):
             #lookup tag id
             tag = get_tag_id(tag,strict=True)
