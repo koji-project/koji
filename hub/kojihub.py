@@ -7671,7 +7671,7 @@ class RootExports(object):
         elif type == 'image':
             context.session.assertPerm('image-import')
         else:
-            koji.GenericError, 'unsupported archive type: %s' % type
+            raise koji.GenericError, 'unsupported archive type: %s' % type
         buildinfo = get_build(buildinfo, strict=True)
         fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
         import_archive(fullpath, buildinfo, type, typeInfo)
@@ -10282,7 +10282,7 @@ class HostExports(object):
             if not context.opts.get('EnableWin'):
                 raise koji.GenericError, 'Windows support not enabled'
         else:
-            koji.GenericError, 'unsupported archive type: %s' % type
+            raise koji.GenericError, 'unsupported archive type: %s' % type
         import_archive(filepath, buildinfo, type, typeInfo)
 
     def importWrapperRPMs(self, task_id, build_id, rpm_results):
