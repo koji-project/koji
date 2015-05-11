@@ -252,7 +252,7 @@ class Task(object):
         self.runCallbacks('postTaskStateChange', info, 'priority', priority)
 
         if recurse:
-            """Change priority of child tasks"""
+            # Change priority of child tasks
             q = """SELECT id FROM task WHERE parent = %(task_id)s"""
             for (child_id,) in _fetchMulti(q, locals()):
                 Task(child_id).setPriority(priority, recurse=True)
