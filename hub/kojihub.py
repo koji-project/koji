@@ -4951,7 +4951,7 @@ def old_image_data(old_image_id):
     ret = query.executeOne()
 
     if not ret:
-        raise koji.GenericError, 'no old image with ID: %i' % imageID
+        raise koji.GenericError, 'no old image with ID: %i' % old_image_id
     return ret
 
 def check_old_image_files(old):
@@ -7481,7 +7481,7 @@ class RootExports(object):
         elif md5sum is None:
             verify = None
         else:
-            verify, digest = info
+            verify, digest = md5sum
         sum_cls = get_verify_class(verify)
         if offset != -1:
             if size is not None:
