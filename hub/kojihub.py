@@ -9394,7 +9394,7 @@ class RootExports(object):
         _dml(delete, locals())
 
     def _prepareSearchTerms(self, terms, matchType):
-        """Process the search terms before passing them to the database.
+        r"""Process the search terms before passing them to the database.
         If matchType is "glob", "_" will be replaced with "\_" (to match literal
         underscores), "?" will be replaced with "_", and "*" will
         be replaced with "%".  If matchType is "regexp", no changes will be
