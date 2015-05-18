@@ -1281,7 +1281,17 @@ class BuildMavenTask(BaseBuildTask):
                     dirnames.remove(skip)
             for filename in filenames:
                 filepath = os.path.join(dirpath, filename)
-                zfo.write(filepath, filepath[roottrim:])
+                if os.path.islink(filepath):
+                    content = os.readlink(filepath)
+                    st = os.lstat(filepath)
+                    mtime = time.localtime(st.st_mtime)
+                    info = zipfile.ZipInfo(filepath[roottrim:])
+                    info.external_attr |= 0120000 << 16L # symlink file type
+                    info.compress_type = zipfile.ZIP_STORED
+                    info.date_time = mtime[:6]
+                    zfo.writestr(info, content)
+                else:
+                    zfo.write(filepath, filepath[roottrim:])
         zfo.close()
 
     def checkHost(self, hostdata):
