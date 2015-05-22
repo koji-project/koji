@@ -158,7 +158,7 @@ class WSGIWrapper(object):
             for chunk in result:
                 if chunk and not self.set_headers:
                     raise RuntimeError, "write() called before start_response()"
-                write(data)
+                write(chunk)
         if not req.bytes_sent:
             #application sent nothing back
             req.set_content_length(0)

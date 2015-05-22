@@ -192,7 +192,7 @@ class HandlerAccess(object):
         return self.__reg.get(__name)(*args, **kwargs)
 
     def get(self, name):
-        return self.__Reg.get(name)
+        return self.__reg.get(name)
 
 
 class ModXMLRPCRequestHandler(object):

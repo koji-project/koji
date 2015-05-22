@@ -2037,10 +2037,10 @@ class ClientSession(object):
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
         if int(result['size']) != ofs:
-            raise koji.GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
+            raise GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
                     % (path, name, result['sumlength'], ofs)
         if problems and result['hexdigest'] != full_chksum.hexdigest():
-            raise koji.GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
+            raise GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
                     % (path, name, result['hexdigest'], full_chksum.hexdigest())
         self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
 

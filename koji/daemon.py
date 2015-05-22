@@ -266,7 +266,7 @@ class SCM(object):
 
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params :
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Param element %s should be empty.' % (self.url,param)
+            raise koji.GenericError, 'Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params)
         if not scheme :
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url
         if not netloc :
