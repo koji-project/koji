@@ -1951,7 +1951,7 @@ class ClientSession(object):
                     if self.logger.isEnabledFor(logging.DEBUG):
                         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                         self.logger.debug(tb_str)
-                    self.logger.info("Try #%d for call %s (%s) failed: %s", tries, self.callnum, name, e)
+                    self.logger.info("Try #%s for call %s (%s) failed: %s", tries, self.callnum, name, e)
                 if tries > 1:
                     # first retry is immediate, after that we honor retry_interval
                     time.sleep(interval)
