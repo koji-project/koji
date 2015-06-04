@@ -2761,14 +2761,15 @@ def get_tag(tagInfo, strict=False, event=None):
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
 
-    - id
-    - name
-    - perm_id (may be null)
-    - perm (name, may be null)
-    - arches (may be null)
-    - locked
-    - maven_support
-    - maven_include_all
+    - id :      unique id for the tag
+    - name :    name of the tag
+    - perm_id : permission id (may be null)
+    - perm :    permission name (may be null)
+    - arches :  tag arches (string, may be null)
+    - locked :  lock setting (boolean)
+    - maven_support :           maven support flag (boolean)
+    - maven_include_all :       maven include all flag (boolean)
+    - extra :   extra tag parameters (dictionary)
 
     If there is no tag matching the given tagInfo, and strict is False,
     return None.  If strict is True, raise a GenericError.
@@ -2807,7 +2808,27 @@ def get_tag(tagInfo, strict=False, event=None):
         if strict:
             raise koji.GenericError, "Invalid tagInfo: %r" % tagInfo
         return None
+    result['extra'] = get_tag_extra(result)
     return result
+
+
+def get_tag_extra(tagInfo, event=None):
+    """ Get tag extra info (no inheritance) """
+    tables = ['tag_extra']
+    fields = ['key', 'value']
+    clauses = [eventCondition(event, table='tag_extra'), "tag_id = %(id)i"]
+    query = QueryProcessor(columns=fields, tables=tables, clauses=clauses, values=tagInfo,
+                           opts={'asList': True})
+    result = {}
+    for key, value in query.execute():
+        try:
+            value = simplejson.loads(value)
+        except Exception:
+            # this should not happen
+            raise koji.GenericError("Invalid tag extra data: %s : %r", key, value)
+        result[key] = value
+    return result
+
 
 def edit_tag(tagInfo, **kwargs):
     """Edit information for an existing tag.
@@ -8755,17 +8776,17 @@ class RootExports(object):
     def getBuildConfig(self,tag,event=None):
         """Return build configuration associated with a tag"""
         taginfo = get_tag(tag,strict=True,event=event)
-        arches = taginfo['arches']
-        if arches is None:
-            #follow inheritance for arches
-            order = readFullInheritance(taginfo['id'],event=event)
-            for link in order:
-                if link['noconfig']:
-                    continue
-                arches = get_tag(link['parent_id'],strict=True,event=event)['arches']
-                if arches is not None:
-                    taginfo['arches'] = arches
-                    break
+        order = readFullInheritance(taginfo['id'], event=event)
+        #follow inheritance for arches and extra
+        for link in order:
+            if link['noconfig']:
+                continue
+            ancestor = get_tag(link['parent_id'], strict=True, event=event)
+            if taginfo['arches'] is None and ancestor['arches'] is not None:
+                taginfo['arches'] = ancestor['arches']
+            for key in ancestor['extra']:
+                if key not in taginfo['extra']:
+                    taginfo['extra'][key] = ancestor['extra'][key]
         return taginfo
 
     def getRepo(self,tag,state=None,event=None):
