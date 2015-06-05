@@ -4768,7 +4768,7 @@ def merge_scratch(task_id):
             elif output.endswith('.log'):
                 info['logs'].append(output)
         if not info['rpms']:
-            raise koji.ImportError, 'no arch-specific rpms produced by task %s' % child['id']
+            continue
         if not info['logs']:
             raise koji.ImportError, 'task %s is missing logs' % child['id']
         buildroots = query_buildroots(taskID=child['id'],
@@ -4777,6 +4777,8 @@ def merge_scratch(task_id):
             raise koji.ImportError, 'no buildroot associated with task %s' % child['id']
         info['buildroot_id'] = buildroots[0]['id']
         tasks[child['id']] = info
+    if not tasks:
+        raise koji.ImportError, 'nothing to do for task %s' % task_id
 
     # sanity check the build
     build_nvr = koji.parse_NVRA(srpm)
