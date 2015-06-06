@@ -132,6 +132,11 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%endif
 
 %description utils
 Utilities for the Koji system
@@ -191,8 +196,12 @@ rm -rf $RPM_BUILD_ROOT
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
+%if %{use_systemd}
+%{_unitdir}/kojira.service
+%else
 %{_initrddir}/kojira
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
+%endif
 %dir %{_sysconfdir}/kojira
 %config(noreplace) %{_sysconfdir}/kojira/kojira.conf
 %{_sbindir}/koji-gc
@@ -288,6 +297,18 @@ if [ $1 = 0 ]; then
 fi
 %endif
 
+%if %{use_systemd}
+
+%post utils
+%systemd_post kojira.service
+
+%preun utils
+%systemd_preun kojira.service
+
+%postun utils
+%systemd_postun kojira.service
+
+%else
 %post utils
 /sbin/chkconfig --add kojira
 /sbin/service kojira condrestart &> /dev/null || :
@@ -296,6 +317,7 @@ if [ $1 = 0 ]; then
   /sbin/service kojira stop &> /dev/null || :
   /sbin/chkconfig --del kojira
 fi
+%endif
 
 %changelog
 * Mon Mar 24 2014 Mike McLean <mikem at redhat.com> - 1.9.0-1

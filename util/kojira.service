@@ -1,0 +1,14 @@
+[Unit]
+Description=Koji repo administration
+Documentation=https://fedoraproject.org/wiki/Koji/ServerHowTo
+
+After=network.target
+
+[Service]
+ExecStart=/usr/sbin/kojira \
+       --fg \
+       --force-lock \
+       --verbose
+
+[Install]
+WantedBy=multi-user.target
