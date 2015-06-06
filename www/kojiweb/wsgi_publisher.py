@@ -69,6 +69,7 @@ class Dispatcher(object):
         ['KojiFilesURL', 'string', 'http://localhost/kojifiles'],
         ['KojiTheme', 'string', None],
         ['KojiGreeting', 'string', 'Welcome to Koji Web'],
+        ['LiteralFooter', 'boolean', True],
 
         ['WebPrincipal', 'string', None],
         ['WebKeytab', 'string', '/etc/httpd.keytab'],

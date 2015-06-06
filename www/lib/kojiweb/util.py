@@ -54,6 +54,7 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     values['title'] = title
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
+    values['literalFooter'] = environ['koji.options'].get('LiteralFooter', True)
     themeCache.clear()
     themeInfo.clear()
     themeInfo['name'] = environ['koji.options'].get('KojiTheme', None)
