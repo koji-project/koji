@@ -2841,7 +2841,7 @@ class OzImageTask(BaseTaskHandler):
                                     "'%s' : %s" % (kspath, e))
         return ks
 
-    def prepareKickstart(self, kspath):
+    def prepareKickstart(self, kspath, install_tree):
         """
         Process the ks file to be used for controlled image generation. This
         method also uploads the modified kickstart file to the task output
@@ -2878,6 +2878,8 @@ class OzImageTask(BaseTaskHandler):
             self.logger.debug('BASEURL: %s' % baseurl)
             ks.handler.repo.repoList.append(repo_class(
                 baseurl=baseurl, name='koji-override-0'))
+        # inject the URL of the install tree into the kickstart
+        ks.handler.url.url = install_tree
         return ks
 
     def writeKickstart(self, ksobj, ksname):
@@ -3327,7 +3329,7 @@ class BaseImageTask(OzImageTask):
 
         # First, prepare the kickstart to use the repos we tell it
         kspath = self.fetchKickstart()
-        ks = self.prepareKickstart(kspath)
+        ks = self.prepareKickstart(kspath, inst_tree)
         kskoji = self.writeKickstart(ks,
             os.path.join(self.workdir, 'koji-%s-%i-base.ks' %
             (self.target_info['build_tag_name'], self.id)))
