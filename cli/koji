@@ -6473,12 +6473,18 @@ def handle_runroot(options, session, args):
         command = ' '.join(args[2:])
     else:
         command = args[2:]
-    task_id = session.runroot(tag, arch, command,
-                              channel=opts.channel_override,
-                              packages=opts.package, mounts=opts.mount,
-                              repo_id=opts.repo_id,
-                              skip_setarch=opts.skip_setarch,
-                              weight=opts.weight)
+    try:
+        task_id = session.runroot(tag, arch, command,
+                                channel=opts.channel_override,
+                                packages=opts.package, mounts=opts.mount,
+                                repo_id=opts.repo_id,
+                                skip_setarch=opts.skip_setarch,
+                                weight=opts.weight)
+    except koji.GenericError as e:
+        if 'Invalid method' in str(e):
+            print "* The runroot plugin appears to not be installed on the",
+            print "koji hub.  Please contact the administrator."
+        raise
     if opts.task_id:
         print task_id
 
