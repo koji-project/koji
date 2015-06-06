@@ -6442,6 +6442,71 @@ def handle_moshimoshi(options, session, args):
     if u.get("krb_principal", None) is not None:
         print "Authenticated via Kerberos principal %s" % (u["krb_principal"])
 
+
+def handle_runroot(options, session, args):
+    "[admin] Run a command in a buildroot"
+    usage = _("usage: %prog runroot [options] <tag> <arch> <command>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.disable_interspersed_args()
+    parser.add_option("-p", "--package", action="append", default=[], help=_("make sure this package is in the chroot"))
+    parser.add_option("-m", "--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
+    parser.add_option("--skip-setarch", action="store_true", default=False,
+            help=_("bypass normal setarch in the chroot"))
+    parser.add_option("-w", "--weight", type='int', help=_("set task weight"))
+    parser.add_option("--channel-override", help=_("use a non-standard channel"))
+    parser.add_option("--task-id", action="store_true", default=False,
+            help=_("Print the ID of the runroot task"))
+    parser.add_option("--use-shell", action="store_true", default=False,
+            help=_("Run command through a shell, otherwise uses exec"))
+    parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
+
+    (opts, args) = parser.parse_args(args)
+
+    if len(args) < 3:
+        parser.error(_("Incorrect number of arguments"))
+    activate_session(session)
+    tag = args[0]
+    arch = args[1]
+    if opts.use_shell:
+        # everything must be correctly quoted
+        command = ' '.join(args[2:])
+    else:
+        command = args[2:]
+    task_id = session.runroot(tag, arch, command,
+                              channel=opts.channel_override,
+                              packages=opts.package, mounts=opts.mount,
+                              repo_id=opts.repo_id,
+                              skip_setarch=opts.skip_setarch,
+                              weight=opts.weight)
+    if opts.task_id:
+        print task_id
+
+    try:
+        while True:
+            # wait for the task to finish
+            if session.taskFinished(task_id):
+                break
+            time.sleep(options.poll_interval)
+    except KeyboardInterrupt:
+        # this is probably the right thing to do here
+        print "User interrupt: canceling runroot task"
+        session.cancelTask(task_id)
+        return
+    output = None
+    if "runroot.log" in session.listTaskOutput(task_id):
+        output = session.downloadTaskOutput(task_id, "runroot.log")
+    if output:
+        sys.stdout.write(output)
+    info = session.getTaskInfo(task_id)
+    if info is None:
+        sys.exit(1)
+    state = koji.TASK_STATES[info['state']]
+    if state in ('FAILED', 'CANCELED'):
+        sys.exit(1)
+    return
+
+
 def handle_help(options, session, args):
     "List available commands"
     usage = _("usage: %prog help [options]")
