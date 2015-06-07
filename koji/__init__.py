@@ -1286,6 +1286,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # Don't let a build last more than 24 hours
         'rpmbuild_timeout': opts.get('rpmbuild_timeout', 86400)
     }
+    if opts.get('package_manager'):
+        config_opts['package_manager'] = opts['package_manager']
 
     # bind_opts are used to mount parts (or all of) /dev if needed.
     # See kojid::LiveCDTask for a look at this option in action.

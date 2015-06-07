@@ -239,6 +239,8 @@ class BuildRoot(object):
         opts['maven_envs'] = self.maven_envs
         opts['bind_opts'] = self.bind_opts
         opts['target_arch'] = self.target_arch
+        if 'mock.package_manager' in self.config['extra']:
+            opts['package_manager'] = self.config['extra']['mock.package_manager']
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
