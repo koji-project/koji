@@ -4353,6 +4353,12 @@ def anon_handle_taginfo(options, session, args):
         if session.mavenEnabled():
             print "Maven support?: %s" % (info['maven_support'] and 'yes' or 'no')
             print "Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no')
+        if 'extra' in info:
+            print "Tag options:"
+            keys = info['extra'].keys()
+            keys.sort()
+            for key in keys:
+                print "  %s : %s" % (key, pprint.pformat(info['extra'][key]))
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
         repos = {}
@@ -4446,6 +4452,8 @@ def handle_edit_tag(options, session, args):
     parser.add_option("--no-maven-support", action="store_true", help=_("Disable creation of Maven repos for this tag"))
     parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
     parser.add_option("--no-include-all", action="store_true", help=_("Do not include all packages in this tag when generating Maven repos"))
+    parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
+                      help=_("Set tag extra option"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -4473,6 +4481,13 @@ def handle_edit_tag(options, session, args):
         opts['maven_include_all'] = True
     if options.no_include_all:
         opts['maven_include_all'] = False
+    if options.extra:
+        extra = {}
+        for xopt in options.extra:
+            key, value = xopt.split('=')
+            value = arg_filter(value)
+            extra[key] = value
+        opts['extra'] = extra
     #XXX change callname
     session.editTag2(tag,**opts)
 

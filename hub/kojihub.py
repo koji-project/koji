@@ -44,6 +44,7 @@ import os
 import re
 import rpm
 import shutil
+import simplejson as json
 import stat
 import subprocess
 import sys
@@ -2822,7 +2823,7 @@ def get_tag_extra(tagInfo, event=None):
     result = {}
     for key, value in query.execute():
         try:
-            value = simplejson.loads(value)
+            value = json.loads(value)
         except Exception:
             # this should not happen
             raise koji.GenericError("Invalid tag extra data: %s : %r", key, value)
@@ -2885,18 +2886,36 @@ def edit_tag(tagInfo, **kwargs):
         if kwargs.has_key(key) and data[key] != kwargs[key]:
             changed = True
             data[key] = kwargs[key]
-    if not changed:
-        return
+    if changed:
+        update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
+        update.make_revoke()
+        update.execute()
 
-    update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
-    update.make_revoke()
-    update.execute()
+        insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
+        insert.set(tag_id=data['id'])
+        insert.set(**dslice(data, ('maven_support', 'maven_include_all')))
+        insert.make_create()
+        insert.execute()
 
-    insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
-    insert.set(tag_id=data['id'])
-    insert.set(**dslice(data, ('maven_support', 'maven_include_all')))
-    insert.make_create()
-    insert.execute()
+    # handle extra data
+    if 'extra' in kwargs:
+        for key in kwargs['extra']:
+            value = kwargs['extra'][key]
+            if key not in tag['extra'] or tag['extra'] != value:
+                data = {
+                    'tag_id' : tag['id'],
+                    'key' : key,
+                    'value' : json.dumps(kwargs['extra'][key]),
+                }
+                # revoke old entry, if any
+                update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i', 'key=%(key)s'])
+                update.make_revoke()
+                update.execute()
+                # add new entry
+                insert = InsertProcessor('tag_extra', data=data)
+                insert.make_create()
+                insert.execute()
+
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):
     """Edit information for an existing tag."""
