@@ -57,7 +57,7 @@ import xmlrpclib
 import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
-#import OpenSSL.SSL
+import OpenSSL
 import zipfile
 
 def _(args):
@@ -1939,6 +1939,9 @@ class ClientSession(object):
                     raise err
                 except (SystemExit, KeyboardInterrupt):
                     #(depending on the python version, these may or may not be subclasses of Exception)
+                    raise
+                except OpenSSL.SSL.Error as e:
+                    # There's no point in retrying this
                     raise
                 except Exception, e:
                     self._close_connection()
