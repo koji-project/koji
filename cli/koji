@@ -6229,15 +6229,21 @@ def anon_handle_download_logs(options, session, args):
         task_log_dir = os.path.join(parent_dir,
                                     "%s-%s" % (task_info["arch"], task_id))
 
+        count = 0
         state =  koji.TASK_STATES[task_info['state']]
         if state == 'FAILED':
             if not match or koji.util.multi_fnmatch(FAIL_LOG, match):
                 write_fail_log(task_log_dir, task_id)
+                count += 1
         elif state not in ['CLOSED', 'CANCELED']:
             sys.stderr.write(_("Warning: task %s is %s\n") % (task_id, state))
 
         for log_filename in logs:
             download_log(task_log_dir, task_id, log_filename)
+            count += 1
+
+        if count == 0 and not recurse:
+            sys.stderr.write(_("No logs found for task %i. Perhaps try --recurse?\n") % task_id)
 
         if recurse:
             child_tasks = session.getTaskChildren(task_id)
