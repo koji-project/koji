@@ -374,7 +374,7 @@ class BuildRoot(object):
                     results = os.listdir(resultdir)
                 except OSError:
                     # will happen when mock hasn't created the resultdir yet
-                    continue
+                    results = []
 
                 for fname in results:
                     if fname.endswith('.log') and not logs.has_key(fname):
