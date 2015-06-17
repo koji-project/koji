@@ -5500,6 +5500,7 @@ def query_history(tables=None, **kwargs):
         'user_groups' : ['user_id', 'group_id'],
         'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
         'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
+        'tag_extra' : ['tag_id', 'key', 'value'],
         'build_target_config' : ['build_target_id', 'build_tag', 'dest_tag'],
         'external_repo_config' : ['external_repo_id', 'url'],
         'tag_external_repos' : ['tag_id', 'external_repo_id', 'priority'],

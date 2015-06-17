@@ -3853,6 +3853,13 @@ def _print_histline(entry, **kwargs):
             fmt = "new tag: %(tag.name)s"
         else:
             fmt = "tag deleted: %(tag.name)s"
+    elif table == 'tag_extra':
+        if edit:
+            fmt = "tag option %(key)s for tag %(tag.name)s altered"
+        elif create:
+            fmt = "added tag option %(key)s for tag %(tag.name)s"
+        else:
+            fmt = "tag option %(key)s removed for %(tag.name)s"
     elif table == 'build_target_config':
         if edit:
             fmt = "build target configuration for %(build_target.name)s updated"
@@ -3962,6 +3969,7 @@ _table_keys = {
     'user_groups' : ['user_id', 'group_id'],
     'tag_inheritance' : ['tag_id', 'parent_id'],
     'tag_config' : ['tag_id'],
+    'tag_extra' : ['tag_id', 'key'],
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
