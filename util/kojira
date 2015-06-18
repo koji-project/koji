@@ -5,7 +5,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -130,7 +130,7 @@ class ManagedRepo(object):
         if not tag_info:
             tag_info = getTag(self.session, self.tag_id, self.event_id)
         if not tag_info:
-            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' % 
+            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' %
                              (self.tag_id, self.repo_id))
             return False
         tag_name = tag_info['name']

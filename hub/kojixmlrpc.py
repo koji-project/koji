@@ -3,7 +3,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -192,7 +192,7 @@ class HandlerAccess(object):
         return self.__reg.get(__name)(*args, **kwargs)
 
     def get(self, name):
-        return self.__Reg.get(name)
+        return self.__reg.get(name)
 
 
 class ModXMLRPCRequestHandler(object):
@@ -292,7 +292,7 @@ class ModXMLRPCRequestHandler(object):
         if context.opts.get('LockOut') and \
             context.method not in ('login', 'krbLogin', 'sslLogin', 'logout') and \
             not context.session.hasPerm('admin'):
-                raise koji.ServerOffline, "Server disabled for maintenance"
+            raise koji.ServerOffline, "Server disabled for maintenance"
 
     def _dispatch(self, method, params):
         func = self._get_handler(method)
@@ -569,7 +569,7 @@ def get_policy(opts, plugins):
                         if pname != test.policy:
                             continue
                     elif pname not in test.policy:
-                            continue
+                        continue
                 # in case of name overlap, last one wins
                 # hence plugins can override builtin tests
                 merged[name] = test

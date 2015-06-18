@@ -134,7 +134,7 @@
           #if $tag
           <td><a href="taginfo?tagID=$build.tag_id">$build.tag_name</a></td>
           #end if
-          <td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+          <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
           <td>$util.formatTime($build.completion_time)</td>
           #set $stateName = $util.stateName($build.state)
           <td class="$stateName">$util.stateImage($build.state)</td>

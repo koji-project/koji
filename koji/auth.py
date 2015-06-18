@@ -3,7 +3,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -247,7 +247,7 @@ class Session(object):
         if not result:
             raise koji.AuthError, 'invalid user_id: %s' % user_id
         name, usertype, status = result
-        
+
         if status != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError, 'logins by %s are not allowed' % name
 
@@ -394,7 +394,7 @@ class Session(object):
                 raise koji.AuthError, '%s is not authorized to login other users' % client_dn
         else:
             username = client_name
-        
+
         cursor = context.cnx.cursor()
         query = """SELECT id FROM users
         WHERE name = %(username)s"""
@@ -596,7 +596,7 @@ class Session(object):
         """
         if not name:
             raise koji.GenericError, 'a user must have a non-empty name'
-        
+
         if usertype == None:
             usertype = koji.USERTYPES['NORMAL']
         elif not koji.USERTYPES.get(usertype):
@@ -606,7 +606,7 @@ class Session(object):
             status = koji.USER_STATUS['NORMAL']
         elif not koji.USER_STATUS.get(status):
             raise koji.GenericError, 'invalid status: %s' % status
-        
+
         cursor = context.cnx.cursor()
         select = """SELECT nextval('users_id_seq')"""
         cursor.execute(select, locals())

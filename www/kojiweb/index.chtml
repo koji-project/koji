@@ -22,7 +22,7 @@
       <td>$build.build_id</td>
       <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
       #if not $user
-      <td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+      <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
       #end if
       <td>$util.formatTime($build.completion_time)</td>
       <td class="$stateName">$util.stateImage($build.state)</td>
@@ -50,12 +50,13 @@
       <th>State</th>
     </tr>
     #for $task in $tasks
-    <tr class="$util.rowToggle($self)">
+    #set $scratch = $util.taskScratchClass($task)
+    <tr class="$util.rowToggle($self) $scratch">
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
       <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
       #if not $user
-      <td>
+      <td class="user-$task.owner_name">
         #if $task.owner_type == $koji.USERTYPES['HOST']
         <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
         #else

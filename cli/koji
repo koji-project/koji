@@ -6,7 +6,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -141,7 +141,7 @@ def get_options():
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
                       help=_("show xmlrpc debug output"))
     parser.add_option("-q", "--quiet", action="store_true", default=False,
-		      help=_("run quietly"))
+                      help=_("run quietly"))
     parser.add_option("--skip-main", action="store_true", default=False,
                       help=_("don't actually run main"))
     parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
@@ -205,7 +205,7 @@ def get_options():
         'krbservice': 'host',
         'cert': '~/.koji/client.crt',
         'ca': '~/.koji/clientca.crt',
-        'serverca': '~/.koji/serverca.crt', 
+        'serverca': '~/.koji/serverca.crt',
         'authtype': None
         }
     #note: later config files override earlier ones
@@ -263,7 +263,7 @@ def get_options():
         # expand paths here, so we don't have to worry about it later
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
-    
+
     #honor topdir
     if options.topdir:
         koji.BASEDIR = options.topdir
@@ -427,7 +427,7 @@ def display_task_results(tasks):
     for task in [task for task in tasks.values() if task.level == 0]:
         state = task.info['state']
         task_label = task.str()
-        
+
         if state == koji.TASK_STATES['CLOSED']:
             print '%s completed successfully' % task_label
         elif state == koji.TASK_STATES['FAILED']:
@@ -526,7 +526,7 @@ def watch_logs(session, tasklist, opts):
                     while contents:
                         if not taskoffsets.has_key(log):
                             taskoffsets[log] = 0
-                        
+
                         contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
                         taskoffsets[log] += len(contents)
                         if contents:
@@ -556,7 +556,7 @@ def handle_add_group(options, session, args):
         assert False
     tag = args[0]
     group = args[1]
-    
+
     activate_session(session)
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
@@ -566,7 +566,7 @@ def handle_add_group(options, session, args):
     if not dsttag:
         print "Unknown tag: %s" % tag
         return 1
-    
+
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
     if group_id is not None:
@@ -574,7 +574,7 @@ def handle_add_group(options, session, args):
         return 1
 
     session.groupListAdd(tag, group)
-    
+
 def handle_add_host(options, session, args):
     "[admin] Add a host"
     usage = _("usage: %prog add-host [options] hostname arch [arch2 ...]")
@@ -694,7 +694,7 @@ def handle_remove_host_from_channel(options, session, args):
     if channel not in hostchannels:
         print "Host %s is not a member of channel %s" % (host, channel)
         return 1
-    
+
     session.removeHostFromChannel(host, channel)
 
 def handle_remove_channel(options, session, args):
@@ -903,7 +903,7 @@ def handle_build(options, session, args):
         parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are required"))
         assert False
     if build_opts.arch_override and not build_opts.scratch:
-            parser.error(_("--arch_override is only allowed for --scratch builds"))
+        parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
     target = args[0]
     if target.lower() == "none" and build_opts.repo_id:
@@ -987,7 +987,7 @@ def handle_chain_build(options, session, args):
         return 1
 
     sources = args[1:]
-    
+
     src_list = []
     build_level = []
     #src_lists is a list of lists of sources to build.
@@ -1017,7 +1017,7 @@ def handle_chain_build(options, session, args):
     if build_opts.background:
         #relative to koji.PRIO_DEFAULT
         priority = 5
-    
+
     task_id = session.chainBuild(src_list, target, priority=priority)
 
     print "Created task:", task_id
@@ -2534,7 +2534,7 @@ def anon_handle_latest_build(options, session, args):
                     print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
                     print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
                 options.quiet = True
-        
+
         output = [ fmt % x for x in data]
         output.sort()
         for line in output:
@@ -2927,7 +2927,7 @@ def anon_handle_list_hosts(options, session, args):
     for host in hosts:
         session.getLastHostUpdate(host['id'])
     updateList = session.multiCall()
-    
+
     for host, [update] in zip(hosts, updateList):
         if update is None:
             host['update'] = '-'
@@ -3166,12 +3166,12 @@ def handle_clone_tag(options, session, args):
     activate_session(session)
 
     if not session.hasPerm('admin') and not options.test:
-       print "This action requires admin privileges"
-       return
+        print "This action requires admin privileges"
+        return
 
     if args[0] == args[1]:
         sys.stdout.write('Source and destination tags must be different.\n')
-        return  
+        return
     # store tags.
     srctag = session.getTag(args[0])
     dsttag = session.getTag(args[1])
@@ -3433,7 +3433,7 @@ def handle_add_target(options, session, args):
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
         return 1
-    
+
     chkbuildtag = session.getTag(build_tag)
     chkdesttag = session.getTag(dest_tag)
     if not chkbuildtag:
@@ -3445,7 +3445,7 @@ def handle_add_target(options, session, args):
     if not chkdesttag:
         print "Destination tag does not exist: %s" % dest_tag
         return 1
-    
+
     session.createBuildTarget(name, build_tag, dest_tag)
 
 def handle_edit_target(options, session, args):
@@ -3509,13 +3509,13 @@ def handle_remove_target(options, session, args):
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
         return
-    
+
     target = args[0]
     target_info = session.getBuildTarget(target)
     if not target_info:
         print "Build target %s does not exist" % target
         return 1
-    
+
     session.deleteBuildTarget(target_info['id'])
 
 def handle_remove_tag(options, session, args):
@@ -4680,7 +4680,7 @@ def handle_edit_tag_inheritance(options, session, args):
             return 1
         print _("Error: Key constraints may be broken.  Exiting.")
         return 1
-    
+
     # len(data) == 1
     data = data[0]
 
@@ -5101,7 +5101,7 @@ def handle_image_build_indirection(options, session, args):
     usage += _("\n       %prog image-build --config FILE")
     usage += _("\n\n(Specify the --help global option for a list of other " +
                "help options)")
-    parser = OptionParser(usage=usage)    
+    parser = OptionParser(usage=usage)
     parser.add_option("--config",
         help=_("Use a configuration file to define image-build options " +
                "instead of command line options (they will be ignored)."))
@@ -5151,19 +5151,19 @@ def _build_image_indirection(options, task_opts, session, args):
     """
 
     # Do some sanity checks before even attempting to create the session
-    if not (bool(task_opts.utility_image_task) != 
+    if not (bool(task_opts.utility_image_task) !=
             bool(task_opts.utility_image_build)):
         raise koji.GenericError, _("You must specify either a utility-image task or build ID/NVR")
 
-    if not (bool(task_opts.base_image_task) != 
+    if not (bool(task_opts.base_image_task) !=
             bool(task_opts.base_image_build)):
         raise koji.GenericError, _("You must specify either a base-image task or build ID/NVR")
 
     required_opts = [ 'name', 'version', 'arch', 'target', 'indirection_template', 'results_loc' ]
     optional_opts = [ 'indirection_template_url', 'scratch', 'utility_image_task', 'utility_image_build',
-                      'base_image_task', 'base_image_build', 'release', 'skip_tag' ]  
+                      'base_image_task', 'base_image_build', 'release', 'skip_tag' ]
 
-    missing = [ ] 
+    missing = [ ]
     for opt in required_opts:
         if not getattr(task_opts, opt, None):
             missing.append(opt)
@@ -5238,11 +5238,10 @@ def _build_image_indirection(options, task_opts, session, args):
     #    return
 
 
-
-
 def handle_image_build(options, session, args):
     """Create a disk image given an install tree"""
-    formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova',
+    formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'vpc', 'rhevm-ova',
+               'vsphere-ova', 'vagrant-virtualbox', 'vagrant-libvirt',
                'docker', 'raw-xz')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
@@ -5909,7 +5908,7 @@ def handle_move_build(opts, session, args):
     activate_session(session)
     tasks = []
     builds = []
-    
+
     if options.all:
         for arg in args[2:]:
             pkg = session.getPackage(arg)
@@ -5923,10 +5922,10 @@ def handle_move_build(opts, session, args):
             build = session.getBuild(arg)
             if not build:
                 print _("Invalid build %s, skipping." % arg)
-                continue    
+                continue
             if not build in builds:
                 builds.append(build)
-    
+
         for build in builds:
             task_id = session.moveBuild(args[0], args[1], build['id'], options.force)
             tasks.append(task_id)
@@ -6045,7 +6044,7 @@ def anon_handle_download_build(options, session, args):
     elif len(args) > 1:
         parser.error(_("Only a single package N-V-R or build ID may be specified"))
         assert False
-    
+
     activate_session(session)
     build = args[0]
 
@@ -6060,7 +6059,7 @@ def anon_handle_download_build(options, session, args):
                 print "No associated builds for task %s" % build
                 return 1
             build = builds[0]['build_id']
-    
+
     if suboptions.latestfrom:
         # We want the latest build, not a specific build
         try:
@@ -6074,7 +6073,7 @@ def anon_handle_download_build(options, session, args):
         info = builds[0]
     else:
         info = session.getBuild(build)
-        
+
     if info is None:
         print "No such build: %s" % build
         return 1
@@ -6134,7 +6133,7 @@ def anon_handle_download_build(options, session, args):
         pg = None
     else:
         pg = progress.TextMeter()
-    
+
     for url, relpath in urls:
         file = grabber.urlopen(url, progress_obj=pg, text=relpath)
 
@@ -6442,6 +6441,77 @@ def handle_moshimoshi(options, session, args):
     print "You are using the hub at %s" % (session.baseurl,)
     if u.get("krb_principal", None) is not None:
         print "Authenticated via Kerberos principal %s" % (u["krb_principal"])
+
+
+def handle_runroot(options, session, args):
+    "[admin] Run a command in a buildroot"
+    usage = _("usage: %prog runroot [options] <tag> <arch> <command>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.disable_interspersed_args()
+    parser.add_option("-p", "--package", action="append", default=[], help=_("make sure this package is in the chroot"))
+    parser.add_option("-m", "--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
+    parser.add_option("--skip-setarch", action="store_true", default=False,
+            help=_("bypass normal setarch in the chroot"))
+    parser.add_option("-w", "--weight", type='int', help=_("set task weight"))
+    parser.add_option("--channel-override", help=_("use a non-standard channel"))
+    parser.add_option("--task-id", action="store_true", default=False,
+            help=_("Print the ID of the runroot task"))
+    parser.add_option("--use-shell", action="store_true", default=False,
+            help=_("Run command through a shell, otherwise uses exec"))
+    parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
+
+    (opts, args) = parser.parse_args(args)
+
+    if len(args) < 3:
+        parser.error(_("Incorrect number of arguments"))
+    activate_session(session)
+    tag = args[0]
+    arch = args[1]
+    if opts.use_shell:
+        # everything must be correctly quoted
+        command = ' '.join(args[2:])
+    else:
+        command = args[2:]
+    try:
+        task_id = session.runroot(tag, arch, command,
+                                channel=opts.channel_override,
+                                packages=opts.package, mounts=opts.mount,
+                                repo_id=opts.repo_id,
+                                skip_setarch=opts.skip_setarch,
+                                weight=opts.weight)
+    except koji.GenericError as e:
+        if 'Invalid method' in str(e):
+            print "* The runroot plugin appears to not be installed on the",
+            print "koji hub.  Please contact the administrator."
+        raise
+    if opts.task_id:
+        print task_id
+
+    try:
+        while True:
+            # wait for the task to finish
+            if session.taskFinished(task_id):
+                break
+            time.sleep(options.poll_interval)
+    except KeyboardInterrupt:
+        # this is probably the right thing to do here
+        print "User interrupt: canceling runroot task"
+        session.cancelTask(task_id)
+        return
+    output = None
+    if "runroot.log" in session.listTaskOutput(task_id):
+        output = session.downloadTaskOutput(task_id, "runroot.log")
+    if output:
+        sys.stdout.write(output)
+    info = session.getTaskInfo(task_id)
+    if info is None:
+        sys.exit(1)
+    state = koji.TASK_STATES[info['state']]
+    if state in ('FAILED', 'CANCELED'):
+        sys.exit(1)
+    return
+
 
 def handle_help(options, session, args):
     "List available commands"

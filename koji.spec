@@ -1,5 +1,12 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
+%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+%global use_systemd 1
+%else
+%global use_systemd 0
+%global install_opt TYPE=sysv
+%endif
+
 %define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if "x%{?testbuild}" == "x1"
@@ -23,6 +30,10 @@ Requires: rpm-python
 Requires: pyOpenSSL
 Requires: python-urlgrabber
 BuildRequires: python
+%if %{use_systemd}
+BuildRequires: systemd
+BuildRequires: pkgconfig
+%endif
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
@@ -63,11 +74,17 @@ License: LGPLv2 and GPLv2+
 #mergerepos (from createrepo) is GPLv2+
 Requires: %{name} = %{version}-%{release}
 Requires: mock >= 0.9.14
+Requires(pre): /usr/sbin/useradd
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%else
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
-Requires(pre): /usr/sbin/useradd
+%endif
 Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
@@ -90,10 +107,16 @@ Summary: Koji virtual machine management daemon
 Group: Applications/System
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%else
 Requires(post): /sbin/chkconfig
 Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
+%endif
 Requires: libvirt-python
 Requires: libxml2-python
 Requires: /usr/bin/virt-clone
@@ -109,6 +132,11 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: postgresql-python
 Requires: %{name} = %{version}-%{release}
+%if %{use_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%endif
 
 %description utils
 Utilities for the Koji system
@@ -135,7 +163,7 @@ koji-web is a web UI to the Koji system.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make DESTDIR=$RPM_BUILD_ROOT install
+make DESTDIR=$RPM_BUILD_ROOT %{?install_opt} install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -168,8 +196,12 @@ rm -rf $RPM_BUILD_ROOT
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
+%if %{use_systemd}
+%{_unitdir}/kojira.service
+%else
 %{_initrddir}/kojira
 %config(noreplace) %{_sysconfdir}/sysconfig/kojira
+%endif
 %dir %{_sysconfdir}/kojira
 %config(noreplace) %{_sysconfdir}/kojira/kojira.conf
 %{_sbindir}/koji-gc
@@ -192,14 +224,31 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/kojid
 %dir %{_libexecdir}/kojid
 %{_libexecdir}/kojid/mergerepos
+%if %{use_systemd}
+%{_unitdir}/kojid.service
+%else
 %{_initrddir}/kojid
 %config(noreplace) %{_sysconfdir}/sysconfig/kojid
+%endif
 %dir %{_sysconfdir}/kojid
 %config(noreplace) %{_sysconfdir}/kojid/kojid.conf
 %attr(-,kojibuilder,kojibuilder) %{_sysconfdir}/mock/koji
 
 %pre builder
 /usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
+
+%if %{use_systemd}
+
+%post builder
+%systemd_post kojid.service
+
+%preun builder
+%systemd_preun kojid.service
+
+%postun builder
+%systemd_postun kojid.service
+
+%else
 
 %post builder
 /sbin/chkconfig --add kojid
@@ -209,16 +258,34 @@ if [ $1 = 0 ]; then
   /sbin/service kojid stop &> /dev/null
   /sbin/chkconfig --del kojid
 fi
+%endif
 
 %files vm
 %defattr(-,root,root)
 %{_sbindir}/kojivmd
 #dir %{_datadir}/kojivmd
 %{_datadir}/kojivmd/kojikamid
+%if %{use_systemd}
+%{_unitdir}/kojivmd.service
+%else
 %{_initrddir}/kojivmd
 %config(noreplace) %{_sysconfdir}/sysconfig/kojivmd
+%endif
 %dir %{_sysconfdir}/kojivmd
 %config(noreplace) %{_sysconfdir}/kojivmd/kojivmd.conf
+
+%if %{use_systemd}
+
+%post vm
+%systemd_post kojivmd.service
+
+%preun vm
+%systemd_preun kojivmd.service
+
+%postun vm
+%systemd_postun kojivmd.service
+
+%else
 
 %post vm
 /sbin/chkconfig --add kojivmd
@@ -228,7 +295,20 @@ if [ $1 = 0 ]; then
   /sbin/service kojivmd stop &> /dev/null
   /sbin/chkconfig --del kojivmd
 fi
+%endif
 
+%if %{use_systemd}
+
+%post utils
+%systemd_post kojira.service
+
+%preun utils
+%systemd_preun kojira.service
+
+%postun utils
+%systemd_postun kojira.service
+
+%else
 %post utils
 /sbin/chkconfig --add kojira
 /sbin/service kojira condrestart &> /dev/null || :
@@ -237,6 +317,7 @@ if [ $1 = 0 ]; then
   /sbin/service kojira stop &> /dev/null || :
   /sbin/chkconfig --del kojira
 fi
+%endif
 
 %changelog
 * Mon Mar 24 2014 Mike McLean <mikem at redhat.com> - 1.9.0-1

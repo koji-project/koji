@@ -45,7 +45,7 @@
     </tr>
     #end if
     <tr>
-      <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+      <th>Built by</th><td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
     </tr>
     <tr>
       #set $stateName = $util.stateName($build.state)

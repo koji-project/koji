@@ -5,7 +5,7 @@
 #
 #    Koji is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; 
+#    License as published by the Free Software Foundation;
 #    version 2.1 of the License.
 #
 #    This software is distributed in the hope that it will be useful,
@@ -328,6 +328,9 @@ class ParameterError(GenericError):
     """Raised when an rpc call receives incorrect arguments"""
     faultCode = 1019
 
+class ImportError(GenericError):
+    """Raised when an import fails"""
+    faultCode = 1020
 
 class MultiCallInProgress(object):
     """
@@ -992,7 +995,7 @@ def parse_pom(path=None, contents=None):
         raise GenericError, 'either a path to a pom file or the contents of a pom file must be specified'
 
     # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
-    
+
     contents = fixEncoding(contents)
 
     try:
@@ -1953,7 +1956,7 @@ class ClientSession(object):
                     if self.logger.isEnabledFor(logging.DEBUG):
                         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                         self.logger.debug(tb_str)
-                    self.logger.info("Try #%d for call %d (%s) failed: %s", tries, self.callnum, name, e)
+                    self.logger.info("Try #%s for call %s (%s) failed: %s", tries, self.callnum, name, e)
                 if tries > 1:
                     # first retry is immediate, after that we honor retry_interval
                     time.sleep(interval)
@@ -2039,10 +2042,10 @@ class ClientSession(object):
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
         if int(result['size']) != ofs:
-            raise koji.GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
+            raise GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
                     % (path, name, result['sumlength'], ofs)
         if problems and result['hexdigest'] != full_chksum.hexdigest():
-            raise koji.GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
+            raise GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
                     % (path, name, result['hexdigest'], full_chksum.hexdigest())
         self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
 

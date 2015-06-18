@@ -105,6 +105,7 @@ force-tag::
 #	@$(MAKE) tag TAG_OPTS="-F $(TAG_OPTS)"
 
 DESTDIR ?= /
+TYPE = systemd
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \
 		echo " "; \
@@ -115,4 +116,4 @@ install:
 	mkdir -p $(DESTDIR)
 
 	for d in $(SUBDIRS); do make DESTDIR=`cd $(DESTDIR); pwd` \
-		-C $$d install; [ $$? = 0 ] || exit 1; done
+		-C $$d install TYPE=$(TYPE); [ $$? = 0 ] || exit 1; done

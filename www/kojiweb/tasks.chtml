@@ -145,7 +145,7 @@ All
             $printChildren($task.id, $task.descendents)
             #end if
           </td>
-          <td>
+          <td class="user-$task.owner_name">
             #if $task.owner_type == $koji.USERTYPES['HOST']
             <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
             #else
