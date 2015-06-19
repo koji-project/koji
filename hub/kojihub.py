@@ -4562,6 +4562,58 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     rpminfo['brootid'] = brootid
     return rpminfo
 
+
+def cg_import(metadata, files):
+    """ Import build from a content generator"""
+
+    # TODO: assert cg access
+
+    metaver = metadata['metadata_version']
+    if metaver != 0:
+        raise koji.GenericError("Unknown metadata version: %r", metaver)
+
+    # TODO: pre import callback
+
+    # build entry
+    buildinfo = get_build(metadata['build'], strict=False)
+    if buildinfo:
+        # TODO : allow in some cases
+        raise koji.GenericError("Build already exists: %r", buildinfo)
+    else:
+        # create a new build
+        # TODO: how do we deal with epoch?
+        build_id = new_build(rpminfo)
+        buildinfo = get_build(build_id, strict=True)
+
+    # buildroots
+    brmap = {}
+    for brdata in metadata['buildroots']:
+        brfakeid = brdata['id']
+        if brfakeid in brmap:
+            raise koji.GenericError("Duplicate buildroot id in metadata: %r", brfakeid)
+        brmap[brfakeid] = import_buildroot(brdata)
+
+    # outputs
+    for fileinfo in metadata['output']:
+        brinfo = brmap.get(fileinfo['buildroot_id'])
+        if not brinfo:
+            raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r",
+                        fileinfo)
+        # TODO map info to files entry (determine fn)
+        if fileinfo['type'] == 'rpm':
+            rpminfo = import_rpm(fn, buildinfo, brinfo)
+            import_rpm_file(fn, buildinfo, rpminfo)
+            add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
+        elif fileinfo['type'] == 'log':
+            # TODO: determine subdir
+            import_build_log(fn, buildinfo, subdir=None)
+        else:
+            # TODO support other types
+            raise koji.GenericError("Unsupported file type in import: %r", fileinfo['type'])
+
+    # TODO: post import callback
+
+
 def add_external_rpm(rpminfo, external_repo, strict=True):
     """Add an external rpm entry to the rpminfo table
 
