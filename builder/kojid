@@ -2791,6 +2791,36 @@ class LiveCDTask(ImageTask):
 
         return manifest
 
+    def _shortenVolID(self, name, version, release):
+        # Based on code from pungi
+        substitutions = {
+            'MATE_Compiz': 'MATE',
+            'Security': 'Sec',
+            'Electronic_Lab': 'Elec',
+            'Robotics': 'Robo',
+            'Scientific_KDE': 'SciK',
+            'Design_suite': 'Dsgn',
+            'Games': 'Game',
+            'Jam_KDE': 'Jam',
+            'Workstation': 'WS',
+            'Server': 'S',
+            'Cloud': 'C',
+            'Alpha': 'A',
+            'Beta': 'B',
+            'TC': 'T',
+        }
+
+        for k, v in substitutions.iteritems():
+            if k in name:
+                name = name.replace(k, v)
+            if k in version:
+                version = version.replace(k, v)
+            if k in release:
+                release = release.replace(k, v)
+
+        volid = "%s-%s-%s" % (name, version, release)
+        return volid[:32]
+
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
         if opts == None:
@@ -2807,10 +2837,8 @@ class LiveCDTask(ImageTask):
         livecd_log = '/tmp/livecd.log'
         cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v',
                '--logfile', livecd_log, '--cache', cachedir]
-        # we set the fs label to the same as the isoname if it exists,
-        # taking at most 32 characters
         isoname = '%s-%s-%s' % (name, version, release)
-        cmd.extend(['-f', isoname[:32]])
+        cmd.extend(['-f', self._shortenVolID(name, version, release)])
 
         # Run livecd-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
