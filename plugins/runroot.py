@@ -51,6 +51,7 @@ class RunRootTask(tasks.BaseTaskHandler):
             else:
                 options.append(o)
         rel_path = path[len(mount_data['mountpoint']):]
+        rel_path = rel_path[1:] if rel_path.startswith('/') else rel_path
         res = (os.path.join(mount_data['path'], rel_path), path, mount_data['fstype'], ','.join(options))
         return res
 
