@@ -320,7 +320,7 @@ fi
 %endif
 
 %changelog
-* Tue Jul 14 Mike McLean <mikem at redhat.com> - 1.10.0-1
+* Tue Jul 14 2015 Mike McLean <mikem at redhat.com> - 1.10.0-1
 - 1.10.0 release
 
 * Mon Mar 24 2014 Mike McLean <mikem at redhat.com> - 1.9.0-1
