@@ -1940,11 +1940,15 @@ class ClientSession(object):
                 except (SystemExit, KeyboardInterrupt):
                     #(depending on the python version, these may or may not be subclasses of Exception)
                     raise
-                except OpenSSL.SSL.Error as e:
-                    # There's no point in retrying this
-                    raise
                 except Exception, e:
                     self._close_connection()
+                    if isinstance(e, OpenSSL.SSL.Error):
+                        for arg in e.args:
+                            for _, _, ssl_reason in arg:
+                                if ('certificate revoked' in ssl_reason or
+                                        'certificate expired' in ssl_reason):
+                                    # There's no point in retrying for this
+                                    raise
                     if not self.logged_in:
                         #in the past, non-logged-in sessions did not retry. For compatibility purposes
                         #this behavior is governed by the anon_retry opt.
