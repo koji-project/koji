@@ -464,8 +464,12 @@ def taskScratchClass(task_object):
     """ Return a css class indicating whether or not this task is a scratch
     build.
     """
+    method = task_object['method']
     request = task_object['request']
-    if len(request) >= 3:
+    if method == 'build' and len(request) >= 3:
+        # Each task method has its own signature for what gets put in the
+        # request list.  Builds should have an `opts` dict at index 2.
+        # See www/kojiweb/taskinfo.chtml for the grimoire.
         opts = request[2]
         if opts.get('scratch'):
             return "scratch"
