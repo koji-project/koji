@@ -6291,6 +6291,81 @@ def anon_handle_download_logs(options, session, args):
             save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
 
+def anon_handle_download_scratch_build(options, sessions, args):
+    "Download a scratch-built package"
+    usage = _("usage: %prog download-scratch-build <task_id>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
+                      help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("--logs", dest="logs", action="store_true", default=False, help=_("Also download build logs"))
+
+    (suboptions, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("Please specify a task ID"))
+    elif len(args) > 1:
+        parser.error(_("Only one task ID may be specified"))
+
+    base_task_id = int(args.pop())
+    if len(suboptions.arches) > 0:
+        suboptions.arches = ",".join(suboptions.arches).split(",")
+
+    # get downloadable tasks
+
+    base_task = session.getTaskInfo(base_task_id)
+
+    check_downloadable = lambda task: task["method"] == "buildArch"
+    downloadable_tasks = []
+
+    if check_downloadable(base_task):
+        downloadable_tasks.append(base_task)
+    else:
+        subtasks = sessions.getTaskChildren(base_task_id)
+        downloadable_tasks.extend(filter(check_downloadable, subtasks))
+
+    # get files for download
+
+    downloads = []
+
+    for task in downloadable_tasks:
+        files = session.listTaskOutput(task["id"])
+        for filename in files:
+            if filename.endswith(".log") and suboptions.logs:
+                # rename logs, they would conflict
+                new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
+                downloads.append((task, filename, new_filename))
+                continue
+
+            if filename.endswith(".rpm"):
+                filearch = filename.split(".")[-2]
+                if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                    downloads.append((task, filename, filename))
+                continue
+
+    if len(downloads) == 0:
+        error(_("No files for download found."))
+
+    required_tasks = {}
+    for (task, nop, nop) in downloads:
+        if task["id"] not in required_tasks:
+            required_tasks[task["id"]] = task
+
+    for task_id in required_tasks:
+        if required_tasks[task_id]["state"] != koji.TASK_STATES.get("CLOSED"):
+            if task_id == base_task_id:
+                error(_("Task %d has not finished yet.") % task_id)
+            else:
+                error(_("Child task %d has not finished yet.") % task_id)
+
+    # perform the download
+
+    number = 0
+    for (task, filename, new_filename) in downloads:
+        number += 1
+        print _("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename)
+        with open(new_filename, "wb") as output_file:
+            output_file.write(session.downloadTaskOutput(task["id"], filename))
+
 def anon_handle_wait_repo(options, session, args):
     "Wait for a repo to be regenerated"
     usage = _("usage: %prog wait-repo [options] <tag>")
