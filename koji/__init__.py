@@ -2047,7 +2047,7 @@ class ClientSession(object):
         result = self._callMethod('checkUpload', (path, name), chk_opts)
         if int(result['size']) != ofs:
             raise GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
-                    % (path, name, result['sumlength'], ofs)
+                    % (path, name, result['size'], ofs)
         if problems and result['hexdigest'] != full_chksum.hexdigest():
             raise GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
                     % (path, name, result['hexdigest'], full_chksum.hexdigest())
