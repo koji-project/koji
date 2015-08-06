@@ -127,7 +127,7 @@
               #end if
             </td>
           </tr>
-          #for $rpm in $rpmsByArch[$arch] + $debuginfoByArch.get($arch, [])
+          #for $rpm in $rpmsByArch[$arch]
           <tr>
             #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
             #set $rpmpath = $pathinfo.rpm($rpm)
