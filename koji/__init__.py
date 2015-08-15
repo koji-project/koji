@@ -1943,8 +1943,29 @@ class ClientSession(object):
                 except Exception, e:
                     self._close_connection()
                     if isinstance(e, OpenSSL.SSL.Error):
+                        # pyOpenSSL doesn't use different exception
+                        # subclasses, we have to actually parse the args
                         for arg in e.args:
-                            for _, _, ssl_reason in arg:
+                            # First, check to see if 'arg' is iterable because
+                            # it can be anything..
+                            try:
+                                iter(arg)
+                            except TypeError:
+                                continue
+
+                            # We do all this so that we can detect cert expiry
+                            # so we can avoid retrying those over and over.
+                            for items in arg:
+                                try:
+                                    iter(items)
+                                except TypeError:
+                                    continue
+
+                                if len(items) != 3:
+                                    continue
+
+                                _, _, ssl_reason = items
+
                                 if ('certificate revoked' in ssl_reason or
                                         'certificate expired' in ssl_reason):
                                     # There's no point in retrying for this
