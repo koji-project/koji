@@ -7776,6 +7776,10 @@ class RootExports(object):
         fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
         import_archive(fullpath, buildinfo, type, typeInfo)
 
+    def CGImport(self, metadata, files):
+        context.session.assertPerm('admin')  # TODO: fix access check
+        return cg_import(metadata, files)
+
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
     queryHistory = staticmethod(query_history)
