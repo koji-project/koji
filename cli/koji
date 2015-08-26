@@ -33,6 +33,13 @@ try:
     import ast
 except ImportError:
     ast = None
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        json = None
 import ConfigParser
 import base64
 import errno
@@ -1630,6 +1637,34 @@ def handle_import(options, session, args):
                     print _("Build missing: %s") % nvr
                     break
             do_import(path, data)
+
+
+def handle_import_cg(options, session, args):
+    "[admin] Import external builds with rich metadata"
+    usage = _("usage: %prog import-cg [options] metadata_file files_dir")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
+    parser.add_option("--test", action="store_true", help=_("Don't actually import"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify metadata and at least one file"))
+        assert False
+    if json is None:
+        parser.error(_("Unable to find json module"))
+        assert False
+    activate_session(session)
+    metadata = json.load(file(args[0], 'r'))
+    if 'output' not in metadata:
+        print _("Metadata contains no output")
+        sys.exit(1)
+
+    # TODO: determine upload path
+    for info in metadata['output']:
+        # TODO: upload file
+        pass
+
+    session.CGImport(metadata, upload_path)
 
 
 def handle_import_comps(options, session, args):
