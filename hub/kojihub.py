@@ -4676,13 +4676,13 @@ def cg_export(build):
         data['host'] = {'os': 'unknown', 'arch': brinfo['arch']} #XXX
         data['tools'] = []
         data['component_rpms'] = []
-        for rpminfo in list_rpms(buildrootID=br_id):
+        for rpminfo in list_rpms(componentBuildrootID=br_id):
             info = dslice(rpminfo, ['name', 'version', 'release', 'epoch', 'arch'])
             info['sigmd5'] = rpminfo['payloadhash']
             info['sig'] = None
             data['component_rpms'].append(info)
         data['component_archives'] = []
-        for archiveinfo in list_archives(buildrootID=br_id):
+        for archiveinfo in list_archives(componentBuildrootID=br_id):
             info = dslice(archiveinfo, ['filename', 'checksum'])
             info['filesize'] = info['size']
             info['checksum_type'] = koji.CHECKSUM_TYPES(archiveinfo['checksum_type'])
