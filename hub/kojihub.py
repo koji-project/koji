@@ -4113,9 +4113,15 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         queryOpts - query options
     """
     fields = [('buildroot.id', 'id'),
+              ('buildroot.br_type', 'br_type'),
+              ('buildroot.cg_id', 'cg_id'),
+              ('content_generator.name', 'cg_name'),
+              ('buildroot.cg_version', 'cg_version'),
               ('buildroot.container_arch', 'container_arch'),
               ('buildroot.container_arch', 'arch'), #alias for back compat
               ('buildroot.container_type', 'container_type'),
+              ('buildroot.host_os', 'host_os'),
+              ('buildroot.host_arch', 'host_arch'),
               ('standard_buildroot.state', 'state'),
               ('standard_buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
@@ -4129,6 +4135,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
 
     tables = ['buildroot']
     joins=['LEFT OUTER JOIN standard_buildroot ON standard_buildroot.buildroot_id = buildroot.id',
+           'LEFT OUTER JOIN content_generator ON buildroot.cg_id = content_generator.id',
            'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
            'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
            'tag ON tag.id = repo.tag_id',
