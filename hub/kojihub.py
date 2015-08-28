@@ -4128,7 +4128,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('repo_create.id', 'repo_create_event_id'), ('repo_create.time', 'repo_create_event_time')]
 
     tables = ['buildroot']
-    joins=['LEFT OUTER JOIN standard_buildroot ON buildroot_id = buildroot.id',
+    joins=['LEFT OUTER JOIN standard_buildroot ON standard_buildroot.buildroot_id = buildroot.id',
            'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
            'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
            'tag ON tag.id = repo.tag_id',
