@@ -4618,14 +4618,10 @@ def cg_import(metadata, files):
 def cg_export(build):
     """Return CG metadata and file refs for a given build"""
 
+    metadata = {'metadata_version' : 0}
+
     binfo = get_build(build, strict=True)
     # TODO: handle multiple build types
-    metadata = {
-        'metadata_version' : 0,
-        'build' : {},
-        'buildroots' : {},
-        'output' : {},
-    }
     metadata['build'] = dslice(binfo, ['name', 'version', 'release'])
     # TODO: get source from task if possible
     # TODO: get start_time and end_time from task and or build
@@ -4693,6 +4689,7 @@ def cg_export(build):
             data['component_archives'].append(info)
         data['extra'] = dslice(brinfo, ['host_id', 'host_name', 'repo_id', 'task_id'])
         data['extra']['orig_id'] = brinfo['id']
+        metadata['buildroots'].append(data)
 
     #TODO also return paths to all output files relative to topdir
 
