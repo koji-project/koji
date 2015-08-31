@@ -2416,11 +2416,6 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
-def _forceAscii(value):
-    """Replace characters not in the 7-bit ASCII range
-    with "?"."""
-    return ''.join([(ord(c) <= 127) and c or '?' for c in value])
-
 def fixEncoding(value, fallback='iso8859-15'):
     """
     Convert value to a 'str' object encoded as UTF-8.
