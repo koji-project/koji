@@ -1724,7 +1724,7 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
-        servername = self._host
+        servername = socket.getfqdn(self._host)
         #portspec = servername.find(':')
         #if portspec != -1:
         #    servername = servername[:portspec]
