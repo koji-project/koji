@@ -3063,7 +3063,7 @@ class BaseImageTask(OzImageTask):
         Some image formats require others to be processed first, which is why
         we have to do this. raw files in particular may not be kept.
         """
-        supported = ('raw', 'raw-xz', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vpc')
+        supported = ('raw', 'raw-xz', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vagrant-vmware-fusion', 'vpc')
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -3098,6 +3098,7 @@ class BaseImageTask(OzImageTask):
                   'vsphere-ova': self._buildOVA,
                   'vagrant-virtualbox': self._buildOVA,
                   'vagrant-libvirt':    self._buildOVA,
+                  'vagrant-vmware-fusion': self._buildOVA,
                   'docker':      self._buildDocker
         }
         # add a handler to the logger so that we capture ImageFactory's logging
@@ -3247,8 +3248,14 @@ class BaseImageTask(OzImageTask):
         if format == 'vagrant-libvirt':
             format = 'rhevm-ova'
             img_opts['rhevm_ova_format'] = 'vagrant-libvirt'
+        if format == 'vagrant-vmware-fusion':
+            format = 'vsphere-ova'
+            img_opts['vsphere_ova_format'] = 'vagrant-vmware-fusion'
+            # The initial disk image transform for VMWare Fusion/Workstation requires a "standard" VMDK
+            # not the stream oriented format used for VirtualBox or regular VMWare OVAs
+            img_opts['vsphere_vmdk_format'] = 'standard'
         targ = self._do_target_image(self.base_img.base_image.identifier,
-            format.replace('-ova', ''))
+            format.replace('-ova', ''), img_opts=img_opts)
         targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
             img_opts=img_opts)
         return {'image': targ2.target_image.data}
