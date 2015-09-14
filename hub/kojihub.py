@@ -3416,9 +3416,13 @@ def get_rpm(rpminfo, strict=False, multi=False):
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=data)
     if multi:
-        return query.execute()
+        data = query.execute()
+        for row in data:
+            row['size'] = koji.encode_int(row['size'])
+        return data
     ret = query.executeOne()
     if ret:
+        ret['size'] = koji.encode_int(ret['size'])
         return ret
     if retry:
         #at this point we have just an NVRA with no internal match. Open it up to externals
@@ -3428,6 +3432,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
+    ret['size'] = koji.encode_int(ret['size'])
     return ret
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
@@ -3502,7 +3507,10 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=locals(), opts=queryOpts)
-    return query.execute()
+    data = query.execute()
+    for row in data:
+        row['size'] = koji.encode_int(row['size'])
+    return data
 
 def get_maven_build(buildInfo, strict=False):
     """
