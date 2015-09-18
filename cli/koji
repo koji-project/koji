@@ -755,6 +755,9 @@ def handle_add_pkg(options, session, args):
     opts['block'] = False
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
+    if dsttag is None:
+        print "No such tag: %s" % tag
+        sys.exit(1)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
     ret = 0
     for package in args[1:]:
