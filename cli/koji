@@ -3867,6 +3867,13 @@ def _print_histline(entry, **kwargs):
             fmt = "user %(user.name)s added to group %(group.name)s"
         else:
             fmt = "user %(user.name)s removed from group %(group.name)s"
+    elif table == 'cg_users':
+        if edit:
+            fmt = "user %(user.name)s re-added to content generator %(content_generator.name)s"
+        elif create:
+            fmt = "user %(user.name)s added to content generator %(content_generator.name)s"
+        else:
+            fmt = "user %(user.name)s removed from content generator %(content_generator.name)s"
     elif table == 'tag_packages':
         if edit:
             fmt = "package list entry for %(package.name)s in %(tag.name)s updated"
@@ -3995,6 +4002,7 @@ def _print_histline(entry, **kwargs):
 _table_keys = {
     'user_perms' : ['user_id', 'perm_id'],
     'user_groups' : ['user_id', 'group_id'],
+    'cg_users' : ['user_id', 'cg_id'],
     'tag_inheritance' : ['tag_id', 'parent_id'],
     'tag_config' : ['tag_id'],
     'build_target_config' : ['build_target_id'],

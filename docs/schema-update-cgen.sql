@@ -10,10 +10,21 @@ CREATE TABLE content_generator (
 ) WITHOUT OIDS;
 
 CREATE TABLE cg_users (
-       cg_id INTEGER NOT NULL REFERENCES content_generator (id),
-       user_id INTEGER NOT NULL REFERENCES users (id),
-       PRIMARY KEY (cg_id, user_id)
+        cg_id INTEGER NOT NULL REFERENCES content_generator (id),
+        user_id INTEGER NOT NULL REFERENCES users (id),
+-- versioned
+        create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+        revoke_event INTEGER REFERENCES events(id),
+        creator_id INTEGER NOT NULL REFERENCES users(id),
+        revoker_id INTEGER REFERENCES users(id),
+        active BOOLEAN DEFAULT 'true' CHECK (active),
+        CONSTRAINT active_revoke_sane CHECK (
+                (active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+                OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+        PRIMARY KEY (create_event, cg_id, user_id),
+        UNIQUE (cg_id, user_id, active)
 ) WITHOUT OIDS;
+
 
 CREATE TABLE buildroot_tools_info (
        buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
@@ -78,6 +89,7 @@ ALTER TABLE buildroot ADD COLUMN cg_id INTEGER REFERENCES content_generator (id)
 ALTER TABLE buildroot ADD COLUMN cg_version TEXT;
 ALTER TABLE buildroot ADD COLUMN container_type TEXT;
 ALTER TABLE buildroot ADD COLUMN host_os TEXT;
+ALTER TABLE buildroot ADD COLUMN host_arch TEXT;
 
 SELECT now(), 'Altering buildroot table (altering columns)' as msg;
 ALTER TABLE buildroot RENAME arch TO container_arch;

@@ -476,11 +476,21 @@ CREATE TABLE content_generator (
 	name TEXT
 ) WITHOUT OIDS;
 
+
 CREATE TABLE cg_users (
 	cg_id INTEGER NOT NULL REFERENCES content_generator (id),
 	user_id INTEGER NOT NULL REFERENCES users (id),
-	PRIMARY KEY (cg_id, user_id)
--- XXX: should we version this?
+-- versioned - see earlier description of versioning
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, cg_id, user_id),
+	UNIQUE (cg_id, user_id, active)
 ) WITHOUT OIDS;
 
 

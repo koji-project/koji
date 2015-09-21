@@ -3164,27 +3164,38 @@ def get_external_repo_list(tag_info, event=None):
                 seen_repos[tag_repo['external_repo_id']] = 1
     return repos
 
-def get_user(userInfo=None,strict=False):
-    """Return information about a user.  userInfo may be either a str
-    (Kerberos principal) or an int (user id).  A map will be returned with the
-    following keys:
+
+def get_user(userInfo=None, strict=False):
+    """Return information about a user.
+
+    userInfo may be either a str (Kerberos principal or name) or an int (user id).
+
+    A map will be returned with the following keys:
       id: user id
       name: user name
       status: user status (int), may be null
       usertype: user type (int), 0 person, 1 for host, may be null
-      krb_principal: the user's Kerberos principal"""
+      krb_principal: the user's Kerberos principal
+    """
     if userInfo is None:
         userInfo = context.session.user_id
-        #will still be None if not logged in
-    fields = ('id', 'name', 'status', 'usertype', 'krb_principal')
-    q = """SELECT %s FROM users WHERE""" % ', '.join(fields)
+        if userInfo is None:
+            # not logged in
+            raise koji.GenericError("No user provided")
+    fields = ['id', 'name', 'status', 'usertype', 'krb_principal']
+    #fields, aliases = zip(*fields.items())
+    data = {'info' : userInfo}
     if isinstance(userInfo, int) or isinstance(userInfo, long):
-        q += """ id = %(userInfo)i"""
+        clauses = ['id = %(info)i']
     elif isinstance(userInfo, str):
-        q += """ (krb_principal = %(userInfo)s or name = %(userInfo)s)"""
+        clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
         raise koji.GenericError, 'invalid type for userInfo: %s' % type(userInfo)
-    return _singleRow(q,locals(),fields,strict=strict)
+    query = QueryProcessor(tables=['users'], columns=fields,
+                           clauses=clauses, values=data)
+    user = query.executeOne()
+    return user
+
 
 def find_build_id(X, strict=False):
     if isinstance(X,int) or isinstance(X,long):
@@ -5615,6 +5626,7 @@ def query_history(tables=None, **kwargs):
     table_fields = {
         'user_perms' : ['user_id', 'perm_id'],
         'user_groups' : ['user_id', 'group_id'],
+        'cg_users' : ['user_id', 'cg_id'],
         'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
         'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
         'build_target_config' : ['build_target_id', 'build_tag', 'dest_tag'],
@@ -5632,6 +5644,7 @@ def query_history(tables=None, **kwargs):
         #field : [table, join-alias, alias]
         'user_id' : ['users', 'users', 'user'],
         'perm_id' : ['permissions', 'permission'],
+        'cg_id' : ['content_generator'],
         #group_id is overloaded (special case below)
         'tag_id' : ['tag'],
         'parent_id' : ['tag', 'parent'],
@@ -6417,6 +6430,33 @@ def set_user_status(user, status):
         raise koji.GenericError, 'invalid user ID: %i' % user_id
 
 
+def add_user_to_cg(user, cg):
+    """Associate a user with a content generator"""
+
+    context.session.assertPerm('admin')
+    user = get_user(user, strict=True)
+    cg = lookup_name('content_generator', cg, strict=True)
+    ins = InsertProcessor('cg_users')
+    ins.set(cg_id=cg['id'], user_id=user['id'])
+    ins.make_create()
+    if ins.dup_check():
+        raise koji.GenericError("User already associated with content generator")
+    ins.execute()
+
+
+def remove_user_from_cg(user, cg):
+    """De-associate a user with a content generator"""
+
+    context.session.assertPerm('admin')
+    user = get_user(user, strict=True)
+    cg = lookup_name('content_generator', cg, strict=True)
+    data = {'user_id': user['id'], 'cg_id' : cg['id']}
+    update = UpdateProcessor('cg_users', values=data,
+                clauses=["user_id = %(user_id)i", "cg_id = %(cg_id)i"])
+    update.make_revoke()
+    update.execute()
+
+
 def get_event():
     """Get an event id for this transaction
 
@@ -6486,6 +6526,24 @@ class InsertProcessor(object):
             user_id = context.session.user_id
         self.data['create_event'] = event_id
         self.data['creator_id'] = user_id
+
+    def dup_check(self):
+        """Check to see if the insert duplicates an existing row"""
+        if self.rawdata:
+            logger.warning("Can't perform duplicate check")
+            return None
+        data = self.data.copy()
+        if 'create_event' in self.data:
+            # versioned table
+            data['active'] = True
+            del data['create_event']
+            del data['creator_id']
+        clauses = ["%s = %%(%s)s" % (k, k) for k in data]
+        query = QueryProcessor(columns=data.keys(), tables=[self.table],
+                               clauses=clauses, values=data)
+        if query.execute():
+            return True
+        return False
 
     def execute(self):
         return _dml(str(self), self.data)
@@ -8914,6 +8972,9 @@ class RootExports(object):
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
+
+    addUserToCG = staticmethod(add_user_to_cg)
+    removeUserFromCG = staticmethod(remove_user_from_cg)
 
     #group management calls
     newGroup = staticmethod(new_group)
