@@ -4632,11 +4632,18 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
 def cg_import(metadata, files):
     """ Import build from a content generator"""
 
-    # TODO: assert cg access
-
     metaver = metadata['metadata_version']
     if metaver != 0:
         raise koji.GenericError("Unknown metadata version: %r", metaver)
+
+    # assert cg access
+    cgs = set()
+    for brdata in metadata['buildroots']:
+        cginfo = brdata['content_generator']
+        cg = lookup_name('content_generator', cginfo['name'], strict=True)
+        cgs.add(cg['id'])
+    for cg_id in cgs:
+        assert_cg(cg_id)
 
     # TODO: pre import callback
 
@@ -6504,6 +6511,20 @@ def remove_user_from_cg(user, cg):
                 clauses=["user_id = %(user_id)i", "cg_id = %(cg_id)i"])
     update.make_revoke()
     update.execute()
+
+
+def assert_cg(cg, user=None):
+    cg = lookup_name('content_generator', cg, strict=True)
+    if user is None:
+        if context.session.logged_in:
+            raise koji.AuthError("Not logged in")
+        user = context.session.user_id
+    user = get_user(user, strict=True)
+    clauses = ['active = TRUE', 'user_id = %(user_id)s', 'cg_id = %(cg_id)s']
+    data = {'user_id' : user['id'], 'cg_id' : cg['id']}
+    query = QueryProcessor(tables='cg_users', fields=['cg_id'], clauses=clauses, values=data)
+    if not query.execute():
+        raise koji.AuthError("Content generator access required (%s)" % cg['name'])
 
 
 def get_event():
