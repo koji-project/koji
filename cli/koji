@@ -762,6 +762,9 @@ def handle_add_pkg(options, session, args):
     opts['block'] = False
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
+    if dsttag is None:
+        print "No such tag: %s" % tag
+        sys.exit(1)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
     ret = 0
     for package in args[1:]:
@@ -3895,6 +3898,13 @@ def _print_histline(entry, **kwargs):
             fmt = "new tag: %(tag.name)s"
         else:
             fmt = "tag deleted: %(tag.name)s"
+    elif table == 'tag_extra':
+        if edit:
+            fmt = "tag option %(key)s for tag %(tag.name)s altered"
+        elif create:
+            fmt = "added tag option %(key)s for tag %(tag.name)s"
+        else:
+            fmt = "tag option %(key)s removed for %(tag.name)s"
     elif table == 'build_target_config':
         if edit:
             fmt = "build target configuration for %(build_target.name)s updated"
@@ -4005,6 +4015,7 @@ _table_keys = {
     'cg_users' : ['user_id', 'cg_id'],
     'tag_inheritance' : ['tag_id', 'parent_id'],
     'tag_config' : ['tag_id'],
+    'tag_extra' : ['tag_id', 'key'],
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
@@ -4396,6 +4407,12 @@ def anon_handle_taginfo(options, session, args):
         if session.mavenEnabled():
             print "Maven support?: %s" % (info['maven_support'] and 'yes' or 'no')
             print "Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no')
+        if 'extra' in info:
+            print "Tag options:"
+            keys = info['extra'].keys()
+            keys.sort()
+            for key in keys:
+                print "  %s : %s" % (key, pprint.pformat(info['extra'][key]))
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
         repos = {}
@@ -4489,6 +4506,8 @@ def handle_edit_tag(options, session, args):
     parser.add_option("--no-maven-support", action="store_true", help=_("Disable creation of Maven repos for this tag"))
     parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
     parser.add_option("--no-include-all", action="store_true", help=_("Do not include all packages in this tag when generating Maven repos"))
+    parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
+                      help=_("Set tag extra option"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -4516,6 +4535,13 @@ def handle_edit_tag(options, session, args):
         opts['maven_include_all'] = True
     if options.no_include_all:
         opts['maven_include_all'] = False
+    if options.extra:
+        extra = {}
+        for xopt in options.extra:
+            key, value = xopt.split('=')
+            value = arg_filter(value)
+            extra[key] = value
+        opts['extra'] = extra
     #XXX change callname
     session.editTag2(tag,**opts)
 
@@ -5285,7 +5311,7 @@ def handle_image_build(options, session, args):
     """Create a disk image given an install tree"""
     formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'vpc', 'rhevm-ova',
                'vsphere-ova', 'vagrant-virtualbox', 'vagrant-libvirt',
-               'docker', 'raw-xz')
+               'vagrant-vmware-fusion', 'docker', 'raw-xz')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
     usage += _("\n       %prog image-build --config FILE")
@@ -6272,15 +6298,21 @@ def anon_handle_download_logs(options, session, args):
         task_log_dir = os.path.join(parent_dir,
                                     "%s-%s" % (task_info["arch"], task_id))
 
+        count = 0
         state =  koji.TASK_STATES[task_info['state']]
         if state == 'FAILED':
             if not match or koji.util.multi_fnmatch(FAIL_LOG, match):
                 write_fail_log(task_log_dir, task_id)
+                count += 1
         elif state not in ['CLOSED', 'CANCELED']:
             sys.stderr.write(_("Warning: task %s is %s\n") % (task_id, state))
 
         for log_filename in logs:
             download_log(task_log_dir, task_id, log_filename)
+            count += 1
+
+        if count == 0 and not recurse:
+            sys.stderr.write(_("No logs found for task %i. Perhaps try --recurse?\n") % task_id)
 
         if recurse:
             child_tasks = session.getTaskChildren(task_id)
@@ -6304,6 +6336,81 @@ def anon_handle_download_logs(options, session, args):
                 continue
             save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
+
+def anon_handle_download_task(options, sessions, args):
+    "Download the output of a build task "
+    usage = _("usage: %prog download-task <task_id>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
+                      help=_("Only download packages for this arch (may be used multiple times)"))
+    parser.add_option("--logs", dest="logs", action="store_true", default=False, help=_("Also download build logs"))
+
+    (suboptions, args) = parser.parse_args(args)
+    if len(args) == 0:
+        parser.error(_("Please specify a task ID"))
+    elif len(args) > 1:
+        parser.error(_("Only one task ID may be specified"))
+
+    base_task_id = int(args.pop())
+    if len(suboptions.arches) > 0:
+        suboptions.arches = ",".join(suboptions.arches).split(",")
+
+    # get downloadable tasks
+
+    base_task = session.getTaskInfo(base_task_id)
+
+    check_downloadable = lambda task: task["method"] == "buildArch"
+    downloadable_tasks = []
+
+    if check_downloadable(base_task):
+        downloadable_tasks.append(base_task)
+    else:
+        subtasks = sessions.getTaskChildren(base_task_id)
+        downloadable_tasks.extend(filter(check_downloadable, subtasks))
+
+    # get files for download
+
+    downloads = []
+
+    for task in downloadable_tasks:
+        files = session.listTaskOutput(task["id"])
+        for filename in files:
+            if filename.endswith(".log") and suboptions.logs:
+                # rename logs, they would conflict
+                new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
+                downloads.append((task, filename, new_filename))
+                continue
+
+            if filename.endswith(".rpm"):
+                filearch = filename.split(".")[-2]
+                if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                    downloads.append((task, filename, filename))
+                continue
+
+    if len(downloads) == 0:
+        error(_("No files for download found."))
+
+    required_tasks = {}
+    for (task, nop, nop) in downloads:
+        if task["id"] not in required_tasks:
+            required_tasks[task["id"]] = task
+
+    for task_id in required_tasks:
+        if required_tasks[task_id]["state"] != koji.TASK_STATES.get("CLOSED"):
+            if task_id == base_task_id:
+                error(_("Task %d has not finished yet.") % task_id)
+            else:
+                error(_("Child task %d has not finished yet.") % task_id)
+
+    # perform the download
+
+    number = 0
+    for (task, filename, new_filename) in downloads:
+        number += 1
+        print _("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename)
+        with open(new_filename, "wb") as output_file:
+            output_file.write(session.downloadTaskOutput(task["id"], filename))
 
 def anon_handle_wait_repo(options, session, args):
     "Wait for a repo to be regenerated"

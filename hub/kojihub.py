@@ -44,6 +44,7 @@ import os
 import re
 import rpm
 import shutil
+import simplejson as json
 import stat
 import subprocess
 import sys
@@ -2768,14 +2769,15 @@ def get_tag(tagInfo, strict=False, event=None):
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
 
-    - id
-    - name
-    - perm_id (may be null)
-    - perm (name, may be null)
-    - arches (may be null)
-    - locked
-    - maven_support
-    - maven_include_all
+    - id :      unique id for the tag
+    - name :    name of the tag
+    - perm_id : permission id (may be null)
+    - perm :    permission name (may be null)
+    - arches :  tag arches (string, may be null)
+    - locked :  lock setting (boolean)
+    - maven_support :           maven support flag (boolean)
+    - maven_include_all :       maven include all flag (boolean)
+    - extra :   extra tag parameters (dictionary)
 
     If there is no tag matching the given tagInfo, and strict is False,
     return None.  If strict is True, raise a GenericError.
@@ -2814,7 +2816,27 @@ def get_tag(tagInfo, strict=False, event=None):
         if strict:
             raise koji.GenericError, "Invalid tagInfo: %r" % tagInfo
         return None
+    result['extra'] = get_tag_extra(result)
     return result
+
+
+def get_tag_extra(tagInfo, event=None):
+    """ Get tag extra info (no inheritance) """
+    tables = ['tag_extra']
+    fields = ['key', 'value']
+    clauses = [eventCondition(event, table='tag_extra'), "tag_id = %(id)i"]
+    query = QueryProcessor(columns=fields, tables=tables, clauses=clauses, values=tagInfo,
+                           opts={'asList': True})
+    result = {}
+    for key, value in query.execute():
+        try:
+            value = json.loads(value)
+        except Exception:
+            # this should not happen
+            raise koji.GenericError("Invalid tag extra data: %s : %r", key, value)
+        result[key] = value
+    return result
+
 
 def edit_tag(tagInfo, **kwargs):
     """Edit information for an existing tag.
@@ -2871,18 +2893,36 @@ def edit_tag(tagInfo, **kwargs):
         if kwargs.has_key(key) and data[key] != kwargs[key]:
             changed = True
             data[key] = kwargs[key]
-    if not changed:
-        return
+    if changed:
+        update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
+        update.make_revoke()
+        update.execute()
 
-    update = UpdateProcessor('tag_config', values=data, clauses=['tag_id = %(id)i'])
-    update.make_revoke()
-    update.execute()
+        insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
+        insert.set(tag_id=data['id'])
+        insert.set(**dslice(data, ('maven_support', 'maven_include_all')))
+        insert.make_create()
+        insert.execute()
 
-    insert = InsertProcessor('tag_config', data=dslice(data, ('arches', 'perm_id', 'locked')))
-    insert.set(tag_id=data['id'])
-    insert.set(**dslice(data, ('maven_support', 'maven_include_all')))
-    insert.make_create()
-    insert.execute()
+    # handle extra data
+    if 'extra' in kwargs:
+        for key in kwargs['extra']:
+            value = kwargs['extra'][key]
+            if key not in tag['extra'] or tag['extra'] != value:
+                data = {
+                    'tag_id' : tag['id'],
+                    'key' : key,
+                    'value' : json.dumps(kwargs['extra'][key]),
+                }
+                # revoke old entry, if any
+                update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i', 'key=%(key)s'])
+                update.make_revoke()
+                update.execute()
+                # add new entry
+                insert = InsertProcessor('tag_extra', data=data)
+                insert.make_create()
+                insert.execute()
+
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID):
     """Edit information for an existing tag."""
@@ -3394,9 +3434,13 @@ def get_rpm(rpminfo, strict=False, multi=False):
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=data)
     if multi:
-        return query.execute()
+        data = query.execute()
+        for row in data:
+            row['size'] = koji.encode_int(row['size'])
+        return data
     ret = query.executeOne()
     if ret:
+        ret['size'] = koji.encode_int(ret['size'])
         return ret
     if retry:
         #at this point we have just an NVRA with no internal match. Open it up to externals
@@ -3406,6 +3450,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
+    ret['size'] = koji.encode_int(ret['size'])
     return ret
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
@@ -3480,7 +3525,10 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=locals(), opts=queryOpts)
-    return query.execute()
+    data = query.execute()
+    for row in data:
+        row['size'] = koji.encode_int(row['size'])
+    return data
 
 def get_maven_build(buildInfo, strict=False):
     """
@@ -5629,6 +5677,7 @@ def query_history(tables=None, **kwargs):
         'cg_users' : ['user_id', 'cg_id'],
         'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
         'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
+        'tag_extra' : ['tag_id', 'key', 'value'],
         'build_target_config' : ['build_target_id', 'build_tag', 'dest_tag'],
         'external_repo_config' : ['external_repo_id', 'url'],
         'tag_external_repos' : ['tag_id', 'external_repo_id', 'priority'],
@@ -9007,17 +9056,17 @@ class RootExports(object):
     def getBuildConfig(self,tag,event=None):
         """Return build configuration associated with a tag"""
         taginfo = get_tag(tag,strict=True,event=event)
-        arches = taginfo['arches']
-        if arches is None:
-            #follow inheritance for arches
-            order = readFullInheritance(taginfo['id'],event=event)
-            for link in order:
-                if link['noconfig']:
-                    continue
-                arches = get_tag(link['parent_id'],strict=True,event=event)['arches']
-                if arches is not None:
-                    taginfo['arches'] = arches
-                    break
+        order = readFullInheritance(taginfo['id'], event=event)
+        #follow inheritance for arches and extra
+        for link in order:
+            if link['noconfig']:
+                continue
+            ancestor = get_tag(link['parent_id'], strict=True, event=event)
+            if taginfo['arches'] is None and ancestor['arches'] is not None:
+                taginfo['arches'] = ancestor['arches']
+            for key in ancestor['extra']:
+                if key not in taginfo['extra']:
+                    taginfo['extra'][key] = ancestor['extra'][key]
         return taginfo
 
     def getRepo(self,tag,state=None,event=None):

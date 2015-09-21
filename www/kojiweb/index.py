@@ -1102,12 +1102,15 @@ def buildinfo(environ, buildID):
         archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
 
     rpmsByArch = {}
-    debuginfoByArch = {}
+    debuginfos = []
     for rpm in rpms:
         if koji.is_debuginfo(rpm['name']):
-            debuginfoByArch.setdefault(rpm['arch'], []).append(rpm)
+            debuginfos.append(rpm)
         else:
             rpmsByArch.setdefault(rpm['arch'], []).append(rpm)
+    # add debuginfos at the end
+    for rpm in debuginfos:
+        rpmsByArch.setdefault(rpm['arch'], []).append(rpm)
 
     if rpmsByArch.has_key('src'):
         srpm = rpmsByArch['src'][0]
@@ -1163,7 +1166,6 @@ def buildinfo(environ, buildID):
     values['build'] = build
     values['tags'] = tags
     values['rpmsByArch'] = rpmsByArch
-    values['debuginfoByArch'] = debuginfoByArch
     values['task'] = task
     values['mavenbuild'] = mavenbuild
     values['winbuild'] = winbuild

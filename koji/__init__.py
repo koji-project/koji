@@ -57,7 +57,7 @@ import xmlrpclib
 import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
-#import OpenSSL.SSL
+import OpenSSL
 import zipfile
 
 def _(args):
@@ -1291,6 +1291,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # Don't let a build last more than 24 hours
         'rpmbuild_timeout': opts.get('rpmbuild_timeout', 86400)
     }
+    if opts.get('package_manager'):
+        config_opts['package_manager'] = opts['package_manager']
 
     # bind_opts are used to mount parts (or all of) /dev if needed.
     # See kojid::LiveCDTask for a look at this option in action.
@@ -1727,7 +1729,7 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
-        servername = self._host
+        servername = socket.getfqdn(self._host)
         #portspec = servername.find(':')
         #if portspec != -1:
         #    servername = servername[:portspec]
@@ -1945,6 +1947,34 @@ class ClientSession(object):
                     raise
                 except Exception, e:
                     self._close_connection()
+                    if isinstance(e, OpenSSL.SSL.Error):
+                        # pyOpenSSL doesn't use different exception
+                        # subclasses, we have to actually parse the args
+                        for arg in e.args:
+                            # First, check to see if 'arg' is iterable because
+                            # it can be anything..
+                            try:
+                                iter(arg)
+                            except TypeError:
+                                continue
+
+                            # We do all this so that we can detect cert expiry
+                            # so we can avoid retrying those over and over.
+                            for items in arg:
+                                try:
+                                    iter(items)
+                                except TypeError:
+                                    continue
+
+                                if len(items) != 3:
+                                    continue
+
+                                _, _, ssl_reason = items
+
+                                if ('certificate revoked' in ssl_reason or
+                                        'certificate expired' in ssl_reason):
+                                    # There's no point in retrying for this
+                                    raise
                     if not self.logged_in:
                         #in the past, non-logged-in sessions did not retry. For compatibility purposes
                         #this behavior is governed by the anon_retry opt.
@@ -2043,7 +2073,7 @@ class ClientSession(object):
         result = self._callMethod('checkUpload', (path, name), chk_opts)
         if int(result['size']) != ofs:
             raise GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
-                    % (path, name, result['sumlength'], ofs)
+                    % (path, name, result['size'], ofs)
         if problems and result['hexdigest'] != full_chksum.hexdigest():
             raise GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
                     % (path, name, result['hexdigest'], full_chksum.hexdigest())
@@ -2390,11 +2420,6 @@ def _taskLabel(taskInfo):
         return '%s (%s)' % (method, extra)
     else:
         return '%s (%s)' % (method, arch)
-
-def _forceAscii(value):
-    """Replace characters not in the 7-bit ASCII range
-    with "?"."""
-    return ''.join([(ord(c) <= 127) and c or '?' for c in value])
 
 def fixEncoding(value, fallback='iso8859-15'):
     """

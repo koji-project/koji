@@ -1,4 +1,5 @@
 #from kojiweb import util
+#import pprint
 
 #include "includes/header.chtml"
 
@@ -152,6 +153,17 @@
     <tr>
       <td colspan="2"><a href="tagdelete?tagID=$tag.id$util.authToken($self)">Delete tag</a></td>
     </tr>
+    #end if
+    #if $tag.get('extra')
+    <tr>
+        <th>Extra options:</th>
+    </tr>
+    #for $key in $tag['extra']
+    <tr>
+        <th>$key</th>
+        <td>$pprint.pformat($tag['extra'][$key])</td>
+    </tr>
+    #end for
     #end if
   </table>
 
