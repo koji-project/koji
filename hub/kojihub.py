@@ -4647,6 +4647,10 @@ def cg_import(metadata, files):
 
     # TODO: pre import callback
 
+    # TODO: basic metadata sanity check (use jsonschema?)
+
+    # TODO: policy hooks
+
     # build entry
     buildinfo = get_build(metadata['build'], strict=False)
     if buildinfo:
@@ -4654,8 +4658,10 @@ def cg_import(metadata, files):
         raise koji.GenericError("Build already exists: %r", buildinfo)
     else:
         # create a new build
-        # TODO: how do we deal with epoch?
-        build_id = new_build(rpminfo)
+        buildinfo = dslice(metadata['build'], ['name', 'version', 'release'])
+        # epoch is not in the metadata spec, but we allow it to be specified
+        buildinfo['epoch'] = metadata['build'].get('epoch', None)
+        build_id = new_build(buildinfo)
         buildinfo = get_build(build_id, strict=True)
 
     # buildroots
@@ -4664,7 +4670,7 @@ def cg_import(metadata, files):
         brfakeid = brdata['id']
         if brfakeid in brmap:
             raise koji.GenericError("Duplicate buildroot id in metadata: %r", brfakeid)
-        brmap[brfakeid] = import_buildroot(brdata)
+        brmap[brfakeid] = cg_import_buildroot(brdata)
 
     # outputs
     for fileinfo in metadata['output']:
@@ -4686,6 +4692,24 @@ def cg_import(metadata, files):
 
     # TODO: post import callback
 
+
+def cg_import_buildroot(brdata):
+    """Import the given buildroot data"""
+
+    # buildroot entry
+    buildroot_id = 
+
+    # standard buildroot entry (if applicable)
+
+    # buildroot_listing
+
+    # buildroot_archives
+
+    # buildroot_tools_info
+
+    # buildroot_extra_info
+
+    return buildroot_id
 
 
 def cg_export(build):
@@ -9820,27 +9844,47 @@ class BuildRoot(object):
             #load buildroot data
             self.load(id)
 
-    def load(self,id):
-        fields = {
-            'buildroot_id': 'id',
-            'host_id': 'host_id',
-            'repo_id': 'repo_id',
-            'buildroot.container_arch': 'arch',
-            'task_id': 'task_id',
-            'create_event': 'create_event',
-            'retire_event': 'retire_event',
-            'state': 'state'}
-        fields, aliases = zip(*fields.items())
-        query = QueryProcessor(columns=fields, aliases=aliases,
-                    tables=['standard_buildroot'],
-                    joins=['buildroot ON buildroot.id=standard_buildroot.buildroot_id'],
-                    values={'id': id},
-                    clauses=['buildroot_id=%(id)s'])
+    def load(self, id):
+        fields = [
+            'id',
+            'br_type',
+            'cg_id',
+            'cg_version',
+            'container_type',
+            'container_arch',
+            'host_os',
+            'host_arch',
+            ]
+        query = QueryProcessor(columns=fields, tables=['buildroot'],
+                    values={'id': id}, clauses=['id=%(id)s'])
         data = query.execute()
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
         self.data = data[0]
+        if data.br_type == koji.BR_TYPES['STANDARD']:
+            self._load_standard()
+        else:
+            self.is_standard = False
+
+    def _load_standard(self):
+        fields = [
+            'host_id',
+            'repo_id',
+            'task_id',
+            'create_event',
+            'retire_event',
+            'state',
+            ]
+        query = QueryProcessor(columns=fields, tables=['standard_buildroot'],
+                    values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
+        data = query.execute()
+        if not data:
+            raise koji.GenericError, 'Not a standard buildroot: %i' % self.id
+        self.data.update(data)
+        # arch for compat
+        self.data['arch'] = self.data['container_arch']
+        self.is_standard = True
 
     def new(self, host, repo, arch, task_id=None, ctype='chroot'):
         state = koji.BR_STATES['INIT']
