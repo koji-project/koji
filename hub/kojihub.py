@@ -3522,12 +3522,18 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         else:
             raise koji.GenericError, 'invalid type for "arches" parameter: %s' % type(arches)
 
-    query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+    fields, aliases = zip(*fields)
+    query = QueryProcessor(columns=fields, aliases=aliases,
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=locals(), opts=queryOpts)
     data = query.execute()
-    for row in data:
-        row['size'] = koji.encode_int(row['size'])
+    if not (queryOpts and queryOpts.get('countOnly')):
+        if queryOpts and 'asList' in queryOpts:
+            key = aliases.index('size')
+        else:
+            key = 'size'
+        for row in data:
+            row[key] = koji.encode_int(row[key])
     return data
 
 def get_maven_build(buildInfo, strict=False):
