@@ -9868,7 +9868,7 @@ class BuildRoot(object):
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
         self.data = data[0]
-        if data.br_type == koji.BR_TYPES['STANDARD']:
+        if self.data.br_type == koji.BR_TYPES['STANDARD']:
             self._load_standard()
         else:
             self.is_standard = False
