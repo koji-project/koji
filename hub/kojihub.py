@@ -4718,16 +4718,42 @@ def cg_import_buildroot(cg_id, brdata):
     # ???
 
     # buildroot_listing
-    rpms = [r for r in brdata['components'] if r['type'] == 'rpm']
-    # ...
+    rpmlist = []
+    for comp in brdata['components']:
+        if comp['type'] != 'rpm':
+            continue
+        # TODO: do we allow inclusion of external rpms?
+        if 'location' in comp:
+            raise koji.GenericError("External rpms not allowed")
+        if 'id' in comp:
+            # not in metadata spec, and will confuse get_rpm
+            raise koji.GenericError("Unexpected 'id' field in component")
+        rinfo = get_rpm(comp, strict=True)
+        if rinfo['payloadhash'] != comp['sigmd5']:
+            nvr = "%(name)s-%(version)s-%(release)s" % rinfo
+            raise koji.GenericError("md5sum mismatch for %s: %s != %s"
+                        % (nvr, comp['sigmd5'], rinfo['payloadhash']))
+        # TODO - should we check the signature field?
+        rpmlist.append(rinfo)
+    br.setList(rpmlist)
 
     # buildroot_archives
+    archives = []
+    for comp in brdata['components']:
+        if comp['type'] != 'rpm':
+            continue
+        # hmm, how do we look up archives?
+        # updateMavenBuildRootList does seriously wild stuff
+        # only unique field in archiveinfo is id
+        # checksum/checksum_type only works if they match
+        # at the moment, we only have md5 entries in archiveinfo
+
 
     # buildroot_tools_info
 
     # buildroot_extra_info
 
-    return buildroot_id
+    return brinfo
 
 
 def cg_export(build):
