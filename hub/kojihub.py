@@ -4671,9 +4671,12 @@ def cg_import(metadata, files):
         buildinfo = get_build(build_id, strict=True)
 
     # buildroots
+    br_used = set([f['buildroot_id'] for f in metadata['output']])
     brmap = {}
     for brdata in metadata['buildroots']:
         brfakeid = brdata['id']
+        if brfakeid not in br_used:
+            raise koji.GenericError("Buildroot id not used in output: %r", brfakeid)
         if brfakeid in brmap:
             raise koji.GenericError("Duplicate buildroot id in metadata: %r", brfakeid)
         brmap[brfakeid] = cg_import_buildroot(brdata)
