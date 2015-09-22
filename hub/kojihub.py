@@ -4697,7 +4697,7 @@ def cg_import_buildroot(brdata):
     """Import the given buildroot data"""
 
     # buildroot entry
-    buildroot_id = 
+    buildroot_id = 'FOO'
 
     # standard buildroot entry (if applicable)
 
@@ -9901,50 +9901,82 @@ class BuildRoot(object):
         self.load(br_id)
         return self.id
 
-    def verifyTask(self,task_id):
+    def cg_new(self, data):
+        """New content generator buildroot"""
+
+        fields = [
+            'br_type',
+            'cg_id',
+            'cg_version',
+            'container_type',
+            'container_arch',
+            'host_os',
+            'host_arch',
+            ]
+        data.setdefault('br_type', koji.BR_STATES['EXTERNAL'])
+        data = dslice(data, fields)
+        for key in fields:
+            if key not in data:
+                raise koji.GenericError("Buildroot field %s not specified" % key)
+        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        insert = InsertProcessor('buildroot')
+        insert.set(id = br_id, **data)
+        insert.execute()
+
+    def assertStandard(self):
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
+        if not self.is_standard:
+            raise koji.GenericError('Not a standard buildroot: %s' % self.id)
+
+    def verifyTask(self, task_id):
+        self.assertStandard()
         return (task_id == self.data['task_id'])
 
-    def assertTask(self,task_id):
+    def assertTask(self, task_id):
+        self.assertStandard()
         if not self.verifyTask(task_id):
             raise koji.ActionNotAllowed, 'Task %s does not have lock on buildroot %s' \
                                         %(task_id,self.id)
 
-    def verifyHost(self,host_id):
-        if self.id is None:
-            raise koji.GenericError, "buildroot not specified"
+    def verifyHost(self, host_id):
+        self.assertStandard()
         return (host_id == self.data['host_id'])
 
-    def assertHost(self,host_id):
+    def assertHost(self, host_id):
+        self.assertStandard()
         if not self.verifyHost(host_id):
             raise koji.ActionNotAllowed, "Host %s not owner of buildroot %s" \
                                         % (host_id,self.id)
 
-    def setState(self,state):
-        if self.id is None:
-            raise koji.GenericError, "buildroot not specified"
-        id = self.id
-        if isinstance(state,str):
+    def setState(self, state):
+        self.assertStandard()
+        if isinstance(state, str):
             state = koji.BR_STATES[state]
         #sanity checks
         if state == koji.BR_STATES['INIT']:
             #we do not re-init buildroots
             raise koji.GenericError, "Cannot change buildroot state to INIT"
-        q = """SELECT state,retire_event FROM standard_buildroot WHERE buildroot_id=%(id)s FOR UPDATE"""
-        lstate,retire_event = _fetchSingle(q,locals(),strict=True)
-        if koji.BR_STATES[lstate] == 'EXPIRED':
+        query = QueryProcessor(fields=['state', 'retire_event'], values=self.data,
+                    tables=['standard_buildroot'], clauses=['buildroot_id=%(id)s'],
+                    opts={'rowlock':True})
+        row = query.executeOne()
+        if not row:
+            raise koji.GenericError("Unable to get state for buildroot %s" % self.id)
+        lstate,retire_event = ro
+        if koji.BR_STATES[row['state']] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
             #otherwise this is an error
-            if state == lstate:
+            if state == 'EXPIRED':
                 return
             else:
-                raise koji.GenericError, "buildroot %i is EXPIRED" % id
-        set = "state=%(state)s"
+                raise koji.GenericError, "buildroot %i is EXPIRED" % self.id
+        update = UpdateProcessor('standard_buildroot', clauses=['buildroot_id=%(id)s'],
+                                 values=self.data)
+        update.set(state=state)
         if koji.BR_STATES[state] == 'EXPIRED':
-            set += ",retire_event=get_event()"
-        update = """UPDATE standard_buildroot SET %s WHERE buildroot_id=%%(id)s""" % set
-        _dml(update,locals())
+            update.rawset(retire_event='get_event()')
+        update.execute()
         self.data['state'] = state
 
     def getList(self):
@@ -9970,15 +10002,13 @@ class BuildRoot(object):
                         values=locals())
         return query.execute()
 
-    def _setList(self,rpmlist,update=False):
+    def _setList(self, rpmlist, update=False):
         """Set or update the list of rpms in a buildroot"""
+
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
-        brootid = self.id
         if update:
-            current = dict([(r['rpm_id'],1) for r in self.getList()])
-        q = """INSERT INTO buildroot_listing (buildroot_id,rpm_id,is_update)
-        VALUES (%(brootid)s,%(rpm_id)s,%(update)s)"""
+            current = set([r['rpm_id'] for r in self.getList()])
         rpm_ids = []
         for an_rpm in rpmlist:
             location = an_rpm.get('location')
@@ -9988,24 +10018,30 @@ class BuildRoot(object):
             else:
                 data = get_rpm(an_rpm, strict=True)
             rpm_id = data['id']
-            if update and current.has_key(rpm_id):
+            if update and rpm_id in current:
                 #ignore duplicate packages for updates
                 continue
             rpm_ids.append(rpm_id)
         #we sort to try to avoid deadlock issues
         rpm_ids.sort()
-        for rpm_id in rpm_ids:
-            _dml(q, locals())
 
-    def setList(self,rpmlist):
+        # actually do the inserts
+        insert = InsertProcessor('buildroot_listing')
+        insert.set(buildroot_id=self.id, is_update=bool(update))
+        for rpm_id in rpm_ids:
+            insert.set(rpm_id=rpm_id)
+            insert.execute()
+
+    def setList(self, rpmlist):
         """Set the initial list of rpms in a buildroot"""
-        if self.data['state'] != koji.BR_STATES['INIT']:
+
+        if self.is_standard and self.data['state'] != koji.BR_STATES['INIT']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         self._setList(rpmlist,update=False)
 
-    def updateList(self,rpmlist):
+    def updateList(self, rpmlist):
         """Update the list of packages in a buildroot"""
-        if self.data['state'] != koji.BR_STATES['BUILDING']:
+        if self.is_standard and self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         self._setList(rpmlist,update=True)
 
@@ -10033,21 +10069,25 @@ class BuildRoot(object):
 
     def updateArchiveList(self, archives, project=False):
         """Update the list of archives in a buildroot.
-        If project is True, the archives are project dependencies.  If False, they dependencies required to setup the
-        build environment."""
-        if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
-            raise koji.GenericError, "non-rpm support is not enabled"
-        if self.data['state'] != koji.BR_STATES['BUILDING']:
-            raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
+
+        If project is True, the archives are project dependencies.
+        If False, they dependencies required to setup the build environment.
+        """
+
+        if self.is_standard:
+            if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
+                raise koji.GenericError, "non-rpm support is not enabled"
+            if self.data['state'] != koji.BR_STATES['BUILDING']:
+                raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         archives = set([r['id'] for r in archives])
         current = set([r['id'] for r in self.getArchiveList()])
         new_archives = archives.difference(current)
-        insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id, project_dep)
-        VALUES
-        (%(broot_id)i, %(archive_id)i, %(project)s)"""
-        broot_id = self.id
+        insert = InsertProcessor('buildroot_archives')
+        insert.set(buildroot_id=self.id, project_dep=bool(project))
         for archive_id in sorted(new_archives):
-            _dml(insert, locals())
+            insert.set(archive_id=archive_id)
+            insert.execute()
+
 
 class Host(object):
 
