@@ -9863,12 +9863,12 @@ class BuildRoot(object):
             ]
         query = QueryProcessor(columns=fields, tables=['buildroot'],
                     values={'id': id}, clauses=['id=%(id)s'])
-        data = query.execute()
+        data = query.executeOne()
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
-        self.data = data[0]
-        if self.data.br_type == koji.BR_TYPES['STANDARD']:
+        self.data = data
+        if data['br_type'] == koji.BR_TYPES['STANDARD']:
             self._load_standard()
         else:
             self.is_standard = False
@@ -9884,7 +9884,7 @@ class BuildRoot(object):
             ]
         query = QueryProcessor(columns=fields, tables=['standard_buildroot'],
                     values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
-        data = query.execute()
+        data = query.executeOne()
         if not data:
             raise koji.GenericError, 'Not a standard buildroot: %i' % self.id
         self.data.update(data)
