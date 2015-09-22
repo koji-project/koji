@@ -4699,15 +4699,27 @@ def cg_import(metadata, files):
     # TODO: post import callback
 
 
-def cg_import_buildroot(brdata):
+def cg_import_buildroot(cg_id, brdata):
     """Import the given buildroot data"""
 
     # buildroot entry
-    buildroot_id = 'FOO'
+    brinfo = {
+        'cg_id' : cg_id,
+        'cg_version' : brdata['content_generator']['version'],
+        'container_type' : brdata['container']['type'],
+        'container_arch' : brdata['container']['arch'],
+        'host_os' : brdata['host']['os'],
+        'host_arch' : brdata['host']['arch'],
+    }
+    br = BuildRoot()
+    br.cg_new(brinfo)
 
     # standard buildroot entry (if applicable)
+    # ???
 
     # buildroot_listing
+    rpms = [r for r in brdata['components'] if r['type'] == 'rpm']
+    # ...
 
     # buildroot_archives
 
@@ -6552,7 +6564,7 @@ def assert_cg(cg, user=None):
     user = get_user(user, strict=True)
     clauses = ['active = TRUE', 'user_id = %(user_id)s', 'cg_id = %(cg_id)s']
     data = {'user_id' : user['id'], 'cg_id' : cg['id']}
-    query = QueryProcessor(tables='cg_users', fields=['cg_id'], clauses=clauses, values=data)
+    query = QueryProcessor(tables='cg_users', columns=['cg_id'], clauses=clauses, values=data)
     if not query.execute():
         raise koji.AuthError("Content generator access required (%s)" % cg['name'])
 
@@ -9963,13 +9975,13 @@ class BuildRoot(object):
         if state == koji.BR_STATES['INIT']:
             #we do not re-init buildroots
             raise koji.GenericError, "Cannot change buildroot state to INIT"
-        query = QueryProcessor(fields=['state', 'retire_event'], values=self.data,
+        query = QueryProcessor(columns=['state', 'retire_event'], values=self.data,
                     tables=['standard_buildroot'], clauses=['buildroot_id=%(id)s'],
                     opts={'rowlock':True})
         row = query.executeOne()
         if not row:
             raise koji.GenericError("Unable to get state for buildroot %s" % self.id)
-        lstate,retire_event = ro
+        lstate, retire_event = row
         if koji.BR_STATES[row['state']] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
             #otherwise this is an error
