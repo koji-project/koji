@@ -598,7 +598,8 @@ class HubFormatter(logging.Formatter):
             record.session_id = None
             record.callnum = None
             record.user_name = None
-        return logging.Formatter.format(self, record)
+        return super(HubFormatter, self).format(record)
+
 
 def setup_logging1():
     """Set up basic logging, before options are loaded"""
