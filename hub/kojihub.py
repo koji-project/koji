@@ -4687,17 +4687,15 @@ def cg_import(metadata, files):
         if not brinfo:
             raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r",
                         fileinfo)
+
         # TODO map info to files entry (determine fn)
+
         if fileinfo['type'] == 'rpm':
-            rpminfo = import_rpm(fn, buildinfo, brinfo)
-            import_rpm_file(fn, buildinfo, rpminfo)
-            add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
+            cg_import_rpm(buildinfo, brinfo, fileinfo)
         elif fileinfo['type'] == 'log':
-            # TODO: determine subdir
-            import_build_log(fn, buildinfo, subdir=None)
+            cg_import_log(buildinfo, fileinfo)
         else:
-            # TODO support other types
-            raise koji.GenericError("Unsupported file type in import: %r", fileinfo['type'])
+            cg_import_archive(buildinfo, brinfo, fileinfo)
 
     # TODO: post import callback
 
@@ -4760,7 +4758,7 @@ def cg_import_buildroot(cg_id, brdata):
 
         type_mismatches = 0
         for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
-            if archive['checksum_type'] != comp['checksum_type']
+            if archive['checksum_type'] != comp['checksum_type']:
                 type_mismatches += 1
                 continue
             if archive['checksum'] == comp['checksum']:
@@ -4781,6 +4779,30 @@ def cg_import_buildroot(cg_id, brdata):
     br.setExtra(brdata['extra'])
 
     return brinfo
+
+
+def cg_import_rpm(buildinfo, brinfo, fileinfo):
+    rpminfo = import_rpm(fn, buildinfo, brinfo)
+    # TODO - handle fileinfo['extra']
+    import_rpm_file(fn, buildinfo, rpminfo)
+    add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
+
+
+def cg_import_log(buildinfo, fileinfo):
+    # TODO: determine subdir
+    import_build_log(fn, buildinfo, subdir=None)
+
+
+def cg_import_archive(buildinfo, brinfo, fileinfo):
+    typeinfo = get_archive_type(type_name = fileinfo['type'])
+    # XXX ^ is this sane?
+    if typeinfo is None:
+        # XXX should we support types we don't know about?
+        raise koji.GenericError("Unsupported file type in import: %r", fileinfo['type'])
+
+    # TODO - determine archive import type (maven/win/image)
+    # Do we need to add another archive import type?
+
 
 
 def cg_export(build):
