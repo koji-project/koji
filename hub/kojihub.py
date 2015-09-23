@@ -4717,14 +4717,23 @@ def cg_import_buildroot(cg_id, brdata):
     br = BuildRoot()
     br.cg_new(brinfo)
 
-    # standard buildroot entry (if applicable)
+    # TODO: standard buildroot entry (if applicable)
     # ???
+
+    #split components
+    rpms = []
+    files = []
+    for comp in brdata['components']:
+        if comp['type'] == 'rpm':
+            rpms.append(comp)
+        elif comp['type'] == 'file':
+            files.append(comp)
+        else:
+            raise koji.GenericError("Unknown component type: %(type)s" % comp)
 
     # buildroot_listing
     rpmlist = []
-    for comp in brdata['components']:
-        if comp['type'] != 'rpm':
-            continue
+    for comp in rpms:
         # TODO: do we allow inclusion of external rpms?
         if 'location' in comp:
             raise koji.GenericError("External rpms not allowed")
@@ -4742,14 +4751,28 @@ def cg_import_buildroot(cg_id, brdata):
 
     # buildroot_archives
     archives = []
-    for comp in brdata['components']:
-        if comp['type'] != 'rpm':
-            continue
+    for comp in files:
         # hmm, how do we look up archives?
         # updateMavenBuildRootList does seriously wild stuff
         # only unique field in archiveinfo is id
-        # checksum/checksum_type only works if they match
+        # checksum/checksum_type only works if type matches
         # at the moment, we only have md5 entries in archiveinfo
+
+        type_mismatches = 0
+        for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
+            if archive['checksum_type'] != comp['checksum_type']
+                type_mismatches += 1
+                continue
+            if archive['checksum'] == comp['checksum']:
+                archives.appen(archive)
+                break
+        else:
+            logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
+            if type_mismatches:
+                logger.error("Match failed with %i type mismatches", type_mismatches)
+            # TODO: allow external archives [??]
+            raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
+    br.updateArchiveList(archives)
 
     # buildroot_tools_info
     br.setTools(brdata['tools'])
