@@ -4751,10 +4751,11 @@ def cg_import_buildroot(cg_id, brdata):
         # checksum/checksum_type only works if they match
         # at the moment, we only have md5 entries in archiveinfo
 
-
     # buildroot_tools_info
+    br.setTools(brdata['tools'])
 
     # buildroot_extra_info
+    br.setExtra(brdata['extra'])
 
     return brinfo
 
@@ -10133,6 +10134,26 @@ class BuildRoot(object):
         insert.set(buildroot_id=self.id, project_dep=bool(project))
         for archive_id in sorted(new_archives):
             insert.set(archive_id=archive_id)
+            insert.execute()
+
+    def setTools(self, tools):
+        """Set tools info for buildroot"""
+
+        insert = InsertProcessor('buildroot_tools_info')
+        insert.set(buildroot_id=self.id)
+        for tool in tools:
+            insert.set(tool=tool['name'])
+            insert.set(version=tool['version'])
+            insert.execute()
+
+    def setExtra(self, extra):
+        """Set extra info for buildroot"""
+
+        insert = InsertProcessor('buildroot_extra_info')
+        insert.set(buildroot_id=self.id)
+        for key in extra:
+            insert.set(key=key)
+            insert.set(value=json.dumps(extra[key]))
             insert.execute()
 
 
