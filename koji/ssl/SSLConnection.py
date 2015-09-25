@@ -142,6 +142,10 @@ class SSLConnection:
                 return None
             except SSL.WantReadError:
                 time.sleep(0.2)
+            except SSL.SysCallError, e:
+                if e.args == (-1, 'Unexpected EOF'):
+                    break
+                raise
         return None
 
 class PlgFileObject(socket._fileobject):
