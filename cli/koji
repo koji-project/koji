@@ -1651,7 +1651,7 @@ def handle_import_cg(options, session, args):
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
-        parser.error(_("Please specify metadata and at least one file"))
+        parser.error(_("Please specify metadata files directory"))
         assert False
     if json is None:
         parser.error(_("Unable to find json module"))
@@ -1661,13 +1661,29 @@ def handle_import_cg(options, session, args):
     if 'output' not in metadata:
         print _("Metadata contains no output")
         sys.exit(1)
+    localdir = args[1]
 
     # TODO: determine upload path
+    to_upload = []
     for info in metadata['output']:
-        # TODO: upload file
-        pass
+        localpath = os.path.join(localdir, info.get('relpath', ''), info['filename'])
+        if not os.path.exists(localpath):
+            parser.error(_("No such file: %s") % localpath)
+        to_upload.append([localpath, info])
 
-    session.CGImport(metadata, upload_path)
+    # get upload path
+    # XXX - need a better way
+    serverdir = _unique_path('cli-import')
+
+    for localpath, info in to_upload:
+        relpath = os.path.join(serverdir, info.get('relpath', ''))
+        if options.link:
+            linked_upload(path, serverdir)
+        else:
+            session.uploadWrapper(localpath, serverdir)
+            # TODO - progress callback
+
+    session.CGImport(metadata, serverdir)
 
 
 def handle_import_comps(options, session, args):
