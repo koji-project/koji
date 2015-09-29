@@ -1623,17 +1623,22 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
 
-    values['title'] = '%(tag_name)s-%(id)i-%(repo_id)i' % buildroot + ' | Buildroot Info'
-
     if buildroot == None:
         raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
-    task = server.getTaskInfo(buildroot['task_id'], request=True)
+    elif buildroot['br_type'] == koji.BR_TYPES['STANDARD']:
+        template = 'buildrootinfo.chtml'
+        values['title'] = '%(tag_name)s-%(id)i-%(repo_id)i | Buildroot Info' % buildroot
+        values['task'] = server.getTaskInfo(buildroot['task_id'], request=True)
+
+    else:
+        template = 'buildrootinfo_cg.chtml'
+        values['title'] = '%(cg_name)s:%(id)i | Buildroot Info' % buildroot
+        # TODO - fetch tools and extras info
 
     values['buildroot'] = buildroot
-    values['task'] = task
 
-    return _genHTML(environ, 'buildrootinfo.chtml')
+    return _genHTML(environ, template)
 
 def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nvr'):
     """
