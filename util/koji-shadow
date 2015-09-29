@@ -436,7 +436,7 @@ class TrackedBuild(object):
             print "Downloading %s" % url
             #XXX - this is not really the right place for this
             fsrc = urllib2.urlopen(url)
-            fn = "/tmp/koji-shadow/%s.src.rpm" % self.nvr
+            fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
             fdst = file(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
