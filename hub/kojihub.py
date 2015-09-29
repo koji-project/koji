@@ -10016,6 +10016,8 @@ class BuildRoot(object):
         insert = InsertProcessor('buildroot')
         insert.set(id = br_id, **data)
         insert.execute()
+        self.load(br_id)
+        return self.id
 
     def assertStandard(self):
         if self.id is None:
