@@ -4796,6 +4796,7 @@ def cg_import_rpm(buildinfo, brinfo, fileinfo):
 
 def cg_import_log(buildinfo, fileinfo):
     # TODO: determine subdir
+    fn = fileinfo['hub.path']
     import_build_log(fn, buildinfo, subdir=None)
 
 
