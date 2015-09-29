@@ -6639,7 +6639,7 @@ def assert_cg(cg, user=None):
     user = get_user(user, strict=True)
     clauses = ['active = TRUE', 'user_id = %(user_id)s', 'cg_id = %(cg_id)s']
     data = {'user_id' : user['id'], 'cg_id' : cg['id']}
-    query = QueryProcessor(tables='cg_users', columns=['cg_id'], clauses=clauses, values=data)
+    query = QueryProcessor(tables=['cg_users'], columns=['cg_id'], clauses=clauses, values=data)
     if not query.execute():
         raise koji.AuthError("Content generator access required (%s)" % cg['name'])
 
