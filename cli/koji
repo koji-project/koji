@@ -1663,7 +1663,6 @@ def handle_import_cg(options, session, args):
         sys.exit(1)
     localdir = args[1]
 
-    # TODO: determine upload path
     to_upload = []
     for info in metadata['output']:
         localpath = os.path.join(localdir, info.get('relpath', ''), info['filename'])
@@ -1678,9 +1677,9 @@ def handle_import_cg(options, session, args):
     for localpath, info in to_upload:
         relpath = os.path.join(serverdir, info.get('relpath', ''))
         if options.link:
-            linked_upload(path, serverdir)
+            linked_upload(path, relpath)
         else:
-            session.uploadWrapper(localpath, serverdir)
+            session.uploadWrapper(localpath, relpath)
             # TODO - progress callback
 
     session.CGImport(metadata, serverdir)
