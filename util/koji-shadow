@@ -116,7 +116,7 @@ def get_options():
                       help=_("use 'import --link' functionality"))
     parser.add_option("--remote-topurl",
                       help=_("topurl for remote server"))
-    parser.add_option("--workpath", default="/tmp/koji-shadow",
+    parser.add_option("--workpath", default="/var/tmp/koji-shadow",
                       help=_("location to store work files"))
     parser.add_option("--auth-cert",
                       help=_("Certificate for authentication"))
