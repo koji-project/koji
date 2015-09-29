@@ -4783,12 +4783,12 @@ def cg_import_buildroot(brdata):
     if 'extra' in brdata:
         br.setExtra(brdata['extra'])
 
-    return brinfo
+    return br
 
 
 def cg_import_rpm(buildinfo, brinfo, fileinfo):
     fn = fileinfo['hub.path']
-    rpminfo = import_rpm(fn, buildinfo, brinfo)
+    rpminfo = import_rpm(fn, buildinfo, brinfo.id)
     # TODO - handle fileinfo['extra']
     import_rpm_file(fn, buildinfo, rpminfo)
     add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
