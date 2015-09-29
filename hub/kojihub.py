@@ -6633,7 +6633,7 @@ def remove_user_from_cg(user, cg):
 def assert_cg(cg, user=None):
     cg = lookup_name('content_generator', cg, strict=True)
     if user is None:
-        if context.session.logged_in:
+        if not context.session.logged_in:
             raise koji.AuthError("Not logged in")
         user = context.session.user_id
     user = get_user(user, strict=True)
