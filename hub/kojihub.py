@@ -4777,7 +4777,8 @@ def cg_import_buildroot(brdata):
     br.setTools(brdata['tools'])
 
     # buildroot_extra_info
-    br.setExtra(brdata['extra'])
+    if 'extra' in brdata:
+        br.setExtra(brdata['extra'])
 
     return brinfo
 
