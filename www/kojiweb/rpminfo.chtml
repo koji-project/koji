@@ -65,7 +65,7 @@
     </tr>
     #if $builtInRoot
     <tr>
-      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
+      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot._display</a></td>
     </tr>
     #end if
     #if $rpm.external_repo_id == 0

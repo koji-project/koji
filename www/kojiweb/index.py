@@ -1341,6 +1341,10 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     builtInRoot = None
     if rpm['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
+        if builtInRoot['br_type'] == koji.BR_TYPES['STANDARD']:
+            builtInRoot['_display'] = '%(tag_name)s-%(id)i-%(repo_id)i' % builtInRoot
+        else:
+            builtInRoot['_display'] = '%(cg_name)s:%(id)i' % builtInRoot
     if rpm['external_repo_id'] == 0:
         values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
         values['requires'].sort(_sortbyname)
