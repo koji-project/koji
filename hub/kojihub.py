@@ -4635,7 +4635,7 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     return rpminfo
 
 
-def cg_import(metadata, files):
+def cg_import(metadata, directory):
     """ Import build from a content generator"""
 
     metaver = metadata['metadata_version']
@@ -4684,6 +4684,9 @@ def cg_import(metadata, files):
 
     # outputs
     for fileinfo in metadata['output']:
+        workdir = koji.pathinfo.work()
+        path = os.path.join(workdir, directory, fileinfo.get('relpath', ''), fileinfo['filename'])
+        fileinfo['hub.path'] = path
         brinfo = brmap.get(fileinfo['buildroot_id'])
         if not brinfo:
             raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r",
@@ -4784,6 +4787,7 @@ def cg_import_buildroot(brdata):
 
 
 def cg_import_rpm(buildinfo, brinfo, fileinfo):
+    fn = fileinfo['hub.path']
     rpminfo = import_rpm(fn, buildinfo, brinfo)
     # TODO - handle fileinfo['extra']
     import_rpm_file(fn, buildinfo, rpminfo)
