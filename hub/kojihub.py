@@ -4648,6 +4648,7 @@ def cg_import(metadata, files):
         cginfo = brdata['content_generator']
         cg = lookup_name('content_generator', cginfo['name'], strict=True)
         cgs.add(cg['id'])
+        brdata['cg_id'] = cg['id']
     for cg_id in cgs:
         assert_cg(cg_id)
 
@@ -4700,12 +4701,12 @@ def cg_import(metadata, files):
     # TODO: post import callback
 
 
-def cg_import_buildroot(cg_id, brdata):
+def cg_import_buildroot(brdata):
     """Import the given buildroot data"""
 
     # buildroot entry
     brinfo = {
-        'cg_id' : cg_id,
+        'cg_id' : brdata['cg_id'],
         'cg_version' : brdata['content_generator']['version'],
         'container_type' : brdata['container']['type'],
         'container_arch' : brdata['container']['arch'],
