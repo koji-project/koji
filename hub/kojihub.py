@@ -10007,7 +10007,7 @@ class BuildRoot(object):
             'host_os',
             'host_arch',
             ]
-        data.setdefault('br_type', koji.BR_STATES['EXTERNAL'])
+        data.setdefault('br_type', koji.BR_TYPES['EXTERNAL'])
         data = dslice(data, fields)
         for key in fields:
             if key not in data:
