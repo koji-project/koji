@@ -4692,8 +4692,6 @@ def cg_import(metadata, directory):
             raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r",
                         fileinfo)
 
-        # TODO map info to files entry (determine fn)
-
         if fileinfo['type'] == 'rpm':
             cg_import_rpm(buildinfo, brinfo, fileinfo)
         elif fileinfo['type'] == 'log':
