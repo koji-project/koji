@@ -4203,10 +4203,10 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
            'LEFT OUTER JOIN content_generator ON buildroot.cg_id = content_generator.id',
            'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
            'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
-           'tag ON tag.id = repo.tag_id',
+           'LEFT OUTER JOIN tag ON tag.id = repo.tag_id',
            'LEFT OUTER JOIN events AS create_events ON create_events.id = standard_buildroot.create_event',
            'LEFT OUTER JOIN events AS retire_events ON standard_buildroot.retire_event = retire_events.id',
-           'events AS repo_create ON repo_create.id = repo.create_event']
+           'LEFT OUTER JOIN events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
     if buildrootID != None:
