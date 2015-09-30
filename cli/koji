@@ -2520,6 +2520,51 @@ def handle_revoke_permission(options, session, args):
     for user in users:
         session.revokePermission(user['name'], perm)
 
+
+def handle_add_user_to_cg(options, session, args):
+    "[admin] Add a user to a content generator"
+    usage = _("usage: %prog grant-permission <user> <content generator>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--new", action="store_true", help=_("Create a new content generator"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a user and content generator"))
+        assert False
+    activate_session(session)
+    user = args[0]
+    cg = args[1]
+    user = session.getUser(user)
+    if user is None:
+        parser.error(_("No such user: %s" % n))
+        assert False
+        users.append(user)
+    kwargs = {}
+    if options.new:
+        kwargs['create'] = True
+    session.addUserToCG(user['name'], cg, **kwargs)
+
+
+def handle_remove_user_from_cg(options, session, args):
+    "[admin] Remove a user from a content generator"
+    usage = _("usage: %prog remove-user-from-cg <user> <content generator>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a user and content generator"))
+        assert False
+    activate_session(session)
+    user = args[0]
+    cg = args[1]
+    user = session.getUser(user)
+    if user is None:
+        parser.error(_("No such user: %s" % n))
+        assert False
+        users.append(user)
+    session.removeUserFromCG(user['name'], cg)
+
+
 def anon_handle_latest_build(options, session, args):
     "Print the latest builds for a tag"
     usage = _("usage: %prog latest-build [options] tag package [package...]")

@@ -6608,12 +6608,15 @@ def set_user_status(user, status):
         raise koji.GenericError, 'invalid user ID: %i' % user_id
 
 
-def add_user_to_cg(user, cg):
+def add_user_to_cg(user, cg, create=False):
     """Associate a user with a content generator"""
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
-    cg = lookup_name('content_generator', cg, strict=True)
+    if create:
+        cg = lookup_name('content_generator', cg, create=True)
+    else:
+        cg = lookup_name('content_generator', cg, strict=True)
     ins = InsertProcessor('cg_users')
     ins.set(cg_id=cg['id'], user_id=user['id'])
     ins.make_create()
