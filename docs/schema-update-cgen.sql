@@ -41,6 +41,30 @@ CREATE TABLE buildroot_extra_info (
 ) WITHOUT OIDS;
 
 
+CREATE TABLE build_extra_info (
+       build_id INTEGER NOT NULL REFERENCES build(id),
+       key TEXT NOT NULL,
+       value TEXT NOT NULL,
+       PRIMARY KEY (build_id, key)
+) WITHOUT OIDS;
+
+
+CREATE TABLE rpminfo_extra_info (
+       rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+       key TEXT NOT NULL,
+       value TEXT NOT NULL,
+       PRIMARY KEY (rpminfo_id, key)
+) WITHOUT OIDS;
+
+
+CREATE TABLE archiveinfo_extra_info (
+       archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+       key TEXT NOT NULL,
+       value TEXT NOT NULL,
+       PRIMARY KEY (archiveinfo_id, key)
+) WITHOUT OIDS;
+
+
 CREATE TABLE image_archive_listing (
        image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
        archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
