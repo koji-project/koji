@@ -6608,8 +6608,8 @@ def set_user_status(user, status):
         raise koji.GenericError, 'invalid user ID: %i' % user_id
 
 
-def add_user_to_cg(user, cg, create=False):
-    """Associate a user with a content generator"""
+def grant_cg_access(user, cg, create=False):
+    """Grant user access to act as the given content generator"""
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
@@ -6621,12 +6621,12 @@ def add_user_to_cg(user, cg, create=False):
     ins.set(cg_id=cg['id'], user_id=user['id'])
     ins.make_create()
     if ins.dup_check():
-        raise koji.GenericError("User already associated with content generator")
+        raise koji.GenericError("User already has access to content generator %(name)s" % cg)
     ins.execute()
 
 
-def remove_user_from_cg(user, cg):
-    """De-associate a user with a content generator"""
+def revoke_cg_access(user, cg):
+    """Revoke a user's access to act as the given content generator"""
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
@@ -9168,8 +9168,8 @@ class RootExports(object):
             raise koji.GenericError, 'unknown user: %s' % username
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
 
-    addUserToCG = staticmethod(add_user_to_cg)
-    removeUserFromCG = staticmethod(remove_user_from_cg)
+    grantCGAccess = staticmethod(grant_cg_access)
+    revokeCGAccess = staticmethod(revoke_cg_access)
 
     #group management calls
     newGroup = staticmethod(new_group)

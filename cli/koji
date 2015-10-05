@@ -2521,9 +2521,9 @@ def handle_revoke_permission(options, session, args):
         session.revokePermission(user['name'], perm)
 
 
-def handle_add_user_to_cg(options, session, args):
+def handle_grant_cg_access(options, session, args):
     "[admin] Add a user to a content generator"
-    usage = _("usage: %prog grant-permission <user> <content generator>")
+    usage = _("usage: %prog grant-cg-access <user> <content generator>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--new", action="store_true", help=_("Create a new content generator"))
@@ -2542,12 +2542,12 @@ def handle_add_user_to_cg(options, session, args):
     kwargs = {}
     if options.new:
         kwargs['create'] = True
-    session.addUserToCG(user['name'], cg, **kwargs)
+    session.grantCGAccess(user['name'], cg, **kwargs)
 
 
-def handle_remove_user_from_cg(options, session, args):
+def handle_revoke_cg_access(options, session, args):
     "[admin] Remove a user from a content generator"
-    usage = _("usage: %prog remove-user-from-cg <user> <content generator>")
+    usage = _("usage: %prog revoke-cg-access <user> <content generator>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
@@ -2562,7 +2562,7 @@ def handle_remove_user_from_cg(options, session, args):
         parser.error(_("No such user: %s" % n))
         assert False
         users.append(user)
-    session.removeUserFromCG(user['name'], cg)
+    session.revokeCGAccess(user['name'], cg)
 
 
 def anon_handle_latest_build(options, session, args):
