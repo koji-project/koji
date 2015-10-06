@@ -21,7 +21,6 @@ DROP TABLE groups;
 DROP TABLE tag_listing;
 DROP TABLE tag_packages;
 
-DROP TABLE buildroot_extra_info;
 DROP TABLE buildroot_tools_info;
 DROP TABLE standard_buildroot;
 DROP TABLE buildroot;
@@ -295,6 +294,7 @@ CREATE TABLE build (
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),
 	owner INTEGER NOT NULL REFERENCES users (id),
+	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                           (state != 0 AND completion_time IS NOT NULL))
@@ -525,7 +525,8 @@ CREATE TABLE buildroot (
 		(container_type IS NULL AND container_arch IS NULL)
 		OR (container_type IS NOT NULL AND container_arch IS NOT NULL)),
 	host_os TEXT,
-	host_arch TEXT
+	host_arch TEXT,
+	extra TEXT
 ) WITHOUT OIDS;
 
 CREATE TABLE standard_buildroot (
@@ -543,13 +544,6 @@ CREATE TABLE buildroot_tools_info (
 	tool TEXT NOT NULL,
 	version TEXT NOT NULL,
 	PRIMARY KEY (buildroot_id, tool)
-) WITHOUT OIDS;
-
-CREATE TABLE buildroot_extra_info (
-	buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
-	key TEXT NOT NULL,
-	value TEXT NOT NULL,
-	PRIMARY KEY (buildroot_id, key)
 ) WITHOUT OIDS;
 
 
@@ -697,6 +691,7 @@ CREATE TABLE rpminfo (
 	payloadhash TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	buildtime BIGINT NOT NULL,
+	extra TEXT,
 	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
@@ -829,7 +824,8 @@ CREATE TABLE archiveinfo (
 	filename TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	checksum TEXT NOT NULL,
-	checksum_type INTEGER NOT NULL
+	checksum_type INTEGER NOT NULL,
+	extra TEXT
 ) WITHOUT OIDS;
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);

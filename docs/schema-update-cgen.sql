@@ -33,13 +33,6 @@ CREATE TABLE buildroot_tools_info (
        PRIMARY KEY (buildroot_id, tool)
 ) WITHOUT OIDS;
 
-CREATE TABLE buildroot_extra_info (
-       buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
-       key TEXT NOT NULL,
-       value TEXT NOT NULL,
-       PRIMARY KEY (buildroot_id, key)
-) WITHOUT OIDS;
-
 
 CREATE TABLE image_archive_listing (
        image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
@@ -47,6 +40,14 @@ CREATE TABLE image_archive_listing (
        UNIQUE (image_id, archive_id)
 ) WITHOUT OIDS;
 CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
+
+
+-- new columns --
+
+select now(), 'Adding new columns' as msg;
+ALTER TABLE build ADD COLUMN extra TEXT;
+ALTER TABLE rpminfo ADD COLUMN extra TEXT;
+ALTER TABLE archiveinfo ADD COLUMN extra TEXT;
 
 
 -- the more complicated stuff
@@ -90,6 +91,7 @@ ALTER TABLE buildroot ADD COLUMN cg_version TEXT;
 ALTER TABLE buildroot ADD COLUMN container_type TEXT;
 ALTER TABLE buildroot ADD COLUMN host_os TEXT;
 ALTER TABLE buildroot ADD COLUMN host_arch TEXT;
+ALTER TABLE buildroot ADD COLUMN extra TEXT;
 
 SELECT now(), 'Altering buildroot table (altering columns)' as msg;
 ALTER TABLE buildroot RENAME arch TO container_arch;
