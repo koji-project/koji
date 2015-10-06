@@ -4407,6 +4407,13 @@ def new_build(data):
     for f in ('version','release','epoch'):
         if not data.has_key(f):
             raise koji.GenericError, "No %s value for build" % f
+    if 'extra' in data:
+        try:
+            data['extra'] = json.loads(data['extra'])
+        except Exception:
+            raise koji.GenericError("Invalid build extra data: %(extra)r", data)
+    else:
+        data['extra'] = None
     #provide a few default values
     data.setdefault('state',koji.BUILD_STATES['COMPLETE'])
     data.setdefault('completion_time', 'NOW')
@@ -4445,7 +4452,7 @@ def new_build(data):
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                         'task_id', 'owner', 'completion_time'])
+                         'task_id', 'owner', 'completion_time', 'extra'])
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
@@ -4713,6 +4720,7 @@ def cg_import_buildroot(brdata):
         'container_arch' : brdata['container']['arch'],
         'host_os' : brdata['host']['os'],
         'host_arch' : brdata['host']['arch'],
+        'extra' : brdata.get('extra'),
     }
     br = BuildRoot()
     br.cg_new(brinfo)
@@ -4776,10 +4784,6 @@ def cg_import_buildroot(brdata):
 
     # buildroot_tools_info
     br.setTools(brdata['tools'])
-
-    # buildroot_extra_info
-    if 'extra' in brdata:
-        br.setExtra(brdata['extra'])
 
     return br
 
@@ -9955,10 +9959,16 @@ class BuildRoot(object):
             'container_arch',
             'host_os',
             'host_arch',
+            'extra',
             ]
         query = QueryProcessor(columns=fields, tables=['buildroot'],
                     values={'id': id}, clauses=['id=%(id)s'])
         data = query.executeOne()
+        if data['extra'] != None:
+            try:
+                data['extra'] = json.loads(data['extra'])
+            except Exception:
+                raise koji.GenericError("Invalid buildroot extra data: %(extra)r", data)
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
@@ -10013,12 +10023,15 @@ class BuildRoot(object):
             'container_arch',
             'host_os',
             'host_arch',
+            'extra',
             ]
         data.setdefault('br_type', koji.BR_TYPES['EXTERNAL'])
         data = dslice(data, fields)
         for key in fields:
             if key not in data:
                 raise koji.GenericError("Buildroot field %s not specified" % key)
+        if data['extra'] is not None:
+            data['extra'] = json.dumps(data['extra']),
         br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
         insert = InsertProcessor('buildroot')
         insert.set(id = br_id, **data)
@@ -10199,16 +10212,6 @@ class BuildRoot(object):
         for tool in tools:
             insert.set(tool=tool['name'])
             insert.set(version=tool['version'])
-            insert.execute()
-
-    def setExtra(self, extra):
-        """Set extra info for buildroot"""
-
-        insert = InsertProcessor('buildroot_extra_info')
-        insert.set(buildroot_id=self.id)
-        for key in extra:
-            insert.set(key=key)
-            insert.set(value=json.dumps(extra[key]))
             insert.execute()
 
 
