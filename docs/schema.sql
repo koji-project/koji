@@ -303,15 +303,6 @@ CREATE TABLE build (
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
 CREATE INDEX build_completion ON build(completion_time);
 
-
-CREATE TABLE build_extra_info (
-	build_id INTEGER NOT NULL REFERENCES build(id),
-	key TEXT NOT NULL,
-	value TEXT NOT NULL,
-	PRIMARY KEY (build_id, key)
-) WITHOUT OIDS;
-
-
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
 
@@ -710,15 +701,6 @@ CREATE TABLE rpminfo (
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
 
-
-CREATE TABLE rpminfo_extra_info (
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
-	key TEXT NOT NULL,
-	value TEXT NOT NULL,
-	PRIMARY KEY (rpminfo_id, key)
-) WITHOUT OIDS;
-
-
 -- sighash is the checksum of the signature header
 CREATE TABLE rpmsigs (
 	rpm_id INTEGER NOT NULL REFERENCES rpminfo (id),
@@ -853,15 +835,6 @@ CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
 CREATE INDEX archiveinfo_type_idx on archiveinfo (type_id);
 CREATE INDEX archiveinfo_filename_idx on archiveinfo(filename);
-
-
-CREATE TABLE archiveinfo_extra_info (
-	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
-	key TEXT NOT NULL,
-	value TEXT NOT NULL,
-	PRIMARY KEY (archiveinfo_id, key)
-) WITHOUT OIDS;
-
 
 CREATE TABLE maven_archives (
         archive_id INTEGER NOT NULL PRIMARY KEY REFERENCES archiveinfo(id),
