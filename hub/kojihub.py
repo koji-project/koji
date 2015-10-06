@@ -3268,14 +3268,18 @@ def find_build_id(X, strict=False):
             return None
     return r[0]
 
+
 def get_build(buildInfo, strict=False):
-    """Return information about a build.  buildID may be either
-    a int ID, a string NVR, or a map containing 'name', 'version'
-    and 'release.  A map will be returned containing the following
-    keys:
+    """Return information about a build.
+
+    buildID may be either a int ID, a string NVR, or a map containing
+    'name', 'version' and 'release.
+
+    A map will be returned containing the following keys:
       id: build ID
       package_id: ID of the package built
       package_name: name of the package built
+      name: same as package_name
       version
       release
       epoch
@@ -3291,6 +3295,7 @@ def get_build(buildInfo, strict=False):
       creation_ts: time the build was created (epoch)
       completion_time: time the build was completed (may be null)
       completion_ts: time the build was completed (epoch, may be null)
+      extra: dictionary with extra data about the build
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -3307,18 +3312,18 @@ def get_build(buildInfo, strict=False):
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
               ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name'))
-    query = """SELECT %s
-    FROM build
-    JOIN events ON build.create_event = events.id
-    JOIN package on build.pkg_id = package.id
-    JOIN volume on build.volume_id = volume.id
-    JOIN users on build.owner = users.id
-    WHERE build.id = %%(buildID)i""" % ', '.join([pair[0] for pair in fields])
-
-    c = context.cnx.cursor()
-    c.execute(query, locals())
-    result = c.fetchone()
+              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('build.extra', 'extra'))
+    fields, aliases = zip(*fields)
+    joins = ['events ON build.create_event = events.id',
+             'package on build.pkg_id = package.id',
+             'volume on build.volume_id = volume.id',
+             'users on build.owner = users.id',
+            ]
+    clauses = ['build.id = %(buildID)i']
+    query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
+                           tables=['build'], joins=joins, clauses=clauses)
+    result = query.executeOne()
 
     if not result:
         if strict:
@@ -3326,8 +3331,10 @@ def get_build(buildInfo, strict=False):
         else:
             return None
     else:
-        ret = dict(zip([pair[1] for pair in fields], result))
-        return ret
+        if result['extra'] is not None:
+            result['extra'] = json.loads(result['extra'])
+        return result
+
 
 def get_next_release(build_info):
     """find the last successful or deleted build of this N-V"""
