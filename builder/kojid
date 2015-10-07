@@ -84,6 +84,8 @@ try:
     from imgfac.PersistentImageManager import PersistentImageManager
     from imgfac.BaseImage import BaseImage
     from imgfac.TargetImage import TargetImage
+    # NOTE: import below requires Factory 1.1.7 or higher
+    from imgfac.FactoryUtils import qemu_convert_cmd
     ozif_enabled = True
 except ImportError:
     pass
@@ -3420,8 +3422,18 @@ class BaseImageTask(OzImageTask):
         newimg = os.path.join(self.workdir, self.imgname + '.%s' % ofmt)
         cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
             format, self.base_img.base_image.data, newimg]
-        if format in ('qcow', 'qcow2'):
+        if format == 'qcow':
             cmd.insert(2, '-c') # enable compression for qcow images
+        if format == 'qcow2':
+            # qemu-img changed its default behavior at some point to generate a
+            # v3 image when the requested output format is qcow2.  We don't
+            # want koji to output different formats based on the verison of
+            # qemu-img that happens to be on the builder. Here we use a function
+            # inside of Image Factory that detects qemu-img behavior and adds
+            # the correct options to ensure original "v2" compatibility
+            cmd = qemu_convert_cmd(self.base_img.base_image.data, newimg, compress=True)
+            # Factory does not use a full path - for consistency, force that here
+            cmd[0] = '/usr/bin/qemu-img'
         conlog = os.path.join(self.workdir,
             'qemu-img-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog,
