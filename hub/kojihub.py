@@ -9742,33 +9742,42 @@ class Host(object):
             raise koji.AuthError, "This method requires an exclusive session"
         return True
 
-    def taskUnwait(self,parent):
+    def taskUnwait(self, parent):
         """Clear wait data for task"""
-        c = context.cnx.cursor()
         #unwait the task
-        q = """UPDATE task SET waiting='false' WHERE id = %(parent)s"""
-        context.commit_pending = True
-        c.execute(q,locals())
+        update = UpdateProcessor('task', clauses=['id=%(parent)s'], values=locals())
+        update.set(waiting=False)
+        update.execute()
         #...and un-await its subtasks
-        q = """UPDATE task SET awaited='false' WHERE parent=%(parent)s"""
-        c.execute(q,locals())
+        update = UpdateProcessor('task', clauses=['parent=%(parent)s'], values=locals())
+        update.set(awaited=False)
+        update.execute()
 
-    def taskSetWait(self,parent,tasks):
+    def taskSetWait(self, parent, tasks):
         """Mark task waiting and subtasks awaited"""
-        self.taskUnwait(parent)
-        c = context.cnx.cursor()
-        #mark tasks awaited
-        q = """UPDATE task SET waiting='true' WHERE id=%(parent)s"""
-        context.commit_pending = True
-        c.execute(q,locals())
+
+        # mark parent as waiting
+        update = UpdateProcessor('task', clauses=['id=%(parent)s'], values=locals())
+        update.set(waiting=True)
+        update.execute()
+
+        # mark children awaited
         if tasks is None:
-            #wait on all subtasks
-            q = """UPDATE task SET awaited='true' WHERE parent=%(parent)s"""
-            c.execute(q,locals())
+            # wait on all subtasks
+            update = UpdateProcessor('task', clauses=['parent=%(parent)s'], values=locals())
+            update.set(awaited=True)
+            update.execute()
         else:
-            for id in tasks:
-                q = """UPDATE task SET awaited='true' WHERE id=%(id)s"""
-                c.execute(q,locals())
+            # wait on specified subtasks
+            update = UpdateProcessor('task', clauses=['id IN %(tasks)s', 'parent=%(parent)s'], values=locals())
+            update.set(awaited=True)
+            update.execute()
+            # clear awaited flag on any other child tasks
+            update = UpdateProcessor('task', values=locals(),
+                            clauses=['id NOT IN %(tasks)s', 'parent=%(parent)s', 'awaited=true'])
+            update.set(awaited=False)
+            update.execute()
+
 
     def taskWaitCheck(self,parent):
         """Return status of awaited subtask
