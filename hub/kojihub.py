@@ -4823,15 +4823,23 @@ def cg_import_log(buildinfo, fileinfo):
 
 
 def cg_import_archive(buildinfo, brinfo, fileinfo):
-    typeinfo = get_archive_type(type_name = fileinfo['type'])
-    # XXX ^ is this sane?
-    if typeinfo is None:
-        # XXX should we support types we don't know about?
-        raise koji.GenericError("Unsupported file type in import: %r", fileinfo['type'])
+    fn = fileinfo['hub.path']
 
-    # TODO - determine archive import type (maven/win/image)
-    # Do we need to add another archive import type?
+    # determine archive import type (maven/win/image/other)
+    extra = fileinfo.get('extra', {})
+    legacy_types = ['maven', 'win', 'image']
+    l_type = None
+    type_info = None
+    for name in legacy_types:
+        key = '%s_info' % name
+        if key in extra:
+            if l_type is not None:
+                raise koji.GenericError("Output file has multiple archive types: %s", fn)
+            l_type = name
+            type_info = extra[key]
 
+    # TODO: teach import_archive to handle extra
+    import_archive(fn, buildinfo, l_type, type_info, brinfo['id'])
 
 
 def cg_export(build):
