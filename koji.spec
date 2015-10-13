@@ -75,6 +75,7 @@ License: LGPLv2 and GPLv2+
 Requires: %{name} = %{version}-%{release}
 Requires: mock >= 0.9.14
 Requires(pre): /usr/sbin/useradd
+Requires: squashfs-tools
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
