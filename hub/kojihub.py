@@ -4685,6 +4685,19 @@ def cg_import(metadata, directory):
         build_id = new_build(buildinfo)
         buildinfo = get_build(build_id, strict=True)
 
+    # handle special build types
+    b_extra = metadata['build'].get('extra', {})
+    if b_extra.get('is_maven'):
+        keys = ['group_id', 'artifact_id', 'version']
+        maven_info = dict([(k, b_extra['maven.%s' % k]) for k in keys])
+        new_maven_build(buildinfo, maven_info)
+    if b_extra.get('is_win'):
+        win_info = {'platform' : b_extra['maven.platform']}
+        new_win_build(buildinfo, win_info)
+    if b_extra.get('is_image'):
+        # no extra info tracked at build level
+        new_image_build(buildinfo)
+
     # buildroots
     br_used = set([f['buildroot_id'] for f in metadata['output']])
     brmap = {}
