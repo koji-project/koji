@@ -2,7 +2,7 @@ BEGIN;
 
 -- New tables
 
-SELECT now(), 'Creating new tables' as msg;
+SELECT statement_timestamp(), 'Creating new tables' as msg;
 
 CREATE TABLE content_generator (
        id SERIAL PRIMARY KEY,
@@ -44,7 +44,7 @@ CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
 
 -- new columns --
 
-select now(), 'Adding new columns' as msg;
+select statement_timestamp(), 'Adding new columns' as msg;
 ALTER TABLE build ADD COLUMN extra TEXT;
 ALTER TABLE rpminfo ADD COLUMN extra TEXT;
 ALTER TABLE archiveinfo ADD COLUMN extra TEXT;
@@ -52,12 +52,12 @@ ALTER TABLE archiveinfo ADD COLUMN extra TEXT;
 
 -- the more complicated stuff
 
-SELECT now(), 'Copying buildroot to standard_buildroot' as msg;
+SELECT statement_timestamp(), 'Copying buildroot to standard_buildroot' as msg;
 CREATE TABLE standard_buildroot AS SELECT id,host_id,repo_id,task_id,create_event,retire_event,state from buildroot;
 -- doing it this way and fixing up after is *much* faster than creating the empty table
 -- and using insert..select to populate
 
-SELECT now(), 'Fixing up standard_buildroot table' as msg;
+SELECT statement_timestamp(), 'Fixing up standard_buildroot table' as msg;
 ALTER TABLE standard_buildroot RENAME id TO buildroot_id;
 ALTER TABLE standard_buildroot ALTER COLUMN buildroot_id SET NOT NULL;
 ALTER TABLE standard_buildroot ALTER COLUMN host_id SET NOT NULL;
@@ -65,17 +65,17 @@ ALTER TABLE standard_buildroot ALTER COLUMN repo_id SET NOT NULL;
 ALTER TABLE standard_buildroot ALTER COLUMN task_id SET NOT NULL;
 ALTER TABLE standard_buildroot ALTER COLUMN create_event SET NOT NULL;
 ALTER TABLE standard_buildroot ALTER COLUMN create_event SET DEFAULT get_event();
-SELECT now(), 'Fixing up standard_buildroot table, foreign key constraints' as msg;
+SELECT statement_timestamp(), 'Fixing up standard_buildroot table, foreign key constraints' as msg;
 ALTER TABLE standard_buildroot ADD CONSTRAINT brfk FOREIGN KEY (buildroot_id) REFERENCES buildroot(id);
 ALTER TABLE standard_buildroot ADD CONSTRAINT hfk FOREIGN KEY (host_id) REFERENCES host(id);
 ALTER TABLE standard_buildroot ADD CONSTRAINT rfk FOREIGN KEY (repo_id) REFERENCES repo(id);
 ALTER TABLE standard_buildroot ADD CONSTRAINT tfk FOREIGN KEY (task_id) REFERENCES task(id);
 ALTER TABLE standard_buildroot ADD CONSTRAINT efk FOREIGN KEY (create_event) REFERENCES events(id) ;
-SELECT now(), 'Fixing up standard_buildroot table, primary key' as msg;
+SELECT statement_timestamp(), 'Fixing up standard_buildroot table, primary key' as msg;
 ALTER TABLE standard_buildroot ADD PRIMARY KEY (buildroot_id);
 
 
-SELECT now(), 'Altering buildroot table (dropping columns)' as msg;
+SELECT statement_timestamp(), 'Altering buildroot table (dropping columns)' as msg;
 ALTER TABLE buildroot DROP COLUMN host_id;
 ALTER TABLE buildroot DROP COLUMN repo_id;
 ALTER TABLE buildroot DROP COLUMN task_id;
@@ -84,7 +84,7 @@ ALTER TABLE buildroot DROP COLUMN retire_event;
 ALTER TABLE buildroot DROP COLUMN state;
 ALTER TABLE buildroot DROP COLUMN dirtyness;
 
-SELECT now(), 'Altering buildroot table (adding columns)' as msg;
+SELECT statement_timestamp(), 'Altering buildroot table (adding columns)' as msg;
 ALTER TABLE buildroot ADD COLUMN br_type INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE buildroot ADD COLUMN cg_id INTEGER REFERENCES content_generator (id);
 ALTER TABLE buildroot ADD COLUMN cg_version TEXT;
@@ -93,7 +93,7 @@ ALTER TABLE buildroot ADD COLUMN host_os TEXT;
 ALTER TABLE buildroot ADD COLUMN host_arch TEXT;
 ALTER TABLE buildroot ADD COLUMN extra TEXT;
 
-SELECT now(), 'Altering buildroot table (altering columns)' as msg;
+SELECT statement_timestamp(), 'Altering buildroot table (altering columns)' as msg;
 ALTER TABLE buildroot RENAME arch TO container_arch;
 ALTER TABLE buildroot ALTER COLUMN container_arch TYPE TEXT;
 ALTER TABLE buildroot ALTER COLUMN br_type DROP DEFAULT;
