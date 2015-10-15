@@ -8103,7 +8103,7 @@ class RootExports(object):
         Create an image using a kickstart file and group package list.
         """
 
-        if img_type not in ('livecd', 'appliance'):
+        if img_type not in ('livecd', 'appliance', 'livemedia'):
             raise koji.GenericError, 'Unrecognized image type: %s' % img_type
 
         context.session.assertPerm(img_type)
