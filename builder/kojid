@@ -60,7 +60,7 @@ from optparse import OptionParser, SUPPRESS_HELP
 from StringIO import StringIO
 from yum import repoMDObject
 
-#imports for LiveCD and Appliance handler
+#imports for LiveCD, LiveMEDIA, and Appliance handler
 image_enabled = False
 try:
     import pykickstart.parser as ksparser
@@ -2762,6 +2762,182 @@ class LiveCDTask(ImageTask):
             'task_id': self.id,
             'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
                      'livecd.log', os.path.basename(ksfile),
+                     os.path.basename(kskoji)],
+            'name': name,
+            'version': version,
+            'release': release
+        }
+        if not opts.get('scratch'):
+            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
+                                            cachedir[1:]))
+            imgdata ['rpmlist'] = hdrlist
+            broot.markExternalRPMs(hdrlist)
+
+        broot.expire()
+        return imgdata
+
+
+
+##  livemedia-creator
+class LiveMediaTask(ImageTask):
+
+    Methods = ['createLiveMedia']
+    _taskWeight = 1.5
+
+    def genISOManifest(self, image, manifile):
+        """
+        Using iso9660 from pycdio, get the file manifest of the given image,
+        and save it to the text file manifile.
+        """
+        fd = open(manifile, 'w')
+        if not fd:
+            raise koji.GenericError, \
+                'Unable to open manifest file (%s) for writing!' % manifile
+        iso = iso9660.ISO9660.IFS(source=image)
+        if not iso.is_open():
+            raise koji.GenericError, \
+                'Could not open %s as an ISO-9660 image!' % image
+
+        # image metadata
+        id = iso.get_application_id()
+        if id is not None: fd.write("Application ID: %s\n" % id)
+        id = iso.get_preparer_id()
+        if id is not None: fd.write("Preparer ID: %s\n" % id)
+        id = iso.get_publisher_id()
+        if id is not None: fd.write("Publisher ID: %s\n" % id)
+        id = iso.get_system_id()
+        if id is not None: fd.write("System ID: %s\n" % id)
+        id = iso.get_volume_id()
+        if id is not None: fd.write("Volume ID: %s\n" % id)
+        id = iso.get_volumeset_id()
+        if id is not None: fd.write("Volumeset ID: %s\n" % id)
+
+        fd.write('\nSize(bytes)  File Name\n')
+        manifest = self.listISODir(iso, '/')
+        for a_file in manifest:
+            fd.write(a_file)
+        fd.close()
+        iso.close()
+
+    def listISODir(self, iso, path):
+        """
+        Helper function called recursively by genISOManifest. Returns a
+        listing of files/directories at the given path in an iso image obj.
+        """
+        manifest = []
+        file_stats = iso.readdir(path)
+        for stat in file_stats:
+            filename = stat[0]
+            size = stat[2]
+            is_dir = stat[4] == 2
+
+            if filename == '..':
+                continue
+            elif filename == '.':
+                # path should always end in a trailing /
+                filepath = path
+            else:
+                filepath = path + filename
+                # identify directories with a trailing /
+                if is_dir:
+                    filepath += '/'
+
+            if is_dir and filename != '.':
+                # recurse into subdirectories
+                manifest.extend(self.listISODir(iso, filepath))
+            else:
+                # output information for the current directory and files
+                manifest.append("%-10d   %s\n" % (size, filepath))
+
+        return manifest
+
+    def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
+
+        if opts == None:
+            opts = {}
+        self.opts = opts
+
+        broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
+            'livemedia-build')
+        kspath = self.fetchKickstart(broot, ksfile)
+        self.readKickstart(kspath, opts)
+        kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
+
+        cachedir = '/tmp/koji-livemedia'   # arbitrary paths in chroot
+        livemedia_log = '/tmp/livemedia.log'
+
+
+		# Common LMC command setup, needs extending
+        cmd = ['/sbin/livemedia-creator',
+               '-ks', kskoji,
+               '--logfile', livemedia_log,
+               '--no-virt',
+               '--tmp', '/tmp'
+              ]
+
+        # Determine what LMC opperation we are doing: live-iso, live-pxe, disk-img.
+        if live-iso:
+            # we set the fs label to the same as the isoname if it exists,
+            # taking at most 32 characters
+            isoname = '%s-%s-%s' % (name, version, release)
+            cmd.extend(['--make-iso', '--volid', isoname[:32]])
+
+		elif live-ostree-pxe:
+            cmd.extend(['--make-ostree-live'])
+
+		elif disk-img:
+            img_name='disk.img'
+            prj_name='Fedora'
+            cmd.extend(['--make-disk',
+                        '--image-name', img_name,
+                        '--project', prj_name,
+                        '--releasever', release
+                       ])
+
+		else
+			# bail
+			raise koji.LiveMediaError, \
+				'This task needs an option:  --live-iso or --live-ostree-pxe or --disk-img'
+
+        # Run livemedia-creator
+        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        self.uploadFile(os.path.join(broot.rootdir(), livemedia_log[1:]))
+        if rv:
+            raise koji.LiveMediaError, \
+                'Could not create LiveMedia: %s' % parseStatus(rv, 'livemedia-creator') + '; see root.log or livemedia.log for more information'
+
+        # Find the resultant iso
+        # The cwd of the livemedia-creator process is /tmp in the chroot, so
+        # that is where it writes the .iso
+        files = os.listdir(os.path.join(broot.rootdir(), 'tmp'))
+        isofile = None
+        for afile in files:
+            if afile.endswith('.iso'):
+                if not isofile:
+                    isofile = afile
+                else:
+                    raise koji.LiveMediaError, 'multiple .iso files found: %s and %s' % (isofile, afile)
+        if not isofile:
+            raise koji.LiveMediaError, 'could not find iso file in chroot'
+        isosrc = os.path.join(broot.rootdir(), 'tmp', isofile)
+
+        # copy the iso out of the chroot. If we were given an isoname,
+        # this is where the renaming happens.
+        self.logger.debug('uploading image: %s' % isosrc)
+        isoname += '.iso'
+
+        # Generate the file manifest of the image, upload the results
+        manifest = os.path.join(broot.resultdir(), 'manifest.log')
+        self.genISOManifest(isosrc, manifest)
+        self.uploadFile(manifest)
+        self.uploadFile(isosrc, remoteName=isoname)
+
+        imgdata = {'arch': arch,
+            'files': [isoname],
+            'rootdev': None,
+            'task_id': self.id,
+            'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
+                     'livemedia.log', os.path.basename(ksfile),
                      os.path.basename(kskoji)],
             'name': name,
             'version': version,
