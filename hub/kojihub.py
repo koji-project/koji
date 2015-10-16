@@ -4687,14 +4687,11 @@ def cg_import(metadata, directory):
 
     # handle special build types
     b_extra = metadata['build'].get('extra', {})
-    if b_extra.get('is_maven'):
-        keys = ['group_id', 'artifact_id', 'version']
-        maven_info = dict([(k, b_extra['maven.%s' % k]) for k in keys])
-        new_maven_build(buildinfo, maven_info)
-    if b_extra.get('is_win'):
-        win_info = {'platform' : b_extra['maven.platform']}
-        new_win_build(buildinfo, win_info)
-    if b_extra.get('is_image'):
+    if 'maven' in b_extra:
+        new_maven_build(buildinfo, b_extra['maven'])
+    if 'win' in b_extra:
+        new_win_build(buildinfo, b_extra['win'])
+    if 'image' in b_extra:
         # no extra info tracked at build level
         new_image_build(buildinfo)
 
@@ -4830,12 +4827,11 @@ def cg_import_archive(buildinfo, brinfo, fileinfo):
     legacy_types = ['maven', 'win', 'image']
     l_type = None
     type_info = None
-    for name in legacy_types:
-        key = '%s_info' % name
+    for key in legacy_types:
         if key in extra:
             if l_type is not None:
                 raise koji.GenericError("Output file has multiple archive types: %s", fn)
-            l_type = name
+            l_type = key
             type_info = extra[key]
 
     # TODO: teach import_archive to handle extra
