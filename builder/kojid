@@ -2876,16 +2876,16 @@ class LiveMediaTask(ImageTask):
               ]
 
         # Determine what LMC opperation we are doing: live-iso, live-pxe, disk-img.
-        if live-iso:
+        if live_iso:
             # we set the fs label to the same as the isoname if it exists,
             # taking at most 32 characters
             isoname = '%s-%s-%s' % (name, version, release)
             cmd.extend(['--make-iso', '--volid', isoname[:32]])
 
-		elif live-ostree-pxe:
+        elif live_ostree_pxe:
             cmd.extend(['--make-ostree-live'])
 
-		elif disk-img:
+        elif disk_img:
             img_name='disk.img'
             prj_name='Fedora'
             cmd.extend(['--make-disk',
@@ -2894,10 +2894,10 @@ class LiveMediaTask(ImageTask):
                         '--releasever', release
                        ])
 
-		else
-			# bail
-			raise koji.LiveMediaError, \
-				'This task needs an option:  --live-iso or --live-ostree-pxe or --disk-img'
+        else:
+            # bail
+            raise koji.LiveMediaError, \
+                'This task needs an option:  --live-iso or --live-ostree-pxe or --disk-img'
 
         # Run livemedia-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)

@@ -5252,6 +5252,8 @@ def handle_spin_livemedia(options, session, args):
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
+    parser.add_option("--live-ostree-pxe", action="store_true",
+        help=_("Build a live pxe boot squashfs image of Atomic Host"))
     (task_options, args) = parser.parse_args(args)
 
     # LMC operations
@@ -5636,7 +5638,8 @@ def _build_image(options, task_opts, session, args, img_type):
 
     hub_opts = {}
     for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-                'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile'):
+                'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
+                'live_ostree_pxe'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
