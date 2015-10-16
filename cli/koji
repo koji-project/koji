@@ -1677,7 +1677,7 @@ def handle_import_cg(options, session, args):
     for localpath, info in to_upload:
         relpath = os.path.join(serverdir, info.get('relpath', ''))
         if options.link:
-            linked_upload(path, relpath)
+            linked_upload(localpath, relpath)
         else:
             session.uploadWrapper(localpath, relpath)
             # TODO - progress callback
@@ -2534,15 +2534,14 @@ def handle_grant_cg_access(options, session, args):
     activate_session(session)
     user = args[0]
     cg = args[1]
-    user = session.getUser(user)
-    if user is None:
-        parser.error(_("No such user: %s" % n))
+    uinfo = session.getUser(user)
+    if uinfo is None:
+        parser.error(_("No such user: %s" % user))
         assert False
-        users.append(user)
     kwargs = {}
     if options.new:
         kwargs['create'] = True
-    session.grantCGAccess(user['name'], cg, **kwargs)
+    session.grantCGAccess(uinfo['name'], cg, **kwargs)
 
 
 def handle_revoke_cg_access(options, session, args):
@@ -2557,12 +2556,11 @@ def handle_revoke_cg_access(options, session, args):
     activate_session(session)
     user = args[0]
     cg = args[1]
-    user = session.getUser(user)
-    if user is None:
-        parser.error(_("No such user: %s" % n))
+    uinfo = session.getUser(user)
+    if uinfo is None:
+        parser.error(_("No such user: %s" % user))
         assert False
-        users.append(user)
-    session.revokeCGAccess(user['name'], cg)
+    session.revokeCGAccess(uinfo['name'], cg)
 
 
 def anon_handle_latest_build(options, session, args):
