@@ -4654,7 +4654,7 @@ def cg_import(metadata, directory):
 
     metaver = metadata['metadata_version']
     if metaver != 0:
-        raise koji.GenericError("Unknown metadata version: %r", metaver)
+        raise koji.GenericError("Unknown metadata version: %r" % metaver)
 
     # assert cg access
     cgs = set()
@@ -4676,7 +4676,7 @@ def cg_import(metadata, directory):
     buildinfo = get_build(metadata['build'], strict=False)
     if buildinfo:
         # TODO : allow in some cases
-        raise koji.GenericError("Build already exists: %r", buildinfo)
+        raise koji.GenericError("Build already exists: %r" % buildinfo)
     else:
         # create a new build
         buildinfo = dslice(metadata['build'], ['name', 'version', 'release'])
@@ -4701,9 +4701,9 @@ def cg_import(metadata, directory):
     for brdata in metadata['buildroots']:
         brfakeid = brdata['id']
         if brfakeid not in br_used:
-            raise koji.GenericError("Buildroot id not used in output: %r", brfakeid)
+            raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
         if brfakeid in brmap:
-            raise koji.GenericError("Duplicate buildroot id in metadata: %r", brfakeid)
+            raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
         brmap[brfakeid] = cg_import_buildroot(brdata)
 
     # outputs
@@ -4713,8 +4713,7 @@ def cg_import(metadata, directory):
         fileinfo['hub.path'] = path
         brinfo = brmap.get(fileinfo['buildroot_id'])
         if not brinfo:
-            raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r",
-                        fileinfo)
+            raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
 
         if fileinfo['type'] == 'rpm':
             cg_import_rpm(buildinfo, brinfo, fileinfo)
@@ -4830,7 +4829,7 @@ def cg_import_archive(buildinfo, brinfo, fileinfo):
     for key in legacy_types:
         if key in extra:
             if l_type is not None:
-                raise koji.GenericError("Output file has multiple archive types: %s", fn)
+                raise koji.GenericError("Output file has multiple archive types: %s" % fn)
             l_type = key
             type_info = extra[key]
 
