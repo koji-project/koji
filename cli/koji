@@ -1665,6 +1665,8 @@ def handle_import_cg(options, session, args):
 
     to_upload = []
     for info in metadata['output']:
+        if info.get('metadata_only', False):
+            continue
         localpath = os.path.join(localdir, info.get('relpath', ''), info['filename'])
         if not os.path.exists(localpath):
             parser.error(_("No such file: %s") % localpath)

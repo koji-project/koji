@@ -2833,7 +2833,7 @@ def get_tag_extra(tagInfo, event=None):
             value = json.loads(value)
         except Exception:
             # this should not happen
-            raise koji.GenericError("Invalid tag extra data: %s : %r", key, value)
+            raise koji.GenericError("Invalid tag extra data: %s : %r" % (key, value))
         result[key] = value
     return result
 
@@ -4418,7 +4418,7 @@ def new_build(data):
         try:
             data['extra'] = json.loads(data['extra'])
         except Exception:
-            raise koji.GenericError("Invalid build extra data: %(extra)r", data)
+            raise koji.GenericError("Invalid build extra data: %(extra)r" % data)
     else:
         data['extra'] = None
     #provide a few default values
@@ -4708,6 +4708,9 @@ def cg_import(metadata, directory):
 
     # outputs
     for fileinfo in metadata['output']:
+        if fileinfo.get('metadata_only', False):
+            if not metadata['build'].get('metadata_only'):
+                raise koji.GenericError('Build must be marked metadata-only to include metadata-only outputs')
         workdir = koji.pathinfo.work()
         path = os.path.join(workdir, directory, fileinfo.get('relpath', ''), fileinfo['filename'])
         fileinfo['hub.path'] = path
@@ -4805,6 +4808,9 @@ def cg_import_buildroot(brdata):
 
 
 def cg_import_rpm(buildinfo, brinfo, fileinfo):
+    if fileinfo.get('metadata_only', False):
+        raise koji.GenericError('Metadata-only imports are not supported for rpms')
+        # TODO - support for rpms too
     fn = fileinfo['hub.path']
     rpminfo = import_rpm(fn, buildinfo, brinfo.id)
     # TODO - handle fileinfo['extra']
@@ -4813,6 +4819,9 @@ def cg_import_rpm(buildinfo, brinfo, fileinfo):
 
 
 def cg_import_log(buildinfo, fileinfo):
+    if fileinfo.get('metadata_only', False):
+        # logs are not currently tracked, so this is a no op
+        return
     # TODO: determine subdir
     fn = fileinfo['hub.path']
     import_build_log(fn, buildinfo, subdir=None)
@@ -4834,7 +4843,7 @@ def cg_import_archive(buildinfo, brinfo, fileinfo):
             type_info = extra[key]
 
     # TODO: teach import_archive to handle extra
-    import_archive(fn, buildinfo, l_type, type_info, brinfo['id'])
+    import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
 
 
 def cg_export(build):
@@ -5455,7 +5464,19 @@ def import_old_image(old, name, version):
 
     return binfo
 
+
 def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
+    """
+    Import an archive file and associate it with a build.  The archive can
+    be any non-rpm filetype supported by Koji.
+
+    This wraps import_archive_internal and limits options
+    """
+
+    return import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=None)
+
+
+def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=None, fileinfo=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
@@ -5464,31 +5485,62 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
     type: type of the archive being imported.  Currently supported archive types: maven, win, image
     typeInfo: dict of type-specific information
-    buildroot_id: the id of the buildroot the archive was built in (may be null)
+    buildroot_id: the id of the buildroot the archive was built in (may be None)
+    fileinfo: content generator metadata for file (may be None)
     """
-    if not os.path.exists(filepath):
+
+    if fileinfo is None:
+        fileinfo = {}
+    metadata_only = fileinfo.get('metadata_only', False)
+
+    if metadata_only:
+        filepath = None
+    elif not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
     archiveinfo = {'buildroot_id': buildroot_id}
-    filename = koji.fixEncoding(os.path.basename(filepath))
-    archiveinfo['filename'] = filename
+    archiveinfo['build_id'] = buildinfo['id']
+    if metadata_only:
+        filename = koji.fixEncoding(fileinfo['filename'])
+        archiveinfo['filename'] = filename
+        archiveinfo['size'] = fileinfo['filesize']
+        archiveinfo['checksum'] = fileinfo['checksum']
+        if fileinfo['checksum_type'] != 'md5':
+            # XXX
+            # until we change the way we handle checksums, we have to limit this to md5
+            raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+        archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
+    else:
+        filename = koji.fixEncoding(os.path.basename(filepath))
+        archiveinfo['filename'] = filename
+        archiveinfo['size'] = os.path.getsize(filepath)
+        archivefp = file(filepath)
+        m = md5_constructor()
+        while True:
+            contents = archivefp.read(8192)
+            if not contents:
+                break
+            m.update(contents)
+        archivefp.close()
+        archiveinfo['checksum'] = m.hexdigest()
+        archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
+        if fileinfo:
+            # check against metadata
+            if archiveinfo['size'] != fileinfo['filesize']:
+                raise koji.GenericError("File size mismatch for %s: %s != %s" %
+                        (filename, archiveinfo['size'], fileinfo['filesize']))
+            if fileinfo['checksum_type'] != 'md5':
+                # XXX
+                # until we change the way we handle checksums, we have to limit this to md5
+                raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+            if archiveinfo['checksum'] != fileinfo['checksum']:
+                raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
+                        (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
-    archiveinfo['build_id'] = buildinfo['id']
-    archiveinfo['size'] = os.path.getsize(filepath)
-    archivefp = file(filepath)
-    m = md5_constructor()
-    while True:
-        contents = archivefp.read(8192)
-        if not contents:
-            break
-        m.update(contents)
-    archivefp.close()
-    archiveinfo['checksum'] = m.hexdigest()
-    archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, filepath=filepath)
+                              build_type=type, filepath=filepath, fileinfo=fileinfo)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
     archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
@@ -5499,7 +5551,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     if type == 'maven':
         maveninfo = get_maven_build(buildinfo, strict=True)
 
-        if archivetype['name'] == 'pom':
+        if archivetype['name'] == 'pom' and not metadata_only:
             pom_info = koji.parse_pom(filepath)
             pom_maveninfo = koji.pom_to_maven_info(pom_info)
             # sanity check: Maven info from pom must match the user-supplied typeInfo
@@ -5515,11 +5567,12 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         insert.set(archive_id=archive_id)
         insert.execute()
 
-        # move the file to it's final destination
-        mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
-                                koji.pathinfo.mavenrepo(typeInfo))
-        _import_archive_file(filepath, mavendir)
-        _generate_maven_metadata(mavendir)
+        if not metadata_only:
+            # move the file to it's final destination
+            mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
+                                    koji.pathinfo.mavenrepo(typeInfo))
+            _import_archive_file(filepath, mavendir)
+            _generate_maven_metadata(mavendir)
     elif type == 'win':
         wininfo = get_win_build(buildinfo, strict=True)
 
@@ -5534,25 +5587,28 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
             insert.set(flags=' '.join(typeInfo['flags']))
         insert.execute()
 
-        destdir = koji.pathinfo.winbuild(buildinfo)
-        if relpath:
-            destdir = os.path.join(destdir, relpath)
-        _import_archive_file(filepath, destdir)
+        if not metadata_only:
+            destdir = koji.pathinfo.winbuild(buildinfo)
+            if relpath:
+                destdir = os.path.join(destdir, relpath)
+            _import_archive_file(filepath, destdir)
     elif type == 'image':
         insert = InsertProcessor('image_archives')
         insert.set(archive_id=archive_id)
         insert.set(arch=typeInfo['arch'])
         insert.execute()
-        imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
-        _import_archive_file(filepath, imgdir)
+        if not metadata_only:
+            imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
+            _import_archive_file(filepath, imgdir)
         # import log files?
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, filepath=filepath)
+                              build_type=type, filepath=filepath, fileinfo=fileinfo)
     return archiveinfo
+
 
 def _import_archive_file(filepath, destdir):
     """
@@ -9988,7 +10044,7 @@ class BuildRoot(object):
             try:
                 data['extra'] = json.loads(data['extra'])
             except Exception:
-                raise koji.GenericError("Invalid buildroot extra data: %(extra)r", data)
+                raise koji.GenericError("Invalid buildroot extra data: %(extra)r" % data)
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
