@@ -1395,6 +1395,12 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
                                              start=buildrootStart, dataName='buildroots', prefix='buildroot',
                                              order=buildrootOrder)
 
+    for br in buildroots:
+        if br['br_type'] == koji.BR_TYPES['STANDARD']:
+            br['_display'] = '%(tag_name)s-%(id)i-%(repo_id)i' % br
+        else:
+            br['_display'] = '%(cg_name)s:%(id)i' % br
+
     values['title'] = archive['filename'] + ' | Archive Info'
 
     values['archiveID'] = archive['id']

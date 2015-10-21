@@ -126,7 +126,7 @@
           </tr>
           #for $buildroot in $buildroots
           <tr class="$util.rowToggle($self)">
-            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
+            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot._display</a></td>
             <td>$util.formatTime($buildroot.create_event_time)</td>
             <td>$util.imageTag($util.brStateName($buildroot.state))</td>
           </tr>
