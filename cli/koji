@@ -1647,6 +1647,8 @@ def handle_import_cg(options, session, args):
     usage = _("usage: %prog import-cg [options] metadata_file files_dir")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress of the upload"))
     parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
     (options, args) = parser.parse_args(args)
@@ -1678,11 +1680,17 @@ def handle_import_cg(options, session, args):
 
     for localpath, info in to_upload:
         relpath = os.path.join(serverdir, info.get('relpath', ''))
+        if _running_in_bg() or options.noprogress:
+            callback = None
+        else:
+            callback = _progress_callback
         if options.link:
             linked_upload(localpath, relpath)
         else:
-            session.uploadWrapper(localpath, relpath)
-            # TODO - progress callback
+            print "Uploading %s" % localpath
+            session.uploadWrapper(localpath, relpath, callback=callback)
+            if callback:
+                print
 
     session.CGImport(metadata, serverdir)
 
