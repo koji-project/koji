@@ -3,7 +3,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for external buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.cg_name:$buildroot.id</a></h4>
+  <h4>Information for external buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
 
   <table>
     <tr>
