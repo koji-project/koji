@@ -65,7 +65,7 @@
     </tr>
     #if $builtInRoot
     <tr>
-      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot._display</a></td>
+      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$util.brLabel($builtInRoot)</a></td>
     </tr>
     #end if
     #if $rpm.external_repo_id == 0
@@ -208,7 +208,7 @@
           </tr>
           #for $buildroot in $buildroots
           <tr class="$util.rowToggle($self)">
-            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
+            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></td>
             <td>$util.formatTime($buildroot.create_event_time)</td>
             <td>$util.imageTag($util.brStateName($buildroot.state))</td>
           </tr>

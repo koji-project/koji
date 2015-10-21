@@ -1341,10 +1341,6 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     builtInRoot = None
     if rpm['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
-        if builtInRoot['br_type'] == koji.BR_TYPES['STANDARD']:
-            builtInRoot['_display'] = '%(tag_name)s-%(id)i-%(repo_id)i' % builtInRoot
-        else:
-            builtInRoot['_display'] = '%(cg_name)s:%(id)i' % builtInRoot
     if rpm['external_repo_id'] == 0:
         values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
         values['requires'].sort(_sortbyname)
@@ -1394,12 +1390,6 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'archiveID': archive['id']},
                                              start=buildrootStart, dataName='buildroots', prefix='buildroot',
                                              order=buildrootOrder)
-
-    for br in buildroots:
-        if br['br_type'] == koji.BR_TYPES['STANDARD']:
-            br['_display'] = '%(tag_name)s-%(id)i-%(repo_id)i' % br
-        else:
-            br['_display'] = '%(cg_name)s:%(id)i' % br
 
     values['title'] = archive['filename'] + ' | Archive Info'
 
@@ -1638,14 +1628,13 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
 
     elif buildroot['br_type'] == koji.BR_TYPES['STANDARD']:
         template = 'buildrootinfo.chtml'
-        values['title'] = '%(tag_name)s-%(id)i-%(repo_id)i | Buildroot Info' % buildroot
         values['task'] = server.getTaskInfo(buildroot['task_id'], request=True)
 
     else:
         template = 'buildrootinfo_cg.chtml'
-        values['title'] = '%(cg_name)s:%(id)i | Buildroot Info' % buildroot
         # TODO - fetch tools and extras info
 
+    values['title'] = '%s | Buildroot Info' % kojiweb.util.brLabel(buildroot)
     values['buildroot'] = buildroot
 
     return _genHTML(environ, template)

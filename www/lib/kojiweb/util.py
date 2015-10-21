@@ -377,6 +377,14 @@ def brStateName(stateID):
     """Convert a numeric buildroot state into a readable name."""
     return koji.BR_STATES[stateID].lower()
 
+
+def brLabel(brinfo):
+    if brinfo['br_type'] == koji.BR_TYPES['STANDARD']:
+        return '%(tag_name)s-%(id)i-%(repo_id)i' % brinfo
+    else:
+        return '%(cg_name)s:%(id)i' % brinfo
+
+
 def repoStateName(stateID):
     """Convert a numeric repository state into a readable name."""
     if stateID == koji.REPO_INIT:
