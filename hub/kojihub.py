@@ -4747,64 +4747,66 @@ def cg_import_buildroot(brdata):
     # TODO: standard buildroot entry (if applicable)
     # ???
 
-    #split components
-    rpms = []
-    files = []
-    for comp in brdata['components']:
-        if comp['type'] == 'rpm':
-            rpms.append(comp)
-        elif comp['type'] == 'file':
-            files.append(comp)
-        else:
-            raise koji.GenericError("Unknown component type: %(type)s" % comp)
-
-    # buildroot_listing
-    rpmlist = []
-    for comp in rpms:
-        # TODO: do we allow inclusion of external rpms?
-        if 'location' in comp:
-            raise koji.GenericError("External rpms not allowed")
-        if 'id' in comp:
-            # not in metadata spec, and will confuse get_rpm
-            raise koji.GenericError("Unexpected 'id' field in component")
-        rinfo = get_rpm(comp, strict=True)
-        if rinfo['payloadhash'] != comp['sigmd5']:
-            nvr = "%(name)s-%(version)s-%(release)s" % rinfo
-            raise koji.GenericError("md5sum mismatch for %s: %s != %s"
-                        % (nvr, comp['sigmd5'], rinfo['payloadhash']))
-        # TODO - should we check the signature field?
-        rpmlist.append(rinfo)
+    #buildroot components
+    rpmlist, archives = cg_match_components(brdata['components'])
     br.setList(rpmlist)
-
-    # buildroot_archives
-    archives = []
-    for comp in files:
-        # hmm, how do we look up archives?
-        # updateMavenBuildRootList does seriously wild stuff
-        # only unique field in archiveinfo is id
-        # checksum/checksum_type only works if type matches
-        # at the moment, we only have md5 entries in archiveinfo
-
-        type_mismatches = 0
-        for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
-            if archive['checksum_type'] != comp['checksum_type']:
-                type_mismatches += 1
-                continue
-            if archive['checksum'] == comp['checksum']:
-                archives.appen(archive)
-                break
-        else:
-            logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
-            if type_mismatches:
-                logger.error("Match failed with %i type mismatches", type_mismatches)
-            # TODO: allow external archives [??]
-            raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
     br.updateArchiveList(archives)
 
     # buildroot_tools_info
     br.setTools(brdata['tools'])
 
     return br
+
+
+def cg_match_components(components):
+    rpms = []
+    files = []
+    for comp in components:
+        if comp['type'] == 'rpm':
+            rpms.append(cg_match_rpm(comp))
+        elif comp['type'] == 'file':
+            files.append(cg_match_file(comp))
+        else:
+            raise koji.GenericError("Unknown component type: %(type)s" % comp)
+    return rpms, files
+
+
+def cg_match_rpm(comp):
+    # TODO: do we allow inclusion of external rpms?
+    if 'location' in comp:
+        raise koji.GenericError("External rpms not allowed")
+    if 'id' in comp:
+        # not in metadata spec, and will confuse get_rpm
+        raise koji.GenericError("Unexpected 'id' field in component")
+    rinfo = get_rpm(comp, strict=True)
+    if rinfo['payloadhash'] != comp['sigmd5']:
+        nvr = "%(name)s-%(version)s-%(release)s" % rinfo
+        raise koji.GenericError("md5sum mismatch for %s: %s != %s"
+                    % (nvr, comp['sigmd5'], rinfo['payloadhash']))
+    # TODO - should we check the signature field?
+    return rinfo
+
+
+def cg_match_file(comp):
+    # hmm, how do we look up archives?
+    # updateMavenBuildRootList does seriously wild stuff
+    # only unique field in archiveinfo is id
+    # checksum/checksum_type only works if type matches
+    # at the moment, we only have md5 entries in archiveinfo
+
+    type_mismatches = 0
+    for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
+        if archive['checksum_type'] != comp['checksum_type']:
+            type_mismatches += 1
+            continue
+        if archive['checksum'] == comp['checksum']:
+            return archive
+    #else
+    logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
+    if type_mismatches:
+        logger.error("Match failed with %i type mismatches", type_mismatches)
+    # TODO: allow external archives [??]
+    raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
 
 
 def cg_import_rpm(buildinfo, brinfo, fileinfo):
@@ -4843,7 +4845,27 @@ def cg_import_archive(buildinfo, brinfo, fileinfo):
             type_info = extra[key]
 
     # TODO: teach import_archive to handle extra
-    import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
+    archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
+
+    if l_type == 'image':
+        components = fileinfo.get('components', [])
+        cg_import_components(archiveinfo['id'], components)
+
+
+def cg_import_components(image_id, components):
+    rpmlist, archives = cg_match_components(components)
+
+    insert = InsertProcessor('image_listing')
+    insert.set(image_id=image_id)
+    for rpminfo in rpmlist:
+        insert.set(rpm_id=rpminfo['id'])
+        insert.execute()
+
+    insert = InsertProcessor('image_archive_listing')
+    insert.set(image_id=image_id)
+    for archiveinfo in archives:
+        insert.set(archive_id=archiveinfo['id'])
+        insert.execute()
 
 
 def cg_export(build):
