@@ -4416,7 +4416,7 @@ def new_build(data):
             raise koji.GenericError, "No %s value for build" % f
     if 'extra' in data:
         try:
-            data['extra'] = json.loads(data['extra'])
+            data['extra'] = json.dumps(data['extra'])
         except Exception:
             raise koji.GenericError("Invalid build extra data: %(extra)r" % data)
     else:
@@ -4679,7 +4679,7 @@ def cg_import(metadata, directory):
         raise koji.GenericError("Build already exists: %r" % buildinfo)
     else:
         # create a new build
-        buildinfo = dslice(metadata['build'], ['name', 'version', 'release'])
+        buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
         # epoch is not in the metadata spec, but we allow it to be specified
         buildinfo['epoch'] = metadata['build'].get('epoch', None)
         build_id = new_build(buildinfo)
