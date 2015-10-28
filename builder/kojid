@@ -3178,6 +3178,25 @@ class BaseImageTask(OzImageTask):
             raise koji.ApplianceError('Image status is %s: %s' %
                 (status, details))
 
+    def _mergeFactoryParams(self, img_opts, fixed_params):
+        """
+        Merge any KV pairs passed in via --factory-parameter CLI options
+        into an existing dictionary that will eventually be passed to
+        factory build commands.  This allows a fairly generic mechanism
+        for parameter passthrough to plugins and the base builder that does
+        not require patching the builder and CLI each time.
+
+        @args:
+            img_opts - an existing dict with any pre-existing parameters
+            fixed_params - list of parameters that must not be overriden
+        @returns:
+            nothing - dict is modified in place
+        """
+        if self.opts.get('factory_parameter'):
+            for kvp in self.opts.get('factory_parameter'):
+                if kvp[0] not in fixed_params:
+                    img_opts[kvp[0]] = kvp[1]
+
     def _buildBase(self, template, params, wait=True):
         """
         Build a base image using ImageFactory. This is a "raw" image.
@@ -3194,7 +3213,10 @@ class BaseImageTask(OzImageTask):
         #       may need to still upload ozlog and remove the log handler
         self.logger.info('dispatching a baseimg builder')
         self.logger.debug('templates: %s' % template)
-        self.logger.debug('params: %s' % params)
+        self.logger.debug('pre-merge params: %s' % params)
+        # We enforce various things related to the ks file - do not allow override
+        self._mergeFactoryParams(params, [ 'install_script' ])
+        self.logger.debug('post-merge params: %s' % params)
         base = self.bd.builder_for_base_image(template, parameters=params)
         if wait:
             base.base_thread.join()
@@ -3245,19 +3267,22 @@ class BaseImageTask(OzImageTask):
         if format == 'vagrant-virtualbox':
             format = 'vsphere-ova'
             img_opts['vsphere_ova_format'] = 'vagrant-virtualbox'
+            fixed_params = [ 'vsphere_ova_format' ]
         if format == 'vagrant-libvirt':
             format = 'rhevm-ova'
             img_opts['rhevm_ova_format'] = 'vagrant-libvirt'
+            fixed_params = [ 'rhevm_ova_format' ]
         if format == 'vagrant-vmware-fusion':
             format = 'vsphere-ova'
             img_opts['vsphere_ova_format'] = 'vagrant-vmware-fusion'
             # The initial disk image transform for VMWare Fusion/Workstation requires a "standard" VMDK
             # not the stream oriented format used for VirtualBox or regular VMWare OVAs
             img_opts['vsphere_vmdk_format'] = 'standard'
+            fixed_params = [ 'vsphere_ova_format', 'vsphere_vmdk_format' ]
         targ = self._do_target_image(self.base_img.base_image.identifier,
-            format.replace('-ova', ''), img_opts=img_opts)
+            format.replace('-ova', ''), img_opts=img_opts, fixed_params=fixed_params)
         targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
-            img_opts=img_opts)
+            img_opts=img_opts, fixed_params=fixed_params)
         return {'image': targ2.target_image.data}
 
     def _buildDocker(self, format):
@@ -3275,7 +3300,7 @@ class BaseImageTask(OzImageTask):
             'docker', img_opts=img_opts)
         return {'image': targ.target_image.data}
 
-    def _do_target_image(self, base_id, image_type, img_opts={}):
+    def _do_target_image(self, base_id, image_type, img_opts={}, fixed_params=[]):
         """
         A generic method for building what ImageFactory calls "target images".
         These are images based on a raw disk that was built before using the
@@ -3287,6 +3312,8 @@ class BaseImageTask(OzImageTask):
                 uses this to figure out what plugin to run
             img_opts - a dict of additional options that specific to the target
                 type we pass in via image_type
+            fixed_params - a list of parameter keys that should not be overriden
+                           by the --factory-parameter CLI
         @returns:
             A Builder() object from ImageFactory that contains information
             about the image building include state and progress.
@@ -3294,7 +3321,9 @@ class BaseImageTask(OzImageTask):
         # TODO: test the failure case where IF itself throws an exception
         #       ungracefully (missing a plugin for example)
         #       may need to still upload ozlog and remove the log handler
-        self.logger.debug('img_opts: %s' % img_opts)
+        self.logger.debug('img_opts_pre_merge: %s' % img_opts)
+        self._mergeFactoryParams(img_opts, fixed_params)
+        self.logger.debug('img_opts_post_merge: %s' % img_opts)
         target = self.bd.builder_for_target_image(image_type,
             image_id=base_id, template=None, parameters=img_opts)
         target.target_thread.join()

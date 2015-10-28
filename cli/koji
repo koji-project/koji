@@ -5306,6 +5306,11 @@ def handle_image_build(options, session, args):
     parser.add_option("--ova-option", action="append",
         help=_("Override a value in the OVA description XML. Provide a value " +
                "in a name=value format, such as 'ovf_memory_mb=6144'"))
+    parser.add_option("--factory-parameter", nargs=2, action="append",
+        help=_("Pass a parameter to Image Factory. The results are highly specific " +
+               "to the image format being created. This is a two argument parameter " +
+               "that can be specified an arbitrary number of times. For example: "
+               "--factory-parameter docker_cmd '[ \"/bin/echo Hello World\" ]'"))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--repo", action="append",
         help=_("Specify a repo that will override the repo used to install " +
@@ -5354,6 +5359,14 @@ def handle_image_build(options, session, args):
             task_options.ova_option = []
             for k, v in config.items(section):
                 task_options.ova_option.append('%s=%s' % (k, v))
+
+        # as do factory-parameters
+        section = 'factory-parameters'
+        if config.has_section(section):
+            task_options.factory_parameter = [ ]
+            for k, v in config.items(section):
+                # We do this, rather than a dict, to match what argparse spits out
+                task_options.factory_parameter.append( (k, v) )
 
     else:
         if len(args) < 5:
@@ -5483,7 +5496,7 @@ def _build_image_oz(options, task_opts, session, args):
     hub_opts = {}
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
                 'release', 'skip_tag', 'specfile', 'distro', 'format',
-                'disk_size', 'ova_option'):
+                'disk_size', 'ova_option', 'factory_parameter'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
