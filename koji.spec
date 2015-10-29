@@ -15,7 +15,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.10.0
+Version: 1.10.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -320,6 +320,20 @@ fi
 %endif
 
 %changelog
+* Thu Oct 29 2015 Mike McLean <mikem at redhat.com> - 1.10.1-1
+- fixes for SSL errors
+- add support for Image Factory generation of VMWare Fusion Vagrant boxes
+- cli: add download-task command
+- docs: Document how to write a plugin
+- fix for a rare deadlock issue in taskSetWait
+- use encode_int on rpm sizes
+- check for tag existence in add-pkg
+- Remove koji._forceAscii (unused)
+- Resolve the canonical hostname when constructing the Kerberos server principal
+- don't omit debuginfos on buildinfo page
+- correct error message in fastUpload
+- Check task method before trying to determine "scratch" status.
+
 * Tue Jul 14 2015 Mike McLean <mikem at redhat.com> - 1.10.0-1
 - 1.10.0 release
 
