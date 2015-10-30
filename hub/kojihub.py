@@ -3360,6 +3360,13 @@ def get_next_release(build_info):
         raise koji.BuildError, 'Unable to increment release value: %s' % release
     return release
 
+
+def _fix_rpm_row(row):
+    row['size'] = koji.encode_int(row['size'])
+    row['extra'] = parse_json(row['extra'], desc='rpm extra')
+    return row
+
+
 def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
@@ -3386,6 +3393,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
     - buildroot_id
     - external_repo_id
     - external_repo_name
+    - extra
 
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
@@ -3408,6 +3416,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('payloadhash', 'payloadhash'),
         ('size', 'size'),
         ('buildtime', 'buildtime'),
+        ('extra', 'extra'),
         )
     # we can look up by id or NVRA
     data = None
@@ -3439,15 +3448,11 @@ def get_rpm(rpminfo, strict=False, multi=False):
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
-                           values=data)
+                           values=data, transform=_fix_rpm_row)
     if multi:
-        data = query.execute()
-        for row in data:
-            row['size'] = koji.encode_int(row['size'])
-        return data
+        return query.execute()
     ret = query.executeOne()
     if ret:
-        ret['size'] = koji.encode_int(ret['size'])
         return ret
     if retry:
         #at this point we have just an NVRA with no internal match. Open it up to externals
@@ -3457,8 +3462,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
-    ret['size'] = koji.encode_int(ret['size'])
     return ret
+
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
     """List RPMS.  If buildID, imageID and/or buildrootID are specified,
@@ -6782,6 +6787,20 @@ def get_event():
     return event_id
 
 
+def parse_json(value, desc=None, errstr=None):
+    if value is None:
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        if errstr is None:
+            if desc is None:
+                errstr = "Invalid json data for %s" % desc
+            else
+                errstr = "Invalid json data"
+        raise koji.GenericError("%s: %r" % (errstr, value))
+
+
 class InsertProcessor(object):
     """Build an insert statement
 
@@ -6945,6 +6964,8 @@ class QueryProcessor(object):
     - clauses: a list of where clauses in the form 'table1.col1 OPER table2.col2-or-variable';
                each clause will be surrounded by parentheses and all will be AND'ed together
     - values: the map that will be used to replace any substitution expressions in the query
+    - transform: a function that will be called on each row (not compatible with
+                 countOnly or singleValue)
     - opts: a map of query options; currently supported options are:
         countOnly: if True, return an integer indicating how many results would have been
                    returned, rather than the actual query results
@@ -6959,7 +6980,8 @@ class QueryProcessor(object):
     iterchunksize = 1000
 
     def __init__(self, columns=None, aliases=None, tables=None,
-                 joins=None, clauses=None, values=None, opts=None):
+                 joins=None, clauses=None, values=None, transform=None,
+                 opts=None):
         self.columns = columns
         self.aliases = aliases
         if columns and aliases:
@@ -6976,6 +6998,7 @@ class QueryProcessor(object):
             self.values = values
         else:
             self.values = {}
+        self.transform=transform
         if opts:
             self.opts = opts
         else:
@@ -7083,16 +7106,29 @@ SELECT %(col_str)s
             return ''
 
     def singleValue(self, strict=True):
+        # self.transform not applied here
         return _singleValue(str(self), self.values, strict=strict)
+
 
     def execute(self):
         query = str(self)
         if self.opts.get('countOnly'):
             return _singleValue(query, self.values, strict=True)
         elif self.opts.get('asList'):
-            return _fetchMulti(query, self.values)
+            if self.transform is None:
+                return _fetchMulti(query, self.values)
+            else:
+                # if we're transforming, generate the dicts so the transform can modify
+                fields = self.aliases or self.columns
+                data = _multiRow(query, self.values, fields)
+                data = [self.transform(row) for row in data]
+                # and then convert back to lists
+                data = [ [row[f] for f in fields] for row in data]
         else:
-            return _multiRow(query, self.values, (self.aliases or self.columns))
+            data = _multiRow(query, self.values, (self.aliases or self.columns))
+            if self.transform is not None:
+                data = [self.transform(row) for row in data]
+            return data
 
 
     def iterate(self):
@@ -7120,9 +7156,18 @@ SELECT %(col_str)s
         query = "FETCH %i FROM %s" % (chunksize, cname)
         while True:
             if as_list:
-                buf = _fetchMulti(query, {})
+                if self.transform is None:
+                    buf = _fetchMulti(query, {})
+                else:
+                    # if we're transforming, generate the dicts so the transform can modify
+                    buf = _multiRow(query, self.values, fields)
+                    buf = [self.transform(row) for row in data]
+                    # and then convert back to lists
+                    buf = [ [row[f] for f in fields] for row in data]
             else:
                 buf = _multiRow(query, {}, fields)
+                if self.transform is not None:
+                    buf = [self.transform(buf) for row in data]
             if not buf:
                 break
             for row in buf:
