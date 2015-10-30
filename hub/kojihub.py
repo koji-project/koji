@@ -1255,7 +1255,9 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
               ('rpminfo.size', 'size'),
               ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.buildroot_id', 'buildroot_id'),
-              ('rpminfo.build_id', 'build_id')]
+              ('rpminfo.build_id', 'build_id'),
+              ('rpminfo.extra', 'extra'),
+            ]
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
     clauses = [eventCondition(event), 'tag_id=%(tagid)s']
@@ -1279,7 +1281,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
-                           columns=fields, aliases=aliases, values=data)
+                           columns=fields, aliases=aliases, values=data, transform=_fix_rpm_row)
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
@@ -3503,6 +3505,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
               ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.external_repo_id', 'external_repo_id'),
               ('external_repo.name', 'external_repo_name'),
+              ('rpminfo.extra', 'extra'),
              ]
     joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
@@ -3537,16 +3540,10 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
                            tables=['rpminfo'], joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=locals(), transform=_fix_rpm_row, opts=queryOpts)
     data = query.execute()
-    if not (queryOpts and queryOpts.get('countOnly')):
-        if queryOpts and 'asList' in queryOpts:
-            key = aliases.index('size')
-        else:
-            key = 'size'
-        for row in data:
-            row[key] = koji.encode_int(row[key])
     return data
+
 
 def get_maven_build(buildInfo, strict=False):
     """
@@ -6796,7 +6793,7 @@ def parse_json(value, desc=None, errstr=None):
         if errstr is None:
             if desc is None:
                 errstr = "Invalid json data for %s" % desc
-            else
+            else:
                 errstr = "Invalid json data"
         raise koji.GenericError("%s: %r" % (errstr, value))
 
@@ -7161,13 +7158,13 @@ SELECT %(col_str)s
                 else:
                     # if we're transforming, generate the dicts so the transform can modify
                     buf = _multiRow(query, self.values, fields)
-                    buf = [self.transform(row) for row in data]
+                    buf = [self.transform(row) for row in buf]
                     # and then convert back to lists
-                    buf = [ [row[f] for f in fields] for row in data]
+                    buf = [ [row[f] for f in fields] for row in buf]
             else:
                 buf = _multiRow(query, {}, fields)
                 if self.transform is not None:
-                    buf = [self.transform(buf) for row in data]
+                    buf = [self.transform(row) for row in buf]
             if not buf:
                 break
             for row in buf:
