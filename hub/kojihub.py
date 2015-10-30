@@ -4844,7 +4844,6 @@ def cg_import_archive(buildinfo, brinfo, fileinfo):
             l_type = key
             type_info = extra[key]
 
-    # TODO: teach import_archive to handle extra
     archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
 
     if l_type == 'image':
@@ -5560,6 +5559,11 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
                         (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
+
+    # cg extra data
+    extra = fileinfo.get(extra, None)
+    if extra is not None:
+        archiveinfo['extra'] = json.dumps(extra)
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
                               build_type=type, filepath=filepath, fileinfo=fileinfo)
