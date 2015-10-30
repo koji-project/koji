@@ -4570,7 +4570,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
                               task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return binfo
 
-def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
+
+def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     """Import a single rpm into the database
 
     Designed to be called from import_build.
@@ -4631,8 +4632,14 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     rpminfo['buildroot_id'] = brootid
     rpminfo['external_repo_id'] = 0
 
+    # handle cg extra info
+    if fileinfo is not None:
+        extra = fileinfo.get('extra')
+        if extra is not None:
+            rpminfo['extra'] = json.dumps(extra)
+
     koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo,
-                              filepath=fn)
+                              filepath=fn, fileinfo=fileinfo)
 
     data = rpminfo.copy()
     del data['sourcepackage']
@@ -4641,7 +4648,7 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo,
-                              filepath=fn)
+                              filepath=fn, fileinfo=fileinfo)
 
     #extra fields for return
     rpminfo['build'] = buildinfo
@@ -4814,8 +4821,7 @@ def cg_import_rpm(buildinfo, brinfo, fileinfo):
         raise koji.GenericError('Metadata-only imports are not supported for rpms')
         # TODO - support for rpms too
     fn = fileinfo['hub.path']
-    rpminfo = import_rpm(fn, buildinfo, brinfo.id)
-    # TODO - handle fileinfo['extra']
+    rpminfo = import_rpm(fn, buildinfo, brinfo.id, fileinfo=fileinfo)
     import_rpm_file(fn, buildinfo, rpminfo)
     add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
 
