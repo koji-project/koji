@@ -1,5 +1,6 @@
 #import koji
 #import koji.util
+#from pprint import pformat
 #from kojiweb import util
 
 #include "includes/header.chtml"
@@ -75,6 +76,11 @@
     #if $task
     <tr>
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
+    </tr>
+    #end if
+    #if 'extra' in $build
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($build.extra))</td>
     </tr>
     #end if
     <tr>
