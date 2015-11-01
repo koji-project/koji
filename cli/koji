@@ -3171,9 +3171,16 @@ def anon_handle_rpminfo(options, session, args):
             print "No buildroot data available"
         else:
             br_info = session.getBuildroot(info['buildroot_id'])
-            print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
-            print "Build Host: %(host_name)s" % br_info
-            print "Build Task: %(task_id)i" % br_info
+            if br_info['br_type'] == koji.BR_TYPES['STANDARD']:
+                print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
+                print "Build Host: %(host_name)s" % br_info
+                print "Build Task: %(task_id)i" % br_info
+            else:
+                print "Content generator: %(cg_name)s" % br_info
+                print "Buildroot: %(id)i" % br_info
+                print "Build Host OS: %(host_os)s (%(host_arch)s)" % br_info
+        if info.get('extra'):
+            print "Extra: %(extra)r" % info
         if options.buildroots:
             br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order':'buildroot.id'})
             print "Used in %i buildroots:" % len(br_list)
@@ -3229,6 +3236,8 @@ def anon_handle_buildinfo(options, session, args):
         if win_info:
             print "Windows build platform: %s" % win_info['platform']
         print "Tags: %s" % ' '.join(taglist)
+        if info.get('extra'):
+            print "Extra: %(extra)r" % info
         maven_archives = session.listArchives(buildID=info['id'], type='maven')
         if maven_archives:
             print "Maven archives:"
