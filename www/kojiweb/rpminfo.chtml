@@ -1,5 +1,6 @@
 #import koji
 #from kojiweb import util
+#from pprint import pformat
 #import time
 #import urllib
 
@@ -66,6 +67,11 @@
     #if $builtInRoot
     <tr>
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$util.brLabel($builtInRoot)</a></td>
+    </tr>
+    #end if
+    #if $rpm.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($rpm.extra))</td>
     </tr>
     #end if
     #if $rpm.external_repo_id == 0

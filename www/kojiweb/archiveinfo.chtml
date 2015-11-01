@@ -1,5 +1,6 @@
 #import koji
 #from kojiweb import util
+#from pprint import pformat
 #import urllib
 
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
@@ -52,6 +53,11 @@
     #if $builtInRoot
     <tr>
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$util.brLabel($builtInRoot)</a></td>
+    </tr>
+    #end if
+    #if $archive.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($archive.extra))</td>
     </tr>
     #end if
     #if $files

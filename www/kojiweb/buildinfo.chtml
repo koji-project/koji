@@ -78,7 +78,7 @@
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
     </tr>
     #end if
-    #if 'extra' in $build
+    #if $build.get('extra')
     <tr>
       <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($build.extra))</td>
     </tr>

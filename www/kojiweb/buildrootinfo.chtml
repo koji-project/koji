@@ -1,5 +1,6 @@
 #import koji
 #from kojiweb import util
+#from pprint import pformat
 
 #include "includes/header.chtml"
 
@@ -39,6 +40,11 @@
     <tr>
       <th>Repo Created</th><td>$util.formatTimeLong($buildroot.repo_create_event_time)</td>
     </tr>
+    #if $buildroot.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($buildroot.extra))</td>
+    </tr>
+    #end if
     <tr>
       <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&amp;type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
     </tr>
