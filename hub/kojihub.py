@@ -1346,6 +1346,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.extra', 'extra'),
              ]
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
@@ -1370,6 +1371,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                           transform=_fix_archive_row,
                            columns=[pair[0] for pair in fields],
                            aliases=[pair[1] for pair in fields])
 
@@ -2109,6 +2111,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
               ('archiveinfo.filename', 'filename'), ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.extra', 'extra'),
               ('maven_archives.group_id', 'group_id'),
               ('maven_archives.artifact_id', 'artifact_id'),
               ('maven_archives.version', 'version'),
@@ -2124,6 +2127,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     order = '-tag_event'
     query = QueryProcessor(tables=tables, joins=joins,
                            clauses=clauses, opts={'order': order},
+                           transform=_fix_archive_row,
                            columns=[f[0] for f in fields],
                            aliases=[f[1] for f in fields])
     included = {}
@@ -3359,9 +3363,14 @@ def get_next_release(build_info):
 
 
 def _fix_rpm_row(row):
-    row['size'] = koji.encode_int(row['size'])
-    row['extra'] = parse_json(row['extra'], desc='rpm extra')
+    if 'size'in row:
+        row['size'] = koji.encode_int(row['size'])
+    if 'extra' in row:
+        row['extra'] = parse_json(row['extra'], desc='rpm extra')
     return row
+
+#alias for now, may change in the future
+_fix_archive_row = _fix_rpm_row
 
 
 def get_rpm(rpminfo, strict=False, multi=False):
@@ -3680,6 +3689,7 @@ def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildro
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.extra', 'extra'),
               ('archivetypes.name', 'type_name'),
               ('archivetypes.description', 'type_description'),
               ('archivetypes.extensions', 'type_extensions'),
@@ -3761,15 +3771,10 @@ def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildro
 
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
+                          transform=_fix_archive_row,
                           clauses=clauses, values=values, opts=queryOpts).execute()
-    if not (queryOpts and queryOpts.get('countOnly')):
-        if queryOpts and 'asList' in queryOpts:
-            key = aliases.index('size')
-        else:
-            key = 'size'
-        for row in ret:
-            row[key] = koji.encode_int(row[key])
     return ret
+
 
 def get_archive(archive_id, strict=False):
     """
@@ -3796,14 +3801,12 @@ def get_archive(archive_id, strict=False):
 
     If the archive is part of an image build, and it is the image file that
     contains the root partitioning ('/'), there will be a additional fields:
-
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'checksum_type')
-    select = """SELECT %s FROM archiveinfo
-    WHERE id = %%(archive_id)i""" % ', '.join(fields)
-    archive =  _singleRow(select, locals(), fields, strict=strict)
+    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'checksum_type', 'extra')
+    archive = QueryProcessor(tables=['archiveinfo'], columns=fields, transform=_fix_archive_row,
+                          clauses=['id=%(archive_id)s'], values=locals()).executeOne()
     if not archive:
         # strict is taken care of by _singleRow()
         return None
@@ -3819,7 +3822,6 @@ def get_archive(archive_id, strict=False):
     if image_info:
         del image_info['archive_id']
         archive.update(image_info)
-    archive['size'] = koji.encode_int(archive['size'])
     return archive
 
 def get_maven_archive(archive_id, strict=False):
@@ -4191,6 +4193,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('buildroot.container_type', 'container_type'),
               ('buildroot.host_os', 'host_os'),
               ('buildroot.host_arch', 'host_arch'),
+              ('buildroot.extra', 'extra'),
               ('standard_buildroot.state', 'state'),
               ('standard_buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
@@ -4239,6 +4242,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=tables, joins=joins, clauses=clauses, values=locals(),
+                           transform=_fix_extra_field,
                            opts=queryOpts)
     return query.execute()
 
