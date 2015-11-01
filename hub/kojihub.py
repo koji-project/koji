@@ -2831,11 +2831,7 @@ def get_tag_extra(tagInfo, event=None):
                            opts={'asList': True})
     result = {}
     for key, value in query.execute():
-        try:
-            value = json.loads(value)
-        except Exception:
-            # this should not happen
-            raise koji.GenericError("Invalid tag extra data: %s : %r" % (key, value))
+        value = parse_json(value, errstr="Invalid tag extra data: %s" % key)
         result[key] = value
     return result
 
@@ -3324,6 +3320,7 @@ def get_build(buildInfo, strict=False):
             ]
     clauses = ['build.id = %(buildID)i']
     query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
+                           transform=_fix_extra_field,
                            tables=['build'], joins=joins, clauses=clauses)
     result = query.executeOne()
 
@@ -3333,8 +3330,6 @@ def get_build(buildInfo, strict=False):
         else:
             return None
     else:
-        if result['extra'] is not None:
-            result['extra'] = json.loads(result['extra'])
         return result
 
 
@@ -6798,6 +6793,11 @@ def parse_json(value, desc=None, errstr=None):
         raise koji.GenericError("%s: %r" % (errstr, value))
 
 
+def _fix_extra_field(row):
+    row['extra'] = parse_json(row['extra'], errstr='Invalid extra data')
+    return row
+
+
 class InsertProcessor(object):
     """Build an insert statement
 
@@ -10112,13 +10112,9 @@ class BuildRoot(object):
             'extra',
             ]
         query = QueryProcessor(columns=fields, tables=['buildroot'],
+                    transform=_fix_extra_field,
                     values={'id': id}, clauses=['id=%(id)s'])
         data = query.executeOne()
-        if data['extra'] != None:
-            try:
-                data['extra'] = json.loads(data['extra'])
-            except Exception:
-                raise koji.GenericError("Invalid buildroot extra data: %(extra)r" % data)
         if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
