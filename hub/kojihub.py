@@ -4874,88 +4874,6 @@ def cg_import_components(image_id, components):
         insert.execute()
 
 
-def cg_export(build):
-    """Return CG metadata and file refs for a given build"""
-
-    metadata = {'metadata_version' : 0}
-
-    binfo = get_build(build, strict=True)
-    # TODO: handle multiple build types
-    metadata['build'] = dslice(binfo, ['name', 'version', 'release'])
-    # TODO: get source from task if possible
-    # TODO: get start_time and end_time from task and or build
-
-    metadata['output'] = []
-    brmap = {}
-
-    # gather rpms
-    for rpminfo in list_rpms(buildID=binfo['id']):
-        data = {}
-        data['filename'] = koji.pathinfo.rpm(rpminfo)  # XXX [?]
-        data['filesize'] = rpminfo['size']
-        data['arch'] = rpminfo['arch']
-        data['checksum'] = rpminfo['payloadhash']
-        data['checksum_type'] = 'sigmd5'
-        data['type'] = 'rpm'
-        br_id = rpminfo['buildroot_id']
-        if br_id is None:
-            data['buildroot_id'] = None
-        else:
-            brmap.setdefault(br_id, len(brmap))
-            data['buildroot_id'] = brmap[br_id]
-        metadata['output'].append(data)
-
-    # archives too
-    for archiveinfo in list_archives(buildID=binfo['id']):
-        data = {}
-        data['filename'] = archiveinfo['filename']
-        data['filesize'] = archiveinfo['size']
-        data['arch'] = None #XXX
-        data['checksum'] = archiveinfo['checksum']
-        data['checksum_type'] = koji.CHECKSUM_TYPES(archiveinfo['checksum_type'])
-        data['type'] = archiveinfo['type_name']
-        br_id = archiveinfo['buildroot_id']
-        if br_id is None:
-            data['buildroot_id'] = None
-        else:
-            brmap.setdefault(br_id, len(brmap))
-            data['buildroot_id'] = brmap[br_id]
-        metadata['output'].append(data)
-
-    # gather buildroot info
-    metadata['buildroots'] = []
-    for br_id in brmap:
-        # host(os, arch), cg(name, version), container(type, arch), tools([name, version])
-        # rpms([n,v,r,e,a,md5,sig]), archives([fn, sz, csum, sumtype])
-        # extra
-        brinfo = get_buildroot(br_id)
-        data = {}
-        data['id'] = brmap[br_id]
-        data['container'] = {'type': 'mock', 'arch': brinfo['arch']}
-        data['host'] = {'os': 'unknown', 'arch': brinfo['arch']} #XXX
-        data['tools'] = []
-        data['component_rpms'] = []
-        for rpminfo in list_rpms(componentBuildrootID=br_id):
-            info = dslice(rpminfo, ['name', 'version', 'release', 'epoch', 'arch'])
-            info['sigmd5'] = rpminfo['payloadhash']
-            info['sig'] = None
-            data['component_rpms'].append(info)
-        data['component_archives'] = []
-        for archiveinfo in list_archives(componentBuildrootID=br_id):
-            info = dslice(archiveinfo, ['filename', 'checksum'])
-            info['filesize'] = info['size']
-            info['checksum_type'] = koji.CHECKSUM_TYPES(archiveinfo['checksum_type'])
-            data['component_archives'].append(info)
-        data['extra'] = dslice(brinfo, ['host_id', 'host_name', 'repo_id', 'task_id'])
-        data['extra']['orig_id'] = brinfo['id']
-        metadata['buildroots'].append(data)
-
-    #TODO also return paths to all output files relative to topdir
-
-    #TODO logs
-    return metadata
-
-
 def add_external_rpm(rpminfo, external_repo, strict=True):
     """Add an external rpm entry to the rpminfo table
 
@@ -8281,7 +8199,6 @@ class RootExports(object):
         import_archive(fullpath, buildinfo, type, typeInfo)
 
     CGImport = staticmethod(cg_import)
-    CGExport = staticmethod(cg_export)
 
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
