@@ -4658,7 +4658,15 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
 
 
 def cg_import(metadata, directory):
-    """ Import build from a content generator"""
+    """Import build from a content generator
+
+    metadata can be one of the following
+    - json encoded string representing the metadata
+    - a dictionary (parsed metadata)
+    - a filename containing the metadata
+    """
+
+    metadata = cg_get_metadata(metadata, directory)
 
     metaver = metadata['metadata_version']
     if metaver != 0:
@@ -4734,6 +4742,28 @@ def cg_import(metadata, directory):
             cg_import_archive(buildinfo, brinfo, fileinfo)
 
     # TODO: post import callback
+
+
+def cg_get_metadata(metadata, directory):
+    """Get the metadata from the args"""
+
+    if isinstance(metadata, dict):
+        return metadata
+    if metadata is None:
+        #default to looking for uploaded file
+        metadata = 'metadata.json'
+    if not isinstance(metadata, (str, unicode)):
+        raise koji.GenericError("Invalid metadata value: %r" % metadata)
+    if metadata.endswith('.json'):
+        # handle uploaded metadata
+        workdir = koji.pathinfo.work()
+        path = os.path.join(workdir, directory, metadata)
+        if not os.path.exists(path):
+            raise koji.GenericError("No such file: %s" % metadata)
+        fo = open(path, 'r')
+        metadata = fo.read()
+        fo.close()
+    return parse_json(metadata, desc='metadata')
 
 
 def cg_import_buildroot(brdata):
