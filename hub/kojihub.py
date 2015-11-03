@@ -5516,7 +5516,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     archiveinfo['type_id'] = archivetype['id']
 
     # cg extra data
-    extra = fileinfo.get(extra, None)
+    extra = fileinfo.get('extra', None)
     if extra is not None:
         archiveinfo['extra'] = json.dumps(extra)
 
