@@ -2,3 +2,4 @@
 *.pyo
 tests/test.py
 .coverage
+docs/build/
