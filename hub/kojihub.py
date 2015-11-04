@@ -4666,242 +4666,251 @@ def cg_import(metadata, directory):
     - a filename containing the metadata
     """
 
-    metadata = cg_get_metadata(metadata, directory)
+    importer = CG_Importer()
+    importer.do_import(metadata, directory)
 
-    metaver = metadata['metadata_version']
-    if metaver != 0:
-        raise koji.GenericError("Unknown metadata version: %r" % metaver)
 
-    # assert cg access
-    cgs = set()
-    for brdata in metadata['buildroots']:
-        cginfo = brdata['content_generator']
-        cg = lookup_name('content_generator', cginfo['name'], strict=True)
-        cgs.add(cg['id'])
-        brdata['cg_id'] = cg['id']
-    for cg_id in cgs:
-        assert_cg(cg_id)
+class CG_Importer(object):
 
-    # TODO: pre import callback
 
-    # TODO: basic metadata sanity check (use jsonschema?)
+    def do_import(self, metadata, directory):
 
-    # TODO: policy hooks
+        metadata = self.get_metadata(metadata, directory)
 
-    # build entry
-    buildinfo = get_build(metadata['build'], strict=False)
-    if buildinfo:
-        # TODO : allow in some cases
-        raise koji.GenericError("Build already exists: %r" % buildinfo)
-    else:
-        # create a new build
-        buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
-        # epoch is not in the metadata spec, but we allow it to be specified
-        buildinfo['epoch'] = metadata['build'].get('epoch', None)
-        build_id = new_build(buildinfo)
-        buildinfo = get_build(build_id, strict=True)
+        metaver = metadata['metadata_version']
+        if metaver != 0:
+            raise koji.GenericError("Unknown metadata version: %r" % metaver)
 
-    # handle special build types
-    b_extra = metadata['build'].get('extra', {})
-    if 'maven' in b_extra:
-        new_maven_build(buildinfo, b_extra['maven'])
-    if 'win' in b_extra:
-        new_win_build(buildinfo, b_extra['win'])
-    if 'image' in b_extra:
-        # no extra info tracked at build level
-        new_image_build(buildinfo)
+        # assert cg access
+        cgs = set()
+        for brdata in metadata['buildroots']:
+            cginfo = brdata['content_generator']
+            cg = lookup_name('content_generator', cginfo['name'], strict=True)
+            cgs.add(cg['id'])
+            brdata['cg_id'] = cg['id']
+        for cg_id in cgs:
+            assert_cg(cg_id)
 
-    # buildroots
-    br_used = set([f['buildroot_id'] for f in metadata['output']])
-    brmap = {}
-    for brdata in metadata['buildroots']:
-        brfakeid = brdata['id']
-        if brfakeid not in br_used:
-            raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
-        if brfakeid in brmap:
-            raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
-        brmap[brfakeid] = cg_import_buildroot(brdata)
+        # TODO: pre import callback
 
-    # outputs
-    for fileinfo in metadata['output']:
+        # TODO: basic metadata sanity check (use jsonschema?)
+
+        # TODO: policy hooks
+
+        # build entry
+        buildinfo = get_build(metadata['build'], strict=False)
+        if buildinfo:
+            # TODO : allow in some cases
+            raise koji.GenericError("Build already exists: %r" % buildinfo)
+        else:
+            # create a new build
+            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
+            # epoch is not in the metadata spec, but we allow it to be specified
+            buildinfo['epoch'] = metadata['build'].get('epoch', None)
+            build_id = new_build(buildinfo)
+            buildinfo = get_build(build_id, strict=True)
+
+        # handle special build types
+        b_extra = metadata['build'].get('extra', {})
+        if 'maven' in b_extra:
+            new_maven_build(buildinfo, b_extra['maven'])
+        if 'win' in b_extra:
+            new_win_build(buildinfo, b_extra['win'])
+        if 'image' in b_extra:
+            # no extra info tracked at build level
+            new_image_build(buildinfo)
+
+        # buildroots
+        br_used = set([f['buildroot_id'] for f in metadata['output']])
+        brmap = {}
+        for brdata in metadata['buildroots']:
+            brfakeid = brdata['id']
+            if brfakeid not in br_used:
+                raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
+            if brfakeid in brmap:
+                raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
+            brmap[brfakeid] = self.import_buildroot(brdata)
+
+        # outputs
+        for fileinfo in metadata['output']:
+            if fileinfo.get('metadata_only', False):
+                if not metadata['build'].get('metadata_only'):
+                    raise koji.GenericError('Build must be marked metadata-only to include metadata-only outputs')
+            workdir = koji.pathinfo.work()
+            path = os.path.join(workdir, directory, fileinfo.get('relpath', ''), fileinfo['filename'])
+            fileinfo['hub.path'] = path
+            brinfo = brmap.get(fileinfo['buildroot_id'])
+            if not brinfo:
+                raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
+
+            if fileinfo['type'] == 'rpm':
+                self.import_rpm(buildinfo, brinfo, fileinfo)
+            elif fileinfo['type'] == 'log':
+                self.import_log(buildinfo, fileinfo)
+            else:
+                self.import_archive(buildinfo, brinfo, fileinfo)
+
+        # TODO: post import callback
+
+
+    def get_metadata(self, metadata, directory):
+        """Get the metadata from the args"""
+
+        if isinstance(metadata, dict):
+            return metadata
+        if metadata is None:
+            #default to looking for uploaded file
+            metadata = 'metadata.json'
+        if not isinstance(metadata, (str, unicode)):
+            raise koji.GenericError("Invalid metadata value: %r" % metadata)
+        if metadata.endswith('.json'):
+            # handle uploaded metadata
+            workdir = koji.pathinfo.work()
+            path = os.path.join(workdir, directory, metadata)
+            if not os.path.exists(path):
+                raise koji.GenericError("No such file: %s" % metadata)
+            fo = open(path, 'r')
+            metadata = fo.read()
+            fo.close()
+        return parse_json(metadata, desc='metadata')
+
+
+    def import_buildroot(self, brdata):
+        """Import the given buildroot data"""
+
+        # buildroot entry
+        brinfo = {
+            'cg_id' : brdata['cg_id'],
+            'cg_version' : brdata['content_generator']['version'],
+            'container_type' : brdata['container']['type'],
+            'container_arch' : brdata['container']['arch'],
+            'host_os' : brdata['host']['os'],
+            'host_arch' : brdata['host']['arch'],
+            'extra' : brdata.get('extra'),
+        }
+        br = BuildRoot()
+        br.cg_new(brinfo)
+
+        # TODO: standard buildroot entry (if applicable)
+        # ???
+
+        #buildroot components
+        rpmlist, archives = self.match_components(brdata['components'])
+        br.setList(rpmlist)
+        br.updateArchiveList(archives)
+
+        # buildroot_tools_info
+        br.setTools(brdata['tools'])
+
+        return br
+
+
+    def match_components(self, components):
+        rpms = []
+        files = []
+        for comp in components:
+            if comp['type'] == 'rpm':
+                rpms.append(self.match_rpm(comp))
+            elif comp['type'] == 'file':
+                files.append(self.match_file(comp))
+            else:
+                raise koji.GenericError("Unknown component type: %(type)s" % comp)
+        return rpms, files
+
+
+    def match_rpm(self, comp):
+        # TODO: do we allow inclusion of external rpms?
+        if 'location' in comp:
+            raise koji.GenericError("External rpms not allowed")
+        if 'id' in comp:
+            # not in metadata spec, and will confuse get_rpm
+            raise koji.GenericError("Unexpected 'id' field in component")
+        rinfo = get_rpm(comp, strict=True)
+        if rinfo['payloadhash'] != comp['sigmd5']:
+            nvr = "%(name)s-%(version)s-%(release)s" % rinfo
+            raise koji.GenericError("md5sum mismatch for %s: %s != %s"
+                        % (nvr, comp['sigmd5'], rinfo['payloadhash']))
+        # TODO - should we check the signature field?
+        return rinfo
+
+
+    def match_file(self, comp):
+        # hmm, how do we look up archives?
+        # updateMavenBuildRootList does seriously wild stuff
+        # only unique field in archiveinfo is id
+        # checksum/checksum_type only works if type matches
+        # at the moment, we only have md5 entries in archiveinfo
+
+        type_mismatches = 0
+        for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
+            if archive['checksum_type'] != comp['checksum_type']:
+                type_mismatches += 1
+                continue
+            if archive['checksum'] == comp['checksum']:
+                return archive
+        #else
+        logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
+        if type_mismatches:
+            logger.error("Match failed with %i type mismatches", type_mismatches)
+        # TODO: allow external archives [??]
+        raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
+
+
+    def import_rpm(self, buildinfo, brinfo, fileinfo):
         if fileinfo.get('metadata_only', False):
-            if not metadata['build'].get('metadata_only'):
-                raise koji.GenericError('Build must be marked metadata-only to include metadata-only outputs')
-        workdir = koji.pathinfo.work()
-        path = os.path.join(workdir, directory, fileinfo.get('relpath', ''), fileinfo['filename'])
-        fileinfo['hub.path'] = path
-        brinfo = brmap.get(fileinfo['buildroot_id'])
-        if not brinfo:
-            raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
-
-        if fileinfo['type'] == 'rpm':
-            cg_import_rpm(buildinfo, brinfo, fileinfo)
-        elif fileinfo['type'] == 'log':
-            cg_import_log(buildinfo, fileinfo)
-        else:
-            cg_import_archive(buildinfo, brinfo, fileinfo)
-
-    # TODO: post import callback
+            raise koji.GenericError('Metadata-only imports are not supported for rpms')
+            # TODO - support for rpms too
+        fn = fileinfo['hub.path']
+        rpminfo = import_rpm(fn, buildinfo, brinfo.id, fileinfo=fileinfo)
+        import_rpm_file(fn, buildinfo, rpminfo)
+        add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
 
 
-def cg_get_metadata(metadata, directory):
-    """Get the metadata from the args"""
-
-    if isinstance(metadata, dict):
-        return metadata
-    if metadata is None:
-        #default to looking for uploaded file
-        metadata = 'metadata.json'
-    if not isinstance(metadata, (str, unicode)):
-        raise koji.GenericError("Invalid metadata value: %r" % metadata)
-    if metadata.endswith('.json'):
-        # handle uploaded metadata
-        workdir = koji.pathinfo.work()
-        path = os.path.join(workdir, directory, metadata)
-        if not os.path.exists(path):
-            raise koji.GenericError("No such file: %s" % metadata)
-        fo = open(path, 'r')
-        metadata = fo.read()
-        fo.close()
-    return parse_json(metadata, desc='metadata')
+    def import_log(self, buildinfo, fileinfo):
+        if fileinfo.get('metadata_only', False):
+            # logs are not currently tracked, so this is a no op
+            return
+        # TODO: determine subdir
+        fn = fileinfo['hub.path']
+        import_build_log(fn, buildinfo, subdir=None)
 
 
-def cg_import_buildroot(brdata):
-    """Import the given buildroot data"""
+    def import_archive(self, buildinfo, brinfo, fileinfo):
+        fn = fileinfo['hub.path']
 
-    # buildroot entry
-    brinfo = {
-        'cg_id' : brdata['cg_id'],
-        'cg_version' : brdata['content_generator']['version'],
-        'container_type' : brdata['container']['type'],
-        'container_arch' : brdata['container']['arch'],
-        'host_os' : brdata['host']['os'],
-        'host_arch' : brdata['host']['arch'],
-        'extra' : brdata.get('extra'),
-    }
-    br = BuildRoot()
-    br.cg_new(brinfo)
+        # determine archive import type (maven/win/image/other)
+        extra = fileinfo.get('extra', {})
+        legacy_types = ['maven', 'win', 'image']
+        l_type = None
+        type_info = None
+        for key in legacy_types:
+            if key in extra:
+                if l_type is not None:
+                    raise koji.GenericError("Output file has multiple archive types: %s" % fn)
+                l_type = key
+                type_info = extra[key]
 
-    # TODO: standard buildroot entry (if applicable)
-    # ???
+        archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
 
-    #buildroot components
-    rpmlist, archives = cg_match_components(brdata['components'])
-    br.setList(rpmlist)
-    br.updateArchiveList(archives)
-
-    # buildroot_tools_info
-    br.setTools(brdata['tools'])
-
-    return br
+        if l_type == 'image':
+            components = fileinfo.get('components', [])
+            self.import_components(archiveinfo['id'], components)
 
 
-def cg_match_components(components):
-    rpms = []
-    files = []
-    for comp in components:
-        if comp['type'] == 'rpm':
-            rpms.append(cg_match_rpm(comp))
-        elif comp['type'] == 'file':
-            files.append(cg_match_file(comp))
-        else:
-            raise koji.GenericError("Unknown component type: %(type)s" % comp)
-    return rpms, files
+    def import_components(self, image_id, components):
+        rpmlist, archives = self.match_components(components)
 
+        insert = InsertProcessor('image_listing')
+        insert.set(image_id=image_id)
+        for rpminfo in rpmlist:
+            insert.set(rpm_id=rpminfo['id'])
+            insert.execute()
 
-def cg_match_rpm(comp):
-    # TODO: do we allow inclusion of external rpms?
-    if 'location' in comp:
-        raise koji.GenericError("External rpms not allowed")
-    if 'id' in comp:
-        # not in metadata spec, and will confuse get_rpm
-        raise koji.GenericError("Unexpected 'id' field in component")
-    rinfo = get_rpm(comp, strict=True)
-    if rinfo['payloadhash'] != comp['sigmd5']:
-        nvr = "%(name)s-%(version)s-%(release)s" % rinfo
-        raise koji.GenericError("md5sum mismatch for %s: %s != %s"
-                    % (nvr, comp['sigmd5'], rinfo['payloadhash']))
-    # TODO - should we check the signature field?
-    return rinfo
-
-
-def cg_match_file(comp):
-    # hmm, how do we look up archives?
-    # updateMavenBuildRootList does seriously wild stuff
-    # only unique field in archiveinfo is id
-    # checksum/checksum_type only works if type matches
-    # at the moment, we only have md5 entries in archiveinfo
-
-    type_mismatches = 0
-    for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
-        if archive['checksum_type'] != comp['checksum_type']:
-            type_mismatches += 1
-            continue
-        if archive['checksum'] == comp['checksum']:
-            return archive
-    #else
-    logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
-    if type_mismatches:
-        logger.error("Match failed with %i type mismatches", type_mismatches)
-    # TODO: allow external archives [??]
-    raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
-
-
-def cg_import_rpm(buildinfo, brinfo, fileinfo):
-    if fileinfo.get('metadata_only', False):
-        raise koji.GenericError('Metadata-only imports are not supported for rpms')
-        # TODO - support for rpms too
-    fn = fileinfo['hub.path']
-    rpminfo = import_rpm(fn, buildinfo, brinfo.id, fileinfo=fileinfo)
-    import_rpm_file(fn, buildinfo, rpminfo)
-    add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
-
-
-def cg_import_log(buildinfo, fileinfo):
-    if fileinfo.get('metadata_only', False):
-        # logs are not currently tracked, so this is a no op
-        return
-    # TODO: determine subdir
-    fn = fileinfo['hub.path']
-    import_build_log(fn, buildinfo, subdir=None)
-
-
-def cg_import_archive(buildinfo, brinfo, fileinfo):
-    fn = fileinfo['hub.path']
-
-    # determine archive import type (maven/win/image/other)
-    extra = fileinfo.get('extra', {})
-    legacy_types = ['maven', 'win', 'image']
-    l_type = None
-    type_info = None
-    for key in legacy_types:
-        if key in extra:
-            if l_type is not None:
-                raise koji.GenericError("Output file has multiple archive types: %s" % fn)
-            l_type = key
-            type_info = extra[key]
-
-    archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
-
-    if l_type == 'image':
-        components = fileinfo.get('components', [])
-        cg_import_components(archiveinfo['id'], components)
-
-
-def cg_import_components(image_id, components):
-    rpmlist, archives = cg_match_components(components)
-
-    insert = InsertProcessor('image_listing')
-    insert.set(image_id=image_id)
-    for rpminfo in rpmlist:
-        insert.set(rpm_id=rpminfo['id'])
-        insert.execute()
-
-    insert = InsertProcessor('image_archive_listing')
-    insert.set(image_id=image_id)
-    for archiveinfo in archives:
-        insert.set(archive_id=archiveinfo['id'])
-        insert.execute()
+        insert = InsertProcessor('image_archive_listing')
+        insert.set(image_id=image_id)
+        for archiveinfo in archives:
+            insert.set(archive_id=archiveinfo['id'])
+            insert.execute()
 
 
 def add_external_rpm(rpminfo, external_repo, strict=True):
