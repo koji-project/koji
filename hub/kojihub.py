@@ -4707,6 +4707,8 @@ class CG_Importer(object):
             buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
             # epoch is not in the metadata spec, but we allow it to be specified
             buildinfo['epoch'] = metadata['build'].get('epoch', None)
+            buildinfo['completion_time'] = \
+                datetime.datetime.fromtimestamp(metadata['build']['end_time']).isoformat(' ')
             build_id = new_build(buildinfo)
             buildinfo = get_build(build_id, strict=True)
 
