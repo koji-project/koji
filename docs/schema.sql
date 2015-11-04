@@ -290,6 +290,7 @@ CREATE TABLE build (
 	release TEXT NOT NULL,
 	epoch INTEGER,
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	start_time TIMESTAMP,
 	completion_time TIMESTAMP,
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),

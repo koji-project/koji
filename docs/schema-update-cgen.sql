@@ -45,6 +45,7 @@ CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
 -- new columns --
 
 select statement_timestamp(), 'Adding new columns' as msg;
+ALTER TABLE build ADD COLUMN start_time TIMESTAMP;
 ALTER TABLE build ADD COLUMN extra TEXT;
 ALTER TABLE rpminfo ADD COLUMN extra TEXT;
 ALTER TABLE archiveinfo ADD COLUMN extra TEXT;
