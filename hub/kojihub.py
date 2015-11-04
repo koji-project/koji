@@ -1152,6 +1152,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+              ('build.start_time', 'start_time'),
               ('build.task_id','task_id'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
@@ -3295,6 +3296,8 @@ def get_build(buildInfo, strict=False):
       creation_event_id: id of the create_event
       creation_time: time the build was created (text)
       creation_ts: time the build was created (epoch)
+      start_time: time the build was started (may be null)
+      start_ts: time the build was started (epoch, may be null)
       completion_time: time the build was completed (may be null)
       completion_ts: time the build was completed (epoch, may be null)
       extra: dictionary with extra data about the build
@@ -3308,11 +3311,13 @@ def get_build(buildInfo, strict=False):
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+              ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
               ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+              ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('build.extra', 'extra'))
@@ -4403,7 +4408,10 @@ def change_build_volume(build, volume, strict=True):
 
 def new_build(data):
     """insert a new build entry"""
+
     data = data.copy()
+
+    # basic sanity checks
     if 'pkg_id' in data:
         data['name'] = lookup_package(data['pkg_id'], strict=True)['name']
     else:
@@ -4422,51 +4430,57 @@ def new_build(data):
             raise koji.GenericError("Invalid build extra data: %(extra)r" % data)
     else:
         data['extra'] = None
+
     #provide a few default values
     data.setdefault('state',koji.BUILD_STATES['COMPLETE'])
+    data.setdefault('start_time', 'NOW')
     data.setdefault('completion_time', 'NOW')
     data.setdefault('owner',context.session.user_id)
     data.setdefault('task_id',None)
     data.setdefault('volume_id', 0)
+
     #check for existing build
-    # TODO - table lock?
-    q="""SELECT id,state,task_id FROM build
-    WHERE pkg_id=%(pkg_id)d AND version=%(version)s AND release=%(release)s
-    FOR UPDATE"""
-    row = _fetchSingle(q, data)
+    query = QueryProcessor(
+                tables=['build'], columns=['id', 'state', 'task_id'],
+                clauses=['pkg_id=%(pkg_id)s', 'version=%(version)s',
+                    'release=%(release)s'],
+                values=data, opts={'rowlock':True})
+    row = query.executeOne()
     if row:
-        id, state, task_id = row
-        data['id'] = id
+        build_id, state, task_id = row
+        data['id'] = build_id
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
         st_desc = koji.BUILD_STATES[state]
         if st_desc == 'BUILDING':
             # check to see if this is the controlling task
             if data['state'] == state and data.get('task_id','') == task_id:
                 #the controlling task must have restarted (and called initBuild again)
-                return id
+                return build_id
             raise koji.GenericError, "Build already in progress (task %d)" % task_id
             # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
         if st_desc in ('FAILED','CANCELED'):
             #should be ok to replace
-            update = """UPDATE build SET state=%(state)i,task_id=%(task_id)s,
-            owner=%(owner)s,completion_time=%(completion_time)s,create_event=get_event()
-            WHERE id = %(id)i"""
-            _dml(update, data)
+            update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
+            update.set(**dslice(data, ['owner', 'start_time', 'completion_time']))
+            update.rawset(create_event='get_event()')
+            update.execute()
             koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-            return id
+            return build_id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
-            % (id, st_desc, data)
+            % (build_id, st_desc, data)
     else:
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
+
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                         'task_id', 'owner', 'completion_time', 'extra'])
+                         'task_id', 'owner', 'start_time', 'completion_time', 'extra'])
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
     return data['id']
+
 
 def check_noarch_rpms(basepath, rpms):
     """
@@ -8759,6 +8773,8 @@ class RootExports(object):
           - creation_event_id
           - creation_time
           - creation_ts
+          - start_time
+          - start_ts
           - completion_time
           - completion_ts
           - task_id
@@ -8773,8 +8789,10 @@ class RootExports(object):
         """
         fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+                  ('build.start_time', 'start_time'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
                   ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+                  ('EXTRACT(EPOCH FROM build.start_time)','start_ts'),
                   ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
                   ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
