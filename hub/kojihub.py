@@ -4727,6 +4727,7 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(metadata['build']['end_time']).isoformat(' ')
             build_id = new_build(buildinfo)
             buildinfo = get_build(build_id, strict=True)
+        self.buildinfo = buildinfo
 
         # handle special build types
         b_extra = metadata['build'].get('extra', {})
@@ -4768,6 +4769,9 @@ class CG_Importer(object):
             else:
                 self.import_archive(buildinfo, brinfo, fileinfo)
 
+        # also import metadata file
+        self.import_metadata()
+
         # TODO: post import callback
 
 
@@ -4775,6 +4779,12 @@ class CG_Importer(object):
         """Get the metadata from the args"""
 
         if isinstance(metadata, dict):
+            self.metadata = metadata
+            try:
+                self.raw_metadata = json.dumps(metadata, indent=2)
+            except Exception:
+                logger.exception("Cannot encode supplied metadata")
+                raise koji.GenericError("Invalid metada, cannot encode: %r" % metadata)
             return metadata
         if metadata is None:
             #default to looking for uploaded file
@@ -4790,7 +4800,24 @@ class CG_Importer(object):
             fo = open(path, 'r')
             metadata = fo.read()
             fo.close()
-        return parse_json(metadata, desc='metadata')
+        self.raw_metadata = metadata
+        self.metadata = parse_json(metadata, desc='metadata')
+        return self.metadata
+
+
+    def import_metadata(self):
+        """Import the raw metadata"""
+
+        # TODO - eventually, import this as an archive, but for now we just write it to disk
+        #   because there are complications
+        #       - no buildroot (could confuse policies checking that builds were built sanely
+        #       - doesn't fit with current major archive categories
+        path = os.path.join(koji.pathinfo.build(self.buildinfo), 'metadata.json')
+        fo = open(path, 'w')
+        try:
+            fo.write(self.raw_metadata)
+        finally:
+            fo.close()
 
 
     def import_buildroot(self, brdata):
