@@ -10319,8 +10319,8 @@ class HostExports(object):
                     continue
                 archivetype = get_archive_type(filename)
                 if not archivetype:
-                    # Unknown archive type, skip it
-                    continue
+                    # Unknown archive type, fail the build
+                    raise koji.BuildError, 'unsupported file type: %s' % filename
                 import_archive(filepath, build_info, 'maven', dir_maven_info, maven_buildroot_id)
 
         # move the logs to their final destination
@@ -10438,8 +10438,8 @@ class HostExports(object):
         for relpath, metadata in results['output'].iteritems():
             archivetype = get_archive_type(relpath)
             if not archivetype:
-                # Unknown archive type, skip it
-                continue
+                # Unknown archive type, fail the build
+                raise koji.BuildError, 'unsupported file type: %s' % filename
             filepath = os.path.join(task_dir, relpath)
             metadata['relpath'] = os.path.dirname(relpath)
             import_archive(filepath, build_info, 'win', metadata, buildroot_id=results['buildroot_id'])
