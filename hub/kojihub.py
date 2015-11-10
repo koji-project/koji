@@ -4404,6 +4404,9 @@ def new_build(data):
             owner=%(owner)s,completion_time=%(completion_time)s,create_event=get_event()
             WHERE id = %(id)i"""
             _dml(update, data)
+            builddir = koji.pathinfo.build(data)
+            if os.path.exists(builddir):
+                shutil.rmtree(builddir)
             koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
             return id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
