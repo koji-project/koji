@@ -4857,9 +4857,13 @@ class CG_Importer(object):
         files = []
         for comp in components:
             if comp['type'] == 'rpm':
-                rpms.append(self.match_rpm(comp))
+                match = self.match_rpm(comp)
+                if match:
+                    rpms.append(match)
             elif comp['type'] == 'file':
-                files.append(self.match_file(comp))
+                match = self.match_file(comp)
+                if match:
+                    files.append(match)
             else:
                 raise koji.GenericError("Unknown component type: %(type)s" % comp)
         return rpms, files
@@ -4872,11 +4876,17 @@ class CG_Importer(object):
         if 'id' in comp:
             # not in metadata spec, and will confuse get_rpm
             raise koji.GenericError("Unexpected 'id' field in component")
-        rinfo = get_rpm(comp, strict=True)
+        rinfo = get_rpm(comp, strict=False)
+        if not rinfo:
+            # XXX - this is a temporary workaround until we can better track external refs
+            logger.warning("IGNORING unmatched rpm component: %r", comp)
+            return None
         if rinfo['payloadhash'] != comp['sigmd5']:
             nvr = "%(name)s-%(version)s-%(release)s" % rinfo
-            raise koji.GenericError("md5sum mismatch for %s: %s != %s"
-                        % (nvr, comp['sigmd5'], rinfo['payloadhash']))
+            # XXX - this is a temporary workaround until we can better track external refs
+            logger.warning("IGNORING rpm component (md5 mismatch): %r", comp)
+            #raise koji.GenericError("md5sum mismatch for %s: %s != %s"
+            #            % (nvr, comp['sigmd5'], rinfo['payloadhash']))
         # TODO - should we check the signature field?
         return rinfo
 
@@ -4899,8 +4909,11 @@ class CG_Importer(object):
         logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
         if type_mismatches:
             logger.error("Match failed with %i type mismatches", type_mismatches)
-        # TODO: allow external archives [??]
-        raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
+        # TODO: allow external archives
+        # XXX - this is a temporary workaround until we can better track external refs
+        logger.warning("IGNORING unmatched archive: %r", comp)
+        return None
+        #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
 
 
     def import_rpm(self, buildinfo, brinfo, fileinfo):
