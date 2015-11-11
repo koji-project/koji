@@ -4723,9 +4723,9 @@ class CG_Importer(object):
             # epoch is not in the metadata spec, but we allow it to be specified
             buildinfo['epoch'] = metadata['build'].get('epoch', None)
             buildinfo['start_time'] = \
-                datetime.datetime.fromtimestamp(metadata['build']['start_time']).isoformat(' ')
+                datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
             buildinfo['completion_time'] = \
-                datetime.datetime.fromtimestamp(metadata['build']['end_time']).isoformat(' ')
+                datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
             build_id = new_build(buildinfo)
             buildinfo = get_build(build_id, strict=True)
         self.buildinfo = buildinfo
