@@ -4700,7 +4700,7 @@ class CG_Importer(object):
         self.assert_cg_access()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
-                directory=directory, importer=self)
+                directory=directory)
 
         # TODO: basic metadata sanity check (use jsonschema?)
 
@@ -4744,7 +4744,7 @@ class CG_Importer(object):
         self.import_metadata()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
-                    directory=directory, importer=self, buildinfo=self.buildinfo)
+                    directory=directory, buildinfo=self.buildinfo)
 
 
     def get_metadata(self, metadata, directory):
