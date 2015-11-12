@@ -4688,10 +4688,12 @@ class CG_Importer(object):
 
     def __init__(self):
         self.buildinfo = None
+        self.metadata_only = False
 
     def do_import(self, metadata, directory):
 
         metadata = self.get_metadata(metadata, directory)
+        self.directory = directory
 
         metaver = metadata['metadata_version']
         if metaver != 0:
@@ -4710,35 +4712,12 @@ class CG_Importer(object):
         self.prep_build()
         self.get_build()
 
-        # buildroots
-        br_used = set([f['buildroot_id'] for f in metadata['output']])
-        brmap = {}
-        for brdata in metadata['buildroots']:
-            brfakeid = brdata['id']
-            if brfakeid not in br_used:
-                raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
-            if brfakeid in brmap:
-                raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
-            brmap[brfakeid] = self.import_buildroot(brdata)
+        self.prep_brs()
+        self.import_brs()
 
         # outputs
-        for fileinfo in metadata['output']:
-            if fileinfo.get('metadata_only', False):
-                if not metadata['build'].get('metadata_only'):
-                    raise koji.GenericError('Build must be marked metadata-only to include metadata-only outputs')
-            workdir = koji.pathinfo.work()
-            path = os.path.join(workdir, directory, fileinfo.get('relpath', ''), fileinfo['filename'])
-            fileinfo['hub.path'] = path
-            brinfo = brmap.get(fileinfo['buildroot_id'])
-            if not brinfo:
-                raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
-
-            if fileinfo['type'] == 'rpm':
-                self.import_rpm(self.buildinfo, brinfo, fileinfo)
-            elif fileinfo['type'] == 'log':
-                self.import_log(self.buildinfo, fileinfo)
-            else:
-                self.import_archive(self.buildinfo, brinfo, fileinfo)
+        self.prep_outputs()
+        self.import_outputs()
 
         # also import metadata file
         self.import_metadata()
@@ -4843,10 +4822,30 @@ class CG_Importer(object):
             fo.close()
 
 
-    def import_buildroot(self, brdata):
-        """Import the given buildroot data"""
+    def prep_brs(self):
+        metadata = self.metadata
+        br_used = set([f['buildroot_id'] for f in metadata['output']])
+        br_idx = {}
+        for brdata in metadata['buildroots']:
+            brfakeid = brdata['id']
+            if brfakeid not in br_used:
+                raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
+            if brfakeid in br_idx:
+                raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
+            br_idx[brfakeid] = self.prep_buildroot(brdata)
+        self.br_prep = br_idx
 
-        # buildroot entry
+
+    def import_brs(self):
+        brmap = {}
+        for brfakeid in self.br_prep:
+            entry = self.br_prep[brfakeid]
+            brmap[brfakeid] = self.import_buildroot(entry)
+        self.brmap = brmap
+
+
+    def prep_buildroot(self, brdata):
+        ret = {}
         brinfo = {
             'cg_id' : brdata['cg_id'],
             'cg_version' : brdata['content_generator']['version'],
@@ -4856,19 +4855,29 @@ class CG_Importer(object):
             'host_arch' : brdata['host']['arch'],
             'extra' : brdata.get('extra'),
         }
-        br = BuildRoot()
-        br.cg_new(brinfo)
+        rpmlist, archives = self.match_components(brdata['components'])
+        ret = {
+            'brinfo' : brinfo,
+            'rpmlist' : rpmlist,
+            'archives' : archives,
+            'tools' : brdata['tools'],
+        }
+        return ret
 
-        # TODO: standard buildroot entry (if applicable)
-        # ???
+
+    def import_buildroot(self, entry):
+        """Import the prepared buildroot data"""
+
+        # buildroot entry
+        br = BuildRoot()
+        br.cg_new(entry['brinfo'])
 
         #buildroot components
-        rpmlist, archives = self.match_components(brdata['components'])
-        br.setList(rpmlist)
-        br.updateArchiveList(archives)
+        br.setList(entry['rpmlist'])
+        br.updateArchiveList(entry['archives'])
 
         # buildroot_tools_info
-        br.setTools(brdata['tools'])
+        br.setTools(entry['tools'])
 
         return br
 
@@ -4937,6 +4946,60 @@ class CG_Importer(object):
         #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
 
 
+    def prep_outputs(self):
+        metadata = self.metadata
+        outputs = []
+        for fileinfo in metadata['output']:
+            fileinfo = fileinfo.copy()  # [!]
+            if fileinfo.get('metadata_only', False):
+                self.metadata_only = True
+            workdir = koji.pathinfo.work()
+            path = os.path.join(workdir, self.directory, fileinfo.get('relpath', ''), fileinfo['filename'])
+            fileinfo['hub.path'] = path
+            if fileinfo['buildroot_id'] not in self.br_prep:
+                raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
+            if fileinfo['type'] not in ['rpm', 'log']:
+                self.prep_archive(fileinfo)
+            outputs.append(fileinfo)
+        self.prepped_outputs = outputs
+
+
+    def import_outputs(self):
+        for fileinfo in self.prepped_outputs:
+            brinfo = self.brmap.get(fileinfo['buildroot_id'])
+            if not brinfo:
+                # should not happen
+                logger.error("No buildroot mapping for file: %r", fileinfo)
+                raise koji.GenericError("Unable to map buildroot %(buildroot_id)s" % fileinfo)
+            if fileinfo['type'] == 'rpm':
+                self.import_rpm(self.buildinfo, brinfo, fileinfo)
+            elif fileinfo['type'] == 'log':
+                self.import_log(self.buildinfo, fileinfo)
+            else:
+                self.import_archive(self.buildinfo, brinfo, fileinfo)
+
+
+    def prep_archive(self, fileinfo):
+        # determine archive import type (maven/win/image/other)
+        extra = fileinfo.get('extra', {})
+        legacy_types = ['maven', 'win', 'image']
+        l_type = None
+        type_info = None
+        for key in legacy_types:
+            if key in extra:
+                if l_type is not None:
+                    raise koji.GenericError("Output file has multiple archive types: %s" % fn)
+                l_type = key
+                type_info = extra[key]
+        fileinfo['hub.l_type'] = l_type
+        fileinfo['hub.type_info'] = type_info
+
+        rpmlist, archives = self.match_components(components)
+        # TODO - note presence of external components
+        fileinfo['hub.rpmlist'] = rpmlist
+        fileinfo['hub.archives'] = archives
+
+
     def import_rpm(self, buildinfo, brinfo, fileinfo):
         if fileinfo.get('metadata_only', False):
             raise koji.GenericError('Metadata-only imports are not supported for rpms')
@@ -4958,28 +5021,18 @@ class CG_Importer(object):
 
     def import_archive(self, buildinfo, brinfo, fileinfo):
         fn = fileinfo['hub.path']
-
-        # determine archive import type (maven/win/image/other)
-        extra = fileinfo.get('extra', {})
-        legacy_types = ['maven', 'win', 'image']
-        l_type = None
-        type_info = None
-        for key in legacy_types:
-            if key in extra:
-                if l_type is not None:
-                    raise koji.GenericError("Output file has multiple archive types: %s" % fn)
-                l_type = key
-                type_info = extra[key]
+        l_type = fileinfo['hub.l_type']
+        type_info = fileinfo['hub.type_info']
 
         archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
 
         if l_type == 'image':
-            components = fileinfo.get('components', [])
-            self.import_components(archiveinfo['id'], components)
+            self.import_components(archiveinfo['id'], fileinfo)
 
 
-    def import_components(self, image_id, components):
-        rpmlist, archives = self.match_components(components)
+    def import_components(self, image_id, fileinfo):
+        rpmlist = fileinfo['hub.rpmlist']
+        archives = fileinfo['hub.archives']
 
         insert = InsertProcessor('image_listing')
         insert.set(image_id=image_id)
