@@ -3368,7 +3368,7 @@ def get_next_release(build_info):
 
 
 def _fix_rpm_row(row):
-    if 'size'in row:
+    if 'size' in row:
         row['size'] = koji.encode_int(row['size'])
     if 'extra' in row:
         row['extra'] = parse_json(row['extra'], desc='rpm extra')
