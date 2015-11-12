@@ -4686,6 +4686,8 @@ def cg_import(metadata, directory):
 
 class CG_Importer(object):
 
+    def __init__(self):
+        self.buildinfo = None
 
     def do_import(self, metadata, directory):
 
@@ -4695,15 +4697,7 @@ class CG_Importer(object):
         if metaver != 0:
             raise koji.GenericError("Unknown metadata version: %r" % metaver)
 
-        # assert cg access
-        cgs = set()
-        for brdata in metadata['buildroots']:
-            cginfo = brdata['content_generator']
-            cg = lookup_name('content_generator', cginfo['name'], strict=True)
-            cgs.add(cg['id'])
-            brdata['cg_id'] = cg['id']
-        for cg_id in cgs:
-            assert_cg(cg_id)
+        self.assert_cg_access()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory, importer=self)
@@ -4713,32 +4707,8 @@ class CG_Importer(object):
         # TODO: policy hooks
 
         # build entry
-        buildinfo = get_build(metadata['build'], strict=False)
-        if buildinfo:
-            # TODO : allow in some cases
-            raise koji.GenericError("Build already exists: %r" % buildinfo)
-        else:
-            # create a new build
-            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
-            # epoch is not in the metadata spec, but we allow it to be specified
-            buildinfo['epoch'] = metadata['build'].get('epoch', None)
-            buildinfo['start_time'] = \
-                datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
-            buildinfo['completion_time'] = \
-                datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
-            build_id = new_build(buildinfo)
-            buildinfo = get_build(build_id, strict=True)
-        self.buildinfo = buildinfo
-
-        # handle special build types
-        b_extra = metadata['build'].get('extra', {})
-        if 'maven' in b_extra:
-            new_maven_build(buildinfo, b_extra['maven'])
-        if 'win' in b_extra:
-            new_win_build(buildinfo, b_extra['win'])
-        if 'image' in b_extra:
-            # no extra info tracked at build level
-            new_image_build(buildinfo)
+        self.prep_build()
+        self.get_build()
 
         # buildroots
         br_used = set([f['buildroot_id'] for f in metadata['output']])
@@ -4764,17 +4734,17 @@ class CG_Importer(object):
                 raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
 
             if fileinfo['type'] == 'rpm':
-                self.import_rpm(buildinfo, brinfo, fileinfo)
+                self.import_rpm(self.buildinfo, brinfo, fileinfo)
             elif fileinfo['type'] == 'log':
-                self.import_log(buildinfo, fileinfo)
+                self.import_log(self.buildinfo, fileinfo)
             else:
-                self.import_archive(buildinfo, brinfo, fileinfo)
+                self.import_archive(self.buildinfo, brinfo, fileinfo)
 
         # also import metadata file
         self.import_metadata()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
-                    directory=directory, importer=self, buildinfo=buildinfo)
+                    directory=directory, importer=self, buildinfo=self.buildinfo)
 
 
     def get_metadata(self, metadata, directory):
@@ -4805,6 +4775,57 @@ class CG_Importer(object):
         self.raw_metadata = metadata
         self.metadata = parse_json(metadata, desc='metadata')
         return self.metadata
+
+
+    def assert_cg_access(self):
+        """Check that user has access for all referenced content generators"""
+
+        cgs = set()
+        for brdata in self.metadata['buildroots']:
+            cginfo = brdata['content_generator']
+            cg = lookup_name('content_generator', cginfo['name'], strict=True)
+            cgs.add(cg['id'])
+            brdata['cg_id'] = cg['id']
+        for cg_id in cgs:
+            assert_cg(cg_id)
+        self.cgs = cgs
+
+
+    def prep_build(self):
+        metadata = self.metadata
+        buildinfo = get_build(metadata['build'], strict=False)
+        if buildinfo:
+            # TODO : allow in some cases
+            raise koji.GenericError("Build already exists: %r" % buildinfo)
+        else:
+            # gather needed data
+            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
+            # epoch is not in the metadata spec, but we allow it to be specified
+            buildinfo['epoch'] = metadata['build'].get('epoch', None)
+            buildinfo['start_time'] = \
+                datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
+            buildinfo['completion_time'] = \
+                datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
+        self.buildinfo = buildinfo
+        return buildinfo
+
+
+    def get_build(self):
+        build_id = new_build(self.buildinfo)
+        buildinfo = get_build(build_id, strict=True)
+
+        # handle special build types
+        b_extra = self.metadata['build'].get('extra', {})
+        if 'maven' in b_extra:
+            new_maven_build(buildinfo, b_extra['maven'])
+        if 'win' in b_extra:
+            new_win_build(buildinfo, b_extra['win'])
+        if 'image' in b_extra:
+            # no extra info tracked at build level
+            new_image_build(buildinfo)
+
+        self.buildinfo = buildinfo
+        return buildinfo
 
 
     def import_metadata(self):
