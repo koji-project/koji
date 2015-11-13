@@ -4699,27 +4699,24 @@ class CG_Importer(object):
         if metaver != 0:
             raise koji.GenericError("Unknown metadata version: %r" % metaver)
 
+        # TODO: basic metadata sanity check (use jsonschema?)
+
         self.assert_cg_access()
+
+        # prepare data for import
+        self.prep_build()
+        self.prep_brs()
+        self.prep_outputs()
+
+        # TODO: policy hooks
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory)
 
-        # TODO: basic metadata sanity check (use jsonschema?)
-
-        # TODO: policy hooks
-
-        # build entry
-        self.prep_build()
+        # finalize import
         self.get_build()
-
-        self.prep_brs()
         self.import_brs()
-
-        # outputs
-        self.prep_outputs()
         self.import_outputs()
-
-        # also import metadata file
         self.import_metadata()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
