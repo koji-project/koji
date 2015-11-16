@@ -1098,7 +1098,18 @@ def buildinfo(environ, buildID):
         archivetype = None
     archives = server.listArchives(build['id'], type=archivetype, queryOpts={'order': 'filename'})
     archivesByExt = {}
+    topurl = environ['koji.options']['KojiFilesURL']
+    pathinfo = koji.PathInfo(topdir=topurl)
     for archive in archives:
+        if mavenbuild:
+            archive['display'] = archive['filename']
+            archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build), pathinfo.mavenfile(archive)])
+        elif winbuild:
+            archive['display'] = pathinfo.winfile(archive)
+            archive['dl_url'] = '/'.join([pathinfo.winbuild(build), pathinfo.winfile(archive)])
+        elif imagebuild:
+            archive['display'] = archive['filename']
+            archive['dl_url'] = '/'.join([pathinfo.imagebuild(build), archive['filename']])
         archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
 
     rpmsByArch = {}
@@ -1197,8 +1208,7 @@ def buildinfo(environ, buildID):
         else:
             values['estCompletion'] = None
 
-    topurl = environ['koji.options']['KojiFilesURL']
-    values['pathinfo'] = koji.PathInfo(topdir=topurl)
+    values['pathinfo'] = pathinfo
     return _genHTML(environ, 'buildinfo.chtml')
 
 def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):
