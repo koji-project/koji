@@ -4822,7 +4822,9 @@ class CG_Importer(object):
         #   because there are complications
         #       - no buildroot (could confuse policies checking that builds were built sanely
         #       - doesn't fit with current major archive categories
-        path = os.path.join(koji.pathinfo.build(self.buildinfo), 'metadata.json')
+        builddir = koji.pathinfo.build(self.buildinfo)
+        koji.ensuredir(builddir)
+        path = os.path.join(builddir, 'metadata.json')
         fo = open(path, 'w')
         try:
             fo.write(self.raw_metadata)
