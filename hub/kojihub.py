@@ -5002,10 +5002,12 @@ class CG_Importer(object):
         fileinfo['hub.l_type'] = l_type
         fileinfo['hub.type_info'] = type_info
 
-        rpmlist, archives = self.match_components(components)
-        # TODO - note presence of external components
-        fileinfo['hub.rpmlist'] = rpmlist
-        fileinfo['hub.archives'] = archives
+        if l_type == 'image':
+            components = fileinfo.get('components', [])
+            rpmlist, archives = self.match_components(components)
+            # TODO - note presence of external components
+            fileinfo['hub.rpmlist'] = rpmlist
+            fileinfo['hub.archives'] = archives
 
 
     def import_rpm(self, buildinfo, brinfo, fileinfo):
