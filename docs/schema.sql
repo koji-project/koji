@@ -289,6 +289,7 @@ CREATE TABLE build (
 	version TEXT NOT NULL,
 	release TEXT NOT NULL,
 	epoch INTEGER,
+	source TEXT,
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	start_time TIMESTAMP,
 	completion_time TIMESTAMP,
@@ -692,6 +693,7 @@ CREATE TABLE rpminfo (
 	payloadhash TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	buildtime BIGINT NOT NULL,
+	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
 	extra TEXT,
 	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;
@@ -826,6 +828,7 @@ CREATE TABLE archiveinfo (
 	size BIGINT NOT NULL,
 	checksum TEXT NOT NULL,
 	checksum_type INTEGER NOT NULL,
+	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
 	extra TEXT
 ) WITHOUT OIDS;
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);

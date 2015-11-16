@@ -1257,6 +1257,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
               ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.build_id', 'build_id'),
+              ('rpminfo.metadata_only', 'metadata_only'),
               ('rpminfo.extra', 'extra'),
             ]
     tables = ['rpminfo']
@@ -1347,6 +1348,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
               ('archiveinfo.extra', 'extra'),
              ]
     tables = ['archiveinfo']
@@ -2112,6 +2114,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
               ('archiveinfo.filename', 'filename'), ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
               ('archiveinfo.extra', 'extra'),
               ('maven_archives.group_id', 'group_id'),
               ('maven_archives.artifact_id', 'artifact_id'),
@@ -3300,6 +3303,7 @@ def get_build(buildInfo, strict=False):
       start_ts: time the build was started (epoch, may be null)
       completion_time: time the build was completed (may be null)
       completion_ts: time the build was completed (epoch, may be null)
+      source: the SCM URL of the sources used in the build
       extra: dictionary with extra data about the build
 
     If there is no build matching the buildInfo given, and strict is specified,
@@ -3320,6 +3324,7 @@ def get_build(buildInfo, strict=False):
               ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('build.source', 'source'),
               ('build.extra', 'extra'))
     fields, aliases = zip(*fields)
     joins = ['events ON build.create_event = events.id',
@@ -3404,6 +3409,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
     - buildroot_id
     - external_repo_id
     - external_repo_name
+    - metadata_only
     - extra
 
     If there is no RPM with the given ID, None is returned, unless strict
@@ -3427,6 +3433,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('payloadhash', 'payloadhash'),
         ('size', 'size'),
         ('buildtime', 'buildtime'),
+        ('metadata_only', 'metadata_only'),
         ('extra', 'extra'),
         )
     # we can look up by id or NVRA
@@ -3498,6 +3505,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     - buildroot_id
     - external_repo_id
     - external_repo_name
+    - metadata_only
+    - extra
 
     If componentBuildrootID is specified, two additional keys will be included:
     - component_buildroot_id
@@ -3514,6 +3523,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
               ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.external_repo_id', 'external_repo_id'),
               ('external_repo.name', 'external_repo_name'),
+              ('rpminfo.metadata_only', 'metadata_only'),
               ('rpminfo.extra', 'extra'),
              ]
     joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
@@ -3694,6 +3704,7 @@ def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildro
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
               ('archiveinfo.extra', 'extra'),
               ('archivetypes.name', 'type_name'),
               ('archivetypes.description', 'type_description'),
@@ -3809,7 +3820,8 @@ def get_archive(archive_id, strict=False):
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'checksum_type', 'extra')
+    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size',
+              'checksum', 'checksum_type', 'metadata_only', 'extra')
     archive = QueryProcessor(tables=['archiveinfo'], columns=fields, transform=_fix_archive_row,
                           clauses=['id=%(archive_id)s'], values=locals()).executeOne()
     if not archive:
@@ -4435,6 +4447,7 @@ def new_build(data):
     data.setdefault('state',koji.BUILD_STATES['COMPLETE'])
     data.setdefault('start_time', 'NOW')
     data.setdefault('completion_time', 'NOW')
+    data.setdefault('source', None)
     data.setdefault('owner',context.session.user_id)
     data.setdefault('task_id',None)
     data.setdefault('volume_id', 0)
@@ -4473,7 +4486,7 @@ def new_build(data):
 
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                         'task_id', 'owner', 'start_time', 'completion_time', 'extra'])
+                         'task_id', 'owner', 'start_time', 'completion_time', 'source', 'extra'])
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
@@ -5641,6 +5654,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             # until we change the way we handle checksums, we have to limit this to md5
             raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
+        archiveinfo['metadata_only'] = True
     else:
         filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
