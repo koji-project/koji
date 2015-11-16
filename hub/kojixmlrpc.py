@@ -546,7 +546,10 @@ _default_policies = {
     'vm' : '''
             has_perm admin win-admin :: allow
             all :: deny
-           '''
+           ''',
+    'cg_import' :'''
+            all :: allow
+            ''',
 }
 
 def get_policy(opts, plugins):

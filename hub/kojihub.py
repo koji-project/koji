@@ -4708,7 +4708,7 @@ class CG_Importer(object):
         self.prep_brs()
         self.prep_outputs()
 
-        # TODO: policy hooks
+        self.assert_policy()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory)
@@ -4765,6 +4765,17 @@ class CG_Importer(object):
         for cg_id in cgs:
             assert_cg(cg_id)
         self.cgs = cgs
+
+
+    def assert_policy(self):
+        policy_data = {
+            'package': self.buildinfo['name'],
+            'source': self.buildinfo.get('source'),
+            'metadata_only': self.metadata_only,
+            'cg_list' : list(self.cgs),
+            # TODO: provide more data
+        }
+        assert_policy('cg_import', policy_data)
 
 
     def prep_build(self):
