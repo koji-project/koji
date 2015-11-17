@@ -815,6 +815,9 @@ insert into archivetypes (name, description, extensions) values ('vhd', 'Hyper-V
 insert into archivetypes (name, description, extensions) values ('wsf', 'Windows script file', 'wsf');
 insert into archivetypes (name, description, extensions) values ('box', 'Vagrant Box Image', 'box');
 insert into archivetypes (name, description, extensions) values ('raw-xz', 'xz compressed raw disk image', 'raw.xz');
+insert into archivetypes (name, description, extensions) values ('json', 'JSON data', 'json');
+insert into archivetypes (name, description, extensions) values ('key', 'Key file', 'key');
+insert into archivetypes (name, description, extensions) values ('dot', 'DOT graph description', 'dot gv');
 
 
 -- Do we want to enforce a constraint that a build can only generate one

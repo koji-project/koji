@@ -6486,8 +6486,9 @@ def anon_handle_download_task(options, sessions, args):
     for (task, filename, new_filename) in downloads:
         number += 1
         print _("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename)
-        with open(new_filename, "wb") as output_file:
-            output_file.write(session.downloadTaskOutput(task["id"], filename))
+        output_file = open(new_filename, "wb")
+        output_file.write(session.downloadTaskOutput(task["id"], filename))
+        output_file.close()
 
 def anon_handle_wait_repo(options, session, args):
     "Wait for a repo to be regenerated"
@@ -6707,7 +6708,7 @@ def handle_runroot(options, session, args):
                                 repo_id=opts.repo_id,
                                 skip_setarch=opts.skip_setarch,
                                 weight=opts.weight)
-    except koji.GenericError as e:
+    except koji.GenericError, e:
         if 'Invalid method' in str(e):
             print "* The runroot plugin appears to not be installed on the",
             print "koji hub.  Please contact the administrator."
