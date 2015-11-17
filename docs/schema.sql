@@ -758,6 +758,7 @@ insert into archivetypes (name, description, extensions) values ('raw-xz', 'xz c
 insert into archivetypes (name, description, extensions) values ('json', 'JSON data', 'json');
 insert into archivetypes (name, description, extensions) values ('key', 'Key file', 'key');
 insert into archivetypes (name, description, extensions) values ('dot', 'DOT graph description', 'dot gv');
+insert into archivetypes (name, description, extensions) values ('groovy', 'Groovy script file', 'groovy gvy');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
