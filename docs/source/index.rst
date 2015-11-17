@@ -22,8 +22,6 @@ Contents
     :maxdepth: 2
 
     HOWTO
-    image_build
-    server_howto
     defining_hub_policies
     external_repo_server_bootstrap
     image_build
