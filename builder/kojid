@@ -3300,7 +3300,7 @@ class BaseImageTask(OzImageTask):
             'docker', img_opts=img_opts)
         return {'image': targ.target_image.data}
 
-    def _do_target_image(self, base_id, image_type, img_opts={}, fixed_params=[]):
+    def _do_target_image(self, base_id, image_type, img_opts=None, fixed_params=None):
         """
         A generic method for building what ImageFactory calls "target images".
         These are images based on a raw disk that was built before using the
@@ -3321,6 +3321,10 @@ class BaseImageTask(OzImageTask):
         # TODO: test the failure case where IF itself throws an exception
         #       ungracefully (missing a plugin for example)
         #       may need to still upload ozlog and remove the log handler
+        if img_opts is None:
+            img_opts = {}
+        if fixed_params is None:
+            fixed_params = []
         self.logger.debug('img_opts_pre_merge: %s' % img_opts)
         self._mergeFactoryParams(img_opts, fixed_params)
         self.logger.debug('img_opts_post_merge: %s' % img_opts)
