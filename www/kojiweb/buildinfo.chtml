@@ -1,5 +1,6 @@
 #import koji
 #import koji.util
+#from pprint import pformat
 #from kojiweb import util
 
 #include "includes/header.chtml"
@@ -77,6 +78,11 @@
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
     </tr>
     #end if
+    #if $build.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($build.extra))</td>
+    </tr>
+    #end if
     <tr>
       <th>Tags</th>
       <td class="container">
@@ -105,7 +111,11 @@
           #set $rpmpath = $pathinfo.rpm($rpm)
           <tr>
             <td></td>
+            #if $rpm.metadata_only
+            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (metadata only)</td>
+            #else
             <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)</td>
+            #end if
           </tr>
           #end for
           #end if
@@ -169,12 +179,10 @@
 	  <tr>
 	    <td/>
 	    <td>
-            #if $mavenbuild
-            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.mavenbuild($build)/$pathinfo.mavenfile($archive)">download</a>)
-            #elif $winbuild
-            $pathinfo.winfile($archive) (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.winbuild($build)/$pathinfo.winfile($archive)">download</a>)
-            #elif $imagebuild
-            $archive.filename (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$pathinfo.imagebuild($build)/$archive.filename">download</a>)
+            #if $archive.metadata_only
+            $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>)
+            #else
+            $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archive.dl_url">download</a>)
             #end if
 	    </td>
 	  </tr>

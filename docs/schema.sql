@@ -7,6 +7,7 @@ DROP TABLE log_messages;
 
 DROP TABLE buildroot_listing;
 DROP TABLE image_listing;
+DROP TABLE image_archive_listing;
 
 DROP TABLE rpminfo;
 DROP TABLE image_builds;
@@ -20,6 +21,8 @@ DROP TABLE groups;
 DROP TABLE tag_listing;
 DROP TABLE tag_packages;
 
+DROP TABLE buildroot_tools_info;
+DROP TABLE standard_buildroot;
 DROP TABLE buildroot;
 DROP TABLE repo;
 
@@ -39,6 +42,9 @@ DROP TABLE host;
 
 DROP TABLE channels;
 DROP TABLE package;
+
+DROP TABLE cg_users;
+DROP TABLE content_generator;
 
 DROP TABLE user_groups;
 DROP TABLE user_perms;
@@ -283,11 +289,14 @@ CREATE TABLE build (
 	version TEXT NOT NULL,
 	release TEXT NOT NULL,
 	epoch INTEGER,
+	source TEXT,
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	start_time TIMESTAMP,
 	completion_time TIMESTAMP,
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),
 	owner INTEGER NOT NULL REFERENCES users (id),
+	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                           (state != 0 AND completion_time IS NOT NULL))
@@ -478,18 +487,67 @@ create table tag_external_repos (
 	UNIQUE (tag_id, external_repo_id, active)
 );
 
+
+-- data for content generators
+CREATE TABLE content_generator (
+	id SERIAL PRIMARY KEY,
+	name TEXT
+) WITHOUT OIDS;
+
+
+CREATE TABLE cg_users (
+	cg_id INTEGER NOT NULL REFERENCES content_generator (id),
+	user_id INTEGER NOT NULL REFERENCES users (id),
+-- versioned - see earlier description of versioning
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, cg_id, user_id),
+	UNIQUE (cg_id, user_id, active)
+) WITHOUT OIDS;
+
+
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (
 	id SERIAL NOT NULL PRIMARY KEY,
+	br_type INTEGER NOT NULL
+	cg_id INTEGER REFERENCES content_generator (id),
+	cg_version TEXT,
+	CONSTRAINT cg_sane CHECK (
+		(cg_id IS NULL AND cg_version IS NULL)
+		OR (cg_id IS NOT NULL AND cg_version IS NOT NULL)),
+	container_type TEXT,
+	container_arch TEXT,
+	CONSTRAINT container_sane CHECK (
+		(container_type IS NULL AND container_arch IS NULL)
+		OR (container_type IS NOT NULL AND container_arch IS NOT NULL)),
+	host_os TEXT,
+	host_arch TEXT,
+	extra TEXT
+) WITHOUT OIDS;
+
+CREATE TABLE standard_buildroot (
+	buildroot_id INTEGER NOT NULL PRIMARY KEY REFERENCES buildroot(id),
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	repo_id INTEGER NOT NULL REFERENCES repo (id),
-	arch VARCHAR(16) NOT NULL,
 	task_id INTEGER NOT NULL REFERENCES task (id),
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	retire_event INTEGER,
-	state INTEGER,
-	dirtyness INTEGER
+	state INTEGER
 ) WITHOUT OIDS;
+
+CREATE TABLE buildroot_tools_info (
+	buildroot_id INTEGER NOT NULL REFERENCES buildroot(id),
+	tool TEXT NOT NULL,
+	version TEXT NOT NULL,
+	PRIMARY KEY (buildroot_id, tool)
+) WITHOUT OIDS;
+
 
 -- track spun images (livecds, installation, VMs...)
 CREATE TABLE image_builds (
@@ -635,6 +693,8 @@ CREATE TABLE rpminfo (
 	payloadhash TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	buildtime BIGINT NOT NULL,
+	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
+	extra TEXT,
 	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
@@ -771,7 +831,9 @@ CREATE TABLE archiveinfo (
 	filename TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	checksum TEXT NOT NULL,
-	checksum_type INTEGER NOT NULL
+	checksum_type INTEGER NOT NULL,
+	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
+	extra TEXT
 ) WITHOUT OIDS;
 CREATE INDEX archiveinfo_build_idx ON archiveinfo (build_id);
 CREATE INDEX archiveinfo_buildroot_idx on archiveinfo (buildroot_id);
@@ -797,6 +859,15 @@ CREATE TABLE image_listing (
 	UNIQUE (image_id, rpm_id)
 ) WITHOUT OIDS;
 CREATE INDEX image_listing_rpms on image_listing(rpm_id);
+
+-- track the archive contents of an image
+CREATE TABLE image_archive_listing (
+	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	UNIQUE (image_id, archive_id)
+) WITHOUT OIDS;
+CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
+
 
 CREATE TABLE buildroot_archives (
 	buildroot_id INTEGER NOT NULL REFERENCES buildroot (id),

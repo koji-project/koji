@@ -3,9 +3,9 @@
 #include "includes/header.chtml"
 
   #if $type == 'component'
-  <h4>Component Archives of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></h4>
+  <h4>Component Archives of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
   #else
-  <h4>Archives built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></h4>
+  <h4>Archives built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
   #end if
 
   <table class="data-list">

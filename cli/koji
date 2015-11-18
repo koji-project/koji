@@ -33,6 +33,13 @@ try:
     import ast
 except ImportError:
     ast = None
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        json = None
 import ConfigParser
 import base64
 import errno
@@ -1635,6 +1642,59 @@ def handle_import(options, session, args):
             do_import(path, data)
 
 
+def handle_import_cg(options, session, args):
+    "[admin] Import external builds with rich metadata"
+    usage = _("usage: %prog import-cg [options] metadata_file files_dir")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress of the upload"))
+    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
+    parser.add_option("--test", action="store_true", help=_("Don't actually import"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_("Please specify metadata files directory"))
+        assert False
+    if json is None:
+        parser.error(_("Unable to find json module"))
+        assert False
+    activate_session(session)
+    metadata = json.load(file(args[0], 'r'))
+    if 'output' not in metadata:
+        print _("Metadata contains no output")
+        sys.exit(1)
+    localdir = args[1]
+
+    to_upload = []
+    for info in metadata['output']:
+        if info.get('metadata_only', False):
+            continue
+        localpath = os.path.join(localdir, info.get('relpath', ''), info['filename'])
+        if not os.path.exists(localpath):
+            parser.error(_("No such file: %s") % localpath)
+        to_upload.append([localpath, info])
+
+    # get upload path
+    # XXX - need a better way
+    serverdir = _unique_path('cli-import')
+
+    for localpath, info in to_upload:
+        relpath = os.path.join(serverdir, info.get('relpath', ''))
+        if _running_in_bg() or options.noprogress:
+            callback = None
+        else:
+            callback = _progress_callback
+        if options.link:
+            linked_upload(localpath, relpath)
+        else:
+            print "Uploading %s" % localpath
+            session.uploadWrapper(localpath, relpath, callback=callback)
+            if callback:
+                print
+
+    session.CGImport(metadata, serverdir)
+
+
 def handle_import_comps(options, session, args):
     "Import group/package information from a comps file"
     usage = _("usage: %prog import-comps [options] <file> <tag>")
@@ -2470,6 +2530,49 @@ def handle_revoke_permission(options, session, args):
     for user in users:
         session.revokePermission(user['name'], perm)
 
+
+def handle_grant_cg_access(options, session, args):
+    "[admin] Add a user to a content generator"
+    usage = _("usage: %prog grant-cg-access <user> <content generator>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--new", action="store_true", help=_("Create a new content generator"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a user and content generator"))
+        assert False
+    activate_session(session)
+    user = args[0]
+    cg = args[1]
+    uinfo = session.getUser(user)
+    if uinfo is None:
+        parser.error(_("No such user: %s" % user))
+        assert False
+    kwargs = {}
+    if options.new:
+        kwargs['create'] = True
+    session.grantCGAccess(uinfo['name'], cg, **kwargs)
+
+
+def handle_revoke_cg_access(options, session, args):
+    "[admin] Remove a user from a content generator"
+    usage = _("usage: %prog revoke-cg-access <user> <content generator>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a user and content generator"))
+        assert False
+    activate_session(session)
+    user = args[0]
+    cg = args[1]
+    uinfo = session.getUser(user)
+    if uinfo is None:
+        parser.error(_("No such user: %s" % user))
+        assert False
+    session.revokeCGAccess(uinfo['name'], cg)
+
+
 def anon_handle_latest_build(options, session, args):
     "Print the latest builds for a tag"
     usage = _("usage: %prog latest-build [options] tag package [package...]")
@@ -3068,9 +3171,16 @@ def anon_handle_rpminfo(options, session, args):
             print "No buildroot data available"
         else:
             br_info = session.getBuildroot(info['buildroot_id'])
-            print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
-            print "Build Host: %(host_name)s" % br_info
-            print "Build Task: %(task_id)i" % br_info
+            if br_info['br_type'] == koji.BR_TYPES['STANDARD']:
+                print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
+                print "Build Host: %(host_name)s" % br_info
+                print "Build Task: %(task_id)i" % br_info
+            else:
+                print "Content generator: %(cg_name)s" % br_info
+                print "Buildroot: %(id)i" % br_info
+                print "Build Host OS: %(host_os)s (%(host_arch)s)" % br_info
+        if info.get('extra'):
+            print "Extra: %(extra)r" % info
         if options.buildroots:
             br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order':'buildroot.id'})
             print "Used in %i buildroots:" % len(br_list)
@@ -3126,6 +3236,8 @@ def anon_handle_buildinfo(options, session, args):
         if win_info:
             print "Windows build platform: %s" % win_info['platform']
         print "Tags: %s" % ' '.join(taglist)
+        if info.get('extra'):
+            print "Extra: %(extra)r" % info
         maven_archives = session.listArchives(buildID=info['id'], type='maven')
         if maven_archives:
             print "Maven archives:"
@@ -3835,6 +3947,13 @@ def _print_histline(entry, **kwargs):
             fmt = "user %(user.name)s added to group %(group.name)s"
         else:
             fmt = "user %(user.name)s removed from group %(group.name)s"
+    elif table == 'cg_users':
+        if edit:
+            fmt = "user %(user.name)s re-added to content generator %(content_generator.name)s"
+        elif create:
+            fmt = "user %(user.name)s added to content generator %(content_generator.name)s"
+        else:
+            fmt = "user %(user.name)s removed from content generator %(content_generator.name)s"
     elif table == 'tag_packages':
         if edit:
             fmt = "package list entry for %(package.name)s in %(tag.name)s updated"
@@ -3970,6 +4089,7 @@ def _print_histline(entry, **kwargs):
 _table_keys = {
     'user_perms' : ['user_id', 'perm_id'],
     'user_groups' : ['user_id', 'group_id'],
+    'cg_users' : ['user_id', 'cg_id'],
     'tag_inheritance' : ['tag_id', 'parent_id'],
     'tag_config' : ['tag_id'],
     'tag_extra' : ['tag_id', 'key'],

@@ -1152,6 +1152,7 @@ def readTaggedBuilds(tag,event=None,inherit=False,latest=False,package=None,owne
     fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+              ('build.start_time', 'start_time'),
               ('build.task_id','task_id'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
@@ -1255,7 +1256,10 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
               ('rpminfo.size', 'size'),
               ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.buildroot_id', 'buildroot_id'),
-              ('rpminfo.build_id', 'build_id')]
+              ('rpminfo.build_id', 'build_id'),
+              ('rpminfo.metadata_only', 'metadata_only'),
+              ('rpminfo.extra', 'extra'),
+            ]
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
     clauses = [eventCondition(event), 'tag_id=%(tagid)s']
@@ -1279,7 +1283,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
-                           columns=fields, aliases=aliases, values=data)
+                           columns=fields, aliases=aliases, values=data, transform=_fix_rpm_row)
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
@@ -1344,6 +1348,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
+              ('archiveinfo.extra', 'extra'),
              ]
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
@@ -1368,6 +1374,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
         raise koji.GenericError, 'unsupported archive type: %s' % type
 
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                           transform=_fix_archive_row,
                            columns=[pair[0] for pair in fields],
                            aliases=[pair[1] for pair in fields])
 
@@ -2107,6 +2114,8 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
               ('archiveinfo.filename', 'filename'), ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
+              ('archiveinfo.extra', 'extra'),
               ('maven_archives.group_id', 'group_id'),
               ('maven_archives.artifact_id', 'artifact_id'),
               ('maven_archives.version', 'version'),
@@ -2122,6 +2131,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     order = '-tag_event'
     query = QueryProcessor(tables=tables, joins=joins,
                            clauses=clauses, opts={'order': order},
+                           transform=_fix_archive_row,
                            columns=[f[0] for f in fields],
                            aliases=[f[1] for f in fields])
     included = {}
@@ -2399,12 +2409,19 @@ def repo_expire_older(tag_id, event_id):
 
 def repo_references(repo_id):
     """Return a list of buildroots that reference the repo"""
-    fields = ('id', 'host_id', 'create_event', 'state')
-    q = """SELECT %s FROM buildroot WHERE repo_id=%%(repo_id)s
-    AND retire_event IS NULL""" % ','.join(fields)
+    fields = {
+        'buildroot_id': 'id',
+        'host_id': 'host_id',
+        'create_event': 'create_event',
+        'state': 'state'}
+    fields, aliases = zip(*fields.items())
+    values = {'repo_id': repo_id}
+    clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
+                clauses=clauses, values=values, queryOpts = {'asList':True})
     #check results for bad states
     ret = []
-    for data in _multiRow(q, locals(), fields):
+    for data in query.execute():
         if data['state'] == koji.BR_STATES['EXPIRED']:
             log_error("Error: buildroot %(id)s expired, but has no retire_event" % data)
             continue
@@ -2822,11 +2839,7 @@ def get_tag_extra(tagInfo, event=None):
                            opts={'asList': True})
     result = {}
     for key, value in query.execute():
-        try:
-            value = json.loads(value)
-        except Exception:
-            # this should not happen
-            raise koji.GenericError("Invalid tag extra data: %s : %r", key, value)
+        value = parse_json(value, errstr="Invalid tag extra data: %s" % key)
         result[key] = value
     return result
 
@@ -3197,27 +3210,38 @@ def get_external_repo_list(tag_info, event=None):
                 seen_repos[tag_repo['external_repo_id']] = 1
     return repos
 
-def get_user(userInfo=None,strict=False):
-    """Return information about a user.  userInfo may be either a str
-    (Kerberos principal) or an int (user id).  A map will be returned with the
-    following keys:
+
+def get_user(userInfo=None, strict=False):
+    """Return information about a user.
+
+    userInfo may be either a str (Kerberos principal or name) or an int (user id).
+
+    A map will be returned with the following keys:
       id: user id
       name: user name
       status: user status (int), may be null
       usertype: user type (int), 0 person, 1 for host, may be null
-      krb_principal: the user's Kerberos principal"""
+      krb_principal: the user's Kerberos principal
+    """
     if userInfo is None:
         userInfo = context.session.user_id
-        #will still be None if not logged in
-    fields = ('id', 'name', 'status', 'usertype', 'krb_principal')
-    q = """SELECT %s FROM users WHERE""" % ', '.join(fields)
+        if userInfo is None:
+            # not logged in
+            raise koji.GenericError("No user provided")
+    fields = ['id', 'name', 'status', 'usertype', 'krb_principal']
+    #fields, aliases = zip(*fields.items())
+    data = {'info' : userInfo}
     if isinstance(userInfo, int) or isinstance(userInfo, long):
-        q += """ id = %(userInfo)i"""
+        clauses = ['id = %(info)i']
     elif isinstance(userInfo, str):
-        q += """ (krb_principal = %(userInfo)s or name = %(userInfo)s)"""
+        clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
         raise koji.GenericError, 'invalid type for userInfo: %s' % type(userInfo)
-    return _singleRow(q,locals(),fields,strict=strict)
+    query = QueryProcessor(tables=['users'], columns=fields,
+                           clauses=clauses, values=data)
+    user = query.executeOne()
+    return user
+
 
 def find_build_id(X, strict=False):
     if isinstance(X,int) or isinstance(X,long):
@@ -3250,14 +3274,18 @@ def find_build_id(X, strict=False):
             return None
     return r[0]
 
+
 def get_build(buildInfo, strict=False):
-    """Return information about a build.  buildID may be either
-    a int ID, a string NVR, or a map containing 'name', 'version'
-    and 'release.  A map will be returned containing the following
-    keys:
+    """Return information about a build.
+
+    buildID may be either a int ID, a string NVR, or a map containing
+    'name', 'version' and 'release.
+
+    A map will be returned containing the following keys:
       id: build ID
       package_id: ID of the package built
       package_name: name of the package built
+      name: same as package_name
       version
       release
       epoch
@@ -3271,8 +3299,12 @@ def get_build(buildInfo, strict=False):
       creation_event_id: id of the create_event
       creation_time: time the build was created (text)
       creation_ts: time the build was created (epoch)
+      start_time: time the build was started (may be null)
+      start_ts: time the build was started (epoch, may be null)
       completion_time: time the build was completed (may be null)
       completion_ts: time the build was completed (epoch, may be null)
+      source: the SCM URL of the sources used in the build
+      extra: dictionary with extra data about the build
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -3283,24 +3315,28 @@ def get_build(buildInfo, strict=False):
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+              ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
               ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+              ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name'))
-    query = """SELECT %s
-    FROM build
-    JOIN events ON build.create_event = events.id
-    JOIN package on build.pkg_id = package.id
-    JOIN volume on build.volume_id = volume.id
-    JOIN users on build.owner = users.id
-    WHERE build.id = %%(buildID)i""" % ', '.join([pair[0] for pair in fields])
-
-    c = context.cnx.cursor()
-    c.execute(query, locals())
-    result = c.fetchone()
+              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('build.source', 'source'),
+              ('build.extra', 'extra'))
+    fields, aliases = zip(*fields)
+    joins = ['events ON build.create_event = events.id',
+             'package on build.pkg_id = package.id',
+             'volume on build.volume_id = volume.id',
+             'users on build.owner = users.id',
+            ]
+    clauses = ['build.id = %(buildID)i']
+    query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
+                           transform=_fix_extra_field,
+                           tables=['build'], joins=joins, clauses=clauses)
+    result = query.executeOne()
 
     if not result:
         if strict:
@@ -3308,8 +3344,8 @@ def get_build(buildInfo, strict=False):
         else:
             return None
     else:
-        ret = dict(zip([pair[1] for pair in fields], result))
-        return ret
+        return result
+
 
 def get_next_release(build_info):
     """find the last successful or deleted build of this N-V"""
@@ -3334,6 +3370,18 @@ def get_next_release(build_info):
     else:
         raise koji.BuildError, 'Unable to increment release value: %s' % release
     return release
+
+
+def _fix_rpm_row(row):
+    if 'size' in row:
+        row['size'] = koji.encode_int(row['size'])
+    if 'extra' in row:
+        row['extra'] = parse_json(row['extra'], desc='rpm extra')
+    return row
+
+#alias for now, may change in the future
+_fix_archive_row = _fix_rpm_row
+
 
 def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
@@ -3361,6 +3409,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
     - buildroot_id
     - external_repo_id
     - external_repo_name
+    - metadata_only
+    - extra
 
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
@@ -3383,6 +3433,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('payloadhash', 'payloadhash'),
         ('size', 'size'),
         ('buildtime', 'buildtime'),
+        ('metadata_only', 'metadata_only'),
+        ('extra', 'extra'),
         )
     # we can look up by id or NVRA
     data = None
@@ -3414,15 +3466,11 @@ def get_rpm(rpminfo, strict=False, multi=False):
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
-                           values=data)
+                           values=data, transform=_fix_rpm_row)
     if multi:
-        data = query.execute()
-        for row in data:
-            row['size'] = koji.encode_int(row['size'])
-        return data
+        return query.execute()
     ret = query.executeOne()
     if ret:
-        ret['size'] = koji.encode_int(ret['size'])
         return ret
     if retry:
         #at this point we have just an NVRA with no internal match. Open it up to externals
@@ -3432,8 +3480,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
         if strict:
             raise koji.GenericError, "No such rpm: %r" % data
         return None
-    ret['size'] = koji.encode_int(ret['size'])
     return ret
+
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, arches=None, queryOpts=None):
     """List RPMS.  If buildID, imageID and/or buildrootID are specified,
@@ -3457,6 +3505,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     - buildroot_id
     - external_repo_id
     - external_repo_name
+    - metadata_only
+    - extra
 
     If componentBuildrootID is specified, two additional keys will be included:
     - component_buildroot_id
@@ -3473,6 +3523,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
               ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.external_repo_id', 'external_repo_id'),
               ('external_repo.name', 'external_repo_name'),
+              ('rpminfo.metadata_only', 'metadata_only'),
+              ('rpminfo.extra', 'extra'),
              ]
     joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
@@ -3494,8 +3546,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
 
     if hostID != None:
-        joins.append('buildroot ON rpminfo.buildroot_id = buildroot.id')
-        clauses.append('buildroot.host_id = %(hostID)i')
+        joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.id')
+        clauses.append('standard_buildroot.host_id = %(hostID)i')
     if arches != None:
         if isinstance(arches, list) or isinstance(arches, tuple):
             clauses.append('rpminfo.arch IN %(arches)s')
@@ -3507,16 +3559,10 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
                            tables=['rpminfo'], joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=locals(), transform=_fix_rpm_row, opts=queryOpts)
     data = query.execute()
-    if not (queryOpts and queryOpts.get('countOnly')):
-        if queryOpts and 'asList' in queryOpts:
-            key = aliases.index('size')
-        else:
-            key = 'size'
-        for row in data:
-            row[key] = koji.encode_int(row[key])
     return data
+
 
 def get_maven_build(buildInfo, strict=False):
     """
@@ -3584,7 +3630,7 @@ def get_image_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such image build: %s' % buildInfo
     return result
 
-def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
+def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None):
     """
     Retrieve information about archives.
@@ -3658,6 +3704,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
               ('archiveinfo.size', 'size'),
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
+              ('archiveinfo.metadata_only', 'metadata_only'),
+              ('archiveinfo.extra', 'extra'),
               ('archivetypes.name', 'type_name'),
               ('archivetypes.description', 'type_description'),
               ('archivetypes.extensions', 'type_extensions'),
@@ -3676,11 +3724,14 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         values['component_buildroot_id'] = componentBuildrootID
         fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
         fields.append(['buildroot_archives.project_dep', 'project'])
+    if imageID != None:
+       clauses.append('image_archive_listing.image_id = %(imageID)i')
+       joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
     if hostID is not None:
-        joins.append('buildroot on archiveinfo.buildroot_id = buildroot.id')
-        clauses.append('buildroot.host_id = %(host_id)i')
+        joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.id')
+        clauses.append('standard_buildroot.host_id = %(host_id)i')
         values['host_id'] = hostID
-        fields.append(['buildroot.host_id', 'host_id'])
+        fields.append(['standard_buildroot.host_id', 'host_id'])
     if filename is not None:
         clauses.append('filename = %(filename)s')
         values['filename'] = filename
@@ -3736,15 +3787,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
 
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
+                          transform=_fix_archive_row,
                           clauses=clauses, values=values, opts=queryOpts).execute()
-    if not (queryOpts and queryOpts.get('countOnly')):
-        if queryOpts and 'asList' in queryOpts:
-            key = aliases.index('size')
-        else:
-            key = 'size'
-        for row in ret:
-            row[key] = koji.encode_int(row[key])
     return ret
+
 
 def get_archive(archive_id, strict=False):
     """
@@ -3771,14 +3817,13 @@ def get_archive(archive_id, strict=False):
 
     If the archive is part of an image build, and it is the image file that
     contains the root partitioning ('/'), there will be a additional fields:
-
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size', 'checksum', 'checksum_type')
-    select = """SELECT %s FROM archiveinfo
-    WHERE id = %%(archive_id)i""" % ', '.join(fields)
-    archive =  _singleRow(select, locals(), fields, strict=strict)
+    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size',
+              'checksum', 'checksum_type', 'metadata_only', 'extra')
+    archive = QueryProcessor(tables=['archiveinfo'], columns=fields, transform=_fix_archive_row,
+                          clauses=['id=%(archive_id)s'], values=locals()).executeOne()
     if not archive:
         # strict is taken care of by _singleRow()
         return None
@@ -3794,7 +3839,6 @@ def get_archive(archive_id, strict=False):
     if image_info:
         del image_info['archive_id']
         archive.update(image_info)
-    archive['size'] = koji.encode_int(archive['size'])
     return archive
 
 def get_maven_archive(archive_id, strict=False):
@@ -4156,8 +4200,19 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         buildrootID - only the specified buildroot
         queryOpts - query options
     """
-    fields = [('buildroot.id', 'id'), ('buildroot.arch', 'arch'), ('buildroot.state', 'state'),
-              ('buildroot.dirtyness', 'dirtyness'), ('buildroot.task_id', 'task_id'),
+    fields = [('buildroot.id', 'id'),
+              ('buildroot.br_type', 'br_type'),
+              ('buildroot.cg_id', 'cg_id'),
+              ('content_generator.name', 'cg_name'),
+              ('buildroot.cg_version', 'cg_version'),
+              ('buildroot.container_arch', 'container_arch'),
+              ('buildroot.container_arch', 'arch'), #alias for back compat
+              ('buildroot.container_type', 'container_type'),
+              ('buildroot.host_os', 'host_os'),
+              ('buildroot.host_arch', 'host_arch'),
+              ('buildroot.extra', 'extra'),
+              ('standard_buildroot.state', 'state'),
+              ('standard_buildroot.task_id', 'task_id'),
               ('host.id', 'host_id'), ('host.name', 'host_name'),
               ('repo.id', 'repo_id'), ('repo.state', 'repo_state'),
               ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
@@ -4168,12 +4223,14 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('repo_create.id', 'repo_create_event_id'), ('repo_create.time', 'repo_create_event_time')]
 
     tables = ['buildroot']
-    joins=['host ON host.id = buildroot.host_id',
-           'repo ON repo.id = buildroot.repo_id',
-           'tag ON tag.id = repo.tag_id',
-           'events AS create_events ON create_events.id = buildroot.create_event',
-           'LEFT OUTER JOIN events AS retire_events ON buildroot.retire_event = retire_events.id',
-           'events AS repo_create ON repo_create.id = repo.create_event']
+    joins=['LEFT OUTER JOIN standard_buildroot ON standard_buildroot.buildroot_id = buildroot.id',
+           'LEFT OUTER JOIN content_generator ON buildroot.cg_id = content_generator.id',
+           'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
+           'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
+           'LEFT OUTER JOIN tag ON tag.id = repo.tag_id',
+           'LEFT OUTER JOIN events AS create_events ON create_events.id = standard_buildroot.create_event',
+           'LEFT OUTER JOIN events AS retire_events ON standard_buildroot.retire_event = retire_events.id',
+           'LEFT OUTER JOIN events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
     if buildrootID != None:
@@ -4187,9 +4244,9 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         clauses.append('tag.id = %(tagID)i')
     if state != None:
         if isinstance(state, list) or isinstance(state, tuple):
-            clauses.append('buildroot.state IN %(state)s')
+            clauses.append('standard_buildroot.state IN %(state)s')
         else:
-            clauses.append('buildroot.state = %(state)i')
+            clauses.append('standard_buildroot.state = %(state)i')
     if rpmID != None:
         joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
@@ -4198,10 +4255,11 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
     if taskID != None:
-        clauses.append('buildroot.task_id = %(taskID)i')
+        clauses.append('standard_buildroot.task_id = %(taskID)i')
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=tables, joins=joins, clauses=clauses, values=locals(),
+                           transform=_fix_extra_field,
                            opts=queryOpts)
     return query.execute()
 
@@ -4362,7 +4420,10 @@ def change_build_volume(build, volume, strict=True):
 
 def new_build(data):
     """insert a new build entry"""
+
     data = data.copy()
+
+    # basic sanity checks
     if 'pkg_id' in data:
         data['name'] = lookup_package(data['pkg_id'], strict=True)['name']
     else:
@@ -4374,54 +4435,68 @@ def new_build(data):
     for f in ('version','release','epoch'):
         if not data.has_key(f):
             raise koji.GenericError, "No %s value for build" % f
+    if 'extra' in data:
+        try:
+            data['extra'] = json.dumps(data['extra'])
+        except Exception:
+            raise koji.GenericError("Invalid build extra data: %(extra)r" % data)
+    else:
+        data['extra'] = None
+
     #provide a few default values
     data.setdefault('state',koji.BUILD_STATES['COMPLETE'])
+    data.setdefault('start_time', 'NOW')
     data.setdefault('completion_time', 'NOW')
+    data.setdefault('source', None)
     data.setdefault('owner',context.session.user_id)
     data.setdefault('task_id',None)
     data.setdefault('volume_id', 0)
+
     #check for existing build
-    # TODO - table lock?
-    q="""SELECT id,state,task_id FROM build
-    WHERE pkg_id=%(pkg_id)d AND version=%(version)s AND release=%(release)s
-    FOR UPDATE"""
-    row = _fetchSingle(q, data)
+    query = QueryProcessor(
+                tables=['build'], columns=['id', 'state', 'task_id'],
+                clauses=['pkg_id=%(pkg_id)s', 'version=%(version)s',
+                    'release=%(release)s'],
+                values=data, opts={'rowlock':True})
+    row = query.executeOne()
     if row:
-        id, state, task_id = row
-        data['id'] = id
+        build_id, state, task_id = row
+        data['id'] = build_id
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
         st_desc = koji.BUILD_STATES[state]
         if st_desc == 'BUILDING':
             # check to see if this is the controlling task
             if data['state'] == state and data.get('task_id','') == task_id:
                 #the controlling task must have restarted (and called initBuild again)
-                return id
+                return build_id
             raise koji.GenericError, "Build already in progress (task %d)" % task_id
             # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
         if st_desc in ('FAILED','CANCELED'):
             #should be ok to replace
-            update = """UPDATE build SET state=%(state)i,task_id=%(task_id)s,
-            owner=%(owner)s,completion_time=%(completion_time)s,create_event=get_event()
-            WHERE id = %(id)i"""
-            _dml(update, data)
+            update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
+            update.set(**dslice(data, ['owner', 'start_time', 'completion_time']))
+            update.rawset(create_event='get_event()')
+            update.execute()
             builddir = koji.pathinfo.build(data)
             if os.path.exists(builddir):
                 shutil.rmtree(builddir)
             koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-            return id
+            return build_id
         raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
-            % (id, st_desc, data)
+            % (build_id, st_desc, data)
     else:
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
+
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                         'task_id', 'owner', 'completion_time'])
+                         'task_id', 'owner', 'start_time', 'completion_time', 'source', 'extra'])
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
     return data['id']
+
 
 def check_noarch_rpms(basepath, rpms):
     """
@@ -4526,7 +4601,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
                               task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return binfo
 
-def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
+
+def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     """Import a single rpm into the database
 
     Designed to be called from import_build.
@@ -4587,8 +4663,14 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     rpminfo['buildroot_id'] = brootid
     rpminfo['external_repo_id'] = 0
 
+    # handle cg extra info
+    if fileinfo is not None:
+        extra = fileinfo.get('extra')
+        if extra is not None:
+            rpminfo['extra'] = json.dumps(extra)
+
     koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo,
-                              filepath=fn)
+                              filepath=fn, fileinfo=fileinfo)
 
     data = rpminfo.copy()
     del data['sourcepackage']
@@ -4597,12 +4679,401 @@ def import_rpm(fn,buildinfo=None,brootid=None,wrapper=False):
     insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='rpm', rpm=rpminfo, build=buildinfo,
-                              filepath=fn)
+                              filepath=fn, fileinfo=fileinfo)
 
     #extra fields for return
     rpminfo['build'] = buildinfo
     rpminfo['brootid'] = brootid
     return rpminfo
+
+
+def cg_import(metadata, directory):
+    """Import build from a content generator
+
+    metadata can be one of the following
+    - json encoded string representing the metadata
+    - a dictionary (parsed metadata)
+    - a filename containing the metadata
+    """
+
+    importer = CG_Importer()
+    importer.do_import(metadata, directory)
+
+
+class CG_Importer(object):
+
+    def __init__(self):
+        self.buildinfo = None
+        self.metadata_only = False
+
+    def do_import(self, metadata, directory):
+
+        metadata = self.get_metadata(metadata, directory)
+        self.directory = directory
+
+        metaver = metadata['metadata_version']
+        if metaver != 0:
+            raise koji.GenericError("Unknown metadata version: %r" % metaver)
+
+        # TODO: basic metadata sanity check (use jsonschema?)
+
+        self.assert_cg_access()
+
+        # prepare data for import
+        self.prep_build()
+        self.prep_brs()
+        self.prep_outputs()
+
+        self.assert_policy()
+
+        koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
+                directory=directory)
+
+        # finalize import
+        self.get_build()
+        self.import_brs()
+        self.import_outputs()
+        self.import_metadata()
+
+        koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
+                    directory=directory, buildinfo=self.buildinfo)
+
+
+    def get_metadata(self, metadata, directory):
+        """Get the metadata from the args"""
+
+        if isinstance(metadata, dict):
+            self.metadata = metadata
+            try:
+                self.raw_metadata = json.dumps(metadata, indent=2)
+            except Exception:
+                logger.exception("Cannot encode supplied metadata")
+                raise koji.GenericError("Invalid metada, cannot encode: %r" % metadata)
+            return metadata
+        if metadata is None:
+            #default to looking for uploaded file
+            metadata = 'metadata.json'
+        if not isinstance(metadata, (str, unicode)):
+            raise koji.GenericError("Invalid metadata value: %r" % metadata)
+        if metadata.endswith('.json'):
+            # handle uploaded metadata
+            workdir = koji.pathinfo.work()
+            path = os.path.join(workdir, directory, metadata)
+            if not os.path.exists(path):
+                raise koji.GenericError("No such file: %s" % metadata)
+            fo = open(path, 'r')
+            metadata = fo.read()
+            fo.close()
+        self.raw_metadata = metadata
+        self.metadata = parse_json(metadata, desc='metadata')
+        return self.metadata
+
+
+    def assert_cg_access(self):
+        """Check that user has access for all referenced content generators"""
+
+        cgs = set()
+        for brdata in self.metadata['buildroots']:
+            cginfo = brdata['content_generator']
+            cg = lookup_name('content_generator', cginfo['name'], strict=True)
+            cgs.add(cg['id'])
+            brdata['cg_id'] = cg['id']
+        for cg_id in cgs:
+            assert_cg(cg_id)
+        self.cgs = cgs
+
+
+    def assert_policy(self):
+        policy_data = {
+            'package': self.buildinfo['name'],
+            'source': self.buildinfo.get('source'),
+            'metadata_only': self.metadata_only,
+            'cg_list' : list(self.cgs),
+            # TODO: provide more data
+        }
+        assert_policy('cg_import', policy_data)
+
+
+    def prep_build(self):
+        metadata = self.metadata
+        buildinfo = get_build(metadata['build'], strict=False)
+        if buildinfo:
+            # TODO : allow in some cases
+            raise koji.GenericError("Build already exists: %r" % buildinfo)
+        else:
+            # gather needed data
+            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
+            # epoch is not in the metadata spec, but we allow it to be specified
+            buildinfo['epoch'] = metadata['build'].get('epoch', None)
+            buildinfo['start_time'] = \
+                datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
+            buildinfo['completion_time'] = \
+                datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
+        self.buildinfo = buildinfo
+        return buildinfo
+
+
+    def get_build(self):
+        build_id = new_build(self.buildinfo)
+        buildinfo = get_build(build_id, strict=True)
+
+        # handle special build types
+        b_extra = self.metadata['build'].get('extra', {})
+        if 'maven' in b_extra:
+            new_maven_build(buildinfo, b_extra['maven'])
+        if 'win' in b_extra:
+            new_win_build(buildinfo, b_extra['win'])
+        if 'image' in b_extra:
+            # no extra info tracked at build level
+            new_image_build(buildinfo)
+
+        self.buildinfo = buildinfo
+        return buildinfo
+
+
+    def import_metadata(self):
+        """Import the raw metadata"""
+
+        # TODO - eventually, import this as an archive, but for now we just write it to disk
+        #   because there are complications
+        #       - no buildroot (could confuse policies checking that builds were built sanely
+        #       - doesn't fit with current major archive categories
+        builddir = koji.pathinfo.build(self.buildinfo)
+        koji.ensuredir(builddir)
+        path = os.path.join(builddir, 'metadata.json')
+        fo = open(path, 'w')
+        try:
+            fo.write(self.raw_metadata)
+        finally:
+            fo.close()
+
+
+    def prep_brs(self):
+        metadata = self.metadata
+        br_used = set([f['buildroot_id'] for f in metadata['output']])
+        br_idx = {}
+        for brdata in metadata['buildroots']:
+            brfakeid = brdata['id']
+            if brfakeid not in br_used:
+                raise koji.GenericError("Buildroot id not used in output: %r" % brfakeid)
+            if brfakeid in br_idx:
+                raise koji.GenericError("Duplicate buildroot id in metadata: %r" % brfakeid)
+            br_idx[brfakeid] = self.prep_buildroot(brdata)
+        self.br_prep = br_idx
+
+
+    def import_brs(self):
+        brmap = {}
+        for brfakeid in self.br_prep:
+            entry = self.br_prep[brfakeid]
+            brmap[brfakeid] = self.import_buildroot(entry)
+        self.brmap = brmap
+
+
+    def prep_buildroot(self, brdata):
+        ret = {}
+        brinfo = {
+            'cg_id' : brdata['cg_id'],
+            'cg_version' : brdata['content_generator']['version'],
+            'container_type' : brdata['container']['type'],
+            'container_arch' : brdata['container']['arch'],
+            'host_os' : brdata['host']['os'],
+            'host_arch' : brdata['host']['arch'],
+            'extra' : brdata.get('extra'),
+        }
+        rpmlist, archives = self.match_components(brdata['components'])
+        ret = {
+            'brinfo' : brinfo,
+            'rpmlist' : rpmlist,
+            'archives' : archives,
+            'tools' : brdata['tools'],
+        }
+        return ret
+
+
+    def import_buildroot(self, entry):
+        """Import the prepared buildroot data"""
+
+        # buildroot entry
+        br = BuildRoot()
+        br.cg_new(entry['brinfo'])
+
+        #buildroot components
+        br.setList(entry['rpmlist'])
+        br.updateArchiveList(entry['archives'])
+
+        # buildroot_tools_info
+        br.setTools(entry['tools'])
+
+        return br
+
+
+    def match_components(self, components):
+        rpms = []
+        files = []
+        for comp in components:
+            if comp['type'] == 'rpm':
+                match = self.match_rpm(comp)
+                if match:
+                    rpms.append(match)
+            elif comp['type'] == 'file':
+                match = self.match_file(comp)
+                if match:
+                    files.append(match)
+            else:
+                raise koji.GenericError("Unknown component type: %(type)s" % comp)
+        return rpms, files
+
+
+    def match_rpm(self, comp):
+        # TODO: do we allow inclusion of external rpms?
+        if 'location' in comp:
+            raise koji.GenericError("External rpms not allowed")
+        if 'id' in comp:
+            # not in metadata spec, and will confuse get_rpm
+            raise koji.GenericError("Unexpected 'id' field in component")
+        rinfo = get_rpm(comp, strict=False)
+        if not rinfo:
+            # XXX - this is a temporary workaround until we can better track external refs
+            logger.warning("IGNORING unmatched rpm component: %r", comp)
+            return None
+        if rinfo['payloadhash'] != comp['sigmd5']:
+            nvr = "%(name)s-%(version)s-%(release)s" % rinfo
+            # XXX - this is a temporary workaround until we can better track external refs
+            logger.warning("IGNORING rpm component (md5 mismatch): %r", comp)
+            #raise koji.GenericError("md5sum mismatch for %s: %s != %s"
+            #            % (nvr, comp['sigmd5'], rinfo['payloadhash']))
+        # TODO - should we check the signature field?
+        return rinfo
+
+
+    def match_file(self, comp):
+        # hmm, how do we look up archives?
+        # updateMavenBuildRootList does seriously wild stuff
+        # only unique field in archiveinfo is id
+        # checksum/checksum_type only works if type matches
+        # at the moment, we only have md5 entries in archiveinfo
+
+        type_mismatches = 0
+        for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
+            if archive['checksum_type'] != comp['checksum_type']:
+                type_mismatches += 1
+                continue
+            if archive['checksum'] == comp['checksum']:
+                return archive
+        #else
+        logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
+        if type_mismatches:
+            logger.error("Match failed with %i type mismatches", type_mismatches)
+        # TODO: allow external archives
+        # XXX - this is a temporary workaround until we can better track external refs
+        logger.warning("IGNORING unmatched archive: %r", comp)
+        return None
+        #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
+
+
+    def prep_outputs(self):
+        metadata = self.metadata
+        outputs = []
+        for fileinfo in metadata['output']:
+            fileinfo = fileinfo.copy()  # [!]
+            if fileinfo.get('metadata_only', False):
+                self.metadata_only = True
+            workdir = koji.pathinfo.work()
+            path = os.path.join(workdir, self.directory, fileinfo.get('relpath', ''), fileinfo['filename'])
+            fileinfo['hub.path'] = path
+            if fileinfo['buildroot_id'] not in self.br_prep:
+                raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
+            if fileinfo['type'] not in ['rpm', 'log']:
+                self.prep_archive(fileinfo)
+            outputs.append(fileinfo)
+        self.prepped_outputs = outputs
+
+
+    def import_outputs(self):
+        for fileinfo in self.prepped_outputs:
+            brinfo = self.brmap.get(fileinfo['buildroot_id'])
+            if not brinfo:
+                # should not happen
+                logger.error("No buildroot mapping for file: %r", fileinfo)
+                raise koji.GenericError("Unable to map buildroot %(buildroot_id)s" % fileinfo)
+            if fileinfo['type'] == 'rpm':
+                self.import_rpm(self.buildinfo, brinfo, fileinfo)
+            elif fileinfo['type'] == 'log':
+                self.import_log(self.buildinfo, fileinfo)
+            else:
+                self.import_archive(self.buildinfo, brinfo, fileinfo)
+
+
+    def prep_archive(self, fileinfo):
+        # determine archive import type (maven/win/image/other)
+        extra = fileinfo.get('extra', {})
+        legacy_types = ['maven', 'win', 'image']
+        l_type = None
+        type_info = None
+        for key in legacy_types:
+            if key in extra:
+                if l_type is not None:
+                    raise koji.GenericError("Output file has multiple archive types: %s" % fn)
+                l_type = key
+                type_info = extra[key]
+        fileinfo['hub.l_type'] = l_type
+        fileinfo['hub.type_info'] = type_info
+
+        if l_type == 'image':
+            components = fileinfo.get('components', [])
+            rpmlist, archives = self.match_components(components)
+            # TODO - note presence of external components
+            fileinfo['hub.rpmlist'] = rpmlist
+            fileinfo['hub.archives'] = archives
+
+
+    def import_rpm(self, buildinfo, brinfo, fileinfo):
+        if fileinfo.get('metadata_only', False):
+            raise koji.GenericError('Metadata-only imports are not supported for rpms')
+            # TODO - support for rpms too
+        fn = fileinfo['hub.path']
+        rpminfo = import_rpm(fn, buildinfo, brinfo.id, fileinfo=fileinfo)
+        import_rpm_file(fn, buildinfo, rpminfo)
+        add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
+
+
+    def import_log(self, buildinfo, fileinfo):
+        if fileinfo.get('metadata_only', False):
+            # logs are not currently tracked, so this is a no op
+            return
+        # TODO: determine subdir
+        fn = fileinfo['hub.path']
+        import_build_log(fn, buildinfo, subdir=None)
+
+
+    def import_archive(self, buildinfo, brinfo, fileinfo):
+        fn = fileinfo['hub.path']
+        l_type = fileinfo['hub.l_type']
+        type_info = fileinfo['hub.type_info']
+
+        archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
+
+        if l_type == 'image':
+            self.import_components(archiveinfo['id'], fileinfo)
+
+
+    def import_components(self, image_id, fileinfo):
+        rpmlist = fileinfo['hub.rpmlist']
+        archives = fileinfo['hub.archives']
+
+        insert = InsertProcessor('image_listing')
+        insert.set(image_id=image_id)
+        for rpminfo in rpmlist:
+            insert.set(rpm_id=rpminfo['id'])
+            insert.execute()
+
+        insert = InsertProcessor('image_archive_listing')
+        insert.set(image_id=image_id)
+        for archiveinfo in archives:
+            insert.set(archive_id=archiveinfo['id'])
+            insert.execute()
+
 
 def add_external_rpm(rpminfo, external_repo, strict=True):
     """Add an external rpm entry to the rpminfo table
@@ -5092,7 +5563,7 @@ def import_old_image(old, name, version):
     # the old schema did not track buildroot directly, so we have to infer
     # by task id.
     # If the task had multiple buildroots, we chose the latest
-    query = QueryProcessor(columns=['id'], tables=['buildroot'],
+    query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
                            clauses=['task_id=%(task_id)i'], values=old,
                            opts={'order': '-id', 'limit': 1})
     br_id = query.singleValue(strict=False)
@@ -5140,7 +5611,19 @@ def import_old_image(old, name, version):
 
     return binfo
 
+
 def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
+    """
+    Import an archive file and associate it with a build.  The archive can
+    be any non-rpm filetype supported by Koji.
+
+    This wraps import_archive_internal and limits options
+    """
+
+    return import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=None)
+
+
+def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=None, fileinfo=None):
     """
     Import an archive file and associate it with a build.  The archive can
     be any non-rpm filetype supported by Koji.
@@ -5149,31 +5632,68 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     buildinfo: dict of information about the build to associate the archive with (as returned by getBuild())
     type: type of the archive being imported.  Currently supported archive types: maven, win, image
     typeInfo: dict of type-specific information
-    buildroot_id: the id of the buildroot the archive was built in (may be null)
+    buildroot_id: the id of the buildroot the archive was built in (may be None)
+    fileinfo: content generator metadata for file (may be None)
     """
-    if not os.path.exists(filepath):
+
+    if fileinfo is None:
+        fileinfo = {}
+    metadata_only = fileinfo.get('metadata_only', False)
+
+    if metadata_only:
+        filepath = None
+    elif not os.path.exists(filepath):
         raise koji.GenericError, 'no such file: %s' % filepath
 
     archiveinfo = {'buildroot_id': buildroot_id}
-    filename = koji.fixEncoding(os.path.basename(filepath))
-    archiveinfo['filename'] = filename
+    archiveinfo['build_id'] = buildinfo['id']
+    if metadata_only:
+        filename = koji.fixEncoding(fileinfo['filename'])
+        archiveinfo['filename'] = filename
+        archiveinfo['size'] = fileinfo['filesize']
+        archiveinfo['checksum'] = fileinfo['checksum']
+        if fileinfo['checksum_type'] != 'md5':
+            # XXX
+            # until we change the way we handle checksums, we have to limit this to md5
+            raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+        archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
+        archiveinfo['metadata_only'] = True
+    else:
+        filename = koji.fixEncoding(os.path.basename(filepath))
+        archiveinfo['filename'] = filename
+        archiveinfo['size'] = os.path.getsize(filepath)
+        archivefp = file(filepath)
+        m = md5_constructor()
+        while True:
+            contents = archivefp.read(8192)
+            if not contents:
+                break
+            m.update(contents)
+        archivefp.close()
+        archiveinfo['checksum'] = m.hexdigest()
+        archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
+        if fileinfo:
+            # check against metadata
+            if archiveinfo['size'] != fileinfo['filesize']:
+                raise koji.GenericError("File size mismatch for %s: %s != %s" %
+                        (filename, archiveinfo['size'], fileinfo['filesize']))
+            if fileinfo['checksum_type'] != 'md5':
+                # XXX
+                # until we change the way we handle checksums, we have to limit this to md5
+                raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+            if archiveinfo['checksum'] != fileinfo['checksum']:
+                raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
+                        (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
-    archiveinfo['build_id'] = buildinfo['id']
-    archiveinfo['size'] = os.path.getsize(filepath)
-    archivefp = file(filepath)
-    m = md5_constructor()
-    while True:
-        contents = archivefp.read(8192)
-        if not contents:
-            break
-        m.update(contents)
-    archivefp.close()
-    archiveinfo['checksum'] = m.hexdigest()
-    archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
+
+    # cg extra data
+    extra = fileinfo.get('extra', None)
+    if extra is not None:
+        archiveinfo['extra'] = json.dumps(extra)
 
     koji.plugin.run_callbacks('preImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, filepath=filepath)
+                              build_type=type, filepath=filepath, fileinfo=fileinfo)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
     archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
@@ -5184,7 +5704,7 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
     if type == 'maven':
         maveninfo = get_maven_build(buildinfo, strict=True)
 
-        if archivetype['name'] == 'pom':
+        if archivetype['name'] == 'pom' and not metadata_only:
             pom_info = koji.parse_pom(filepath)
             pom_maveninfo = koji.pom_to_maven_info(pom_info)
             # sanity check: Maven info from pom must match the user-supplied typeInfo
@@ -5200,11 +5720,12 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
         insert.set(archive_id=archive_id)
         insert.execute()
 
-        # move the file to it's final destination
-        mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
-                                koji.pathinfo.mavenrepo(typeInfo))
-        _import_archive_file(filepath, mavendir)
-        _generate_maven_metadata(mavendir)
+        if not metadata_only:
+            # move the file to it's final destination
+            mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
+                                    koji.pathinfo.mavenrepo(typeInfo))
+            _import_archive_file(filepath, mavendir)
+            _generate_maven_metadata(mavendir)
     elif type == 'win':
         wininfo = get_win_build(buildinfo, strict=True)
 
@@ -5219,25 +5740,28 @@ def import_archive(filepath, buildinfo, type, typeInfo, buildroot_id=None):
             insert.set(flags=' '.join(typeInfo['flags']))
         insert.execute()
 
-        destdir = koji.pathinfo.winbuild(buildinfo)
-        if relpath:
-            destdir = os.path.join(destdir, relpath)
-        _import_archive_file(filepath, destdir)
+        if not metadata_only:
+            destdir = koji.pathinfo.winbuild(buildinfo)
+            if relpath:
+                destdir = os.path.join(destdir, relpath)
+            _import_archive_file(filepath, destdir)
     elif type == 'image':
         insert = InsertProcessor('image_archives')
         insert.set(archive_id=archive_id)
         insert.set(arch=typeInfo['arch'])
         insert.execute()
-        imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
-        _import_archive_file(filepath, imgdir)
+        if not metadata_only:
+            imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
+            _import_archive_file(filepath, imgdir)
         # import log files?
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
-                              build_type=type, filepath=filepath)
+                              build_type=type, filepath=filepath, fileinfo=fileinfo)
     return archiveinfo
+
 
 def _import_archive_file(filepath, destdir):
     """
@@ -5515,6 +6039,7 @@ def query_history(tables=None, **kwargs):
     table_fields = {
         'user_perms' : ['user_id', 'perm_id'],
         'user_groups' : ['user_id', 'group_id'],
+        'cg_users' : ['user_id', 'cg_id'],
         'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
         'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
         'tag_extra' : ['tag_id', 'key', 'value'],
@@ -5533,6 +6058,7 @@ def query_history(tables=None, **kwargs):
         #field : [table, join-alias, alias]
         'user_id' : ['users', 'users', 'user'],
         'perm_id' : ['permissions', 'permission'],
+        'cg_id' : ['content_generator'],
         #group_id is overloaded (special case below)
         'tag_id' : ['tag'],
         'parent_id' : ['tag', 'parent'],
@@ -5852,6 +6378,18 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = idx.values()
 
+    ret['images'] = []
+    # find images that contain the build rpms
+    fields = ['image_id']
+    clauses = ['image_listing.rpm_id = %(rpm_id)s']
+    # TODO: join in other tables to provide something more than image id
+    query = QueryProcessor(columns=fields, tables=['image_listing'], clauses=clauses,
+                           opts={'asList': True})
+    for (rpm_id,) in rpm_ids:
+        query.values = {'rpm_id': rpm_id}
+        image_ids = [i[0] for i in query.execute()]
+        ret['images'].extend(image_ids)
+
     # find archives whose buildroots we were in
     q = """SELECT id FROM archiveinfo WHERE build_id = %(build_id)i"""
     archive_ids = _fetchMulti(q, locals())
@@ -5873,16 +6411,28 @@ def build_references(build_id, limit=None):
             break
     ret['archives'] = idx.values()
 
+    # find images that contain the build archives
+    fields = ['image_id']
+    clauses = ['image_archive_listing.archive_id = %(archive_id)s']
+    # TODO: join in other tables to provide something more than image id
+    query = QueryProcessor(columns=fields, tables=['image_archive_listing'], clauses=clauses,
+                           opts={'asList': True})
+    for (archive_id,) in archive_ids:
+        query.values = {'archive_id': archive_id}
+        image_ids = [i[0] for i in query.execute()]
+        ret['images'].extend(image_ids)
+
     # find timestamp of most recent use in a buildroot
-    q = """SELECT buildroot.create_event
-    FROM buildroot_listing
-        JOIN buildroot ON buildroot_listing.buildroot_id = buildroot.id
-    WHERE buildroot_listing.rpm_id = %(rpm_id)s
-    ORDER BY buildroot.create_event DESC
-    LIMIT 1"""
+    query = QueryProcessor(
+                columns=['standard_buildroot.create_event'],
+                tables=['buildroot_listing'],
+                joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
+                clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
+                opts={'order': '-standard_buildroot.create_event', 'limit': 1})
     event_id = -1
     for (rpm_id,) in rpm_ids:
-        tmp_id = _singleValue(q, locals(), strict=False)
+        query.values={'rpm_id': rpm_id}
+        tmp_id = query.singleValue(strict=False)
         if tmp_id is not None and tmp_id > event_id:
             event_id = tmp_id
     if event_id == -1:
@@ -5891,11 +6441,11 @@ def build_references(build_id, limit=None):
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
 
-    q = """SELECT buildroot.create_event
+    q = """SELECT standard_buildroot.create_event
     FROM buildroot_archives
-        JOIN buildroot ON buildroot_archives.buildroot_id = buildroot.id
+        JOIN standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id
     WHERE buildroot_archives.archive_id = %(archive_id)i
-    ORDER BY buildroot.create_event DESC
+    ORDER BY standard_buildroot.create_event DESC
     LIMIT 1"""
     event_id = -1
     for (archive_id,) in archive_ids:
@@ -5943,6 +6493,10 @@ def delete_build(build, strict=True, min_ref_age=604800):
     if refs['archives']:
         if strict:
             raise koji.GenericError, "Cannot delete build, used in archive buildroots: %s" % refs['archives']
+        return False
+    if refs['images']:
+        if strict:
+            raise koji.GenericError, "Cannot delete build, used in images: %r" % refs['images']
         return False
     if refs['last_used']:
         age = time.time() - refs['last_used']
@@ -6290,6 +6844,50 @@ def set_user_status(user, status):
         raise koji.GenericError, 'invalid user ID: %i' % user_id
 
 
+def grant_cg_access(user, cg, create=False):
+    """Grant user access to act as the given content generator"""
+
+    context.session.assertPerm('admin')
+    user = get_user(user, strict=True)
+    if create:
+        cg = lookup_name('content_generator', cg, create=True)
+    else:
+        cg = lookup_name('content_generator', cg, strict=True)
+    ins = InsertProcessor('cg_users')
+    ins.set(cg_id=cg['id'], user_id=user['id'])
+    ins.make_create()
+    if ins.dup_check():
+        raise koji.GenericError("User already has access to content generator %(name)s" % cg)
+    ins.execute()
+
+
+def revoke_cg_access(user, cg):
+    """Revoke a user's access to act as the given content generator"""
+
+    context.session.assertPerm('admin')
+    user = get_user(user, strict=True)
+    cg = lookup_name('content_generator', cg, strict=True)
+    data = {'user_id': user['id'], 'cg_id' : cg['id']}
+    update = UpdateProcessor('cg_users', values=data,
+                clauses=["user_id = %(user_id)i", "cg_id = %(cg_id)i"])
+    update.make_revoke()
+    update.execute()
+
+
+def assert_cg(cg, user=None):
+    cg = lookup_name('content_generator', cg, strict=True)
+    if user is None:
+        if not context.session.logged_in:
+            raise koji.AuthError("Not logged in")
+        user = context.session.user_id
+    user = get_user(user, strict=True)
+    clauses = ['active = TRUE', 'user_id = %(user_id)s', 'cg_id = %(cg_id)s']
+    data = {'user_id' : user['id'], 'cg_id' : cg['id']}
+    query = QueryProcessor(tables=['cg_users'], columns=['cg_id'], clauses=clauses, values=data)
+    if not query.execute():
+        raise koji.AuthError("Content generator access required (%s)" % cg['name'])
+
+
 def get_event():
     """Get an event id for this transaction
 
@@ -6303,6 +6901,25 @@ def get_event():
     event_id = _singleValue("SELECT get_event()")
     context.event_id = event_id
     return event_id
+
+
+def parse_json(value, desc=None, errstr=None):
+    if value is None:
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        if errstr is None:
+            if desc is None:
+                errstr = "Invalid json data for %s" % desc
+            else:
+                errstr = "Invalid json data"
+        raise koji.GenericError("%s: %r" % (errstr, value))
+
+
+def _fix_extra_field(row):
+    row['extra'] = parse_json(row['extra'], errstr='Invalid extra data')
+    return row
 
 
 class InsertProcessor(object):
@@ -6359,6 +6976,24 @@ class InsertProcessor(object):
             user_id = context.session.user_id
         self.data['create_event'] = event_id
         self.data['creator_id'] = user_id
+
+    def dup_check(self):
+        """Check to see if the insert duplicates an existing row"""
+        if self.rawdata:
+            logger.warning("Can't perform duplicate check")
+            return None
+        data = self.data.copy()
+        if 'create_event' in self.data:
+            # versioned table
+            data['active'] = True
+            del data['create_event']
+            del data['creator_id']
+        clauses = ["%s = %%(%s)s" % (k, k) for k in data]
+        query = QueryProcessor(columns=data.keys(), tables=[self.table],
+                               clauses=clauses, values=data)
+        if query.execute():
+            return True
+        return False
 
     def execute(self):
         return _dml(str(self), self.data)
@@ -6450,6 +7085,8 @@ class QueryProcessor(object):
     - clauses: a list of where clauses in the form 'table1.col1 OPER table2.col2-or-variable';
                each clause will be surrounded by parentheses and all will be AND'ed together
     - values: the map that will be used to replace any substitution expressions in the query
+    - transform: a function that will be called on each row (not compatible with
+                 countOnly or singleValue)
     - opts: a map of query options; currently supported options are:
         countOnly: if True, return an integer indicating how many results would have been
                    returned, rather than the actual query results
@@ -6464,7 +7101,8 @@ class QueryProcessor(object):
     iterchunksize = 1000
 
     def __init__(self, columns=None, aliases=None, tables=None,
-                 joins=None, clauses=None, values=None, opts=None):
+                 joins=None, clauses=None, values=None, transform=None,
+                 opts=None):
         self.columns = columns
         self.aliases = aliases
         if columns and aliases:
@@ -6481,6 +7119,7 @@ class QueryProcessor(object):
             self.values = values
         else:
             self.values = {}
+        self.transform=transform
         if opts:
             self.opts = opts
         else:
@@ -6588,16 +7227,29 @@ SELECT %(col_str)s
             return ''
 
     def singleValue(self, strict=True):
+        # self.transform not applied here
         return _singleValue(str(self), self.values, strict=strict)
+
 
     def execute(self):
         query = str(self)
         if self.opts.get('countOnly'):
             return _singleValue(query, self.values, strict=True)
         elif self.opts.get('asList'):
-            return _fetchMulti(query, self.values)
+            if self.transform is None:
+                return _fetchMulti(query, self.values)
+            else:
+                # if we're transforming, generate the dicts so the transform can modify
+                fields = self.aliases or self.columns
+                data = _multiRow(query, self.values, fields)
+                data = [self.transform(row) for row in data]
+                # and then convert back to lists
+                data = [ [row[f] for f in fields] for row in data]
         else:
-            return _multiRow(query, self.values, (self.aliases or self.columns))
+            data = _multiRow(query, self.values, (self.aliases or self.columns))
+            if self.transform is not None:
+                data = [self.transform(row) for row in data]
+            return data
 
 
     def iterate(self):
@@ -6625,9 +7277,18 @@ SELECT %(col_str)s
         query = "FETCH %i FROM %s" % (chunksize, cname)
         while True:
             if as_list:
-                buf = _fetchMulti(query, {})
+                if self.transform is None:
+                    buf = _fetchMulti(query, {})
+                else:
+                    # if we're transforming, generate the dicts so the transform can modify
+                    buf = _multiRow(query, self.values, fields)
+                    buf = [self.transform(row) for row in buf]
+                    # and then convert back to lists
+                    buf = [ [row[f] for f in fields] for row in buf]
             else:
                 buf = _multiRow(query, {}, fields)
+                if self.transform is not None:
+                    buf = [self.transform(row) for row in buf]
             if not buf:
                 break
             for row in buf:
@@ -7739,6 +8400,8 @@ class RootExports(object):
         fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
         import_archive(fullpath, buildinfo, type, typeInfo)
 
+    CGImport = staticmethod(cg_import)
+
     untaggedBuilds = staticmethod(untagged_builds)
     tagHistory = staticmethod(tag_history)
     queryHistory = staticmethod(query_history)
@@ -8257,6 +8920,8 @@ class RootExports(object):
           - creation_event_id
           - creation_time
           - creation_ts
+          - start_time
+          - start_ts
           - completion_time
           - completion_ts
           - task_id
@@ -8271,8 +8936,10 @@ class RootExports(object):
         """
         fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
+                  ('build.start_time', 'start_time'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
                   ('EXTRACT(EPOCH FROM events.time)','creation_ts'),
+                  ('EXTRACT(EPOCH FROM build.start_time)','start_ts'),
                   ('EXTRACT(EPOCH FROM build.completion_time)','completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'), ('package.name', 'name'),
                   ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
@@ -8781,6 +9448,9 @@ class RootExports(object):
         if not user:
             raise koji.GenericError, 'unknown user: %s' % username
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
+
+    grantCGAccess = staticmethod(grant_cg_access)
+    revokeCGAccess = staticmethod(revoke_cg_access)
 
     #group management calls
     newGroup = staticmethod(new_group)
@@ -9556,69 +10226,146 @@ class BuildRoot(object):
             #load buildroot data
             self.load(id)
 
-    def load(self,id):
-        fields = ('id', 'host_id', 'repo_id', 'arch', 'task_id',
-                    'create_event', 'retire_event', 'state')
-        q = """SELECT %s FROM buildroot WHERE id=%%(id)i""" % (",".join(fields))
-        data = _singleRow(q,locals(),fields,strict=False)
-        if data == None:
+    def load(self, id):
+        fields = [
+            'id',
+            'br_type',
+            'cg_id',
+            'cg_version',
+            'container_type',
+            'container_arch',
+            'host_os',
+            'host_arch',
+            'extra',
+            ]
+        query = QueryProcessor(columns=fields, tables=['buildroot'],
+                    transform=_fix_extra_field,
+                    values={'id': id}, clauses=['id=%(id)s'])
+        data = query.executeOne()
+        if not data:
             raise koji.GenericError, 'no buildroot with ID: %i' % id
         self.id = id
         self.data = data
+        if data['br_type'] == koji.BR_TYPES['STANDARD']:
+            self._load_standard()
+        else:
+            self.is_standard = False
 
-    def new(self, host, repo, arch, task_id=None):
+    def _load_standard(self):
+        fields = [
+            'host_id',
+            'repo_id',
+            'task_id',
+            'create_event',
+            'retire_event',
+            'state',
+            ]
+        query = QueryProcessor(columns=fields, tables=['standard_buildroot'],
+                    values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
+        data = query.executeOne()
+        if not data:
+            raise koji.GenericError, 'Not a standard buildroot: %i' % self.id
+        self.data.update(data)
+        # arch for compat
+        self.data['arch'] = self.data['container_arch']
+        self.is_standard = True
+
+    def new(self, host, repo, arch, task_id=None, ctype='chroot'):
         state = koji.BR_STATES['INIT']
-        id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
-        q = """INSERT INTO buildroot(id,host_id,repo_id,arch,state,task_id)
-        VALUES (%(id)i,%(host)i,%(repo)i,%(arch)s,%(state)i,%(task_id)s)"""
-        _dml(q,locals())
-        self.load(id)
+        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        insert = InsertProcessor('buildroot', data={'id': br_id})
+        insert.set(container_arch=arch, container_type=ctype)
+        insert.set(br_type=koji.BR_TYPES['STANDARD'])
+        insert.execute()
+        # and now the other table
+        insert = InsertProcessor('standard_buildroot')
+        insert.set(buildroot_id=br_id)
+        insert.set(host_id=host, repo_id=repo, task_id=task_id, state=state)
+        insert.execute()
+        self.load(br_id)
         return self.id
 
-    def verifyTask(self,task_id):
+    def cg_new(self, data):
+        """New content generator buildroot"""
+
+        fields = [
+            'br_type',
+            'cg_id',
+            'cg_version',
+            'container_type',
+            'container_arch',
+            'host_os',
+            'host_arch',
+            'extra',
+            ]
+        data.setdefault('br_type', koji.BR_TYPES['EXTERNAL'])
+        data = dslice(data, fields)
+        for key in fields:
+            if key not in data:
+                raise koji.GenericError("Buildroot field %s not specified" % key)
+        if data['extra'] is not None:
+            data['extra'] = json.dumps(data['extra']),
+        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        insert = InsertProcessor('buildroot')
+        insert.set(id = br_id, **data)
+        insert.execute()
+        self.load(br_id)
+        return self.id
+
+    def assertStandard(self):
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
+        if not self.is_standard:
+            raise koji.GenericError('Not a standard buildroot: %s' % self.id)
+
+    def verifyTask(self, task_id):
+        self.assertStandard()
         return (task_id == self.data['task_id'])
 
-    def assertTask(self,task_id):
+    def assertTask(self, task_id):
+        self.assertStandard()
         if not self.verifyTask(task_id):
             raise koji.ActionNotAllowed, 'Task %s does not have lock on buildroot %s' \
                                         %(task_id,self.id)
 
-    def verifyHost(self,host_id):
-        if self.id is None:
-            raise koji.GenericError, "buildroot not specified"
+    def verifyHost(self, host_id):
+        self.assertStandard()
         return (host_id == self.data['host_id'])
 
-    def assertHost(self,host_id):
+    def assertHost(self, host_id):
+        self.assertStandard()
         if not self.verifyHost(host_id):
             raise koji.ActionNotAllowed, "Host %s not owner of buildroot %s" \
                                         % (host_id,self.id)
 
-    def setState(self,state):
-        if self.id is None:
-            raise koji.GenericError, "buildroot not specified"
-        id = self.id
-        if isinstance(state,str):
+    def setState(self, state):
+        self.assertStandard()
+        if isinstance(state, str):
             state = koji.BR_STATES[state]
         #sanity checks
         if state == koji.BR_STATES['INIT']:
             #we do not re-init buildroots
             raise koji.GenericError, "Cannot change buildroot state to INIT"
-        q = """SELECT state,retire_event FROM buildroot WHERE id=%(id)s FOR UPDATE"""
-        lstate,retire_event = _fetchSingle(q,locals(),strict=True)
-        if koji.BR_STATES[lstate] == 'EXPIRED':
+        query = QueryProcessor(columns=['state', 'retire_event'], values=self.data,
+                    tables=['standard_buildroot'], clauses=['buildroot_id=%(id)s'],
+                    opts={'rowlock':True})
+        row = query.executeOne()
+        if not row:
+            raise koji.GenericError("Unable to get state for buildroot %s" % self.id)
+        lstate, retire_event = row
+        if koji.BR_STATES[row['state']] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
             #otherwise this is an error
-            if state == lstate:
+            if state == 'EXPIRED':
                 return
             else:
-                raise koji.GenericError, "buildroot %i is EXPIRED" % id
-        set = "state=%(state)s"
+                raise koji.GenericError, "buildroot %i is EXPIRED" % self.id
+        update = UpdateProcessor('standard_buildroot', clauses=['buildroot_id=%(id)s'],
+                                 values=self.data)
+        update.set(state=state)
         if koji.BR_STATES[state] == 'EXPIRED':
-            set += ",retire_event=get_event()"
-        update = """UPDATE buildroot SET %s WHERE id=%%(id)s""" % set
-        _dml(update,locals())
+            update.rawset(retire_event='get_event()')
+        update.execute()
         self.data['state'] = state
 
     def getList(self):
@@ -9644,15 +10391,13 @@ class BuildRoot(object):
                         values=locals())
         return query.execute()
 
-    def _setList(self,rpmlist,update=False):
+    def _setList(self, rpmlist, update=False):
         """Set or update the list of rpms in a buildroot"""
+
         if self.id is None:
             raise koji.GenericError, "buildroot not specified"
-        brootid = self.id
         if update:
-            current = dict([(r['rpm_id'],1) for r in self.getList()])
-        q = """INSERT INTO buildroot_listing (buildroot_id,rpm_id,is_update)
-        VALUES (%(brootid)s,%(rpm_id)s,%(update)s)"""
+            current = set([r['rpm_id'] for r in self.getList()])
         rpm_ids = []
         for an_rpm in rpmlist:
             location = an_rpm.get('location')
@@ -9662,24 +10407,30 @@ class BuildRoot(object):
             else:
                 data = get_rpm(an_rpm, strict=True)
             rpm_id = data['id']
-            if update and current.has_key(rpm_id):
+            if update and rpm_id in current:
                 #ignore duplicate packages for updates
                 continue
             rpm_ids.append(rpm_id)
         #we sort to try to avoid deadlock issues
         rpm_ids.sort()
-        for rpm_id in rpm_ids:
-            _dml(q, locals())
 
-    def setList(self,rpmlist):
+        # actually do the inserts
+        insert = InsertProcessor('buildroot_listing')
+        insert.set(buildroot_id=self.id, is_update=bool(update))
+        for rpm_id in rpm_ids:
+            insert.set(rpm_id=rpm_id)
+            insert.execute()
+
+    def setList(self, rpmlist):
         """Set the initial list of rpms in a buildroot"""
-        if self.data['state'] != koji.BR_STATES['INIT']:
+
+        if self.is_standard and self.data['state'] != koji.BR_STATES['INIT']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         self._setList(rpmlist,update=False)
 
-    def updateList(self,rpmlist):
+    def updateList(self, rpmlist):
         """Update the list of packages in a buildroot"""
-        if self.data['state'] != koji.BR_STATES['BUILDING']:
+        if self.is_standard and self.data['state'] != koji.BR_STATES['BUILDING']:
             raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         self._setList(rpmlist,update=True)
 
@@ -9707,21 +10458,35 @@ class BuildRoot(object):
 
     def updateArchiveList(self, archives, project=False):
         """Update the list of archives in a buildroot.
-        If project is True, the archives are project dependencies.  If False, they dependencies required to setup the
-        build environment."""
-        if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
-            raise koji.GenericError, "non-rpm support is not enabled"
-        if self.data['state'] != koji.BR_STATES['BUILDING']:
-            raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
+
+        If project is True, the archives are project dependencies.
+        If False, they dependencies required to setup the build environment.
+        """
+
+        if self.is_standard:
+            if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
+                raise koji.GenericError, "non-rpm support is not enabled"
+            if self.data['state'] != koji.BR_STATES['BUILDING']:
+                raise koji.GenericError, "buildroot %(id)s in wrong state %(state)s" % self.data
         archives = set([r['id'] for r in archives])
         current = set([r['id'] for r in self.getArchiveList()])
         new_archives = archives.difference(current)
-        insert = """INSERT INTO buildroot_archives (buildroot_id, archive_id, project_dep)
-        VALUES
-        (%(broot_id)i, %(archive_id)i, %(project)s)"""
-        broot_id = self.id
+        insert = InsertProcessor('buildroot_archives')
+        insert.set(buildroot_id=self.id, project_dep=bool(project))
         for archive_id in sorted(new_archives):
-            _dml(insert, locals())
+            insert.set(archive_id=archive_id)
+            insert.execute()
+
+    def setTools(self, tools):
+        """Set tools info for buildroot"""
+
+        insert = InsertProcessor('buildroot_tools_info')
+        insert.set(buildroot_id=self.id)
+        for tool in tools:
+            insert.set(tool=tool['name'])
+            insert.set(version=tool['version'])
+            insert.execute()
+
 
 class Host(object):
 

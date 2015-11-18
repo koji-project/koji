@@ -1,5 +1,6 @@
 #import koji
 #from kojiweb import util
+#from pprint import pformat
 #import urllib
 
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
@@ -18,6 +19,11 @@
       <th>File Name</th><td>$archive.filename</td>
     #end if
     </tr>
+    #if $archive.metadata_only
+    <tr>
+      <th>Metadata only</th><td>True (file not imported)</td>
+    </tr>
+    #end if
     <tr>
       <th>File Type</th><td>$archive_type.description</td>
     </tr>
@@ -51,7 +57,12 @@
     #end if
     #if $builtInRoot
     <tr>
-      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$builtInRoot.tag_name-$builtInRoot.id-$builtInRoot.repo_id</a></td>
+      <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$util.brLabel($builtInRoot)</a></td>
+    </tr>
+    #end if
+    #if $archive.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($archive.extra))</td>
     </tr>
     #end if
     #if $files
@@ -126,7 +137,7 @@
           </tr>
           #for $buildroot in $buildroots
           <tr class="$util.rowToggle($self)">
-            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
+            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></td>
             <td>$util.formatTime($buildroot.create_event_time)</td>
             <td>$util.imageTag($util.brStateName($buildroot.state))</td>
           </tr>
