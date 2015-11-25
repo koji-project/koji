@@ -10,7 +10,7 @@
 #if os.path.exists($localfooterpath)
 #if $literalFooter
 #set $localfooter="".join(open($localfooterpath).readlines())
-#$localfooter
+$localfooter
 #else
 #include $localfooterpath
 #end if
