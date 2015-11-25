@@ -4466,11 +4466,18 @@ def anon_handle_taginfo(options, session, args):
         print "Querying at event %(id)i (%(timestr)s)" % event
         event_opts['event'] = event['id']
     perms = dict([(p['id'], p['name']) for p in session.getAllPerms()])
+
+    tags = []
     for tag in args:
         info = session.getTag(tag, **event_opts)
         if info is None:
-            print "No such tag: %s\n" % tag
-            continue
+            print "No such tag: %s" % tag
+            sys.exit(1)
+        tags.append(info)
+
+    for n, info in enumerate(tags):
+        if n > 0:
+            print
         print "Tag: %(name)s [%(id)d]" %info
         print "Arches: %(arches)s" %info
         group_list = [x['name'] for x in session.getTagGroups(info['id'], **event_opts)]
@@ -4538,7 +4545,7 @@ def anon_handle_taginfo(options, session, args):
                 print "    maxdepth: %(maxdepth)s" % parent
             if parent['pkg_filter']:
                 print "    package filter: %(pkg_filter)s" % parent
-            print
+
 
 def handle_add_tag(options, session, args):
     "[admin] Add a new tag to the database"
