@@ -16,7 +16,7 @@ class SSLConnection:
     passed in to the shutdown() method in SimpleXMLRPC.doPOST()
     """
 
-    DEFAULT_TIMEOUT = 60
+    DEFAULT_TIMEOUT = 600
 
     def __init__(self, conn):
         """
