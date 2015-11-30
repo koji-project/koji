@@ -4311,7 +4311,11 @@ class CreaterepoTask(BaseTaskHandler):
 
     def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
-        cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir]
+        if self.options.createrepo_c:
+            cmd = ['/usr/bin/createrepo_c']
+        else:
+            cmd = ['/usr/bin/createrepo']
+        cmd.extend(['-vd', '-o', self.outdir])
         if pkglist is not None:
             cmd.extend(['-i', pkglist])
         if os.path.isfile(groupdata):
@@ -4360,7 +4364,11 @@ class CreaterepoTask(BaseTaskHandler):
             repos.append(ext_url)
 
         blocklist = self.repodir + '/blocklist'
-        cmd = ['/usr/libexec/kojid/mergerepos', '-a', arch, '-b', blocklist, '-o', self.outdir]
+        if self.options.createrepo_c:
+            cmd = ['/usr/bin/mergerepo_c', '--koji']
+        else:
+            cmd = ['/usr/libexec/kojid/mergerepos']
+        cmd.extend(['-a', arch, '-b', blocklist, '-o', self.outdir])
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         for repo in repos:
@@ -4531,6 +4539,7 @@ def get_options():
                 'keepalive' : True,
                 'timeout' : None,
                 'use_fast_upload': True,
+                'createrepo_c': False,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
                 'pkgurl': None,
@@ -4553,8 +4562,9 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'createrepo_skip_stat', 'createrepo_update',
-                          'keepalive', 'use_fast_upload', 'support_rpm_source_layout']:
+            elif name in ['offline_retry', 'createrepo_c',  'createrepo_skip_stat',
+                          'createrepo_update', 'keepalive', 'use_fast_upload',
+                          'support_rpm_source_layout']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
