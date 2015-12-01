@@ -9929,10 +9929,12 @@ class RootExports(object):
 
     def getLoggedInUser(self):
         """Return information about the currently logged-in user.  Returns data
-        in the same format as getUser().  If there is no currently logged-in user,
-        return None."""
+        in the same format as getUser(), plus the authtype.  If there is no
+        currently logged-in user, return None."""
         if context.session.logged_in:
-            return self.getUser(context.session.user_id)
+            me = self.getUser(context.session.user_id)
+            me['authtype'] = context.session.authtype
+            return me
         else:
             return None
 

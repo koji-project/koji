@@ -6675,7 +6675,7 @@ def handle_moshimoshi(options, session, args):
     "Introduce yourself"
     usage = _("usage: %prog moshimoshi [options]")
     parser = OptionParser(usage=usage)
-    (options, args) = parser.parse_args(args)
+    (opts, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
         assert False
@@ -6687,9 +6687,13 @@ def handle_moshimoshi(options, session, args):
     print "%s, %s!" % (random.choice(greetings), u["name"],)
     print ""
     print "You are using the hub at %s" % (session.baseurl,)
-    if u.get("krb_principal", None) is not None:
-        print "Authenticated via Kerberos principal %s" % (u["krb_principal"])
-
+    authtype = u.get("authtype")
+    if authtype == koji.AUTHTYPE_NORMAL:
+        print "Authenticated via password"
+    elif authtype == koji.AUTHTYPE_KERB:
+        print "Authenticated via Kerberos principal %s" % u["krb_principal"]
+    elif authtype == koji.AUTHTYPE_SSL:
+        print "Authenticated via client certificate %s" % options.cert
 
 def handle_runroot(options, session, args):
     "[admin] Run a command in a buildroot"

@@ -57,6 +57,7 @@ class Session(object):
         self.master = None
         self.key = None
         self.user_id = None
+        self.authtype = None
         self.hostip = None
         self.user_data = {}
         self.message = ''
