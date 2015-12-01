@@ -4457,7 +4457,7 @@ def new_build(data):
                 tables=['build'], columns=['id', 'state', 'task_id'],
                 clauses=['pkg_id=%(pkg_id)s', 'version=%(version)s',
                     'release=%(release)s'],
-                values=data, opts={'rowlock':True})
+                values=data, opts={'rowlock':True, 'asList':True})
     row = query.executeOne()
     if row:
         build_id, state, task_id = row
@@ -4474,7 +4474,7 @@ def new_build(data):
         if st_desc in ('FAILED','CANCELED'):
             #should be ok to replace
             update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
-            update.set(**dslice(data, ['owner', 'start_time', 'completion_time']))
+            update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time']))
             update.rawset(create_event='get_event()')
             update.execute()
             builddir = koji.pathinfo.build(data)
