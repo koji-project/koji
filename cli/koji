@@ -6639,7 +6639,9 @@ def handle_regen_repo(options, session, args):
     if suboptions.source:
         repo_opts['src'] = True
     task_id = session.newRepo(tag, **repo_opts)
-    print "Regenerating repo for tag " + tag
+    print "Regenerating repo for tag: %s" % tag
+    print "Created task:", task_id
+    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or suboptions.nowait:
         return
     else:
