@@ -3630,8 +3630,8 @@ def get_image_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such image build: %s' % buildInfo
     return result
 
-def list_archives(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None, type=None,
-                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None):
+def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
+                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
