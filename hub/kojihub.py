@@ -2418,7 +2418,7 @@ def repo_references(repo_id):
     values = {'repo_id': repo_id}
     clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
     query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
-                clauses=clauses, values=values, opts = {'asList':True})
+                clauses=clauses, values=values)
     #check results for bad states
     ret = []
     for data in query.execute():
