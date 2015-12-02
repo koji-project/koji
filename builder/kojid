@@ -3264,6 +3264,7 @@ class BaseImageTask(OzImageTask):
         # options and turning the underlying format option back into one of the two target
         # image types ('vsphere-ova' or 'rhevm-ova') that are used to generate the intermediate
         # disk image
+        fixed_params = []
         if format == 'vagrant-virtualbox':
             format = 'vsphere-ova'
             img_opts['vsphere_ova_format'] = 'vagrant-virtualbox'
