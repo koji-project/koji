@@ -4252,17 +4252,22 @@ class NewRepoTask(BaseTaskHandler):
                                                        label=arch,
                                                        parent=self.id,
                                                        arch='noarch')
-        # wait for subtasks to finish
-        results = self.wait(subtasks.values(), all=True, failany=True)
+
+        # gather subtask results
         data = {}
-        for (arch, task_id) in subtasks.iteritems():
-            data[arch] = results[task_id]
-            self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
+        if subtasks:
+            results = self.wait(subtasks.values(), all=True, failany=True)
+            for (arch, task_id) in subtasks.iteritems():
+                data[arch] = results[task_id]
+                self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
+
+        # finalize
         kwargs = {}
         if event is not None:
             kwargs['expire'] = True
         self.session.host.repoDone(repo_id, data, **kwargs)
         return repo_id, event_id
+
 
 class CreaterepoTask(BaseTaskHandler):
 
