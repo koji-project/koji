@@ -10537,7 +10537,7 @@ class Host(object):
             update = UpdateProcessor('task', clauses=['parent=%(parent)s'], values=locals())
             update.set(awaited=True)
             update.execute()
-        else:
+        elif tasks:
             # wait on specified subtasks
             update = UpdateProcessor('task', clauses=['id IN %(tasks)s', 'parent=%(parent)s'], values=locals())
             update.set(awaited=True)
@@ -10547,6 +10547,8 @@ class Host(object):
                             clauses=['id NOT IN %(tasks)s', 'parent=%(parent)s', 'awaited=true'])
             update.set(awaited=False)
             update.execute()
+        else:
+            logger.warning('taskSetWait called on empty task list by parent: %s', parent)
 
 
     def taskWaitCheck(self,parent):
