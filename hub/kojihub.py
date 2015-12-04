@@ -2355,14 +2355,14 @@ def signed_repo_init(tag, keys, task_opts):
     # it is possible to see the results of other committed transactions
     rpms, builds = readTaggedRPMS(tag_id, event=event_id,
         inherit=task_opts['inherit'], rpmsigs=True)
-    repodir = koji.pathinfo.signedrepo(tag, str(repo_id))
+    repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
     os.makedirs(repodir)  # should not already exist
 
     #get build dirs
-    relpathinfo = koji.PathInfo(topdir='toplink')
+    pathinfo = koji.PathInfo()
     builddirs = {}
     for build in builds:
-        relpath = relpathinfo.build(build)
+        relpath = pathinfo.build(build)
         builddirs[build['id']] = relpath.lstrip('/')
     #generate pkglist files
     pkglist = {}
@@ -2394,18 +2394,26 @@ def signed_repo_init(tag, keys, task_opts):
                 continue
         preferred[rpminfo['id']] = rpminfo
     for rpminfo in preferred.values():
-        relpath = "%s/%s\n" % (builddirs[rpminfo['build_id']],
-            relpathinfo.signed(rpminfo, rpminfo['sigkey']))
-        if rpminfo['arch'] == 'noarch':
+        pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
+            pathinfo.signed(rpminfo, rpminfo['sigkey']))
+        repopath = '/' + pkgpath
+        repopath = repopath.replace(koji.pathinfo.topdir, 'toplink') + '\n'
+        arch = koji.canonArch(rpminfo['arch'])
+        if arch == 'noarch':
             for repoarch in arches:
-                pkglist[repoarch].write(relpath)
+                pkglist[repoarch].write(repopath)
+                archdir = os.path.join(repodir, repoarch)
+                os.link(pkgpath,
+                    os.path.join(archdir, os.path.basename(pkgpath)))
         else:
-            pkglist[rpminfo['arch']].write(relpath)
+            pkglist[arch].write(repopath)
+            dest = os.path.join(repodir, arch, os.path.basename(pkgpath))
+            os.link(pkgpath, dest)
     for repoarch in arches:
         pkglist[repoarch].close()
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, event=event_id,
         repo_id=repo_id)
-    return [repo_id, event_id]
+    return repo_id, event_id
 
 
 def repo_set_state(repo_id, state, check=True):
@@ -8926,8 +8934,8 @@ class RootExports(object):
     def signedRepo(self, tag, keys, **task_opts):
         """Create a signed-repo task. returns task id"""
         context.session.assertPerm('signed-repo')
-        repo_id = signed_repo_init(tag, keys, task_opts)
-        return make_task('signedRepo', repo_id, priority=15)
+        repo_id, event_id = signed_repo_init(tag, keys, task_opts)
+        return make_task('signedRepo', [repo_id, tag], priority=15)
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
@@ -10877,7 +10885,7 @@ class HostExports(object):
             else:
                 os.link(filepath, dst)
 
-    def repoDone(self, repo_id, data, expire=False):
+    def repoDone(self, repo_id, data, expire=False, signed=False):
         """Move repo data into place, mark as ready, and expire earlier repos
 
         repo_id: the id of the repo
@@ -10892,7 +10900,10 @@ class HostExports(object):
         koji.plugin.run_callbacks('preRepoDone', repo=rinfo, data=data, expire=expire)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
-        repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
+        if signed:
+            repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
+        else:
+            repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
         for arch, (uploadpath, files) in data.iteritems():
             archdir = "%s/%s" % (repodir, arch)
