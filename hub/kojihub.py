@@ -2335,6 +2335,79 @@ def _write_maven_repo_metadata(destdir, artifacts):
     mdfile.close()
     _generate_maven_metadata(destdir)
 
+def signed_repo_init(tag, keys, task_opts):
+    """Create a new repo entry in the INIT state, return full repo data"""
+    logger = logging.getLogger("koji.hub.signed_repo_init")
+    state = koji.REPO_INIT
+    tinfo = get_tag(tag, strict=True)
+    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, keys=keys, repo_id=None)
+    tag_id = tinfo['id']
+    repo_arches = task_opts['arch']
+    arches = set([])
+    for arch in repo_arches:
+        arches.add(koji.canonArch(arch))
+    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
+    event_id = _singleValue("SELECT get_event()")
+    insert = InsertProcessor('repo')
+    insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state)
+    insert.execute()
+    # Need to pass event_id because even though this is a single transaction,
+    # it is possible to see the results of other committed transactions
+    rpms, builds = readTaggedRPMS(tag_id, event=event_id,
+        inherit=task_opts['inherit'], rpmsigs=True)
+    repodir = koji.pathinfo.signedrepo(tag, str(repo_id))
+    os.makedirs(repodir)  # should not already exist
+
+    #get build dirs
+    relpathinfo = koji.PathInfo(topdir='toplink')
+    builddirs = {}
+    for build in builds:
+        relpath = relpathinfo.build(build)
+        builddirs[build['id']] = relpath.lstrip('/')
+    #generate pkglist files
+    pkglist = {}
+    for repoarch in arches:
+        archdir = os.path.join(repodir, repoarch)
+        koji.ensuredir(archdir)
+        # Make a symlink to our topdir
+        top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
+        top_link = os.path.join(archdir, 'toplink')
+        os.symlink(top_relpath, top_link)
+        pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
+    #NOTE - rpms is now an iterator
+    preferred = {}
+    for rpminfo in rpms:
+        if rpminfo['sigkey'] == '':
+            # skip, this is the unsigned rpminfo
+            continue
+        if rpminfo['sigkey'] not in keys:
+            # skip, not a key we are looking for
+            continue
+        arch = koji.canonArch(rpminfo['arch'])
+        if arch not in arches and arch != 'noarch':
+            # not an architecture we care about
+            continue
+        idx = keys.index(rpminfo['sigkey'])
+        if preferred.has_key(rpminfo['id']):
+            if keys.index(preferred[rpminfo['id']]['sigkey']) <= idx:
+                # key for this is not as preferable as what we have seen before
+                continue
+        preferred[rpminfo['id']] = rpminfo
+    for rpminfo in preferred.values():
+        relpath = "%s/%s\n" % (builddirs[rpminfo['build_id']],
+            relpathinfo.signed(rpminfo, rpminfo['sigkey']))
+        if rpminfo['arch'] == 'noarch':
+            for repoarch in arches:
+                pkglist[repoarch].write(relpath)
+        else:
+            pkglist[rpminfo['arch']].write(relpath)
+    for repoarch in arches:
+        pkglist[repoarch].close()
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, event=event_id,
+        repo_id=repo_id)
+    return [repo_id, event_id]
+
+
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
     if check:
@@ -8849,6 +8922,12 @@ class RootExports(object):
 
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
+
+    def signedRepo(self, tag, keys, **task_opts):
+        """Create a signed-repo task. returns task id"""
+        context.session.assertPerm('signed-repo')
+        repo_id = signed_repo_init(tag, keys, task_opts)
+        return make_task('signedRepo', repo_id, priority=15)
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
