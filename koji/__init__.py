@@ -1594,6 +1594,7 @@ class ClientSession(object):
         self.opts = opts
         self._connection = None
         self._setup_connection()
+        self.authtype = None
         self.setSession(sinfo)
         self.multicall = False
         self._calls = []
@@ -1644,6 +1645,7 @@ class ClientSession(object):
             self.callnum = None
             # do we need to do anything else here?
             self._setup_connection()
+            self.authtype = None
         else:
             self.logged_in = True
             self.callnum = 0
@@ -1654,6 +1656,7 @@ class ClientSession(object):
         if not sinfo:
             return False
         self.setSession(sinfo)
+        self.authtype = AUTHTYPE_NORMAL
         return True
 
     def subsession(self):
@@ -1724,6 +1727,7 @@ class ClientSession(object):
             return False
         self.setSession(sinfo)
 
+        self.authtype = AUTHTYPE_KERB
         return True
 
     def _serverPrincipal(self, cprinc):
@@ -1765,6 +1769,7 @@ class ClientSession(object):
         self.opts['certs'] = certs
         self.setSession(sinfo)
 
+        self.authtype = AUTHTYPE_SSL
         return True
 
     def logout(self):
