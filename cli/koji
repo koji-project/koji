@@ -6506,6 +6506,45 @@ def handle_regen_repo(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
 
+def handle_signed_repo(options, session, args):
+    """create a yum repo of GPG signed RPMs"""
+    usage = _("usage: %prog signed-repo [options] tag keyID [keyID...]")
+    usage += _("\n(Specify the --help option for a list of other options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--arch", action='append', default=[],
+        help=_("Indicate an architecture to consider. The default is all architectures associated with the given tag. This option may be specified multiple times."))
+    parser.add_option('--multilib', action='store_true', default=False,
+        help=_('Include multilib packages in the repository'))
+    parser.add_option("--noinherit", action='store_true', default=False,
+        help=_('Do not consider tag inheritance'))
+    parser.add_option("--nowait", action='store_true', default=False,
+        help=_('Do not wait for the task to complete'))
+    task_opts, args = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_('You must provide a tag and 1 or more GPG key IDs'))
+    activate_session(session)
+    tag = args[0]
+    keys = args[1:]
+    taginfo = session.getTag(tag)
+    if not taginfo:
+        parser.error(_('unknown tag %s' % tag))
+    if len(task_opts.arch) == 0:
+        task_opts.arch = taginfo['arches']
+        if task_opts.arch == None:
+            parser.error(_('No arches given and no arches associated with tag'))
+    else:
+        for a in task_opts.arch:
+            if a not in taginfo['arches']:
+                print _('Warning: %s is not in the list of tag arches' % a)
+    task_id = session.signedRepo(tag, keys, **task_opts)
+    print "Creating signed repo for tag " + tag
+    if _running_in_bg() or task_opts.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+
+
 def anon_handle_search(options, session, args):
     "Search the system"
     usage = _("usage: %prog search [options] search_type pattern")
