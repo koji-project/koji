@@ -4812,14 +4812,17 @@ class CreaterepoTask(BaseTaskHandler):
     Methods = ['createrepo']
     _taskWeight = 1.5
 
-    def handler(self, repo_id, arch, oldrepo):
+    def getRepoPath(self, repo_id, tag):
+        return self.pathinfo.repo(repo_id, tag)
+
+    def handler(self, repo_id, arch, oldrepo, do_external):
         #arch is the arch of the repo, not the task
         rinfo = self.session.repoInfo(repo_id, strict=True)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
         self.repo_id = rinfo['id']
         self.pathinfo = koji.PathInfo(self.options.topdir)
-        toprepodir = self.pathinfo.repo(repo_id, rinfo['tag_name'])
+        toprepodir = self.getRepoPath(repo_id, rinfo['tag_name'])
         self.repodir = '%s/%s' % (toprepodir, arch)
         if not os.path.isdir(self.repodir):
             raise koji.GenericError("Repo directory missing: %s" % self.repodir)
@@ -4833,7 +4836,7 @@ class CreaterepoTask(BaseTaskHandler):
         self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
 
         external_repos = self.session.getExternalRepoList(rinfo['tag_id'], event=rinfo['create_event'])
-        if external_repos:
+        if external_repos and do_external:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
@@ -4919,6 +4922,45 @@ class CreaterepoTask(BaseTaskHandler):
         if not isSuccess(status):
             raise koji.GenericError('failed to merge repos: %s' \
                 % parseStatus(status, ' '.join(cmd)))
+
+
+class NewSignedRepoTask(BaseTaskHandler):
+    Methods = ['signedRepo']
+    _taskWeight = 0.1
+
+    def handler(self, repo_id, tag):
+        # TODO: remember to use an event here
+        tinfo = self.session.getTag(tag, strict=True)
+        kwargs = {}
+        path = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
+        if not os.path.isdir(path):
+            raise koji.GenericError, "Repo directory missing: %s" % path
+        arches = []
+        for fn in os.listdir(path):
+            if os.path.isfile("%s/%s/pkglist" % (path, fn)):
+                arches.append(fn)
+        subtasks = {}
+        for arch in arches:
+            arglist = [repo_id, arch, None, False] # no old repo or external
+            subtasks[arch] = self.session.host.subtask(
+                method='createsignedrepo', arglist=arglist, label=arch,
+                parent=self.id, arch='noarch')
+        # wait for subtasks to finish
+        results = self.wait(subtasks.values(), all=True, failany=True)
+        data = {}
+        for (arch, task_id) in subtasks.iteritems():
+            data[arch] = results[task_id]
+            self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
+        self.session.host.repoDone(repo_id, data, expire=True, signed=True)
+        return repo_id
+
+
+class createSignedRepoTask(CreaterepoTask):
+    Methods = ['createsignedrepo']
+    _taskWeight = 1.5
+
+    def getRepoPath(self, repo_id, tag):
+        return self.pathinfo.signedrepo(repo_id, tag)
 
 class WaitrepoTask(BaseTaskHandler):
 
