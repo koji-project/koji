@@ -425,6 +425,8 @@ _TASKS = ['build',
           'tagBuild',
           'newRepo',
           'createrepo',
+          'signedRepo',
+          'createsignedrepo',
           'buildNotification',
           'tagNotification',
           'dependantTask',
@@ -435,9 +437,9 @@ _TASKS = ['build',
           'image',
           'createImage']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'signedRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'wrapperRPM', 'livecd', 'appliance', 'image']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'signedRepo', 'wrapperRPM', 'livecd', 'appliance', 'image']
 
 def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
@@ -614,7 +616,7 @@ def taskinfo(environ, taskID):
         build = server.getBuild(params[1])
         values['destTag'] = destTag
         values['build'] = build
-    elif task['method'] == 'newRepo':
+    elif task['method'] in ('newRepo', 'signedRepo'):
         tag = server.getTag(params[0])
         values['tag'] = tag
     elif task['method'] == 'tagNotification':
