@@ -7085,6 +7085,10 @@ def handle_signed_repo(options, session, args):
         help=_('Include multilib packages in the repository'))
     parser.add_option("--noinherit", action='store_true', default=False,
         help=_('Do not consider tag inheritance'))
+    # TODO: accept comps
+    # TODO: accept events
+    # TODO: sources or no?
+    # TODO: latest?
     parser.add_option("--nowait", action='store_true', default=False,
         help=_('Do not wait for the task to complete'))
     task_opts, args = parser.parse_args(args)
@@ -7102,9 +7106,14 @@ def handle_signed_repo(options, session, args):
             parser.error(_('No arches given and no arches associated with tag'))
     else:
         for a in task_opts.arch:
-            if a not in taginfo['arches']:
+            if not taginfo['arches'] or a not in taginfo['arches']:
                 print _('Warning: %s is not in the list of tag arches' % a)
-    task_id = session.signedRepo(tag, keys, **task_opts)
+    opts = {
+        'arch': task_opts.arch,
+        'multilib': task_opts.multilib,
+        'inherit': not task_opts.noinherit
+    }
+    task_id = session.signedRepo(tag, keys, **opts)
     print "Creating signed repo for tag " + tag
     if _running_in_bg() or task_opts.nowait:
         return

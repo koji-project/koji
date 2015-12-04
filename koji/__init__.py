@@ -1815,6 +1815,10 @@ class PathInfo(object):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/%(repo_id)s" % locals())
 
+    def signedrepo(self, repo_id, tag):
+        """Return the directory with a signed repo lives"""
+        return os.path.join(self.topdir, 'repos', 'signed', tag, repo_id)
+
     def repocache(self, tag_str):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/cache" % locals())
