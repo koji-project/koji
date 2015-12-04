@@ -2792,7 +2792,7 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method == 'newRepo':
+    elif method in ('newRepo', 'signedRepo'):
         if 'request' in taskInfo:
             extra = str(taskInfo['request'][0])
     elif method in ('tagBuild', 'tagNotification'):
@@ -2803,7 +2803,7 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             tagInfo = taskInfo['request'][0]
             extra = tagInfo['name']
-    elif method == 'createrepo':
+    elif method in ('createrepo', 'createsignedrepo'):
         if 'request' in taskInfo:
             arch = taskInfo['request'][1]
             extra = arch

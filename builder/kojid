@@ -4928,7 +4928,7 @@ class NewSignedRepoTask(BaseTaskHandler):
     Methods = ['signedRepo']
     _taskWeight = 0.1
 
-    def handler(self, repo_id, tag):
+    def handler(self, tag, repo_id):
         # TODO: remember to use an event here
         tinfo = self.session.getTag(tag, strict=True)
         kwargs = {}

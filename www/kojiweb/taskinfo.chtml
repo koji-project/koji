@@ -218,23 +218,27 @@ $value
         #if $len($params) > 2
         $printOpts($params[2])
         #end if
-        #elif $task.method == 'newRepo'
+        #elif $task.method in ('newRepo', 'signedRepo')
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
-        #if $len($params) > 1
-        $printOpts($params[1])
+        #if $task.method == 'signedRepo'
+            <strong>Repo ID:</strong> $params[1]<br/>
+        #elif $len($params) > 1
+            $printOpts($params[1])
         #end if
         #elif $task.method == 'prepRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
-        #elif $task.method == 'createrepo'
+        #elif $task.method in ('createrepo', 'createsignedrepo')
         <strong>Repo ID:</strong> $params[0]<br/>
         <strong>Arch:</strong> $params[1]<br/>
-        #set $oldrepo = $params[2]
-        #if $oldrepo
-        <strong>Old Repo ID:</strong> $oldrepo.id<br/>
-        <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
+        #if $len($params) > 2
+            #set $oldrepo = $params[2]
+            #if $oldrepo
+                <strong>Old Repo ID:</strong> $oldrepo.id<br/>
+                <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
+            #end if
         #end if
-        #if $len($params) > 3
-        <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
+        #if $len($params) > 3 and $params[3]
+            <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
         #end if
         #elif $task.method == 'dependantTask'
         <strong>Dependant Tasks:</strong><br/>
