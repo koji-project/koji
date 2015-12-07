@@ -7079,8 +7079,12 @@ def handle_signed_repo(options, session, args):
     usage = _("usage: %prog signed-repo [options] tag keyID [keyID...]")
     usage += _("\n(Specify the --help option for a list of other options)")
     parser = OptionParser(usage=usage)
+    parser.add_option('--allow-unsigned', action='store_true', default=False,
+        help=_('Use unsigned RPMs if none are available with the right key'))
     parser.add_option("--arch", action='append', default=[],
-        help=_("Indicate an architecture to consider. The default is all architectures associated with the given tag. This option may be specified multiple times."))
+        help=_("Indicate an architecture to consider. The default is all " +
+            "architectures associated with the given tag. This option may " +
+            "be specified multiple times."))
     parser.add_option('--multilib', action='store_true', default=False,
         help=_('Include multilib packages in the repository'))
     parser.add_option("--noinherit", action='store_true', default=False,
@@ -7089,11 +7093,16 @@ def handle_signed_repo(options, session, args):
     # TODO: accept events
     # TODO: sources or no?
     # TODO: latest?
+    # TODO: delta-rpms ugh
     parser.add_option("--nowait", action='store_true', default=False,
         help=_('Do not wait for the task to complete'))
+    parser.add_option('--skip-unsigned', action='store_true', default=False,
+        help=_('Skip RPMs not signed with the desired key(s)'))
     task_opts, args = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_('You must provide a tag and 1 or more GPG key IDs'))
+    if task_opts.allow_unsigned and task_opts.skip_unsigned:
+        parser.error(_('allow_signed and skip_unsigned are mutually exclusive'))
     activate_session(session)
     tag = args[0]
     keys = args[1:]
@@ -7108,10 +7117,17 @@ def handle_signed_repo(options, session, args):
         for a in task_opts.arch:
             if not taginfo['arches'] or a not in taginfo['arches']:
                 print _('Warning: %s is not in the list of tag arches' % a)
+    try:
+        task_opts.arch.remove('noarch') # handled specifically
+        task_opts.arch.remove('src') # ditto
+    except ValueError:
+        pass
     opts = {
         'arch': task_opts.arch,
         'multilib': task_opts.multilib,
-        'inherit': not task_opts.noinherit
+        'inherit': not task_opts.noinherit,
+        'skip': task_opts.skip_unsigned,
+        'unsigned': task_opts.allow_unsigned
     }
     task_id = session.signedRepo(tag, keys, **opts)
     print "Creating signed repo for tag " + tag

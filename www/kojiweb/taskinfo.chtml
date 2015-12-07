@@ -222,6 +222,7 @@ $value
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         #if $task.method == 'signedRepo'
             <strong>Repo ID:</strong> $params[1]<br/>
+            $printOpts($params[2])
         #elif $len($params) > 1
             $printOpts($params[1])
         #end if

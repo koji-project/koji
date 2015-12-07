@@ -4928,10 +4928,9 @@ class NewSignedRepoTask(BaseTaskHandler):
     Methods = ['signedRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag, repo_id):
+    def handler(self, tag, repo_id, task_opts):
         # TODO: remember to use an event here
         tinfo = self.session.getTag(tag, strict=True)
-        kwargs = {}
         path = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError, "Repo directory missing: %s" % path
