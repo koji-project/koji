@@ -2353,8 +2353,15 @@ def signed_repo_init(tag, keys, task_opts):
     insert.execute()
     # Need to pass event_id because even though this is a single transaction,
     # it is possible to see the results of other committed transactions
-    rpms, builds = readTaggedRPMS(tag_id, event=event_id,
+    rpm_iter, builds = readTaggedRPMS(tag_id, event=event_id,
         inherit=task_opts['inherit'], rpmsigs=True)
+    rpms = list(rpm_iter)
+    for rpm_copy in list(rpms):
+        arch = koji.canonArch(rpm_copy['arch'])
+        if arch not in arches:
+            # not an architecture we care about
+            rpms.remove(rpm_copy)
+    need = set(['%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % r for r in rpms])
     repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
     os.makedirs(repodir)  # should not already exist
 
@@ -2374,18 +2381,15 @@ def signed_repo_init(tag, keys, task_opts):
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
         pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
-    #NOTE - rpms is now an iterator
     preferred = {}
+    if task_opts['unsigned']:
+        keys.append('') # make unsigned rpms the least preferred
     for rpminfo in rpms:
-        if rpminfo['sigkey'] == '':
+        if rpminfo['sigkey'] == '' and not task_opts['unsigned']:
             # skip, this is the unsigned rpminfo
             continue
         if rpminfo['sigkey'] not in keys:
             # skip, not a key we are looking for
-            continue
-        arch = koji.canonArch(rpminfo['arch'])
-        if arch not in arches and arch != 'noarch':
-            # not an architecture we care about
             continue
         idx = keys.index(rpminfo['sigkey'])
         if preferred.has_key(rpminfo['id']):
@@ -2393,9 +2397,16 @@ def signed_repo_init(tag, keys, task_opts):
                 # key for this is not as preferable as what we have seen before
                 continue
         preferred[rpminfo['id']] = rpminfo
+    seen = set()
     for rpminfo in preferred.values():
-        pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-            pathinfo.signed(rpminfo, rpminfo['sigkey']))
+        if rpminfo['sigkey'] == '':
+            # we're taking an unsigned rpm (--allow-unsigned)
+            pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
+                pathinfo.rpm(rpminfo))
+        else:
+            pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
+                pathinfo.signed(rpminfo, rpminfo['sigkey']))
+        seen.add(os.path.basename(pkgpath))
         repopath = '/' + pkgpath
         repopath = repopath.replace(koji.pathinfo.topdir, 'toplink') + '\n'
         arch = koji.canonArch(rpminfo['arch'])
@@ -2411,6 +2422,12 @@ def signed_repo_init(tag, keys, task_opts):
             os.link(pkgpath, dest)
     for repoarch in arches:
         pkglist[repoarch].close()
+    if not task_opts['skip']:
+        missing = list(need - seen)
+        if len(missing) != 0:
+            missing.sort()
+            raise koji.GenericError('Unsigned packages found: ' +
+                '\n'.join(missing))
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, event=event_id,
         repo_id=repo_id)
     return repo_id, event_id
@@ -8935,7 +8952,7 @@ class RootExports(object):
         """Create a signed-repo task. returns task id"""
         context.session.assertPerm('signed-repo')
         repo_id, event_id = signed_repo_init(tag, keys, task_opts)
-        return make_task('signedRepo', [tag, repo_id], priority=15)
+        return make_task('signedRepo', [tag, repo_id, task_opts], priority=15)
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
