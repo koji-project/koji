@@ -2454,13 +2454,15 @@ def signed_repo_init(tag, keys, task_opts):
     for arch in repo_arches:
         arches.add(koji.canonArch(arch))
     repo_id = _singleValue("SELECT nextval('repo_id_seq')")
-    event_id = _singleValue("SELECT get_event()")
+    if not task_opts['event']:
+        task_opts['event'] = _singleValue("SELECT get_event()")
     insert = InsertProcessor('repo')
-    insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state)
+    insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
+        state=state)
     insert.execute()
     # Need to pass event_id because even though this is a single transaction,
     # it is possible to see the results of other committed transactions
-    rpm_iter, builds = readTaggedRPMS(tag_id, event=event_id,
+    rpm_iter, builds = readTaggedRPMS(tag_id, event=task_opts['event'],
         inherit=task_opts['inherit'], rpmsigs=True)
     rpms = list(rpm_iter)
     for rpm_copy in list(rpms):
@@ -2535,9 +2537,9 @@ def signed_repo_init(tag, keys, task_opts):
             missing.sort()
             raise koji.GenericError('Unsigned packages found: ' +
                 '\n'.join(missing))
-    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, event=event_id,
-        repo_id=repo_id)
-    return repo_id, event_id
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo,
+        event=task_opts['event'], repo_id=repo_id)
+    return repo_id, task_opts['event']
 
 
 def repo_set_state(repo_id, state, check=True):
