@@ -333,40 +333,51 @@ class RepoManager(object):
         finally:
             session.logout()
 
-    def pruneLocalRepos(self):
+    def pruneLocalRepos(self, topdir, timername):
         """Scan filesystem for repos and remove any deleted ones
 
         Also, warn about any oddities"""
         if self.delete_pids:
             #skip
             return
-        self.logger.debug("Scanning filesystem for repos")
-        topdir = "%s/repos" % pathinfo.topdir
+        self.logger.debug("Scanning %s for repos" % topdir)
+        self.logger.debug('max age allowed: %s seconds (from %s)' %
+            (getattr(self.options, timername), timername))
         for tag in os.listdir(topdir):
             tagdir = "%s/%s" % (topdir, tag)
             if not os.path.isdir(tagdir):
+                self.logger.debug("%s is not a directory, skipping" % tagdir)
                 continue
             for repo_id in os.listdir(tagdir):
                 try:
                     repo_id = int(repo_id)
                 except ValueError:
+                    self.logger.debug("%s not an int, skipping" % tagdir)
+                    # This condition is how signed repos are not removed by
+                    # the first call to this method. Although, if someone has
+                    # tags that are just integers, that could be a problem.
                     continue
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
+                    self.logger.debug("%s not a directory, skipping" % repodir)
                     continue
                 if self.repos.has_key(repo_id):
                     #we're already managing it, no need to deal with it here
+                    self.logger.debug("seen %s already, skipping" % repodir)
                     continue
                 try:
                     dir_ts = os.stat(repodir).st_mtime
                 except OSError:
                     #just in case something deletes the repo out from under us
+                    self.logger.debug("%s deleted already?!" % repodir)
                     continue
                 rinfo = self.session.repoInfo(repo_id)
                 if rinfo is None:
                     if not self.options.ignore_stray_repos:
                         age = time.time() - dir_ts
-                        if age > self.options.deleted_repo_lifetime:
+                        self.logger.debug("did not expect %s; age: %s" %
+                            (repodir, age))
+                        if age > getattr(self.options, timername):
                             self.logger.info("Removing unexpected directory (no such repo): %s" % repodir)
                             self.rmtree(repodir)
                     continue
@@ -375,11 +386,11 @@ class RepoManager(object):
                     continue
                 if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
-                    if age > self.options.deleted_repo_lifetime:
+                    self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
+                    if age > getattr(self.options, timername):
                         #XXX should really be called expired_repo_lifetime
                         logger.info("Removing stray repo (state=%s): %s" % (koji.REPO_STATES[rinfo['state']], repodir))
                         self.rmtree(repodir)
-                        pass
 
     def tagUseStats(self, tag_id):
         stats = self.tag_use_stats.get(tag_id)
@@ -632,7 +643,9 @@ def main(options, session):
             repomgr.updateRepos()
             repomgr.checkQueue()
             repomgr.printState()
-            repomgr.pruneLocalRepos()
+            repodir = "%s/repos" % pathinfo.topdir
+            repomgr.pruneLocalRepos(repodir, 'deleted_repo_lifetime')
+            repomgr.pruneLocalRepos(repodir + '/signed', 'signed_repo_lifetime')
             if not curr_chk_thread.isAlive():
                 logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
@@ -725,6 +738,7 @@ def get_options():
                 'delete_batch_size' : 3,
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
+                'signed_repo_lifetime': 7*24*3600,
                 'sleeptime' : 15,
                 'cert': '/etc/kojira/client.crt',
                 'ca': '/etc/kojira/clientca.crt',
@@ -733,7 +747,8 @@ def get_options():
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
-                    'max_delete_processes', 'max_repo_tasks_maven', 'delete_batch_size', )
+                    'max_delete_processes', 'max_repo_tasks_maven',
+                    'delete_batch_size', 'signed_repo_lifetime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry')
