@@ -10932,7 +10932,11 @@ class HostExports(object):
             koji.ensuredir(datadir)
             for fn in files:
                 src = "%s/%s/%s" % (workdir,uploadpath, fn)
-                dst = "%s/%s" % (datadir, fn)
+                if fn.endswith('.drpm'):
+                    koji.ensuredir(os.path.join(archdir, 'drpms'))
+                    dst = "%s/drpms/%s" % (archdir, fn)
+                else:
+                    dst = "%s/%s" % (datadir, fn)
                 if not os.path.exists(src):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 os.link(src, dst)

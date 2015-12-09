@@ -4211,8 +4211,9 @@ class NewRepoTask(BaseTaskHandler):
         else:
             oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_READY)
         subtasks = {}
+        opts = {'do_external': True, 'deltas': False}
         for arch in arches:
-            arglist = [repo_id, arch, oldrepo]
+            arglist = [repo_id, arch, oldrepo, opts]
             subtasks[arch] = self.session.host.subtask(method='createrepo',
                                                        arglist=arglist,
                                                        label=arch,
@@ -4238,7 +4239,7 @@ class CreaterepoTask(BaseTaskHandler):
     def getRepoPath(self, repo_id, tag):
         return self.pathinfo.repo(repo_id, tag)
 
-    def handler(self, repo_id, arch, oldrepo, do_external):
+    def handler(self, repo_id, arch, oldrepo, opts):
         #arch is the arch of the repo, not the task
         rinfo = self.session.repoInfo(repo_id, strict=True)
         if rinfo['state'] != koji.REPO_INIT:
@@ -4256,11 +4257,13 @@ class CreaterepoTask(BaseTaskHandler):
         pkglist = os.path.join(self.repodir, 'pkglist')
         if os.path.getsize(pkglist) == 0:
             pkglist = None
-        self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo)
-
-        external_repos = self.session.getExternalRepoList(rinfo['tag_id'], event=rinfo['create_event'])
-        if external_repos and do_external:
-            self.merge_repos(external_repos, arch, groupdata)
+        self.create_local_repo(rinfo, arch, pkglist, groupdata, oldrepo,
+            opts['deltas'])
+        if opts['do_external']:
+            external_repos = self.session.getExternalRepoList(
+                rinfo['tag_id'], event=rinfo['create_event'])
+            if external_repos:
+                self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
@@ -4271,10 +4274,14 @@ class CreaterepoTask(BaseTaskHandler):
         for f in os.listdir(self.datadir):
             files.append(f)
             self.session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
-
+        if opts['deltas']:
+            ddir = os.path.join(self.outdir, 'drpms')
+            for f in os.listdir(ddir):
+                files.append(f)
+                self.session.uploadWrapper('%s/%s' % (ddir, f), uploadpath, f)
         return [uploadpath, files]
 
-    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo, drpms):
         koji.ensuredir(self.outdir)
         cmd = ['/usr/bin/createrepo', '-vd', '-o', self.outdir]
         if pkglist is not None:
@@ -4282,7 +4289,9 @@ class CreaterepoTask(BaseTaskHandler):
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
-        if pkglist and oldrepo and self.options.createrepo_update:
+        if pkglist and oldrepo and self.options.createrepo_update and not drpms:
+            # signed repos overload the use of "oldrepo", so the conditional
+            # explicitly make sure this does not get executed with that on
             oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
             olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
@@ -4297,6 +4306,11 @@ class CreaterepoTask(BaseTaskHandler):
                 cmd.append('--update')
                 if self.options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
+        if drpms:
+            # generate delta-rpms
+            cmd.append('--deltas')
+            for repo in oldrepo:
+                cmd.extend(['--oldpackagedirs', repo])
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -4352,8 +4366,15 @@ class NewSignedRepoTask(BaseTaskHandler):
             if os.path.isfile("%s/%s/pkglist" % (path, fn)):
                 arches.append(fn)
         subtasks = {}
+        if task_opts['delta']:
+            make_drpms = True
+            oldrepo = task_opts['delta']
+        else:
+            make_drpms = False
+            oldrepo = None
         for arch in arches:
-            arglist = [repo_id, arch, None, False] # no old repo or external
+            opts = {'do_external': False, 'deltas': make_drpms}
+            arglist = [repo_id, arch, oldrepo, opts]
             subtasks[arch] = self.session.host.subtask(
                 method='createsignedrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')

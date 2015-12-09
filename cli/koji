@@ -6517,6 +6517,9 @@ def handle_signed_repo(options, session, args):
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
+    parser.add_option('--delta-rpms', metavar='PATH',default=[],
+        action='append',
+        help=_('Create delta-rpms. PATH points to (older) rpms to generate against. May be specified multiple times.'))
     parser.add_option('--event', type='int',
         help=_('create a signed repository based on a Brew event'))
     parser.add_option('--multilib', action='store_true', default=False,
@@ -6525,7 +6528,6 @@ def handle_signed_repo(options, session, args):
         help=_('Do not consider tag inheritance'))
     # TODO: accept comps
     # TODO: latest?
-    # TODO: delta-rpms ugh
     parser.add_option("--nowait", action='store_true', default=False,
         help=_('Do not wait for the task to complete'))
     parser.add_option('--skip-unsigned', action='store_true', default=False,
@@ -6557,6 +6559,7 @@ def handle_signed_repo(options, session, args):
     opts = {
         'arch': task_opts.arch,
         'event': task_opts.event,
+        'delta': task_opts.delta_rpms,
         'multilib': task_opts.multilib,
         'inherit': not task_opts.noinherit,
         'skip': task_opts.skip_unsigned,
