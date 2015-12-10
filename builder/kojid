@@ -2867,7 +2867,7 @@ class LiveMediaTask(ImageTask):
         livemedia_log = '/tmp/livemedia.log'
 
 
-		# Common LMC command setup, needs extending
+        # Common LMC command setup, needs extending
         cmd = ['/sbin/livemedia-creator',
                '-ks', kskoji,
                '--logfile', livemedia_log,
