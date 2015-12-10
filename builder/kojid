@@ -2880,7 +2880,7 @@ class OzImageTask(BaseTaskHandler):
             ks.handler.repo.repoList.append(repo_class(
                 baseurl=baseurl, name='koji-override-0'))
         # inject the URL of the install tree into the kickstart
-        ks.handler.url.url = install_tree
+        ks.handler.url(url=install_tree)
         return ks
 
     def writeKickstart(self, ksobj, ksname):
