@@ -2120,6 +2120,7 @@ class ClientSession(object):
                     #(depending on the python version, these may or may not be subclasses of Exception)
                     raise
                 except Exception, e:
+                    tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self._close_connection()
 
                     if ssl.SSLCommon.is_cert_error(e):
@@ -2135,7 +2136,6 @@ class ClientSession(object):
                         raise
                     #otherwise keep retrying
                     if self.logger.isEnabledFor(logging.DEBUG):
-                        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                         self.logger.debug(tb_str)
                     self.logger.info("Try #%s for call %s (%s) failed: %s", tries, self.callnum, name, e)
                 if tries > 1:
