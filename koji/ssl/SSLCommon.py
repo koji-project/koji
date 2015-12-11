@@ -47,46 +47,6 @@ def CreateSSLContext(certs):
     return ctx
 
 
-
-class PlgBaseServer(SocketServer.ThreadingTCPServer):
-    allow_reuse_address = 1
-
-    def __init__(self, server_addr, req_handler):
-        self._quit = False
-        self.allow_reuse_address = 1
-        SocketServer.ThreadingTCPServer.__init__(self, server_addr, req_handler)
-
-    def stop(self):
-        self._quit = True
-
-    def serve_forever(self):
-        while not self._quit:
-            self.handle_request()
-        self.server_close()
-
-
-class PlgBaseSSLServer(PlgBaseServer):
-    """ SSL-enabled variant """
-
-    def __init__(self, server_address, req_handler, certs, timeout=None):
-        self._timeout = timeout
-        self.ssl_ctx = CreateSSLContext(certs)
-
-        PlgBaseServer.__init__(self, server_address, req_handler)
-
-        sock = socket.socket(self.address_family, self.socket_type)
-        con = SSL.Connection(self.ssl_ctx, sock)
-        self.socket = SSLConnection.SSLConnection(con)
-        if sys.version_info[:3] >= (2, 3, 0):
-            self.socket.settimeout(self._timeout)
-        self.server_bind()
-        self.server_activate()
-
-        host, port = self.socket.getsockname()[:2]
-        self.server_name = socket.getfqdn(host)
-        self.server_port = port
-
-
 class PlgHTTPSConnection(httplib.HTTPConnection):
     "This class allows communication via SSL."
 
@@ -119,21 +79,3 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
             break
         else:
             raise socket.error, "failed to connect"
-
-
-
-class PlgHTTPS(httplib.HTTP):
-    """Compatibility with 1.5 httplib interface
-
-    Python 1.5.2 did not have an HTTPS class, but it defined an
-    interface for sending http requests that is also useful for
-    https.
-    """
-
-    _http_vsn = 11
-    _http_vsn_str = 'HTTP/1.1'
-
-    _connection_class = PlgHTTPSConnection
-
-    def __init__(self, host='', port=None, ssl_context=None, strict=None, timeout=None):
-        self._setup(self._connection_class(host, port, ssl_context, strict, timeout))
