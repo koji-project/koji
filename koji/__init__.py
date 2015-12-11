@@ -45,6 +45,7 @@ import shutil
 import signal
 import socket
 import ssl.SSLCommon
+from ssl import ssl as pyssl
 import struct
 import tempfile
 import time
@@ -1614,6 +1615,11 @@ class ClientSession(object):
             default_port = 443
         elif scheme == 'https':
             cnxOpts = {}
+            if sys.version_info[:3] >= (2, 7, 9):
+                #ctx = pyssl.SSLContext(pyssl.PROTOCOL_SSLv23)
+                ctx = pyssl._create_unverified_context()
+                # TODO - we should default to verifying where possible
+                cnxOpts['context'] = ctx
             cnxClass = httplib.HTTPSConnection
             default_port = 443
         elif scheme == 'http':
