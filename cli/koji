@@ -5254,17 +5254,12 @@ def handle_spin_livemedia(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--live-ostree-pxe", action="store_true",
         help=_("Build a live pxe boot squashfs image of Atomic Host"))
-    (task_options, args) = parser.parse_args(args)
-
     # LMC operations
     parser.add_option("--disk-img", action="store_true",
                       help=_("Spin bootable disk media"))
-
-    parser.add_option("--live-ostree-pxe", action="store_true",
-                      help=_("Spin live ostree PXE media"))
-
     parser.add_option("--live-iso", action="store_true",
                       help=_("Spin live ISO media"))
+    (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
     if len(args) != 5:
@@ -5597,7 +5592,7 @@ def _build_image(options, task_opts, session, args, img_type):
     images with chroot-based tools.
     """
 
-    if img_type not in ('livecd', 'appliance'):
+    if img_type not in ('livecd', 'appliance', 'livemedia'):
         raise koji.GenericError, 'Unrecognized image type: %s' % img_type
     activate_session(session)
 

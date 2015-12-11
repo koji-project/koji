@@ -135,6 +135,7 @@ INSERT INTO channels (name) VALUES ('livecd');
 INSERT INTO channels (name) VALUES ('appliance');
 INSERT INTO channels (name) VALUES ('vm');
 INSERT INTO channels (name) VALUES ('image');
+INSERT INTO channels (name) VALUES ('livemedia');
 
 -- Here we track the build machines
 -- each host has an entry in the users table also
