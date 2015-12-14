@@ -2178,8 +2178,20 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
 _VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
 _VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
 _VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
+_DEFAULT_SEARCH_ORDER = {
+    # For searches against large tables, use '-id' to show most recent first
+    'build' : '-id',
+    'rpm' : '-id',
+    'maven' : '-id',
+    'win' : '-id',
+    # for other tables, ordering by name makes much more sense
+    'tag' : 'name',
+    'target' : 'name',
+    'package' : 'name',
+    # any type not listed will default to 'name'
+}
 
-def search(environ, start=None, order='name'):
+def search(environ, start=None, order=None):
     values = _initValues(environ, 'Search', 'search')
     server = _getServer(environ)
     values['error'] = None
@@ -2211,6 +2223,7 @@ def search(environ, start=None, order='name'):
         if not infoURL:
             raise koji.GenericError, 'unknown search type: %s' % type
         values['infoURL'] = infoURL
+        order = order or _DEFAULT_SEARCH_ORDER.get(type, 'name')
         values['order'] = order
 
         results = kojiweb.util.paginateMethod(server, values, 'search', args=(terms, type, match),
