@@ -515,7 +515,7 @@ CREATE TABLE cg_users (
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (
 	id SERIAL NOT NULL PRIMARY KEY,
-	br_type INTEGER NOT NULL
+	br_type INTEGER NOT NULL,
 	cg_id INTEGER REFERENCES content_generator (id),
 	cg_version TEXT,
 	CONSTRAINT cg_sane CHECK (
