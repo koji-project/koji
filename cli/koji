@@ -5261,6 +5261,11 @@ def handle_spin_livemedia(options, session, args):
                       help=_("Spin live ISO media"))
     (task_options, args) = parser.parse_args(args)
 
+    if (not task_options.live_ostree_pxe and not task_options.disk_img 
+            and not task_options.live_iso):
+        parser.error(_("Please specify one of the following options: "
+                        "--live-ostree-pxe, --disk-img, or --live-iso"))
+
     # Make sure the target and kickstart is specified.
     if len(args) != 5:
         parser.error(_("Five arguments are required: a name, a version, an" +
@@ -5631,10 +5636,13 @@ def _build_image(options, task_opts, session, args, img_type):
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
+    passthru_opts = [
+        'isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
+        'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
+        'live_ostree_pxe', 'disk_img', 'live_ostree_pxe', 'live_iso',
+        ]
     hub_opts = {}
-    for opt in ('isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-                'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
-                'live_ostree_pxe'):
+    for opt in passthru_opts:
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
