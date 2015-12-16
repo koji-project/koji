@@ -2952,6 +2952,10 @@ class OzImageTask(BaseTaskHandler):
         #      image and attempt to ssh in. This breaks docker image creation.
         # TODO: intelligently guess the distro based on the install tree URL
         distname, distver = self.parseDistro(self.opts.get('distro'))
+        if self.arch in ['armhfp','armv7hnl','armv7hl']:
+           arch = 'armv7l'
+        else:
+           arch = self.arch
         template = """<template>
     <name>%s</name>
         <os>
@@ -2961,7 +2965,7 @@ class OzImageTask(BaseTaskHandler):
             <install type='url'>
                 <url>%s</url>
             </install>
-        """ % (name, distname, distver, self.arch, inst_tree)
+        """ % (name, distname, distver, arch, inst_tree)
         template += """<icicle>
                 <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
             </icicle>
