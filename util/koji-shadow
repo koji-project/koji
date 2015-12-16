@@ -970,6 +970,12 @@ class BuildTracker(object):
             #we don't need a target, we trigger our own repo creation and
             #pass that repo_id to the build call
             #session.createBuildTarget(taginfo['name'], taginfo['id'], taginfo['id'])
+            # duplicate also extra information for a tag (eg. packagemanager setting)
+            rtaginfo = remote.getTag(build.br_tag)
+            if 'extra' in rtaginfo:
+                opts = {}
+                opts['extra'] = rtaginfo['extra']
+                session.editTag2(our_tag, **opts)
         else:
             parents = session.getInheritanceData(taginfo['id'])
             if parents:
