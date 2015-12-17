@@ -1331,6 +1331,7 @@ retries=20
 obsoletes=1
 gpgcheck=0
 assumeyes=1
+keepcache=1
 
 # repos
 
