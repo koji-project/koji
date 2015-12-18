@@ -6212,6 +6212,7 @@ def anon_handle_download_build(options, session, args):
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("--task-id", action="store_true", help=_("Interperet id as a task id"))
+    parser.add_option("--rpm", action="store_true", help=_("Download the given rpm"))
     parser.add_option("--key", help=_("Download rpms signed with the given key"))
     parser.add_option("--topurl", metavar="URL", default=options.topurl,
                       help=_("URL under which Koji files are accessible"))
@@ -6251,6 +6252,12 @@ def anon_handle_download_build(options, session, args):
             print "%s has no builds of %s" % (suboptions.latestfrom, build)
             return 1
         info = builds[0]
+    elif suboptions.rpm:
+        rpminfo = session.getRPM(build)
+        if rpminfo is None:
+            print "No such rpm: %s" % build
+            return 1
+        info = session.getBuild(rpminfo['build_id'])
     else:
         info = session.getBuild(build)
 
@@ -6292,7 +6299,10 @@ def anon_handle_download_build(options, session, args):
         arches = suboptions.arches
         if len(arches) == 0:
             arches = None
-        rpms = session.listRPMs(buildID=info['id'], arches=arches)
+        if suboptions.rpm:
+            rpms = [rpminfo]
+        else:
+            rpms = session.listRPMs(buildID=info['id'], arches=arches)
         if not rpms:
             if arches:
                 print "No %s packages available for %s" % (" or ".join(arches), koji.buildLabel(info))
