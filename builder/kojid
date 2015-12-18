@@ -2958,7 +2958,7 @@ class LiveMediaTask(ImageTask):
 
         # Common LMC command setup, needs extending
         cmd = ['/sbin/livemedia-creator',
-               '-ks', kskoji,
+               '--ks', kskoji,
                '--logfile', livemedia_log,
                '--no-virt',
                '--tmp', '/tmp'
