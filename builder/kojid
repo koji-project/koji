@@ -1909,7 +1909,7 @@ class ChainMavenTask(MultiPlatformTask):
                                                           task_opts],
                                            label=package)
                 else:
-                    raise koji.BuilError, 'unsupported build type: %s' % buildtype
+                    raise koji.BuildError, 'unsupported build type: %s' % buildtype
 
                 running[task_id] = package
                 del todo[package]
@@ -2998,7 +2998,7 @@ class OzImageTask(BaseTaskHandler):
         elif distro.startswith('SL'):
             return distro.split('.')
         else:
-            raise BuildError('Unknown or supported distro given: %s' % distro)
+            raise koji.BuildError('Unknown or supported distro given: %s' % distro)
 
     def fixImageXML(self, format, filename, xmltext):
 
@@ -3598,7 +3598,7 @@ class BuildIndirectionImageTask(OzImageTask):
 
             buildarchives = self.session.listArchives(build['id'])
             if not buildarchives:
-                raise koji.Builderror("Could not retrieve archives for build (%s) from NVR (%s)" %
+                raise koji.BuildError("Could not retrieve archives for build (%s) from NVR (%s)" %
                                       (build['id'], nvr))
 
             buildfiles = [ x['filename'] for x in buildarchives ]

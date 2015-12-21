@@ -5014,7 +5014,8 @@ class CG_Importer(object):
         for key in legacy_types:
             if key in extra:
                 if l_type is not None:
-                    raise koji.GenericError("Output file has multiple archive types: %s" % fn)
+                    raise koji.GenericError("Output file has multiple archive"
+                        "types: %(filename)s" % fileinfo)
                 l_type = key
                 type_info = extra[key]
         fileinfo['hub.l_type'] = l_type
@@ -11208,7 +11209,7 @@ class HostExports(object):
             archivetype = get_archive_type(relpath)
             if not archivetype:
                 # Unknown archive type, fail the build
-                raise koji.BuildError, 'unsupported file type: %s' % filename
+                raise koji.BuildError, 'unsupported file type: %s' % relpath
             filepath = os.path.join(task_dir, relpath)
             metadata['relpath'] = os.path.dirname(relpath)
             import_archive(filepath, build_info, 'win', metadata, buildroot_id=results['buildroot_id'])
