@@ -7752,8 +7752,9 @@ def rpmdiff(basepath, rpmlist):
         status = proc.wait()
         if os.WIFSIGNALED(status) or \
                 (os.WEXITSTATUS(status) != 0):
-            raise koji.BuildError, 'mismatch when analyzing %s, rpmdiff output was:\n%s' % \
-                (os.path.basename(first_rpm), output)
+            raise koji.BuildError(
+                'The following noarch package built differently on different architectures: %s\n'
+                'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), output))
 
 def importImageInternal(task_id, build_id, imgdata):
     """
