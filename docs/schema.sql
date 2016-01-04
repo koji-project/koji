@@ -821,6 +821,7 @@ insert into archivetypes (name, description, extensions) values ('dot', 'DOT gra
 insert into archivetypes (name, description, extensions) values ('groovy', 'Groovy script file', 'groovy gvy');
 insert into archivetypes (name, description, extensions) values ('batch', 'Batch file', 'bat');
 insert into archivetypes (name, description, extensions) values ('shell', 'Shell script', 'sh');
+insert into archivetypes (name, description, extensions) values ('rc', 'Resource file', 'rc');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
