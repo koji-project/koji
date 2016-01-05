@@ -29,6 +29,43 @@ def our_verify(connection, x509, errNum, errDepth, preverifyOK):
     return preverifyOK
 
 
+def is_cert_error(e):
+    """Determine if an OpenSSL error is due to a bad cert"""
+
+    if not isinstance(e, SSL.Error):
+        return False
+
+    # pyOpenSSL doesn't use different exception
+    # subclasses, we have to actually parse the args
+    for arg in e.args:
+        # First, check to see if 'arg' is iterable because
+        # it can be anything..
+        try:
+            iter(arg)
+        except TypeError:
+            continue
+
+        # We do all this so that we can detect cert expiry
+        # so we can avoid retrying those over and over.
+        for items in arg:
+            try:
+                iter(items)
+            except TypeError:
+                continue
+
+            if len(items) != 3:
+                continue
+
+            _, _, ssl_reason = items
+
+            if ('certificate revoked' in ssl_reason or
+                    'certificate expired' in ssl_reason):
+                return True
+
+    #otherwise
+    return False
+
+
 def CreateSSLContext(certs):
     key_and_cert = certs['key_and_cert']
     peer_ca_cert = certs['peer_ca_cert']

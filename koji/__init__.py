@@ -58,7 +58,6 @@ import xmlrpclib
 import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
-import OpenSSL
 import zipfile
 
 def _(args):
@@ -1959,34 +1958,11 @@ class ClientSession(object):
                     raise
                 except Exception, e:
                     self._close_connection()
-                    if isinstance(e, OpenSSL.SSL.Error):
-                        # pyOpenSSL doesn't use different exception
-                        # subclasses, we have to actually parse the args
-                        for arg in e.args:
-                            # First, check to see if 'arg' is iterable because
-                            # it can be anything..
-                            try:
-                                iter(arg)
-                            except TypeError:
-                                continue
 
-                            # We do all this so that we can detect cert expiry
-                            # so we can avoid retrying those over and over.
-                            for items in arg:
-                                try:
-                                    iter(items)
-                                except TypeError:
-                                    continue
+                    if ssl.SSLCommon.is_cert_error(e):
+                        # There's no point in retrying for this
+                        raise
 
-                                if len(items) != 3:
-                                    continue
-
-                                _, _, ssl_reason = items
-
-                                if ('certificate revoked' in ssl_reason or
-                                        'certificate expired' in ssl_reason):
-                                    # There's no point in retrying for this
-                                    raise
                     if not self.logged_in:
                         #in the past, non-logged-in sessions did not retry. For compatibility purposes
                         #this behavior is governed by the anon_retry opt.
