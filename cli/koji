@@ -5248,23 +5248,12 @@ def handle_spin_livemedia(options, session, args):
                "RPMs in the LiveMEDIA. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--title", help=_("Set the image title (defaults to <name>)"))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
-    parser.add_option("--live-ostree-pxe", action="store_true",
-        help=_("Build a live pxe boot squashfs image of Atomic Host"))
-    # LMC operations
-    parser.add_option("--disk-img", action="store_true",
-                      help=_("Spin bootable disk media"))
-    parser.add_option("--live-iso", action="store_true",
-                      help=_("Spin live ISO media"))
     (task_options, args) = parser.parse_args(args)
-
-    if (not task_options.live_ostree_pxe and not task_options.disk_img 
-            and not task_options.live_iso):
-        parser.error(_("Please specify one of the following options: "
-                        "--live-ostree-pxe, --disk-img, or --live-iso"))
 
     # Make sure the target and kickstart is specified.
     if len(args) != 5:
@@ -5639,7 +5628,7 @@ def _build_image(options, task_opts, session, args, img_type):
     passthru_opts = [
         'isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
         'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
-        'live_ostree_pxe', 'disk_img', 'live_ostree_pxe', 'live_iso',
+        'title',
         ]
     hub_opts = {}
     for opt in passthru_opts:

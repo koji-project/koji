@@ -2953,7 +2953,8 @@ class LiveMediaTask(ImageTask):
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
         cachedir = '/tmp/koji-livemedia'   # arbitrary paths in chroot
-        livemedia_log = '/tmp/livemedia.log'
+        livemedia_log = '/tmp/lmc-logs/livemedia-out.log'
+        resultdir = '/tmp/lmc'
 
 
         # Common LMC command setup, needs extending
@@ -2961,32 +2962,32 @@ class LiveMediaTask(ImageTask):
                '--ks', kskoji,
                '--logfile', livemedia_log,
                '--no-virt',
-               '--tmp', '/tmp'
+                '--resultdir', resultdir,
+               #'--tmp', '/tmp'
               ]
 
-        # Determine what LMC opperation we are doing: live-iso, live-pxe, disk-img.
-        if opts.get('live_iso'):
-            # we set the fs label to the same as the isoname if it exists,
-            # taking at most 32 characters
-            isoname = '%s-%s-%s' % (name, version, release)
-            cmd.extend(['--make-iso', '--volid', isoname[:32]])
+        # note: at the moment, we are only generating live isos. We may add support
+        # for other types in the future
 
-        elif opts.get('live_ostree_pxe'):
-            cmd.extend(['--make-ostree-live'])
+        # we set the fs label to the same as the isoname if it exists,
+        # taking at most 32 characters
+        isoname = '%s-%s-%s' % (name, version, release)
+        cmd.extend(['--make-iso',
+                    '--volid', isoname[:32],
+                    '--iso-only',
+                   ])
 
-        elif opts.get('disk_img'):
-            img_name='disk.img'
-            prj_name='Fedora'
-            cmd.extend(['--make-disk',
-                        '--image-name', img_name,
-                        '--project', prj_name,
-                        '--releasever', release
-                       ])
+        img_name='%s-%s-%s-%s.iso' % (name, arch, version, release)
+        title = self.opts.get('title', name)
+        cmd.extend(['--image-name', img_name,
+                    '--releasever', release,
+                    '--title', title,
+                   ])
 
-        else:
-            # bail
-            raise koji.LiveMediaError('Please specify one of the following '
-                    'options: live_iso, live_ostree_pxe, or disk_img')
+
+        if arch == 'x86_64':
+            cmd.append('--macboot')
+
 
         # Run livemedia-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
