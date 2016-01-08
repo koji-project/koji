@@ -2999,8 +2999,6 @@ class LiveMediaTask(ImageTask):
         # note: at the moment, we are only generating live isos. We may add support
         # for other types in the future
 
-        # we set the fs label to the same as the isoname if it exists,
-        # taking at most 32 characters
         cmd.extend(['--make-iso',
                     '--volid', self._shortenVolID(name, version, release),
                     '--iso-only',
@@ -3043,7 +3041,7 @@ class LiveMediaTask(ImageTask):
         # copy the iso out of the chroot. If we were given an isoname,
         # this is where the renaming happens.
         self.logger.debug('uploading image: %s' % isosrc)
-        isoname += '.iso'
+        isoname = '%s-%s-%s.iso' % (name, version, release)
 
         # Generate the file manifest of the image, upload the results
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
