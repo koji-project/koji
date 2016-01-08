@@ -3018,7 +3018,17 @@ class LiveMediaTask(ImageTask):
 
         # Run livemedia-creator
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
-        self.uploadFile(os.path.join(broot.rootdir(), livemedia_log[1:]))
+
+        # upload logs
+        logdir = os.path.join(broot.rootdir(), 'tmp/lmc-logs')
+        for filename in os.listdir(logdir):
+            if not filename.endswith('.log'):
+                continue
+            filepath = os.path.join(logdir, filename)
+            if os.stat(filepath).st_size == 0:
+                continue
+            self.uploadFile(os.path.join(filepath))
+
         if rv:
             raise koji.LiveMediaError, \
                 'Could not create LiveMedia: %s' % parseStatus(rv, 'livemedia-creator') + '; see root.log or livemedia.log for more information'
