@@ -3020,14 +3020,20 @@ class LiveMediaTask(ImageTask):
         rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
 
         # upload logs
-        logdir = os.path.join(broot.rootdir(), 'tmp/lmc-logs')
-        for filename in os.listdir(logdir):
-            if not filename.endswith('.log'):
+        logdirs = [
+            os.path.join(broot.rootdir(), 'tmp/lmc-logs'),
+            os.path.join(broot.rootdir(), 'tmp/lmc-logs/anaconda'),
+            ]
+        for logdir in logdirs:
+            if not os.path.isdir(logdir):
                 continue
-            filepath = os.path.join(logdir, filename)
-            if os.stat(filepath).st_size == 0:
-                continue
-            self.uploadFile(os.path.join(filepath))
+            for filename in os.listdir(logdir):
+                if not filename.endswith('.log'):
+                    continue
+                filepath = os.path.join(logdir, filename)
+                if os.stat(filepath).st_size == 0:
+                    continue
+                self.uploadFile(os.path.join(filepath))
 
         if rv:
             raise koji.LiveMediaError, \
