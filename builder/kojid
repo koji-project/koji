@@ -2625,6 +2625,37 @@ class ImageTask(BaseTaskHandler):
             raise koji.LiveCDError, 'No repos found in yum cache!'
         return hdrlist
 
+    def _shortenVolID(self, name, version, release):
+        # Based on code from pungi
+        substitutions = {
+            'MATE_Compiz': 'MATE',
+            'Security': 'Sec',
+            'Electronic_Lab': 'Elec',
+            'Robotics': 'Robo',
+            'Scientific_KDE': 'SciK',
+            'Design_suite': 'Dsgn',
+            'Games': 'Game',
+            'Jam_KDE': 'Jam',
+            'Workstation': 'WS',
+            'Server': 'S',
+            'Cloud': 'C',
+            'Alpha': 'A',
+            'Beta': 'B',
+            'TC': 'T',
+        }
+
+        for k, v in substitutions.iteritems():
+            if k in name:
+                name = name.replace(k, v)
+            if k in version:
+                version = version.replace(k, v)
+            if k in release:
+                release = release.replace(k, v)
+
+        volid = "%s-%s-%s" % (name, version, release)
+        return volid[:32]
+
+
 # ApplianceTask begins with a mock chroot, and then installs appliance-tools
 # into it via the appliance-build group. appliance-creator is then executed
 # in the chroot to create the appliance image.
@@ -2791,35 +2822,6 @@ class LiveCDTask(ImageTask):
 
         return manifest
 
-    def _shortenVolID(self, name, version, release):
-        # Based on code from pungi
-        substitutions = {
-            'MATE_Compiz': 'MATE',
-            'Security': 'Sec',
-            'Electronic_Lab': 'Elec',
-            'Robotics': 'Robo',
-            'Scientific_KDE': 'SciK',
-            'Design_suite': 'Dsgn',
-            'Games': 'Game',
-            'Jam_KDE': 'Jam',
-            'Workstation': 'WS',
-            'Server': 'S',
-            'Cloud': 'C',
-            'Alpha': 'A',
-            'Beta': 'B',
-            'TC': 'T',
-        }
-
-        for k, v in substitutions.iteritems():
-            if k in name:
-                name = name.replace(k, v)
-            if k in version:
-                version = version.replace(k, v)
-            if k in release:
-                release = release.replace(k, v)
-
-        volid = "%s-%s-%s" % (name, version, release)
-        return volid[:32]
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
@@ -2999,9 +3001,8 @@ class LiveMediaTask(ImageTask):
 
         # we set the fs label to the same as the isoname if it exists,
         # taking at most 32 characters
-        isoname = '%s-%s-%s' % (name, version, release)
         cmd.extend(['--make-iso',
-                    '--volid', isoname[:32],
+                    '--volid', self._shortenVolID(name, version, release),
                     '--iso-only',
                    ])
 
