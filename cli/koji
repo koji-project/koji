@@ -7085,6 +7085,7 @@ def handle_signed_repo(options, session, args):
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
+    parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='PATH',default=[],
         action='append',
         help=_('Create delta-rpms. PATH points to (older) rpms to generate against. May be specified multiple times.'))
@@ -7094,7 +7095,6 @@ def handle_signed_repo(options, session, args):
         help=_('Include multilib packages in the repository'))
     parser.add_option("--noinherit", action='store_true', default=False,
         help=_('Do not consider tag inheritance'))
-    # TODO: accept comps
     # TODO: latest?
     parser.add_option("--nowait", action='store_true', default=False,
         help=_('Do not wait for the task to complete'))
@@ -7106,6 +7106,13 @@ def handle_signed_repo(options, session, args):
     if task_opts.allow_unsigned and task_opts.skip_unsigned:
         parser.error(_('allow_signed and skip_unsigned are mutually exclusive'))
     activate_session(session)
+    if task_opts.comps:
+        if not os.path.exists(task_opts.comps):
+            parser.error(_('could not find %s' % task_opts.comps))
+        compsdir = _unique_path('cli-signed')
+        session.uploadWrapper(task_opts.comps, compsdir,
+            callback=_progress_callback)
+        task_opts.comps = os.path.join(compsdir, os.path.basename(task_opts.comps))
     tag = args[0]
     keys = args[1:]
     taginfo = session.getTag(tag)
@@ -7126,6 +7133,7 @@ def handle_signed_repo(options, session, args):
         pass
     opts = {
         'arch': task_opts.arch,
+        'comps': task_opts.comps,
         'event': task_opts.event,
         'delta': task_opts.delta_rpms,
         'multilib': task_opts.multilib,

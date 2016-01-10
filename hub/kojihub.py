@@ -2537,6 +2537,13 @@ def signed_repo_init(tag, keys, task_opts):
             missing.sort()
             raise koji.GenericError('Unsigned packages found: ' +
                 '\n'.join(missing))
+
+    # handle comps
+    if task_opts['comps']:
+        groupsdir = os.path.join(repodir, 'groups')
+        koji.ensuredir(groupsdir)
+        shutil.copyfile(os.path.join(koji.pathinfo.work(), task_opts['comps']),
+            groupsdir + '/comps.xml')
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo,
         event=task_opts['event'], repo_id=repo_id)
     return repo_id, task_opts['event']
