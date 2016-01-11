@@ -4224,7 +4224,18 @@ def _handleOpts(lines, opts, prefix=''):
         lines.append("%sOptions:" % prefix)
         _handleMap(lines, opts, prefix)
 
+
 def _parseTaskParams(session, method, task_id):
+    try:
+        return _do_parseTaskParams(session, method, task_id)
+    except Exception:
+        if logger.isEnabledFor(logging.DEBUG):
+            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+            logger.debug(tb_str)
+        return ['Unable to parse task parameters']
+
+
+def _do_parseTaskParams(session, method, task_id):
     """Parse the return of getTaskRequest()"""
     params = session.getTaskRequest(task_id)
 
@@ -4301,11 +4312,10 @@ def _parseTaskParams(session, method, task_id):
         if len(params) > 2:
             _handleOpts(lines, params[2])
     elif method in ('createLiveCD', 'createAppliance'):
-        lines.append("Arch: %s" % params[0])
-        lines.append("Build Target: %s" % params[1])
-        lines.append("Kickstart File: %s" % params[2])
-        if len(params) > 3:
-            _handleOpts(lines, params[3])
+        lines.append("Arch: %s" % params[3])
+        lines.append("Kickstart File: %s" % params[7])
+        if len(params) > 8:
+            _handleOpts(lines, params[8])
     elif method == 'newRepo':
         tag = session.getTag(params[0])
         lines.append("Tag: %s" % tag['name'])
