@@ -3042,7 +3042,7 @@ class LiveMediaTask(ImageTask):
         # Find the resultant iso
         # The cwd of the livemedia-creator process is /tmp in the chroot, so
         # that is where it writes the .iso
-        files = os.listdir(os.path.join(broot.rootdir(), 'tmp'))
+        files = os.listdir(os.path.join(broot.rootdir(), resultdir.lstrip('/')))
         isofile = None
         for afile in files:
             if afile.endswith('.iso'):
