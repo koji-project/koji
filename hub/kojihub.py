@@ -7846,6 +7846,7 @@ def importImageInternal(task_id, build_id, imgdata):
 
     imgdata is:
     arch - the arch if the image
+    task_id - the task that created the image
     files - files associated with the image (appliances have multiple files)
     rpmlist - the list of RPM NVRs installed into the image
     """
