@@ -3007,7 +3007,7 @@ class LiveMediaTask(ImageTask):
         img_name='%s-%s-%s-%s.iso' % (name, arch, version, release)
         title = self.opts.get('title', name)
         cmd.extend(['--iso-name', img_name,
-                    '--releasever', release,
+                    '--releasever', version,
                     '--title', title,
                    ])
 
