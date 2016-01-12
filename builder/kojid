@@ -3042,7 +3042,8 @@ class LiveMediaTask(ImageTask):
         # Find the resultant iso
         # The cwd of the livemedia-creator process is /tmp in the chroot, so
         # that is where it writes the .iso
-        files = os.listdir(os.path.join(broot.rootdir(), resultdir.lstrip('/')))
+        rootresultsdir = os.path.join(broot.rootdir(), resultdir.lstrip('/'))
+        files = os.listdir(rootresultsdir)
         isofile = None
         for afile in files:
             if afile.endswith('.iso'):
@@ -3052,7 +3053,7 @@ class LiveMediaTask(ImageTask):
                     raise koji.LiveMediaError, 'multiple .iso files found: %s and %s' % (isofile, afile)
         if not isofile:
             raise koji.LiveMediaError, 'could not find iso file in chroot'
-        isosrc = os.path.join(broot.rootdir(), 'tmp', isofile)
+        isosrc = os.path.join(rootresultsdir, isofile)
 
         # copy the iso out of the chroot. If we were given an isoname,
         # this is where the renaming happens.
