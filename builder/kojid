@@ -2367,7 +2367,7 @@ class BuildLiveCDTask(BuildImageTask):
 class BuildLiveMediaTask(BuildImageTask):
     Methods = ['livemedia']
 
-    def handler(self, name, version, arch, target, ksfile, opts=None):
+    def handler(self, name, version, arches, target, ksfile, opts=None):
         """Governing task for building live media"""
 
         target_info = self.session.getBuildTarget(target, strict=True)
@@ -2378,8 +2378,10 @@ class BuildLiveMediaTask(BuildImageTask):
         if not buildconfig['arches']:
             raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
         tag_archlist = [koji.canonArch(a) for a in buildconfig['arches'].split()]
-        if koji.canonArch(arch) not in tag_archlist:
-            raise koji.BuildError, "Invalid arch for build tag: %s" % arch
+        arches = set(arches)
+        for arch in arches:
+            if koji.canonArch(arch) not in tag_archlist:
+                raise koji.BuildError, "Invalid arch for build tag: %s" % arch
 
         if not opts:
             opts = {}
@@ -2398,23 +2400,47 @@ class BuildLiveMediaTask(BuildImageTask):
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
-            create_task_id = self.subtask('createLiveMedia',
-                [name, version, release, arch, target_info, build_tag,
-                    repo_info, ksfile, opts],
-                label='livemedia', arch=arch)
-            results = self.wait(create_task_id)
-            self.logger.info('image build task (%s) completed' % create_task_id)
-            self.logger.info('results: %s' % results)
+            subtasks = {}
+            for arch in arches:
+                subtasks[arch] = self.subtask('createLiveMedia',
+                    [name, version, release, arch, target_info, build_tag,
+                        repo_info, ksfile, opts],
+                    label=str(arch), arch=arch)
 
-            # wrap in an RPM if needed
+
+            self.logger.debug("Got image subtasks: %r", subtasks)
+            self.logger.debug("Waiting on livemedia subtasks...")
+            results = self.wait(subtasks.values(), all=True, failany=True)
+
+            self.logger.debug('subtask results: %r', results)
+
+            # wrap each image an RPM if needed
             spec_url = opts.get('specfile')
-            rpm_results = None
             if spec_url:
+                wrapper_tasks = {}
+                for arch in arches:
+                    subtask_id = subtasks[arch]
+                    result = results[subtask_id]
+                    tinfo = self.session.getTaskInfo(subtask_id)
+                    arglist = [spec_url, target_info, bld_info, tinfo,
+                                {'repo_id': repo_info['id']}]
+                    wrapper_tasks[arch] = self.subtask('wrapperRPM', arglist,
+                                label='wrapper %s' % arch, arch='noarch')
+
+                results2 = self.wait(wrapper_tasks.values(), all=True, failany=True)
+                self.logger.debug('wrapper results: %r', results2)
+
+                # add wrapper rpm results into main results
+                for arch in arches:
+                    result = results[subtasks[arch]]
+                    result2 = results2[wrapper_tasks[arch]]
+                    result['rpmresults'] = 
                 results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
                     spec_url, create_task_id,
                     target_info, bld_info, repo_info['id'])
-            results[str(create_task_id)] = results[create_task_id]
-            del results[create_task_id]
+
+            # re-key results for xmlrpc friendliness
+            results = dict([(str(k), results[k]) for k in results])
 
             # import it (and move)
             if not opts.get('scratch'):
