@@ -5613,7 +5613,11 @@ def _build_image(options, task_opts, session, args, img_type):
                                    tmp_target['dest_tag_name'])
 
     # Set the architecture
-    arch = koji.canonArch(args[3])
+    if img_type == 'livemedia':
+        # livemedia accepts multiple arches
+        arch = [koji.canonArch(a) for a in ','.split(args[3])]
+    else:
+        arch = koji.canonArch(args[3])
 
     # Upload the KS file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
