@@ -6206,7 +6206,7 @@ def anon_handle_download_build(options, session, args):
     usage = _("usage: %prog download-build [options] <n-v-r | build_id | package>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
+    parser.add_option("--arch", "-a", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--type", help=_("Download archives of the given type, rather than rpms (maven, win, or image)"))
     parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
@@ -6259,6 +6259,13 @@ def anon_handle_download_build(options, session, args):
             return 1
         info = session.getBuild(rpminfo['build_id'])
     else:
+        # if we're given an rpm name without --rpm, download the containing build
+        try:
+            nvra = koji.parse_NVRA(build)
+            rpminfo = session.getRPM(build)
+            build = rpminfo['build_id']
+        except Exception:
+            pass
         info = session.getBuild(build)
 
     if info is None:
