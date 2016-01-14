@@ -2378,6 +2378,8 @@ class BuildLiveMediaTask(BuildImageTask):
         if not buildconfig['arches']:
             raise koji.BuildError, "No arches for tag %(name)s [%(id)s]" % buildconfig
         tag_archlist = [koji.canonArch(a) for a in buildconfig['arches'].split()]
+
+        # check arches and remove duplicates
         arches = set(arches)
         for arch in arches:
             if koji.canonArch(arch) not in tag_archlist:
@@ -2405,7 +2407,7 @@ class BuildLiveMediaTask(BuildImageTask):
                 subtasks[arch] = self.subtask('createLiveMedia',
                     [name, version, release, arch, target_info, build_tag,
                         repo_info, ksfile, opts],
-                    label=str(arch), arch=arch)
+                    label='livemedia %s' % arch, arch=arch)
 
 
             self.logger.debug("Got image subtasks: %r", subtasks)
@@ -2434,10 +2436,7 @@ class BuildLiveMediaTask(BuildImageTask):
                 for arch in arches:
                     result = results[subtasks[arch]]
                     result2 = results2[wrapper_tasks[arch]]
-                    result['rpmresults'] = 
-                results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
-                    spec_url, create_task_id,
-                    target_info, bld_info, repo_info['id'])
+                    result['rpmresults'] = result2
 
             # re-key results for xmlrpc friendliness
             results = dict([(str(k), results[k]) for k in results])
