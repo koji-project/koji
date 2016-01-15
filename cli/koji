@@ -766,19 +766,23 @@ def handle_add_pkg(options, session, args):
         print "No such tag: %s" % tag
         sys.exit(1)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
-    ret = 0
+    to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if not package_id is None:
             print "Package %s already exists in tag %s" % (package, tag)
-            ret = 1
-    if ret:
-        return ret
+            continue
+        to_add.append(package)
     if options.extra_arches:
         opts['extra_arches'] = ' '.join(options.extra_arches.replace(',',' ').split())
-    for package in args[1:]:
-        #really should implement multicall...
-        session.packageListAdd(tag,package,options.owner,**opts)
+
+    # add the packages
+    print "Adding %i packages to tag %s" % (len(to_add), dsttag['name'])
+    session.multicall = True
+    for package in to_add:
+        session.packageListAdd(tag, package, options.owner, **opts)
+    session.multiCall(strict=True)
+
 
 def handle_block_pkg(options, session, args):
     "[admin] Block a package in the listing for tag"
