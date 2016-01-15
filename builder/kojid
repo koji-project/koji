@@ -2467,8 +2467,8 @@ class BuildLiveMediaTask(BuildImageTask):
 
         # report the results
         if opts.get('scratch'):
-            respath = os.path.join(koji.pathinfo.work(),
-                koji.pathinfo.taskrelpath(create_task_id))
+            respath = ', '.join(
+                [os.path.join(koji.pathinfo.work(), koji.pathinfo.taskrelpath(tid)) for tid in subtasks.values()])
             report = 'Scratch '
         else:
             respath = koji.pathinfo.imagebuild(bld_info)
