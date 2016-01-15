@@ -5615,7 +5615,7 @@ def _build_image(options, task_opts, session, args, img_type):
     # Set the architecture
     if img_type == 'livemedia':
         # livemedia accepts multiple arches
-        arch = [koji.canonArch(a) for a in ','.split(args[3])]
+        arch = [koji.canonArch(a) for a in args[3].split(",")]
     else:
         arch = koji.canonArch(args[3])
 
