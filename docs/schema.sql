@@ -822,6 +822,7 @@ insert into archivetypes (name, description, extensions) values ('groovy', 'Groo
 insert into archivetypes (name, description, extensions) values ('batch', 'Batch file', 'bat');
 insert into archivetypes (name, description, extensions) values ('shell', 'Shell script', 'sh');
 insert into archivetypes (name, description, extensions) values ('rc', 'Resource file', 'rc');
+insert into archivetypes (name, description, extensions) values ('wsdl', 'Web Services Description Language', 'wsdl');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
