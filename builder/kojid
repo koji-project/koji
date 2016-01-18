@@ -3062,7 +3062,7 @@ class LiveMediaTask(ImageTask):
 
         if rv:
             raise koji.LiveMediaError, \
-                'Could not create LiveMedia: %s' % parseStatus(rv, 'livemedia-creator') + '; see root.log or livemedia.log for more information'
+                'Could not create LiveMedia: %s' % parseStatus(rv, 'livemedia-creator') + '; see root.log or livemedia-out.log for more information'
 
         # Find the resultant iso
         # The cwd of the livemedia-creator process is /tmp in the chroot, so
@@ -3096,7 +3096,7 @@ class LiveMediaTask(ImageTask):
             'rootdev': None,
             'task_id': self.id,
             'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                     'livemedia.log', os.path.basename(ksfile),
+                     'livemedia-out.log', os.path.basename(ksfile),
                      os.path.basename(kskoji)],
             'name': name,
             'version': version,
