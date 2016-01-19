@@ -3029,9 +3029,9 @@ class LiveMediaTask(ImageTask):
                     '--iso-only',
                    ])
 
-        img_name='%s-%s-%s-%s.iso' % (name, arch, version, release)
+        isoname='%s-%s-%s-%s.iso' % (name, arch, version, release)
         title = self.opts.get('title', name)
-        cmd.extend(['--iso-name', img_name,
+        cmd.extend(['--iso-name', isoname,
                     '--releasever', version,
                     '--title', title,
                    ])
@@ -3080,15 +3080,12 @@ class LiveMediaTask(ImageTask):
             raise koji.LiveMediaError, 'could not find iso file in chroot'
         isosrc = os.path.join(rootresultsdir, isofile)
 
-        # copy the iso out of the chroot. If we were given an isoname,
-        # this is where the renaming happens.
-        self.logger.debug('uploading image: %s' % isosrc)
-        isoname = '%s-%s-%s.iso' % (name, version, release)
 
         # Generate the file manifest of the image, upload the results
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
         self.genISOManifest(isosrc, manifest)
         self.uploadFile(manifest)
+        self.logger.debug('uploading image: %s' % isosrc)
         self.uploadFile(isosrc, remoteName=isoname)
 
         imgdata = {'arch': arch,
