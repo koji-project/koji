@@ -8110,7 +8110,10 @@ class RootExports(object):
         context.session.assertPerm(img_type)
 
         taskOpts = {'channel': img_type}
-        taskOpts['arch'] = arch
+        if img_type == 'livemedia':
+            taskOpts['arch'] = 'noarch'
+        else:
+            taskOpts['arch'] = arch
         if priority:
             if priority < 0:
                 if not context.session.hasPerm('admin'):
