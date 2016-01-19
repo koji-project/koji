@@ -2555,7 +2555,7 @@ def _taskLabel(taskInfo):
             else:
                 kickstart = os.path.basename(stuff[4])
             extra = '%s, %s-%s, %s' % (stuff[3], stuff[0], stuff[1], kickstart)
-    elif method in ('createLiveCD', 'createAppliance', 'createImage', 'createLiveMEDIA'):
+    elif method in ('createLiveCD', 'createAppliance', 'createImage', 'createLiveMedia'):
         if taskInfo.has_key('request'):
             stuff = taskInfo['request']
             if method == 'createImage':

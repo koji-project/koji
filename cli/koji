@@ -4331,6 +4331,12 @@ def _do_parseTaskParams(session, method, task_id):
         lines.append("Kickstart File: %s" % params[7])
         if len(params) > 8:
             _handleOpts(lines, params[8])
+    elif method in ('appliance', 'livecd', 'livemedia'):
+        argnames = ['Name', 'Version', 'Arches', 'Target', 'Kickstart']
+        for n, v in zip(argnames, params):
+            lines.append("%s: %s" % (n, v))
+        if len(params) > 5:
+            _handleOpts(lines, params[5])
     elif method == 'newRepo':
         tag = session.getTag(params[0])
         lines.append("Tag: %s" % tag['name'])
