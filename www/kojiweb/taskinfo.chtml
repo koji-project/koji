@@ -164,7 +164,9 @@ $value
         #if $len($params) > 2
         $printOpts($params[2])
         #end if
-        #elif $task.method == 'livecd' or $task.method == 'appliance'
+        #elif $task.method == 'livecd' or $task.method == 'appliance' or $task.method == 'livemedia'
+        <strong>Name:</strong> $params[0]<br/>
+        <strong>Version:</strong> $params[1]<br/>
         <strong>Arch:</strong> $params[2]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
         <strong>Kickstart File:</strong> $params[4]<br/>
@@ -174,7 +176,7 @@ $value
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[3]">$params[3]</a><br/>
         <strong>Installation Tree:</strong> $params[4]<br/>
         $printOpts($params[5])
-        #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance'
+        #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance' or $task.method == 'createLiveMedia'
         #if $len($params) > 4:
         ## new method signature
         <strong>Arch:</strong> $params[3]<br/>
