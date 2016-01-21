@@ -5246,6 +5246,8 @@ def handle_spin_livemedia(options, session, args):
         help=_("Run the livemedia creation task at a lower priority"))
     parser.add_option("--ksurl", metavar="SCMURL",
         help=_("The URL to the SCM containing the kickstart file"))
+    parser.add_option("--install-tree-url", metavar="URL",
+        help=_("Provide the URL for the install tree"))
     parser.add_option("--ksversion", metavar="VERSION",
         help=_("The syntax version used in the kickstart file"))
     parser.add_option("--scratch", action="store_true",
@@ -5639,7 +5641,7 @@ def _build_image(options, task_opts, session, args, img_type):
     passthru_opts = [
         'isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
         'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
-        'title',
+        'title', 'install_tree_url',
         ]
     hub_opts = {}
     for opt in passthru_opts:
