@@ -3103,10 +3103,12 @@ class LiveMediaTask(ImageTask):
             'release': release
         }
         if not opts.get('scratch'):
-            hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
-                                            cachedir[1:]))
-            imgdata ['rpmlist'] = hdrlist
-            broot.markExternalRPMs(hdrlist)
+            # TODO - generate list of rpms in image
+            # (getImagePackages doesn't work here)
+            #hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
+            #                                cachedir[1:]))
+            imgdata ['rpmlist'] = []
+            #broot.markExternalRPMs(hdrlist)
 
         broot.expire()
         return imgdata
