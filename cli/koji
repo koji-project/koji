@@ -6465,7 +6465,7 @@ def anon_handle_download_logs(options, session, args):
             save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
 
-def anon_handle_download_task(options, sessions, args):
+def anon_handle_download_task(options, session, args):
     "Download the output of a build task "
     usage = _("usage: %prog download-task <task_id>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -6494,7 +6494,7 @@ def anon_handle_download_task(options, sessions, args):
     if check_downloadable(base_task):
         downloadable_tasks.append(base_task)
     else:
-        subtasks = sessions.getTaskChildren(base_task_id)
+        subtasks = session.getTaskChildren(base_task_id)
         downloadable_tasks.extend(filter(check_downloadable, subtasks))
 
     # get files for download
