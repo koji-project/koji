@@ -7854,6 +7854,7 @@ def importImageInternal(task_id, build_id, imgdata):
     host.verify()
     task = Task(task_id)
     task.assertHost(host.id)
+    tinfo = task.getInfo()
 
     koji.plugin.run_callbacks('preImport', type='image', image=imgdata)
 
@@ -7874,8 +7875,14 @@ def importImageInternal(task_id, build_id, imgdata):
     logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
     for logfile in logs:
         logsrc = os.path.join(workpath, logfile)
-        logdir = os.path.join(koji.pathinfo.build(build_info),
-                              'data/logs/image')
+        if tinfo['method'] == 'livemedia':
+            # multiarch livemedia spins can have log name conflicts, so we
+            # add the arch to the path
+            logdir = os.path.join(koji.pathinfo.build(build_info),
+                                  'data/logs/image', imgdata['arch'])
+        else:
+            logdir = os.path.join(koji.pathinfo.build(build_info),
+                                  'data/logs/image')
         koji.ensuredir(logdir)
         final_path = os.path.join(logdir, os.path.basename(logfile))
         if os.path.exists(final_path):
