@@ -218,14 +218,11 @@ $value
         #if $len($params) > 2
         $printOpts($params[2])
         #end if
-        #elif $task.method in ('newRepo', 'signedRepo')
+        #elif $task.method == 'signedRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
-        #if $task.method == 'signedRepo'
-            <strong>Repo ID:</strong> $params[1]<br/>
-            $printOpts($params[2])
-        #elif $len($params) > 1
-            $printOpts($params[1])
-        #end if
+        <strong>Repo ID:</strong> $params[1]<br/>
+        <strong>Keys:</strong> $printValue(0, $params[2])<br/>
+        $printOpts($params[3])
         #elif $task.method == 'prepRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
         #elif $task.method == 'createrepo'
@@ -240,9 +237,11 @@ $value
             <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
         #end if
         #elif $task.method == 'createsignedrepo'
-        <strong>Repo ID:</strong> $params[0]<br/>
-        <strong>Arch:</strong> $params[1]<br/>
-        <strong>Options:</strong> $printMap($params[3], '&nbsp;&nbsp;&nbsp;&nbsp;')
+        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+        <strong>Repo ID:</strong> $params[1]<br/>
+        <strong>Arch:</strong> $printValue(0, $params[2])<br/>
+        <strong>Keys:</strong> $printValue(0, $params[3])<br/>
+        <strong>Options:</strong> $printMap($params[4], '&nbsp;&nbsp;&nbsp;&nbsp;')
         #elif $task.method == 'dependantTask'
         <strong>Dependant Tasks:</strong><br/>
         #for $dep in $deps
