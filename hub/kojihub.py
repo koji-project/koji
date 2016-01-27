@@ -2342,101 +2342,31 @@ def signed_repo_init(tag, keys, task_opts):
     tinfo = get_tag(tag, strict=True)
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, keys=keys, repo_id=None)
     tag_id = tinfo['id']
+    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     repo_arches = task_opts['arch']
     arches = set([])
     for arch in repo_arches:
         arches.add(koji.canonArch(arch))
-    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     if not task_opts['event']:
         task_opts['event'] = _singleValue("SELECT get_event()")
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
         state=state)
     insert.execute()
-    # Need to pass event_id because even though this is a single transaction,
-    # it is possible to see the results of other committed transactions
-    rpm_iter, builds = readTaggedRPMS(tag_id, event=task_opts['event'],
-        inherit=task_opts['inherit'], rpmsigs=True)
-    rpms = list(rpm_iter)
-    for rpm_copy in list(rpms):
-        arch = koji.canonArch(rpm_copy['arch'])
-        if arch not in arches:
-            # not an architecture we care about
-            rpms.remove(rpm_copy)
-    need = set(['%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % r for r in rpms])
     repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
-    os.makedirs(repodir)  # should not already exist
-
-    #get build dirs
-    pathinfo = koji.PathInfo()
-    builddirs = {}
-    for build in builds:
-        relpath = pathinfo.build(build)
-        builddirs[build['id']] = relpath.lstrip('/')
-    #generate pkglist files
-    pkglist = {}
-    for repoarch in arches:
-        archdir = os.path.join(repodir, repoarch)
-        koji.ensuredir(archdir)
+    for arch in arches:
+        koji.ensuredir(os.path.join(repodir, arch))
         # Make a symlink to our topdir
+        archdir = os.path.join(repodir, arch)
         top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
-    preferred = {}
-    if task_opts['unsigned']:
-        keys.append('') # make unsigned rpms the least preferred
-    for rpminfo in rpms:
-        if rpminfo['sigkey'] == '' and not task_opts['unsigned']:
-            # skip, this is the unsigned rpminfo
-            continue
-        if rpminfo['sigkey'] not in keys:
-            # skip, not a key we are looking for
-            continue
-        idx = keys.index(rpminfo['sigkey'])
-        if preferred.has_key(rpminfo['id']):
-            if keys.index(preferred[rpminfo['id']]['sigkey']) <= idx:
-                # key for this is not as preferable as what we have seen before
-                continue
-        preferred[rpminfo['id']] = rpminfo
-    seen = set()
-    for rpminfo in preferred.values():
-        if rpminfo['sigkey'] == '':
-            # we're taking an unsigned rpm (--allow-unsigned)
-            pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                pathinfo.rpm(rpminfo))
-        else:
-            pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                pathinfo.signed(rpminfo, rpminfo['sigkey']))
-        seen.add(os.path.basename(pkgpath))
-        repopath = '/' + pkgpath
-        repopath = repopath.replace(koji.pathinfo.topdir, 'toplink') + '\n'
-        arch = koji.canonArch(rpminfo['arch'])
-        if arch == 'noarch':
-            for repoarch in arches:
-                pkglist[repoarch].write(repopath)
-                archdir = os.path.join(repodir, repoarch)
-                os.link(pkgpath,
-                    os.path.join(archdir, os.path.basename(pkgpath)))
-        else:
-            pkglist[arch].write(repopath)
-            dest = os.path.join(repodir, arch, os.path.basename(pkgpath))
-            os.link(pkgpath, dest)
-    for repoarch in arches:
-        pkglist[repoarch].close()
-    if not task_opts['skip']:
-        missing = list(need - seen)
-        if len(missing) != 0:
-            missing.sort()
-            raise koji.GenericError('Unsigned packages found: ' +
-                '\n'.join(missing))
-
     # handle comps
     if task_opts['comps']:
         groupsdir = os.path.join(repodir, 'groups')
         koji.ensuredir(groupsdir)
-        shutil.copyfile(os.path.join(koji.pathinfo.work(), task_opts['comps']),
-            groupsdir + '/comps.xml')
+        shutil.copyfile(os.path.join(koji.pathinfo.work(),
+            task_opts['comps']), groupsdir + '/comps.xml')
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo,
         event=task_opts['event'], repo_id=repo_id)
     return repo_id, task_opts['event']
@@ -8961,7 +8891,8 @@ class RootExports(object):
         """Create a signed-repo task. returns task id"""
         context.session.assertPerm('signed-repo')
         repo_id, event_id = signed_repo_init(tag, keys, task_opts)
-        return make_task('signedRepo', [tag, repo_id, task_opts], priority=15)
+        task_opts['event'] = event_id
+        return make_task('signedRepo', [tag, repo_id, keys, task_opts], priority=15)
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
@@ -10917,6 +10848,7 @@ class HostExports(object):
         repo_id: the id of the repo
         data: a dictionary of the form { arch: (uploadpath, files), ...}
         expire(optional): if set to true, mark the repo expired immediately*
+        signed(optional): if true, hardlink signed rpms in the final directory
 
         * This is used when a repo from an older event is generated
         """
@@ -10942,11 +10874,20 @@ class HostExports(object):
                 if fn.endswith('.drpm'):
                     koji.ensuredir(os.path.join(archdir, 'drpms'))
                     dst = "%s/drpms/%s" % (archdir, fn)
+                elif fn.endswith('pkglist'):
+                    dst = '%s/%s' % (archdir, fn)
                 else:
                     dst = "%s/%s" % (datadir, fn)
                 if not os.path.exists(src):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 os.link(src, dst)
+                if fn.endswith('pkglist') and signed:
+                    # hardlink the found rpms into the final repodir
+                    with open(src) as pkgfile:
+                        for pkg in pkgfile:
+                            pkg = pkg.strip()
+                            rpm = os.path.basename(pkg)
+                            os.link(koji.pathinfo.topdir + pkg, os.path.join(archdir, rpm))
                 os.unlink(src)
         if expire:
             repo_expire(repo_id)

@@ -616,7 +616,7 @@ def taskinfo(environ, taskID):
         build = server.getBuild(params[1])
         values['destTag'] = destTag
         values['build'] = build
-    elif task['method'] in ('newRepo', 'signedRepo'):
+    elif task['method'] in ('newRepo', 'signedRepo', 'createsignedrepo'):
         tag = server.getTag(params[0])
         values['tag'] = tag
     elif task['method'] == 'tagNotification':
