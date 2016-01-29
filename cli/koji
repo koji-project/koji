@@ -4327,7 +4327,7 @@ def _do_parseTaskParams(session, method, task_id):
         if len(params) > 2:
             _handleOpts(lines, params[2])
     elif method in ('createLiveCD', 'createAppliance', 'createLiveMedia'):
-        argnames = ['Name', 'Version', 'Release', 'Arch', 'Target Info', 'Build Tag', 'Repo', 'Kickstart File:']
+        argnames = ['Name', 'Version', 'Release', 'Arch', 'Target Info', 'Build Tag', 'Repo', 'Kickstart File']
         for n, v in zip(argnames, params):
             lines.append("%s: %s" % (n, v))
         if len(params) > 8:
