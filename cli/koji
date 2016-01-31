@@ -1558,35 +1558,64 @@ def handle_import(options, session, args):
         sys.stdout.flush()
 
     for nvr in nvrs:
-        got_build = False
-        #srpms first, if any
+        # check for existing build
+        need_build = True
+        binfo = session.getBuild(nvr)
+        if binfo:
+            b_state = koji.BUILD_STATES[binfo['state']]
+            if b_state == 'COMPLETE':
+                need_build = False
+            elif b_state in ['FAILED', 'CANCELED']:
+                if not options.create_build:
+                    print _("Build %s state is %s. Skipping import") % (nvr, b_state)
+                    continue
+            else:
+                print _("Build %s exists with state=%s. Skipping import") % (nvr, b_state)
+                continue
+
+        # import srpms first, if any
         for path, data in to_import[nvr]:
             if data['sourcepackage']:
+                if binfo and b_state != 'COMPLETE':
+                    # need to fix the state
+                    print _("Creating empty build: %s") % nvr
+                    binfo = koji.util.dslice(binfo, ['name', 'version', 'release', 'epoch'])
+                    session.createEmptyBuild(**binfo)
+                    binfo = session.getBuild(nvr)
                 do_import(path, data)
-                got_build = True
+                need_build = False
+
+        if need_build:
+            # if we're doing this here, we weren't given the matching srpm
+            if not options.create_build:
+                if binfo:
+                    # should have caught this earlier, but just in case...
+                    b_state = koji.BUILD_STATES[binfo['state']]
+                    print _("Build %s state is %s. Skipping import") % (nvr, b_state)
+                    continue
+                else:
+                    print _("No such build: %s (include matching srpm or use "
+                            "--create-build option to add it)") % nvr
+                    continue
+            else:
+                # let's make a new build
+                b_data = koji.parse_NVR(nvr)
+                if options.src_epoch:
+                    b_data['epoch'] = options.src_epoch
+                else:
+                    # pull epoch from first rpm
+                    data = to_import[nvr][0][1]
+                    b_data['epoch'] = data['epoch']
+                if options.test:
+                    print _("Test mode -- would have created empty build: %s") % nvr
+                else:
+                    print _("Creating empty build: %s") % nvr
+                    session.createEmptyBuild(**b_data)
+                    binfo = session.getBuild(nvr)
+
         for path, data in to_import[nvr]:
             if data['sourcepackage']:
                 continue
-            if not got_build:
-                binfo = session.getBuild(nvr)
-                if binfo:
-                    got_build = True
-                elif options.create_build:
-                    binfo = koji.parse_NVR(nvr)
-                    if options.src_epoch:
-                        binfo['epoch'] = options.src_epoch
-                    else:
-                        binfo['epoch'] = data['epoch']
-                    if options.test:
-                        print _("Test mode -- would have created empty build: %s") % nvr
-                        got_build = True  #avoid duplicate notices
-                    else:
-                        print _("Creating empty build: %s") % nvr
-                        session.createEmptyBuild(**binfo)
-                else:
-                    #shouldn't happen
-                    print _("Build missing: %s") % nvr
-                    break
             do_import(path, data)
 
 
