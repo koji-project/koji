@@ -823,6 +823,7 @@ insert into archivetypes (name, description, extensions) values ('batch', 'Batch
 insert into archivetypes (name, description, extensions) values ('shell', 'Shell script', 'sh');
 insert into archivetypes (name, description, extensions) values ('rc', 'Resource file', 'rc');
 insert into archivetypes (name, description, extensions) values ('wsdl', 'Web Services Description Language', 'wsdl');
+insert into archivetypes (name, description, extensions) values ('obr', 'OSGi Bundle Repository', 'obr');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
