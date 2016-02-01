@@ -4474,7 +4474,7 @@ def new_build(data):
         if st_desc in ('FAILED','CANCELED'):
             #should be ok to replace
             update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
-            update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time']))
+            update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch']))
             update.rawset(create_event='get_event()')
             update.execute()
             builddir = koji.pathinfo.build(data)
