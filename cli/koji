@@ -1579,8 +1579,9 @@ def handle_import(options, session, args):
                 if binfo and b_state != 'COMPLETE':
                     # need to fix the state
                     print _("Creating empty build: %s") % nvr
-                    binfo = koji.util.dslice(binfo, ['name', 'version', 'release', 'epoch'])
-                    session.createEmptyBuild(**binfo)
+                    b_data = koji.util.dslice(binfo, ['name', 'version', 'release'])
+                    b_data['epoch'] = data['epoch']
+                    session.createEmptyBuild(**b_data)
                     binfo = session.getBuild(nvr)
                 do_import(path, data)
                 need_build = False
