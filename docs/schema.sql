@@ -1,62 +1,62 @@
 
 -- vim:noet:sw=8
 -- still needs work
-DROP TABLE build_notifications;
+DROP TABLE IF EXISTS build_notifications;
 
-DROP TABLE log_messages;
+DROP TABLE IF EXISTS log_messages;
 
-DROP TABLE buildroot_listing;
-DROP TABLE image_listing;
-DROP TABLE image_archive_listing;
+DROP TABLE IF EXISTS buildroot_listing;
+DROP TABLE IF EXISTS image_listing;
+DROP TABLE IF EXISTS image_archive_listing;
 
-DROP TABLE rpminfo;
-DROP TABLE image_builds;
-DROP TABLE image_archives;
+DROP TABLE IF EXISTS rpminfo;
+DROP TABLE IF EXISTS image_builds;
+DROP TABLE IF EXISTS image_archives;
 
-DROP TABLE group_package_listing;
-DROP TABLE group_req_listing;
-DROP TABLE group_config;
-DROP TABLE groups;
+DROP TABLE IF EXISTS group_package_listing;
+DROP TABLE IF EXISTS group_req_listing;
+DROP TABLE IF EXISTS group_config;
+DROP TABLE IF EXISTS groups;
 
-DROP TABLE tag_listing;
-DROP TABLE tag_packages;
+DROP TABLE IF EXISTS tag_listing;
+DROP TABLE IF EXISTS tag_packages;
 
-DROP TABLE buildroot_tools_info;
-DROP TABLE standard_buildroot;
-DROP TABLE buildroot;
-DROP TABLE repo;
+DROP TABLE IF EXISTS buildroot_tools_info;
+DROP TABLE IF EXISTS standard_buildroot;
+DROP TABLE IF EXISTS buildroot;
+DROP TABLE IF EXISTS repo;
 
-DROP TABLE build_target_config;
-DROP TABLE build_target;
+DROP TABLE IF EXISTS build_target_config;
+DROP TABLE IF EXISTS build_target;
 
-DROP TABLE tag_config;
-DROP TABLE tag_inheritance;
-DROP TABLE tag;
+DROP TABLE IF EXISTS tag_config;
+DROP TABLE IF EXISTS tag_inheritance;
+DROP TABLE IF EXISTS tag;
 
-DROP TABLE build;
+DROP TABLE IF EXISTS build;
 
-DROP TABLE task;
+DROP TABLE IF EXISTS task;
 
-DROP TABLE host_channels;
-DROP TABLE host;
+DROP TABLE IF EXISTS host_channels;
+DROP TABLE IF EXISTS host;
 
-DROP TABLE channels;
-DROP TABLE package;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS package;
 
-DROP TABLE cg_users;
-DROP TABLE content_generator;
+DROP TABLE IF EXISTS cg_users;
+DROP TABLE IF EXISTS content_generator;
 
-DROP TABLE user_groups;
-DROP TABLE user_perms;
-DROP TABLE permissions;
+DROP TABLE IF EXISTS user_groups;
+DROP TABLE IF EXISTS user_perms;
+DROP TABLE IF EXISTS permissions;
 
-DROP TABLE sessions;
-DROP TABLE users;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
 
-DROP TABLE event_labels;
-DROP TABLE events;
-DROP FUNCTION get_event();
-DROP FUNCTION get_event_time(INTEGER);
+DROP TABLE IF EXISTS event_labels;
+DROP TABLE IF EXISTS events;
+DROP FUNCTION IF EXISTS get_event();
+DROP FUNCTION IF EXISTS get_event_time(INTEGER);
 
 BEGIN WORK;
 
