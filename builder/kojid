@@ -2613,7 +2613,7 @@ class ImageTask(BaseTaskHandler):
             self.ks.handler.repo.repoList.append(repo_class(baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'], repo_info['id'])))
         #inject url if provided
         if opts.get('install_tree_url'):
-            ks.handler.url(url=opts['install_tree_url'])
+            self.ks.handler.url(url=opts['install_tree_url'])
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
