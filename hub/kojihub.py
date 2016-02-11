@@ -10858,37 +10858,25 @@ class HostExports(object):
         koji.plugin.run_callbacks('preRepoDone', repo=rinfo, data=data, expire=expire)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
-        if signed:
-            repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
-        else:
-            repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
+        repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
-        for arch, (uploadpath, files) in data.iteritems():
-            archdir = "%s/%s" % (repodir, arch)
-            if not os.path.isdir(archdir):
-                raise koji.GenericError, "Repo arch directory missing: %s" % archdir
-            datadir = "%s/repodata" % archdir
-            koji.ensuredir(datadir)
-            for fn in files:
-                src = "%s/%s/%s" % (workdir,uploadpath, fn)
-                if fn.endswith('.drpm'):
-                    koji.ensuredir(os.path.join(archdir, 'drpms'))
-                    dst = "%s/drpms/%s" % (archdir, fn)
-                elif fn.endswith('pkglist'):
-                    dst = '%s/%s' % (archdir, fn)
-                else:
-                    dst = "%s/%s" % (datadir, fn)
-                if not os.path.exists(src):
-                    raise koji.GenericError, "uploaded file missing: %s" % src
-                os.link(src, dst)
-                if fn.endswith('pkglist') and signed:
-                    # hardlink the found rpms into the final repodir
-                    with open(src) as pkgfile:
-                        for pkg in pkgfile:
-                            pkg = pkg.strip()
-                            rpm = os.path.basename(pkg)
-                            os.link(koji.pathinfo.topdir + pkg, os.path.join(archdir, rpm))
-                os.unlink(src)
+        if not signed:
+            for arch, (uploadpath, files) in data.iteritems():
+                archdir = "%s/%s" % (repodir, koji.canonArch(arch))
+                if not os.path.isdir(archdir):
+                    raise koji.GenericError, "Repo arch directory missing: %s" % archdir
+                datadir = "%s/repodata" % archdir
+                koji.ensuredir(datadir)
+                for fn in files:
+                    src = "%s/%s/%s" % (workdir,uploadpath, fn)
+                    if fn.endswith('pkglist'):
+                        dst = '%s/%s' % (archdir, fn)
+                    else:
+                        dst = "%s/%s" % (datadir, fn)
+                    if not os.path.exists(src):
+                        raise koji.GenericError, "uploaded file missing: %s" % src
+                    os.link(src, dst)
+                    os.unlink(src)
         if expire:
             repo_expire(repo_id)
             koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
@@ -10907,6 +10895,37 @@ class HostExports(object):
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
+
+    def signedRepoMove(self, repo_id, uploadpath, files, arch):
+        """very similar to repoDone, except only the uploads are completed"""
+        workdir = koji.pathinfo.work()
+        rinfo = repo_info(repo_id, strict=True)
+        repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
+        archdir = "%s/%s" % (repodir, koji.canonArch(arch))
+        if not os.path.isdir(archdir):
+            raise koji.GenericError, "Repo arch directory missing: %s" % archdir
+        datadir = "%s/repodata" % archdir
+        koji.ensuredir(datadir)
+        for fn in files:
+            src = "%s/%s/%s" % (workdir, uploadpath, fn)
+            if fn.endswith('.drpm'):
+                koji.ensuredir(os.path.join(archdir, 'drpms'))
+                dst = "%s/drpms/%s" % (archdir, fn)
+            elif fn.endswith('pkglist'):
+                dst = '%s/%s' % (archdir, fn)
+            else:
+                dst = "%s/%s" % (datadir, fn)
+            if not os.path.exists(src):
+                raise koji.GenericError, "uploaded file missing: %s" % src
+            os.link(src, dst)
+            if fn.endswith('pkglist'):
+                # hardlink the found rpms into the final repodir
+                with open(src) as pkgfile:
+                    for pkg in pkgfile:
+                        pkg = pkg.strip()
+                        rpm = os.path.basename(pkg)
+                        os.link(koji.pathinfo.topdir + pkg, os.path.join(archdir, rpm))
+            os.unlink(src)
 
     def isEnabled(self):
         host = Host()
