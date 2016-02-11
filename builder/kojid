@@ -36,13 +36,13 @@ from koji.daemon import incremental_upload, log_output, TaskManager, SCM
 from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
 from koji.util import parseStatus, isSuccess, dslice, dslice_ex
 import multilib
-import multilib.fakepo
 import os
 import pwd
 import grp
 import random
 import re
 import rpm
+import rpmUtils.arch
 import shutil
 import signal
 import smtplib
@@ -61,6 +61,7 @@ from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
 from yum import repoMDObject
 import yum.packages
+import yum.Errors
 
 #imports for LiveCD, LiveMedia, and Appliance handler
 image_enabled = False
@@ -4944,20 +4945,41 @@ class NewSignedRepoTask(BaseTaskHandler):
         if len(task_opts['arch']) == 0:
             raise koji.GenericError('No arches specified nor for the tag!')
         subtasks = {}
+        arch32s = set()
         for arch in task_opts['arch']:
-            # call canonArch?
-            arglist = [tag, repo_id, arch, keys, task_opts] # no mergerepo
+            if not rpmUtils.arch.isMultiLibArch(arch):
+                arch32s.add(arch)
+        for arch in arch32s:
+            # we do 32-bit multilib arches first so the 64-bit ones can
+            # get a task ID and wait for them to complete
+            arglist = [tag, repo_id, arch, keys, task_opts]
             subtasks[arch] = self.session.host.subtask(
                 method='createsignedrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
-        # wait for subtasks to finish
-        self.logger.warn("5: %s" % subtasks.values())
-        results = self.wait(subtasks.values(), all=True, failany=True)
-        self.logger.warn("6")
+        if len(subtasks) > 0 and task_opts['multilib']:
+            results = self.wait(subtasks.values(), all=True, failany=True)
+            for arch in arch32s:
+                # move the 32-bit task output to the final resting place
+                # so the 64-bit arches can use it
+                upload, files = results[subtasks[arch]]
+                self.session.host.signedRepoMove(repo_id, upload, files, arch)
+        for arch in task_opts['arch']:
+            # do the other arches
+            if arch not in arch32s:
+                arglist = [tag, repo_id, arch, keys, task_opts]
+                subtasks[arch] = self.session.host.subtask(
+                    method='createsignedrepo', arglist=arglist, label=arch,
+                    parent=self.id, arch='noarch')
+        # wait for 64-bit subtasks to finish
         data = {}
+        results = self.wait(subtasks.values(), all=True, failany=True)
         for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
-            self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
+            self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
+            if arch not in arch32s:
+                # we moved the 32-bit results before, do the 64-bit
+                upload, files = results[subtasks[arch]]
+                self.session.host.signedRepoMove(repo_id, upload, files, arch)
         self.session.host.repoDone(repo_id, data, expire=True, signed=True)
         return 'Signed repository #%s successfully generated' % repo_id
 
@@ -4965,17 +4987,36 @@ class NewSignedRepoTask(BaseTaskHandler):
 class createSignedRepoTask(CreaterepoTask):
     Methods = ['createsignedrepo']
     _taskWeight = 1.5
+
     archmap = {'s390x': 's390', 'ppc64': 'ppc', 'x86_64': 'i686'}
+    compat = {"i386": ("athlon", "i686", "i586", "i486", "i386", "noarch"),
+          "x86_64": ("amd64", "ia32e", "x86_64", "noarch"),
+          "ia64": ("ia64", "noarch"),
+          "ppc": ("ppc", "noarch"),
+          "ppc64": ("ppc64p7", "ppc64pseries", "ppc64iseries", "ppc64", "noarch"),
+          "ppc64le": ("ppc64le", "noarch"),
+          "s390": ("s390", "noarch"),
+          "s390x": ("s390x",  "noarch"),
+          "sparc": ("sparcv9v", "sparcv9", "sparcv8", "sparc", "noarch"),
+          "sparc64": ("sparc64v", "sparc64", "noarch"),
+          "alpha": ("alphaev6", "alphaev56", "alphaev5", "alpha", "noarch"),
+          "arm": ("arm", "armv4l", "armv4tl", "armv5tel", "armv5tejl", "armv6l", "armv7l", "noarch"),
+          "armhfp": ("armv7hl", "armv7hnl", "noarch"),
+          "aarch64": ("aarch64", "noarch"),
+          }
+
+    biarch = {"ppc": "ppc64", "x86_64": "i386", "sparc":
+          "sparc64", "s390x": "s390", "ppc64": "ppc"}
 
     def handler(self, tag, repo_id, arch, keys, opts):
         #arch is the arch of the repo, not the task
-        rinfo = self.session.repoInfo(repo_id, strict=True)
-        if rinfo['state'] != koji.REPO_INIT:
-            raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % rinfo
-        self.repo_id = rinfo['id']
+        self.rinfo = self.session.repoInfo(repo_id, strict=True)
+        if self.rinfo['state'] != koji.REPO_INIT:
+            raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo
+        self.repo_id = self.rinfo['id']
         self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(
-            self.pathinfo.signedrepo(repo_id, rinfo['tag_name']),
+            self.pathinfo.signedrepo(repo_id, self.rinfo['tag_name']),
             'groups', 'comps.xml')
         self.repodir = self.options.topdir # workaround for create_local_repo
         #set up our output dir
@@ -4986,65 +5027,173 @@ class createSignedRepoTask(CreaterepoTask):
                 if not os.path.exists(path):
                     raise koji.GenericError(
                         'drpm path %s does not exist!' % path)
-        pkglist = self.make_pkglist(tag, arch, keys, opts)
-        uploadpath = self.getUploadDir()
-        self.session.uploadWrapper(pkglist, uploadpath,
-            os.path.basename(pkglist))
-        if os.path.getsize(pkglist) == 0:
-            pkglist = None
+        self.uploadpath = self.getUploadDir()
+        self.pkglist = self.make_pkglist(tag, arch, keys, opts)
+        if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
+            self.do_multilib(arch, self.archmap[arch], opts['multilib'])
+        self.logger.debug('package list is %s' % self.pkglist)
+        self.session.uploadWrapper(self.pkglist, self.uploadpath,
+            os.path.basename(self.pkglist))
+        if os.path.getsize(self.pkglist) == 0:
+            self.pkglist = None
         if len(opts['delta']) > 0:
             do_drpms = True
         else:
             do_drpms = False
-        self.create_local_repo(rinfo, arch, pkglist, groupdata, opts['delta'],
-            drpms=do_drpms, baseurl='toplink')
-        if pkglist is None:
+        self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata,
+            opts['delta'], drpms=do_drpms, baseurl='toplink')
+        if self.pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
         files = ['pkglist']
         for f in os.listdir(self.datadir):
             files.append(f)
-            self.session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
+            self.session.uploadWrapper('%s/%s' % (self.datadir, f),
+                self.uploadpath, f)
         if opts['delta']:
             ddir = os.path.join(self.outdir, 'drpms')
             for f in os.listdir(ddir):
                 files.append(f)
-                self.session.uploadWrapper('%s/%s' % (ddir, f), uploadpath, f)
-        return [uploadpath, files]
+                self.session.uploadWrapper('%s/%s' % (ddir, f),
+                    self.uploadpath, f)
+        return [self.uploadpath, files]
 
-    def get_po(self, rpmpath):
-        """create a fake yum-like package object given an rpminfo dictionary"""
-        po = yum.packages.YumLocalPackage(filename=rpmpath)
-        return multilib.fakepo.FakePackageObject(po=po)
+    def do_multilib(self, arch, ml_arch, conf):
+        self.repo_id = self.rinfo['id']
+        pathinfo = koji.PathInfo(self.options.topdir)
+        repodir = pathinfo.signedrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        archdir = os.path.join(repodir, arch)
+        mldir = os.path.join(repodir, koji.canonArch(ml_arch))
+        ml_true = set()
+        ml_conf = os.path.join(self.pathinfo.work(), conf)
+
+        # step 1: figure out which packages are multlib (should already exist)
+        mlm = multilib.DevelMultilibMethod(ml_conf)
+        fs_missing = set()
+        with open(self.pkglist) as pkglist:
+            for pkg in pkglist:
+                pkg = pkg.strip()
+                rpmpath = self.options.topdir + pkg
+                try:
+                    po = yum.packages.YumLocalPackage(filename=rpmpath)
+                except yum.Errors.MiscError:
+                    self.logger.error('%s is not on the filesystem' % rpmpath)
+                    fs_missing.add(rpmpath)
+                    continue
+                if mlm.select(po) and self.archmap.has_key(arch):
+                    # we need a multilib package to be included
+                    # we assume the same signature level is available
+                    pl_path = pkg.replace(arch, self.archmap[arch])
+                    real_path = rpmpath.replace(arch, self.archmap[arch])
+                    ml_true.add(pl_path)
+                    if not os.path.exists(real_path):
+                        self.logger.error('%s (multilib) is not on the filesystem' % ml_path)
+                        fs_missing.add(real_path)
+
+        # step 2: set up architectures for yum configuration
+        self.logger.info("Resolving multilib for %s using method devel" % arch)
+        yumbase = yum.YumBase()
+        yumbase.verbose_logger.setLevel(logging.ERROR)
+        yumdir = os.path.join(self.workdir, 'yum')
+        # TODO: unwind this arch mess
+        archlist = (arch, 'noarch')
+        transaction_arch = arch
+        archlist = archlist + self.compat[self.biarch[arch]]
+        best_compat = self.compat[self.biarch[arch]][0]
+        if rpmUtils.arch.archDifference(best_compat, arch) > 0:
+            transaction_arch = best_compat
+        if hasattr(rpmUtils.arch, 'ArchStorage'):
+            yumbase.preconf.arch = transaction_arch
+        else:
+            rpmUtils.arch.canonArch = transaction_arch
+
+        yconfig = """
+[main]
+debuglevel=2
+pkgpolicy=newest
+exactarch=1
+gpgcheck=0
+reposdir=/dev/null
+cachedir=/yumcache
+installroot=%s
+logfile=/yum.log
+
+[koji-%s]
+name=koji multilib task
+baseurl=file://%s
+enabled=1
+
+""" % (yumdir, self.id, mldir)
+        os.makedirs(os.path.join(yumdir, "yumcache"))
+        os.makedirs(os.path.join(yumdir, 'var/lib/rpm'))
+
+        # step 3: proceed with yum config and set up
+        yconfig_path = os.path.join(yumdir, 'yum.conf-koji-%s' % arch)
+        f = open(yconfig_path, 'w')
+        f.write(yconfig)
+        f.close()
+        self.session.uploadWrapper(yconfig_path, self.uploadpath,
+            os.path.basename(yconfig_path))
+        yumbase.doConfigSetup(fn=yconfig_path)
+        yumbase.conf.cache = 0
+        yumbase.doRepoSetup()
+        yumbase.doTsSetup()
+        yumbase.doRpmDBSetup()
+        # we trust Koji's files, so skip verifying sigs and digests
+        yumbase.ts.pushVSFlags(
+            (rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
+        yumbase.doSackSetup(archlist=archlist, thisrepo='koji-%s' % arch)
+        yumbase.doSackFilelistPopulate()
+        for pkg in ml_true:
+            # TODO: store packages by first letter
+            # ppath = os.path.join(pkgdir, pkg.name[0].lower(), pname)
+            real_path = self.options.topdir + pkg
+            po = yum.packages.YumLocalPackage(filename=real_path)
+            yumbase.tsInfo.addInstall(po)
+
+        # step 4: execute yum transaction to get dependencies
+        self.logger.info("Resolving depenencies for arch %s" % arch)
+        rc, errors = yumbase.resolveDeps()
+        ml_needed = set()
+        for f in yumbase.tsInfo.getMembers():
+            dep_path = os.path.join(mldir, os.path.basename(f.po.localPkg()))
+            rel_path = dep_path.replace(self.options.topdir, '')
+            ml_needed.add(rel_path)
+            self.logger.debug("added %s" % rel_path)
+            if not os.path.exists(dep_path):
+                self.logger.error('%s (multilib dep) not on filesystem' % dep_path)
+                fs_missing.add(dep_path)
+        self.logger.info('yum return code: %s' % rc)
+        if not rc:
+            self.logger.error('yum depsolve was unsuccessful')
+            raise koji.GenericError(errors)
+        if len(fs_missing) > 0:
+            raise koji.GenericError('multilib packages missing:\n' +
+                '\n'.join(fs_missing))
+
+        # step 5: add dependencies to our package list
+        pkgwriter = open(self.pkglist, 'a')
+        for ml_pkg in ml_needed:
+            pkgwriter.write(ml_pkg + '\n')
 
     def make_pkglist(self, tag_id, arch, keys, opts):
 
-        def write_pkg(pkgpath):
-            self.logger.info('incoming: %s' % pkgpath)
-            self.logger.info('topdir: %s' % self.options.topdir)
-            newpath = pkgpath.replace(self.options.topdir, '') + '\n'
-            self.logger.info('outgoing: %s' % newpath)
-            pkglist.write(newpath)
-
         # Need to pass event_id because even though this is a single trans,
         # it is possible to see the results of other committed transactions
-        rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
-            event=opts['event'], arch=arch,
-            inherit=opts['inherit'], rpmsigs=True)
-        rpms = list(rpm_iter)
-        if opts['multilib']:
-            mlm = multilib.MultilibDevelMethod(opts['multilib'])
-        else:
-            # this method always returns False, no multilib packages added
-            mlm = multilib.NoMultilibMethod(opts['multilib'])
-        need = set(['%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % r for r in rpms])
-        #get build dirs
+        rpms = []
         builddirs = {}
-        for build in builds:
-            builddirs[build['id']] = self.pathinfo.build(build)
+        for a in (arch, 'noarch'):
+            rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
+                event=opts['event'], arch=a,
+                inherit=opts['inherit'], rpmsigs=True)
+            for build in builds:
+                builddirs[build['id']] = self.pathinfo.build(build)
+            rpms += list(rpm_iter)
+        #get build dirs
+        need = set(['%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % r for r in rpms])
         #generate pkglist files
-        archdir = os.path.join(self.outdir, arch)
+        archdir = os.path.join(self.outdir, koji.canonArch(arch))
         koji.ensuredir(archdir)
         pkgfile = os.path.join(archdir, 'pkglist')
         pkglist = file(pkgfile, 'w')
@@ -5065,6 +5214,7 @@ class createSignedRepoTask(CreaterepoTask):
                     continue
             preferred[rpminfo['id']] = rpminfo
         seen = set()
+        fs_missing = set()
         for rpminfo in preferred.values():
             if rpminfo['sigkey'] == '':
                 # we're taking an unsigned rpm (--allow-unsigned)
@@ -5074,21 +5224,19 @@ class createSignedRepoTask(CreaterepoTask):
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
                     self.pathinfo.signed(rpminfo, rpminfo['sigkey']))
             seen.add(os.path.basename(pkgpath))
-            po = self.get_po(pkgpath)
-            mlppath = None # multilib package path
-            if mlm.select(po):
-                # we need a multilib package to be included
-                # we assume the same signature level is available
-                write_pkg(pkgpath.replace(arch, archmap[arch]))
-            write_pkg(pkgpath)
+            pkglist.write(pkgpath.replace(self.options.topdir, '') + '\n')
+            if not os.path.exists(pkgpath):
+                fs_missing.add(pkgpath)
         pkglist.close()
+        if len(fs_missing) > 0:
+            raise koji.GenericError('Packages missing from the filesystem:\n' +
+                '\n'.join(fs_missing))
         if not opts['skip']:
             missing = list(need - seen)
             if len(missing) != 0:
                 missing.sort()
                 raise koji.GenericError('Unsigned packages found: ' +
                     '\n'.join(missing))
-        # TODO: needs to not be in /var/tmp...
         return pkgfile
 
 

@@ -2803,10 +2803,15 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             tagInfo = taskInfo['request'][0]
             extra = tagInfo['name']
-    elif method in ('createrepo', 'createsignedrepo'):
+    elif method in ('createrepo'):
         if 'request' in taskInfo:
             arch = taskInfo['request'][1]
             extra = arch
+    elif method in ('createsignedrepo'):
+        if 'request' in taskInfo:
+            repo_id = taskInfo['request'][1]
+            arch = taskInfo['request'][2]
+            extra = '%s, %s' % (repo_id, arch)
     elif method == 'dependantTask':
         if 'request' in taskInfo:
             extra = ', '.join([subtask[0] for subtask in taskInfo['request'][1]])
