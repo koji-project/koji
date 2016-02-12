@@ -2356,11 +2356,6 @@ def signed_repo_init(tag, keys, task_opts):
     repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
     for arch in arches:
         koji.ensuredir(os.path.join(repodir, arch))
-        # Make a symlink to our topdir
-        archdir = os.path.join(repodir, arch)
-        top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
-        top_link = os.path.join(archdir, 'toplink')
-        os.symlink(top_relpath, top_link)
     # handle comps
     if task_opts['comps']:
         groupsdir = os.path.join(repodir, 'groups')
@@ -10896,8 +10891,10 @@ class HostExports(object):
             log_error("Unable to create latest link for repo: %s" % repodir)
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
-    def signedRepoMove(self, repo_id, uploadpath, files, arch):
-        """very similar to repoDone, except only the uploads are completed"""
+    def signedRepoMove(self, repo_id, uploadpath, files, arch, fullpaths):
+        """
+        Very similar to repoDone, except only the uploads are completed.
+        fullpaths is a dict like so: rpm file name -> sig"""
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
         repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
@@ -10923,8 +10920,8 @@ class HostExports(object):
                 with open(src) as pkgfile:
                     for pkg in pkgfile:
                         pkg = pkg.strip()
-                        rpm = os.path.basename(pkg)
-                        os.link(koji.pathinfo.topdir + pkg, os.path.join(archdir, rpm))
+                        rpmpath = fullpaths[pkg]
+                        os.link(rpmpath, os.path.join(archdir, os.path.basename(rpmpath)))
             os.unlink(src)
 
     def isEnabled(self):
