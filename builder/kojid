@@ -2217,11 +2217,11 @@ class BuildApplianceTask(BuildImageTask):
             raise koji.ApplianceError, 'Appliance functions not available'
 
         # build image
+        bld_info = None
         try:
             release = opts.get('release')
             if not release:
                 release = self.getRelease(name, version)
-            bld_info = None
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
@@ -2302,11 +2302,11 @@ class BuildLiveCDTask(BuildImageTask):
             raise koji.LiveCDError, 'LiveCD functions not available'
 
         # build the image
+        bld_info = None
         try:
             release = opts.get('release')
             if not release:
                 release = self.getRelease(name, version)
-            bld_info = None
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
@@ -2394,11 +2394,11 @@ class BuildLiveMediaTask(BuildImageTask):
             raise koji.PreBuildError, 'Live Media functions not available'
 
         # build the image
+        bld_info = None
         try:
             release = opts.get('release')
             if not release:
                 release = self.getRelease(name, version)
-            bld_info = None
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
