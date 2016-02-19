@@ -34,6 +34,7 @@ import errno
 import exceptions
 from fnmatch import fnmatch
 import httplib
+import imp
 import logging
 import logging.handlers
 from koji.util import md5_constructor
@@ -62,6 +63,8 @@ import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
 import zipfile
+
+PROFILE_MODULES = {}  # {module_name: module_instance}
 
 def _(args):
     """Stub function for translation"""
@@ -1549,6 +1552,49 @@ def read_config(profile_name, user_config=None):
         sys.stderr.flush()
 
     return result
+
+
+def get_profile_module(profile_name, config=None):
+    """
+    Create module for a koji instance.
+    Override profile specific module attributes:
+     * BASEDIR
+     * config
+     * pathinfo
+
+    profile_name is str with name of the profile
+    config is instance of optparse.Values()
+    """
+    global PROFILE_MODULES  # Dict with loaded modules
+
+    # If config is passed use it and don't load koji config files by yourself
+    if config is None:
+        result = read_config(profile_name)
+        config = optparse.Values(result)
+
+    # Prepare module name
+    mod_name = "__%s__%s" % (__name__, profile_name)
+
+    # Check if profile module exists and if so return it
+    if mod_name in PROFILE_MODULES:
+        return PROFILE_MODULES[mod_name]
+
+    # Load current module under a new name
+    koji_module_loc = imp.find_module(__name__)
+    mod = imp.load_module(mod_name,
+                          None,
+                          koji_module_loc[1],
+                          koji_module_loc[2])
+
+    # Tweak config of the new module
+    mod.config = config
+    mod.BASEDIR = config.topdir
+    mod.pathinfo.topdir = config.topdir
+
+    # Be sure that get_profile_module is only called from main module
+    mod.get_profile_module = get_profile_module
+
+    return mod
 
 
 class PathInfo(object):
