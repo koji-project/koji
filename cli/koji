@@ -195,78 +195,19 @@ def get_options():
         list_commands()
         parser.error('Unknown command: %s' % args[0])
         assert False
+
     # load local config
-    defaults = {
-        'server' : 'http://localhost/kojihub',
-        'weburl' : 'http://localhost/koji',
-        'topurl' : None,
-        'pkgurl' : None,
-        'topdir' : '/mnt/koji',
-        'max_retries' : None,
-        'retry_interval': None,
-        'anon_retry' : None,
-        'offline_retry' : None,
-        'offline_retry_interval' : None,
-        'keepalive' : True,
-        'timeout' : None,
-        'use_fast_upload': False,
-        'poll_interval': 5,
-        'krbservice': 'host',
-        'cert': '~/.koji/client.crt',
-        'ca': '',  # FIXME: remove in next major release
-        'serverca': '~/.koji/serverca.crt',
-        'authtype': None
-        }
-    #note: later config files override earlier ones
-    configs = koji.config_directory_contents('/etc/koji.conf.d')
-    if os.access('/etc/koji.conf', os.F_OK):
-        configs.append('/etc/koji.conf')
-    if options.configFile:
-        fn = os.path.expanduser(options.configFile)
-        if os.path.isdir(fn):
-            contents = koji.config_directory_contents(fn)
-            if not contents:
-                parser.error("No config files found in directory: %s" % fn)
-            configs.extend(contents)
-        else:
-            if not os.access(fn, os.F_OK):
-                parser.error("No such file: %s" % fn)
-            configs.append(fn)
-    else:
-        user_config_dir = os.path.expanduser("~/.koji/config.d")
-        configs.extend(koji.config_directory_contents(user_config_dir))
-        fn = os.path.expanduser("~/.koji/config")
-        if os.access(fn, os.F_OK):
-            configs.append(fn)
-    got_conf = False
-    for configFile in configs:
-        f = open(configFile)
-        config = ConfigParser.ConfigParser()
-        config.readfp(f)
-        f.close()
-        if config.has_section(options.profile):
-            got_conf = True
-            for name, value in config.items(options.profile):
-                #note the defaults dictionary also serves to indicate which
-                #options *can* be set via the config file. Such options should
-                #not have a default value set in the option parser.
-                if defaults.has_key(name):
-                    if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
-                        defaults[name] = config.getboolean(options.profile, name)
-                    elif name in ('max_retries', 'retry_interval',
-                                  'offline_retry_interval', 'poll_interval', 'timeout'):
-                        try:
-                            defaults[name] = int(value)
-                        except ValueError:
-                            parser.error("value for %s config option must be a valid integer" % name)
-                            assert False
-                    else:
-                        defaults[name] = value
-    if configs and not got_conf:
-        warn("Warning: no configuration for profile name: %s" % options.profile)
-    for name, value in defaults.iteritems():
+    try:
+        result = koji.read_config(options.profile, user_config=options.configFile)
+    except koji.ConfigurationError, e:
+        parser.error(e.args[0])
+        assert False
+
+    # update options according to local config
+    for name, value in result.iteritems():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
+
     dir_opts = ('topdir', 'cert', 'serverca')
     for name in dir_opts:
         # expand paths here, so we don't have to worry about it later

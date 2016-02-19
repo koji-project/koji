@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover
     sys.stderr.flush()
 import base64
 import datetime
+import ConfigParser
 import errno
 import exceptions
 from fnmatch import fnmatch
@@ -36,6 +37,7 @@ import httplib
 import logging
 import logging.handlers
 from koji.util import md5_constructor
+import optparse
 import os
 import os.path
 import pwd
@@ -324,6 +326,10 @@ class ParameterError(GenericError):
 class ImportError(GenericError):
     """Raised when an import fails"""
     faultCode = 1020
+
+class ConfigurationError(GenericError):
+    """Raised when load of koji configuration fails"""
+    faultCode = 1021
 
 class MultiCallInProgress(object):
     """
@@ -1453,6 +1459,96 @@ def config_directory_contents(dir_name):
             config_full_name = os.path.join(dir_name, name)
             configs.append(config_full_name)
     return configs
+
+
+def read_config(profile_name, user_config=None):
+    config_defaults = {
+        'server' : 'http://localhost/kojihub',
+        'weburl' : 'http://localhost/koji',
+        'topurl' : None,
+        'pkgurl' : None,
+        'topdir' : '/mnt/koji',
+        'max_retries' : None,
+        'retry_interval': None,
+        'anon_retry' : None,
+        'offline_retry' : None,
+        'offline_retry_interval' : None,
+        'keepalive' : True,
+        'timeout' : None,
+        'use_fast_upload': False,
+        'poll_interval': 5,
+        'krbservice': 'host',
+        'cert': '~/.koji/client.crt',
+        'ca': '',  # FIXME: remove in next major release
+        'serverca': '~/.koji/serverca.crt',
+        'authtype': None
+    }
+
+    result = config_defaults.copy()
+
+    #note: later config files override earlier ones
+
+    # /etc/koji.conf.d
+    configs = config_directory_contents('/etc/koji.conf.d')
+
+    # /etc/koji.conf
+    if os.access('/etc/koji.conf', os.F_OK):
+        configs.append('/etc/koji.conf')
+
+    # User specific configuration
+    if user_config:
+        # Config file specified on command line
+        fn = os.path.expanduser(user_config)
+        if os.path.isdir(fn):
+            # Specified config is a directory
+            contents = config_directory_contents(fn)
+            if not contents:
+                raise ConfigurationError("No config files found in directory: %s" % fn)
+            configs.extend(contents)
+        else:
+            # Specified config is a file
+            if not os.access(fn, os.F_OK):
+                raise ConfigurationError("No such file: %s" % fn)
+            configs.append(fn)
+    else:
+        # User config
+        user_config_dir = os.path.expanduser("~/.koji/config.d")
+        configs.extend(config_directory_contents(user_config_dir))
+        fn = os.path.expanduser("~/.koji/config")
+        if os.access(fn, os.F_OK):
+            configs.append(fn)
+
+    # Load the configs in a particular order
+    got_conf = False
+    for configFile in configs:
+        f = open(configFile)
+        config = ConfigParser.ConfigParser()
+        config.readfp(f)
+        f.close()
+        if config.has_section(profile_name):
+            got_conf = True
+            for name, value in config.items(profile_name):
+                #note the config_defaults dictionary also serves to indicate which
+                #options *can* be set via the config file. Such options should
+                #not have a default value set in the option parser.
+                if result.has_key(name):
+                    if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
+                        result[name] = config.getboolean(profile_name, name)
+                    elif name in ('max_retries', 'retry_interval',
+                                  'offline_retry_interval', 'poll_interval', 'timeout'):
+                        try:
+                            result[name] = int(value)
+                        except ValueError:
+                            raise ConfigurationError("value for %s config option must be a valid integer" % name)
+                    else:
+                        result[name] = value
+
+    # Check if the specified profile had a config specified
+    if configs and not got_conf:
+        sys.stderr.write("Warning: no configuration for profile name: %s\n" % profile_name)
+        sys.stderr.flush()
+
+    return result
 
 
 class PathInfo(object):
