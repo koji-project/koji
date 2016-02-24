@@ -10919,9 +10919,11 @@ class HostExports(object):
                 # hardlink the found rpms into the final repodir
                 with open(src) as pkgfile:
                     for pkg in pkgfile:
-                        pkg = pkg.strip()
+                        pkg = os.path.basename(pkg.strip())
                         rpmpath = fullpaths[pkg]
-                        os.link(rpmpath, os.path.join(archdir, os.path.basename(rpmpath)))
+                        bnp = os.path.basename(rpmpath)
+                        koji.ensuredir(os.path.join(archdir, bnp[0]))
+                        os.link(rpmpath, os.path.join(archdir, bnp[0], bnp))
             os.unlink(src)
 
     def isEnabled(self):
