@@ -6308,20 +6308,9 @@ def anon_handle_download_build(options, session, args):
         pg = progress.TextMeter()
 
     for url, relpath in urls:
-        file = grabber.urlopen(url, progress_obj=pg, text=relpath)
-
         if '/' in relpath:
             koji.ensuredir(os.path.dirname(relpath))
-        out = os.open(relpath, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
-        try:
-            while 1:
-                buf = file.read(4096)
-                if not buf:
-                    break
-                os.write(out, buf)
-        finally:
-            os.close(out)
-            file.close()
+        grabber.urlgrab(url, filename=relpath, progress_obj=pg, text=relpath)
 
 
 def anon_handle_download_logs(options, session, args):
