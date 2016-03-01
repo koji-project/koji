@@ -202,7 +202,7 @@ class BuildRoot(object):
         self.br_arch = koji.canonArch(arch)
         # armhfp is not a valid arch according to autoconf
         if arch == 'armhfp':
-            self.target_arch = 'arm'
+            self.target_arch = 'armv7hl'
         else:
             self.target_arch = arch
         self.logger.debug("New buildroot: %(tag_name)s/%(br_arch)s/%(repoid)s" % vars(self))
