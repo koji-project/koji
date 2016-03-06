@@ -550,6 +550,9 @@ class TrackedBuild(object):
             tag = counts[-1][1]
         else:
             tag = tags.keys()[0]
+        # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
+        if len(builds) == 0:
+            self.setState("noroot")
         self.deps = builds
         self.revised_deps = None #BuildTracker will set this later
         self.br_tag = tag
