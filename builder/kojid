@@ -3273,7 +3273,7 @@ class BaseImageTask(OzImageTask):
             'squashfs-dd-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
             logerror=1)
-        cmd = ['/usr/sbin/mksquashfs', 'squashfs-root',
+        cmd = ['/usr/sbin/mksquashfs', os.path.join(self.workdir, 'squashfs-root'),
                newimg, '-comp', 'xz', '-noappend']
         conlog = os.path.join(self.workdir,
             'squashfs-mksquashfs-%s-%s.log' % (format, self.arch))
