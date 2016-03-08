@@ -3265,7 +3265,7 @@ class BaseImageTask(OzImageTask):
 
         os.makedirs(os.path.join(self.workdir, 'squashfs-root/LiveOS'))
 
-        cmd = ['/usr/bin/dd', 'conv=sparse', 'bs=1M',
+        cmd = ['/bin/dd', 'conv=sparse', 'bs=1M',
                'skip=1',  # FIXME Hack to strip the disklabel
                'if=%s' % self.base_img.base_image.data,
                'of=%s' % fsimg]
