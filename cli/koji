@@ -185,7 +185,7 @@ def get_options():
         cmd = "moshimoshi"
     cmd = cmd.replace('-', '_')
     if globals().has_key('anon_handle_' + cmd):
-        if not options.force_auth:
+        if not options.force_auth and '--mine' not in args:
             options.noauth = True
         cmd = 'anon_handle_' + cmd
     elif globals().has_key('handle_' + cmd):
@@ -5998,16 +5998,37 @@ def anon_handle_watch_task(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--mine", action="store_true", help=_("Just watch your tasks"))
+    parser.add_option("--user", help=_("Only tasks for this user"))
+    parser.add_option("--arch", help=_("Only tasks for this architecture"))
+    parser.add_option("--method", help=_("Only tasks of this method"))
+    parser.add_option("--channel", help=_("Only tasks in this channel"))
+    parser.add_option("--host", help=_("Only tasks for this host"))
     (options, args) = parser.parse_args(args)
+    selection = (options.mine or
+                 options.user or
+                 options.arch or
+                 options.method or
+                 options.channel or
+                 options.host)
+    if args and selection:
+        parser.error(_("Selection options cannot be combined with a task list"))
+
     activate_session(session)
-    tasks = []
-    for task in args:
-        try:
-            tasks.append(int(task))
-        except ValueError:
-            parser.error(_("task id must be an integer"))
-    if not tasks:
-        parser.error(_("at least one task id must be specified"))
+    if selection:
+        tasks = [task['id'] for task in _list_tasks(options, session)]
+        if not tasks:
+            print "(no tasks)"
+            return
+    else:
+        tasks = []
+        for task in args:
+            try:
+                tasks.append(int(task))
+            except ValueError:
+                parser.error(_("task id must be an integer"))
+        if not tasks:
+            parser.error(_("at least one task id must be specified"))
 
     return watch_tasks(session, tasks, quiet=options.quiet)
 
