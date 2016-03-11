@@ -178,6 +178,7 @@ def get_options():
         'tag': 'tag-build',
         'untag-pkg': 'untag-build',
         'untag': 'untag-build',
+        'watch-tasks': 'watch-task',
     }
     cmd = args[0]
     cmd = aliases.get(cmd, cmd)
