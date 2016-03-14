@@ -30,6 +30,7 @@ except ImportError:
 import base64
 import datetime
 import errno
+import exceptions
 from fnmatch import fnmatch
 import httplib
 import logging
@@ -1678,6 +1679,12 @@ class ClientSession(object):
         log in the given user instead of the user associated with the Kerberos
         principal.  The principal must be in the "ProxyPrincipals" list on
         the server side."""
+
+        if not krbV:
+            raise exceptions.ImportError(
+                "Please install python-krbV to use kerberos."
+            )
+
         ctx = krbV.default_context()
 
         if ccache != None:
