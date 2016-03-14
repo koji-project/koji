@@ -134,7 +134,11 @@ class ManagedRepo(object):
                              (self.tag_id, self.repo_id))
             return False
         tag_name = tag_info['name']
-        path = pathinfo.repo(self.repo_id, tag_name)
+        rinfo = self.session.repoInfo(self.repo_id, strict=True)
+        if rinfo['signed']:
+            path = pathinfo.signedrepo(self.repo_id, tag_name)
+        else:
+            path = pathinfo.repo(self.repo_id, tag_name)
         try:
             #also check dir age. We do this because a repo can be created from an older event
             #and should not be removed based solely on that event's timestamp.

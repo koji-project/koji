@@ -4394,7 +4394,7 @@ class NewSignedRepoTask(BaseTaskHandler):
                 upload, files, keypaths = results[subtasks[arch]]
                 self.session.host.signedRepoMove(
                     repo_id, upload, files, arch, keypaths)
-        self.session.host.repoDone(repo_id, data, expire=True, signed=True)
+        self.session.host.repoDone(repo_id, data, expire=False, signed=True)
         return 'Signed repository #%s successfully generated' % repo_id
 
 
