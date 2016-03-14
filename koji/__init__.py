@@ -24,7 +24,7 @@
 import sys
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     sys.stderr.write("Warning: Could not install krbV module. Kerberos support will be disabled.\n")
     sys.stderr.flush()
 import base64
@@ -63,7 +63,7 @@ import zipfile
 
 def _(args):
     """Stub function for translation"""
-    return args
+    return args  # pragma: no cover
 
 ## Constants ##
 
