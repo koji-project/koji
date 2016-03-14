@@ -119,19 +119,11 @@ class Enum(dict):
         else:
             return value
 
-    def getvalue(self,key,default=None):
-        try:
-            value = self.__getitem__(key)
-        except (IndexError,KeyError):
-            return default
-        if isinstance(key,int):
-            return value
-        else:
-            return key
-
     def _notImplemented(self,*args,**opts):
         raise NotImplementedError
 
+    # deprecated
+    getvalue = _notImplemented
     #read-only
     __setitem__ = _notImplemented
     __delitem__ = _notImplemented
