@@ -2458,7 +2458,7 @@ def signed_repo_init(tag, keys, task_opts):
         task_opts['event'] = _singleValue("SELECT get_event()")
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
-        state=state)
+        state=state, signed=True)
     insert.execute()
     repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
     for arch in arches:
@@ -2495,6 +2495,7 @@ def repo_info(repo_id, strict=False):
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
+        ('repo.signed', 'signed'),
     )
     q = """SELECT %s FROM repo
     JOIN tag ON tag_id=tag.id
@@ -10101,16 +10102,20 @@ class RootExports(object):
                     taginfo['extra'][key] = ancestor['extra'][key]
         return taginfo
 
-    def getRepo(self, tag, state=None, event=None):
+    def getRepo(self, tag, state=None, event=None, signed=False):
         if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
 
-        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)']
-        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts']
+        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)', 'repo.signed']
+        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts', 'signed']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
+        if signed:
+            clauses.append('repo.signed is true')
+        else:
+            clauses.append('repo.signed is false')
         if event:
             # the repo table doesn't have all the fields of a _config table, just create_event
             clauses.append('create_event <= %(event)i')
