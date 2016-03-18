@@ -5855,7 +5855,7 @@ def _list_tasks(options, session):
 
     qopts = {'order' : 'priority,create_time'}
     tasklist = session.listTasks(callopts, qopts)
-    tasks = {x['id']:x for x in tasklist}
+    tasks = dict([(x['id'], x) for x in tasklist])
 
     #thread the tasks
     for t in tasklist:
