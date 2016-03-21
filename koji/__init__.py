@@ -1335,6 +1335,7 @@ obsoletes=1
 gpgcheck=0
 assumeyes=1
 keepcache=1
+install_weak_deps=0
 
 # repos
 
