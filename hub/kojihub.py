@@ -11000,12 +11000,18 @@ class HostExports(object):
         task.assertHost(host.id)
         self.importImage(task_id, build_id, results)
 
+        build_info = get_build(build_id)
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+
         st_complete = koji.BUILD_STATES['COMPLETE']
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(id=build_id, state=st_complete)
         update.rawset(completion_time='now()')
         update.execute()
+
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+
         # send email
         build_notification(task_id, build_id)
 
