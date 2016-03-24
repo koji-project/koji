@@ -2162,7 +2162,7 @@ class ClientSession(object):
 
     def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False):
         if blocksize is None:
-            blocksize = self.opts.get('upload_blocksize')
+            blocksize = self.opts.get('upload_blocksize', 1048576)
 
         if not self.logged_in:
             raise ActionNotAllowed, 'You must be logged in to upload files'
@@ -2240,7 +2240,7 @@ class ClientSession(object):
     def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True):
         """upload a file in chunks using the uploadFile call"""
         if blocksize is None:
-            blocksize = self.opts.get('upload_blocksize')
+            blocksize = self.opts.get('upload_blocksize', 1048576)
 
         if self.opts.get('use_fast_upload'):
             self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
