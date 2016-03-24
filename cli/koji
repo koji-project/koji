@@ -157,6 +157,7 @@ def get_options():
     parser.add_option("--weburl", help=_("url of the Koji web interface"))
     parser.add_option("--topurl", help=_("url for Koji file access"))
     parser.add_option("--pkgurl", help=optparse.SUPPRESS_HELP)
+    parser.add_option("--upload-blocksize", help=_("upload the koji hub how many bytes per request"))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -210,6 +211,7 @@ def get_options():
         'keepalive' : True,
         'timeout' : None,
         'use_fast_upload': False,
+        'upload_blocksize': 1048576,
         'poll_interval': 5,
         'krbservice': 'host',
         'cert': '~/.koji/client.crt',
@@ -254,7 +256,8 @@ def get_options():
                     if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
                         defaults[name] = config.getboolean(options.profile, name)
                     elif name in ('max_retries', 'retry_interval',
-                                  'offline_retry_interval', 'poll_interval', 'timeout'):
+                                  'offline_retry_interval', 'poll_interval', 'timeout',
+                                  'upload_blocksize'):
                         try:
                             defaults[name] = int(value)
                         except ValueError:
@@ -6934,8 +6937,9 @@ if __name__ == "__main__":
 
     session_opts = {}
     for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug', 'max_retries',
-                'retry_interval', 'offline_retry', 'offline_retry_interval',
-                'anon_retry', 'keepalive', 'timeout', 'use_fast_upload'):
+              'retry_interval', 'offline_retry', 'offline_retry_interval',
+              'anon_retry', 'keepalive', 'timeout', 'use_fast_upload',
+              'upload_blocksize'):
         value = getattr(options,k)
         if value is not None:
             session_opts[k] = value
