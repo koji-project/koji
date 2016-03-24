@@ -1480,6 +1480,7 @@ def read_config(profile_name, user_config=None):
         'keepalive' : True,
         'timeout' : None,
         'use_fast_upload': False,
+        'upload_blocksize': 1048576,
         'poll_interval': 5,
         'krbservice': 'host',
         'cert': '~/.koji/client.crt',
@@ -2158,7 +2159,10 @@ class ClientSession(object):
         #    raise AttributeError, "no attribute %r" % name
         return VirtualMethod(self._callMethod,name)
 
-    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=1048576, overwrite=False):
+    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False):
+        if blocksize is None:
+            blocksize = self.opts.get('upload_blocksize')
+
         if not self.logged_in:
             raise ActionNotAllowed, 'You must be logged in to upload files'
         if name is None:
@@ -2232,8 +2236,11 @@ class ClientSession(object):
         request = chunk
         return handler, headers, request
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=1048576, overwrite=True):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True):
         """upload a file in chunks using the uploadFile call"""
+        if blocksize is None:
+            blocksize = self.opts.get('upload_blocksize')
+
         if self.opts.get('use_fast_upload'):
             self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
             return
