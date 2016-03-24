@@ -1540,7 +1540,8 @@ def read_config(profile_name, user_config=None):
                     if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
-                                  'offline_retry_interval', 'poll_interval', 'timeout'):
+                                  'offline_retry_interval', 'poll_interval', 'timeout',
+                                  'upload_blocksize'):
                         try:
                             result[name] = int(value)
                         except ValueError:
