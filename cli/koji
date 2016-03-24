@@ -157,7 +157,6 @@ def get_options():
     parser.add_option("--weburl", help=_("url of the Koji web interface"))
     parser.add_option("--topurl", help=_("url for Koji file access"))
     parser.add_option("--pkgurl", help=optparse.SUPPRESS_HELP)
-    parser.add_option("--upload-blocksize", help=_("upload the koji hub how many bytes per request"))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
