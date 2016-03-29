@@ -218,6 +218,11 @@ $value
         #if $len($params) > 2
         $printOpts($params[2])
         #end if
+        #elif $task.method == 'newRepo'
+        <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+        #if $len($params) > 1
+          $printOpts($params[1])
+        #end if
         #elif $task.method == 'signedRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         <strong>Repo ID:</strong> $params[1]<br/>
