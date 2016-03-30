@@ -3092,6 +3092,7 @@ class BaseImageTask(OzImageTask):
         """
         fcalls = {'raw':   self._buildBase,
                   'raw-xz': self._buildXZ,
+                  'tar-gz': self._buildTarGZ,
                   'liveimg-squashfs': self._buildSquashfs,
                   'vmdk':  self._buildConvert,
                   'vdi':   self._buildConvert,
@@ -3249,6 +3250,38 @@ class BaseImageTask(OzImageTask):
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
             logerror=1)
         return {'image': newimg}
+
+
+    def _buildTarGZ(self, format):
+        """
+        Use tar and gzip to compress a raw disk image.
+
+        see also: https://cloud.google.com/compute/docs/creating-custom-image
+
+        @args:
+            format - a string representing the image format, "raw-xz"
+        @returns:
+            a dict with some metadata about the image
+        """
+        orig = self.base_img.base_image.data
+        newimg = os.path.join(self.workdir, self.imgname + '.tar.gz')
+
+        # the image in the tarball must be named disk.raw
+        imgdir = os.path.dirname(orig)
+        rawimg = os.path.join(imgdir, 'disk.raw')
+        cmd = ['/bin/ln', newimg, rawimg]
+        conlog = os.path.join(self.workdir,
+            'tar-gz-ln-%s-%s.log' % (format, self.arch))
+        log_output(self.session, cmd[0], cmd, conlog, self.workdir,
+            logerror=1)
+
+        cmd = ['/bin/tar', '-Sczf', newimg, 'disk.raw']
+        conlog = os.path.join(self.workdir,
+            'tar-gz-%s-%s.log' % (format, self.arch))
+        log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
+            logerror=1, cwd=imgdir)
+        return {'image': newimg}
+
 
     def _buildSquashfs(self, format):
         """
