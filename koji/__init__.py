@@ -1488,6 +1488,7 @@ def read_config(profile_name, user_config=None):
         'upload_blocksize': 1048576,
         'poll_interval': 5,
         'krbservice': 'host',
+        'krb_rdns': True,
         'cert': '~/.koji/client.crt',
         'ca': '',  # FIXME: remove in next major release
         'serverca': '~/.koji/serverca.crt',
@@ -1542,7 +1543,7 @@ def read_config(profile_name, user_config=None):
                 #options *can* be set via the config file. Such options should
                 #not have a default value set in the option parser.
                 if result.has_key(name):
-                    if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload'):
+                    if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload', 'krb_rdns'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
                                   'offline_retry_interval', 'poll_interval', 'timeout',
@@ -1893,7 +1894,10 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
-        servername = socket.getfqdn(self._host)
+        if self.opts.get('krb_rdns', True):
+            servername = socket.getfqdn(self._host)
+        else:
+            servername = self._host
         #portspec = servername.find(':')
         #if portspec != -1:
         #    servername = servername[:portspec]

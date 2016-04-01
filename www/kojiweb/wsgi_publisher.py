@@ -75,6 +75,7 @@ class Dispatcher(object):
         ['WebKeytab', 'string', '/etc/httpd.keytab'],
         ['WebCCache', 'string', '/var/tmp/kojiweb.ccache'],
         ['KrbService', 'string', 'host'],
+        ['KrbRDNS', 'boolean', True],
 
         ['WebCert', 'string', None],
         ['KojiHubCA', 'string', '/etc/kojiweb/kojihubca.crt'],

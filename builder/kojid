@@ -4598,6 +4598,7 @@ def get_options():
                 'keytab': '/etc/kojid/kojid.keytab',
                 'ccache': '/var/tmp/kojid.ccache',
                 'krbservice': 'host',
+                'krb_rdns': True,
                 'server': None,
                 'user': None,
                 'password': None,
@@ -4633,7 +4634,7 @@ def get_options():
                     quit("value for %s option must be a valid integer" % name)
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
-                          'support_rpm_source_layout']:
+                          'support_rpm_source_layout', 'krb_rdns']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -4708,7 +4709,7 @@ if __name__ == "__main__":
 
     #build session options
     session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug',
+    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'debug_xmlrpc', 'debug',
               'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval',
               'keepalive', 'timeout', 'use_fast_upload',
              ):

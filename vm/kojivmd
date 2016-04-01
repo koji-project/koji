@@ -121,6 +121,7 @@ def get_options():
                 'keytab': '/etc/kojivmd/kojivmd.keytab',
                 'ccache': '/var/tmp/kojivmd.ccache',
                 'krbservice': 'host',
+                'krb_rdns': True,
                 'server': None,
                 'user': None,
                 'password': None,
@@ -141,7 +142,7 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry']:
+            elif name in ['offline_retry', 'krb_rdns']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -1056,7 +1057,7 @@ if __name__ == "__main__":
 
     #build session options
     session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug',
+    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'debug_xmlrpc', 'debug',
               'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
         v = getattr(options, k, None)
         if v is not None:
