@@ -49,7 +49,10 @@ import shutil
 import signal
 import socket
 import ssl.SSLCommon
-from ssl import ssl as pyssl
+try:
+    from ssl import ssl as pyssl
+except ImportError:
+    pass
 import struct
 import tempfile
 import time
