@@ -10138,7 +10138,7 @@ class RootExports(object):
         context.session.assertPerm('signed-repo')
         repo_id, event_id = signed_repo_init(tag, keys, task_opts)
         task_opts['event'] = event_id
-        return make_task('signedRepo', [tag, repo_id, keys, task_opts], priority=15)
+        return make_task('signedRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
