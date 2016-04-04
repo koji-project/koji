@@ -12342,13 +12342,21 @@ class HostExports(object):
             os.link(src, dst)
             if fn.endswith('pkglist'):
                 # hardlink the found rpms into the final repodir
+                # TODO: properly consider split-volume functionality
                 with open(src) as pkgfile:
                     for pkg in pkgfile:
                         pkg = os.path.basename(pkg.strip())
                         rpmpath = fullpaths[pkg]
                         bnp = os.path.basename(rpmpath)
                         koji.ensuredir(os.path.join(archdir, bnp[0]))
-                        os.link(rpmpath, os.path.join(archdir, bnp[0], bnp))
+                        try:
+                            os.link(rpmpath, os.path.join(archdir, bnp[0], bnp))
+                        except OSError, ose:
+                            if ose.error == 18:
+                                shutil.copy2(
+                                    rpmpath, os.path.join(archdir, bnp[0], bnp))
+                            else:
+                                raise ose
             os.unlink(src)
 
     def isEnabled(self):
