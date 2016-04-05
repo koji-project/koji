@@ -6571,6 +6571,14 @@ def anon_handle_wait_repo(options, session, args):
                     print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
                 return
 
+        if (time.time() - start) >= (suboptions.timeout * 60.0):
+            if not suboptions.quiet:
+                if builds:
+                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                else:
+                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+            return 1
+
         time.sleep(60)
         last_repo = repo
         repo = session.getRepo(tag_id)
@@ -6580,14 +6588,6 @@ def anon_handle_wait_repo(options, session, args):
                 if not suboptions.quiet:
                     print "Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
                 return
-
-        if (time.time() - start) > (suboptions.timeout * 60.0):
-            if not suboptions.quiet:
-                if builds:
-                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
-                else:
-                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
-            return 1
 
 _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'maven', 'win')
 
