@@ -3020,7 +3020,8 @@ class LiveMediaTask(ImageTask):
                '--ks', kskoji,
                '--logfile', livemedia_log,
                '--no-virt',
-                '--resultdir', resultdir,
+               '--resultdir', resultdir,
+               '--project', '"%s"' % name.replace("-", " "),
                #'--tmp', '/tmp'
               ]
 
