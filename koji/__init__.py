@@ -1578,24 +1578,30 @@ def get_profile_module(profile_name, config=None):
     # Prepare module name
     mod_name = "__%s__%s" % (__name__, profile_name)
 
-    # Check if profile module exists and if so return it
-    if mod_name in PROFILE_MODULES:
-        return PROFILE_MODULES[mod_name]
+    imp.acquire_lock()
+    try:
+        # Check if profile module exists and if so return it
+        if mod_name in PROFILE_MODULES:
+            return PROFILE_MODULES[mod_name]
 
-    # Load current module under a new name
-    koji_module_loc = imp.find_module(__name__)
-    mod = imp.load_module(mod_name,
-                          None,
-                          koji_module_loc[1],
-                          koji_module_loc[2])
+        # Load current module under a new name
+        koji_module_loc = imp.find_module(__name__)
+        mod = imp.load_module(mod_name,
+                              None,
+                              koji_module_loc[1],
+                              koji_module_loc[2])
 
-    # Tweak config of the new module
-    mod.config = config
-    mod.BASEDIR = config.topdir
-    mod.pathinfo.topdir = config.topdir
+        # Tweak config of the new module
+        mod.config = config
+        mod.BASEDIR = config.topdir
+        mod.pathinfo.topdir = config.topdir
 
-    # Be sure that get_profile_module is only called from main module
-    mod.get_profile_module = get_profile_module
+        # Be sure that get_profile_module is only called from main module
+        mod.get_profile_module = get_profile_module
+
+        PROFILE_MODULES[mod_name] = mod
+    finally:
+        imp.release_lock()
 
     return mod
 
