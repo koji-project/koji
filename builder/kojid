@@ -3066,7 +3066,7 @@ class BaseImageTask(OzImageTask):
         Some image formats require others to be processed first, which is why
         we have to do this. raw files in particular may not be kept.
         """
-        supported = ('raw', 'raw-xz', 'liveimg-squashfs', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vagrant-vmware-fusion', 'vpc')
+        supported = ('raw', 'raw-xz', 'liveimg-squashfs', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vagrant-vmware-fusion', 'vpc', "tar-gz")
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -3256,30 +3256,30 @@ class BaseImageTask(OzImageTask):
         """
         Use tar and gzip to compress a raw disk image.
 
-        see also: https://cloud.google.com/compute/docs/creating-custom-image
-
         @args:
-            format - a string representing the image format, "raw-xz"
+            format - not used, we only handle tar-gz
         @returns:
             a dict with some metadata about the image
         """
         orig = self.base_img.base_image.data
         newimg = os.path.join(self.workdir, self.imgname + '.tar.gz')
 
+        # see also: https://cloud.google.com/compute/docs/creating-custom-image
+
         # the image in the tarball must be named disk.raw
         imgdir = os.path.dirname(orig)
         rawimg = os.path.join(imgdir, 'disk.raw')
-        cmd = ['/bin/ln', newimg, rawimg]
-        conlog = os.path.join(self.workdir,
-            'tar-gz-ln-%s-%s.log' % (format, self.arch))
-        log_output(self.session, cmd[0], cmd, conlog, self.workdir,
-            logerror=1)
+        os.link(orig, rawimg)
 
-        cmd = ['/bin/tar', '-Sczf', newimg, 'disk.raw']
-        conlog = os.path.join(self.workdir,
-            'tar-gz-%s-%s.log' % (format, self.arch))
+        # make the tarball
+        cmd = ['/bin/tar', '-Sczvf', newimg, 'disk.raw']
+        conlog = os.path.join(self.workdir, 'tar-gz-%s.log' % self.arch)
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
             logerror=1, cwd=imgdir)
+
+        # now that we've made the tarball, we don't need this hardlink
+        os.unlink(rawimg)
+
         return {'image': newimg}
 
 
@@ -3518,8 +3518,7 @@ class BaseImageTask(OzImageTask):
         # upload the results
         for format in (f for f in self.formats.keys() if self.formats[f]):
             newimg = images[format]['image']
-            if ('ova' in format or format == 'raw-xz' or
-                    format == 'liveimg-squashfs'):
+            if ('ova' in format or format in ('raw-xz', 'liveimg-squashfs', 'tar-gz')):
                 newname = self.imgname + '.' + format.replace('-', '.')
             elif 'vagrant' in format:
                 # This embeds the vagrant target and the ".box" format in the name
