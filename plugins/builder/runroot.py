@@ -152,9 +152,9 @@ class RunRootTask(tasks.BaseTaskHandler):
                                            parent=self.id)
             repo_info = self.wait(task_id)[task_id]
         if compat_mode:
-            broot = BuildRoot(root, br_arch, self.id, repo_id=repo_info['id'])
+            broot = BuildRoot(root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
         else:
-            broot = BuildRoot(self.session, self.options, root, br_arch, self.id, repo_id=repo_info['id'])
+            broot = BuildRoot(self.session, self.options, root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
             broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
