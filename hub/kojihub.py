@@ -3546,7 +3546,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
 
     if hostID != None:
-        joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.id')
+        joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(hostID)i')
     if arches != None:
         if isinstance(arches, list) or isinstance(arches, tuple):
@@ -3728,7 +3728,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
        clauses.append('image_archive_listing.image_id = %(imageID)i')
        joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
     if hostID is not None:
-        joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.id')
+        joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(host_id)i')
         values['host_id'] = hostID
         fields.append(['standard_buildroot.host_id', 'host_id'])
