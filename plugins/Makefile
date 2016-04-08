@@ -4,7 +4,7 @@ BUILDERPLUGINDIR = /usr/lib/koji-builder-plugins
 HUBFILES = $(wildcard hub/*.py)
 BUILDERFILES = $(wildcard builder/*.py)
 HUBCONFDIR = /etc/koji-hub/plugins
-BUILDERCONFDIR = /etc/kojid
+BUILDERCONFDIR = /etc/kojid/plugins
 HUBCONFFILES = $(wildcard hub/*.conf)
 BUILDERCONFFILES = $(wildcard builder/*.conf)
 

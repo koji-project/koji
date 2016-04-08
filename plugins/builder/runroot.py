@@ -23,7 +23,7 @@ except ImportError:
 
 __all__ = ('RunRootTask',)
 
-CONFIG_FILE = '/etc/kojid/runroot.conf'
+CONFIG_FILE = '/etc/kojid/plugins/runroot.conf'
 
 
 class RunRootTask(tasks.BaseTaskHandler):
