@@ -1,8 +1,12 @@
 PYTHON=python
 PLUGINDIR = /usr/lib/koji-hub-plugins
-FILES = $(wildcard *.py)
+BUILDERPLUGINDIR = /usr/lib/koji-builder-plugins
+FILES = $(wildcard hub/*.py)
+BUILDERFILES = $(wildcard builder/*.py)
 CONFDIR = /etc/koji-hub/plugins
-CONFFILES = $(wildcard *.conf)
+BUILDERCONFDIR = /etc/kojid
+CONFFILES = $(wildcard hub/*.conf)
+BUILDERCONFFILES = $(wildcard builder/*.conf)
 
 _default:
 	@echo "nothing to make.  try make install"
@@ -18,7 +22,12 @@ install:
 	fi
 
 	mkdir -p $(DESTDIR)/$(PLUGINDIR)
+	mkdir -p $(DESTDIR)/$(BUILDERPLUGINDIR)
 	install -p -m 644 $(FILES) $(DESTDIR)/$(PLUGINDIR)
+	install -p -m 644 $(BUILDERFILES) $(DESTDIR)/$(BUILDERPLUGINDIR)
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(PLUGINDIR)', 1, '$(PLUGINDIR)', 1)"
+	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(BUILDERPLUGINDIR)', 1, '$(BUILDERPLUGINDIR)', 1)"
 	mkdir -p $(DESTDIR)/$(CONFDIR)
+	mkdir -p $(DESTDIR)/$(BUILDERCONFDIR)
 	install -p -m 644 $(CONFFILES) $(DESTDIR)/$(CONFDIR)
+	install -p -m 644 $(BUILDERCONFFILES) $(DESTDIR)/$(BUILDERCONFDIR)
