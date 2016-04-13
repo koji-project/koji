@@ -67,6 +67,17 @@ Requires: cpio
 %description hub-plugins
 Plugins to the koji XMLRPC interface
 
+%package builder-plugins
+Summary: Koji builder plugins
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires: %{name}-hub = %{version}-%{release}
+Requires: python-qpid >= 0.7
+
+%description builder-plugins
+Plugins for the koji build daemon
+
 %package builder
 Summary: Koji RPM builder daemon
 Group: Applications/System
@@ -193,6 +204,13 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/lib/koji-hub-plugins/*.py*
 %dir %{_sysconfdir}/koji-hub/plugins
 %{_sysconfdir}/koji-hub/plugins/*.conf
+
+%files builder-plugins
+%defattr(-,root,root)
+%dir %{_sysconfdir}/kojid/plugins
+%{_sysconfdir}/kojid/plugins/*.conf
+%dir %{_prefix}/lib/koji-builder-plugins
+%{_prefix}/lib/koji-builder-plugins/*.py*
 
 %files utils
 %defattr(-,root,root)
