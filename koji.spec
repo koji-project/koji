@@ -203,12 +203,12 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_prefix}/lib/koji-hub-plugins
 %{_prefix}/lib/koji-hub-plugins/*.py*
 %dir %{_sysconfdir}/koji-hub/plugins
-%{_sysconfdir}/koji-hub/plugins/*.conf
+%config(noreplace) %{_sysconfdir}/koji-hub/plugins/*.conf
 
 %files builder-plugins
 %defattr(-,root,root)
 %dir %{_sysconfdir}/kojid/plugins
-%{_sysconfdir}/kojid/plugins/*.conf
+%config(noreplace) %{_sysconfdir}/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
 %{_prefix}/lib/koji-builder-plugins/*.py*
 
