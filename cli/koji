@@ -1622,6 +1622,9 @@ def handle_import_cg(options, session, args):
             parser.error(_("No such file: %s") % localpath)
         to_upload.append([localpath, info])
 
+    if options.test:
+        return
+
     # get upload path
     # XXX - need a better way
     serverdir = _unique_path('cli-import')
