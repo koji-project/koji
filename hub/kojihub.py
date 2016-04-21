@@ -4697,7 +4697,7 @@ def cg_import(metadata, directory):
     """
 
     importer = CG_Importer()
-    importer.do_import(metadata, directory)
+    return importer.do_import(metadata, directory)
 
 
 class CG_Importer(object):
@@ -4737,6 +4737,8 @@ class CG_Importer(object):
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
                     directory=directory, buildinfo=self.buildinfo)
+
+        return self.buildinfo
 
 
     def get_metadata(self, metadata, directory):
