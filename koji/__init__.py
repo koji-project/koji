@@ -1689,6 +1689,10 @@ class PathInfo(object):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/%(repo_id)s" % locals())
 
+    def signedrepo(self, repo_id, tag):
+        """Return the directory with a signed repo lives"""
+        return os.path.join(self.topdir, 'repos', 'signed', tag, str(repo_id))
+
     def repocache(self,tag_str):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/cache" % locals())
@@ -2511,7 +2515,7 @@ def _taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method == 'newRepo':
+    elif method in ('newRepo', 'signedRepo'):
         if taskInfo.has_key('request'):
             extra = str(taskInfo['request'][0])
     elif method in ('tagBuild', 'tagNotification'):
@@ -2522,10 +2526,15 @@ def _taskLabel(taskInfo):
         if taskInfo.has_key('request'):
             tagInfo = taskInfo['request'][0]
             extra = tagInfo['name']
-    elif method == 'createrepo':
+    elif method in ('createrepo'):
         if taskInfo.has_key('request'):
             arch = taskInfo['request'][1]
             extra = arch
+    elif method in ('createsignedrepo'):
+        if taskInfo.has_key('request'):
+            repo_id = taskInfo['request'][1]
+            arch = taskInfo['request'][2]
+            extra = '%s, %s' % (repo_id, arch)
     elif method == 'dependantTask':
         if taskInfo.has_key('request'):
             extra = ', '.join([subtask[0] for subtask in taskInfo['request'][1]])

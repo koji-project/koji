@@ -6678,6 +6678,103 @@ def handle_regen_repo(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
 
+def handle_signed_repo(options, session, args):
+    """create a yum repo of GPG signed RPMs"""
+    usage = _("usage: %prog signed-repo [options] tag keyID [keyID...]")
+    usage += _("\n(Specify the --help option for a list of other options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option('--allow-unsigned', action='store_true', default=False,
+        help=_('Use unsigned RPMs if none are available with the right key'))
+    parser.add_option("--arch", action='append', default=[],
+        help=_("Indicate an architecture to consider. The default is all " +
+            "architectures associated with the given tag. This option may " +
+            "be specified multiple times."))
+    parser.add_option('--comps', help='Include a comps file in the repodata')
+    parser.add_option('--delta-rpms', metavar='PATH',default=[],
+        action='append',
+        help=_('Create delta-rpms. PATH points to (older) rpms to generate against. May be specified multiple times. These have to be reachable by the builder too, so the path needs to reach shared storage.'))
+    parser.add_option('--event', type='int',
+        help=_('create a signed repository based on a Brew event'))
+    parser.add_option('--multilib', default=None,
+        help=_('Include multilib packages in the repository using a config'))
+    parser.add_option("--noinherit", action='store_true', default=False,
+        help=_('Do not consider tag inheritance'))
+    parser.add_option("--nowait", action='store_true', default=False,
+        help=_('Do not wait for the task to complete'))
+    parser.add_option('--skip-unsigned', action='store_true', default=False,
+        help=_('Skip RPMs not signed with the desired key(s)'))
+    task_opts, args = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error(_('You must provide a tag and 1 or more GPG key IDs'))
+    if task_opts.allow_unsigned and task_opts.skip_unsigned:
+        parser.error(_('allow_signed and skip_unsigned are mutually exclusive'))
+    activate_session(session)
+    stuffdir = _unique_path('cli-signed')
+    if task_opts.comps:
+        if not os.path.exists(task_opts.comps):
+            parser.error(_('could not find %s' % task_opts.comps))
+        session.uploadWrapper(task_opts.comps, stuffdir,
+            callback=_progress_callback)
+        print
+        task_opts.comps = os.path.join(stuffdir,
+            os.path.basename(task_opts.comps))
+    if len(task_opts.delta_rpms) > 0:
+        for path in task_opts.delta_rpms:
+            if not os.path.exists(path):
+                print _("Warning: %s is not reachable locally. If this" % path)
+                print _("  host does not have access to Koji's shared storage")
+                print _("  this can be ignored.")
+    tag = args[0]
+    keys = args[1:]
+    taginfo = session.getTag(tag)
+    if not taginfo:
+        parser.error(_('unknown tag %s' % tag))
+    if len(task_opts.arch) == 0:
+        task_opts.arch = taginfo['arches']
+        if task_opts.arch == None:
+            parser.error(_('No arches given and no arches associated with tag'))
+    else:
+        for a in task_opts.arch:
+            if not taginfo['arches'] or a not in taginfo['arches']:
+                print _('Warning: %s is not in the list of tag arches' % a)
+    if task_opts.multilib:
+        if not os.path.exists(task_opts.multilib):
+            parser.error(_('could not find %s' % task_opts.multilib))
+        if 'x86_64' in task_opts.arch and not 'i686' in task_opts.arch:
+            parser.error(_('The multilib arch (i686) must be included'))
+        if 's390x' in task_opts.arch and not 's390' in task_opts.arch:
+            parser.error(_('The multilib arch (s390) must be included'))
+        if 'ppc64' in task_opts.arch and not 'ppc' in task_opts.arch:
+            parser.error(_('The multilib arch (ppc) must be included'))
+        session.uploadWrapper(task_opts.multilib, stuffdir,
+            callback=_progress_callback)
+        task_opts.multilib = os.path.join(stuffdir,
+            os.path.basename(task_opts.multilib))
+        print
+    try:
+        task_opts.arch.remove('noarch') # handled specifically
+        task_opts.arch.remove('src') # ditto
+    except ValueError:
+        pass
+    opts = {
+        'arch': task_opts.arch,
+        'comps': task_opts.comps,
+        'event': task_opts.event,
+        'delta': task_opts.delta_rpms,
+        'multilib': task_opts.multilib,
+        'inherit': not task_opts.noinherit,
+        'skip': task_opts.skip_unsigned,
+        'unsigned': task_opts.allow_unsigned
+    }
+    task_id = session.signedRepo(tag, keys, **opts)
+    print "Creating signed repo for tag " + tag
+    if _running_in_bg() or task_opts.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+
+
 def anon_handle_search(options, session, args):
     "Search the system"
     usage = _("usage: %prog search [options] search_type pattern")
