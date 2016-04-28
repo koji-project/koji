@@ -23,16 +23,21 @@
 
 import logging
 import sys
-import pgdb
+import psycopg2
+import psycopg2.extensions
+# don't convert timestamp fields to DateTime objects
+del psycopg2.extensions.string_types[1114]
+del psycopg2.extensions.string_types[1184]
+del psycopg2.extensions.string_types[1082]
+del psycopg2.extensions.string_types[1083]
+del psycopg2.extensions.string_types[1266]
 import time
 import traceback
-_quoteparams = None
-try:
-    from pgdb import _quoteparams
-except ImportError:  # pragma: no cover
-    pass
-assert pgdb.threadsafety >= 1
 import context
+import re
+
+POSITIONAL_RE = re.compile(r'%[a-z]')
+NAMED_RE = re.compile(r'%\(([^\)]+)\)[a-z]')
 
 ## Globals ##
 _DBopts = None
@@ -92,10 +97,8 @@ class CursorWrapper:
         return self._timed_call('fetchall', args, kwargs)
 
     def quote(self, operation, parameters):
-        if _quoteparams is not None:
-            quote = _quoteparams
-        elif hasattr(self.cursor, "_quoteparams"):
-            quote = self.cursor._quoteparams
+        if hasattr(self.cursor, "mogrify"):
+            quote = self.cursor.mogrify
         else:
             quote = lambda a, b: a % b
         try:
@@ -104,8 +107,27 @@ class CursorWrapper:
             self.logger.exception('Unable to quote query:\n%s\nParameters: %s', operation, parameters)
             return "INVALID QUERY"
 
+    def preformat(self, sql, params):
+        """psycopg2 requires all variable placeholders to use the string (%s) datatype,
+        regardless of the actual type of the data. Format the sql string to be compliant.
+        It also requires IN parameters to be in tuple rather than list format."""
+        sql = POSITIONAL_RE.sub(r'%s', sql)
+        sql = NAMED_RE.sub(r'%(\1)s', sql)
+        if isinstance(params, dict):
+            for name, value in params.items():
+                if isinstance(value, list):
+                    params[name] = tuple(value)
+        else:
+            if isinstance(params, tuple):
+                params = list(params)
+            for i, item in enumerate(params):
+                if isinstance(item, list):
+                    params[i] = tuple(item)
+        return sql, params
+
     def execute(self, operation, parameters=()):
         debug = self.logger.isEnabledFor(logging.DEBUG)
+        operation, parameters = self.preformat(operation, parameters)
         if debug:
             self.logger.debug(self.quote(operation, parameters))
             start = time.time()
@@ -123,7 +145,7 @@ class CursorWrapper:
 def provideDBopts(**opts):
     global _DBopts
     if _DBopts is None:
-        _DBopts = opts
+        _DBopts = dict(filter(lambda i: i[1] is not None, opts.items()))
 
 def setDBopts(**opts):
     global _DBopts
@@ -149,14 +171,14 @@ def connect():
             conn.cursor().execute('BEGIN')
             conn.rollback()
             return DBWrapper(conn)
-        except pgdb.Error:
+        except psycopg2.Error:
             del _DBconn.conn
     #create a fresh connection
     opts = _DBopts
     if opts is None:
         opts = {}
     try:
-        conn = pgdb.connect(**opts)
+        conn = psycopg2.connect(**opts)
     except Exception:
         logger.error(''.join(traceback.format_exception(*sys.exc_info())))
         raise
