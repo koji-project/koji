@@ -95,6 +95,59 @@ def safe_rmtree(path, unmount=False, strict=True):
     return 0
 
 
+
+SIGNATURES = {
+    # like getargspec -- args, varargs, keywords, defaults
+    'sleep' : (['n'], None, None, None),
+    'fork' : (['n', 'm'], None, None, None),
+}
+
+
+def apply_argspec(argspec, args, kwargs=None):
+    """Apply an argspec to the given args and return a dictionary"""
+    if kwargs is None:
+        kwargs = {}
+    f_args, f_varargs, f_varkw, f_defaults = argspec
+    print argspec, args, kwargs
+    data = dict(zip(f_args, args))
+    if len(args) > len(f_args):
+        if not f_varargs:
+            raise koji.ParameterError, "Too many args"
+        data[f_varargs] = tuple(args[len(f_args):])
+    elif f_varargs:
+        data[f_varargs] = ()
+    if f_varkw:
+        data[f_varkw] = {}
+    for arg in kwargs:
+        if arg in data:
+            raise koji.ParameterError, "duplicate keyword argument %r" \
+                    % arg
+        if arg in f_args:
+            data[arg] = kwargs[arg]
+        elif not f_varkw:
+            raise koji.ParameterError, "Unexpected keyword argument %r" \
+                % (arg)
+        else:
+            data[f_varkw][arg] = kwargs[arg]
+    if f_defaults:
+        for arg, val in f_defaults:
+            data.setdefault(arg, val)
+    for n, arg in enumerate(f_args):
+        if arg not in data:
+            # missing arg
+            raise koji.ParameterError, "missing required argument %r (#%i)" \
+                    % (arg, n)
+    return data
+
+
+def parse_request(method, request):
+    """Parse a task request into """
+
+    argspec = SIGNATURES.get(method)
+    if not argspec:
+        raise koji.GenericError, "Unknown method"
+
+
 class ServerExit(Exception):
     """Raised to shutdown the server"""
     pass
