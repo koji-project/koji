@@ -344,6 +344,10 @@ class ModXMLRPCRequestHandler(object):
             else:
                 results.append([result])
 
+            # subsequent calls should not recycle event ids
+            if hasattr(context, 'event_id'):
+                del context.event_id
+
         return results
 
     def handle_request(self,req):
