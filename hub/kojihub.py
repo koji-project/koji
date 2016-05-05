@@ -6896,8 +6896,9 @@ def get_event():
 
     We cache the result in context, so subsequent calls in the same transaction will
     get the same event.
-    Note that this will persist across calls in a multiCall, which is fine because
-    it is all one transaction.
+
+    This cache is cleared between the individual calls in a multicall.
+    See: https://pagure.io/koji/pull-request/74
     """
     if hasattr(context, 'event_id'):
         return context.event_id
