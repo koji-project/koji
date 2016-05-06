@@ -4130,6 +4130,7 @@ def anon_handle_list_history(options, session, args):
     parser.add_option("--editor", "--by", metavar="USER", help=_("Only show entries modified by user"))
     parser.add_option("--user", help=_("Only show entries affecting a user"))
     parser.add_option("--permission", help=_("Only show entries relating to a given permission"))
+    parser.add_option("--cg", help=_("Only show entries relating to a given permission"))
     parser.add_option("--external-repo", "--erepo", help=_("Only show entries relating to a given external repo"))
     parser.add_option("--build-target", "--target", help=_("Only show entries relating to a given build target"))
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
@@ -4152,8 +4153,9 @@ def anon_handle_list_history(options, session, args):
         assert False
     kwargs = {}
     limited = False
-    for opt in 'package', 'tag', 'build', 'editor', 'user', 'permission', 'external_repo', \
-               'build_target', 'group', 'before', 'after':
+    for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
+                'cg', 'external_repo', 'build_target', 'group', 'before',
+                'after'):
         val = getattr(options, opt)
         if val:
             kwargs[opt] = val
