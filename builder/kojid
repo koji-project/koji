@@ -60,7 +60,7 @@ from optparse import OptionParser, SUPPRESS_HELP
 from StringIO import StringIO
 from yum import repoMDObject
 
-#imports for LiveCD, LiveMEDIA, and Appliance handler
+#imports for LiveCD, LiveMedia, and Appliance handler
 image_enabled = False
 try:
     import pykickstart.parser as ksparser

@@ -5251,10 +5251,10 @@ def handle_spin_livemedia(options, session, args):
     parser.add_option("--ksversion", metavar="VERSION",
         help=_("The syntax version used in the kickstart file"))
     parser.add_option("--scratch", action="store_true",
-        help=_("Create a scratch LiveMEDIA image"))
+        help=_("Create a scratch LiveMedia image"))
     parser.add_option("--repo", action="append",
         help=_("Specify a repo that will override the repo used to install " +
-               "RPMs in the LiveMEDIA. May be used multiple times. The " +
+               "RPMs in the LiveMedia. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--title", help=_("Set the image title (defaults to <name>)"))

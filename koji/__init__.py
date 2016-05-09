@@ -338,7 +338,7 @@ class ConfigurationError(GenericError):
     faultCode = 1021
 
 class LiveMediaError(GenericError):
-    """Raised when LiveMEDIA Image creation fails"""
+    """Raised when LiveMedia Image creation fails"""
     faultCode = 1022
 
 class MultiCallInProgress(object):
