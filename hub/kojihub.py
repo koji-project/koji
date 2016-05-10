@@ -7691,24 +7691,27 @@ class SourceTest(koji.policy.MatchTest):
         if data.has_key('source'):
             data[self.field] = data['source']
         elif data.has_key('build'):
-            #crack open the build task
             build = get_build(data['build'])
-            if build['task_id'] is None:
-                #imported, no source to match against
-                return False
-            task = Task(build['task_id'])
-            info = task.getInfo()
-            params = task.getRequest()
-            #signatures:
-            # build - (src, target, opts=None)
-            # maven - (url, target, opts=None)
-            # winbuild - (name, source_url, target, opts=None)
-            if info['method'] == 'winbuild':
-                data[self.field] = params[1]
-            elif info['method'] == 'indirectionimage':
+            if build['source'] is not None:
+                data[self.field] = build['source']
+            elif build['task_id'] is None:
+                # no source to match against
                 return False
             else:
-                data[self.field] = params[0]
+                #crack open the build task
+                task = Task(build['task_id'])
+                info = task.getInfo()
+                params = task.getRequest()
+                #signatures:
+                # build - (src, target, opts=None)
+                # maven - (url, target, opts=None)
+                # winbuild - (name, source_url, target, opts=None)
+                if info['method'] == 'winbuild':
+                    data[self.field] = params[1]
+                elif info['method'] == 'indirectionimage':
+                    return False
+                else:
+                    data[self.field] = params[0]
         else:
             return False
         return super(SourceTest, self).run(data)
