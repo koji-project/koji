@@ -40,6 +40,7 @@ import hashlib
 from koji.util import md5_constructor
 from koji.util import sha1_constructor
 from koji.util import dslice
+from koji.util import multi_fnmatch
 import os
 import re
 import rpm
@@ -7383,6 +7384,30 @@ def policy_get_pkg(data):
     #else
     raise koji.GenericError, "policy requires package data"
 
+
+def policy_get_cgs(data):
+    """Determine content generators from policy data"""
+
+    if not data.has_key('build'):
+        raise koji.GenericError, "policy requires build data"
+    binfo = get_build(data['build'], strict=True)
+
+    # first get buildroots used
+    rpm_brs = [r['buildroot_id'] for r in list_rpms(buildID=binfo['id'])]
+    archive_brs = [a['buildroot_id'] for a in list_archives(buildID=binfo['id'])]
+
+    # pull cg info out
+    # note that br_id will be None if a component had no buildroot
+    cgs = set()
+    for br_id in set(rpm_brs + archive_brs):
+        if br_id is None:
+            cgs.add(None)
+        else:
+            cgs.add(get_buildroot(br_id, strict=True)['cg_name'])
+
+    return cgs
+
+
 class NewPackageTest(koji.policy.BaseSimpleTest):
     """Checks to see if a package exists yet"""
     name = 'is_new_package'
@@ -7414,6 +7439,54 @@ class VolumeTest(koji.policy.MatchTest):
             return False
         data[self.field] = volinfo['name']
         return super(VolumeTest, self).run(data)
+
+
+class CGMatchAnyTest(koji.policy.BaseSimpleTest):
+    """Checks content generator against glob patterns
+
+    The 'any' means that if any of the cgs for the build (there can be more
+    than one) match the pattern list, then the result is True
+    """
+
+    name = 'cg_match_any'
+
+    def run(self, data):
+        #we need to find the volume name from the base data
+        cgs = policy_get_cgs(data)
+        patterns = self.str.split()[1:]
+        for cg_name in cgs:
+            if cg_name is None:
+                # component with no br, or br with no cg
+                continue
+            if multi_fnmatch(cg_name, patterns):
+                return True
+        # else
+        return False
+
+
+class CGMatchAllTest(koji.policy.BaseSimpleTest):
+    """Checks content generator against glob patterns
+
+    The 'all' means that all of the cgs for the build (there can be more
+    than one) must match the pattern list for the result to be true.
+    """
+
+    name = 'cg_match_all'
+
+    def run(self, data):
+        #we need to find the volume name from the base data
+        cgs = policy_get_cgs(data)
+        if not cgs:
+            return False
+        patterns = self.str.split()[1:]
+        for cg_name in cgs:
+            if cg_name is None:
+                return False
+            if not multi_fnmatch(cg_name, patterns):
+                return False
+        # else
+        return True
+
 
 class TagTest(koji.policy.MatchTest):
     name = 'tag'
