@@ -3232,6 +3232,9 @@ def anon_handle_buildinfo(options, session, args):
         print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
         print "State: %(state)s" % info
         print "Built by: %(owner_name)s" % info
+        source = info.get('source')
+        if source is not None:
+            print "Source: %s" % source
         if 'volume_name' in info:
             print "Volume: %(volume_name)s" % info
         if task:

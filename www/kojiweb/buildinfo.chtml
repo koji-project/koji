@@ -24,6 +24,11 @@
     <tr>
       <th>Epoch</th><td>$build.epoch</td>
     </tr>
+    #if $build.get('source')
+    <tr>
+      <th>Source</th><td>$build['source']</td>
+    </tr>
+    #end if
     #if $mavenbuild
     <tr>
       <th>Maven&nbsp;groupId</th><td>$mavenbuild.group_id</td>
