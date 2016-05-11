@@ -4805,7 +4805,7 @@ class CG_Importer(object):
             raise koji.GenericError("Build already exists: %r" % buildinfo)
         else:
             # gather needed data
-            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra'])
+            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
             # epoch is not in the metadata spec, but we allow it to be specified
             buildinfo['epoch'] = metadata['build'].get('epoch', None)
             buildinfo['start_time'] = \
