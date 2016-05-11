@@ -7571,6 +7571,9 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
                 if br_id is None:
                     continue
                 tagname = get_buildroot(br_id)['tag_name']
+                if tagname is None:
+                    # content generator buildroots might not have tag info
+                    continue
                 for pattern in args:
                     if fnmatch.fnmatch(tagname, pattern):
                         return True
