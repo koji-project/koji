@@ -5012,6 +5012,7 @@ class createSignedRepoTask(CreaterepoTask):
           "arm": ("arm", "armv4l", "armv4tl", "armv5tel", "armv5tejl", "armv6l", "armv7l", "noarch"),
           "armhfp": ("armv7hl", "armv7hnl", "noarch"),
           "aarch64": ("aarch64", "noarch"),
+          "src": ("src",)
           }
 
     biarch = {"ppc": "ppc64", "x86_64": "i386", "sparc":
