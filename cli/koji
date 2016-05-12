@@ -7091,6 +7091,8 @@ def handle_signed_repo(options, session, args):
         help=_('Create delta-rpms. PATH points to (older) rpms to generate against. May be specified multiple times. These have to be reachable by the builder too, so the path needs to reach shared storage.'))
     parser.add_option('--event', type='int',
         help=_('create a signed repository based on a Brew event'))
+    parser.add_option('--non-latest', dest='latest', default=True,
+        action='store_false', help='Include older builds, not just the latest')
     parser.add_option('--multilib', default=None,
         help=_('Include multilib packages in the repository using a config'))
     parser.add_option("--noinherit", action='store_true', default=False,
@@ -7155,10 +7157,11 @@ def handle_signed_repo(options, session, args):
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
-        'event': task_opts.event,
         'delta': task_opts.delta_rpms,
-        'multilib': task_opts.multilib,
+        'event': task_opts.event,
         'inherit': not task_opts.noinherit,
+        'latest': task_opts.latest,
+        'multilib': task_opts.multilib,
         'skip': task_opts.skip_unsigned,
         'unsigned': task_opts.allow_unsigned
     }

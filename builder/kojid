@@ -5185,7 +5185,7 @@ enabled=1
         builddirs = {}
         for a in (arch, 'noarch'):
             rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
-                event=opts['event'], arch=a,
+                event=opts['event'], arch=a, latest=opts['latest'],
                 inherit=opts['inherit'], rpmsigs=True)
             for build in builds:
                 builddirs[build['id']] = self.pathinfo.build(build)
