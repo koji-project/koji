@@ -4943,8 +4943,12 @@ class NewSignedRepoTask(BaseTaskHandler):
         if len(task_opts['arch']) == 0:
             raise koji.GenericError('No arches specified nor for the tag!')
         subtasks = {}
-        arch32s = set()
+        # weed out subarchitectures
+        canonArches = set()
         for arch in task_opts['arch']:
+            canonArches.add(koji.canonArch(arch))
+        arch32s = set()
+        for arch in canonArches:
             if not rpmUtils.arch.isMultiLibArch(arch):
                 arch32s.add(arch)
         for arch in arch32s:
@@ -4958,11 +4962,11 @@ class NewSignedRepoTask(BaseTaskHandler):
             results = self.wait(subtasks.values(), all=True, failany=True)
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
-                # so the 64-bit arches can use it
+                # so the 64-bit arches can use it for multilib
                 upload, files, keypaths = results[subtasks[arch]]
                 self.session.host.signedRepoMove(
                     repo_id, upload, files, arch, keypaths)
-        for arch in task_opts['arch']:
+        for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
                 arglist = [tag, repo_id, arch, keys, task_opts]
@@ -4975,8 +4979,13 @@ class NewSignedRepoTask(BaseTaskHandler):
         for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
-            if arch not in arch32s:
+            if task_opts['multilib']:
                 # we moved the 32-bit results before, do the 64-bit
+                if arch not in arch32s:
+                    upload, files, keypaths = results[subtasks[arch]]
+                    self.session.host.signedRepoMove(
+                        repo_id, upload, files, arch, keypaths)
+            else:
                 upload, files, keypaths = results[subtasks[arch]]
                 self.session.host.signedRepoMove(
                     repo_id, upload, files, arch, keypaths)
@@ -5079,6 +5088,7 @@ class createSignedRepoTask(CreaterepoTask):
                 if mlm.select(po) and self.archmap.has_key(arch):
                     # we need a multilib package to be included
                     # we assume the same signature level is available
+                    # XXX: what is a subarchitecture is the right answer?
                     pl_path = pkg.replace(arch, self.archmap[arch]).strip()
                     # assume this exists in the task results for the ml arch
                     real_path = os.path.join(mldir, pl_path)
@@ -5171,9 +5181,9 @@ enabled=1
         pkgwriter = open(self.pkglist, 'a')
         for ml_pkg in ml_needed:
             bnp = os.path.basename(ml_pkg)
-            pkgwriter.write(bnp[0] + '/' + bnp + '\n')
-            koji.ensuredir(os.path.join(self.repodir, bnp[0]))
-            os.symlink(ml_pkg, os.path.join(self.repodir, bnp[0], bnp))
+            pkgwriter.write(bnp[0].lower() + '/' + bnp + '\n')
+            koji.ensuredir(os.path.join(self.repodir, bnp[0].lower()))
+            os.symlink(ml_pkg, os.path.join(self.repodir, bnp[0].lower(), bnp))
             self.keypaths[bnp] = ml_pkg
 
 
@@ -5183,7 +5193,7 @@ enabled=1
         # it is possible to see the results of other committed transactions
         rpms = []
         builddirs = {}
-        for a in (arch, 'noarch'):
+        for a in self.compat[arch] + ('noarch',):
             rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
                 event=opts['event'], arch=a, latest=opts['latest'],
                 inherit=opts['inherit'], rpmsigs=True)
@@ -5226,10 +5236,11 @@ enabled=1
                 fs_missing.add(pkgpath)
             else:
                 bnp = os.path.basename(pkgpath)
-                pkglist.write(bnp[0] + '/' + bnp + '\n')
-                koji.ensuredir(os.path.join(self.repodir, bnp[0]))
+                pkglist.write(bnp[0].lower() + '/' + bnp + '\n')
+                koji.ensuredir(os.path.join(self.repodir, bnp[0].lower()))
                 self.keypaths[bnp] = pkgpath
-                os.symlink(pkgpath, os.path.join(self.repodir, bnp[0], bnp))
+                os.symlink(pkgpath, os.path.join(self.repodir, bnp[0].lower(),
+                    bnp))
         pkglist.close()
         if len(fs_missing) > 0:
             raise koji.GenericError('Packages missing from the filesystem:\n' +
