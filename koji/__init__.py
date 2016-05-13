@@ -1945,13 +1945,13 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
+
+        uri = urlparse.urlsplit(self.baseurl)
+        host, port = urllib.splitport(uri[1])
         if self.opts.get('krb_rdns', True):
-            servername = socket.getfqdn(self._host)
+            servername = socket.getfqdn(host)
         else:
-            servername = self._host
-        #portspec = servername.find(':')
-        #if portspec != -1:
-        #    servername = servername[:portspec]
+            servername = host
         realm = cprinc.realm
         service = self.opts.get('krbservice', 'host')
 
