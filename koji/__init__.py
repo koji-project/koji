@@ -44,6 +44,7 @@ import os.path
 import pwd
 import random
 import re
+import requests
 import rpm
 import shutil
 import signal
@@ -1834,53 +1835,13 @@ class ClientSession(object):
         self.baseurl = baseurl
         self.opts = opts
         self._connection = None
-        self._setup_connection()
         self.authtype = None
         self.setSession(sinfo)
         self.multicall = False
         self._calls = []
         self.logger = logging.getLogger('koji')
-
-    def _setup_connection(self):
-        uri = urlparse.urlsplit(self.baseurl)
-        scheme = uri[0]
-        self._host, _port = urllib.splitport(uri[1])
-        self.explicit_port = bool(_port)
-        self._path = uri[2]
-        default_port = 80
-        if self.opts.get('certs'):
-            ctx = ssl.SSLCommon.CreateSSLContext(self.opts['certs'])
-            cnxOpts = {'ssl_context' : ctx}
-            cnxClass = ssl.SSLCommon.PlgHTTPSConnection
-            default_port = 443
-        elif scheme == 'https':
-            cnxOpts = {}
-            if sys.version_info[:3] >= (2, 7, 9):
-                #ctx = pyssl.SSLContext(pyssl.PROTOCOL_SSLv23)
-                ctx = pyssl._create_unverified_context()
-                # TODO - we should default to verifying where possible
-                cnxOpts['context'] = ctx
-            cnxClass = httplib.HTTPSConnection
-            default_port = 443
-        elif scheme == 'http':
-            cnxOpts = {}
-            cnxClass = httplib.HTTPConnection
-        else:
-            raise IOError, "unsupported XML-RPC protocol"
-        # set a default 12 hour connection timeout.
-        # Some Koji operations can take a long time to return, but after 12
-        # hours we can assume something is seriously wrong.
-        timeout = self.opts.setdefault('timeout', 60 * 60 * 12)
-        self._timeout_compat = False
-        if timeout:
-            if sys.version_info[:3] < (2, 6, 0) and 'ssl_context' not in cnxOpts:
-                self._timeout_compat = True
-            else:
-                cnxOpts['timeout'] = timeout
-        self._port = (_port and int(_port) or default_port)
-        self._cnxOpts = cnxOpts
-        self._cnxClass = cnxClass
-        self._close_connection()
+        self.rsession = requests.Session()
+        self.opts.setdefault('timeout',  60 * 60 * 12)
 
     def setSession(self, sinfo):
         """Set the session info
@@ -1890,7 +1851,6 @@ class ClientSession(object):
             self.logged_in = False
             self.callnum = None
             # do we need to do anything else here?
-            self._setup_connection()
             self.authtype = None
         else:
             self.logged_in = True
@@ -2076,11 +2036,11 @@ class ClientSession(object):
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = "%s?%s" % (self._path, urllib.urlencode(sinfo))
+            handler = "%s?%s" % (self.baseurl, urllib.urlencode(sinfo))
         elif name == 'sslLogin':
-            handler = self._path + '/ssllogin'
+            handler = self.baseurl + '/ssllogin'
         else:
-            handler = self._path
+            handler = self.baseurl
         request = dumps(args, name, allow_none=1)
         headers = [
             # connection class handles Host
@@ -2106,54 +2066,34 @@ class ClientSession(object):
 
 
     def _sendOneCall(self, handler, headers, request):
-        cnx = self._get_connection()
-        if self.opts.get('debug_xmlrpc', False):
-            cnx.set_debuglevel(1)
-        cnx.putrequest('POST', handler)
-        for n, v in headers:
-            cnx.putheader(n, v)
-        cnx.endheaders()
-        cnx.send(request)
-        response = cnx.getresponse()
+        # TODO: honor debug_xmlrpc
+        request = request.encode('utf8')
+        headers = dict(headers)
+        callopts = {
+            'headers': headers,
+            'data': request,
+            'stream': True,
+        }
+        cert = self.opts.get('certs', {}).get('peer_ca_cert')
+        if cert:
+            callopts['verify'] = cert
+        #else:
+        #    callopts['verify'] = False
+        r = self.rsession.post(handler, **callopts)
         try:
-            ret = self._read_xmlrpc_response(response, handler)
+            ret = self._read_xmlrpc_response(r)
         finally:
-            response.close()
+            r.close()
         return ret
-
-    def _get_connection(self):
-        key = (self._cnxClass, self._host, self._port)
-        if self._connection and self.opts.get('keepalive'):
-            if key == self._connection[0]:
-                cnx = self._connection[1]
-                if getattr(cnx, 'sock', None):
-                    return cnx
-        cnx = self._cnxClass(self._host, self._port, **self._cnxOpts)
-        self._connection = (key, cnx)
-        if self._timeout_compat:
-            # in python < 2.6 httplib does not support the timeout option
-            # but socket supports it since 2.3
-            cnx.connect()
-            cnx.sock.settimeout(self.opts['timeout'])
-        return cnx
 
     def _close_connection(self):
         if self._connection:
             self._connection[1].close()
             self._connection = None
 
-    def _read_xmlrpc_response(self, response, handler=''):
-        #XXX honor debug_xmlrpc
-        if response.status != 200:
-            if (response.getheader("content-length", 0)):
-                response.read()
-            raise xmlrpclib.ProtocolError(self._host + handler,
-                        response.status, response.reason, response.msg)
+    def _read_xmlrpc_response(self, response):
         p, u = xmlrpclib.getparser()
-        while True:
-            chunk = response.read(8192)
-            if not chunk:
-                break
+        for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
                 print "body: %r" % chunk
             p.feed(chunk)
