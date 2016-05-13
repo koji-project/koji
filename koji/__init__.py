@@ -38,6 +38,7 @@ import imp
 import logging
 import logging.handlers
 from koji.util import md5_constructor
+from OpenSSL.SSL import Error as SSL_Error
 import optparse
 import os
 import os.path
@@ -49,7 +50,6 @@ import rpm
 import shutil
 import signal
 import socket
-import ssl.SSLCommon
 try:
     from ssl import ssl as pyssl
 except ImportError:  # pragma: no cover
@@ -1811,6 +1811,44 @@ class PathInfo(object):
 
 pathinfo = PathInfo()
 
+
+def is_cert_error(e):
+    """Determine if an OpenSSL error is due to a bad cert"""
+
+    if not isinstance(e, SSL_Error):
+        return False
+
+    # pyOpenSSL doesn't use different exception
+    # subclasses, we have to actually parse the args
+    for arg in e.args:
+        # First, check to see if 'arg' is iterable because
+        # it can be anything..
+        try:
+            iter(arg)
+        except TypeError:
+            continue
+
+        # We do all this so that we can detect cert expiry
+        # so we can avoid retrying those over and over.
+        for items in arg:
+            try:
+                iter(items)
+            except TypeError:
+                continue
+
+            if len(items) != 3:
+                continue
+
+            _, _, ssl_reason = items
+
+            if ('certificate revoked' in ssl_reason or
+                    'certificate expired' in ssl_reason):
+                return True
+
+    #otherwise
+    return False
+
+
 class VirtualMethod(object):
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
@@ -2157,7 +2195,7 @@ class ClientSession(object):
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self._close_connection()
 
-                    if ssl.SSLCommon.is_cert_error(e):
+                    if is_cert_error(e):
                         # There's no point in retrying for this
                         raise
 
