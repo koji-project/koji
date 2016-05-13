@@ -1964,21 +1964,15 @@ class ClientSession(object):
         # FIXME: ca is not useful here and therefore ignored, can be removed
         # when API is changed
 
-        ctx = ssl.SSLCommon.CreateSSLContext(certs)
-        self._cnxOpts = {'ssl_context' : ctx}
         # 60 second timeout during login
-        old_timeout = self._cnxOpts.get('timeout')
-        self._cnxOpts['timeout'] = 60
+        old_opts = self.opts
+        self.opts = old_opts.copy()
+        self.opts['timeout'] = 60
+        self.opts['certs'] = certs
         try:
-            self._cnxClass = ssl.SSLCommon.PlgHTTPSConnection
-            if self._port == 80 and not self.explicit_port:
-                self._port = 443
             sinfo = self.callMethod('sslLogin', proxyuser)
         finally:
-            if old_timeout is None:
-                del self._cnxOpts['timeout']
-            else:
-                self._cnxOpts['timeout'] = old_timeout
+            self.opts = old_opts
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
 
@@ -2074,11 +2068,25 @@ class ClientSession(object):
             'data': request,
             'stream': True,
         }
-        cert = self.opts.get('certs', {}).get('peer_ca_cert')
+        verify = self.opts.get('certs', {}).get('peer_ca_cert')
+        if verify:
+            callopts['verify'] = verify
+        else:
+            callopts['verify'] = False
+            # XXX - not great, but this is the previous behavior
+        cert = self.opts.get('certs', {}).get('key_and_cert')
         if cert:
-            callopts['verify'] = cert
+            # TODO: we really only need to do this for ssllogin calls
+            callopts['cert'] = cert
+        timeout = self.opts.get('timeout')
+        if timeout:
+            callopts['timeout'] = timeout
         #else:
         #    callopts['verify'] = False
+        if self.opts.get('debug_xmlrpc', False):
+            print "url: %s" % handler
+            for _key in callopts:
+                print "%s: %s" % (_key, callopts[_key])
         r = self.rsession.post(handler, **callopts)
         try:
             ret = self._read_xmlrpc_response(r)
