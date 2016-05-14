@@ -1289,7 +1289,6 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None,inherit=False,latest
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
     # we can get duplicates if a package is multiply tagged.
-    rpms = []
     tags_seen = {}
     def _iter_rpms():
         for tagid in taglist:
@@ -4157,7 +4156,6 @@ def edit_host(hostInfo, **kw):
     changes = []
     for field in fields:
         if field in kw and kw[field] != host[field]:
-            changed = True
             if field == 'capacity':
                 # capacity is a float, so set the substitution format appropriately
                 changes.append('%s = %%(%s)f' % (field, field))
@@ -4941,9 +4939,9 @@ class CG_Importer(object):
             logger.warning("IGNORING unmatched rpm component: %r", comp)
             return None
         if rinfo['payloadhash'] != comp['sigmd5']:
-            nvr = "%(name)s-%(version)s-%(release)s" % rinfo
             # XXX - this is a temporary workaround until we can better track external refs
             logger.warning("IGNORING rpm component (md5 mismatch): %r", comp)
+            #nvr = "%(name)s-%(version)s-%(release)s" % rinfo
             #raise koji.GenericError("md5sum mismatch for %s: %s != %s"
             #            % (nvr, comp['sigmd5'], rinfo['payloadhash']))
         # TODO - should we check the signature field?
@@ -5706,7 +5704,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     insert.execute()
 
     if type == 'maven':
-        maveninfo = get_maven_build(buildinfo, strict=True)
+        get_maven_build(buildinfo, strict=True)  # raise exception if not found
 
         if archivetype['name'] == 'pom' and not metadata_only:
             pom_info = koji.parse_pom(filepath)
@@ -5731,7 +5729,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(mavendir)
     elif type == 'win':
-        wininfo = get_win_build(buildinfo, strict=True)
+        get_win_build(buildinfo, strict=True)  # raise exception if not found
 
         insert = InsertProcessor('win_archives')
         insert.set(archive_id=archive_id)
@@ -8697,7 +8695,7 @@ class RootExports(object):
                 assert_policy('tag', policy_data)
             _untag_build(tag,build,strict=strict,force=force)
             tag_notification(True, None, tag, build, user_id)
-        except Exception, e:
+        except Exception:
             exctype, value = sys.exc_info()[:2]
             tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
             raise
@@ -11315,7 +11313,7 @@ class HostExports(object):
         task.assertHost(host.id)
 
         build_info = get_build(build_id, strict=True)
-        win_info = get_win_build(build_id, strict=True)
+        get_win_build(build_id, strict=True)  # raise exception if not found.
 
         task_dir = koji.pathinfo.task(results['task_id'])
         # import the build output
