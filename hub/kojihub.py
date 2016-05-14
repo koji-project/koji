@@ -9708,11 +9708,17 @@ class RootExports(object):
         Options(dictionary):
             option[type]: meaning
             arch[list]: limit to tasks for given arches
+            not_arch[list]: limit to tasks without the given arches
             state[list]: limit to tasks of given state
+            not_state[list]: limit to tasks not of the given state
             owner[int]: limit to tasks owned by the user with the given ID
+            not_owner[int]: limit to tasks not owned by the user with the given ID
             host_id[int]: limit to tasks running on the host with the given ID
+            not_host_id[int]: limit to tasks running on the hosts with IDs other than the given ID
             channel_id[int]: limit to tasks in the specified channel
+            not_channel_id[int]: limit to tasks not in the specified channel
             parent[int]: limit to tasks with the given parent
+            not_parent[int]: limit to tasks without the given parent
             decode[bool]: whether or not xmlrpc data in the 'request' and 'result'
                           fields should be decoded; defaults to False
             method[str]: limit to tasks of the given method
@@ -9752,17 +9758,32 @@ class RootExports(object):
         aliases = [f[1] for f in flist]
 
         conditions = []
-        for f in ['arch','state']:
+
+        for f in ['arch', 'state']:
+            # Include list types
             if opts.has_key(f):
                 conditions.append('%s IN %%(%s)s' % (f, f))
+            # Exclude list types
+            if opts.has_key('not_' + f):
+                conditions.append('%s NOT IN %%(not_%s)s' % (f, f))
+
         for f in ['owner', 'host_id', 'channel_id', 'parent']:
+            # Include int types
             if opts.has_key(f):
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
                 else:
                     conditions.append('%s = %%(%s)i' % (f, f))
+            # Exclude int types
+            if opts.has_key('not_' + f):
+                if opts['not_' + f] is None:
+                    conditions.append('%s IS NOT NULL' % f)
+                else:
+                    conditions.append('%s != %%(not_%s)i' % (f, f))
+
         if opts.has_key('method'):
             conditions.append('method = %(method)s')
+
         time_opts = [
                 ['createdBefore', 'create_time', '<'],
                 ['createdAfter', 'create_time', '>'],

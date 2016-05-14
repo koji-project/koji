@@ -272,14 +272,23 @@ def index(environ, packageOrder='package_name', packageStart=None):
     values = _initValues(environ)
     server = _getServer(environ)
 
+    opts = environ['koji.options']
     user = environ['koji.currentUser']
 
-    values['builds'] = server.listBuilds(userID=(user and user['id'] or None), queryOpts={'order': '-build_id', 'limit': 10})
+    values['builds'] = server.listBuilds(
+        userID=(user and user['id'] or None),
+        queryOpts={'order': '-build_id', 'limit': 10}
+    )
 
     taskOpts = {'parent': None, 'decode': True}
     if user:
         taskOpts['owner'] = user['id']
-    values['tasks'] = server.listTasks(opts=taskOpts, queryOpts={'order': '-id', 'limit': 10})
+    if opts.get('HiddenUser'):
+        taskOpts['not_owner'] = opts['HiddenUser']
+    values['tasks'] = server.listTasks(
+        opts=taskOpts,
+        queryOpts={'order': '-id', 'limit': 10}
+    )
 
     values['order'] = '-id'
 
