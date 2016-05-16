@@ -285,7 +285,7 @@ def index(environ, packageOrder='package_name', packageStart=None):
         taskOpts['owner'] = user['id']
     if opts.get('HiddenUsers'):
         taskOpts['not_owner'] = [
-            int(userid.strip()) for userid in opts['HiddenUsers'].split()
+            int(userid) for userid in opts['HiddenUsers'].split()
         ]
     values['tasks'] = server.listTasks(
         opts=taskOpts,
