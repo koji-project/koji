@@ -5210,6 +5210,7 @@ def handle_spin_livecd(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
+    print 'spin-livecd is deprecated and will be replaced with spin-livemedia'
     if len(args) != 5:
         parser.error(_("Five arguments are required: a name, a version, an" +
                        " architecture, a build target, and a relative path to" +
