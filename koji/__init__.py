@@ -2098,8 +2098,6 @@ class ClientSession(object):
 
 
     def _sendOneCall(self, handler, headers, request):
-        # TODO: honor debug_xmlrpc
-        request = request.encode('utf8')
         headers = dict(headers)
         callopts = {
             'headers': headers,
@@ -2119,12 +2117,13 @@ class ClientSession(object):
         timeout = self.opts.get('timeout')
         if timeout:
             callopts['timeout'] = timeout
-        #else:
-        #    callopts['verify'] = False
         if self.opts.get('debug_xmlrpc', False):
             print "url: %s" % handler
             for _key in callopts:
-                print "%s: %s" % (_key, callopts[_key])
+                _val = callopts[_key]
+                if _key == 'data' and len(_val) > 1024:
+                    _val = _val[:1024] + '...'
+                print "%s: %r" % (_key, _val)
         r = self.rsession.post(handler, **callopts)
         try:
             ret = self._read_xmlrpc_response(r)
