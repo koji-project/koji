@@ -9711,14 +9711,14 @@ class RootExports(object):
             not_arch[list]: limit to tasks without the given arches
             state[list]: limit to tasks of given state
             not_state[list]: limit to tasks not of the given state
-            owner[int]: limit to tasks owned by the user with the given ID
-            not_owner[int]: limit to tasks not owned by the user with the given ID
-            host_id[int]: limit to tasks running on the host with the given ID
-            not_host_id[int]: limit to tasks running on the hosts with IDs other than the given ID
-            channel_id[int]: limit to tasks in the specified channel
-            not_channel_id[int]: limit to tasks not in the specified channel
-            parent[int]: limit to tasks with the given parent
-            not_parent[int]: limit to tasks without the given parent
+            owner[int|list]: limit to tasks owned by the user with the given ID
+            not_owner[int|list]: limit to tasks not owned by the user with the given ID
+            host_id[int|list]: limit to tasks running on the host with the given ID
+            not_host_id[int|list]: limit to tasks running on the hosts with IDs other than the given ID
+            channel_id[int|list]: limit to tasks in the specified channel
+            not_channel_id[int|list]: limit to tasks not in the specified channel
+            parent[int|list]: limit to tasks with the given parent
+            not_parent[int|list]: limit to tasks without the given parent
             decode[bool]: whether or not xmlrpc data in the 'request' and 'result'
                           fields should be decoded; defaults to False
             method[str]: limit to tasks of the given method
@@ -9772,12 +9772,16 @@ class RootExports(object):
             if opts.has_key(f):
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
+                elif isinstance(opts[f], types.ListType):
+                    conditions.append('%s IN %%(%s)s' % (f, f))
                 else:
                     conditions.append('%s = %%(%s)i' % (f, f))
             # Exclude int types
             if opts.has_key('not_' + f):
                 if opts['not_' + f] is None:
                     conditions.append('%s IS NOT NULL' % f)
+                elif isinstance(opts['not_' + f], types.ListType):
+                    conditions.append('%s NOT IN %%(not_%s)s' % (f, f))
                 else:
                     conditions.append('%s != %%(not_%s)i' % (f, f))
 
