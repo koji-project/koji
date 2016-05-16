@@ -2318,7 +2318,7 @@ class ClientSession(object):
             args['overwrite'] = "1"
         size = len(chunk)
         self.callnum += 1
-        handler = "%s?%s" % (self._path, urllib.urlencode(args))
+        handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
         headers = [
             ('User-Agent', 'koji/1.7'),  #XXX
             ("Content-Type", "application/octet-stream"),
