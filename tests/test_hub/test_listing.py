@@ -20,7 +20,7 @@ class TestListing(unittest.TestCase):
     @mock.patch('kojihub.QueryProcessor')
     def test_list_tasks_basic_invocation(self, processor):
         generator = self.hub.listTasks()
-        results = list(generator)  # Exhaust the generator
+        list(generator)  # Exhaust the generator
         processor.assert_called_once_with(**self.standard_processor_kwargs)
 
     @mock.patch('kojihub.QueryProcessor')
