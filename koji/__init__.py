@@ -1674,6 +1674,10 @@ class PathInfo(object):
         """Return the directory where the image for the build are stored"""
         return self.build(build) + '/images'
 
+    def buildfiles(self, build):
+        """Return the directory where untyped files for a build are stored"""
+        return self.build(build) + '/files'
+
     def rpm(self, rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo

@@ -5757,6 +5757,11 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
             _import_archive_file(filepath, imgdir)
         # import log files?
+    elif type is None:
+        # generic type, no supplementary table
+        if not metadata_only:
+            destdir = koji.pathinfo.buildfiles(buildinfo)
+            _import_archive_file(filepath, destdir)
     else:
         raise koji.BuildError, 'unsupported archive type: %s' % type
 
