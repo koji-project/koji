@@ -1124,6 +1124,9 @@ def buildinfo(environ, buildID):
         elif imagebuild:
             archive['display'] = archive['filename']
             archive['dl_url'] = '/'.join([pathinfo.imagebuild(build), archive['filename']])
+        else:
+            archive['display'] = archive['filename']
+            archive['dl_url'] = '/'.join([pathinfo.buildfiles(build), archive['filename']])
         archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
 
     rpmsByArch = {}
