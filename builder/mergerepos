@@ -201,6 +201,9 @@ class RepoMerge(object):
                     if pkg.repoid != other_repoid:
                         # We found a rpm built from an srpm with the same name in a previous repo.
                         # The previous repo takes precendence, so ignore the srpm found here.
+                        sys.stderr.write('Package provided by earlier repo: %s '
+                                '(repos %r, %r)\n'
+                                % (srpm_name, other_repoid, pkg.repoid))
                         continue
                     else:
                         # We're in the same repo, so compare srpm NVRs
@@ -212,7 +215,14 @@ class RepoMerge(object):
                             # The current package we're processing is from a newer srpm than the
                             # existing srpm in the dict, so update the dict
                             include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
+                            sys.stderr.write('Replacing older source nvr: '
+                                    '%s > %s\n' % (other_srpm, pkg.sourcerpm))
+                        elif cmp < 0:
+                            sys.stderr.write('Ignoring older source nvr: '
+                                    '%s < %s\n' % (other_srpm, pkg.sourcerpm))
                 elif self.blocked.has_key(srpm_name):
+                    print >> sys.stderr, 'Ignoring blocked package: %s\n' \
+                            % pkg.sourcerpm
                     continue
                 else:
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
