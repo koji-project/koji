@@ -86,6 +86,8 @@ class Dispatcher(object):
 
         ['Secret', 'string', None],
 
+        ['LoginDisabled', 'boolean', False],
+
         ['LibPath', 'string', '/usr/share/koji-web/lib'],
 
         ['LogLevel', 'string', 'WARNING'],

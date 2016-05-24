@@ -133,6 +133,11 @@ def _genHTML(environ, fileName):
             environ['koji.values']['winEnabled'] = environ['koji.session'].winEnabled()
         else:
             environ['koji.values']['winEnabled'] = False
+    if not environ['koji.values'].has_key('LoginDisabled'):
+        if 'koji.options' in environ:
+            environ['koji.values']['LoginDisabled'] = environ['koji.options']['LoginDisabled']
+        else:
+            environ['koji.values']['LoginDisabled'] = False
 
     tmpl_class = TEMPLATES.get(fileName)
     if not tmpl_class:

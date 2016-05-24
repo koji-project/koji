@@ -92,11 +92,14 @@ $localnav
         </div><!-- end mainNav -->
 
         <span id="loginInfo">
-          $koji.formatTimeLong($currentDate) |
+          $koji.formatTimeLong($currentDate)
+          #if not $LoginDisabled
+           |
           #if $currentUser
           $greeting(), <a href="userinfo?userID=$currentUser.id">$currentUser.name</a> | <a href="logout">logout</a>
           #else
           <a href="login">login</a>
+          #end if
           #end if
         </span>
 
