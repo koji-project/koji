@@ -234,11 +234,16 @@ def prep_message(cbtype, *args, **kws):
 @callback('postCommit')
 @ignore_error
 def send_messages(cbtype, *args, **kws):
-    '''Send the cached message from the other callback'''
+    '''Send the messages cached by prep_message'''
 
     global config
     messages = getattr(context, 'messagebus_plugin_messages', [])
+    if not messages:
+        return
     sender = get_sender()
     for message in messages:
         sender.send(message, sync=True, timeout=config.getfloat('broker', 'timeout'))
     sender.close(timeout=config.getfloat('broker', 'timeout'))
+
+    # koji should do this for us, but just in case...
+    del context.messagebus_plugin_messages
