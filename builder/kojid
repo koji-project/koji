@@ -3020,7 +3020,8 @@ class LiveMediaTask(ImageTask):
                '--ks', kskoji,
                '--logfile', livemedia_log,
                '--no-virt',
-                '--resultdir', resultdir,
+               '--resultdir', resultdir,
+               '--project', name,
                #'--tmp', '/tmp'
               ]
 
@@ -3061,6 +3062,11 @@ class LiveMediaTask(ImageTask):
                 filepath = os.path.join(logdir, filename)
                 if os.stat(filepath).st_size == 0:
                     continue
+                # avoid file duplication between directories by prefixing anaconda logs
+                if logdir.endswith('anaconda'):
+                    self.uploadFile(os.path.join(filepath), remoteName='anaconda-%s' % filename)
+                    continue
+
                 self.uploadFile(os.path.join(filepath))
 
         if rv:
