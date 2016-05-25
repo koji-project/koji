@@ -242,7 +242,7 @@ def send_messages(cbtype, *args, **kws):
         return
     sender = get_sender()
     for message in messages:
-        sender.send(message, sync=True, timeout=config.getfloat('broker', 'timeout'))
+        sender.send(message, sync=False, timeout=config.getfloat('broker', 'timeout'))
     sender.close(timeout=config.getfloat('broker', 'timeout'))
 
     # koji should do this for us, but just in case...
