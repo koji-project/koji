@@ -6016,7 +6016,8 @@ def query_history(tables=None, **kwargs):
     permission: only relating to a given permission
     external_repo: only relateing to an external repo
     build_target: only relating to a build target
-    group: only relating to a (comps) group)
+    group: only relating to a (comps) group
+    cg: only relating to a content generator
     """
     common_fields = {
         #fields:aliases common to all versioned tables
@@ -6177,6 +6178,12 @@ def query_history(tables=None, **kwargs):
                     break
                 data['perm_id'] = get_perm_id(value, strict=True)
                 clauses.append("%s.id = %%(perm_id)i" % joined['permissions'])
+            elif arg == 'cg':
+                if 'content_generator' not in joined:
+                    skip = True
+                    break
+                data['cg_id'] = lookup_name('content_generator', value, strict=True)['id']
+                clauses.append("%s.id = %%(cg_id)i" % joined['content_generator'])
             elif arg == 'external_repo':
                 if 'external_repo' not in joined:
                     skip = True
