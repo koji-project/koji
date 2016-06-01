@@ -26,6 +26,7 @@ import os
 import os.path
 import re
 import resource
+import shutil
 import stat
 import sys
 import time
@@ -315,6 +316,13 @@ def rmtree(path):
             # dir not empty. could happen if a mount was present
             continue
         os.rmdir(dirpath)
+
+
+def safe_move(src, dst):
+    """Wrapper around shutil.move with additional safety"""
+
+    pass
+
 
 def _relpath(path, start=getattr(os.path, 'curdir', '.')):
     """Backport of os.path.relpath for python<2.6"""
