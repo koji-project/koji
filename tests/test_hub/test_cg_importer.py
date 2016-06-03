@@ -14,7 +14,7 @@ class TestCGImporter(unittest.TestCase):
         kojihub.CG_Importer()  # No exception!
 
     def test_get_metadata_is_instance(self):
-        mock_input_val = {'something': 'good val'}
+        mock_input_val = {'foo': 'bar'}
         x = kojihub.CG_Importer()
         x.get_metadata(mock_input_val, '')
         assert x.raw_metadata
@@ -42,3 +42,5 @@ class TestCGImporter(unittest.TestCase):
         work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
+        assert x.raw_metadata
+        assert isinstance(x.raw_metadata, str)

@@ -1,4 +1,4 @@
-{"metadata_version": 1,
+{"metadata_version": 0,
  "build": {"name": "rhel-server-docker",
            "version": "7.1",
            "release": "4",
