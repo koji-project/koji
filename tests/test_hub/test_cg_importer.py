@@ -1,6 +1,8 @@
 import unittest
 import mock
+import os
 
+import koji
 import kojihub
 from koji import GenericError
 
@@ -22,3 +24,21 @@ class TestCGImporter(unittest.TestCase):
         x = kojihub.CG_Importer()
         with self.assertRaises(GenericError):
             x.get_metadata(42, '')
+
+    def test_get_metadata_is_none(self):
+        x = kojihub.CG_Importer()
+        with self.assertRaises(GenericError):
+            x.get_metadata(None, '')
+
+    @mock.patch("koji.pathinfo.work")
+    def test_get_metadata_missing_json_file(self, work):
+        work.return_value = os.path.dirname(__file__)
+        x = kojihub.CG_Importer()
+        with self.assertRaises(GenericError):
+            x.get_metadata('missing.json', 'cg_importer_json')
+
+    @mock.patch("koji.pathinfo.work")
+    def test_get_metadata_is_json_file(self, work):
+        work.return_value = os.path.dirname(__file__)
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
