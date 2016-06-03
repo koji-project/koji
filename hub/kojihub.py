@@ -2664,6 +2664,9 @@ def lookup_name(table, info, strict=False, create=False):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
+    elif isinstance(info, unicode):
+        info = info.encode('UTF-8')
+        q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
         raise koji.GenericError, 'invalid type for id lookup: %s' % type(info)
     ret = _singleRow(q, locals(), fields, strict=False)
@@ -4925,7 +4928,7 @@ class CG_Importer(object):
             path = os.path.join(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            fo = open(path, 'r')
+            fo = open(path, 'rb')
             metadata = fo.read()
             fo.close()
         self.raw_metadata = metadata
