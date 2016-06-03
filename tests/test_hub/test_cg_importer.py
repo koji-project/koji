@@ -1,6 +1,7 @@
 import unittest
 import mock
 import os
+import shutil
 
 import koji
 import kojihub
@@ -8,6 +9,16 @@ from koji import GenericError
 
 
 class TestCGImporter(unittest.TestCase):
+    TMP_PATH = os.path.join(os.path.dirname(__file__), 'tmptest')
+    
+    def setUp(self):
+        if not os.path.exists(self.TMP_PATH):
+            os.mkdir(self.TMP_PATH)
+
+    def tearDown(self):
+        if os.path.exists(self.TMP_PATH):
+            shutil.rmtree(self.TMP_PATH)
+
     def test_basic_instantiation(self):
         # TODO -- this doesn't make sense.  A query with no arguments should
         # probably raise an exception saying "this doesn't make sense."
@@ -65,9 +76,27 @@ class TestCGImporter(unittest.TestCase):
         work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
-        #cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.prep_build()
         assert x.buildinfo
         assert isinstance(x.buildinfo, dict)
+
+    @mock.patch('kojihub.get_build')
+    @mock.patch("koji.pathinfo.work")
+    def test_prep_build_exists(self, work, get_build):
+        work.return_value = os.path.dirname(__file__)
+        get_build.return_value = True
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
+        with self.assertRaises(GenericError):
+            x.prep_build()
+
+    @mock.patch("koji.pathinfo.build")
+    @mock.patch("koji.pathinfo.work")
+    def test_import_metadata(self, work, build):
+        work.return_value = os.path.dirname(__file__)
+        build.return_value = self.TMP_PATH
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
+        x.import_metadata() 
