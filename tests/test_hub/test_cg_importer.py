@@ -58,3 +58,16 @@ class TestCGImporter(unittest.TestCase):
         x.assert_cg_access()
         assert x.cgs
         assert isinstance(x.cgs, set)
+
+    @mock.patch('kojihub.context')
+    @mock.patch("koji.pathinfo.work")
+    def test_prep_build(self, work, context):
+        work.return_value = os.path.dirname(__file__)
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+        #cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
+        x.prep_build()
+        assert x.buildinfo
+        assert isinstance(x.buildinfo, dict)

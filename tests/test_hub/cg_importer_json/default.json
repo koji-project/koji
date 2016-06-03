@@ -3,6 +3,7 @@
            "version": "7.1",
            "release": "4",
            "source": "git://git.engineering.redhat.com/users/vpavlin/tdl_templates.git#a14f145244",
+           "extra": {},
            "start_time": 1423148398,
            "end_time": 1423148828},
  "buildroots": [{"id": 1,
