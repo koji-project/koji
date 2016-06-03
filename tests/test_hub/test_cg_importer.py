@@ -44,3 +44,17 @@ class TestCGImporter(unittest.TestCase):
         x.get_metadata('default.json', 'cg_importer_json')
         assert x.raw_metadata
         assert isinstance(x.raw_metadata, str)
+
+    @mock.patch('kojihub.context')
+    @mock.patch("koji.pathinfo.work")
+    def test_assert_cg_access(self, work, context):
+        work.return_value = os.path.dirname(__file__)
+        cursor = mock.MagicMock()
+        context.session.user_id = 42
+        context.cnx.cursor.return_value = cursor
+        cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
+        x.assert_cg_access()
+        assert x.cgs
+        assert isinstance(x.cgs, set)
