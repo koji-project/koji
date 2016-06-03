@@ -4912,7 +4912,7 @@ class CG_Importer(object):
                 self.raw_metadata = json.dumps(metadata, indent=2)
             except Exception:
                 logger.exception("Cannot encode supplied metadata")
-                raise koji.GenericError("Invalid metada, cannot encode: %r" % metadata)
+                raise koji.GenericError("Invalid metadata, cannot encode: %r" % metadata)
             return metadata
         if metadata is None:
             #default to looking for uploaded file
