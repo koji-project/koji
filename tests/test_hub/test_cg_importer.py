@@ -92,6 +92,38 @@ class TestCGImporter(unittest.TestCase):
         with self.assertRaises(GenericError):
             x.prep_build()
 
+    @mock.patch('kojihub.get_build')
+    @mock.patch('kojihub.new_build')
+    @mock.patch('kojihub.context')
+    @mock.patch("koji.pathinfo.work")
+    def test_get_build(self, work, context, new_build_id, get_build):
+        work.return_value = os.path.dirname(__file__)
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+        new_build_id.return_value = 42
+        get_build.return_value = False
+        x = kojihub.CG_Importer()
+        x.get_metadata('default.json', 'cg_importer_json')
+        x.prep_build()
+        get_build.return_value = {'id': 43, 'package_id': 1,
+                                  'package_name': 'testpkg',
+                                  'name': 'testpkg', 'version': '1.0.1e',
+                                  'release': '42.el7', 'epoch': None,
+                                  'nvr': 'testpkg-1.0.1-1.fc24',
+                                  'state': 'complete', 'task_id': 1,
+                                  'owner_id': 1, 'owner_name': 'jvasallo',
+                                  'volume_id': 'id-1212', 'volume_name': 'testvolume',
+                                  'creation_event_id': '', 'creation_time': '',
+                                  'creation_ts': 424242424242,
+                                  'start_time': None, 'start_ts': None,
+                                  'completion_time': None, 'completion_ts': None,
+                                  'source': 'https://example.com', 'extra': {}
+                                 }
+        new_build_id.return_value = 43
+        x.get_build()
+        assert x.buildinfo
+        assert isinstance(x.buildinfo, dict)
+
     @mock.patch("koji.pathinfo.build")
     @mock.patch("koji.pathinfo.work")
     def test_import_metadata(self, work, build):
