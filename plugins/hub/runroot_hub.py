@@ -9,9 +9,9 @@ import koji
 import random
 import sys
 
-#XXX - have to import kojihub for mktask
+#XXX - have to import kojihub for make_task
 sys.path.insert(0, '/usr/share/koji-hub/')
-from kojihub import mktask, get_tag, get_all_arches
+import kojihub
 
 __all__ = ('runroot',)
 
@@ -38,12 +38,12 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
 
     if arch == 'noarch':
         #not all arches can generate a proper buildroot for all tags
-        tag = get_tag(tagInfo)
+        tag = kojihub.get_tag(tagInfo)
         if not tag['arches']:
             raise koji.GenericError, 'no arches defined for tag %s' % tag['name']
 
         #get all known arches for the system
-        fullarches = get_all_arches()
+        fullarches = kojihub.get_all_arches()
 
         tagarches = tag['arches'].split()
 
@@ -57,5 +57,6 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
                             % (tagInfo, taskopts['channel'])
             taskopts['arch'] = koji.canonArch(random.choice(choices))
 
-    return mktask(taskopts,'runroot', tagInfo, arch, command, **opts)
+    args = koji.encode_args(tagInfo, arch, command,**opts)
+    return kojihub.make_task('runroot', args, **taskopts)
 
