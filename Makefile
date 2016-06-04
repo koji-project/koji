@@ -64,7 +64,7 @@ git-clean:
 	@git clean -d -q -x
 
 test:
-	PYTHONPATH=hub/. nosetests --with-coverage --cover-package .
+	PYTHONPATH=hub/.:plugins/hub/. nosetests --with-coverage --cover-package .
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
