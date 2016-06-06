@@ -3,3 +3,4 @@
 tests/test.py
 .coverage
 docs/build/
+cli/kojic
