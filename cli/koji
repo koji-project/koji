@@ -5477,7 +5477,7 @@ def handle_image_build(options, session, args):
     """[build] Create a disk image given an install tree"""
     formats = ('vmdk', 'qcow', 'qcow2', 'vdi', 'vpc', 'rhevm-ova',
                'vsphere-ova', 'vagrant-virtualbox', 'vagrant-libvirt',
-               'vagrant-vmware-fusion', 'docker', 'raw-xz',
+               'vagrant-vmware-fusion', 'vagrant-hyperv', 'docker', 'raw-xz',
                'liveimg-squashfs', 'tar-gz')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch>...]")
