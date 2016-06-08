@@ -3411,7 +3411,7 @@ class BaseImageTask(OzImageTask):
         Some image formats require others to be processed first, which is why
         we have to do this. raw files in particular may not be kept.
         """
-        supported = ('raw', 'raw-xz', 'liveimg-squashfs', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vagrant-vmware-fusion', 'vpc', "tar-gz")
+        supported = ('raw', 'raw-xz', 'liveimg-squashfs', 'vmdk', 'qcow', 'qcow2', 'vdi', 'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt', 'vagrant-vmware-fusion', 'vagrant-hyperv', 'vpc', "tar-gz")
         for f in formats:
             if f not in supported:
                 raise koji.ApplianceError('Invalid format: %s' % f)
@@ -3449,6 +3449,7 @@ class BaseImageTask(OzImageTask):
                   'vagrant-virtualbox': self._buildOVA,
                   'vagrant-libvirt':    self._buildOVA,
                   'vagrant-vmware-fusion': self._buildOVA,
+                  'vagrant-hyperv': self._buildOVA,
                   'docker':      self._buildDocker
         }
         # add a handler to the logger so that we capture ImageFactory's logging
@@ -3693,6 +3694,10 @@ class BaseImageTask(OzImageTask):
             # not the stream oriented format used for VirtualBox or regular VMWare OVAs
             img_opts['vsphere_vmdk_format'] = 'standard'
             fixed_params = [ 'vsphere_ova_format', 'vsphere_vmdk_format' ]
+        if format == 'vagrant-hyperv':
+            format = 'hyperv-ova'
+            img_opts['hyperv_ova_format'] = 'hyperv-vagrant'
+            fixed_params = [ 'hyperv_ova_format' ]
         targ = self._do_target_image(self.base_img.base_image.identifier,
             format.replace('-ova', ''), img_opts=img_opts, fixed_params=fixed_params)
         targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
