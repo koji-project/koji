@@ -568,17 +568,6 @@ def make_task(method,arglist,**opts):
     koji.plugin.run_callbacks('postTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
     return task_id
 
-def mktask(__taskopts,__method,*args,**opts):
-    """A wrapper around make_task with alternate signature
-
-    Parameters:
-        _taskopts: a dictionary of task options (e.g. priority, ...)
-        _method: the method to be invoked
-
-    All remaining args (incl. optional ones) are passed on to the task.
-    """
-    return make_task(__method,koji.encode_args(*args,**opts),**__taskopts)
-
 def eventCondition(event, table=None):
     """return the proper WHERE condition to select data at the time specified by event. """
     if not table:
