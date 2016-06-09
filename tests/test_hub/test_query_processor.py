@@ -32,8 +32,6 @@ class TestQueryProcessor(unittest.TestCase):
         kojihub.QueryProcessor.iterchunksize = self.original_chunksize
 
     def test_basic_instantiation(self):
-        # TODO -- this doesn't make sense.  A query with no arguments should
-        # probably raise an exception saying "this doesn't make sense."
         kojihub.QueryProcessor()  # No exception!
 
     def test_instantiation_with_cols_and_aliases(self):
@@ -43,8 +41,6 @@ class TestQueryProcessor(unittest.TestCase):
         assert len(proc.colsByAlias) == 1
 
     def test_empty_as_string(self):
-        # This should probably raise an exception, but it does not.
-        # What is a query if it has no arguments.  Nonsense!
         proc = kojihub.QueryProcessor()
         actual = str(proc)
         self.assertIn("SELECT", actual)
