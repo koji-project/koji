@@ -59,12 +59,16 @@ clean:
 	rm -f *.o *.so *.pyc *~ koji*.bz2 koji*.src.rpm
 	rm -rf koji-$(VERSION)
 	for d in $(SUBDIRS); do make -s -C $$d clean; done
+	coverage erase
 
 git-clean:
 	@git clean -d -q -x
 
 test:
 	PYTHONPATH=hub/.:plugins/hub/. nosetests --with-coverage --cover-package .
+	coverage erase
+	coverage html
+	@echo Coverage report in htmlcov/index.html
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
