@@ -7,8 +7,6 @@ import kojihub
 class TestUpdateProcessor(unittest.TestCase):
 
     def test_basic_instantiation(self):
-        # TODO -- this doesn't make sense.  A query with no arguments should
-        # probably raise an exception saying "this doesn't make sense."
         kojihub.UpdateProcessor('sometable')  # No exception!
 
     def test_to_string_with_data(self):
