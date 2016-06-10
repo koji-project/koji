@@ -318,10 +318,20 @@ def rmtree(path):
         os.rmdir(dirpath)
 
 
-def safe_move(src, dst):
-    """Wrapper around shutil.move with additional safety"""
+def safer_move(src, dst):
+    """Rename if possible, copy+rm otherwise
 
-    pass
+    Behavior is similar to shutil.move
+
+    Unlike move, src is /always/ moved from src to dst. If dst is an existing
+    directory, then an error is raised.
+    """
+    if os.path.exists(dst):
+        raise koji.GenericError, "Destination exists: %s" % dst
+    elif os.path.islink(dst):
+        raise koji.GenericError, "Destination is a symlink: %s" % dst
+    # TODO - use locking to do a better job of catching races
+    shutil.move(src, dst)
 
 
 def _relpath(path, start=getattr(os.path, 'curdir', '.')):
