@@ -10,7 +10,7 @@ from koji import GenericError
 
 class TestCGImporter(unittest.TestCase):
     TMP_PATH = os.path.join(os.path.dirname(__file__), 'tmptest')
-    
+
     def setUp(self):
         if not os.path.exists(self.TMP_PATH):
             os.mkdir(self.TMP_PATH)
@@ -20,8 +20,6 @@ class TestCGImporter(unittest.TestCase):
             shutil.rmtree(self.TMP_PATH)
 
     def test_basic_instantiation(self):
-        # TODO -- this doesn't make sense.  A query with no arguments should
-        # probably raise an exception saying "this doesn't make sense."
         kojihub.CG_Importer()  # No exception!
 
     def test_get_metadata_is_instance(self):
@@ -131,4 +129,4 @@ class TestCGImporter(unittest.TestCase):
         build.return_value = self.TMP_PATH
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
-        x.import_metadata() 
+        x.import_metadata()

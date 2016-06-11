@@ -2665,7 +2665,7 @@ def lookup_name(table, info, strict=False, create=False):
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     elif isinstance(info, unicode):
-        info = info.encode('UTF-8')
+        info = koji.fixEncoding(info)
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
         raise koji.GenericError, 'invalid type for id lookup: %s' % type(info)
