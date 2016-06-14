@@ -771,6 +771,7 @@ insert into archivetypes (name, description, extensions) values ('rc', 'Resource
 insert into archivetypes (name, description, extensions) values ('wsdl', 'Web Services Description Language', 'wsdl');
 insert into archivetypes (name, description, extensions) values ('obr', 'OSGi Bundle Repository', 'obr');
 insert into archivetypes (name, description, extensions) values ('liveimg-squashfs', 'liveimg compatible squashfs image', 'liveimg.squashfs');
+insert into archivetypes (name, description, extensions) values ('tlb', 'OLE type library file', 'tlb');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
