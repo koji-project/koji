@@ -186,6 +186,7 @@ class RepoMerge(object):
         include_srpms = {}
 
         # calculating what "builds" (srpms) we're allowing into the repo
+        seen_srpms = {}
         for reponum, repo in enumerate(repos):
             for pkg in repo.sack:
                 if reponum == 0 and not pkg.basepath:
@@ -195,15 +196,20 @@ class RepoMerge(object):
                     #force the pkg object to report a relative location
                     loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
+                if pkg.sourcerpm in seen_srpms:
+                    # we're just looking at sourcerpms this pass and we've
+                    # already seen this one
+                    continue
+                seen_srpms[pkg.sourcerpm] = 1
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
                 if include_srpms.has_key(srpm_name):
                     other_srpm, other_repoid = include_srpms[srpm_name]
                     if pkg.repoid != other_repoid:
                         # We found a rpm built from an srpm with the same name in a previous repo.
                         # The previous repo takes precendence, so ignore the srpm found here.
-                        sys.stderr.write('Package provided by earlier repo: %s '
-                                '(repos %r, %r)\n'
-                                % (srpm_name, other_repoid, pkg.repoid))
+                        sys.stderr.write('Package %s already provided by repo %s'
+                                ' (at %s in repo %s)\n'
+                                % (srpm_name, other_repoid, str(pkg), pkg.repoid))
                         continue
                     else:
                         # We're in the same repo, so compare srpm NVRs
@@ -248,7 +254,7 @@ class RepoMerge(object):
                     seen_rpms[pkg_nvra] = 1
                 else:
                     sys.stderr.write('Excluding %s (wrong srpm version '
-                            '%s != %s)' % (pkg_nvra, incl_srpm, pkg.sourcerpm))
+                            '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
                     repo.sack.delPackage(pkg)
 
         origins.close()
