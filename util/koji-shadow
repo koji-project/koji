@@ -169,7 +169,7 @@ def get_options():
         if not os.access(cf, os.F_OK):
             cf = None
     if not cf:
-        print "no config file"
+        log("no config file")
         config = None
     else:
         config.read(cf)
@@ -180,7 +180,7 @@ def get_options():
             name = opt.dest
             alias = ('main', name)
             if config.has_option(*alias):
-                print "Using option %s from config file" % (alias,)
+                log("Using option %s from config file" % (alias,))
                 if opt.action in ('store_true', 'store_false'):
                     setattr(defaults, name, config.getboolean(*alias))
                 elif opt.action != 'store':
@@ -190,7 +190,7 @@ def get_options():
                 elif opt.type in ('float'):
                     setattr(defaults, name, config.getfloat(*alias))
                 else:
-                    print config.get(*alias)
+                    log(config.get(*alias))
                     setattr(defaults, name, config.get(*alias))
         #config file options without a cmdline equivalent
         otheropts = [
@@ -333,7 +333,7 @@ def activate_session(session):
         error(_("Error: unable to log in"))
     ensure_connection(session)
     if options.debug:
-        print "successfully connected to hub"
+        log("successfully connected to hub")
 
 def _unique_path(prefix):
     """Create a unique path fragment by appending a path component
@@ -427,7 +427,7 @@ class TrackedBuild(object):
         return noarch
 
     def setState(self, state):
-        #print "%s -> %s" % (self.nvr, state)
+        #log("%s -> %s" % (self.nvr, state))
         if state == self.state:
             return
         if self.state is not None and self.tracker:
@@ -442,7 +442,7 @@ class TrackedBuild(object):
             #download srpm from remote
             pathinfo = koji.PathInfo(options.remote_topurl)
             url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
-            print "Downloading %s" % url
+            log("Downloading %s" % url)
             #XXX - this is not really the right place for this
             fsrc = urllib2.urlopen(url)
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
@@ -491,9 +491,9 @@ class TrackedBuild(object):
                 continue
             brs[br_id] = 1
         if brs and bad:
-            print "Warning: some rpms for %s lacked buildroots:" % self.nvr
+            log("Warning: some rpms for %s lacked buildroots:" % self.nvr)
             for rinfo in bad:
-                print "    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
+                log("    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo)
         return brs.keys()
 
     def getDeps(self):
@@ -553,7 +553,7 @@ class TrackedBuild(object):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            print "Warning: found multiple buildroot tags for %s: %s" % (self.nvr, tags.keys())
+            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, tags.keys()))
             counts = [(n, tag) for tag, n in tags.iteritems()]
             sort(counts)
             tag = counts[-1][1]
@@ -681,7 +681,7 @@ class BuildTracker(object):
             latestevr = (str(b['epoch']), b['version'], b['release'])
             newestRPM = self.rpmvercmp(parentevr, latestevr)
             if options.debug:
-                print "remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM)
+                log("remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM))
             if newestRPM == -1:
                 newer = b
             else:
@@ -1115,18 +1115,17 @@ class BuildTracker(object):
         return task_id
 
     def report(self):
-        brokenpackage = {}
-        thispackageblocks = {}
+        log("-- %s --" % time.asctime())
         self.report_brief()
         for state in ('broken', 'noroot', 'blocked'):
             builds = self.state_idx[state].values()
             not_replaced = [b for b in builds if not b.substitute]
             n_replaced = len(builds) - len(not_replaced)
-            for b in not_replaced:
-                if not b.nvr in brokenpackage:
-                    brokenpackage.update({b.nvr:[b.nvr]})
-                else:
-                    brokenpackage[b.nvr].append(b.nvr)
+            log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
+            if not_replaced and len(not_replaced) < 8:
+                log('', ' '.join([b.nvr for b in not_replaced]))
+        #generate a report of the most frequent problem deps
+        problem_counts = {}
         for build in self.state_idx['brokendeps'].values():
             for dep_id in build.deps:
                 dep = self.builds.get(dep_id)
@@ -1147,45 +1146,15 @@ class BuildTracker(object):
                         continue
                     #otherwise the substitution is the problem
                     nvr = dep.substitute
-                if dep.state == 'broken':
-                    brokenpackage[dep.nvr].append(build.nvr)
-                elif dep.state == 'brokendeps':
-                    found = 0;
-                    for i in brokenpackage:
-                        if dep.nvr in brokenpackage[i]:
-                           brokenpackage[i] += [build.nvr]
-                           found = 1
-                    if found == 0:
-                        if not dep.nvr in thispackageblocks:
-                            thispackageblocks.update({dep.nvr:[build.nvr]})
-                        else:
-                            if len(thispackageblocks[dep.nvr]) > 100:
-                                thispackageblocks[dep.nvr].append('')
-                            else:
-                                thispackageblocks[dep.nvr].append(build.nvr)
-        # group all brokendeps
-        for package in thispackageblocks:
-            for blockedpackage in thispackageblocks:
-                if package in thispackageblocks[blockedpackage]:
-                   thispackageblocks[blockedpackage] += thispackageblocks[package]
-        #log("thispackageblocks: %s" % thispackageblocks)
-        for package in thispackageblocks:
-            for blockedpackage in brokenpackage:
-                if package in brokenpackage[blockedpackage]:
-                    if len(brokenpackage[blockedpackage]) > 500:
-                        continue
-                    else:
-                        brokenpackage[blockedpackage] += thispackageblocks[package]
-        for package in brokenpackage:
-# Remove duplicates, use 'set' as order isn't important:
-            brokenpackage[package] = set(brokenpackage[package])
-            log("brokenpackage: %s %s" % (package, brokenpackage[package]))
-        order = [(len(c), nvr) for (nvr, c) in brokenpackage.iteritems()]
+                problem_counts.setdefault(nvr, 0)
+                problem_counts[nvr] += 1
+        order = [(c, nvr) for (nvr, c) in problem_counts.iteritems()]
         if order:
             order.sort()
             order.reverse()
-            log("-- top broken packages --")
-            for (c, nvr) in order[:20]:
+            #print top 5 problems
+            log("-- top problems --")
+            for (c, nvr) in order[:5]:
                 log(" %s (%i)" % (nvr, c))
 
     def report_brief(self):
