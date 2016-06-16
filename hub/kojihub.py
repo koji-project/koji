@@ -46,7 +46,6 @@ import os
 import re
 import rpm
 import shutil
-import simplejson as json
 import stat
 import subprocess
 import sys
@@ -57,6 +56,12 @@ import types
 import xmlrpclib
 import zipfile
 from koji.context import context
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
 
 logger = logging.getLogger('koji.hub')
 

@@ -47,6 +47,9 @@ License: LGPLv2 and GPLv2
 Requires: httpd
 Requires: mod_wsgi
 Requires: postgresql-python
+%if 0%{?rhel} == 5
+Requires: python-simplejson
+%endif
 Requires: %{name} = %{version}-%{release}
 
 %description hub
