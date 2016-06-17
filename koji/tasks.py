@@ -229,7 +229,7 @@ class BaseTaskHandler(object):
                     if failany:
                         failed = False
                         for task in finished:
-                            if task['id'] in canfail:
+                            if task in canfail:
                                 # no point in checking
                                 continue
                             try:
