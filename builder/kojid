@@ -2422,6 +2422,15 @@ class BuildLiveMediaTask(BuildImageTask):
 
             self.logger.debug('subtask results: %r', results)
 
+            # determine ignored arch failures
+            ignored_arches = set()
+            for arch in arches:
+                if arch in opts.get('optional_arches', []):
+                    task_id = subtasks[arch]
+                    result = results[task_id]
+                    if isinstance(result, dict) and 'faultCode' in result:
+                        ignored_arches.add(arch)
+
             # wrap each image an RPM if needed
             spec_url = opts.get('specfile')
             if spec_url:
@@ -2430,6 +2439,8 @@ class BuildLiveMediaTask(BuildImageTask):
                     subtask_id = subtasks[arch]
                     result = results[subtask_id]
                     tinfo = self.session.getTaskInfo(subtask_id)
+                    if arch in ignored_arches:
+                        continue
                     arglist = [spec_url, target_info, bld_info, tinfo,
                                 {'repo_id': repo_info['id']}]
                     wrapper_tasks[arch] = self.subtask('wrapperRPM', arglist,
@@ -2440,6 +2451,8 @@ class BuildLiveMediaTask(BuildImageTask):
 
                 # add wrapper rpm results into main results
                 for arch in arches:
+                    if arch in ignored_arches:
+                        continue
                     result = results[subtasks[arch]]
                     result2 = results2[wrapper_tasks[arch]]
                     result['rpmresults'] = result2
