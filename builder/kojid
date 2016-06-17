@@ -2406,16 +2406,19 @@ class BuildLiveMediaTask(BuildImageTask):
                 bld_info = self.initImageBuild(name, version, release,
                     target_info, opts)
             subtasks = {}
+            canfail = []
             for arch in arches:
                 subtasks[arch] = self.subtask('createLiveMedia',
                     [name, version, release, arch, target_info, build_tag,
                         repo_info, ksfile, opts],
                     label='livemedia %s' % arch, arch=arch)
+                if arch in opts.get('optional_arches', []):
+                    canfail.append(subtasks[arch])
 
 
             self.logger.debug("Got image subtasks: %r", subtasks)
             self.logger.debug("Waiting on livemedia subtasks...")
-            results = self.wait(subtasks.values(), all=True, failany=True)
+            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
 
             self.logger.debug('subtask results: %r', results)
 
