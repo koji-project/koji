@@ -187,15 +187,20 @@ class BaseTaskHandler(object):
         safe_rmtree(self.workdir, unmount=False, strict=True)
         #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
-    def wait(self, subtasks=None, all=False, failany=False):
+    def wait(self, subtasks=None, all=False, failany=False, canfail=None):
         """Wait on subtasks
 
         subtasks is a list of integers (or an integer). If more than one subtask
         is specified, then the default behavior is to return when any of those
         tasks complete. However, if all is set to True, then it waits for all of
-        them to complete.  If all and failany are both set to True, then each
-        finished task will be checked for failure, and a failure will cause all
-        of the unfinished tasks to be cancelled.
+        them to complete.
+
+        If all and failany are both set to True, then each finished task will
+        be checked for failure, and a failure will cause all of the unfinished
+        tasks to be cancelled.
+
+        If canfail is given a list of task ids, then those tasks can fail
+        without affecting the other tasks.
 
         special values:
             subtasks = None     specify all subtasks
@@ -206,6 +211,9 @@ class BaseTaskHandler(object):
             the database and will send the subprocess corresponding to the
             subtask a SIGUSR2 to wake it up when subtasks complete.
         """
+
+        if canfail is None:
+            canfail = []
         if isinstance(subtasks, int):
             # allow single integer w/o enclosing list
             subtasks = [subtasks]
@@ -221,6 +229,9 @@ class BaseTaskHandler(object):
                     if failany:
                         failed = False
                         for task in finished:
+                            if task['id'] in canfail:
+                                # no point in checking
+                                continue
                             try:
                                 self.session.getTaskResult(task)
                             except (koji.GenericError, xmlrpclib.Fault), task_error:
