@@ -254,9 +254,10 @@ class BaseTaskHandler(object):
             self.logger.debug("...waking up")
         self.logger.debug("Finished waiting")
         if all:
-            return dict(self.session.host.taskWaitResults(self.id, subtasks))
-        else:
-            return dict(self.session.host.taskWaitResults(self.id, finished))
+            finished = subtasks
+        return dict(self.session.host.taskWaitResults(self.id, finished,
+                                                    canfail=canfail))
+
 
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
