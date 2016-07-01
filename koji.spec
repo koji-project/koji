@@ -72,8 +72,7 @@ Summary: Koji builder plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
-Requires: %{name}-hub = %{version}-%{release}
-Requires: python-qpid >= 0.7
+Requires: %{name}-builder = %{version}-%{release}
 
 %description builder-plugins
 Plugins for the koji build daemon
