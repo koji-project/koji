@@ -6552,15 +6552,15 @@ def anon_handle_download_logs(options, session, args):
             if binfo is None:
                 error(_("There is no build with n-v-r: %s" % arg))
             assert binfo['task_id'], binfo
-            arg = binfo['task_id']
-            sys.stdout.write("Using task ID: %s\n" % arg)
+            task_id = binfo['task_id']
+            sys.stdout.write("Using task ID: %s\n" % task_id)
         else:
             try:
                 task_id = int(arg)
             except ValueError:
                 error(_("Task id must be number: %r") % task_id)
                 continue
-            save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
+        save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
 
 def anon_handle_download_task(options, session, args):
