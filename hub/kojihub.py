@@ -3879,7 +3879,7 @@ def get_image_archive(archive_id, strict=False):
     fields = ('image_id', 'rpm_id')
     select = """SELECT %s FROM image_listing
     WHERE image_id = %%(archive_id)i""" % ', '.join(fields)
-    rpms = _singleRow(select, locals(), fields, strict=strict)
+    rpms = _singleRow(select, locals(), fields)
     if rpms:
         results['rootid'] = True
     return results
