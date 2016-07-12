@@ -3950,6 +3950,7 @@ def list_archive_files(archive_id, queryOpts=None):
     build_info = get_build(archive_info['build_id'], strict=True)
     maven_info = get_maven_build(build_info['id'])
     win_info = get_win_build(build_info['id'])
+    image_info = get_image_build(archive_info['build_id'])
 
     if maven_info:
         maven_archive = get_maven_archive(archive_info['id'], strict=True)
@@ -3961,6 +3962,11 @@ def list_archive_files(archive_id, queryOpts=None):
         archive_info.update(win_archive)
         file_path = os.path.join(koji.pathinfo.winbuild(build_info),
                                  koji.pathinfo.winfile(archive_info))
+    elif image_info:
+        image_archive = get_image_archive(archive_info['id'], strict=True)
+        archive_info.update(image_archive)
+        file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
+                                 koji.pathinfo.imagefile(archive_info))
     else:
         return _applyQueryOpts([], queryOpts)
 
