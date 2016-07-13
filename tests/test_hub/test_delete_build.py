@@ -11,7 +11,7 @@ class TestDeleteBuild(unittest.TestCase):
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
     def test_delete_build_raise_error(self, build, context):
-
+        context.session.assertPerm = mock.MagicMock()
         references = ['tags', 'rpms', 'archives', 'images']
         for ref in references:
             context = mock.MagicMock()
@@ -27,7 +27,7 @@ class TestDeleteBuild(unittest.TestCase):
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
     def test_delete_build_return_false(self, build, context):
-
+        context.session.assertPerm = mock.MagicMock()
         references = ['tags', 'rpms', 'archives', 'images']
         for ref in references:
             context = mock.MagicMock()
@@ -42,7 +42,7 @@ class TestDeleteBuild(unittest.TestCase):
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
     def test_delete_build_check_last_used_raise_error(self, build, context):
-
+        context.session.assertPerm = mock.MagicMock()
         references = ['tags', 'rpms', 'archives', 'images', 'last_used']
         for ref in references:
             context = mock.MagicMock()
@@ -59,7 +59,7 @@ class TestDeleteBuild(unittest.TestCase):
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
     def test_delete_build_check_last_used_raise_error(self, build, context):
-
+        context.session.assertPerm = mock.MagicMock()
         references = ['tags', 'rpms', 'archives', 'images', 'last_used']
         for ref in references:
             context = mock.MagicMock()

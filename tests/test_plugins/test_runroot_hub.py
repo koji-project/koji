@@ -8,6 +8,7 @@ class TestRunrootHub(unittest.TestCase):
     @mock.patch('kojihub.make_task')
     @mock.patch('runroot_hub.context')
     def test_basic_invocation(self, context, make_task):
+        context.session.assertPerm = mock.MagicMock()
         runroot_hub.runroot(
             tagInfo='some_tag',
             arch='x86_64',
