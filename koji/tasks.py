@@ -36,7 +36,7 @@ def scan_mounts(topdir):
     """Search path for mountpoints"""
     mplist = []
     topdir = os.path.normpath(topdir)
-    fo = file('/proc/mounts','r')
+    fo = open('/proc/mounts','r')
     for line in fo.readlines():
         path = line.split()[1]
         if path.startswith(topdir):
@@ -275,7 +275,7 @@ class BaseTaskHandler(object):
 
     def chownTree(self, dirpath, uid, gid):
         """chown the given path and all files and directories under
-           it to the given uid/gid."""
+        it to the given uid/gid."""
         for path, dirs, files in os.walk(dirpath):
             os.lchown(path, uid, gid)
             for filename in files:

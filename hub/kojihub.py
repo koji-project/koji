@@ -4105,7 +4105,7 @@ def _dml(operation, values):
 def get_host(hostInfo, strict=False):
     """Get information about the given host.  hostInfo may be
     either a string (hostname) or int (host id).  A map will be returned
-    containign the following data:
+    containing the following data:
 
     - id
     - user_id
