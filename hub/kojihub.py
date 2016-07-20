@@ -12348,13 +12348,14 @@ class HostExports(object):
                         pkg = os.path.basename(pkg.strip())
                         rpmpath = fullpaths[pkg]
                         bnp = os.path.basename(rpmpath)
-                        koji.ensuredir(os.path.join(archdir, bnp[0]))
+                        bnplet = bnp[0].lower()
+                        koji.ensuredir(os.path.join(archdir, bnplet))
                         try:
-                            os.link(rpmpath, os.path.join(archdir, bnp[0], bnp))
+                            os.link(rpmpath, os.path.join(archdir, bnplet, bnp))
                         except OSError, ose:
                             if ose.errno == 18:
                                 shutil.copy2(
-                                    rpmpath, os.path.join(archdir, bnp[0], bnp))
+                                    rpmpath, os.path.join(archdir, bnplet, bnp))
                             else:
                                 raise ose
             os.unlink(src)

@@ -5164,7 +5164,7 @@ enabled=1
         ml_needed = set()
         for f in yumbase.tsInfo.getMembers():
             bnp = os.path.basename(f.po.localPkg())
-            dep_path = os.path.join(mldir, bnp[0], bnp)
+            dep_path = os.path.join(mldir, bnp[0].lower(), bnp)
             ml_needed.add(dep_path)
             self.logger.debug("added %s" % dep_path)
             if not os.path.exists(dep_path):
@@ -5182,9 +5182,10 @@ enabled=1
         pkgwriter = open(self.pkglist, 'a')
         for ml_pkg in ml_needed:
             bnp = os.path.basename(ml_pkg)
-            pkgwriter.write(bnp[0].lower() + '/' + bnp + '\n')
-            koji.ensuredir(os.path.join(self.repodir, bnp[0].lower()))
-            os.symlink(ml_pkg, os.path.join(self.repodir, bnp[0].lower(), bnp))
+            bnplet = bnp[0].lower()
+            pkgwriter.write(bnplet + '/' + bnp + '\n')
+            koji.ensuredir(os.path.join(self.repodir, bnplet))
+            os.symlink(ml_pkg, os.path.join(self.repodir, bnplet, bnp))
             self.keypaths[bnp] = ml_pkg
 
 
@@ -5237,11 +5238,11 @@ enabled=1
                 fs_missing.add(pkgpath)
             else:
                 bnp = os.path.basename(pkgpath)
-                pkglist.write(bnp[0].lower() + '/' + bnp + '\n')
-                koji.ensuredir(os.path.join(self.repodir, bnp[0].lower()))
+                bnplet = bnp[0].lower()
+                pkglist.write(bnplet + '/' + bnp + '\n')
+                koji.ensuredir(os.path.join(self.repodir, bnplet))
                 self.keypaths[bnp] = pkgpath
-                os.symlink(pkgpath, os.path.join(self.repodir, bnp[0].lower(),
-                    bnp))
+                os.symlink(pkgpath, os.path.join(self.repodir, bnplet, bnp))
         pkglist.close()
         if len(fs_missing) > 0:
             raise koji.GenericError('Packages missing from the filesystem:\n' +
