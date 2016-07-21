@@ -10708,9 +10708,8 @@ class Host(object):
                 c.execute(q,locals())
         return [finished,unfinished]
 
-    def taskWaitResults(self,parent,tasks):
-        results = {}
-        #if we're getting results, we're done waiting
+    def taskWaitResults(self, parent, tasks):
+        # If we're getting results, we're done waiting
         self.taskUnwait(parent)
         c = context.cnx.cursor()
         canceled = koji.TASK_STATES['CANCELED']
@@ -10720,19 +10719,19 @@ class Host(object):
         SELECT id,state FROM task
         WHERE parent=%(parent)s"""
         if tasks is None:
-            #query all subtasks
+            # Query all subtasks
             tasks = []
             c.execute(q,locals())
             for id,state in c.fetchall():
                 if state == canceled:
                     raise koji.GenericError, "Subtask canceled"
-                elif state in (closed,failed):
+                elif state in (closed, failed):
                     tasks.append(id)
-        #would use a dict, but xmlrpc requires the keys to be strings
+        # Would use a dict, but xmlrpc requires the keys to be strings
         results = []
         for id in tasks:
             task = Task(id)
-            results.append([id,task.getResult()])
+            results.append([id, task.getResult()])
         return results
 
     def getHostTasks(self):
