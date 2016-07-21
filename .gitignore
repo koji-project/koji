@@ -5,3 +5,6 @@ tests/test.py
 docs/build/
 cli/kojic
 htmlcov
+.idea
+.DS_STORE
+.vagrant
