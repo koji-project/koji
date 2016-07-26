@@ -327,9 +327,9 @@ def safer_move(src, dst):
     directory, then an error is raised.
     """
     if os.path.exists(dst):
-        raise koji.GenericError, "Destination exists: %s" % dst
+        raise koji.GenericError("Destination exists: %s" % dst)
     elif os.path.islink(dst):
-        raise koji.GenericError, "Destination is a symlink: %s" % dst
+        raise koji.GenericError("Destination is a symlink: %s" % dst)
     # TODO - use locking to do a better job of catching races
     shutil.move(src, dst)
 
