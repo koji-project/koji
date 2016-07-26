@@ -1,6 +1,8 @@
+import mock
 import unittest
 
 import koji
+import koji.util
 
 
 class EnumTestCase(unittest.TestCase):
@@ -31,3 +33,46 @@ class EnumTestCase(unittest.TestCase):
         """ Test slice access. """
         test = koji.Enum(('one', 'two', 'three'))
         self.assertEquals(test[1:], ('two', 'three'))
+
+
+class MiscFunctionTestCase(unittest.TestCase):
+
+    @mock.patch('os.path.exists')
+    @mock.patch('os.path.islink')
+    @mock.patch('shutil.move')
+    def test_safer_move(self, move, islink, exists):
+        """Test safer_move function"""
+        src = '/FAKEPATH/SRC'
+        dst = '/FAKEPATH/DST'
+
+        # good args
+        exists.return_value = False
+        islink.return_value = False
+        koji.util.safer_move(src, dst)
+        exists.assert_called_once_with(dst)
+        islink.assert_called_once_with(dst)
+        move.assert_called_once_with(src, dst)
+
+        move.reset_mock()
+        islink.reset_mock()
+        exists.reset_mock()
+
+        # existing dst
+        exists.return_value = True
+        with self.assertRaises(koji.GenericError):
+            koji.util.safer_move(src, dst)
+        exists.assert_called_once_with(dst)
+        move.assert_not_called()
+
+        move.reset_mock()
+        islink.reset_mock()
+        exists.reset_mock()
+
+        # symlink dst
+        exists.return_value = False
+        islink.return_value = True
+        with self.assertRaises(koji.GenericError):
+            koji.util.safer_move(src, dst)
+        exists.assert_called_once_with(dst)
+        islink.assert_called_once_with(dst)
+        move.assert_not_called()
