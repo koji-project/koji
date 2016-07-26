@@ -772,6 +772,7 @@ insert into archivetypes (name, description, extensions) values ('wsdl', 'Web Se
 insert into archivetypes (name, description, extensions) values ('obr', 'OSGi Bundle Repository', 'obr');
 insert into archivetypes (name, description, extensions) values ('liveimg-squashfs', 'liveimg compatible squashfs image', 'liveimg.squashfs');
 insert into archivetypes (name, description, extensions) values ('tlb', 'OLE type library file', 'tlb');
+insert into archivetypes (name, description, extensions) values ('jnilib', 'Java Native Interface library', 'jnilib');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
