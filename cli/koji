@@ -60,7 +60,10 @@ import traceback
 import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
 import xmlrpclib
-import yum.comps
+try:
+    import yum.comps as yumcomps
+except ImportError:
+    yumcomps = None
 import optparse
 #for import-comps handler (currently disabled)
 #from rhpl.comps import Comps
@@ -1717,7 +1720,11 @@ def handle_import_comps(options, session, args):
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
         assert False
-    comps = yum.comps.Comps()
+    if yumcomps is None:
+        print "yum comps module not available"
+        return 1
+    # TODO: port to libcomps
+    comps = yumcomps.Comps()
     comps.add(args[0])
     tag = args[1]
     force = local_options.force
