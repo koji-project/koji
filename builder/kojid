@@ -650,6 +650,7 @@ class BuildRoot(object):
         repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
 
         opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
+        opts['tempdir'] = self.options.workdir
         fo = koji.openRemoteFile(repomdpath, **opts)
         try:
             repodata = repoMDObject.RepoMD('ourrepo', fo)
@@ -904,6 +905,7 @@ class BuildTask(BaseTaskHandler):
         self.logger.debug("Reading SRPM")
         relpath = "work/%s" % srpm
         opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
+        opts['tempdir'] = self.workdir
         fo = koji.openRemoteFile(relpath, **opts)
         h = koji.get_rpm_header(fo)
         fo.close()
@@ -3150,6 +3152,7 @@ class OzImageTask(BaseTaskHandler):
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
+            tops['tempdir'] = self.workdir
             ks_src = koji.openRemoteFile(ksfile, **tops)
             kspath = os.path.join(self.workdir, os.path.basename(ksfile))
             ks_dest = open(kspath, 'w')
@@ -3956,6 +3959,7 @@ class BuildIndirectionImageTask(OzImageTask):
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
+            tops['tempdir'] = self.workdir
             remote_fileobj = koji.openRemoteFile(filepath, **tops)
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
             final_fileobj = open(final_path, 'w')

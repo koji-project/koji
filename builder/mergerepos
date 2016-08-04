@@ -73,6 +73,8 @@ def parse_args(args):
                       help="A file containing a list of srpm names to exclude from the merged repo")
     parser.add_option("-o", "--outputdir", default=None,
                       help="Location to create the repository")
+    parser.add_option("--tempdir", default=None,
+                      help="Location for temporary files")
     (opts, argsleft) = parser.parse_args(args)
 
     if len(opts.repos) < 1:
@@ -109,9 +111,10 @@ def make_const_func(value):
 
 
 class RepoMerge(object):
-    def __init__(self, repolist, arches, groupfile, blocked, outputdir):
+    def __init__(self, repolist, arches, groupfile, blocked, outputdir, tempdir=None):
         self.repolist = repolist
         self.outputdir = outputdir
+        self.tempdir = tempdir
         self.mdconf = createrepo.MetaDataConfig()
         # explicitly request sha1 for backward compatibility with older yum
         self.mdconf.sumtype = 'sha1'
@@ -125,7 +128,7 @@ class RepoMerge(object):
             self.yumbase.preconf.debuglevel = 2
         else:
             self.yumbase._getConfig('/dev/null', init_plugins=False, debuglevel=2)
-        self.yumbase.conf.cachedir = tempfile.mkdtemp()
+        self.yumbase.conf.cachedir = tempfile.mkdtemp(dir=self.tempdir)
         self.yumbase.conf.cache = 0
         self.archlist = arches
         self.mdconf.groupfile = groupfile
@@ -287,7 +290,8 @@ def main(args):
     else:
         blocked = {}
 
-    merge = RepoMerge(opts.repos, opts.arches, opts.groupfile, blocked, opts.outputdir)
+    merge = RepoMerge(opts.repos, opts.arches, opts.groupfile, blocked,
+                      opts.outputdir, opts.tempdir)
 
     try:
         merge.merge_repos()
