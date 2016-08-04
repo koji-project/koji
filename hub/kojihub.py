@@ -41,6 +41,7 @@ from koji.util import md5_constructor
 from koji.util import sha1_constructor
 from koji.util import dslice
 from koji.util import multi_fnmatch
+from koji.util import safer_move
 import os
 import re
 import rpm
@@ -5147,7 +5148,7 @@ def import_build_log(fn, buildinfo, subdir=None):
         raise koji.GenericError("Error importing build log. %s already exists." % final_path)
     if os.path.islink(fn) or not os.path.isfile(fn):
         raise koji.GenericError("Error importing build log. %s is not a regular file." % fn)
-    os.rename(fn,final_path)
+    safer_move(fn, final_path)
     os.symlink(final_path,fn)
 
 def import_rpm_file(fn,buildinfo,rpminfo):
@@ -5603,7 +5604,7 @@ def import_old_image(old, name, version):
             raise koji.GenericError("Error importing build log. %s already exists." % final_path)
         if os.path.islink(logsrc) or not os.path.isfile(logsrc):
             raise koji.GenericError("Error importing build log. %s is not a regular file." % logsrc)
-        os.rename(logsrc, final_path)
+        safer_move(logsrc, final_path)
         os.symlink(final_path, logsrc)
 
     return binfo
@@ -5774,7 +5775,7 @@ def _import_archive_file(filepath, destdir):
     if os.path.islink(filepath) or not os.path.isfile(filepath):
         raise koji.GenericError("Error importing archive file, %s is not a regular file" % filepath)
     koji.ensuredir(destdir)
-    os.rename(filepath, final_path)
+    safer_move(filepath, final_path)
     os.symlink(final_path, filepath)
 
 def _generate_maven_metadata(mavendir):
@@ -7891,7 +7892,7 @@ def importImageInternal(task_id, build_id, imgdata):
             raise koji.GenericError("Error importing build log. %s already exists." % final_path)
         if os.path.islink(logsrc) or not os.path.isfile(logsrc):
             raise koji.GenericError("Error importing build log. %s is not a regular file." % logsrc)
-        os.rename(logsrc, final_path)
+        safer_move(logsrc, final_path)
         os.symlink(final_path, logsrc)
 
     # record all of the RPMs installed in the image(s)
@@ -10977,7 +10978,7 @@ class HostExports(object):
         for relpath in [srpm] + rpms:
             fn = "%s/%s" % (uploadpath,relpath)
             dest = "%s/%s" % (dir,os.path.basename(fn))
-            os.rename(fn,dest)
+            safer_move(fn, dest)
             os.symlink(dest,fn)
         if logs:
             for key, files in logs.iteritems():
@@ -10989,7 +10990,7 @@ class HostExports(object):
                 for relpath in files:
                     fn = "%s/%s" % (uploadpath,relpath)
                     dest = "%s/%s" % (logdir,os.path.basename(fn))
-                    os.rename(fn,dest)
+                    safer_move(fn, dest)
                     os.symlink(dest,fn)
 
     def moveMavenBuildToScratch(self, task_id, results, rpm_results):
@@ -11012,7 +11013,7 @@ class HostExports(object):
                 src = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
                 dest = os.path.join(destdir, relpath)
                 koji.ensuredir(os.path.dirname(dest))
-                os.rename(src, dest)
+                safer_move(src, dest)
                 os.symlink(dest, src)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
@@ -11021,7 +11022,7 @@ class HostExports(object):
                                    relpath)
                 dest = os.path.join(destdir, 'rpms', relpath)
                 koji.ensuredir(os.path.dirname(dest))
-                os.rename(src, dest)
+                safer_move(src, dest)
                 os.symlink(dest, src)
 
     def moveWinBuildToScratch(self, task_id, results, rpm_results):
@@ -11039,7 +11040,7 @@ class HostExports(object):
             filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
             dest = os.path.join(destdir, relpath)
             koji.ensuredir(os.path.dirname(dest))
-            os.rename(filename, dest)
+            safer_move(filename, dest)
             os.symlink(dest, filename)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
@@ -11048,7 +11049,7 @@ class HostExports(object):
                                         relpath)
                 dest = os.path.join(destdir, 'rpms', relpath)
                 koji.ensuredir(os.path.dirname(dest))
-                os.rename(filename, dest)
+                safer_move(filename, dest)
                 os.symlink(dest, filename)
 
     def moveImageBuildToScratch(self, task_id, results):
@@ -11069,7 +11070,7 @@ class HostExports(object):
                 dest = os.path.join(destdir, img)
                 koji.ensuredir(destdir)
                 logger.debug('renaming %s to %s' % (src, dest))
-                os.rename(src, dest)
+                safer_move(src, dest)
                 os.symlink(dest, src)
             if sub_results.has_key('rpmresults'):
                 rpm_results = sub_results['rpmresults']
@@ -11079,7 +11080,7 @@ class HostExports(object):
                         rpm_results['task_id']), relpath)
                     dest = os.path.join(destdir, 'rpms', relpath)
                     koji.ensuredir(os.path.dirname(dest))
-                    os.rename(src, dest)
+                    safer_move(src, dest)
                     os.symlink(dest, src)
 
     def initBuild(self,data):
@@ -11694,7 +11695,7 @@ class HostExports(object):
                     raise koji.GenericError, "File already in repo: %s" % dst
                 #otherwise the desired hardlink already exists
             else:
-                os.link(filepath, dst)
+                safer_move(filepath, dst)
 
     def repoDone(self, repo_id, data, expire=False):
         """Move repo data into place, mark as ready, and expire earlier repos
@@ -11724,7 +11725,7 @@ class HostExports(object):
                 dst = "%s/%s" % (datadir, fn)
                 if not os.path.exists(src):
                     raise koji.GenericError, "uploaded file missing: %s" % src
-                os.link(src, dst)
+                safer_move(src, dst)
                 os.unlink(src)
         if expire:
             repo_expire(repo_id)

@@ -26,6 +26,7 @@ import os
 import os.path
 import re
 import resource
+import shutil
 import stat
 import sys
 import time
@@ -315,6 +316,23 @@ def rmtree(path):
             # dir not empty. could happen if a mount was present
             continue
         os.rmdir(dirpath)
+
+
+def safer_move(src, dst):
+    """Rename if possible, copy+rm otherwise
+
+    Behavior is similar to shutil.move
+
+    Unlike move, src is /always/ moved from src to dst. If dst is an existing
+    directory, then an error is raised.
+    """
+    if os.path.exists(dst):
+        raise koji.GenericError("Destination exists: %s" % dst)
+    elif os.path.islink(dst):
+        raise koji.GenericError("Destination is a symlink: %s" % dst)
+    # TODO - use locking to do a better job of catching races
+    shutil.move(src, dst)
+
 
 def _relpath(path, start=getattr(os.path, 'curdir', '.')):
     """Backport of os.path.relpath for python<2.6"""
