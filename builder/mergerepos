@@ -186,6 +186,7 @@ class RepoMerge(object):
         include_srpms = {}
 
         # calculating what "builds" (srpms) we're allowing into the repo
+        seen_srpms = {}
         for reponum, repo in enumerate(repos):
             for pkg in repo.sack:
                 if reponum == 0 and not pkg.basepath:
@@ -195,12 +196,20 @@ class RepoMerge(object):
                     #force the pkg object to report a relative location
                     loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
+                if pkg.sourcerpm in seen_srpms:
+                    # we're just looking at sourcerpms this pass and we've
+                    # already seen this one
+                    continue
+                seen_srpms[pkg.sourcerpm] = 1
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
                 if include_srpms.has_key(srpm_name):
                     other_srpm, other_repoid = include_srpms[srpm_name]
                     if pkg.repoid != other_repoid:
                         # We found a rpm built from an srpm with the same name in a previous repo.
                         # The previous repo takes precendence, so ignore the srpm found here.
+                        sys.stderr.write('Package %s already provided by repo %s'
+                                ' (at %s in repo %s)\n'
+                                % (srpm_name, other_repoid, str(pkg), pkg.repoid))
                         continue
                     else:
                         # We're in the same repo, so compare srpm NVRs
@@ -212,7 +221,15 @@ class RepoMerge(object):
                             # The current package we're processing is from a newer srpm than the
                             # existing srpm in the dict, so update the dict
                             include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
+                            sys.stderr.write('Replacing older source nvr: '
+                                    '%s > %s\n' % (pkg.sourcerpm, other_srpm))
+                        elif cmp < 0:
+                            sys.stderr.write('Ignoring older source nvr: '
+                                    '%s < %s\n' % (pkg.sourcerpm, other_srpm))
+                        # otherwise same, so we already have it
                 elif self.blocked.has_key(srpm_name):
+                    print >> sys.stderr, 'Ignoring blocked package: %s\n' \
+                            % pkg.sourcerpm
                     continue
                 else:
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
@@ -226,12 +243,18 @@ class RepoMerge(object):
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
                 incl_srpm, incl_repoid = include_srpms.get(srpm_name, (None, None))
                 pkg_nvra = str(pkg)
-                if incl_srpm == pkg.sourcerpm and not seen_rpms.has_key(pkg_nvra):
+                if seen_rpms.has_key(pkg_nvra):
+                    sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
+                elif incl_srpm is None:
+                    sys.stderr.write('Excluding %s (%s is blocked)\n'
+                            % (pkg_nvra, srpm_name))
+                    repo.sack.delPackage(pkg)
+                elif incl_srpm == pkg.sourcerpm:
                     origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
                     seen_rpms[pkg_nvra] = 1
                 else:
-                    # Either the srpm is in the block list, it is not built from the srpm we
-                    # identified above, or it's a duplicate, so exclude it
+                    sys.stderr.write('Excluding %s (wrong srpm version '
+                            '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
                     repo.sack.delPackage(pkg)
 
         origins.close()
