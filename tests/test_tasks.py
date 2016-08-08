@@ -434,7 +434,7 @@ class TasksTestCase(TestCase):
 
         obj = TestTask(123, 'some_method', ['random_arg'], None, None, temp_path)
         self.assertEquals(obj.chownTree(temp_path, 2, 0), None)
-        mock_lchown.assert_has_calls([call(temp_path, 2, 0), call(dummy_file2, 2, 0), call(dummy_file, 2, 0)])
+        mock_lchown.assert_has_calls([call(temp_path, 2, 0), call(dummy_file2, 2, 0), call(dummy_file, 2, 0)], any_order=True)
 
     def test_BaseTaskHandler_localPath_file_exists(self):
         """ Tests the localPath function to ensure that when a file exists, it returns that path without

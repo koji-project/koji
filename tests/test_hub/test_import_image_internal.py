@@ -22,6 +22,9 @@ class TestImportImageInternal(unittest.TestCase):
     @mock.patch('kojihub.Task')
     @mock.patch('kojihub.context')
     def test_basic(self, context, Task, get_build, get_archive_type, import_archive, work):
+        task = mock.MagicMock()
+        task.assertHost = mock.MagicMock()
+        Task.return_value = task
         imgdata = {
             'arch': 'x86_64',
             'task_id': 1,
@@ -51,6 +54,9 @@ class TestImportImageInternal(unittest.TestCase):
     @mock.patch('kojihub.Task')
     @mock.patch('kojihub.context')
     def test_with_rpm(self, context, Task, get_build, get_archive_type, import_archive, build, work, get_rpm):
+        task = mock.MagicMock()
+        task.assertHost = mock.MagicMock()
+        Task.return_value = task
         rpm = {
             #'location': 'foo',
             'id': 6,

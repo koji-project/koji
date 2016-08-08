@@ -33,6 +33,7 @@ class TestInsertProcessor(unittest.TestCase):
     def test_make_create(self, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
+        context.session.assertLogin = mock.MagicMock()
         proc = kojihub.InsertProcessor('sometable', data={'foo': 'bar'})
         proc.make_create(event_id=1, user_id=2)
         self.assertEquals(proc.data['create_event'], 1)
@@ -54,6 +55,7 @@ class TestInsertProcessor(unittest.TestCase):
     def test_dup_check(self, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
+        context.session.assertLogin = mock.MagicMock()
         proc = kojihub.InsertProcessor('sometable', data={'foo': 'bar'})
         proc.dup_check()
 
