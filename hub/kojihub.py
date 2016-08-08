@@ -11726,7 +11726,6 @@ class HostExports(object):
                 if not os.path.exists(src):
                     raise koji.GenericError, "uploaded file missing: %s" % src
                 safer_move(src, dst)
-                os.unlink(src)
         if expire:
             repo_expire(repo_id)
             koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
