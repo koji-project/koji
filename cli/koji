@@ -1774,13 +1774,8 @@ def handle_import_comps(options, session, args):
         return 1
 
 
-def foobar(*args, **kwargs):
-    pprint.pprint(args)
-    pprint.pprint(kwargs)
-
 def import_comps(session, filename, tag, options):
     """Import comps data using yum.comps module"""
-    print "LIBCOMPS!"
     comps = libcomps.Comps()
     comps.fromxml_f(filename)
     force = options.force
@@ -1793,8 +1788,7 @@ def import_comps(session, filename, tag, options):
     }
     for group in comps.groups:
         print "Group: %s (%s)" % (group.id, group.name)
-        #session.groupListAdd(
-        foobar (
+        session.groupListAdd(
                     tag, group.id, force=force, display_name=group.name,
                     is_default=bool(group.default),
                     uservisible=bool(group.uservisible),
@@ -1803,20 +1797,19 @@ def import_comps(session, filename, tag, options):
                     biarchonly=bool(group.biarchonly))
         for pkg in group.packages:
             pkgopts = {'type' : ptypes[pkg.type],
-                        'package' : pkg.name,
                         'basearchonly' : bool(pkg.basearchonly),
                         }
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
-            print "  Package: %s: %r" % (pkg, pkgopts)
-            #session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
-        # like yum.comps, libcomps does not seem to support groups deps or metapkgs
+            print "  Package: %s: %r" % (pkg.name, pkgopts)
+            session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
+        # libcomps does not support group dependencies
+        # libcomps does not support metapkgs
 
 
 def import_comps_alt(session, filename, tag, options):
     """Import comps data using yum.comps module"""
 
-    sys.exit(1) #XXX disabled for now
     comps = yumcomps.Comps()
     comps.add(filename)
     force = local_options.force
