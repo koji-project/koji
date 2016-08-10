@@ -1438,7 +1438,7 @@ def format_exc_plus():
                 rv += "<ERROR WHILE PRINTING VALUE>\n"
     return rv
 
-def openRemoteFile(relpath, topurl=None, topdir=None):
+def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
 
     This is done either via a mounted filesystem (nfs) or http, depending
@@ -1446,7 +1446,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         src = urllib2.urlopen(url)
-        fo = tempfile.TemporaryFile()
+        fo = tempfile.TemporaryFile(dir=tempdir)
         shutil.copyfileobj(src, fo)
         src.close()
         fo.seek(0)

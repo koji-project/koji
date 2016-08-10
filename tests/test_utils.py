@@ -76,3 +76,62 @@ class MiscFunctionTestCase(unittest.TestCase):
         exists.assert_called_once_with(dst)
         islink.assert_called_once_with(dst)
         move.assert_not_called()
+
+
+    @mock.patch('urllib2.urlopen')
+    @mock.patch('tempfile.TemporaryFile')
+    @mock.patch('shutil.copyfileobj')
+    @mock.patch('__builtin__.open')
+    def test_openRemoteFile(self, m_open, m_copyfileobj, m_TemporaryFile,
+                            m_urlopen):
+        """Test openRemoteFile function"""
+
+        mocks = [m_open, m_copyfileobj, m_TemporaryFile, m_urlopen]
+
+        topurl = 'http://example.com/koji'
+        path = 'relative/file/path'
+        url = 'http://example.com/koji/relative/file/path'
+
+        #using topurl, no tempfile
+        fo = koji.openRemoteFile(path, topurl)
+        m_urlopen.assert_called_once_with(url)
+        m_urlopen.return_value.close.assert_called_once()
+        m_TemporaryFile.assert_called_once_with(dir=None)
+        m_copyfileobj.assert_called_once()
+        m_open.assert_not_called()
+        assert fo is m_TemporaryFile.return_value
+
+        for m in mocks:
+            m.reset_mock()
+
+        #using topurl + tempfile
+        tempdir = '/tmp/koji/1234'
+        fo = koji.openRemoteFile(path, topurl, tempdir=tempdir)
+        m_urlopen.assert_called_once_with(url)
+        m_urlopen.return_value.close.assert_called_once()
+        m_TemporaryFile.assert_called_once_with(dir=tempdir)
+        m_copyfileobj.assert_called_once()
+        m_open.assert_not_called()
+        assert fo is m_TemporaryFile.return_value
+
+        for m in mocks:
+            m.reset_mock()
+
+        #using topdir
+        topdir = '/mnt/mykojidir'
+        filename = '/mnt/mykojidir/relative/file/path'
+        fo = koji.openRemoteFile(path, topdir=topdir)
+        m_urlopen.assert_not_called()
+        m_TemporaryFile.assert_not_called()
+        m_copyfileobj.assert_not_called()
+        m_open.assert_called_once_with(filename)
+        assert fo is m_open.return_value
+
+        for m in mocks:
+            m.reset_mock()
+
+        # using neither
+        with self.assertRaises(koji.GenericError):
+            koji.openRemoteFile(path)
+        for m in mocks:
+            m.assert_not_called()
