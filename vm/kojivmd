@@ -305,6 +305,7 @@ class WinBuildTask(MultiPlatformTask):
         for url in [source_url] + subopts.values():
             scm = SCM(url)
             scm.assert_allowed(self.options.allowed_scms)
+            self.run_plugin('preSCMCheckout', scminfo=scm.contextData())
 
         task_info = self.session.getTaskInfo(self.id)
         target_info = self.session.getBuildTarget(target)
