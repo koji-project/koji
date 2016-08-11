@@ -609,23 +609,41 @@ try triggering your callback plugin with the command-line. For example,
 if you registered a callback for the ``postTag`` event, try tagging a
 build: ``$ koji tag-build mytag mypkg-1.0-1``
 
-Patch Review
-============
+Submitting Changes
+==================
 
-If you have a patch to submit, please send it to
-koji-devel@lists.fedoraproject.org. Here are some guidelines on
-producing preferable patches.
+To submit code changes for Koji, please file a pull request in Pagure.
 
--  Please do not "patch bomb". Keep them manageable, perhaps providing a
-   patch for each component that is getting changes.
--  Adhere to `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__
--  Provide patches a feature at a time, not a pile of several. Please
-   follow the same practice for bugs.
--  Consider using ``git-send-email``, or just attach the patches to the
-   email
--  Patches should apply cleanly to HEAD of the intended branch
+https://pagure.io/pagure/pull-requests
+
+Here are some guidelines on producing preferable pull requests.
+
+-  Each request should be a coherent whole, e.g. a single feature or bug fix.
+   Please do not bundle a series of unrelated changes into a single PR
+-  Pull requests in Pagure come from a branch in your personal fork of Koji
+   (either in Pagure or a remote git repo). Please use an appropriately named
+   branch for this. Do not use the master branch of your fork. Also, please
+   be aware that Pagure will automatically update the pull request if you
+   modify the source branch
+-  Your branch should be based against the current HEAD of the target branch
+-  Please adhere to `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__.
+   While much of the older code in Koji does not, we try to stick to it
+   with new code
 -  Please maintain backward-compatibility up to RHEL 5 (which means
    Python 2.4)
 
-There are only 3-5 people with commit access that regularly watch the
-mailing list, so responses may take a couple days if we're all occupied.
+Note that the core development team for Koji is small, so it may take a few
+days for someone to reply to your request.
+
+Partial work
+------------
+
+Pull requests are for changes that are complete and ready for inclusion, but
+sometimes you have partial work that you may want feedback on. Please don't
+submit a PR before your code is complete.
+
+The preferred way to request early feedback is to push your changes to a your
+own koji fork and then send an email to koji-devel@lists.fedoraproject.org
+requesting review. This approach is one step short of a PR, making it easy to
+upgrade to a PR once the changes are ready.
+
