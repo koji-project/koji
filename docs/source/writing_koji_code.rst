@@ -614,7 +614,7 @@ Submitting Changes
 
 To submit code changes for Koji, please file a pull request in Pagure.
 
-https://pagure.io/pagure/pull-requests
+https://pagure.io/koji/pull-requests
 
 Here are some guidelines on producing preferable pull requests.
 
