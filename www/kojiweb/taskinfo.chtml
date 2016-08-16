@@ -393,22 +393,19 @@ $value
     <tr>
       <th>Result</th>
       <td>
-        <a href="#" collapse" id="toggle-result" style="display: none;">Show results</a>
-        <div id="result">
-        #if $excClass
-          <pre>
-          #if $hasattr($result, 'faultString')
-$cgi.escape($result.faultString.strip())
-          #else
-${excClass.__name__}: $cgi.escape($str($result))
-          #end if
-          </pre>
-        #elif $isinstance($result, dict)
-        $printMap($result)
-        #else
-        $printValue('', $result)
-        #end if
+      #if $abbr_result_text
+        <a href="#" collapse" id="toggle-result" style="display: none;">Show complete results</a>
+        <div id="abbr-result">
+        $abbr_result_text
         </div>
+        <div id="full-result">
+        $full_result_text
+        </div>
+        #else
+         <div id="result">
+        $full_result_text
+        </div>
+        #end if
       </td>
     </tr>
     <tr>
@@ -430,25 +427,29 @@ ${excClass.__name__}: $cgi.escape($str($result))
     </tr>
   </table>
 
+#if $abbr_result_text
   <script type="text/javascript">
     (function() {
-       var r = document.getElementById('result'),
+       var abbr = document.getElementById('abbr-result');
+       var full = document.getElementById('full-result');
        t = document.getElementById('toggle-result');
-       r.style.display = 'none';
+       full.style.display = 'none';
        t.style.display = 'block';
-       t.text = 'Show result';
+       t.text = 'Show complete result';
        t.onclick = function(e) {
-         if(r.style.display == 'none') {
-           r.style.display = 'block';
-           t.text = 'Hide result';
+         if(abbr.style.display == 'none') {
+           abbr.style.display = 'block';
+           full.style.display = 'none'
+           t.text = 'show complete result';
            }
          else {
-           r.style.display = 'none';
-           t.text = 'Show result';
+           abbr.style.display = 'none'
+           full.style.display = 'block';
+           t.text = 'Show abbreviated result';
          }
          return false;
        };
     })();
   </script>
-
+#end if
 #include "includes/footer.chtml"

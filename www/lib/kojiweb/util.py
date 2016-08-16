@@ -31,9 +31,8 @@ from socket import error as socket_error
 from socket import sslerror as socket_sslerror
 from xmlrpclib import ProtocolError
 from xml.parsers.expat import ExpatError
-
-class NoSuchException(Exception):
-    pass
+from HTMLParser import HTMLParser
+import cgi
 
 try:
     # pyOpenSSL might not be around
@@ -597,3 +596,91 @@ a network issue or load issues on the server."""
     else:
         str = "An error has occurred while processing your request."
     return str, level
+
+def _parse_value(key, value, sep=', '):
+    _str = None
+    _len = None
+    htmlparser = HTMLParser()
+    if key in ('brootid', 'buildroot_id'):
+        value = str(value)
+        _str = """<a href="buildrootinfo?buildrootID=%s">%s</a>""" % (value, value)
+        _len = len(htmlparser.unescape(_str))
+    elif isinstance(value, list):
+        _str = sep.join([str(val) for val in value])
+    elif isinstance(value, dict):
+        _str = sep.join(['%s=%s' % ((n == '' and "''" or n), v) for n, v in value.items()])
+    else:
+        _str = str(value)
+    if _str is None:
+        _str = ''
+    if _len is None:
+        _len = len(_str)
+    return _len, _str
+
+def task_result_to_html_or_string(result=None, exc_class=None,
+                                      max_abbr_lines=None, max_abbr_len=None):
+    """convert the result to a HTML fragment or a string.
+
+    Returns a tuple: (full_html_or_string, abbreviated_html_or_string)
+    """
+    default_max_abbr_result_lines = 11
+    default_max_abbr_result_len = 512
+    if max_abbr_lines is None:
+        max_abbr_lines = default_max_abbr_result_lines
+    if max_abbr_len is None:
+        max_abbr_len = default_max_abbr_result_len
+    full_ret_str = ''
+    abbr_ret_str = ''
+    lines = []
+    _parse_properties = lambda props:', '.join(
+        [v is not None and '%s=%s' % (n, v) or str(n) for n, v in props.items()])
+    if exc_class:
+        if hasattr(result, 'faultString'):
+            _str = cgi.escape(result.faultString.strip())
+        else:
+            _str = "%s: %s" % (exc_class.__name__, cgi.escape(str(result)))
+        lines.append({"text": _str, "length": len(_str), "begin_tag": "<pre>", "end_tag": "</pre>"})
+    elif isinstance(result, dict):
+        htmlparser = HTMLParser()
+        for k, v in result.items():
+            if k == 'properties':
+                _str = "properties&nbsp;=&nbsp;%s" % _parse_properties(v)
+            elif k != '__starstar':
+                _str = "%s&nbsp;=&nbsp;%s" % (k, _parse_value(k, v)[1])
+            _len = len(htmlparser.unescape(_str))
+            lines.append({"text": _str, "length": _len, "begin_tag": "", "end_tag": "<br />"})
+    else:
+        if result is not None:
+            _len, _str = _parse_value('', result)
+            lines.append({"text": _str, "length": _len, "begin_tag": "", "end_tag": ""})
+    if not lines:
+        return full_ret_str, abbr_ret_str
+
+    total_lines = len(lines)
+    full_result_len = reduce(lambda s, l: s + l, [line["length"] for line in lines])
+    total_abbr_lines = 0
+    total_abbr_len = 0
+    for line in lines:
+        line_len = line["length"]
+        line_text = line["text"]
+        begin_tag = line["begin_tag"]
+        end_tag = line["end_tag"]
+        full_ret_str += "%s%s%s" % (begin_tag, line_text, end_tag)
+        if total_lines < max_abbr_lines and full_result_len < max_abbr_len:
+            continue
+
+        if total_abbr_lines >= max_abbr_lines:
+            break
+        else:
+            total_abbr_lines += 1
+        if total_abbr_len >= max_abbr_len:
+            break
+        if total_abbr_len + line_len >= max_abbr_len:
+            left_abbr_len = max_abbr_len - total_abbr_len
+            total_abbr_len = max_abbr_len
+            line_text = "%s ... ..." % line_text[:left_abbr_len]
+        else:
+            total_abbr_len += line_len
+        abbr_ret_str += "%s%s%s" % (begin_tag, line_text, end_tag)
+
+    return full_ret_str, abbr_ret_str
