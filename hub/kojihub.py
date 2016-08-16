@@ -3972,7 +3972,7 @@ def list_archive_files(archive_id, queryOpts=None):
         image_archive = get_image_archive(archive_info['id'], strict=True)
         archive_info.update(image_archive)
         file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
-                                 koji.pathinfo.imagefile(archive_info))
+                                 archive_info['filename'])
     else:
         return _applyQueryOpts([], queryOpts)
 
