@@ -1173,7 +1173,12 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         type_join = 'JOIN image_builds ON image_builds.build_id = tag_listing.build_id'
         fields.append(('image_builds.build_id', 'build_id'))
     else:
-        raise koji.GenericError, 'unsupported build type: %s' % type
+        btype = lookup_name('btype', type, strict=False)
+        if not btype:
+            raise koji.GenericError, 'unsupported build type: %s' % type
+        btype_id = btype['id']
+        type_join = 'build_types ON build.id = build_types.build_id '
+                'AND btype_id = %(btype_id)')
 
     q = """SELECT %s
     FROM tag_listing
@@ -3627,7 +3632,13 @@ def get_image_build(buildInfo, strict=False):
 
 
 def get_build_type(buildInfo, strict=False):
-    """Return type info about the build"""
+    """Return type info about the build
+
+    buildInfo should be a valid build specification
+
+    Returns a dictionary whose keys are type names and whose values are
+    the type info corresponding to that type
+    """
 
     binfo = get_build(buildInfo, strict=strict)
     if not binfo:
@@ -5472,6 +5483,7 @@ def new_maven_build(build, maven_info):
         insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
                     VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
         _dml(insert, maven_info)
+        # note: for the moment, we are not adding build_types entries for the legacy types
 
 def new_win_build(build_info, win_info):
     """
@@ -5491,6 +5503,7 @@ def new_win_build(build_info, win_info):
         insert.set(build_id=build_id)
         insert.set(platform=win_info['platform'])
         insert.execute()
+        # note: for the moment, we are not adding build_types entries for the legacy types
 
 def new_image_build(build_info):
     """
@@ -5508,6 +5521,7 @@ def new_image_build(build_info):
         insert = InsertProcessor('image_builds')
         insert.set(build_id=build_info['id'])
         insert.execute()
+        # note: for the moment, we are not adding build_types entries for the legacy types
 
 def old_image_data(old_image_id):
     """Return old image data for given id"""
@@ -6566,6 +6580,9 @@ def _delete_build(binfo):
     # build-related data:
     #   build   KEEP (marked deleted)
     #   maven_builds KEEP
+    #   win_builds KEEP
+    #   image_builds KEEP
+    #   build_types KEEP
     #   task ??
     #   tag_listing REVOKE (versioned) (but should ideally be empty anyway)
     #   rpminfo KEEP
@@ -6647,6 +6664,10 @@ def reset_build(build):
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
@@ -9152,7 +9173,12 @@ class RootExports(object):
             joins.append('image_builds ON build.id = image_builds.build_id')
             fields.append(('image_builds.build_id', 'build_id'))
         else:
-            raise koji.GenericError, 'unsupported build type: %s' % type
+            btype = lookup_name('btype', type, strict=False)
+            if not btype:
+                raise koji.GenericError, 'unsupported build type: %s' % type
+            btype_id = btype['id']
+            joins.append('build_types ON build.id = build_types.build_id '
+                    'AND btype_id = %(btype_id)')
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
