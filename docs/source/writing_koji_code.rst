@@ -647,3 +647,22 @@ own koji fork and then send an email to koji-devel@lists.fedoraproject.org
 requesting review. This approach is one step short of a PR, making it easy to
 upgrade to a PR once the changes are ready.
 
+Unit Tests
+==========
+
+Koji comes with a small test suite, that you should always run when making
+changes to the code. To do so, just run ``make test`` in your terminal.
+
+You will need to install the following packages to actually run the tests.
+
+ * ``findutils``
+ * ``postgresql-python``
+ * ``pyOpenSSL``
+ * ``python-coverage``
+ * ``python-krbV``
+ * ``python-mock``
+ * ``python-simplejson``
+ * ``python-urlgrabber``
+
+Please note that it is currently not possible to use *virtualenv* when hacking
+on Koji.
