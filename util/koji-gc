@@ -433,9 +433,8 @@ refer to the document linked above for instructions."""
         if options.debug:
             print "Sending warning notice to %s" % msg['To']
         s = smtplib.SMTP(options.smtp_host)
-        s.connect()
         s.sendmail(msg['From'], msg['To'], msg.as_string())
-        s.close()
+        s.quit()
 
 
 def main(args):
