@@ -3625,6 +3625,41 @@ def get_image_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such image build: %s' % buildInfo
     return result
 
+
+def get_build_type(buildInfo, strict=False):
+    """Return type info about the build"""
+
+    binfo = get_build(buildInfo, strict=strict)
+    if not binfo:
+        return None
+
+    query = QueryProcessor(
+                tables=['btype'],
+                columns=['name'],
+                joins=['build_types ON btype_id=btype.id'],
+                clauses=['build_id = %(id)i'],
+                values=binfo,
+                opts={'asList':True},
+            )
+
+    ret = {}
+    extra = binfo['extra'] or {}
+    for btype in query.execute():
+        ret[btype] = extra.get('typeinfo', {}).get('btype')
+
+    #deal with legacy types
+    l_funcs = [['maven', get_maven_build], ['win', get_win_build],
+               ['image', get_image_build]]
+    for ltype, func in l_funcs:
+        # For now, we let the legacy data take precedence, but at some point
+        # we will want to change that
+        ltinfo = func(binfo['id'], strict=False)
+        if ltinfo:
+            ret[ltype] = ltinfo
+
+    return ret
+
+
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None):
     """
@@ -8799,6 +8834,7 @@ class RootExports(object):
     getMavenBuild = staticmethod(get_maven_build)
     getWinBuild = staticmethod(get_win_build)
     getImageBuild = staticmethod(get_image_build)
+    getBuildType = staticmethod(get_build_type)
     getArchiveTypes = staticmethod(get_archive_types)
     getArchiveType = staticmethod(get_archive_type)
     listArchives = staticmethod(list_archives)
