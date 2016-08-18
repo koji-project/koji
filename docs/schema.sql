@@ -1,5 +1,5 @@
 
--- vim:noet:sw=8
+-- vim:et:sw=8
 
 -- drop statements for old data have moved to schema-clear.sql
 
@@ -250,6 +250,27 @@ CREATE TABLE build (
 
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
 CREATE INDEX build_completion ON build(completion_time);
+
+
+CREATE TABLE btype (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+) WITHOUT OIDS;
+
+
+-- legacy build types
+INSERT INTO btype(name) VALUES ('rpm');
+INSERT INTO btype(name) VALUES ('maven');
+INSERT INTO btype(name) VALUES ('win');
+INSERT INTO btype(name) VALUES ('image');
+
+
+CREATE TABLE build_types (
+        build_id INTEGER NOT NULL REFERENCES build(id),
+        btype_id INTEGER NOT NULL REFERENCES btype(id),
+        PRIMARY KEY (build_id, btype_id)
+) WITHOUT OIDS;
+
 
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
