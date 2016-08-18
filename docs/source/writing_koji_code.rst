@@ -651,9 +651,9 @@ Unit Tests
 ==========
 
 Koji comes with a small test suite, that you should always run when making
-changes to the code. To do so, just enter ``make test`` into your terminal.
+changes to the code. To do so, just run ``make test`` in your terminal.
 
-You will need to install following packages to actually run the tests.
+You will need to install the following packages to actually run the tests.
 
  * ``findutils``
  * ``postgresql-python``
