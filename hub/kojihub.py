@@ -3314,6 +3314,7 @@ def get_build(buildInfo, strict=False):
         return None
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
+              ('build.id', 'build_id'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
@@ -9100,6 +9101,8 @@ class RootExports(object):
         fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                   ('build.start_time', 'start_time'),
+                  ('build.source', 'source'),
+                  ('build.extra', 'extra'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
                   ('EXTRACT(EPOCH FROM events.time)', 'creation_ts'),
                   ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
@@ -9183,6 +9186,7 @@ class RootExports(object):
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
                                tables=tables, joins=joins, clauses=clauses,
+                               transform=_fix_extra_field,
                                values=locals(), opts=queryOpts)
 
         return query.iterate()
