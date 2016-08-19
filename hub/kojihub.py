@@ -4875,6 +4875,7 @@ class CG_Importer(object):
         if 'image' in b_extra:
             # no extra info tracked at build level
             new_image_build(buildinfo)
+        # TODO: btypes
 
         self.buildinfo = buildinfo
         return buildinfo
@@ -5481,9 +5482,9 @@ def new_maven_build(build, maven_info):
                     (field, current_maven_info[field], maven_info[field])
     else:
         maven_info['build_id'] = build['id']
-        insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
-                    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-        _dml(insert, maven_info)
+        data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
+        insert = InsertProcessor('maven_builds', data=data)
+        insert.execute()
         # note: for the moment, we are not adding build_types entries for the legacy types
 
 def new_win_build(build_info, win_info):
