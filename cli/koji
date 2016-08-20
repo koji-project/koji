@@ -3325,7 +3325,7 @@ def anon_handle_buildinfo(options, session, args):
         if other_archives:
             print 'Archives:'
             for archive in other_archives:
-                print os.path.join(koji.pathinfo.buildfiles(info), archive['filename'])
+                print os.path.join(koji.pathinfo.typedir(info), archive['filename'])
         if rpms:
             print "RPMs:"
             for rpm in rpms:

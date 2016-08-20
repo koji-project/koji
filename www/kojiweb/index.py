@@ -1088,6 +1088,8 @@ def externalrepoinfo(environ, extrepoID):
 def buildinfo(environ, buildID):
     values = _initValues(environ, 'Build Info', 'builds')
     server = _getServer(environ)
+    topurl = environ['koji.options']['KojiFilesURL']
+    pathinfo = koji.PathInfo(topdir=topurl)
 
     buildID = int(buildID)
 
@@ -1099,35 +1101,26 @@ def buildinfo(environ, buildID):
     tags.sort(_sortbyname)
     rpms = server.listBuildRPMs(build['id'])
     rpms.sort(_sortbyname)
-    mavenbuild = server.getMavenBuild(buildID)
-    winbuild = server.getWinBuild(buildID)
-    imagebuild = server.getImageBuild(buildID)
-    if mavenbuild:
-        archivetype = 'maven'
-    elif winbuild:
-        archivetype = 'win'
-    elif imagebuild:
-        archivetype = 'image'
-    else:
-        archivetype = None
-    archives = server.listArchives(build['id'], type=archivetype, queryOpts={'order': 'filename'})
-    archivesByExt = {}
-    topurl = environ['koji.options']['KojiFilesURL']
-    pathinfo = koji.PathInfo(topdir=topurl)
-    for archive in archives:
-        if mavenbuild:
-            archive['display'] = archive['filename']
-            archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build), pathinfo.mavenfile(archive)])
-        elif winbuild:
-            archive['display'] = pathinfo.winfile(archive)
-            archive['dl_url'] = '/'.join([pathinfo.winbuild(build), pathinfo.winfile(archive)])
-        elif imagebuild:
-            archive['display'] = archive['filename']
-            archive['dl_url'] = '/'.join([pathinfo.imagebuild(build), archive['filename']])
-        else:
-            archive['display'] = archive['filename']
-            archive['dl_url'] = '/'.join([pathinfo.buildfiles(build), archive['filename']])
-        archivesByExt.setdefault(os.path.splitext(archive['filename'])[1][1:], []).append(archive)
+    typeinfo = server.getBuildType(buildID)
+    archiveIndex = {}
+    for btype in typeinfo:
+        archives = server.listArchives(build['id'], type=btype, queryOpts={'order': 'filename'})
+        idx = archiveIndex.setdefault('btype', {})
+        for archive in archives:
+            if btype == 'maven':
+                archive['display'] = archive['filename']
+                archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build), pathinfo.mavenfile(archive)])
+            elif btype == 'win':
+                archive['display'] = pathinfo.winfile(archive)
+                archive['dl_url'] = '/'.join([pathinfo.winbuild(build), pathinfo.winfile(archive)])
+            elif btype == 'image':
+                archive['display'] = archive['filename']
+                archive['dl_url'] = '/'.join([pathinfo.imagebuild(build), archive['filename']])
+            else:
+                archive['display'] = archive['filename']
+                archive['dl_url'] = '/'.join([pathinfo.buildfiles(build), archive['filename']])
+            ext = os.path.splitext(archive['filename'])[1][1:]
+            idx.setdefault(ext, []).append(archive)
 
     rpmsByArch = {}
     debuginfos = []
@@ -1195,11 +1188,8 @@ def buildinfo(environ, buildID):
     values['tags'] = tags
     values['rpmsByArch'] = rpmsByArch
     values['task'] = task
-    values['mavenbuild'] = mavenbuild
-    values['winbuild'] = winbuild
-    values['imagebuild'] = imagebuild
-    values['archives'] = archives
-    values['archivesByExt'] = archivesByExt
+    values['typeinfo'] = typeinfo
+    values['archiveIndex'] = archiveIndex
 
     values['noarch_log_dest'] = noarch_log_dest
     if environ['koji.currentUser']:
@@ -1213,7 +1203,7 @@ def buildinfo(environ, buildID):
     values['start_time'] = build.get('start_time') or build['creation_time']
     # the build start time is not accurate for maven and win builds, get it from the
     # task start time instead
-    if mavenbuild or winbuild:
+    if 'maven' in typeinfo or 'win' in typeinfo:
         if task:
             values['start_time'] = task['start_time']
     if build['state'] == koji.BUILD_STATES['BUILDING']:

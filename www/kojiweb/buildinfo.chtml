@@ -29,15 +29,15 @@
       <th>Source</th><td>$build['source']</td>
     </tr>
     #end if
-    #if $mavenbuild
+    #if 'maven' in $typeinfo
     <tr>
-      <th>Maven&nbsp;groupId</th><td>$mavenbuild.group_id</td>
+      <th>Maven&nbsp;groupId</th><td>$typeinfo.maven.group_id</td>
     </tr>
     <tr>
-      <th>Maven&nbsp;artifactId</th><td>$mavenbuild.artifact_id</td>
+      <th>Maven&nbsp;artifactId</th><td>$typeinfo.maven.artifact_id</td>
     </tr>
     <tr>
-      <th>Maven&nbsp;version</th><td>$mavenbuild.version</td>
+      <th>Maven&nbsp;version</th><td>$typeinfo.maven.version</td>
     </tr>
     #end if
     #if $summary
@@ -159,44 +159,50 @@
         #end if
       </td>
     </tr>
-    #if $archives
+    #for btype in $archiveIndex
+    #archivesByExt = $archiveIndex[btype]
+    #if not $archivesByExt
+    #continue
+    #end if
     <tr>
-      <th>Archives</th>
+      <th>$btype.capitalize() Archives</th>
       <td class="container">
-	<table class="nested">
-	  #set $exts = $archivesByExt.keys()
-	  #for ext in $exts
-	  <tr>
-	    <th>$ext</th>
-	    <td>
+        <table class="nested">
+          #set $exts = $archivesByExt.keys()
+          #for ext in $exts
+          <tr>
+            <th>$ext</th>
+            <td>
           #if $task and $ext == $exts[0]
-	        #if $mavenbuild
+            #if $btype == 'maven'
                 (<a href="$nvrpath/data/logs/maven/">build logs</a>)
-            #elif $winbuild
+            #elif $btype == 'win'
                 (<a href="$nvrpath/data/logs/win/">build logs</a>)
-            #elif $imagebuild
+            #elif $btype == 'image'
                 (<a href="$nvrpath/data/logs/image">build logs</a>)
-	        #end if
+            #else
+                (<a href="$nvrpath/data/logs">build logs</a>)
+            #end if
           #end if
-	    </td>
-	  </tr>
-	  #for $archive in $archivesByExt[$ext]
-	  <tr>
-	    <td/>
-	    <td>
+            </td>
+          </tr>
+          #for $archive in $archivesByExt[$ext]
+          <tr>
+            <td/>
+            <td>
             #if $archive.metadata_only
             $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>)
             #else
             $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archive.dl_url">download</a>)
             #end if
-	    </td>
-	  </tr>
-	  #end for
-	  #end for
-	</table>
+            </td>
+          </tr>
+          #end for
+          #end for
+        </table>
       </td>
     </tr>
-    #end if
+    #end for
     #if $changelog
     <tr>
       <th>Changelog</th>
