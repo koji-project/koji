@@ -4859,6 +4859,25 @@ class CG_Importer(object):
             buildinfo['completion_time'] = \
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
         self.buildinfo = buildinfo
+
+        # get typeinfo
+        b_extra = self.metadata['build'].get('extra', {})
+        typeinfo = b_extra.get('typeinfo', {})
+
+        # legacy types can be at top level of extra
+        for btype in ['maven', 'win', 'image']:
+            if btype not in b_extra:
+                continue
+            if btype in typeinfo:
+                # he says they've already got one
+                raise koji.GenericError('Duplicate typeinfo for %r' % btype)
+            typeinfo[btype] = b_extra[btype]
+
+        # sanity check
+        for btype in typeinfo:
+            lookup_name('btype', btype, strict=True)
+
+        self.typeinfo = typeinfo
         return buildinfo
 
 
@@ -4867,15 +4886,17 @@ class CG_Importer(object):
         buildinfo = get_build(build_id, strict=True)
 
         # handle special build types
-        b_extra = self.metadata['build'].get('extra', {})
-        if 'maven' in b_extra:
-            new_maven_build(buildinfo, b_extra['maven'])
-        if 'win' in b_extra:
-            new_win_build(buildinfo, b_extra['win'])
-        if 'image' in b_extra:
-            # no extra info tracked at build level
-            new_image_build(buildinfo)
-        # TODO: btypes
+        for btype in self.typeinfo:
+            tinfo = self.typeinfo[btype]
+            if btype == 'maven':
+                new_maven_build(buildinfo, tinfo)
+            elif btype == 'win':
+                new_win_build(buildinfo, tinfo)
+            elif btype == 'image':
+                # no extra info tracked at build level
+                new_image_build(buildinfo)
+            else:
+                new_typed_build(buildinfo, btype)
 
         self.buildinfo = buildinfo
         return buildinfo
@@ -5056,23 +5077,36 @@ class CG_Importer(object):
 
 
     def prep_archive(self, fileinfo):
-        # determine archive import type (maven/win/image/other)
+        # determine archive import type
         extra = fileinfo.get('extra', {})
         legacy_types = ['maven', 'win', 'image']
-        l_type = None
+        btype = None
         type_info = None
-        for key in legacy_types:
-            if key in extra:
-                if l_type is not None:
-                    raise koji.GenericError("Output file has multiple archive"
-                        "types: %(filename)s" % fileinfo)
-                l_type = key
-                type_info = extra[key]
-        fileinfo['hub.l_type'] = l_type
+        for key in extra:
+            if key not in legacy_types:
+                continue
+            if btype is not None:
+                raise koji.GenericError("Output file has multiple types: "
+                    "%(filename)s" % fileinfo)
+            btype = key
+            type_info = extra[key]
+        for key in extra.get('typeinfo', {}):
+            if btype == key:
+                raise koji.GenericError("Duplicate typeinfo for: %r" % btype)
+            elif btype is not None:
+                raise koji.GenericError("Output file has multiple types: "
+                    "%(filename)s" % fileinfo)
+            btype = key
+            type_info = extra[key]
+        fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
 
-        if l_type == 'image':
-            components = fileinfo.get('components', [])
+        if 'components' in fileinfo:
+            if btype in ('maven', 'win'):
+                raise koji.GenericError("Component list not allowed for "
+                        "archives of type %s" % btype)
+            # for new types, we trust the metadata
+            components = fileinfo['components']
             rpmlist, archives = self.match_components(components)
             # TODO - note presence of external components
             fileinfo['hub.rpmlist'] = rpmlist
@@ -5100,13 +5134,12 @@ class CG_Importer(object):
 
     def import_archive(self, buildinfo, brinfo, fileinfo):
         fn = fileinfo['hub.path']
-        l_type = fileinfo['hub.l_type']
+        btype = fileinfo['hub.btype']
         type_info = fileinfo['hub.type_info']
 
-        archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
+        archiveinfo = import_archive_internal(fn, buildinfo, btype, type_info, brinfo.id, fileinfo)
 
-        if l_type == 'image':
-            self.import_components(archiveinfo['id'], fileinfo)
+        self.import_components(archiveinfo['id'], fileinfo)
 
 
     def import_components(self, image_id, fileinfo):
@@ -5524,6 +5557,23 @@ def new_image_build(build_info):
         insert.set(build_id=build_info['id'])
         insert.execute()
         # note: for the moment, we are not adding build_types entries for the legacy types
+
+
+def new_typed_build(build_info, btype):
+    """Mark build as a given btype"""
+
+    query = QueryProcessor(tables=('build_types',), columns=('build_id',),
+                           clauses=('build_id = %(build_id)i',
+                                    'btype_id = %(btype_id)i',),
+                           values={'build_id': build_info['id'],
+                                   'btype_id': btype_id})
+    result = query.executeOne()
+    if not result:
+        insert = InsertProcessor('build_types')
+        insert.set(build_id=build_info['id'])
+        insert.set(btype_id=lookup_name('btype', btype, strict=True)['id'])
+        insert.execute()
+
 
 def old_image_data(old_image_id):
     """Return old image data for given id"""
