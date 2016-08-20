@@ -1674,9 +1674,16 @@ class PathInfo(object):
         """Return the directory where the image for the build are stored"""
         return self.build(build) + '/images'
 
-    def buildfiles(self, build):
-        """Return the directory where untyped files for a build are stored"""
-        return self.build(build) + '/files'
+    def typedir(self, build, btype):
+        """Return the directory where typed files for a build are stored"""
+        if btype == 'maven':
+            return self.mavenbuild(build)
+        elif btype == 'win':
+            return self.winbuild(build)
+        elif btype == 'image':
+            return self.imagebuild(build)
+        else:
+            return "%s/files/%s" % (self.build(build), btype)
 
     def rpm(self, rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""

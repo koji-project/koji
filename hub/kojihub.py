@@ -1177,7 +1177,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         if not btype:
             raise koji.GenericError, 'unsupported build type: %s' % type
         btype_id = btype['id']
-        type_join = 'build_types ON build.id = build_types.build_id '
+        type_join = ('build_types ON build.id = build_types.build_id '
                 'AND btype_id = %(btype_id)')
 
     q = """SELECT %s
@@ -5098,6 +5098,10 @@ class CG_Importer(object):
                     "%(filename)s" % fileinfo)
             btype = key
             type_info = extra[key]
+
+        if btype is None:
+            raise koji.GenericError("No typeinfo for: %(filename)s" % fileinfo)
+
         fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
 
@@ -5562,6 +5566,7 @@ def new_image_build(build_info):
 def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
 
+    btype_id=lookup_name('btype', btype, strict=True)['id']
     query = QueryProcessor(tables=('build_types',), columns=('build_id',),
                            clauses=('build_id = %(build_id)i',
                                     'btype_id = %(btype_id)i',),
@@ -5571,7 +5576,7 @@ def new_typed_build(build_info, btype):
     if not result:
         insert = InsertProcessor('build_types')
         insert.set(build_id=build_info['id'])
-        insert.set(btype_id=lookup_name('btype', btype, strict=True)['id'])
+        insert.set(btype_id=btype_id)
         insert.execute()
 
 
@@ -5858,13 +5863,14 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
             _import_archive_file(filepath, imgdir)
         # import log files?
-    elif type is None:
-        # generic type, no supplementary table
-        if not metadata_only:
-            destdir = koji.pathinfo.buildfiles(buildinfo)
-            _import_archive_file(filepath, destdir)
     else:
-        raise koji.BuildError, 'unsupported archive type: %s' % type
+        btype = lookup_name('btype', type, strict=False)
+        if btype is None:
+            raise koji.BuildError, 'unsupported archive type: %s' % type
+        # new style type, no supplementary table
+        if not metadata_only:
+            destdir = koji.pathinfo.typedir(buildinfo)
+            _import_archive_file(filepath, destdir)
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
