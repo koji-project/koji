@@ -801,6 +801,8 @@ insert into archivetypes (name, description, extensions) values ('jnilib', 'Java
 CREATE TABLE archiveinfo (
 	id SERIAL NOT NULL PRIMARY KEY,
         type_id INTEGER NOT NULL REFERENCES archivetypes (id),
+        btype_id INTEGER REFERENCES btype(id),
+        -- ^ TODO add NOT NULL
 	build_id INTEGER NOT NULL REFERENCES build (id),
 	buildroot_id INTEGER REFERENCES buildroot (id),
 	filename TEXT NOT NULL,

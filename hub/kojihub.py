@@ -1342,6 +1342,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     #the following query is run for each tag in the inheritance
     fields = [('archiveinfo.id', 'id'),
               ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.btype_id', 'btype_id'),
+              ('btype.name', 'btype'),
               ('archiveinfo.build_id', 'build_id'),
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
@@ -1352,7 +1354,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.extra', 'extra'),
              ]
     tables = ['archiveinfo']
-    joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
+    joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id',
+             'btype ON archiveinfo.btype_id = btype.id']
     clauses = [eventCondition(event), 'tag_listing.tag_id = %(tagid)i']
     if package:
         joins.append('build ON archiveinfo.build_id = build.id')
@@ -3673,7 +3676,8 @@ def get_build_type(buildInfo, strict=False):
 
 
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
-                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None):
+                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None,
+                  archiveID=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -3737,9 +3741,12 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     values = {}
 
     tables = ['archiveinfo']
-    joins = ['archivetypes on archiveinfo.type_id = archivetypes.id']
+    joins = ['archivetypes on archiveinfo.type_id = archivetypes.id',
+             'btype ON archiveinfo.btype_id = btype.id']
     fields = [('archiveinfo.id', 'id'),
               ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.btype_id', 'btype_id'),
+              ('btype.name', 'btype'),
               ('archiveinfo.build_id', 'build_id'),
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
@@ -3783,6 +3790,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     if checksum is not None:
         clauses.append('checksum = %(checksum)s')
         values['checksum'] = checksum
+    if archiveID is not None:
+        clauses.append('archive_id = %(archive_id)s')
+        values['id'] = archiveID
 
     if type is None:
         pass
@@ -3825,7 +3835,14 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
             clauses.append('image_archives.%s = %%(%s)s' % (key, key))
             values[key] = typeInfo[key]
     else:
-        raise koji.GenericError, 'unsupported archive type: %s' % type
+        btype = lookup_name('btype', type, strict=False)
+        if not btype:
+            raise koji.GenericError('unsupported archive type: %s' % type)
+        if typeInfo:
+            raise koji.GenericError('typeInfo queries not supported for type '
+                    '%(name)s' % btype)
+        clauses.append('archiveinfo.btype_id = %(btype_id)s')
+        values['btype_id'] = btype['id']
 
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
@@ -3862,13 +3879,14 @@ def get_archive(archive_id, strict=False):
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size',
-              'checksum', 'checksum_type', 'metadata_only', 'extra')
-    archive = QueryProcessor(tables=['archiveinfo'], columns=fields, transform=_fix_archive_row,
-                          clauses=['id=%(archive_id)s'], values=locals()).executeOne()
-    if not archive:
-        # strict is taken care of by _singleRow()
-        return None
+    data = list_archives(archiveID=archive_id)
+    if not data:
+        if strict:
+            raise koji.GenericError('No such archive: %s' % archiveID=archive_id)
+        else:
+            return None
+
+    archive = data[0]
     maven_info = get_maven_archive(archive_id)
     if maven_info:
         del maven_info['archive_id']
@@ -5795,6 +5813,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
                         (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
+    btype = lookup_name('btype', type, strict=False)
+    if btype is None:
+        raise koji.BuildError, 'unsupported archive type: %s' % type
+    archiveinfo['btype_id'] = btype['id']
 
     # cg extra data
     extra = fileinfo.get('extra', None)
@@ -5864,9 +5886,6 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             _import_archive_file(filepath, imgdir)
         # import log files?
     else:
-        btype = lookup_name('btype', type, strict=False)
-        if btype is None:
-            raise koji.BuildError, 'unsupported archive type: %s' % type
         # new style type, no supplementary table
         if not metadata_only:
             destdir = koji.pathinfo.typedir(buildinfo)

@@ -23,6 +23,11 @@ INSERT INTO btype(name) VALUES ('maven');
 INSERT INTO btype(name) VALUES ('win');
 INSERT INTO btype(name) VALUES ('image');
 
+-- new column for archiveinfo
+
+SELECT statement_timestamp(), 'Altering archiveinfo table' as msg;
+ALTER TABLE archiveinfo ADD COLUMN btype_id INTEGER REFERENCES btype(id);
+
 
 COMMIT;
 
