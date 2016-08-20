@@ -1118,7 +1118,7 @@ def buildinfo(environ, buildID):
                 archive['dl_url'] = '/'.join([pathinfo.imagebuild(build), archive['filename']])
             else:
                 archive['display'] = archive['filename']
-                archive['dl_url'] = '/'.join([pathinfo.buildfiles(build), archive['filename']])
+                archive['dl_url'] = '/'.join([pathinfo.typedir(build, btype), archive['filename']])
             ext = os.path.splitext(archive['filename'])[1][1:]
             idx.setdefault(ext, []).append(archive)
 

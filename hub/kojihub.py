@@ -3659,7 +3659,7 @@ def get_build_type(buildInfo, strict=False):
 
     ret = {}
     extra = binfo['extra'] or {}
-    for btype in query.execute():
+    for (btype,) in query.execute():
         ret[btype] = extra.get('typeinfo', {}).get('btype')
 
     #deal with legacy types
@@ -3791,8 +3791,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         clauses.append('checksum = %(checksum)s')
         values['checksum'] = checksum
     if archiveID is not None:
-        clauses.append('archive_id = %(archive_id)s')
-        values['id'] = archiveID
+        clauses.append('archiveinfo.id = %(archive_id)s')
+        values['archive_id'] = archiveID
 
     if type is None:
         pass
@@ -3882,7 +3882,7 @@ def get_archive(archive_id, strict=False):
     data = list_archives(archiveID=archive_id)
     if not data:
         if strict:
-            raise koji.GenericError('No such archive: %s' % archiveID=archive_id)
+            raise koji.GenericError('No such archive: %s' % archive_id)
         else:
             return None
 

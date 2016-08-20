@@ -160,7 +160,7 @@
       </td>
     </tr>
     #for btype in $archiveIndex
-    #archivesByExt = $archiveIndex[btype]
+    #set $archivesByExt = $archiveIndex[btype]
     #if not $archivesByExt
     #continue
     #end if
