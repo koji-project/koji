@@ -5120,6 +5120,10 @@ class CG_Importer(object):
         if btype is None:
             raise koji.GenericError("No typeinfo for: %(filename)s" % fileinfo)
 
+        if btype not in self.typeinfo:
+            raise koji.GenericError('Output type %s not listed in build '
+                        'types' % btype)
+
         fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
 
