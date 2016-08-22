@@ -3660,7 +3660,7 @@ def get_build_type(buildInfo, strict=False):
     ret = {}
     extra = binfo['extra'] or {}
     for (btype,) in query.execute():
-        ret[btype] = extra.get('typeinfo', {}).get('btype')
+        ret[btype] = extra.get('typeinfo', {}).get(btype)
 
     #deal with legacy types
     l_funcs = [['maven', get_maven_build], ['win', get_win_build],
@@ -5115,7 +5115,7 @@ class CG_Importer(object):
                 raise koji.GenericError("Output file has multiple types: "
                     "%(filename)s" % fileinfo)
             btype = key
-            type_info = extra[key]
+            type_info = extra['typeinfo'][key]
 
         if btype is None:
             raise koji.GenericError("No typeinfo for: %(filename)s" % fileinfo)
@@ -5161,7 +5161,8 @@ class CG_Importer(object):
 
         archiveinfo = import_archive_internal(fn, buildinfo, btype, type_info, brinfo.id, fileinfo)
 
-        self.import_components(archiveinfo['id'], fileinfo)
+        if 'components' in fileinfo:
+            self.import_components(archiveinfo['id'], fileinfo)
 
 
     def import_components(self, image_id, fileinfo):
@@ -5888,7 +5889,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     else:
         # new style type, no supplementary table
         if not metadata_only:
-            destdir = koji.pathinfo.typedir(buildinfo)
+            destdir = koji.pathinfo.typedir(buildinfo, btype['name'])
             _import_archive_file(filepath, destdir)
 
     archiveinfo = get_archive(archive_id, strict=True)
