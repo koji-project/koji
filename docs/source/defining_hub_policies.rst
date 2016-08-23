@@ -254,3 +254,6 @@ Available tests
     * true if any pattern matches
     * the user matched is the user performing the action
 
+``match``
+    * matches a field in the data against glob patterns 
+    * true if any pattern matches

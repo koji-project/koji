@@ -658,7 +658,7 @@ options should point to where the certificates are located on the hub.
 ::
 
     SSLCertificateFile /etc/pki/koji/certs/kojihub.crt
-    SSLCertificateKeyFile /etc/pki/koji/certs/kojihub.key
+    SSLCertificateKeyFile /etc/pki/koji/private/kojihub.key
     SSLCertificateChainFile /etc/pki/koji/koji_ca_cert.crt
     SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
     SSLVerifyClient require
