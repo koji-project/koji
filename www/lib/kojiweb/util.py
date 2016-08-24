@@ -31,7 +31,6 @@ from socket import error as socket_error
 from socket import sslerror as socket_sslerror
 from xmlrpclib import ProtocolError
 from xml.parsers.expat import ExpatError
-from HTMLParser import HTMLParser
 import cgi
 
 try:
@@ -597,14 +596,114 @@ a network issue or load issues on the server."""
         str = "An error has occurred while processing your request."
     return str, level
 
+
+class TaskResultFragment(object):
+    """This class permits us to compose HTML fragment by the default
+    composer method or self-defined composer function.
+
+    The composer function should have the following prototype:
+
+    composer(TaskResultFragment(), length=None)
+
+    return a string that is an available HTML fragment.
+    """
+    def __init__(self, text='', size=None, need_escape=None, escaped=None,
+                     begin_tag='', end_tag='', composer=None):
+        self.text = text
+        if size is None:
+            self.size = len(text)
+        else:
+            self.size = size
+        self.need_escape = need_escape
+        self.escaped = escaped
+        self.begin_tag = begin_tag
+        self.end_tag = end_tag
+        if composer is None:
+            self.composer = self.default_composer
+        else:
+            self.composer = lambda length=None: composer(self, length)
+
+    def default_composer(self, length=None):
+        import cgi
+        if length is None:
+            text = self.text
+        else:
+            text = self.text[:length]
+        if self.need_escape and not self.escaped:
+            text = cgi.escape(text)
+        if self.size > 0 and text == '':
+            text = '...'
+        return '%s%s%s' % (self.begin_tag, text, self.end_tag)
+
+
+class TaskResultLine(object):
+    """This class permits us from several TaskResultFragment instances
+    to compose an HTML fragment that ends with a line break. You
+    can use the default composer method or give a self-defined version.
+
+    The composer function prototype should be
+
+    composer(TaskResultLine(), length=None)
+
+    return a string that is an available HTML fragment.
+    """
+    def __init__(self, fragments=None, need_escape=None, escaped=True,
+                     begin_tag='', end_tag='<br />', composer=None):
+        if fragments is None:
+            self.fragments = []
+        else:
+            self.fragments = fragments
+
+        self.need_escape = need_escape
+        self.escaped = escaped
+        self.begin_tag = begin_tag
+        self.end_tag = end_tag
+        if composer is None:
+            self.composer = self.default_composer
+        else:
+            self.composer = lambda length=None: composer(self, length)
+        self.size=self._size()
+
+    def default_composer(self, length=None):
+        import cgi
+        line_text = ''
+        size = 0
+        postfix = self.postfix(length)
+
+        for fragment in self.fragments:
+            if length is None:
+                line_text += fragment.composer()
+            else:
+                if size >= length: break
+                remainder_size = length - size
+                line_text += fragment.composer(remainder_size)
+                size += fragment.size
+
+        if self.need_escape and not self.escaped:
+            line_text = cgi.escape(line_text)
+
+        return '%s%s%s%s' % (self.begin_tag, line_text, postfix, self.end_tag)
+
+    def _size(self):
+        return sum([fragment.size for fragment in self.fragments])
+
+    def postfix(self, length=None):
+        if length is None or length >= self.size:
+            postfix = ''
+        else:
+            postfix = ' ... ...'
+        return postfix
+
+
 def _parse_value(key, value, sep=', '):
     _str = None
-    _len = None
-    htmlparser = HTMLParser()
+    begin_tag = ''
+    end_tag = ''
+
     if key in ('brootid', 'buildroot_id'):
-        value = str(value)
-        _str = """<a href="buildrootinfo?buildrootID=%s">%s</a>""" % (value, value)
-        _len = len(htmlparser.unescape(_str))
+        _str = str(value)
+        begin_tag = '<a href="buildrootinfo?buildrootID=%s">' % _str
+        end_tag = '</a>'
     elif isinstance(value, list):
         _str = sep.join([str(val) for val in value])
     elif isinstance(value, dict):
@@ -613,9 +712,8 @@ def _parse_value(key, value, sep=', '):
         _str = str(value)
     if _str is None:
         _str = ''
-    if _len is None:
-        _len = len(_str)
-    return _len, _str
+
+    return TaskResultFragment(text=_str, begin_tag=begin_tag, end_tag=end_tag)
 
 def task_result_to_html_or_string(result=None, exc_class=None,
                                       max_abbr_lines=None, max_abbr_len=None):
@@ -627,60 +725,83 @@ def task_result_to_html_or_string(result=None, exc_class=None,
     default_max_abbr_result_len = 512
     if max_abbr_lines is None:
         max_abbr_lines = default_max_abbr_result_lines
+    if isinstance(result, dict):
+        max_abbr_lines = len(result) + 1
     if max_abbr_len is None:
         max_abbr_len = default_max_abbr_result_len
     full_ret_str = ''
     abbr_ret_str = ''
     lines = []
-    _parse_properties = lambda props:', '.join(
-        [v is not None and '%s=%s' % (n, v) or str(n) for n, v in props.items()])
+
+    def _parse_properties(props):
+        return ', '.join([v is not None and '%s=%s' % (n, v) or str(n)
+                              for n, v in props.items()])
+
     if exc_class:
         if hasattr(result, 'faultString'):
-            _str = cgi.escape(result.faultString.strip())
+            _str = result.faultString.strip()
         else:
-            _str = "%s: %s" % (exc_class.__name__, cgi.escape(str(result)))
-        lines.append({"text": _str, "length": len(_str), "begin_tag": "<pre>", "end_tag": "</pre>"})
+            _str = "%s: %s" % (exc_class.__name__, str(result))
+        fragment = TaskResultFragment(text=_str)
+        line = TaskResultLine(
+            fragments=[fragment], need_escape=True,
+            escaped=False, begin_tag='<pre>', end_tag='</pre>')
+        lines.append(line)
     elif isinstance(result, dict):
-        htmlparser = HTMLParser()
+        def composer(line, length=None):
+            key_fragment = line.fragments[0]
+            val_fragment = line.fragments[1]
+            if length is None:
+                return '%s%s = %s%s' % (line.begin_tag, key_fragment.composer(),
+                                            val_fragment.composer(), line.end_tag)
+            postfix = line.postfix(length)
+            first_part_len = len('%s = ' % key_fragment.composer())
+            remainder_len = length - first_part_len
+            if remainder_len < 0: remainder_len = 0
+            return '%s%s = %s%s%s' % (
+                line.begin_tag, key_fragment.composer(),
+                val_fragment.composer(remainder_len), postfix, line.end_tag)
+
         for k, v in result.items():
             if k == 'properties':
-                _str = "properties&nbsp;=&nbsp;%s" % _parse_properties(v)
+                _str = "properties = %s" % _parse_properties(v)
+                fragment = TaskResultFragment(text=_str)
+                line = TaskResultLine(fragments=[fragment], need_escape=False)
             elif k != '__starstar':
-                _str = "%s&nbsp;=&nbsp;%s" % (k, _parse_value(k, v)[1])
-            _len = len(htmlparser.unescape(_str))
-            lines.append({"text": _str, "length": _len, "begin_tag": "", "end_tag": "<br />"})
+                val_fragment = _parse_value(k, v)
+                key_fragment = TaskResultFragment(text=k)
+                line = TaskResultLine(fragments=[key_fragment, val_fragment],
+                                          need_escape=False, composer=composer)
+            lines.append(line)
     else:
         if result is not None:
-            _len, _str = _parse_value('', result)
-            lines.append({"text": _str, "length": _len, "begin_tag": "", "end_tag": ""})
+            fragment = _parse_value('', result)
+            line = TaskResultLine(fragments=[fragment])
+            lines.append(line)
+
     if not lines:
         return full_ret_str, abbr_ret_str
 
     total_lines = len(lines)
-    full_result_len = reduce(lambda s, l: s + l, [line["length"] for line in lines])
+    full_result_len = sum([line.size for line in lines])
     total_abbr_lines = 0
     total_abbr_len = 0
+
     for line in lines:
-        line_len = line["length"]
-        line_text = line["text"]
-        begin_tag = line["begin_tag"]
-        end_tag = line["end_tag"]
-        full_ret_str += "%s%s%s" % (begin_tag, line_text, end_tag)
+        line_len = line.size
+        full_ret_str += line.composer()
+
         if total_lines < max_abbr_lines and full_result_len < max_abbr_len:
             continue
+        if total_abbr_lines >= max_abbr_lines or total_abbr_len >= max_abbr_len:
+            continue
 
-        if total_abbr_lines >= max_abbr_lines:
-            break
-        else:
-            total_abbr_lines += 1
-        if total_abbr_len >= max_abbr_len:
-            break
         if total_abbr_len + line_len >= max_abbr_len:
-            left_abbr_len = max_abbr_len - total_abbr_len
-            total_abbr_len = max_abbr_len
-            line_text = "%s ... ..." % line_text[:left_abbr_len]
+            remainder_abbr_len = max_abbr_len - total_abbr_len
         else:
-            total_abbr_len += line_len
-        abbr_ret_str += "%s%s%s" % (begin_tag, line_text, end_tag)
+            remainder_abbr_len = None
+        total_abbr_lines += 1
+        total_abbr_len += line_len
+        abbr_ret_str += line.composer(remainder_abbr_len)
 
     return full_ret_str, abbr_ret_str

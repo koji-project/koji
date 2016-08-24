@@ -554,14 +554,9 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     return _genHTML(environ, 'tasks.chtml')
 
-def taskinfo(environ, taskID, maxAbbrResultLines=None, maxAbbrResultLen=None):
+def taskinfo(environ, taskID):
     server = _getServer(environ)
     values = _initValues(environ, 'Task Info', 'tasks')
-
-    if maxAbbrResultLines is not None:
-        maxAbbrResultLines = int(maxAbbrResultLines)
-    if maxAbbrResultLen is not None:
-        maxAbbrResultLen = int(maxAbbrResultLen)
 
     taskID = int(taskID)
     task = server.getTaskInfo(taskID, request=True)
@@ -676,7 +671,7 @@ def taskinfo(environ, taskID, maxAbbrResultLines=None, maxAbbrResultLen=None):
         values['excClass'] = None
 
     full_result_text, abbr_result_text = kojiweb.util.task_result_to_html_or_string(
-        values['result'], values['excClass'], maxAbbrResultLines, maxAbbrResultLen)
+        values['result'], values['excClass'])
     values['full_result_text'] = full_result_text
     values['abbr_result_text'] = abbr_result_text
 
