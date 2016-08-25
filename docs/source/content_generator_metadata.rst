@@ -5,8 +5,8 @@ Koji Content Generator Metadata Proposal
 This document describes the proposed Koji Content Generator Metadata
 Format (version 0). This is the metadata that should be provided by a
 Content Generator in order for the content to be imported and managed by
-Koji. If you have further questions about `Content
-Generators <Koji/ContentGenerators>`__, please email
+Koji. If you have further questions about :doc:`Content
+Generators <content_generators>`, please email
 koji-devel@lists.fedorahosted.org.
 
 Format
