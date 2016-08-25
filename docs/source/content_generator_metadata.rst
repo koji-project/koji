@@ -1,5 +1,6 @@
+========================================
 Koji Content Generator Metadata Proposal
-----------------------------------------
+========================================
 
 This document describes the proposed Koji Content Generator Metadata
 Format (version 0). This is the metadata that should be provided by a
@@ -9,7 +10,7 @@ Generators <Koji/ContentGenerators>`__, please email
 koji-devel@lists.fedorahosted.org.
 
 Format
-------
+======
 
 Content Generator Metadata for a single build is provided as a JSON map.
 The map has four top-level entries:
@@ -23,14 +24,14 @@ The map has four top-level entries:
    and managed by Brew.
 
 metadata\_version
-~~~~~~~~~~~~~~~~~
+-----------------
 
 This is an integer which indicates the version of the metadata format
 contained in this file. It will start at 0 and be incremented as the
 metadata format evolves.
 
 build
-~~~~~
+-----
 
 The build map contains the following entries:
 
@@ -44,7 +45,7 @@ The build map contains the following entries:
 -  extra: A map of extra metadata associated with the build.
 
 buildroots
-~~~~~~~~~~
+----------
 
 Each map in the buildroots list contains the following entries:
 
@@ -108,7 +109,7 @@ Each map in the buildroots list contains the following entries:
       run the build.
 
 output
-~~~~~~
+------
 
 Each map in the output list contains the following entries:
 
@@ -136,7 +137,7 @@ Each map in the output list contains the following entries:
       available.
 
 Example Metadata JSON
----------------------
+=====================
 
 The below JSON is based loosely on the output of a docker image build.
 
