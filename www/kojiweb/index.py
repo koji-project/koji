@@ -670,7 +670,7 @@ def taskinfo(environ, taskID):
         values['result'] = None
         values['excClass'] = None
 
-    full_result_text, abbr_result_text = kojiweb.util.task_result_to_html_or_string(
+    full_result_text, abbr_result_text = kojiweb.util.task_result_to_html(
         values['result'], values['excClass'])
     values['full_result_text'] = full_result_text
     values['abbr_result_text'] = abbr_result_text

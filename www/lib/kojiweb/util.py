@@ -33,6 +33,9 @@ from xmlrpclib import ProtocolError
 from xml.parsers.expat import ExpatError
 import cgi
 
+class NoSuchException(Exception):
+    pass
+
 try:
     # pyOpenSSL might not be around
     from OpenSSL.SSL import Error as SSL_Error
@@ -598,17 +601,24 @@ a network issue or load issues on the server."""
 
 
 class TaskResultFragment(object):
-    """This class permits us to compose HTML fragment by the default
+    """Represent an HTML fragment composed from texts and tags.
+ 
+    This class permits us to compose HTML fragment by the default
     composer method or self-defined composer function.
 
-    The composer function should have the following prototype:
-
-    composer(TaskResultFragment(), length=None)
-
-    return a string that is an available HTML fragment.
+    Public attributes:
+        - text
+        - size
+        - need_escape
+        - escaped
+        - begin_tag
+        - eng_tag
+        - composer
+        - empty_str_placeholder
     """
     def __init__(self, text='', size=None, need_escape=None, escaped=None,
-                     begin_tag='', end_tag='', composer=None):
+                     begin_tag='', end_tag='', composer=None,
+                     empty_str_placeholder=None):
         self.text = text
         if size is None:
             self.size = len(text)
@@ -622,6 +632,10 @@ class TaskResultFragment(object):
             self.composer = self.default_composer
         else:
             self.composer = lambda length=None: composer(self, length)
+        if empty_str_placeholder is None:
+            self.empty_str_placeholder = '...'
+        else:
+            self.empty_str_placeholder = empty_str_placeholder
 
     def default_composer(self, length=None):
         import cgi
@@ -632,23 +646,29 @@ class TaskResultFragment(object):
         if self.need_escape and not self.escaped:
             text = cgi.escape(text)
         if self.size > 0 and text == '':
-            text = '...'
+            text = self.empty_str_placeholder
         return '%s%s%s' % (self.begin_tag, text, self.end_tag)
 
 
 class TaskResultLine(object):
-    """This class permits us from several TaskResultFragment instances
+    """Represent an HTML line fragment.
+
+    This class permits us from several TaskResultFragment instances
     to compose an HTML fragment that ends with a line break. You
     can use the default composer method or give a self-defined version.
 
-    The composer function prototype should be
-
-    composer(TaskResultLine(), length=None)
-
-    return a string that is an available HTML fragment.
+    Public attributes:
+        - fragments
+        - need_escape
+        - escaped
+        - begin_tag
+        - end_tag
+        - composer
+        - postfix
     """
     def __init__(self, fragments=None, need_escape=None, escaped=True,
-                     begin_tag='', end_tag='<br />', composer=None):
+                     begin_tag='', end_tag='<br />', composer=None,
+                     postfix=None):
         if fragments is None:
             self.fragments = []
         else:
@@ -663,6 +683,10 @@ class TaskResultLine(object):
         else:
             self.composer = lambda length=None: composer(self, length)
         self.size=self._size()
+        if postfix is None:
+            self._postfix = ' ... '
+        else:
+            self._postfix = postfix
 
     def default_composer(self, length=None):
         import cgi
@@ -689,10 +713,9 @@ class TaskResultLine(object):
 
     def postfix(self, length=None):
         if length is None or length >= self.size:
-            postfix = ''
+            return ''
         else:
-            postfix = ' ... ...'
-        return postfix
+            return self._postfix
 
 
 def _parse_value(key, value, sep=', '):
@@ -715,18 +738,23 @@ def _parse_value(key, value, sep=', '):
 
     return TaskResultFragment(text=_str, begin_tag=begin_tag, end_tag=end_tag)
 
-def task_result_to_html_or_string(result=None, exc_class=None,
-                                      max_abbr_lines=None, max_abbr_len=None):
-    """convert the result to a HTML fragment or a string.
+def task_result_to_html(result=None, exc_class=None,
+                            max_abbr_lines=None, max_abbr_len=None):
+    """convert the result to a mutiple lines HTML fragment
 
-    Returns a tuple: (full_html_or_string, abbreviated_html_or_string)
+    Args:
+        result: task result. Default is empty string.
+        exc_class: Exception raised when access the task result.
+        max_abbr_lines: maximum abbreviated result lines. Default is 11.
+        max_abbr_len: maximum abbreviated result length. Default is 512.
+
+    Returns:
+        Tuple of full result and abbreviated result.
     """
     default_max_abbr_result_lines = 11
     default_max_abbr_result_len = 512
     if max_abbr_lines is None:
         max_abbr_lines = default_max_abbr_result_lines
-    if isinstance(result, dict):
-        max_abbr_lines = len(result) + 1
     if max_abbr_len is None:
         max_abbr_len = default_max_abbr_result_len
     full_ret_str = ''
