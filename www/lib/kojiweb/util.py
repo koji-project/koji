@@ -664,11 +664,9 @@ class TaskResultLine(object):
         - begin_tag
         - end_tag
         - composer
-        - postfix
     """
     def __init__(self, fragments=None, need_escape=None, escaped=True,
-                     begin_tag='', end_tag='<br />', composer=None,
-                     postfix=None):
+                     begin_tag='', end_tag='<br />', composer=None):
         if fragments is None:
             self.fragments = []
         else:
@@ -683,16 +681,11 @@ class TaskResultLine(object):
         else:
             self.composer = lambda length=None: composer(self, length)
         self.size=self._size()
-        if postfix is None:
-            self._postfix = ' ... '
-        else:
-            self._postfix = postfix
 
     def default_composer(self, length=None):
         import cgi
         line_text = ''
         size = 0
-        postfix = self.postfix(length)
 
         for fragment in self.fragments:
             if length is None:
@@ -706,16 +699,10 @@ class TaskResultLine(object):
         if self.need_escape and not self.escaped:
             line_text = cgi.escape(line_text)
 
-        return '%s%s%s%s' % (self.begin_tag, line_text, postfix, self.end_tag)
+        return '%s%s%s' % (self.begin_tag, line_text, self.end_tag)
 
     def _size(self):
         return sum([fragment.size for fragment in self.fragments])
-
-    def postfix(self, length=None):
-        if length is None or length >= self.size:
-            return ''
-        else:
-            return self._postfix
 
 
 def _parse_value(key, value, sep=', '):
@@ -739,7 +726,8 @@ def _parse_value(key, value, sep=', '):
     return TaskResultFragment(text=_str, begin_tag=begin_tag, end_tag=end_tag)
 
 def task_result_to_html(result=None, exc_class=None,
-                            max_abbr_lines=None, max_abbr_len=None):
+                            max_abbr_lines=None, max_abbr_len=None,
+                            abbr_postscript=None):
     """convert the result to a mutiple lines HTML fragment
 
     Args:
@@ -757,6 +745,8 @@ def task_result_to_html(result=None, exc_class=None,
         max_abbr_lines = default_max_abbr_result_lines
     if max_abbr_len is None:
         max_abbr_len = default_max_abbr_result_len
+    if abbr_postscript is None:
+        abbr_postscript = '...'
     full_ret_str = ''
     abbr_ret_str = ''
     lines = []
@@ -776,19 +766,19 @@ def task_result_to_html(result=None, exc_class=None,
             escaped=False, begin_tag='<pre>', end_tag='</pre>')
         lines.append(line)
     elif isinstance(result, dict):
+
         def composer(line, length=None):
             key_fragment = line.fragments[0]
             val_fragment = line.fragments[1]
             if length is None:
                 return '%s%s = %s%s' % (line.begin_tag, key_fragment.composer(),
                                             val_fragment.composer(), line.end_tag)
-            postfix = line.postfix(length)
             first_part_len = len('%s = ' % key_fragment.composer())
             remainder_len = length - first_part_len
             if remainder_len < 0: remainder_len = 0
-            return '%s%s = %s%s%s' % (
+            return '%s%s = %s%s' % (
                 line.begin_tag, key_fragment.composer(),
-                val_fragment.composer(remainder_len), postfix, line.end_tag)
+                val_fragment.composer(remainder_len), line.end_tag)
 
         for k, v in result.items():
             if k == 'properties':
@@ -832,4 +822,4 @@ def task_result_to_html(result=None, exc_class=None,
         total_abbr_len += line_len
         abbr_ret_str += line.composer(remainder_abbr_len)
 
-    return full_ret_str, abbr_ret_str
+    return full_ret_str, "%s %s" % (abbr_ret_str, abbr_postscript)
