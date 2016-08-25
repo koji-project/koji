@@ -2803,11 +2803,11 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             tagInfo = taskInfo['request'][0]
             extra = tagInfo['name']
-    elif method in ('createrepo'):
+    elif method == 'createrepo':
         if 'request' in taskInfo:
             arch = taskInfo['request'][1]
             extra = arch
-    elif method in ('createsignedrepo'):
+    elif method == 'createsignedrepo':
         if 'request' in taskInfo:
             repo_id = taskInfo['request'][1]
             arch = taskInfo['request'][2]
