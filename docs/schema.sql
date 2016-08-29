@@ -829,21 +829,21 @@ CREATE TABLE image_archives (
     arch VARCHAR(16) NOT NULL
 ) WITHOUT OIDS;
 
--- tracks the contents of an image
-CREATE TABLE image_listing (
-	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
-	UNIQUE (image_id, rpm_id)
-) WITHOUT OIDS;
-CREATE INDEX image_listing_rpms on image_listing(rpm_id);
-
--- track the archive contents of an image
-CREATE TABLE image_archive_listing (
-	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
+-- tracks the rpm contents of an image or other archive
+CREATE TABLE archive_rpm_components (
 	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
-	UNIQUE (image_id, archive_id)
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	UNIQUE (archive_id, rpm_id)
 ) WITHOUT OIDS;
-CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
+CREATE INDEX rpm_components_idx on archive_rpm_components(rpm_id);
+
+-- track the archive contents of an image or other archive
+CREATE TABLE archive_components (
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	component_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	UNIQUE (archive_id, component_id)
+) WITHOUT OIDS;
+CREATE INDEX archive_components_idx on archive_components(component_id);
 
 
 CREATE TABLE buildroot_archives (
