@@ -3546,8 +3546,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
 
     # image specific constraints
     if imageID != None:
-        clauses.append('image_listing.image_id = %(imageID)i')
-        joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
+        clauses.append('archive_rpm_components.archive_id = %(imageID)i')
+        joins.append('archive_rpm_components ON rpminfo.id = archive_rpm_components.rpm_id')
 
     if hostID != None:
         joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.buildroot_id')
@@ -3774,8 +3774,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
         fields.append(['buildroot_archives.project_dep', 'project'])
     if imageID != None:
-       clauses.append('image_archive_listing.image_id = %(imageID)i')
-       joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
+        # TODO: arg name is now a misnomer, could be any archive
+       clauses.append('archive_components.archive_id = %(imageID)i')
+       joins.append('archive_components ON archiveinfo.id = archive_components.component_id')
     if hostID is not None:
         joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(host_id)i')
@@ -3947,9 +3948,9 @@ def get_image_archive(archive_id, strict=False):
     if not results:
         return None
     results['rootid'] = False
-    fields = ('image_id', 'rpm_id')
-    select = """SELECT %s FROM image_listing
-    WHERE image_id = %%(archive_id)i""" % ', '.join(fields)
+    fields = ['rpm_id']
+    select = """SELECT %s FROM archive_rpm_components
+    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     rpms = _singleRow(select, locals(), fields)
     if rpms:
         results['rootid'] = True
@@ -5169,20 +5170,20 @@ class CG_Importer(object):
             self.import_components(archiveinfo['id'], fileinfo)
 
 
-    def import_components(self, image_id, fileinfo):
+    def import_components(self, archive_id, fileinfo):
         rpmlist = fileinfo['hub.rpmlist']
         archives = fileinfo['hub.archives']
 
-        insert = InsertProcessor('image_listing')
-        insert.set(image_id=image_id)
+        insert = InsertProcessor('archive_rpm_components')
+        insert.set(archive_id=archive_id)
         for rpminfo in rpmlist:
             insert.set(rpm_id=rpminfo['id'])
             insert.execute()
 
-        insert = InsertProcessor('image_archive_listing')
-        insert.set(image_id=image_id)
+        insert = InsertProcessor('archive_components')
+        insert.set(archive_id=archive_id)
         for archiveinfo in archives:
-            insert.set(archive_id=archiveinfo['id'])
+            insert.set(component_id=archiveinfo['id'])
             insert.execute()
 
 
@@ -5717,15 +5718,15 @@ def import_old_image(old, name, version):
     archive_id = archives[0]['id']
     logger.debug('root archive id is %s' % archive_id)
     query = QueryProcessor(columns=['rpm_id'], tables=['imageinfo_listing'],
-                           clauses=['image_id=%(id)i'], values=old,
+                           clauses=['archive_id=%(id)i'], values=old,
                            opts={'asList': True})
     rpm_ids = [r[0] for r in query.execute()]
-    insert = InsertProcessor('image_listing')
-    insert.set(image_id=archive_id)
+    insert = InsertProcessor('archive_rpm_components')
+    insert.set(archive_id=archive_id)
     for rpm_id in rpm_ids:
         insert.set(rpm_id=rpm_id)
         insert.execute()
-    logger.info('updated image_listing')
+    logger.info('updated archive_rpm_components')
 
     # grab old logs
     old_log_dir = os.path.join(old['dir'], 'data', 'logs', old['arch'])
@@ -6501,9 +6502,11 @@ def build_references(build_id, limit=None):
     WHERE build_id = %(build_id)i AND active = TRUE"""
     ret['tags'] = _multiRow(q, locals(), ('id', 'name'))
 
-    #we'll need the component rpm ids for the rest
+    #we'll need the component rpm and archive ids for the rest
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
-    rpm_ids = _fetchMulti(q, locals())
+    build_rpm_ids = _fetchMulti(q, locals())
+    q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
+    build_archive_ids = _fetchMulti(q, locals())
 
     # find rpms whose buildroots we were in
     st_complete = koji.BUILD_STATES['COMPLETE']
@@ -6517,7 +6520,7 @@ def build_references(build_id, limit=None):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
@@ -6525,20 +6528,18 @@ def build_references(build_id, limit=None):
     ret['rpms'] = idx.values()
 
     ret['images'] = []
-    # find images that contain the build rpms
-    fields = ['image_id']
-    clauses = ['image_listing.rpm_id = %(rpm_id)s']
-    # TODO: join in other tables to provide something more than image id
-    query = QueryProcessor(columns=fields, tables=['image_listing'], clauses=clauses,
+    # find images/archives that contain the build rpms
+    fields = ['archive_id']
+    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s']
+    # TODO: join in other tables to provide something more than archive id
+    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'], clauses=clauses,
                            opts={'asList': True})
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         query.values = {'rpm_id': rpm_id}
-        image_ids = [i[0] for i in query.execute()]
-        ret['images'].extend(image_ids)
+        archive_ids = [i[0] for i in query.execute()]
+        ret['component_of'].extend(archive_ids)
 
     # find archives whose buildroots we were in
-    q = """SELECT id FROM archiveinfo WHERE build_id = %(build_id)i"""
-    archive_ids = _fetchMulti(q, locals())
     fields = ('id', 'type_id', 'type_name', 'build_id', 'filename')
     idx = {}
     q = """SELECT archiveinfo.id, archiveinfo.type_id, archivetypes.name, archiveinfo.build_id, archiveinfo.filename
@@ -6550,23 +6551,23 @@ def build_references(build_id, limit=None):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
     ret['archives'] = idx.values()
 
-    # find images that contain the build archives
-    fields = ['image_id']
-    clauses = ['image_archive_listing.archive_id = %(archive_id)s']
-    # TODO: join in other tables to provide something more than image id
-    query = QueryProcessor(columns=fields, tables=['image_archive_listing'], clauses=clauses,
+    # find images/archives that contain the build archives
+    fields = ['archive_id']
+    clauses = ['archive_components.component_id = %(archive_id)s']
+    # TODO: join in other tables to provide something more than archive id
+    query = QueryProcessor(columns=fields, tables=['archive_components'], clauses=clauses,
                            opts={'asList': True})
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         query.values = {'archive_id': archive_id}
-        image_ids = [i[0] for i in query.execute()]
-        ret['images'].extend(image_ids)
+        archive_ids = [i[0] for i in query.execute()]
+        ret['component_of'].extend(archive_ids)
 
     # find timestamp of most recent use in a buildroot
     query = QueryProcessor(
@@ -6576,7 +6577,7 @@ def build_references(build_id, limit=None):
                 clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
                 opts={'order': '-standard_buildroot.create_event', 'limit': 1})
     event_id = -1
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         query.values = {'rpm_id': rpm_id}
         tmp_id = query.singleValue(strict=False)
         if tmp_id is not None and tmp_id > event_id:
@@ -6594,7 +6595,7 @@ def build_references(build_id, limit=None):
     ORDER BY standard_buildroot.create_event DESC
     LIMIT 1"""
     event_id = -1
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         tmp_id = _singleValue(q, locals(), strict=False)
         if tmp_id is not None and tmp_id > event_id:
             event_id = tmp_id
@@ -6605,6 +6606,9 @@ def build_references(build_id, limit=None):
         last_archive_use = _singleValue(q, locals())
         if ret['last_used'] is None or last_archive_use > ret['last_used']:
             ret['last_used'] = last_archive_use
+
+    # set 'images' field for backwards compat
+    ret['images'] = ret['component_of']
 
     return ret
 
@@ -8055,15 +8059,15 @@ def importImageInternal(task_id, build_id, imgdata):
         rpm_ids.append(data['id'])
 
     # associate those RPMs with the image
-    q = """INSERT INTO image_listing (image_id,rpm_id)
-           VALUES (%(image_id)i,%(rpm_id)i)"""
+    q = """INSERT INTO archive_rpm_components (archive_id,rpm_id)
+           VALUES (%(archive_id)i,%(rpm_id)i)"""
     for archive in archives:
         sys.stderr.write('working on archive %s' % archive)
         if archive['filename'].endswith('xml'):
             continue
         sys.stderr.write('associating installed rpms with %s' % archive['id'])
         for rpm_id in rpm_ids:
-            _dml(q, {'image_id': archive['id'], 'rpm_id': rpm_id})
+            _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               fullpath=fullpath)
