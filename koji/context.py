@@ -48,7 +48,7 @@ class ThreadLocal(object):
         if not tdict.has_key(id):
             tdict[id] = _data()
         data = tdict[id]
-        return object.__setattr__(data,key,value)
+        return object.__setattr__(data, key, value)
 
     def __delattr__(self, key):
         id = thread.get_ident()
@@ -65,7 +65,7 @@ class ThreadLocal(object):
         id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         return "(current thread: %s) {" % id  + \
-            ", ".join([ "%s : %s" %(k,v.__dict__) for (k,v) in tdict.iteritems() ]) + \
+            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in tdict.iteritems()]) + \
             "}"
 
     def _threadclear(self):
@@ -92,13 +92,13 @@ if __name__ == '__main__':
     import random
     import time
     def test():
-        context.foo=random.random()
+        context.foo = random.random()
         time.sleep(1.5+random.random())
         context._threadclear()
         print context
 
-    for x in xrange(1,10):
-        thread.start_new_thread(test,())
+    for x in xrange(1, 10):
+        thread.start_new_thread(test, ())
 
     time.sleep(4)
     print
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
     context.foo = 1
     context.bar = 2
-    print context.foo,context.bar
+    print context.foo, context.bar
     print context
     context._threadclear()
     print context

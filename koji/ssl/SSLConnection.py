@@ -31,10 +31,10 @@ class SSLConnection:
     def __del__(self):
         self.__dict__["conn"].close()
 
-    def __getattr__(self,name):
+    def __getattr__(self, name):
         return getattr(self.__dict__["conn"], name)
 
-    def __setattr__(self,name, value):
+    def __setattr__(self, name, value):
         setattr(self.__dict__["conn"], name, value)
 
     def settimeout(self, timeout):
@@ -61,7 +61,7 @@ class SSLConnection:
         c, a = self.__dict__["conn"].accept()
         return (SSLConnection(c), a)
 
-    def makefile(self,  mode='r', bufsize=-1):
+    def makefile(self, mode='r', bufsize=-1):
         """
         We need to use socket._fileobject Because SSL.Connection
         doesn't have a 'dup'. Not exactly sure WHY this is, but

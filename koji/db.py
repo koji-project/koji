@@ -81,15 +81,15 @@ class CursorWrapper:
 
     def _timed_call(self, method, args, kwargs):
         start = time.time()
-        ret = getattr(self.cursor,method)(*args,**kwargs)
+        ret = getattr(self.cursor, method)(*args, **kwargs)
         self.logger.debug("%s operation completed in %.4f seconds", method, time.time() - start)
         return ret
 
-    def fetchone(self,*args,**kwargs):
-        return self._timed_call('fetchone',args,kwargs)
+    def fetchone(self, *args, **kwargs):
+        return self._timed_call('fetchone', args, kwargs)
 
-    def fetchall(self,*args,**kwargs):
-        return self._timed_call('fetchall',args,kwargs)
+    def fetchall(self, *args, **kwargs):
+        return self._timed_call('fetchall', args, kwargs)
 
     def quote(self, operation, parameters):
         if _quoteparams is not None:
@@ -97,7 +97,7 @@ class CursorWrapper:
         elif hasattr(self.cursor, "_quoteparams"):
             quote = self.cursor._quoteparams
         else:
-            quote = lambda a,b: a % b
+            quote = lambda a, b: a % b
         try:
             return quote(operation, parameters)
         except Exception:
@@ -167,5 +167,5 @@ def connect():
     return DBWrapper(conn)
 
 if __name__ == "__main__":
-    setDBopts( database = "test", user = "test")
+    setDBopts(database="test", user="test")
     print "This is a Python library"

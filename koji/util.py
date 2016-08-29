@@ -375,7 +375,7 @@ def eventFromOpts(session, opts):
         rinfo = session.repoInfo(repo)
         if rinfo:
             return {'id' : rinfo['create_event'],
-                    'ts' : rinfo['create_ts'] }
+                    'ts' : rinfo['create_ts']}
     return None
 
 def filedigestAlgo(hdr):
@@ -427,7 +427,7 @@ def setup_rlimits(opts, logger=None):
         except ValueError:
             logger.error("Invalid resource limit: %s=%s", key, opts[key])
             continue
-        if len(limits) not in (1,2):
+        if len(limits) not in (1, 2):
             logger.error("Invalid resource limit: %s=%s", key, opts[key])
             continue
         if len(limits) == 1:

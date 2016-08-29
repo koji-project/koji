@@ -268,7 +268,7 @@ class SimpleRuleSet(object):
         return tests, negate, action
 
     def get_test_handler(self, str):
-        name = str.split(None,1)[0]
+        name = str.split(None, 1)[0]
         try:
             return self.tests[name](str)
         except KeyError:
@@ -284,7 +284,7 @@ class SimpleRuleSet(object):
                 if isinstance(action, list):
                     _recurse(action, index)
                 else:
-                    name = action.split(None,1)[0]
+                    name = action.split(None, 1)[0]
                     index[name] = 1
         index = {}
         _recurse(self.ruleset, index)

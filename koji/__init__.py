@@ -101,33 +101,33 @@ class Enum(dict):
     Can quickly map forward or reverse
     """
 
-    def __init__(self,*args):
+    def __init__(self, *args):
         self._order = tuple(*args)
-        super(Enum,self).__init__([(value,n) for n,value in enumerate(self._order)])
+        super(Enum, self).__init__([(value, n) for n, value in enumerate(self._order)])
 
-    def __getitem__(self,key):
-        if isinstance(key,int) or isinstance(key,slice):
+    def __getitem__(self, key):
+        if isinstance(key, int) or isinstance(key, slice):
             return self._order.__getitem__(key)
         else:
-            return super(Enum,self).__getitem__(key)
+            return super(Enum, self).__getitem__(key)
 
-    def get(self,key,default=None):
+    def get(self, key, default=None):
         try:
             return self.__getitem__(key)
-        except (IndexError,KeyError):
+        except (IndexError, KeyError):
             return default
 
-    def getnum(self,key,default=None):
+    def getnum(self, key, default=None):
         try:
             value = self.__getitem__(key)
-        except (IndexError,KeyError):
+        except (IndexError, KeyError):
             return default
-        if isinstance(key,int):
+        if isinstance(key, int):
             return key
         else:
             return value
 
-    def _notImplemented(self,*args,**opts):
+    def _notImplemented(self, *args, **opts):
         raise NotImplementedError
 
     # deprecated
@@ -352,12 +352,12 @@ class MultiCallInProgress(object):
 #A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
-    code = getattr(fault,'faultCode',None)
+    code = getattr(fault, 'faultCode', None)
     if code is None:
         return fault
     for v in globals().values():
-        if type(v) == type(Exception) and issubclass(v,GenericError) and \
-                code == getattr(v,'faultCode',None):
+        if type(v) == type(Exception) and issubclass(v, GenericError) and \
+                code == getattr(v, 'faultCode', None):
             ret = v(fault.faultString)
             ret.fromFault = True
             return ret
@@ -373,22 +373,22 @@ def listFaults():
         desc: the description of the exception (docstring)
     """
     ret = []
-    for n,v in globals().items():
-        if type(v) == type(Exception) and issubclass(v,GenericError):
-            code = getattr(v,'faultCode',None)
+    for n, v in globals().items():
+        if type(v) == type(Exception) and issubclass(v, GenericError):
+            code = getattr(v, 'faultCode', None)
             if code is None:
                 continue
             info = {}
             info['faultCode'] = code
             info['name'] = n
-            info['desc'] = getattr(v,'__doc__',None)
+            info['desc'] = getattr(v, '__doc__', None)
             ret.append(info)
-    ret.sort(lambda a,b: cmp(a['faultCode'],b['faultCode']))
+    ret.sort(lambda a, b: cmp(a['faultCode'], b['faultCode']))
     return ret
 
 #functions for encoding/decoding optional arguments
 
-def encode_args(*args,**opts):
+def encode_args(*args, **opts):
     """The function encodes optional arguments as regular arguments.
 
     This is used to allow optional arguments in xmlrpc calls
@@ -408,11 +408,11 @@ def decode_args(*args):
     opts = {}
     if len(args) > 0:
         last = args[-1]
-        if type(last) == dict and last.get('__starstar',False):
+        if type(last) == dict and last.get('__starstar', False):
             del last['__starstar']
             opts = last
             args = args[:-1]
-    return args,opts
+    return args, opts
 
 def decode_args2(args, names, strict=True):
     "An alternate form of decode_args, returns a dictionary"
@@ -492,9 +492,9 @@ def daemonize():
     fd0 = os.open('/dev/null', os.O_RDONLY)
     fd1 = os.open('/dev/null', os.O_RDWR)
     fd2 = os.open('/dev/null', os.O_RDWR)
-    os.dup2(fd0,0)
-    os.dup2(fd1,1)
-    os.dup2(fd2,2)
+    os.dup2(fd0, 0)
+    os.dup2(fd1, 1)
+    os.dup2(fd2, 2)
     os.close(fd0)
     os.close(fd1)
     os.close(fd2)
@@ -539,7 +539,7 @@ def rpm_hdr_size(f, ofs=None):
     # now read two 4-byte integers which tell us
     #  - # of index entries
     #  - bytes of data in header
-    data = [ ord(x) for x in fo.read(8) ]
+    data = [ord(x) for x in fo.read(8)]
     il = multibyte(data[0:4])
     dl = multibyte(data[4:8])
 
@@ -547,7 +547,7 @@ def rpm_hdr_size(f, ofs=None):
     hdrsize = 8 + 16 * il + dl
 
     # hdrsize rounded up to nearest 8 bytes
-    hdrsize = hdrsize + ( 8 - ( hdrsize % 8 ) ) % 8
+    hdrsize = hdrsize + (8 - (hdrsize % 8)) % 8
 
     # add eight bytes for section header
     hdrsize = hdrsize + 8
@@ -575,7 +575,7 @@ class RawHeader(object):
         # read two 4-byte integers which tell us
         #  - # of index entries  (each 16 bytes long)
         #  - bytes of data in header
-        data = [ ord(x) for x in self.header[8:12] ]
+        data = [ord(x) for x in self.header[8:12]]
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
 
@@ -585,7 +585,7 @@ class RawHeader(object):
             entry = []
             for j in xrange(4):
                 ofs = 16 + i*16 + j*4
-                data = [ ord(x) for x in self.header[ofs:ofs+4] ]
+                data = [ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
             #print "Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry)
             index[entry[0]] = entry
@@ -599,7 +599,7 @@ class RawHeader(object):
         store = 16 + il * 16
         #print "start is: %d" % start
         #print "index length: %d" % il
-        print "Store at offset %d (%0x)" % (store,store)
+        print "Store at offset %d (%0x)" % (store, store)
         #sort entries by offset, dtype
         #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = [(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()]
@@ -637,7 +637,7 @@ class RawHeader(object):
                 #integer
                 n = 1 << (dtype - 2)
                 for i in xrange(count):
-                    data = [ ord(x) for x in self.header[pos:pos+n] ]
+                    data = [ord(x) for x in self.header[pos:pos+n]]
                     print "%r" % data
                     num = multibyte(data)
                     print "Int(%d): %d" % (n, num)
@@ -690,7 +690,7 @@ class RawHeader(object):
         if dtype >= 2 and dtype <= 5:
             n = 1 << (dtype - 2)
             # n-byte integer
-            data = [ ord(x) for x in self.header[pos:pos+n] ]
+            data = [ord(x) for x in self.header[pos:pos+n]]
             return multibyte(data)
         elif dtype == 6:
             # string (null terminated)
@@ -743,7 +743,7 @@ def __parse_packet_header(pgp_packet):
             offset = 1
             length = len(pgp_packet) - offset
         else:
-            (fmt, offset) = { 0:('>B', 2), 1:('>H', 3), 2:('>I', 5) }[len_type]
+            (fmt, offset) = {0:('>B', 2), 1:('>H', 3), 2:('>I', 5)}[len_type]
             length = struct.unpack(fmt, pgp_packet[1:offset])[0]
     else:
         tag = byte0 & 0x3F
@@ -852,14 +852,14 @@ def get_rpm_header(f, ts=None):
         fo.close()
     return hdr
 
-def get_header_field(hdr,name):
+def get_header_field(hdr, name):
     """Extract named field from an rpm header"""
-    idx = getattr(rpm,"RPMTAG_%s" % name.upper(),None)
+    idx = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
     if idx is None:
         raise GenericError, "No such rpm header field: %s" % name
     return hdr[idx]
 
-def get_header_fields(X,fields):
+def get_header_fields(X, fields):
     """Extract named fields from an rpm header and return as a dictionary
 
     X may be either the rpm header or the rpm filename
@@ -870,16 +870,16 @@ def get_header_fields(X,fields):
         hdr = X
     ret = {}
     for f in fields:
-        ret[f] = get_header_field(hdr,f)
+        ret[f] = get_header_field(hdr, f)
     return ret
 
 def parse_NVR(nvr):
     """split N-V-R into dictionary of data"""
     ret = {}
-    p2 = nvr.rfind("-",0)
+    p2 = nvr.rfind("-", 0)
     if p2 == -1 or p2 == len(nvr) - 1:
         raise GenericError("invalid format: %s" % nvr)
-    p1 = nvr.rfind("-",0,p2)
+    p1 = nvr.rfind("-", 0, p2)
     if p1 == -1 or p1 == p2 - 1:
         raise GenericError("invalid format: %s" % nvr)
     ret['release'] = nvr[p2+1:]
@@ -927,23 +927,23 @@ def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
     #XXX - this could stand to be smarter, and we should probably
     #   have some other related arch-mangling functions.
-    if fnmatch(arch,'i?86') or arch == 'athlon':
+    if fnmatch(arch, 'i?86') or arch == 'athlon':
         return 'i386'
     elif arch == 'ia32e':
         return 'x86_64'
-    elif fnmatch(arch,'ppc64le'):
+    elif fnmatch(arch, 'ppc64le'):
         return 'ppc64le'
-    elif fnmatch(arch,'ppc64*'):
+    elif fnmatch(arch, 'ppc64*'):
         return 'ppc64'
-    elif fnmatch(arch,'sparc64*'):
+    elif fnmatch(arch, 'sparc64*'):
         return 'sparc64'
-    elif fnmatch(arch,'sparc*'):
+    elif fnmatch(arch, 'sparc*'):
         return 'sparc'
     elif fnmatch(arch, 'alpha*'):
         return 'alpha'
-    elif fnmatch(arch,'arm*h*'):
+    elif fnmatch(arch, 'arm*h*'):
         return 'armhfp'
-    elif fnmatch(arch,'arm*'):
+    elif fnmatch(arch, 'arm*'):
         return 'arm'
     else:
         return arch
@@ -1058,13 +1058,13 @@ def mavenLabel(maveninfo):
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""
-    return ''.join([ '%02x' % ord(x) for x in s ])
+    return ''.join(['%02x' % ord(x) for x in s])
 
 
-def make_groups_spec(grplist,name='buildsys-build',buildgroup=None):
+def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
     """Return specfile contents representing the group"""
     if buildgroup is None:
-        buildgroup=name
+        buildgroup = name
     data = [
 """#
 # This specfile represents buildgroups for mock
@@ -1087,7 +1087,7 @@ BuildArch: noarch
     seen_grp = {}
     seen_pkg = {}
     #index groups
-    groups = dict([(g['name'],g) for g in grplist])
+    groups = dict([(g['name'], g) for g in grplist])
     for group_name in need:
         if seen_grp.has_key(group_name):
             continue
@@ -1098,7 +1098,7 @@ BuildArch: noarch
             continue
         data.append("#Group: %s\n" % group_name)
         pkglist = list(group['packagelist'])
-        pkglist.sort(lambda a,b: cmp(a['package'], b['package']))
+        pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
         for pkg in pkglist:
             pkg_name = pkg['package']
             if seen_pkg.has_key(pkg_name):
@@ -1137,10 +1137,10 @@ def generate_comps(groups, expand_groups=False):
 
 <!-- Auto-generated by the build system -->
 <comps>
-""" ]
+"""]
     groups = list(groups)
-    group_idx = dict([(g['name'],g) for g in groups])
-    groups.sort(lambda a,b:cmp(a['name'],b['name']))
+    group_idx = dict([(g['name'], g) for g in groups])
+    groups.sort(lambda a, b: cmp(a['name'], b['name']))
     for g in groups:
         group_id = g['name']
         name = g['display_name']
@@ -1167,7 +1167,7 @@ def generate_comps(groups, expand_groups=False):
 """    <grouplist>
 """)
             grouplist = list(g['grouplist'])
-            grouplist.sort(lambda a,b:cmp(a['name'],b['name']))
+            grouplist.sort(lambda a, b: cmp(a['name'], b['name']))
             for x in grouplist:
                 #['req_id','type','is_metapkg','name']
                 name = x['name']
@@ -1203,7 +1203,7 @@ def generate_comps(groups, expand_groups=False):
 """)
         if g['packagelist']:
             packagelist = list(g['packagelist'])
-            packagelist.sort(lambda a,b:cmp(a['package'],b['package']))
+            packagelist.sort(lambda a, b: cmp(a['package'], b['package']))
             for p in packagelist:
                 data.append(
 """      %s
@@ -1212,7 +1212,7 @@ def generate_comps(groups, expand_groups=False):
         if expand_groups and g['grouplist']:
             #add a requires entry for all packages in groups required by buildgroup
             need = [req['name'] for req in g['grouplist']]
-            seen_grp = { g['name'] : 1}
+            seen_grp = {g['name'] : 1}
             seen_pkg = {}
             for p in g['packagelist']:
                 seen_pkg[p['package']] = 1
@@ -1230,7 +1230,7 @@ def generate_comps(groups, expand_groups=False):
 """      <!-- Expanding Group: %s -->
 """ % group_name)
                 pkglist = list(group['packagelist'])
-                pkglist.sort(lambda a,b: cmp(a['package'], b['package']))
+                pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
                 for pkg in pkglist:
                     pkg_name = pkg['package']
                     if seen_pkg.has_key(pkg_name):
@@ -1278,11 +1278,11 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         if topurls:
             #XXX - PathInfo isn't quite right for this, but it will do for now
             pathinfos = [PathInfo(topdir=_u) for _u in topurls]
-            urls = ["%s/%s" % (_p.repo(repoid,tag_name), arch) for _p in pathinfos]
+            urls = ["%s/%s" % (_p.repo(repoid, tag_name), arch) for _p in pathinfos]
         else:
             pathinfo = PathInfo(topdir=opts.get('topdir', '/mnt/koji'))
-            repodir = pathinfo.repo(repoid,tag_name)
-            urls = ["file://%s/%s" % (repodir,arch)]
+            repodir = pathinfo.repo(repoid, tag_name)
+            urls = ["file://%s/%s" % (repodir, arch)]
     if managed:
         buildroot_id = opts.get('buildroot_id')
 
@@ -1639,7 +1639,7 @@ class PathInfo(object):
         #else
         return self.topdir + ("/vol/%s" % volume)
 
-    def build(self,build):
+    def build(self, build):
         """Return the directory where a build belongs"""
         return self.volumedir(build.get('volume_name')) + ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
@@ -1674,7 +1674,7 @@ class PathInfo(object):
         """Return the directory where the image for the build are stored"""
         return self.build(build) + '/images'
 
-    def rpm(self,rpminfo):
+    def rpm(self, rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo
 
@@ -1690,11 +1690,11 @@ class PathInfo(object):
         """Return the path for build logs"""
         return "%s/data/logs" % self.build(build)
 
-    def repo(self,repo_id,tag_str):
+    def repo(self, repo_id, tag_str):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/%(repo_id)s" % locals())
 
-    def repocache(self,tag_str):
+    def repocache(self, tag_str):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/cache" % locals())
 
@@ -1733,7 +1733,7 @@ class VirtualMethod(object):
     def __getattr__(self, name):
         return type(self)(self.__func, "%s.%s" % (self.__name, name))
     def __call__(self, *args, **opts):
-        return self.__func(self.__name,args,opts)
+        return self.__func(self.__name, args, opts)
 
 
 class ClientSession(object):
@@ -1783,7 +1783,7 @@ class ClientSession(object):
         # set a default 12 hour connection timeout.
         # Some Koji operations can take a long time to return, but after 12
         # hours we can assume something is seriously wrong.
-        timeout = self.opts.setdefault('timeout',  60 * 60 * 12)
+        timeout = self.opts.setdefault('timeout', 60 * 60 * 12)
         self._timeout_compat = False
         if timeout:
             if sys.version_info[:3] < (2, 6, 0) and 'ssl_context' not in cnxOpts:
@@ -1795,7 +1795,7 @@ class ClientSession(object):
         self._cnxClass = cnxClass
         self._close_connection()
 
-    def setSession(self,sinfo):
+    def setSession(self, sinfo):
         """Set the session info
 
         If sinfo is None, logout."""
@@ -1810,8 +1810,8 @@ class ClientSession(object):
             self.callnum = 0
         self.sinfo = sinfo
 
-    def login(self,opts=None):
-        sinfo = self.callMethod('login',self.opts['user'], self.opts['password'],opts)
+    def login(self, opts=None):
+        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'], opts)
         if not sinfo:
             return False
         self.setSession(sinfo)
@@ -1821,7 +1821,7 @@ class ClientSession(object):
     def subsession(self):
         "Create a subsession"
         sinfo = self.callMethod('subsession')
-        return type(self)(self.baseurl,self.opts,sinfo)
+        return type(self)(self.baseurl, self.opts, sinfo)
 
     def krb_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
         """Log in using Kerberos.  If principal is not None and keytab is
@@ -1974,7 +1974,7 @@ class ClientSession(object):
             except:
                 pass
 
-    def callMethod(self,name,*args,**opts):
+    def callMethod(self, name, *args, **opts):
         """compatibility wrapper for _callMethod"""
         return self._callMethod(name, args, opts)
 
@@ -1984,7 +1984,7 @@ class ClientSession(object):
             kwargs = {}
         if name == 'rawUpload':
             return self._prepUpload(*args, **kwargs)
-        args = encode_args(*args,**kwargs)
+        args = encode_args(*args, **kwargs)
         if self.logged_in:
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
@@ -2089,9 +2089,9 @@ class ClientSession(object):
             handler, headers, request = self._prepCall(name, args, kwargs)
             tries = 0
             self.retries = 0
-            debug = self.opts.get('debug',False)
-            max_retries = self.opts.get('max_retries',30)
-            interval = self.opts.get('retry_interval',20)
+            debug = self.opts.get('debug', False)
+            max_retries = self.opts.get('max_retries', 30)
+            interval = self.opts.get('retry_interval', 20)
             while True:
                 tries += 1
                 self.retries += 1
@@ -2107,7 +2107,7 @@ class ClientSession(object):
                     #try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
-                        if self.opts.get('offline_retry',False):
+                        if self.opts.get('offline_retry', False):
                             secs = self.opts.get('offline_retry_interval', interval)
                             self.logger.debug("Server offline. Retrying in %i seconds", secs)
                             time.sleep(secs)
@@ -2130,7 +2130,7 @@ class ClientSession(object):
                     if not self.logged_in:
                         #in the past, non-logged-in sessions did not retry. For compatibility purposes
                         #this behavior is governed by the anon_retry opt.
-                        if not self.opts.get('anon_retry',False):
+                        if not self.opts.get('anon_retry', False):
                             raise
                     if tries > max_retries:
                         raise
@@ -2174,10 +2174,10 @@ class ClientSession(object):
                     raise err
         return ret
 
-    def __getattr__(self,name):
+    def __getattr__(self, name):
         #if name[:1] == '_':
         #    raise AttributeError, "no attribute %r" % name
-        return VirtualMethod(self._callMethod,name)
+        return VirtualMethod(self._callMethod, name)
 
     def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False):
         if blocksize is None:
@@ -2278,14 +2278,14 @@ class ClientSession(object):
             self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
             return
 
-        start=time.time()
+        start = time.time()
         # XXX - stick in a config or something
-        retries=3
+        retries = 3
         fo = file(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = md5_constructor()
-        debug = self.opts.get('debug',False)
+        debug = self.opts.get('debug', False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
         while True:
@@ -2307,7 +2307,7 @@ class ClientSession(object):
             tries = 0
             while True:
                 if debug:
-                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path,name,sz,digest,offset))
+                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
                 if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data):
                     break
                 if tries <= retries:
@@ -2326,9 +2326,9 @@ class ClientSession(object):
             if t2 <= 0:
                 t2 = 1
             if debug:
-                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size,t1,size/t1/1024))
+                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size/t1/1024))
             if debug:
-                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs,t2,ofs/t2/1024))
+                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs/t2/1024))
             if callback:
                 callback(ofs, totalsize, size, t1, t2)
         fo.close()
@@ -2359,7 +2359,7 @@ class DBHandler(logging.Handler):
         self.cnx = cnx
         self.table = table
         if mapping is None:
-            self.mapping = { 'message': '%(message)s' }
+            self.mapping = {'message': '%(message)s'}
         else:
             self.mapping = mapping
 
@@ -2391,7 +2391,7 @@ class DBHandler(logging.Handler):
             values = ",".join(values)
             command = "INSERT INTO %s (%s) VALUES (%s)" % (self.table, columns, values)
             #note we're letting cursor.execute do the escaping
-            cursor.execute(command,data)
+            cursor.execute(command, data)
             cursor.close()
             #self.cnx.commit()
             #XXX - commiting here is most likely wrong, but we need to set commit_pending or something
@@ -2405,7 +2405,7 @@ TIMESTAMP_RE = re.compile("(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)")
 def parse_timestamp(ts):
     """Parse a timestamp returned from a query"""
     m = TIMESTAMP_RE.search(ts)
-    t = tuple([int(x) for x in m.groups()]) + (0,0,0)
+    t = tuple([int(x) for x in m.groups()]) + (0, 0, 0)
     return time.mktime(t)
 
 def formatTime(value):
@@ -2609,7 +2609,7 @@ def add_file_logger(logger, fn):
             return
     if not os.path.isfile(fn):
         return
-    if not os.access(fn,os.W_OK):
+    if not os.access(fn, os.W_OK):
         return
     handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024*1024*10, backupCount=5)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))

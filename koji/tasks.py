@@ -36,7 +36,7 @@ def scan_mounts(topdir):
     """Search path for mountpoints"""
     mplist = []
     topdir = os.path.normpath(topdir)
-    fo = open('/proc/mounts','r')
+    fo = open('/proc/mounts', 'r')
     for line in fo.readlines():
         path = line.split()[1]
         if path.startswith(topdir):
@@ -53,9 +53,9 @@ def umount_all(topdir):
     for path in scan_mounts(topdir):
         logger.debug('Unmounting %s' % path)
         cmd = ['umount', '-l', path]
-        rv = os.spawnvp(os.P_WAIT,cmd[0],cmd)
+        rv = os.spawnvp(os.P_WAIT, cmd[0], cmd)
         if rv != 0:
-            raise koji.GenericError, 'umount failed (exit code %r) for %s' % (rv,path)
+            raise koji.GenericError, 'umount failed (exit code %r) for %s' % (rv, path)
     #check mounts again
     remain = scan_mounts(topdir)
     if remain:
@@ -83,7 +83,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     #first rm -f non-directories
     logger.debug('Scrubbing files in %s' % path)
     rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % path)
-    msg = 'file removal failed (code %r) for %s' % (rv,path)
+    msg = 'file removal failed (code %r) for %s' % (rv, path)
     if rv != 0:
         logger.warn(msg)
         if strict:
@@ -94,7 +94,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     #with -depth, we start at the bottom and work up
     logger.debug('Scrubbing directories in %s' % path)
     rv = os.system("find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % path)
-    msg = 'dir removal failed (code %r) for %s' % (rv,path)
+    msg = 'dir removal failed (code %r) for %s' % (rv, path)
     if rv != 0:
         logger.warn(msg)
         if strict:
@@ -128,7 +128,7 @@ class BaseTaskHandler(object):
             raise koji.GenericError, 'method "%s" is not supported' % method
         self.method = method
         # handle named parameters
-        self.params,self.opts = koji.decode_args(*params)
+        self.params, self.opts = koji.decode_args(*params)
         self.session = session
         self.options = options
         if workdir is None:
@@ -137,7 +137,7 @@ class BaseTaskHandler(object):
         self.logger = logging.getLogger("koji.build.BaseTaskHandler")
         self.manager = None
 
-    def setManager(self,manager):
+    def setManager(self, manager):
         """Set the manager attribute
 
         This is only used for foreground tasks to give them access
@@ -173,7 +173,7 @@ class BaseTaskHandler(object):
 
         Note that task weight is partially ignored while the task is sleeping.
         """
-        return getattr(self,'_taskWeight',1.0)
+        return getattr(self, '_taskWeight', 1.0)
 
     def createWorkdir(self):
         if self.workdir is None:
@@ -206,10 +206,10 @@ class BaseTaskHandler(object):
             the database and will send the subprocess corresponding to the
             subtask a SIGUSR2 to wake it up when subtasks complete.
         """
-        if isinstance(subtasks,int):
+        if isinstance(subtasks, int):
             # allow single integer w/o enclosing list
             subtasks = [subtasks]
-        self.session.host.taskSetWait(self.id,subtasks)
+        self.session.host.taskSetWait(self.id, subtasks)
         self.logger.debug("Waiting on %r" % subtasks)
         while True:
             finished, unfinished = self.session.host.taskWait(self.id)
@@ -387,12 +387,12 @@ class ForkTask(BaseTaskHandler):
     Methods = ['fork']
     def handler(self, n=5, m=37):
         for i in xrange(n):
-            os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep',str(m)])
+            os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
 
 class WaitTestTask(BaseTaskHandler):
     Methods = ['waittest']
     _taskWeight = 0.1
-    def handler(self,count,seconds=10):
+    def handler(self, count, seconds=10):
         tasks = []
         for i in xrange(count):
             task_id = self.session.host.subtask(method='sleep',
@@ -407,7 +407,7 @@ class WaitTestTask(BaseTaskHandler):
 class SubtaskTask(BaseTaskHandler):
     Methods = ['subtask']
     _taskWeight = 0.1
-    def handler(self,n=4):
+    def handler(self, n=4):
         if n > 0:
             task_id = self.session.host.subtask(method='subtask',
                                                 arglist=[n-1],
@@ -426,7 +426,7 @@ class DefaultTask(BaseTaskHandler):
     """Used when no matching method is found"""
     Methods = ['default']
     _taskWeight = 0.1
-    def handler(self,*args,**opts):
+    def handler(self, *args, **opts):
         raise koji.GenericError, "Invalid method: %s" % self.method
 
 
@@ -523,7 +523,7 @@ class DependantTask(BaseTaskHandler):
             for task in wait_list[:]:
                 if self.session.taskFinished(task):
                     info = self.session.getTaskInfo(task)
-                    if info and koji.TASK_STATES[info['state']] in ['CANCELED','FAILED']:
+                    if info and koji.TASK_STATES[info['state']] in ['CANCELED', 'FAILED']:
                         raise koji.GenericError, "Dependency %s failed to complete." % info['id']
                     wait_list.remove(task)
             # let the system rest before polling again
@@ -532,7 +532,7 @@ class DependantTask(BaseTaskHandler):
         subtasks = []
         for task in task_list:
             # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows for things like 'priority=15'
-            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id, **((len(task)>2 and task[2]) or {}))
+            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id, **((len(task) > 2 and task[2]) or {}))
             if task_id:
                 subtasks.append(task_id)
         if subtasks:
