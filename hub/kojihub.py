@@ -9860,7 +9860,34 @@ class RootExports(object):
 
         return results
 
-    def checkTagPackage(self, tag, pkg):
+
+    def listFlatPackages(self, prefix=None, queryOpts=None):
+        """list packages that starts with prefix and are filted
+        and ordered by queryOpts.
+
+        Args:
+            prefix: default is None. If is not None will filter out
+                packages which name doesn't start with the prefix.
+            queryOpts: query options used by the QueryProcessor.
+
+        Returns:
+            A list of maps is returned, and each map contains key
+            'package_name' and 'package_id'.
+        """
+        _escape = lambda _str: _str.replace('_', '#_').replace('%', '#%')
+
+        if prefix is None:
+            clauses = None
+        else:
+            clauses = ["""package.name ILIKE '%s%%' ESCAPE '#'"""
+                           % _escape(prefix)]
+        query = QueryProcessor(
+            tables=['package'], clauses=clauses,
+            columns=['package.id', 'package.name'], opts=queryOpts)
+        return query.executeOne()
+
+
+    def checkTagPackage(self,tag,pkg):
         """Check that pkg is in the list for tag. Returns true/false"""
         tag_id = get_tag_id(tag, strict=False)
         pkg_id = get_package_id(pkg, strict=False)
@@ -10555,6 +10582,56 @@ class RootExports(object):
             results = results[:limit]
 
         return results
+
+
+    def CountAndFilterResults(self, methodName, *args, **kw):
+        """ Replacement of the method filterResults when we need both the total
+        result count and the filtered result.
+
+        Execute the XML-RPC method with the given name and filter the results
+        based on the options specified in the keywork option "filterOpts".
+        The method must return a list of maps.  Any other return type will
+        result in a TypeError.
+
+        Args:
+        offset: the number of elements to trim off the front of the list
+        limit: the maximum number of results to return
+        order: the map key to use to sort the list; the list will be sorted
+            before offset or limit are applied
+        noneGreatest: when sorting, consider 'None' to be greater than all
+            other values; python considers None less than all other values,
+            but Postgres sorts NULL higher than all other values; default
+            to True for consistency with database sorts
+
+        Returns:
+            Tuple of total result amount and the filtered result.
+        """
+        filterOpts = kw.pop('filterOpts', {})
+
+        results = getattr(self, methodName)(*args, **kw)
+        if result is None:
+            return 0, None
+        elif isinstance(result, list):
+            _count = len(result)
+        else:
+            _count = 1
+
+        if not isinstance(results, list):
+            raise TypeError, '%s() did not return a list' % methodName
+
+        order = filterOpts.get('order')
+        if order:
+            results.sort(self._sortByKeyFunc(order, filterOpts.get('noneGreatest', True)))
+
+        offset = filterOpts.get('offset')
+        if offset is not None:
+            results = results[offset:]
+        limit = filterOpts.get('limit')
+        if limit is not None:
+            results = results[:limit]
+
+        return _count, result
+
 
     def getBuildNotifications(self, userID=None):
         """Get build notifications for the user with the given ID.  If no ID
