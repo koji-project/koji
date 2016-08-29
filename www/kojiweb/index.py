@@ -1105,7 +1105,7 @@ def buildinfo(environ, buildID):
     archiveIndex = {}
     for btype in typeinfo:
         archives = server.listArchives(build['id'], type=btype, queryOpts={'order': 'filename'})
-        idx = archiveIndex.setdefault('btype', {})
+        idx = archiveIndex.setdefault(btype, {})
         for archive in archives:
             if btype == 'maven':
                 archive['display'] = archive['filename']
