@@ -29,7 +29,7 @@ import types
 import pprint
 import resource
 import xmlrpclib
-from xmlrpclib import getparser,dumps,Fault
+from xmlrpclib import getparser, dumps, Fault
 from koji.server import WSGIWrapper
 
 import koji
@@ -69,7 +69,7 @@ class HandlerRegistry(object):
         self.register_function(self.system_methodHelp, name="system.methodHelp")
         self.argspec_cache = {}
 
-    def register_function(self, function, name = None):
+    def register_function(self, function, name=None):
         if name is None:
             name = function.__name__
         self.funcs[name] = function
@@ -91,10 +91,10 @@ class HandlerRegistry(object):
             if not callable(function):
                 continue
             if prefix is not None:
-                name = "%s.%s" %(prefix,name)
+                name = "%s.%s" %(prefix, name)
             self.register_function(function, name=name)
 
-    def register_instance(self,instance):
+    def register_instance(self, instance):
         self.register_module(instance)
 
     def register_plugin(self, plugin):
@@ -135,7 +135,7 @@ class HandlerRegistry(object):
 
     def list_api(self):
         funcs = []
-        for name,func in self.funcs.items():
+        for name, func in self.funcs.items():
             #the keys in self.funcs determine the name of the method as seen over xmlrpc
             #func.__name__ might differ (e.g. for dotted method names)
             args = self._getFuncArgs(func)
@@ -242,8 +242,8 @@ class ModXMLRPCRequestHandler(object):
             self.traceback = True
             # report exception back to server
             e_class, e = sys.exc_info()[:2]
-            faultCode = getattr(e_class,'faultCode',1)
-            tb_type = context.opts.get('KojiTraceback',None)
+            faultCode = getattr(e_class, 'faultCode', 1)
+            tb_type = context.opts.get('KojiTraceback', None)
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             if issubclass(e_class, koji.GenericError):
                 if context.opts.get('KojiDebug'):
@@ -259,7 +259,7 @@ class ModXMLRPCRequestHandler(object):
                 elif tb_type == "extended":
                     faultString = koji.format_exc_plus()
                 else:
-                    faultString = "%s: %s" % (e_class,e)
+                    faultString = "%s: %s" % (e_class, e)
             self.logger.warning(tb_str)
             response = dumps(Fault(faultCode, faultString))
 
@@ -277,7 +277,7 @@ class ModXMLRPCRequestHandler(object):
         return self._dispatch(method, params)
 
     def check_session(self):
-        if not hasattr(context,"session"):
+        if not hasattr(context, "session"):
             #we may be called again by one of our meta-calls (like multiCall)
             #so we should only create a session if one does not already exist
             context.session = koji.auth.Session()
@@ -285,7 +285,7 @@ class ModXMLRPCRequestHandler(object):
                 context.session.validate()
             except koji.AuthLockError:
                 #might be ok, depending on method
-                if context.method not in ('exclusiveSession','login', 'krbLogin', 'logout'):
+                if context.method not in ('exclusiveSession', 'login', 'krbLogin', 'logout'):
                     raise
 
     def enforce_lockout(self):
@@ -350,7 +350,7 @@ class ModXMLRPCRequestHandler(object):
 
         return results
 
-    def handle_request(self,req):
+    def handle_request(self, req):
         """Handle a single XML-RPC request"""
 
         pass
@@ -393,9 +393,9 @@ def load_config(environ):
         # to aid in the transition from PythonOptions to hub.conf, we only load
         # the configfile if it is explicitly configured
         if cf == '/etc/koji-hub/hub.conf':
-            cfdir =  modpy_opts.get('ConfigDir', '/etc/koji-hub/hub.conf.d')
+            cfdir = modpy_opts.get('ConfigDir', '/etc/koji-hub/hub.conf.d')
         else:
-            cfdir =  modpy_opts.get('ConfigDir', None)
+            cfdir = modpy_opts.get('ConfigDir', None)
         if not cf and not cfdir:
             logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
     else:
@@ -694,10 +694,10 @@ def server_setup(environ):
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
-        koji.db.provideDBopts(database = opts["DBName"],
-                              user = opts["DBUser"],
-                              password = opts.get("DBPass",None),
-                              host = opts.get("DBHost", None))
+        koji.db.provideDBopts(database=opts["DBName"],
+                              user=opts["DBUser"],
+                              password=opts.get("DBPass", None),
+                              host=opts.get("DBHost", None))
     except Exception:
         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
         logger.error(tb_str)
@@ -774,7 +774,7 @@ def application(environ, start_response):
                         time.time() - start)
         finally:
             #make sure context gets cleaned up
-            if hasattr(context,'cnx'):
+            if hasattr(context, 'cnx'):
                 try:
                     context.cnx.close()
                 except Exception:
@@ -789,7 +789,7 @@ def get_registry(opts, plugins):
     functions = kojihub.RootExports()
     hostFunctions = kojihub.HostExports()
     registry.register_instance(functions)
-    registry.register_module(hostFunctions,"host")
+    registry.register_module(hostFunctions, "host")
     registry.register_function(koji.auth.login)
     registry.register_function(koji.auth.krbLogin)
     registry.register_function(koji.auth.sslLogin)

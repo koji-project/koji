@@ -163,12 +163,12 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 class SCM(object):
     "SCM abstraction class"
 
-    types = { 'CVS': ('cvs://',),
-              'CVS+SSH': ('cvs+ssh://',),
-              'GIT': ('git://', 'git+http://', 'git+https://', 'git+rsync://'),
-              'GIT+SSH': ('git+ssh://',),
-              'SVN': ('svn://', 'svn+http://', 'svn+https://'),
-              'SVN+SSH': ('svn+ssh://',) }
+    types = {'CVS': ('cvs://',),
+             'CVS+SSH': ('cvs+ssh://',),
+             'GIT': ('git://', 'git+http://', 'git+https://', 'git+rsync://'),
+             'GIT+SSH': ('git+ssh://',),
+             'SVN': ('svn://', 'svn+http://', 'svn+https://'),
+             'SVN+SSH': ('svn+ssh://',)}
 
     def is_scm_url(url):
         """
@@ -265,15 +265,15 @@ class SCM(object):
             query = query[:-1]
 
         # check for validity: params should be empty, query may be empty, everything else should be populated
-        if params :
+        if params:
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params)
-        if not scheme :
+        if not scheme:
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url
-        if not netloc :
+        if not netloc:
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url
-        if not path :
+        if not path:
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the path element.' % self.url
-        if not fragment :
+        if not fragment:
             raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url
 
         # return parsed values
@@ -445,8 +445,8 @@ class SCM(object):
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
             if self.scmtype.startswith('GIT') and globals().get('KOJIKAMID'):
-                _run(['git', 'config', 'core.autocrlf',  'true'], chdir=update_checkout_dir, fatal=True)
-                _run(['git', 'config', 'core.safecrlf',  'true'], chdir=update_checkout_dir, fatal=True)
+                _run(['git', 'config', 'core.autocrlf', 'true'], chdir=update_checkout_dir, fatal=True)
+                _run(['git', 'config', 'core.safecrlf', 'true'], chdir=update_checkout_dir, fatal=True)
             _run(update_checkout_cmd, chdir=update_checkout_dir, fatal=True)
 
         if self.use_common and not globals().get('KOJIKAMID'):
@@ -484,7 +484,7 @@ class TaskManager(object):
     def findHandlers(self, vars):
         """Find and index task handlers"""
         for v in vars.values():
-            if type(v) == type(koji.tasks.BaseTaskHandler) and issubclass(v,koji.tasks.BaseTaskHandler):
+            if type(v) == type(koji.tasks.BaseTaskHandler) and issubclass(v, koji.tasks.BaseTaskHandler):
                 for method in v.Methods:
                     self.handlers[method] = v
 
@@ -497,7 +497,7 @@ class TaskManager(object):
         for task_id in self.pids.keys():
             self.cleanupTask(task_id)
         self.session.host.freeTasks(self.tasks.keys())
-        self.session.host.updateHost(task_load=0.0,ready=False)
+        self.session.host.updateHost(task_load=0.0, ready=False)
 
     def updateBuildroots(self, nolocal=False):
         """Handle buildroot cleanup/maintenance
@@ -511,10 +511,10 @@ class TaskManager(object):
         If nolocal is True, do not try to scan local buildroots.
         """
         #query buildroots in db that are not expired
-        states = [ koji.BR_STATES[x] for x in ('INIT','WAITING','BUILDING') ]
-        db_br = self.session.listBuildroots(hostID=self.host_id,state=tuple(states))
+        states = [koji.BR_STATES[x] for x in ('INIT', 'WAITING', 'BUILDING')]
+        db_br = self.session.listBuildroots(hostID=self.host_id, state=tuple(states))
         # index by id
-        db_br = dict([(row['id'],row) for row in db_br])
+        db_br = dict([(row['id'], row) for row in db_br])
         st_expired = koji.BR_STATES['EXPIRED']
         for id, br in db_br.items():
             task_id = br['task_id']
@@ -522,13 +522,13 @@ class TaskManager(object):
                 # not associated with a task
                 # this makes no sense now, but may in the future
                 self.logger.warn("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.session.host.setBuildRootState(id,st_expired)
+                self.session.host.setBuildRootState(id, st_expired)
             elif not self.tasks.has_key(task_id):
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id,self.tasks.keys()))
-                self.session.host.setBuildRootState(id,st_expired)
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, self.tasks.keys()))
+                self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:
             return
@@ -544,8 +544,8 @@ class TaskManager(object):
                 if task_id:
                     tasks.append(task_id)
             #index
-            missed_br = dict([(row['id'],row) for row in missed_br])
-            tasks = dict([(row['id'],row) for row in self.session.getTaskInfo(tasks)])
+            missed_br = dict([(row['id'], row) for row in missed_br])
+            tasks = dict([(row['id'], row) for row in self.session.getTaskInfo(tasks)])
             for id in local_only:
                 # Cleaning options
                 #   - wait til later
@@ -611,13 +611,13 @@ class TaskManager(object):
                         if flist:
                             self.logger.info("%s: clearing rootdir" % desc)
                         for fn in flist:
-                            safe_rmtree("%s/%s" % (rootdir,fn), unmount=True, strict=False)
+                            safe_rmtree("%s/%s" % (rootdir, fn), unmount=True, strict=False)
                         resultdir = "%s/result" % topdir
                         if os.path.isdir(resultdir):
                             self.logger.info("%s: clearing resultdir" % desc)
                             safe_rmtree(resultdir, unmount=True, strict=False)
                 else:
-                    self.logger.debug("Recent buildroot: %s: %i seconds" % (desc,age))
+                    self.logger.debug("Recent buildroot: %s: %i seconds" % (desc, age))
         self.logger.debug("Local buildroots: %d" % len(local_br))
         self.logger.debug("Active buildroots: %d" % len(db_br))
         self.logger.debug("Expired/stray buildroots: %d" % len(local_only))
@@ -629,10 +629,10 @@ class TaskManager(object):
         for f in os.listdir(configdir):
             if not f.endswith('.cfg'):
                 continue
-            fn = "%s/%s" % (configdir,f)
+            fn = "%s/%s" % (configdir, f)
             if not os.path.isfile(fn):
                 continue
-            fo = file(fn,'r')
+            fo = file(fn, 'r')
             id = None
             name = None
             for n in xrange(10):
@@ -687,10 +687,10 @@ class TaskManager(object):
                 stale.append(id)
                 continue
             tasks[id] = task
-            if task.get('alert',False):
+            if task.get('alert', False):
                 #wake up the process
                 self.logger.info("Waking up task: %r" % task)
-                os.kill(self.pids[id],signal.SIGUSR2)
+                os.kill(self.pids[id], signal.SIGUSR2)
             if not task['waiting']:
                 task_load += task['weight']
         self.logger.debug("Task Load: %s" % task_load)
@@ -719,21 +719,21 @@ class TaskManager(object):
                 #  - task is forcibly reassigned/unassigned
                 tinfo = self.session.getTaskInfo(id)
                 if tinfo is None:
-                    raise koji.GenericError, "Invalid task %r (pid %r)" % (id,pid)
+                    raise koji.GenericError, "Invalid task %r (pid %r)" % (id, pid)
                 elif tinfo['state'] == koji.TASK_STATES['CANCELED']:
-                    self.logger.info("Killing canceled task %r (pid %r)" % (id,pid))
+                    self.logger.info("Killing canceled task %r (pid %r)" % (id, pid))
                     if self.cleanupTask(id):
                         del self.pids[id]
                 elif tinfo['host_id'] != self.host_id:
-                    self.logger.info("Killing reassigned task %r (pid %r)" % (id,pid))
+                    self.logger.info("Killing reassigned task %r (pid %r)" % (id, pid))
                     if self.cleanupTask(id):
                         del self.pids[id]
                 else:
-                    self.logger.info("Lingering task %r (pid %r)" % (id,pid))
+                    self.logger.info("Lingering task %r (pid %r)" % (id, pid))
 
     def getNextTask(self):
         self.ready = self.readyForTask()
-        self.session.host.updateHost(self.task_load,self.ready)
+        self.session.host.updateHost(self.task_load, self.ready)
         if not self.ready:
             self.logger.info("Not ready for task")
             return False
@@ -753,8 +753,8 @@ class TaskManager(object):
                 our_avail = host['capacity'] - host['task_load']
             for chan in host['channels']:
                 for arch in host['arches'].split() + ['noarch']:
-                    bin = "%s:%s" % (chan,arch)
-                    bin_hosts.setdefault(bin,[]).append(host)
+                    bin = "%s:%s" % (chan, arch)
+                    bin_hosts.setdefault(bin, []).append(host)
                     if host['id'] == self.host_id:
                         bins[bin] = 1
         self.logger.debug("bins: %r" % bins)
@@ -1069,7 +1069,7 @@ class TaskManager(object):
         #XXX - add more checks
         return True
 
-    def takeTask(self,task):
+    def takeTask(self, task):
         """Attempt to open the specified task
 
         Returns True if successful, False otherwise
@@ -1089,7 +1089,7 @@ class TaskManager(object):
         if hasattr(handler, 'checkHost'):
             try:
                 valid_host = handler.checkHost(self.hostdata)
-            except (SystemExit,KeyboardInterrupt):
+            except (SystemExit, KeyboardInterrupt):
                 raise
             except:
                 valid_host = False
@@ -1129,7 +1129,7 @@ class TaskManager(object):
             self.subsessions[task_id] = session_id
         return True
 
-    def forkTask(self,handler):
+    def forkTask(self, handler):
         #get the subsession before we fork
         newhub = self.session.subsession()
         session_id = newhub.sinfo['session-id']
@@ -1147,7 +1147,7 @@ class TaskManager(object):
             self.session = newhub
             handler.session = self.session
             #set a do-nothing handler for sigusr2
-            signal.signal(signal.SIGUSR2,lambda *args: None)
+            signal.signal(signal.SIGUSR2, lambda *args: None)
             self.runTask(handler)
         finally:
             #diediedie
@@ -1156,7 +1156,7 @@ class TaskManager(object):
             finally:
                 os._exit(0)
 
-    def runTask(self,handler):
+    def runTask(self, handler):
         try:
             response = (handler.run(),)
             # note that we wrap response in a singleton tuple
@@ -1168,7 +1168,7 @@ class TaskManager(object):
             response = xmlrpclib.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
-        except (SystemExit,koji.tasks.ServerExit,KeyboardInterrupt):
+        except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
             #we do not trap these
             raise
         except koji.tasks.ServerRestart:
@@ -1180,7 +1180,7 @@ class TaskManager(object):
             self.logger.warn("TRACEBACK: %s" % tb)
             # report exception back to server
             e_class, e = sys.exc_info()[:2]
-            faultCode = getattr(e_class,'faultCode',1)
+            faultCode = getattr(e_class, 'faultCode', 1)
             if issubclass(e_class, koji.GenericError):
                 #just pass it through
                 tb = str(e)

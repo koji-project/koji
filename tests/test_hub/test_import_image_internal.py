@@ -80,7 +80,7 @@ class TestImportImageInternal(unittest.TestCase):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
         context.session.host_id = 42
-        get_build.return_value = {'id': 2 }
+        get_build.return_value = {'id': 2}
         get_rpm.return_value = rpm
         get_archive_type.return_value = 4
         work.return_value = self.tempdir
