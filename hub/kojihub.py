@@ -12341,7 +12341,6 @@ class HostExports(object):
                 dst = "%s/%s" % (datadir, fn)
             if not os.path.exists(src):
                 raise koji.GenericError, "uploaded file missing: %s" % src
-            os.link(src, dst)
             if fn.endswith('pkglist'):
                 # hardlink the found rpms into the final repodir
                 # TODO: properly consider split-volume functionality
@@ -12360,7 +12359,7 @@ class HostExports(object):
                                     rpmpath, os.path.join(archdir, bnplet, bnp))
                             else:
                                 raise ose
-            os.unlink(src)
+            safer_move(src, dst)
 
     def isEnabled(self):
         host = Host()
