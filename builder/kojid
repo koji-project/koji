@@ -5191,8 +5191,6 @@ enabled=1
 
     def make_pkglist(self, tag_id, arch, keys, opts):
 
-        # Need to pass event_id because even though this is a single trans,
-        # it is possible to see the results of other committed transactions
         rpms = []
         builddirs = {}
         for a in self.compat[arch] + ('noarch',):
