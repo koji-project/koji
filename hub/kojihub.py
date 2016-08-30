@@ -2444,18 +2444,17 @@ def _write_maven_repo_metadata(destdir, artifacts):
 
 def signed_repo_init(tag, keys, task_opts):
     """Create a new repo entry in the INIT state, return full repo data"""
-    logger = logging.getLogger("koji.hub.signed_repo_init")
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True)
-    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, keys=keys, repo_id=None)
     tag_id = tinfo['id']
-    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
-    repo_arches = task_opts['arch']
-    arches = set([])
-    for arch in repo_arches:
-        arches.add(koji.canonArch(arch))
+    arches = set([koji.canonArch(a) for a in task_opts['arch']])
+    # note: we need to match args from the other preRepoInit callback
+    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
+            with_debuginfo=False, event=task_opts['event'], repo_id=None,
+            signed=True, keys=keys, arches=arches, task_opts=task_opts)
     if not task_opts['event']:
         task_opts['event'] = _singleValue("SELECT get_event()")
+    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
         state=state, signed=True)
@@ -2469,8 +2468,9 @@ def signed_repo_init(tag, keys, task_opts):
         koji.ensuredir(groupsdir)
         shutil.copyfile(os.path.join(koji.pathinfo.work(),
             task_opts['comps']), groupsdir + '/comps.xml')
-    koji.plugin.run_callbacks('postRepoInit', tag=tinfo,
-        event=task_opts['event'], repo_id=repo_id)
+    # note: we need to match args from the other postRepoInit callback
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
+            with_debuginfo=False, event=task_opts['event'], repo_id=repo_id)
     return repo_id, task_opts['event']
 
 
