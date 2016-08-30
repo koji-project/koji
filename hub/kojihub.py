@@ -12263,13 +12263,15 @@ class HostExports(object):
             else:
                 safer_move(filepath, dst)
 
-    def repoDone(self, repo_id, data, expire=False, signed=False):
+    def repoDone(self, repo_id, data, expire=False):
         """Move repo data into place, mark as ready, and expire earlier repos
 
         repo_id: the id of the repo
         data: a dictionary of the form { arch: (uploadpath, files), ...}
         expire(optional): if set to true, mark the repo expired immediately*
-        signed(optional): if true, hardlink signed rpms in the final directory
+
+        If this is a signed repo, also hardlink signed rpms in the final
+        directory.
 
         * This is used when a repo from an older event is generated
         """
@@ -12281,7 +12283,7 @@ class HostExports(object):
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
-        if not signed:
+        if not rinfo['signed']:
             for arch, (uploadpath, files) in data.iteritems():
                 archdir = "%s/%s" % (repodir, koji.canonArch(arch))
                 if not os.path.isdir(archdir):
