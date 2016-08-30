@@ -6527,7 +6527,7 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = idx.values()
 
-    ret['images'] = []
+    ret['component_of'] = []
     # find images/archives that contain the build rpms
     fields = ['archive_id']
     clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s']

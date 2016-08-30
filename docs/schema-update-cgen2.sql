@@ -42,12 +42,12 @@ ALTER TABLE archive_components RENAME archive_id TO component_id;
 ALTER TABLE archive_components RENAME image_id TO archive_id;
 
 SELECT statement_timestamp(), 'Fixing up component tables, adding constraints' as msg;
-ALTER TABLE archive_rpm_components ADD CONSTRAINT archive_fk FOREIGN KEY (archive_id) REFERENCES archiveinfo(id);
-ALTER TABLE archive_rpm_components ADD CONSTRAINT rpm_fk FOREIGN KEY (rpm_id) REFERENCES rpminfo(id);
-ALTER TABLE archive_rpm_components ADD CONSTRAINT arcomp_unique UNIQUE (archive_id, rpm_id);
-ALTER TABLE archive_components ADD CONSTRAINT archive_fk FOREIGN KEY (archive_id) REFERENCES archiveinfo(id);
-ALTER TABLE archive_components ADD CONSTRAINT rpm_fk FOREIGN KEY (component_id) REFERENCES archiveinfo(id);
-ALTER TABLE archive_components ADD CONSTRAINT arcomp_unique UNIQUE (archive_id, component_id);
+ALTER TABLE archive_rpm_components ADD CONSTRAINT archive_rpm_components_archive_fk FOREIGN KEY (archive_id) REFERENCES archiveinfo(id);
+ALTER TABLE archive_rpm_components ADD CONSTRAINT archive_rpm_components_rpm_fk FOREIGN KEY (rpm_id) REFERENCES rpminfo(id);
+ALTER TABLE archive_rpm_components ADD CONSTRAINT archive_rpm_components_unique UNIQUE (archive_id, rpm_id);
+ALTER TABLE archive_components ADD CONSTRAINT archive_components_archive_fk FOREIGN KEY (archive_id) REFERENCES archiveinfo(id);
+ALTER TABLE archive_components ADD CONSTRAINT archive_components_rpm_fk FOREIGN KEY (component_id) REFERENCES archiveinfo(id);
+ALTER TABLE archive_components ADD CONSTRAINT archive_components_unique UNIQUE (archive_id, component_id);
 
 SELECT statement_timestamp(), 'Adding component table indexes' as msg;
 CREATE INDEX rpm_components_idx on archive_rpm_components(rpm_id);
