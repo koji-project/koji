@@ -28,6 +28,22 @@ INSERT INTO btype(name) VALUES ('image');
 SELECT statement_timestamp(), 'Altering archiveinfo table' as msg;
 ALTER TABLE archiveinfo ADD COLUMN btype_id INTEGER REFERENCES btype(id);
 
+-- fill in legacy types
+SELECT statement_timestamp(), 'Adding legacy btypes to builds' as msg;
+INSERT INTO build_types(btype_id, build_id)
+    SELECT btype.id, maven_builds.build_id FROM btype JOIN maven_builds ON btype.name='maven';
+INSERT INTO build_types(btype_id, build_id)
+    SELECT btype.id, win_builds.build_id FROM btype JOIN win_builds ON btype.name='win';
+INSERT INTO build_types(btype_id, build_id)
+    SELECT btype.id, image_builds.build_id FROM btype JOIN image_builds ON btype.name='image';
+
+SELECT statement_timestamp(), 'Adding legacy btypes to archiveinfo' as msg;
+UPDATE archiveinfo SET btype_id=(SELECT id FROM btype WHERE name='maven' LIMIT 1)
+    WHERE (SELECT archive_id FROM maven_archives WHERE archive_id=archiveinfo.id) IS NOT NULL;
+UPDATE archiveinfo SET btype_id=(SELECT id FROM btype WHERE name='win' LIMIT 1)
+    WHERE (SELECT archive_id FROM win_archives WHERE archive_id=archiveinfo.id) IS NOT NULL;
+UPDATE archiveinfo SET btype_id=(SELECT id FROM btype WHERE name='image' LIMIT 1)
+    WHERE (SELECT archive_id FROM image_archives WHERE archive_id=archiveinfo.id) IS NOT NULL;
 
 -- new component tables
 SELECT statement_timestamp(), 'Creating new component tables' as msg;

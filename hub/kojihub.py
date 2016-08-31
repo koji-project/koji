@@ -5546,7 +5546,8 @@ def new_maven_build(build, maven_info):
         data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
         insert = InsertProcessor('maven_builds', data=data)
         insert.execute()
-        # note: for the moment, we are not adding build_types entries for the legacy types
+        # also add build_types entry
+        new_typed_build(build['id'], 'maven')
 
 def new_win_build(build_info, win_info):
     """
@@ -5566,7 +5567,8 @@ def new_win_build(build_info, win_info):
         insert.set(build_id=build_id)
         insert.set(platform=win_info['platform'])
         insert.execute()
-        # note: for the moment, we are not adding build_types entries for the legacy types
+        # also add build_types entry
+        new_typed_build(build_info['id'], 'win')
 
 def new_image_build(build_info):
     """
@@ -5584,7 +5586,8 @@ def new_image_build(build_info):
         insert = InsertProcessor('image_builds')
         insert.set(build_id=build_info['id'])
         insert.execute()
-        # note: for the moment, we are not adding build_types entries for the legacy types
+        # also add build_types entry
+        new_typed_build(build_info['id'], 'maven')
 
 
 def new_typed_build(build_info, btype):
