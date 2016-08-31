@@ -743,16 +743,31 @@ def task_result_to_html(result=None, exc_class=None,
     Returns:
         Tuple of full result and abbreviated result.
     """
-    default_max_abbr_result_lines = 11
+    default_max_abbr_result_lines = 10
     default_max_abbr_result_len = 512
+
     if max_abbr_lines is None:
         max_abbr_lines = default_max_abbr_result_lines
     if max_abbr_len is None:
         max_abbr_len = default_max_abbr_result_len
+
+    postscript_fragment = TaskResultFragment(
+        text='...', end_tag='</a>',
+        begin_tag='<a href="#" collapse" %s %s>' % (
+            'id="toggle-full-result"',
+            'style="display: none;text-decoration:none;"'))
+
     if abbr_postscript is None:
-        abbr_postscript = ' ...'
-    elif not abbr_postscript.startswith(' '):
-        abbr_postscript.startswith = ' %s' % abbr_postscript.startswith
+        abbr_postscript = postscript_fragment.composer()
+    elif isinstacne(abbr_postscript, TaskResultFragment):
+        abbr_postscript = abbr_postscript.composer()
+    elif isinstance(abbr_postscript, str):
+        abbr_postscript = abbr_postscript
+    else:
+        abbr_postscript = '...'
+
+    if not abbr_postscript.startswith(' '):
+        abbr_postscript = ' %s' % abbr_postscript
 
     full_ret_str = ''
     abbr_ret_str = ''

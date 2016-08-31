@@ -394,7 +394,7 @@ $value
       <th>Result</th>
       <td>
       #if $abbr_result_text
-        <a href="#" collapse" id="toggle-result" style="display: none;">Show complete results</a>
+        <a href="#" collapse" id="toggle-abbreviated-result" style="display: none;">Show abbreviated results</a>
         <div id="abbr-result">
         $abbr_result_text
         </div>
@@ -432,23 +432,30 @@ $value
     (function() {
        var abbr = document.getElementById('abbr-result');
        var full = document.getElementById('full-result');
-       t = document.getElementById('toggle-result');
+       var link_to_show_abbr = document.getElementById('toggle-abbreviated-result');
+       var link_to_show_full = document.getElementById('toggle-full-result');
        full.style.display = 'none';
-       t.style.display = 'block';
-       t.text = 'Show complete result';
-       t.onclick = function(e) {
-         if(abbr.style.display == 'none') {
+       abbr.style.display = 'block'
+       link_to_show_full.style.display = 'inline'
+       link_to_show_abbr.style.display = 'none'
+       var trigger = function(e) {
+         if (link_to_show_abbr.style.display == 'none') {
+           link_to_show_abbr.style.display = 'inline'
+           link_to_show_full.style.display = 'none'
+           abbr.style.display = 'none';
+           full.style.display = 'block'
+         }
+         else {
+           link_to_show_abbr.style.display = 'none'
+           link_to_show_full.style.display = 'inline'
            abbr.style.display = 'block';
            full.style.display = 'none'
-           t.text = 'show complete result';
-           }
-         else {
-           abbr.style.display = 'none'
-           full.style.display = 'block';
-           t.text = 'Show abbreviated result';
          }
          return false;
        };
+
+       link_to_show_full.onclick = trigger
+       link_to_show_abbr.onclick = trigger
     })();
   </script>
 #end if
