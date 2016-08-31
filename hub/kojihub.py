@@ -9266,7 +9266,7 @@ class RootExports(object):
                 raise koji.GenericError, 'unsupported build type: %s' % type
             btype_id = btype['id']
             joins.append('build_types ON build.id = build_types.build_id '
-                    'AND btype_id = %(btype_id)')
+                    'AND btype_id = %(btype_id)s')
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
