@@ -9861,7 +9861,7 @@ class RootExports(object):
         return results
 
 
-    def listFlatPackages(self, prefix=None, queryOpts=None):
+    def listPackagesSimple(self, prefix=None, queryOpts=None):
         """list packages that starts with prefix and are filted
         and ordered by queryOpts.
 
@@ -9875,16 +9875,18 @@ class RootExports(object):
             'package_name' and 'package_id'.
         """
         _escape = lambda _str: _str.replace('_', '#_').replace('%', '#%')
-
+        fields = (('package.id', 'package_id'),
+                      ('package.name', 'package_name'))
         if prefix is None:
             clauses = None
         else:
-            clauses = ["""package.name ILIKE '%s%%' ESCAPE '#'"""
-                           % _escape(prefix)]
+            prefix = _escape(prefix)
+            clauses = ["""package.name ILIKE '%(prefix)s%%' ESCAPE '#'"""]
         query = QueryProcessor(
-            tables=['package'], clauses=clauses,
-            columns=['package.id', 'package.name'], opts=queryOpts)
-        return query.executeOne()
+            tables=['package'], clauses=clauses, values=locals(),
+            columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
+            opts=queryOpts)
+        return query.execute()
 
 
     def checkTagPackage(self,tag,pkg):
@@ -10562,31 +10564,11 @@ class RootExports(object):
                         NULL higher than all other values; default to True for consistency
                         with database sorts
         """
-        filterOpts = kw.pop('filterOpts', {})
-
-        results = getattr(self, methodName)(*args, **kw)
-        if results is None:
-            return None
-        elif not isinstance(results, list):
-            raise TypeError, '%s() did not return a list' % methodName
-
-        order = filterOpts.get('order')
-        if order:
-            results.sort(self._sortByKeyFunc(order, filterOpts.get('noneGreatest', True)))
-
-        offset = filterOpts.get('offset')
-        if offset is not None:
-            results = results[offset:]
-        limit = filterOpts.get('limit')
-        if limit is not None:
-            results = results[:limit]
-
-        return results
+        return self.countAndFilterResults(methodName, *args, **kw)[1]
 
 
-    def CountAndFilterResults(self, methodName, *args, **kw):
-        """ Replacement of the method filterResults when we need both the total
-        result count and the filtered result.
+    def countAndFilterResults(self, methodName, *args, **kw):
+        """Filter results by a given name and count total result account.
 
         Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".

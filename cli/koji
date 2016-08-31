@@ -3226,7 +3226,10 @@ def anon_handle_list_pkgs(options, session, args):
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         print "Querying at event %(id)i (%(timestr)s)" % event
-    data = session.listPackages(**opts)
+    if 'tagID' in opts or 'pkgID' in opts or 'userID' in opts:
+        data = session.listPackages(**opts)
+    else:
+        data = session.listPackagesSimple(**opts)
     if not data:
         print "(no matching packages)"
         return 1
@@ -6266,7 +6269,10 @@ def handle_set_pkg_owner_global(options, session, args):
             continue
         to_change.extend(entries)
     if not packages and options.old_user:
-        entries = session.listPackages(**opts)
+        if 'tagID' in opts or 'pkgID' in opts or 'userID' in opts:
+            entries = session.listPackages(**opts)
+        else:
+            entries = session.listPackagesSimple(**opts)
         if not entries:
             print "No data for user %s" % old_user['name']
             return 1

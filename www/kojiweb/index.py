@@ -352,8 +352,7 @@ def notificationedit(environ, notificationID):
         values = _initValues(environ, 'Edit Notification')
 
         values['notif'] = notification
-        packages = server.listPackages()
-        packages.sort(kojiweb.util.sortByKeyFunc('package_name'))
+        packages = server.listPackagesSimple(queryOpts={'order': 'package_name'})
         values['packages'] = packages
         tags = server.listTags(queryOpts={'order': 'name'})
         values['tags'] = tags
@@ -397,8 +396,7 @@ def notificationcreate(environ):
         values = _initValues(environ, 'Edit Notification')
 
         values['notif'] = None
-        packages = server.listPackages()
-        packages.sort(kojiweb.util.sortByKeyFunc('package_name'))
+        packages = server.listPackagesSimple(queryOpts={'order': 'package_name'})
         values['packages'] = packages
         tags = server.listTags(queryOpts={'order': 'name'})
         values['tags'] = tags
