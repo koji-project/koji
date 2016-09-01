@@ -743,8 +743,8 @@ def task_result_to_html(result=None, exc_class=None,
     Returns:
         Tuple of full result and abbreviated result.
     """
-    default_max_abbr_result_lines = 10
-    default_max_abbr_result_len = 512
+    default_max_abbr_result_lines = 5
+    default_max_abbr_result_len = 400
 
     if max_abbr_lines is None:
         max_abbr_lines = default_max_abbr_result_lines
