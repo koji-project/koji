@@ -3675,6 +3675,44 @@ def get_build_type(buildInfo, strict=False):
     return ret
 
 
+def list_btypes(query=None, queryOpts=None):
+    """List btypes matching query
+
+    Options:
+        query - dictionary specifying selection parameters
+        queryOpts - dictionary specifying other query options
+
+    Supported query parameters:
+        name - select btypes by name
+        id - select btypes by id
+
+    If query is None, then all btypes are returned
+    """
+    if query is None:
+        query = {}
+    qparams = {'tables': ['btype'],
+               'columns': ['id', 'name'],
+               'opts': queryOpts}
+    clauses = []
+    values = query.copy()
+    if 'name' in query:
+        clauses.append('btype.name = %(name)s')
+    if 'id' in query:
+        clauses.append('btype.id = %(id)s')
+    qparams['clauses'] = clauses
+    qparams['values'] = values
+    return QueryProcessor(**qparams).execute()
+
+
+def add_btype(name):
+    """Add a new btype with the given name"""
+    data = {'name': name}
+    if list_btypes(data):
+        raise koji.GenericError("btype already exists")
+    insert = InsertProcessor('btype', data=data)
+    insert.execute()
+
+
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None,
                   archiveID=None):
@@ -8954,6 +8992,9 @@ class RootExports(object):
     getImageArchive = staticmethod(get_image_archive)
     listArchiveFiles = staticmethod(list_archive_files)
     getArchiveFile = staticmethod(get_archive_file)
+
+    listBTypes = staticmethod(list_btypes)
+    addBType = staticmethod(add_btype)
 
     def getChangelogEntries(self, buildID=None, taskID=None, filepath=None, author=None, before=None, after=None, queryOpts=None):
         """Get changelog entries for the build with the given ID,
