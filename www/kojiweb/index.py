@@ -1264,13 +1264,17 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
     values['prefix'] = prefix
 
     values['order'] = order
-    if type in ('maven', 'win', 'image'):
+
+    btypes = [b['name'] for b in server.listBTypes()]
+    btypes.sort()
+    if type in btypes:
         pass
     elif type == 'all':
         type = None
     else:
         type = None
     values['type'] = type
+    values['btypes'] = btypes
 
     if tag:
         inherited = int(inherited)
