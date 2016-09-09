@@ -9811,7 +9811,7 @@ class RootExports(object):
 
     getPackage = staticmethod(lookup_package)
 
-    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False, event=None):
+    def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False, with_dups=False, event=None, queryOpts=None):
         """List if tagID and/or userID is specified, limit the
         list to packages belonging to the given user or with the
         given tag.
@@ -9833,8 +9833,7 @@ class RootExports(object):
         - blocked
         """
         if tagID is None and userID is None and pkgID is None:
-            query = """SELECT id, name from package"""
-            results = _multiRow(query, {}, ('package_id', 'package_name'))
+            return self.listPackagesSimple(prefix, queryOpts)
         else:
             if tagID is not None:
                 tagID = get_tag_id(tagID, strict=True)
@@ -9858,7 +9857,7 @@ class RootExports(object):
             prefix = prefix.lower()
             results = [package for package in results if package['package_name'].lower().startswith(prefix)]
 
-        return results
+        return _applyQueryOpts(results, queryOpts)
 
 
     def listPackagesSimple(self, prefix=None, queryOpts=None):
