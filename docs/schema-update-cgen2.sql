@@ -36,6 +36,10 @@ INSERT INTO build_types(btype_id, build_id)
     SELECT btype.id, win_builds.build_id FROM btype JOIN win_builds ON btype.name='win';
 INSERT INTO build_types(btype_id, build_id)
     SELECT btype.id, image_builds.build_id FROM btype JOIN image_builds ON btype.name='image';
+-- not sure if this is the best way to select rpm builds...
+INSERT INTO build_types(btype_id, build_id)
+    SELECT DISTINCT btype.id, build_id FROM btype JOIN rpminfo ON btype.name='rpm'
+        WHERE build_id IS NOT NULL;
 
 SELECT statement_timestamp(), 'Adding legacy btypes to archiveinfo' as msg;
 UPDATE archiveinfo SET btype_id=(SELECT id FROM btype WHERE name='maven' LIMIT 1)

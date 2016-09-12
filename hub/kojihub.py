@@ -4557,39 +4557,12 @@ def new_build(data):
     data.setdefault('volume_id', 0)
 
     #check for existing build
-    query = QueryProcessor(
-                tables=['build'], columns=['id', 'state', 'task_id'],
-                clauses=['pkg_id=%(pkg_id)s', 'version=%(version)s',
-                    'release=%(release)s'],
-                values=data, opts={'rowlock':True, 'asList':True})
-    row = query.executeOne()
-    if row:
-        build_id, state, task_id = row
-        data['id'] = build_id
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-        st_desc = koji.BUILD_STATES[state]
-        if st_desc == 'BUILDING':
-            # check to see if this is the controlling task
-            if data['state'] == state and data.get('task_id', '') == task_id:
-                #the controlling task must have restarted (and called initBuild again)
-                return build_id
-            raise koji.GenericError, "Build already in progress (task %d)" % task_id
-            # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
-        if st_desc in ('FAILED', 'CANCELED'):
-            #should be ok to replace
-            update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
-            update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch']))
-            update.rawset(create_event='get_event()')
-            update.execute()
-            builddir = koji.pathinfo.build(data)
-            if os.path.exists(builddir):
-                shutil.rmtree(builddir)
-            koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-            return build_id
-        raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
-            % (build_id, st_desc, data)
-    else:
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
+    old_binfo = get_build(data)
+    if old_binfo:
+        recycle_build(old_binfo, data)
+        return old_binfo['id']
+    #else
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
 
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
@@ -4600,6 +4573,38 @@ def new_build(data):
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
     return data['id']
+
+
+def recycle_build(old, data):
+    """Check to see if a build can by recycled and if so, update it"""
+
+    st_desc = koji.BUILD_STATES[old['state']]
+    if st_desc == 'BUILDING':
+        # check to see if this is the controlling task
+        if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
+            #the controlling task must have restarted (and called initBuild again)
+            return
+        raise koji.GenericError, "Build already in progress (task %d)" % task_id
+        # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
+
+    if st_desc not in ('FAILED', 'CANCELED'):
+        raise koji.GenericError("Build already exists (id=%d, state=%s): %r"
+                % (old['id'], st_desc, data))
+
+   # If we reach here, should be ok to replace
+
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state',
+                old=old['state'], new=data['state'], info=data)
+
+    data['id'] = old['id']
+    update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
+    update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch']))
+    update.rawset(create_event='get_event()')
+    update.execute()
+    builddir = koji.pathinfo.build(data)
+    if os.path.exists(builddir):
+        shutil.rmtree(builddir)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
 
 
 def check_noarch_rpms(basepath, rpms):
