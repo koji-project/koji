@@ -2870,6 +2870,37 @@ def fixEncoding(value, fallback='iso8859-15'):
         except UnicodeDecodeError:
             return value.decode(fallback).encode('utf8')
 
+
+def fixEncodingRecurse(value, fallback='iso8859-15'):
+    """Recursively fix string encoding in an object
+
+    Similar behavior to fixEncoding, but recursive
+    """
+    if isinstance(value, tuple):
+        return tuple([fixEncodingRecurse(x) for x in value])
+    elif isinstance(value, list):
+        return list([fixEncodingRecurse(x) for x in value])
+    elif isinstance(value, dict):
+        ret = {}
+        for k in value:
+            v = fixEncodingRecurse(value[k])
+            k = fixEncodingRecurse(k)
+            ret[k] = v
+        return ret
+    elif isinstance(value, unicode):
+        return value.encode('utf8')
+    elif isinstance(value, str):
+        # value is a str, but may be encoded in utf8 or some
+        # other non-ascii charset.  Try to verify it's utf8, and if not,
+        # decode it using the fallback encoding.
+        try:
+            return value.decode('utf8').encode('utf8')
+        except UnicodeDecodeError, err:
+            return value.decode(fallback).encode('utf8')
+    else:
+        return value
+
+
 def add_file_logger(logger, fn):
     if not os.path.exists(fn):
         try:
