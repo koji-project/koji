@@ -9,7 +9,7 @@
 # Source function library.
 . /etc/init.d/functions
 
-# Check that we're a priviledged user
+# Check that we're a privileged user
 [ `id -u` = 0 ] || exit 1
 
 [ -f /etc/sysconfig/kojivmd ] && . /etc/sysconfig/kojivmd

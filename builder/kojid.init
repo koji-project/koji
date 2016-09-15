@@ -11,7 +11,7 @@
 # Source function library.
 . /etc/init.d/functions
 
-# Check that we're a priviledged user
+# Check that we're a privileged user
 [ `id -u` = 0 ] || exit 0
 
 [ -f /etc/sysconfig/kojid ] && . /etc/sysconfig/kojid
@@ -37,7 +37,7 @@ start() {
     [ "$KOJID_VERBOSE" == "Y" ] && ARGS="$ARGS --verbose"
     # XXX Fix for make download-checks in kernel builds
     # Remove once we're running the buildSRPMFromSCM task
-    # as an unpriviledged user with their own environment
+    # as an unprivileged user with their own environment
     export HOME="/root"
     daemon /usr/sbin/kojid $ARGS
     RETVAL=$?
