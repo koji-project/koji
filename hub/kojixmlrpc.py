@@ -763,7 +763,12 @@ def application(environ, start_response):
                 #rollback
                 context.cnx.rollback()
             elif context.commit_pending:
+                # Currently there is not much data we can provide to the
+                # pre/postCommit callbacks. The handler can access context at
+                # least
+                koji.plugin.run_callbacks('preCommit')
                 context.cnx.commit()
+                koji.plugin.run_callbacks('postCommit')
             memory_usage_at_end = get_memory_usage()
             if memory_usage_at_end - memory_usage_at_start > opts['MemoryWarnThreshold']:
                 paramstr = repr(getattr(context, 'params', 'UNKNOWN'))

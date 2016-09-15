@@ -198,7 +198,8 @@ def get_message_headers(msgtype, *args, **kws):
 
     return headers
 
-@callback(*[c for c in callbacks.keys() if c.startswith('post')])
+@callback(*[c for c in callbacks.keys() if c.startswith('post')
+            and c != 'postCommit'])
 @ignore_error
 def send_message(cbtype, *args, **kws):
     global config
