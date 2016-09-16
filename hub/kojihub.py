@@ -4705,6 +4705,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
     if build_id is None:
         build_id = new_build(build)
+        new_typed_build(build['id'], 'rpm')
         binfo = get_build(build_id, strict=True)
     else:
         #build_id was passed in - sanity check
@@ -4768,6 +4769,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
             if not buildinfo:
                 # create a new build
                 build_id = new_build(rpminfo)
+                # we add the rpm build type below
                 buildinfo = get_build(build_id, strict=True)
         else:
             #figure it out from sourcerpm string
@@ -4792,6 +4794,10 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         elif basename != srpmname:
             raise koji.GenericError, "srpm mismatch for %s: %s (expected %s)" \
                     % (fn, basename, srpmname)
+
+    # if we're adding an rpm to it, then this build is of rpm type
+    # harmless if build already has this type
+    new_typed_build(buildinfo['id'], 'rpm')
 
     #add rpminfo entry
     rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
@@ -4988,6 +4994,12 @@ class CG_Importer(object):
                 new_image_build(buildinfo)
             else:
                 new_typed_build(buildinfo, btype)
+
+        # rpm builds not required to have typeinfo
+        if 'rpm' not in self.typeinfo:
+            # if the build contains rpms then it has the rpm type
+            if [o for o in self.prepped_outputs if o['type'] == 'rpm']:
+                new_typed_build(buildinfo, 'rpm')
 
         self.buildinfo = buildinfo
         return buildinfo
@@ -11322,10 +11334,13 @@ class HostExports(object):
                     os.symlink(dest, src)
 
     def initBuild(self, data):
-        """Create a stub build entry.
+        """Create a stub (rpm) build entry.
 
         This is done at the very beginning of the build to inform the
         system the build is underway.
+
+        This function is only called for rpm builds, other build types
+        have their own init function
         """
         host = Host()
         host.verify()
@@ -11336,7 +11351,9 @@ class HostExports(object):
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        return new_build(data)
+        build_id = new_build(data)
+        new_typed_build(build_id, 'rpm')
+        return build_id
 
     def completeBuild(self, task_id, build_id, srpm, rpms, brmap=None, logs=None):
         """Import final build contents into the database"""
