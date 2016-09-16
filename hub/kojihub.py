@@ -4584,17 +4584,46 @@ def recycle_build(old, data):
         if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
             #the controlling task must have restarted (and called initBuild again)
             return
-        raise koji.GenericError, "Build already in progress (task %d)" % task_id
+        raise koji.GenericError("Build already in progress (task %d)" % task_id)
         # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
 
     if st_desc not in ('FAILED', 'CANCELED'):
         raise koji.GenericError("Build already exists (id=%d, state=%s): %r"
                 % (old['id'], st_desc, data))
 
+    # check for evidence of tag activity
+    query = QueryProcessor(columns=['tag_id'], tables=['tag_listing'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has tag history")
+
+    # check for rpms or archives
+    query = QueryProcessor(columns=['id'], tables=['rpminfo'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has rpm data")
+    query = QueryProcessor(columns=['id'], tables=['archiveinfo'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has archive data")
+
    # If we reach here, should be ok to replace
 
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state',
                 old=old['state'], new=data['state'], info=data)
+
+    # If there is any old build type info, clear it
+    delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
+    _dml(delete, old)
 
     data['id'] = old['id']
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
