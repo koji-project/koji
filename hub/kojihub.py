@@ -4633,7 +4633,8 @@ def recycle_build(old, data):
     builddir = koji.pathinfo.build(data)
     if os.path.exists(builddir):
         shutil.rmtree(builddir)
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
+                old=old['state'], new=data['state'], info=data)
 
 
 def check_noarch_rpms(basepath, rpms):
