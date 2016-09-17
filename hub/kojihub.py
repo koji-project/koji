@@ -4705,8 +4705,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
     if build_id is None:
         build_id = new_build(build)
-        new_typed_build(build['id'], 'rpm')
         binfo = get_build(build_id, strict=True)
+        new_typed_build(binfo, 'rpm')
     else:
         #build_id was passed in - sanity check
         binfo = get_build(build_id, strict=True)
@@ -4797,7 +4797,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
 
     # if we're adding an rpm to it, then this build is of rpm type
     # harmless if build already has this type
-    new_typed_build(buildinfo['id'], 'rpm')
+    new_typed_build(buildinfo, 'rpm')
 
     #add rpminfo entry
     rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
@@ -5631,7 +5631,7 @@ def new_maven_build(build, maven_info):
         insert = InsertProcessor('maven_builds', data=data)
         insert.execute()
         # also add build_types entry
-        new_typed_build(build['id'], 'maven')
+        new_typed_build(build, 'maven')
 
 def new_win_build(build_info, win_info):
     """
@@ -5652,7 +5652,7 @@ def new_win_build(build_info, win_info):
         insert.set(platform=win_info['platform'])
         insert.execute()
         # also add build_types entry
-        new_typed_build(build_info['id'], 'win')
+        new_typed_build(build_info, 'win')
 
 def new_image_build(build_info):
     """
@@ -5671,7 +5671,7 @@ def new_image_build(build_info):
         insert.set(build_id=build_info['id'])
         insert.execute()
         # also add build_types entry
-        new_typed_build(build_info['id'], 'maven')
+        new_typed_build(build_info, 'maven')
 
 
 def new_typed_build(build_info, btype):
@@ -11352,7 +11352,8 @@ class HostExports(object):
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
         build_id = new_build(data)
-        new_typed_build(build_id, 'rpm')
+        binfo = get_build(build_id, strict=True)
+        new_typed_build(binfo, 'rpm')
         return build_id
 
     def completeBuild(self, task_id, build_id, srpm, rpms, brmap=None, logs=None):
