@@ -5672,7 +5672,7 @@ def new_image_build(build_info):
         insert.set(build_id=build_info['id'])
         insert.execute()
         # also add build_types entry
-        new_typed_build(build_info, 'maven')
+        new_typed_build(build_info, 'image')
 
 
 def new_typed_build(build_info, btype):
