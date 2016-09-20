@@ -6831,6 +6831,8 @@ def reset_build(build):
         _dml(delete, locals())
         delete = """DELETE FROM win_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM image_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
     delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
