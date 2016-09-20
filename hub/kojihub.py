@@ -3706,6 +3706,7 @@ def list_btypes(query=None, queryOpts=None):
 
 def add_btype(name):
     """Add a new btype with the given name"""
+    context.session.assertPerm('admin')
     data = {'name': name}
     if list_btypes(data):
         raise koji.GenericError("btype already exists")
