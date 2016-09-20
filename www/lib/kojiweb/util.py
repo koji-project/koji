@@ -759,7 +759,7 @@ def task_result_to_html(result=None, exc_class=None,
 
     if abbr_postscript is None:
         abbr_postscript = postscript_fragment.composer()
-    elif isinstacne(abbr_postscript, TaskResultFragment):
+    elif isinstance(abbr_postscript, TaskResultFragment):
         abbr_postscript = abbr_postscript.composer()
     elif isinstance(abbr_postscript, str):
         abbr_postscript = abbr_postscript

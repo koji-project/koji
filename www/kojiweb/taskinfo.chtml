@@ -398,14 +398,15 @@ $value
         <div id="abbr-result">
         $abbr_result_text
         </div>
+        <a href="#" collapse" id="toggle-full-result" style="display: none;">Show complete results</a>
         <div id="full-result">
         $full_result_text
         </div>
-        #else
+      #else
          <div id="result">
         $full_result_text
         </div>
-        #end if
+      #end if
       </td>
     </tr>
     <tr>
