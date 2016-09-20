@@ -10567,7 +10567,7 @@ class RootExports(object):
 
 
     def countAndFilterResults(self, methodName, *args, **kw):
-        """Filter results by a given name and count total result account.
+        """Filter results by a given name and count total results account.
 
         Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".
@@ -10585,15 +10585,15 @@ class RootExports(object):
             to True for consistency with database sorts
 
         Returns:
-            Tuple of total result amount and the filtered result.
+            Tuple of total results amount and the filtered results.
         """
         filterOpts = kw.pop('filterOpts', {})
 
         results = getattr(self, methodName)(*args, **kw)
-        if result is None:
+        if results is None:
             return 0, None
-        elif isinstance(result, list):
-            _count = len(result)
+        elif isinstance(results, list):
+            _count = len(results)
         else:
             _count = 1
 
@@ -10611,7 +10611,7 @@ class RootExports(object):
         if limit is not None:
             results = results[:limit]
 
-        return _count, result
+        return _count, results
 
 
     def getBuildNotifications(self, userID=None):
