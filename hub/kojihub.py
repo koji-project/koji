@@ -4562,6 +4562,7 @@ def new_build(data):
     old_binfo = get_build(data)
     if old_binfo:
         recycle_build(old_binfo, data)
+        # Raises exception if there is a problem
         return old_binfo['id']
     #else
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
@@ -4586,7 +4587,8 @@ def recycle_build(old, data):
         if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
             #the controlling task must have restarted (and called initBuild again)
             return
-        raise koji.GenericError("Build already in progress (task %d)" % task_id)
+        raise koji.GenericError("Build already in progress (task %(task_id)d)"
+                                    % old)
         # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
 
     if st_desc not in ('FAILED', 'CANCELED'):
