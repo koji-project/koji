@@ -3815,6 +3815,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     if imageID != None:
         # TODO: arg name is now a misnomer, could be any archive
        clauses.append('archive_components.archive_id = %(imageID)i')
+       values['imageID'] = imageID
        joins.append('archive_components ON archiveinfo.id = archive_components.component_id')
     if hostID is not None:
         joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.buildroot_id')
