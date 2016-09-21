@@ -4415,6 +4415,10 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     indent = " "*2*level
 
     info = session.getTaskInfo(task_id)
+
+    if info is None:
+        raise koji.GenericError, "No such task: %d" % task_id
+
     if info['host_id']:
         host_info = session.getHost(info['host_id'])
     else:
