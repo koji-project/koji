@@ -6582,11 +6582,7 @@ def build_references(build_id, limit=None):
     The optional limit arg is used to limit the size of the buildroot
     references.
     """
-    #references (that matter):
-    #   tag_listing
-    #   buildroot_listing (via rpminfo)
-    #   buildroot_archives (via archiveinfo)
-    #   ?? rpmsigs (via rpminfo)
+
     ret = {}
 
     # find tags
