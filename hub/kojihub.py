@@ -417,7 +417,7 @@ class Task(object):
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
             result, method = xmlrpclib.loads(xml_result)
-        except Fault, fault:
+        except xmlrpclib.Fault, fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -11121,7 +11121,7 @@ class Host(object):
         results = []
         for task_id in tasks:
             task = Task(task_id)
-            raise_fault = (result in canfail)
+            raise_fault = (task in canfail)
             results.append([task_id, task.getResult(raise_fault=raise_fault)])
         return results
 
@@ -11306,10 +11306,10 @@ class HostExports(object):
         host.verify()
         return host.taskWait(parent)
 
-    def taskWaitResults(self, parent, tasks):
+    def taskWaitResults(self, parent, tasks, canfail=None):
         host = Host()
         host.verify()
-        return host.taskWaitResults(parent, tasks)
+        return host.taskWaitResults(parent, tasks, canfail)
 
     def subtask(self, method, arglist, parent, **opts):
         host = Host()
