@@ -6800,17 +6800,13 @@ def _delete_build(binfo):
 def reset_build(build):
     """Reset a build so that it can be reimported
 
-    WARNING: this function is potentially destructive. use with care.
+    WARNING: this function is highly destructive. use with care.
     nulls task_id
     sets state to CANCELED
-    clears data in rpminfo
-    removes rpminfo entries from any buildroot_listings [!]
-    clears data in archiveinfo, maven_info
-    removes archiveinfo entries from buildroot_archives
-    remove files related to the build
+    clears all referenced data in other tables, including buildroot and
+        archive component tables
 
-    note, we don't actually delete the build data, so tags
-    remain intact
+    after reset, only the build table entry is left
     """
     # Only an admin may do this
     context.session.assertPerm('admin')
@@ -6826,6 +6822,8 @@ def reset_build(build):
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM archive_rpm_components WHERE rpm_id=%(rpm_id)i"""
+        _dml(delete, locals())
     delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     q = """SELECT id FROM archiveinfo WHERE build_id=%(id)i"""
@@ -6839,6 +6837,12 @@ def reset_build(build):
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM archive_rpm_components WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archive_components WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archive_components WHERE component_id=%(archive_id)i"""
+        _dml(delete, locals())
     delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
@@ -6848,6 +6852,8 @@ def reset_build(build):
     delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
