@@ -7,8 +7,9 @@ from unittest import TestCase
 from mock import patch, Mock, call
 
 import koji
-from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask,\
-                       scan_mounts, umount_all, safe_rmtree
+from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, \
+                       WaitTestTask, scan_mounts, umount_all, \
+                       safe_rmtree
 
 
 def get_fake_mounts_file():
@@ -672,3 +673,42 @@ class TasksTestCase(TestCase):
         obj = ForkTask(123, 'fork', [1, 20], None, None, (get_tmp_dir_path('ForkTask')))
         obj.run()
         mock_spawnvp.assert_called_once_with(1, 'sleep', ['sleep', '20'])
+
+    @patch('signal.pause', return_value=None)
+    @patch('time.sleep')
+    def test_WaitTestTask_handler(self, mock_sleep, mock_signal_pause):
+        """ Tests that the WaitTestTask handler can be instantiated and runs appropriately based on the input
+            Specifically, that forking works and canfail behaves correctly.
+        """
+        self.mock_subtask_id = 1
+        def mock_subtask(method, arglist, id, **opts):
+            self.assertEqual(method, 'sleep')
+            task_id = self.mock_subtask_id
+            self.mock_subtask_id += 1
+            obj = SleepTask(task_id, 'sleep', arglist, None, None, (get_tmp_dir_path('SleepTask')))
+            obj.run()
+            return task_id
+
+        mock_taskWait = [
+            [[], [1, 2, 3, 4]],
+            [[3, 4], [1, 2]],
+            [[1, 2, 3, 4], []],
+        ]
+        def mock_getTaskResult(task_id):
+            if task_id == 4:
+                raise koji.GenericError()
+
+
+        obj = WaitTestTask(123, 'waittest', [3], None, None, (get_tmp_dir_path('WaitTestTask')))
+        obj.session = Mock()
+        obj.session.host.subtask.side_effect = mock_subtask
+        obj.session.getTaskResult.side_effect = mock_getTaskResult
+        obj.session.host.taskWait.side_effect = mock_taskWait
+        obj.session.host.taskWaitResults.return_value = [ ['1', {}], ['2', {}], ['3', {}], ['4', {}], ]
+        obj.run()
+        #self.assertEqual(mock_sleep.call_count, 4)
+        obj.session.host.taskSetWait.assert_called_once()
+        obj.session.host.taskWait.assert_has_calls([call(123), call(123), call(123)])
+        # getTaskResult should be called in 2nd round only for task 3, as 4
+        # will be skipped as 'canfail'
+        obj.session.getTaskResult.assert_has_calls([call(3)])

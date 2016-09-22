@@ -402,16 +402,23 @@ class ForkTask(BaseTaskHandler):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
 
 class WaitTestTask(BaseTaskHandler):
+    """
+    Tests self.wait()
+
+    Starts few tasks which just sleeps. One of them will fail due to bad
+    arguments. As it is listed as 'canfail' it shouldn't affect overall
+    CLOSED status.
+    """
     Methods = ['waittest']
     _taskWeight = 0.1
     def handler(self, count, seconds=10):
+        tasks = []
         for i in xrange(count):
-            task_id = self.session.host.subtask(method='sleep',
-                                                arglist=[seconds],
-                                                label=str(i),
-                                                parent=self.id)
+            task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i), parent=self.id)
+            tasks.append(task_id)
         bad_task = self.subtask('sleep', ['BAD_ARG'], label='bad')
-        results = self.wait(all=True, failany=True, canfail=[bad_task])
+        tasks.append(bad_task)
+        results = self.wait(subtasks=tasks, all=True, failany=True, canfail=[bad_task])
         self.logger.info(pprint.pformat(results))
 
 
