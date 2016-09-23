@@ -476,7 +476,6 @@ def watch_tasks(session,tasklist,quiet=False):
 """Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 %s""" % (progname, '\n'.join(tlist))
-            sys.stdout.flush()
         rv = 1
     return rv
 
