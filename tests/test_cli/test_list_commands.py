@@ -9,7 +9,9 @@ import mock
 import loadcli
 cli = loadcli.cli
 
+
 class TestListCommands(unittest.TestCase):
+
     def setUp(self):
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()

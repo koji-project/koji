@@ -10,8 +10,8 @@ import loadcli
 cli = loadcli.cli
 
 
-
 class TestListCommands(unittest.TestCase):
+
     def setUp(self):
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
@@ -19,7 +19,7 @@ class TestListCommands(unittest.TestCase):
         self.original_parser = cli.OptionParser
         cli.OptionParser = mock.MagicMock()
         self.parser = cli.OptionParser.return_value
-        cli.options = self.options # globals!!!
+        cli.options = self.options  # globals!!!
 
     def tearDown(self):
         cli.OptionParser = self.original_parser
@@ -53,7 +53,8 @@ class TestListCommands(unittest.TestCase):
         # Finally, assert that things were called as we expected.
         self.session.getTaskInfo.assert_called_once_with(1)
         self.session.listTaskOutput.assert_called_once_with(1)
-        self.session.downloadTaskOutput.assert_called_once_with(1, 'runroot.log')
+        self.session.downloadTaskOutput.assert_called_once_with(
+            1, 'runroot.log')
         self.session.runroot.assert_called_once_with(
             tag, arch, command, repo_id=mock.ANY, weight=mock.ANY,
             mounts=mock.ANY, packages=mock.ANY, skip_setarch=mock.ANY,

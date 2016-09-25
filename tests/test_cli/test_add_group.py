@@ -30,7 +30,8 @@ class TestAddGroup(unittest.TestCase):
         session = mock.MagicMock()
         session.hasPerm.return_value = True
         session.getTag.return_value = 'dsttag'
-        session.getTagGroups.return_value = [{'name': 'otherGroup', 'group_id': 'otherGroupId'}]
+        session.getTagGroups.return_value = [
+            {'name': 'otherGroup', 'group_id': 'otherGroupId'}]
 
         # Run it and check immediate output
         rv = cli.handle_add_group(options, session, arguments)
@@ -58,7 +59,8 @@ class TestAddGroup(unittest.TestCase):
         session = mock.MagicMock()
         session.hasPerm.return_value = True
         session.getTag.return_value = 'dsttag'
-        session.getTagGroups.return_value = [{'name': 'group', 'group_id': 'groupId'}]
+        session.getTagGroups.return_value = [
+            {'name': 'group', 'group_id': 'groupId'}]
 
         # Run it and check immediate output
         rv = cli.handle_add_group(options, session, arguments)
@@ -77,7 +79,11 @@ class TestAddGroup(unittest.TestCase):
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('sys.stderr', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
-    def test_handle_add_group_help(self, activate_session_mock, stderr, stdout):
+    def test_handle_add_group_help(
+            self,
+            activate_session_mock,
+            stderr,
+            stdout):
         arguments = []
         options = mock.MagicMock()
 

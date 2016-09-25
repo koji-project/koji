@@ -50,7 +50,8 @@ class TestAddHost(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
-    def test_handle_add_host_no_krb_principal(self, activate_session_mock, stdout):
+    def test_handle_add_host_no_krb_principal(
+            self, activate_session_mock, stdout):
         host = 'host'
         host_id = 1
         arches = ['arch1', 'arch2']
@@ -159,8 +160,6 @@ class TestAddHost(unittest.TestCase):
         activate_session_mock.assert_called_once_with(session)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
-
-
 
 
 if __name__ == '__main__':
