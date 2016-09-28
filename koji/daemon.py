@@ -763,7 +763,7 @@ class TaskManager(object):
             return False
         elif not bins:
             self.logger.info("No bins for this host. Missing channel/arch config?")
-            return False
+            # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
         for bin in bins.iterkeys():
