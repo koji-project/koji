@@ -817,6 +817,9 @@ def handle_block_pkg(options, session, args):
     tag = args[0]
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
+    if dsttag is None:
+        print "No such tag: %s" % tag
+        return 1
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
     ret = 0
     for package in args[1:]:
@@ -826,9 +829,10 @@ def handle_block_pkg(options, session, args):
             ret = 1
     if ret:
         return ret
+    session.multicall = True
     for package in args[1:]:
-        #really should implement multicall...
         session.packageListBlock(tag,package)
+    session.multiCall(strict=True)
 
 def handle_remove_pkg(options, session, args):
     "[admin] Remove a package from the listing for tag"
