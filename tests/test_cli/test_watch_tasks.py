@@ -40,8 +40,8 @@ class TestWatchTasks(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
-    @mock.patch('koji_cli._display_tasklist_status')
-    @mock.patch('koji_cli._display_task_results')
+    @mock.patch('koji_cli.display_tasklist_status')
+    @mock.patch('koji_cli.display_task_results')
     def test_watch_tasks(self, dtrMock, dtsMock, twClzMock, stdout):
         self.options.poll_interval = 0
         manager = mock.MagicMock()
@@ -170,8 +170,8 @@ class TestWatchTasks(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
-    @mock.patch('koji_cli._display_tasklist_status')
-    @mock.patch('koji_cli._display_task_results')
+    @mock.patch('koji_cli.display_tasklist_status')
+    @mock.patch('koji_cli.display_task_results')
     def test_watch_tasks_with_keyboardinterrupt(
             self, dtrMock, dtsMock, twClzMock, stdout):
         """Raise KeyboardInterrupt inner watch_tasks.
@@ -223,7 +223,7 @@ Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 tw1: tw1.display_state
 tw2: tw2.display_state
-""" % (os.path.basename(sys.argv[0]) or 'koji') )
+""" % (os.path.basename(sys.argv[0]) or 'koji'))
 
 if __name__ == '__main__':
     unittest.main()

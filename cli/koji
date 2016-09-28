@@ -394,7 +394,7 @@ class TaskWatcher(object):
         else:
             return koji.TASK_STATES[info['state']].lower()
 
-def _display_tasklist_status(tasks):
+def display_tasklist_status(tasks):
     free = 0
     open = 0
     failed = 0
@@ -411,7 +411,7 @@ def _display_tasklist_status(tasks):
             free += 1
     print "  %d free  %d open  %d done  %d failed" % (free, open, done, failed)
 
-def _display_task_results(tasks):
+def display_task_results(tasks):
     for task in [task for task in tasks.values() if task.level == 0]:
         state = task.info['state']
         task_label = task.str()
@@ -448,7 +448,7 @@ def watch_tasks(session,tasklist,quiet=False):
                     if changed:
                         # task is done and state just changed
                         if not quiet:
-                            _display_tasklist_status(tasks)
+                            display_tasklist_status(tasks)
                     if not task.is_success():
                         rv = 1
                 for child in session.getTaskChildren(task_id):
@@ -462,7 +462,7 @@ def watch_tasks(session,tasklist,quiet=False):
             if all_done:
                 if not quiet:
                     print
-                    _display_task_results(tasks)
+                    display_task_results(tasks)
                 break
 
             sys.stdout.flush()

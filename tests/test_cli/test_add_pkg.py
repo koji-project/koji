@@ -23,7 +23,7 @@ class TestAddPkg(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
-    def test_han dle_add_pkg(self, activate_session_mock, stdout):
+    def test_handle_add_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         package = 'package'
@@ -141,7 +141,7 @@ class TestAddPkg(unittest.TestCase):
         activate_session_mock.assert_not_called()
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner)])
-        self.asse rtEqual(rv, 1)
+        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
