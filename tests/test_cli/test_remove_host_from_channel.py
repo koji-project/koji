@@ -13,7 +13,7 @@ import loadcli
 cli = loadcli.cli
 
 
-class TestAddHostHostToChannel(unittest.TestCase):
+class TestRemoveHostFromChannel(unittest.TestCase):
 
     # Show long diffs in error output...
     maxDiff = None
