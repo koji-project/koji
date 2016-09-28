@@ -44,7 +44,7 @@ class TestListCommands(unittest.TestCase):
         command = 'command'
         arguments = [tag, arch, command]
         options = mock.MagicMock()
-        options.admin = True
+        options.new_chroot = False
         self.parser.parse_args.return_value = [options, arguments]
 
         # Mock out the xmlrpc server
