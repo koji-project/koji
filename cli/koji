@@ -6892,6 +6892,8 @@ def handle_runroot(options, session, args):
             help=_("Print the ID of the runroot task"))
     parser.add_option("--use-shell", action="store_true", default=False,
             help=_("Run command through a shell, otherwise uses exec"))
+    parser.add_option("--new-chroot", action="store_true", default=False,
+            help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
 
     (opts, args) = parser.parse_args(args)
@@ -6912,6 +6914,7 @@ def handle_runroot(options, session, args):
                                 packages=opts.package, mounts=opts.mount,
                                 repo_id=opts.repo_id,
                                 skip_setarch=opts.skip_setarch,
+                                new_chroot=opts.new_chroot,
                                 weight=opts.weight)
     except koji.GenericError, e:
         if 'Invalid method' in str(e):
