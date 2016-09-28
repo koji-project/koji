@@ -6909,13 +6909,18 @@ def handle_runroot(options, session, args):
     else:
         command = args[2:]
     try:
-        task_id = session.runroot(tag, arch, command,
-                                channel=opts.channel_override,
-                                packages=opts.package, mounts=opts.mount,
-                                repo_id=opts.repo_id,
-                                skip_setarch=opts.skip_setarch,
-                                new_chroot=opts.new_chroot,
-                                weight=opts.weight)
+        kwargs = { 'channel':       opts.channel_override,
+                   'packages':      opts.package,
+                   'mounts':        opts.mount,
+                   'repo_id':       opts.repo_id,
+                   'skip_setarch':  opts.skip_setarch,
+                   'weight':        opts.weight }
+        # Only pass this kwarg if it is true - this prevents confusing older
+        # builders with a different function signature
+        if opts.new_chroot:
+            kwargs['new_chroot'] = True
+
+        task_id = session.runroot(tag, arch, command, **kwargs)
     except koji.GenericError, e:
         if 'Invalid method' in str(e):
             print "* The runroot plugin appears to not be installed on the",
