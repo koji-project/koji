@@ -1173,7 +1173,12 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         type_join = 'JOIN image_builds ON image_builds.build_id = tag_listing.build_id'
         fields.append(('image_builds.build_id', 'build_id'))
     else:
-        raise koji.GenericError, 'unsupported build type: %s' % type
+        btype = lookup_name('btype', type, strict=False)
+        if not btype:
+            raise koji.GenericError, 'unsupported build type: %s' % type
+        btype_id = btype['id']
+        type_join = ('JOIN build_types ON build.id = build_types.build_id '
+                'AND btype_id = %(btype_id)s')
 
     q = """SELECT %s
     FROM tag_listing
@@ -1337,6 +1342,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     #the following query is run for each tag in the inheritance
     fields = [('archiveinfo.id', 'id'),
               ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.btype_id', 'btype_id'),
+              ('btype.name', 'btype'),
               ('archiveinfo.build_id', 'build_id'),
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
@@ -1347,7 +1354,8 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.extra', 'extra'),
              ]
     tables = ['archiveinfo']
-    joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id']
+    joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id',
+             'btype ON archiveinfo.btype_id = btype.id']
     clauses = [eventCondition(event), 'tag_listing.tag_id = %(tagid)i']
     if package:
         joins.append('build ON archiveinfo.build_id = build.id')
@@ -3309,6 +3317,7 @@ def get_build(buildInfo, strict=False):
         return None
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
+              ('build.id', 'build_id'),
               ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'), ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
@@ -3537,8 +3546,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
 
     # image specific constraints
     if imageID != None:
-        clauses.append('image_listing.image_id = %(imageID)i')
-        joins.append('image_listing ON rpminfo.id = image_listing.rpm_id')
+        clauses.append('archive_rpm_components.archive_id = %(imageID)i')
+        joins.append('archive_rpm_components ON rpminfo.id = archive_rpm_components.rpm_id')
 
     if hostID != None:
         joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.buildroot_id')
@@ -3625,8 +3634,89 @@ def get_image_build(buildInfo, strict=False):
         raise koji.GenericError, 'no such image build: %s' % buildInfo
     return result
 
+
+def get_build_type(buildInfo, strict=False):
+    """Return type info about the build
+
+    buildInfo should be a valid build specification
+
+    Returns a dictionary whose keys are type names and whose values are
+    the type info corresponding to that type
+    """
+
+    binfo = get_build(buildInfo, strict=strict)
+    if not binfo:
+        return None
+
+    query = QueryProcessor(
+                tables=['btype'],
+                columns=['name'],
+                joins=['build_types ON btype_id=btype.id'],
+                clauses=['build_id = %(id)i'],
+                values=binfo,
+                opts={'asList':True},
+            )
+
+    ret = {}
+    extra = binfo['extra'] or {}
+    for (btype,) in query.execute():
+        ret[btype] = extra.get('typeinfo', {}).get(btype)
+
+    #deal with legacy types
+    l_funcs = [['maven', get_maven_build], ['win', get_win_build],
+               ['image', get_image_build]]
+    for ltype, func in l_funcs:
+        # For now, we let the legacy data take precedence, but at some point
+        # we will want to change that
+        ltinfo = func(binfo['id'], strict=False)
+        if ltinfo:
+            ret[ltype] = ltinfo
+
+    return ret
+
+
+def list_btypes(query=None, queryOpts=None):
+    """List btypes matching query
+
+    Options:
+        query - dictionary specifying selection parameters
+        queryOpts - dictionary specifying other query options
+
+    Supported query parameters:
+        name - select btypes by name
+        id - select btypes by id
+
+    If query is None, then all btypes are returned
+    """
+    if query is None:
+        query = {}
+    qparams = {'tables': ['btype'],
+               'columns': ['id', 'name'],
+               'opts': queryOpts}
+    clauses = []
+    values = query.copy()
+    if 'name' in query:
+        clauses.append('btype.name = %(name)s')
+    if 'id' in query:
+        clauses.append('btype.id = %(id)s')
+    qparams['clauses'] = clauses
+    qparams['values'] = values
+    return QueryProcessor(**qparams).execute()
+
+
+def add_btype(name):
+    """Add a new btype with the given name"""
+    context.session.assertPerm('admin')
+    data = {'name': name}
+    if list_btypes(data):
+        raise koji.GenericError("btype already exists")
+    insert = InsertProcessor('btype', data=data)
+    insert.execute()
+
+
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
-                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None):
+                  filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None,
+                  archiveID=None):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -3690,9 +3780,12 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     values = {}
 
     tables = ['archiveinfo']
-    joins = ['archivetypes on archiveinfo.type_id = archivetypes.id']
+    joins = ['archivetypes on archiveinfo.type_id = archivetypes.id',
+             'btype ON archiveinfo.btype_id = btype.id']
     fields = [('archiveinfo.id', 'id'),
               ('archiveinfo.type_id', 'type_id'),
+              ('archiveinfo.btype_id', 'btype_id'),
+              ('btype.name', 'btype'),
               ('archiveinfo.build_id', 'build_id'),
               ('archiveinfo.buildroot_id', 'buildroot_id'),
               ('archiveinfo.filename', 'filename'),
@@ -3720,8 +3813,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
         fields.append(['buildroot_archives.project_dep', 'project'])
     if imageID != None:
-       clauses.append('image_archive_listing.image_id = %(imageID)i')
-       joins.append('image_archive_listing ON archiveinfo.id = image_archive_listing.archive_id')
+        # TODO: arg name is now a misnomer, could be any archive
+       clauses.append('archive_components.archive_id = %(imageID)i')
+       values['imageID'] = imageID
+       joins.append('archive_components ON archiveinfo.id = archive_components.component_id')
     if hostID is not None:
         joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(host_id)i')
@@ -3736,6 +3831,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     if checksum is not None:
         clauses.append('checksum = %(checksum)s')
         values['checksum'] = checksum
+    if archiveID is not None:
+        clauses.append('archiveinfo.id = %(archive_id)s')
+        values['archive_id'] = archiveID
 
     if type is None:
         pass
@@ -3778,7 +3876,14 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
             clauses.append('image_archives.%s = %%(%s)s' % (key, key))
             values[key] = typeInfo[key]
     else:
-        raise koji.GenericError, 'unsupported archive type: %s' % type
+        btype = lookup_name('btype', type, strict=False)
+        if not btype:
+            raise koji.GenericError('unsupported archive type: %s' % type)
+        if typeInfo:
+            raise koji.GenericError('typeInfo queries not supported for type '
+                    '%(name)s' % btype)
+        clauses.append('archiveinfo.btype_id = %(btype_id)s')
+        values['btype_id'] = btype['id']
 
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
@@ -3815,13 +3920,14 @@ def get_archive(archive_id, strict=False):
       rootid
       arch
     """
-    fields = ('id', 'type_id', 'build_id', 'buildroot_id', 'filename', 'size',
-              'checksum', 'checksum_type', 'metadata_only', 'extra')
-    archive = QueryProcessor(tables=['archiveinfo'], columns=fields, transform=_fix_archive_row,
-                          clauses=['id=%(archive_id)s'], values=locals()).executeOne()
-    if not archive:
-        # strict is taken care of by _singleRow()
-        return None
+    data = list_archives(archiveID=archive_id)
+    if not data:
+        if strict:
+            raise koji.GenericError('No such archive: %s' % archive_id)
+        else:
+            return None
+
+    archive = data[0]
     maven_info = get_maven_archive(archive_id)
     if maven_info:
         del maven_info['archive_id']
@@ -3882,9 +3988,9 @@ def get_image_archive(archive_id, strict=False):
     if not results:
         return None
     results['rootid'] = False
-    fields = ('image_id', 'rpm_id')
-    select = """SELECT %s FROM image_listing
-    WHERE image_id = %%(archive_id)i""" % ', '.join(fields)
+    fields = ['rpm_id']
+    select = """SELECT %s FROM archive_rpm_components
+    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
     rpms = _singleRow(select, locals(), fields)
     if rpms:
         results['rootid'] = True
@@ -4453,39 +4559,13 @@ def new_build(data):
     data.setdefault('volume_id', 0)
 
     #check for existing build
-    query = QueryProcessor(
-                tables=['build'], columns=['id', 'state', 'task_id'],
-                clauses=['pkg_id=%(pkg_id)s', 'version=%(version)s',
-                    'release=%(release)s'],
-                values=data, opts={'rowlock':True, 'asList':True})
-    row = query.executeOne()
-    if row:
-        build_id, state, task_id = row
-        data['id'] = build_id
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-        st_desc = koji.BUILD_STATES[state]
-        if st_desc == 'BUILDING':
-            # check to see if this is the controlling task
-            if data['state'] == state and data.get('task_id', '') == task_id:
-                #the controlling task must have restarted (and called initBuild again)
-                return build_id
-            raise koji.GenericError, "Build already in progress (task %d)" % task_id
-            # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
-        if st_desc in ('FAILED', 'CANCELED'):
-            #should be ok to replace
-            update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
-            update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch']))
-            update.rawset(create_event='get_event()')
-            update.execute()
-            builddir = koji.pathinfo.build(data)
-            if os.path.exists(builddir):
-                shutil.rmtree(builddir)
-            koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=state, new=data['state'], info=data)
-            return build_id
-        raise koji.GenericError, "Build already exists (id=%d, state=%s): %r" \
-            % (build_id, st_desc, data)
-    else:
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
+    old_binfo = get_build(data)
+    if old_binfo:
+        recycle_build(old_binfo, data)
+        # Raises exception if there is a problem
+        return old_binfo['id']
+    #else
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
 
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
@@ -4496,6 +4576,69 @@ def new_build(data):
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
     #return build_id
     return data['id']
+
+
+def recycle_build(old, data):
+    """Check to see if a build can by recycled and if so, update it"""
+
+    st_desc = koji.BUILD_STATES[old['state']]
+    if st_desc == 'BUILDING':
+        # check to see if this is the controlling task
+        if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
+            #the controlling task must have restarted (and called initBuild again)
+            return
+        raise koji.GenericError("Build already in progress (task %(task_id)d)"
+                                    % old)
+        # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
+
+    if st_desc not in ('FAILED', 'CANCELED'):
+        raise koji.GenericError("Build already exists (id=%d, state=%s): %r"
+                % (old['id'], st_desc, data))
+
+    # check for evidence of tag activity
+    query = QueryProcessor(columns=['tag_id'], tables=['tag_listing'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has tag history")
+
+    # check for rpms or archives
+    query = QueryProcessor(columns=['id'], tables=['rpminfo'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has rpm data")
+    query = QueryProcessor(columns=['id'], tables=['archiveinfo'],
+                clauses = ['build_id = %(id)s'], values=old)
+    if query.execute():
+        raise koji.GenericError("Build already exists. Unable to recycle, "
+                "has archive data")
+
+   # If we reach here, should be ok to replace
+
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state',
+                old=old['state'], new=data['state'], info=data)
+
+    # If there is any old build type info, clear it
+    delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
+    _dml(delete, old)
+    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
+    _dml(delete, old)
+
+    data['id'] = old['id']
+    update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
+    update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch']))
+    update.rawset(create_event='get_event()')
+    update.execute()
+    builddir = koji.pathinfo.build(data)
+    if os.path.exists(builddir):
+        shutil.rmtree(builddir)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
+                old=old['state'], new=data['state'], info=data)
 
 
 def check_noarch_rpms(basepath, rpms):
@@ -4568,6 +4711,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     if build_id is None:
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
+        new_typed_build(binfo, 'rpm')
     else:
         #build_id was passed in - sanity check
         binfo = get_build(build_id, strict=True)
@@ -4630,6 +4774,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
             if not buildinfo:
                 # create a new build
                 build_id = new_build(rpminfo)
+                # we add the rpm build type below
                 buildinfo = get_build(build_id, strict=True)
         else:
             #figure it out from sourcerpm string
@@ -4654,6 +4799,10 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         elif basename != srpmname:
             raise koji.GenericError, "srpm mismatch for %s: %s (expected %s)" \
                     % (fn, basename, srpmname)
+
+    # if we're adding an rpm to it, then this build is of rpm type
+    # harmless if build already has this type
+    new_typed_build(buildinfo, 'rpm')
 
     #add rpminfo entry
     rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
@@ -4812,6 +4961,25 @@ class CG_Importer(object):
             buildinfo['completion_time'] = \
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
         self.buildinfo = buildinfo
+
+        # get typeinfo
+        b_extra = self.metadata['build'].get('extra', {})
+        typeinfo = b_extra.get('typeinfo', {})
+
+        # legacy types can be at top level of extra
+        for btype in ['maven', 'win', 'image']:
+            if btype not in b_extra:
+                continue
+            if btype in typeinfo:
+                # he says they've already got one
+                raise koji.GenericError('Duplicate typeinfo for %r' % btype)
+            typeinfo[btype] = b_extra[btype]
+
+        # sanity check
+        for btype in typeinfo:
+            lookup_name('btype', btype, strict=True)
+
+        self.typeinfo = typeinfo
         return buildinfo
 
 
@@ -4820,14 +4988,23 @@ class CG_Importer(object):
         buildinfo = get_build(build_id, strict=True)
 
         # handle special build types
-        b_extra = self.metadata['build'].get('extra', {})
-        if 'maven' in b_extra:
-            new_maven_build(buildinfo, b_extra['maven'])
-        if 'win' in b_extra:
-            new_win_build(buildinfo, b_extra['win'])
-        if 'image' in b_extra:
-            # no extra info tracked at build level
-            new_image_build(buildinfo)
+        for btype in self.typeinfo:
+            tinfo = self.typeinfo[btype]
+            if btype == 'maven':
+                new_maven_build(buildinfo, tinfo)
+            elif btype == 'win':
+                new_win_build(buildinfo, tinfo)
+            elif btype == 'image':
+                # no extra info tracked at build level
+                new_image_build(buildinfo)
+            else:
+                new_typed_build(buildinfo, btype)
+
+        # rpm builds not required to have typeinfo
+        if 'rpm' not in self.typeinfo:
+            # if the build contains rpms then it has the rpm type
+            if [o for o in self.prepped_outputs if o['type'] == 'rpm']:
+                new_typed_build(buildinfo, 'rpm')
 
         self.buildinfo = buildinfo
         return buildinfo
@@ -5008,23 +5185,44 @@ class CG_Importer(object):
 
 
     def prep_archive(self, fileinfo):
-        # determine archive import type (maven/win/image/other)
+        # determine archive import type
         extra = fileinfo.get('extra', {})
         legacy_types = ['maven', 'win', 'image']
-        l_type = None
+        btype = None
         type_info = None
-        for key in legacy_types:
-            if key in extra:
-                if l_type is not None:
-                    raise koji.GenericError("Output file has multiple archive"
-                        "types: %(filename)s" % fileinfo)
-                l_type = key
-                type_info = extra[key]
-        fileinfo['hub.l_type'] = l_type
+        for key in extra:
+            if key not in legacy_types:
+                continue
+            if btype is not None:
+                raise koji.GenericError("Output file has multiple types: "
+                    "%(filename)s" % fileinfo)
+            btype = key
+            type_info = extra[key]
+        for key in extra.get('typeinfo', {}):
+            if btype == key:
+                raise koji.GenericError("Duplicate typeinfo for: %r" % btype)
+            elif btype is not None:
+                raise koji.GenericError("Output file has multiple types: "
+                    "%(filename)s" % fileinfo)
+            btype = key
+            type_info = extra['typeinfo'][key]
+
+        if btype is None:
+            raise koji.GenericError("No typeinfo for: %(filename)s" % fileinfo)
+
+        if btype not in self.typeinfo:
+            raise koji.GenericError('Output type %s not listed in build '
+                        'types' % btype)
+
+        fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
 
-        if l_type == 'image':
-            components = fileinfo.get('components', [])
+        if 'components' in fileinfo:
+            if btype in ('maven', 'win'):
+                raise koji.GenericError("Component list not allowed for "
+                        "archives of type %s" % btype)
+            # for new types, we trust the metadata
+            components = fileinfo['components']
             rpmlist, archives = self.match_components(components)
             # TODO - note presence of external components
             fileinfo['hub.rpmlist'] = rpmlist
@@ -5052,29 +5250,29 @@ class CG_Importer(object):
 
     def import_archive(self, buildinfo, brinfo, fileinfo):
         fn = fileinfo['hub.path']
-        l_type = fileinfo['hub.l_type']
+        btype = fileinfo['hub.btype']
         type_info = fileinfo['hub.type_info']
 
-        archiveinfo = import_archive_internal(fn, buildinfo, l_type, type_info, brinfo.id, fileinfo)
+        archiveinfo = import_archive_internal(fn, buildinfo, btype, type_info, brinfo.id, fileinfo)
 
-        if l_type == 'image':
+        if 'components' in fileinfo:
             self.import_components(archiveinfo['id'], fileinfo)
 
 
-    def import_components(self, image_id, fileinfo):
+    def import_components(self, archive_id, fileinfo):
         rpmlist = fileinfo['hub.rpmlist']
         archives = fileinfo['hub.archives']
 
-        insert = InsertProcessor('image_listing')
-        insert.set(image_id=image_id)
+        insert = InsertProcessor('archive_rpm_components')
+        insert.set(archive_id=archive_id)
         for rpminfo in rpmlist:
             insert.set(rpm_id=rpminfo['id'])
             insert.execute()
 
-        insert = InsertProcessor('image_archive_listing')
-        insert.set(image_id=image_id)
+        insert = InsertProcessor('archive_components')
+        insert.set(archive_id=archive_id)
         for archiveinfo in archives:
-            insert.set(archive_id=archiveinfo['id'])
+            insert.set(component_id=archiveinfo['id'])
             insert.execute()
 
 
@@ -5434,9 +5632,11 @@ def new_maven_build(build, maven_info):
                     (field, current_maven_info[field], maven_info[field])
     else:
         maven_info['build_id'] = build['id']
-        insert = """INSERT INTO maven_builds (build_id, group_id, artifact_id, version)
-                    VALUES (%(build_id)i, %(group_id)s, %(artifact_id)s, %(version)s)"""
-        _dml(insert, maven_info)
+        data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
+        insert = InsertProcessor('maven_builds', data=data)
+        insert.execute()
+        # also add build_types entry
+        new_typed_build(build, 'maven')
 
 def new_win_build(build_info, win_info):
     """
@@ -5456,6 +5656,8 @@ def new_win_build(build_info, win_info):
         insert.set(build_id=build_id)
         insert.set(platform=win_info['platform'])
         insert.execute()
+        # also add build_types entry
+        new_typed_build(build_info, 'win')
 
 def new_image_build(build_info):
     """
@@ -5473,6 +5675,26 @@ def new_image_build(build_info):
         insert = InsertProcessor('image_builds')
         insert.set(build_id=build_info['id'])
         insert.execute()
+        # also add build_types entry
+        new_typed_build(build_info, 'image')
+
+
+def new_typed_build(build_info, btype):
+    """Mark build as a given btype"""
+
+    btype_id=lookup_name('btype', btype, strict=True)['id']
+    query = QueryProcessor(tables=('build_types',), columns=('build_id',),
+                           clauses=('build_id = %(build_id)i',
+                                    'btype_id = %(btype_id)i',),
+                           values={'build_id': build_info['id'],
+                                   'btype_id': btype_id})
+    result = query.executeOne()
+    if not result:
+        insert = InsertProcessor('build_types')
+        insert.set(build_id=build_info['id'])
+        insert.set(btype_id=btype_id)
+        insert.execute()
+
 
 def old_image_data(old_image_id):
     """Return old image data for given id"""
@@ -5588,15 +5810,15 @@ def import_old_image(old, name, version):
     archive_id = archives[0]['id']
     logger.debug('root archive id is %s' % archive_id)
     query = QueryProcessor(columns=['rpm_id'], tables=['imageinfo_listing'],
-                           clauses=['image_id=%(id)i'], values=old,
+                           clauses=['archive_id=%(id)i'], values=old,
                            opts={'asList': True})
     rpm_ids = [r[0] for r in query.execute()]
-    insert = InsertProcessor('image_listing')
-    insert.set(image_id=archive_id)
+    insert = InsertProcessor('archive_rpm_components')
+    insert.set(archive_id=archive_id)
     for rpm_id in rpm_ids:
         insert.set(rpm_id=rpm_id)
         insert.execute()
-    logger.info('updated image_listing')
+    logger.info('updated archive_rpm_components')
 
     # grab old logs
     old_log_dir = os.path.join(old['dir'], 'data', 'logs', old['arch'])
@@ -5689,6 +5911,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
                         (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
+    btype = lookup_name('btype', type, strict=False)
+    if btype is None:
+        raise koji.BuildError, 'unsupported archive type: %s' % type
+    archiveinfo['btype_id'] = btype['id']
 
     # cg extra data
     extra = fileinfo.get('extra', None)
@@ -5758,7 +5984,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             _import_archive_file(filepath, imgdir)
         # import log files?
     else:
-        raise koji.BuildError, 'unsupported archive type: %s' % type
+        # new style type, no supplementary table
+        if not metadata_only:
+            destdir = koji.pathinfo.typedir(buildinfo, btype['name'])
+            _import_archive_file(filepath, destdir)
 
     archiveinfo = get_archive(archive_id, strict=True)
     koji.plugin.run_callbacks('postImport', type='archive', archive=archiveinfo, build=buildinfo,
@@ -6353,11 +6582,7 @@ def build_references(build_id, limit=None):
     The optional limit arg is used to limit the size of the buildroot
     references.
     """
-    #references (that matter):
-    #   tag_listing
-    #   buildroot_listing (via rpminfo)
-    #   buildroot_archives (via archiveinfo)
-    #   ?? rpmsigs (via rpminfo)
+
     ret = {}
 
     # find tags
@@ -6365,9 +6590,11 @@ def build_references(build_id, limit=None):
     WHERE build_id = %(build_id)i AND active = TRUE"""
     ret['tags'] = _multiRow(q, locals(), ('id', 'name'))
 
-    #we'll need the component rpm ids for the rest
+    #we'll need the component rpm and archive ids for the rest
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
-    rpm_ids = _fetchMulti(q, locals())
+    build_rpm_ids = _fetchMulti(q, locals())
+    q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
+    build_archive_ids = _fetchMulti(q, locals())
 
     # find rpms whose buildroots we were in
     st_complete = koji.BUILD_STATES['COMPLETE']
@@ -6381,28 +6608,26 @@ def build_references(build_id, limit=None):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
     ret['rpms'] = idx.values()
 
-    ret['images'] = []
-    # find images that contain the build rpms
-    fields = ['image_id']
-    clauses = ['image_listing.rpm_id = %(rpm_id)s']
-    # TODO: join in other tables to provide something more than image id
-    query = QueryProcessor(columns=fields, tables=['image_listing'], clauses=clauses,
+    ret['component_of'] = []
+    # find images/archives that contain the build rpms
+    fields = ['archive_id']
+    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s']
+    # TODO: join in other tables to provide something more than archive id
+    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'], clauses=clauses,
                            opts={'asList': True})
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         query.values = {'rpm_id': rpm_id}
-        image_ids = [i[0] for i in query.execute()]
-        ret['images'].extend(image_ids)
+        archive_ids = [i[0] for i in query.execute()]
+        ret['component_of'].extend(archive_ids)
 
     # find archives whose buildroots we were in
-    q = """SELECT id FROM archiveinfo WHERE build_id = %(build_id)i"""
-    archive_ids = _fetchMulti(q, locals())
     fields = ('id', 'type_id', 'type_name', 'build_id', 'filename')
     idx = {}
     q = """SELECT archiveinfo.id, archiveinfo.type_id, archivetypes.name, archiveinfo.build_id, archiveinfo.filename
@@ -6414,23 +6639,23 @@ def build_references(build_id, limit=None):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
     ret['archives'] = idx.values()
 
-    # find images that contain the build archives
-    fields = ['image_id']
-    clauses = ['image_archive_listing.archive_id = %(archive_id)s']
-    # TODO: join in other tables to provide something more than image id
-    query = QueryProcessor(columns=fields, tables=['image_archive_listing'], clauses=clauses,
+    # find images/archives that contain the build archives
+    fields = ['archive_id']
+    clauses = ['archive_components.component_id = %(archive_id)s']
+    # TODO: join in other tables to provide something more than archive id
+    query = QueryProcessor(columns=fields, tables=['archive_components'], clauses=clauses,
                            opts={'asList': True})
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         query.values = {'archive_id': archive_id}
-        image_ids = [i[0] for i in query.execute()]
-        ret['images'].extend(image_ids)
+        archive_ids = [i[0] for i in query.execute()]
+        ret['component_of'].extend(archive_ids)
 
     # find timestamp of most recent use in a buildroot
     query = QueryProcessor(
@@ -6440,7 +6665,7 @@ def build_references(build_id, limit=None):
                 clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
                 opts={'order': '-standard_buildroot.create_event', 'limit': 1})
     event_id = -1
-    for (rpm_id,) in rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         query.values = {'rpm_id': rpm_id}
         tmp_id = query.singleValue(strict=False)
         if tmp_id is not None and tmp_id > event_id:
@@ -6458,7 +6683,7 @@ def build_references(build_id, limit=None):
     ORDER BY standard_buildroot.create_event DESC
     LIMIT 1"""
     event_id = -1
-    for (archive_id,) in archive_ids:
+    for (archive_id,) in build_archive_ids:
         tmp_id = _singleValue(q, locals(), strict=False)
         if tmp_id is not None and tmp_id > event_id:
             event_id = tmp_id
@@ -6469,6 +6694,9 @@ def build_references(build_id, limit=None):
         last_archive_use = _singleValue(q, locals())
         if ret['last_used'] is None or last_archive_use > ret['last_used']:
             ret['last_used'] = last_archive_use
+
+    # set 'images' field for backwards compat
+    ret['images'] = ret['component_of']
 
     return ret
 
@@ -6526,6 +6754,9 @@ def _delete_build(binfo):
     # build-related data:
     #   build   KEEP (marked deleted)
     #   maven_builds KEEP
+    #   win_builds KEEP
+    #   image_builds KEEP
+    #   build_types KEEP
     #   task ??
     #   tag_listing REVOKE (versioned) (but should ideally be empty anyway)
     #   rpminfo KEEP
@@ -6565,17 +6796,13 @@ def _delete_build(binfo):
 def reset_build(build):
     """Reset a build so that it can be reimported
 
-    WARNING: this function is potentially destructive. use with care.
+    WARNING: this function is highly destructive. use with care.
     nulls task_id
     sets state to CANCELED
-    clears data in rpminfo
-    removes rpminfo entries from any buildroot_listings [!]
-    clears data in archiveinfo, maven_info
-    removes archiveinfo entries from buildroot_archives
-    remove files related to the build
+    clears all referenced data in other tables, including buildroot and
+        archive component tables
 
-    note, we don't actually delete the build data, so tags
-    remain intact
+    after reset, only the build table entry is left
     """
     # Only an admin may do this
     context.session.assertPerm('admin')
@@ -6591,6 +6818,8 @@ def reset_build(build):
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM archive_rpm_components WHERE rpm_id=%(rpm_id)i"""
+        _dml(delete, locals())
     delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     q = """SELECT id FROM archiveinfo WHERE build_id=%(id)i"""
@@ -6600,13 +6829,27 @@ def reset_build(build):
         _dml(delete, locals())
         delete = """DELETE FROM win_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
+        delete = """DELETE FROM image_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
         delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archive_rpm_components WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archive_components WHERE archive_id=%(archive_id)i"""
+        _dml(delete, locals())
+        delete = """DELETE FROM archive_components WHERE component_id=%(archive_id)i"""
         _dml(delete, locals())
     delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
+    _dml(delete, binfo)
+    delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
@@ -7912,15 +8155,15 @@ def importImageInternal(task_id, build_id, imgdata):
         rpm_ids.append(data['id'])
 
     # associate those RPMs with the image
-    q = """INSERT INTO image_listing (image_id,rpm_id)
-           VALUES (%(image_id)i,%(rpm_id)i)"""
+    q = """INSERT INTO archive_rpm_components (archive_id,rpm_id)
+           VALUES (%(archive_id)i,%(rpm_id)i)"""
     for archive in archives:
         sys.stderr.write('working on archive %s' % archive)
         if archive['filename'].endswith('xml'):
             continue
         sys.stderr.write('associating installed rpms with %s' % archive['id'])
         for rpm_id in rpm_ids:
-            _dml(q, {'image_id': archive['id'], 'rpm_id': rpm_id})
+            _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               fullpath=fullpath)
@@ -8794,6 +9037,7 @@ class RootExports(object):
     getMavenBuild = staticmethod(get_maven_build)
     getWinBuild = staticmethod(get_win_build)
     getImageBuild = staticmethod(get_image_build)
+    getBuildType = staticmethod(get_build_type)
     getArchiveTypes = staticmethod(get_archive_types)
     getArchiveType = staticmethod(get_archive_type)
     listArchives = staticmethod(list_archives)
@@ -8803,6 +9047,9 @@ class RootExports(object):
     getImageArchive = staticmethod(get_image_archive)
     listArchiveFiles = staticmethod(list_archive_files)
     getArchiveFile = staticmethod(get_archive_file)
+
+    listBTypes = staticmethod(list_btypes)
+    addBType = staticmethod(add_btype)
 
     def getChangelogEntries(self, buildID=None, taskID=None, filepath=None, author=None, before=None, after=None, queryOpts=None):
         """Get changelog entries for the build with the given ID,
@@ -9038,6 +9285,8 @@ class RootExports(object):
         fields = [('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
                   ('build.epoch', 'epoch'), ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                   ('build.start_time', 'start_time'),
+                  ('build.source', 'source'),
+                  ('build.extra', 'extra'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'), ('build.task_id', 'task_id'),
                   ('EXTRACT(EPOCH FROM events.time)', 'creation_ts'),
                   ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
@@ -9111,11 +9360,17 @@ class RootExports(object):
             joins.append('image_builds ON build.id = image_builds.build_id')
             fields.append(('image_builds.build_id', 'build_id'))
         else:
-            raise koji.GenericError, 'unsupported build type: %s' % type
+            btype = lookup_name('btype', type, strict=False)
+            if not btype:
+                raise koji.GenericError, 'unsupported build type: %s' % type
+            btype_id = btype['id']
+            joins.append('build_types ON build.id = build_types.build_id '
+                    'AND btype_id = %(btype_id)s')
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
                                tables=tables, joins=joins, clauses=clauses,
+                               transform=_fix_extra_field,
                                values=locals(), opts=queryOpts)
 
         return query.iterate()
@@ -11088,10 +11343,13 @@ class HostExports(object):
                     os.symlink(dest, src)
 
     def initBuild(self, data):
-        """Create a stub build entry.
+        """Create a stub (rpm) build entry.
 
         This is done at the very beginning of the build to inform the
         system the build is underway.
+
+        This function is only called for rpm builds, other build types
+        have their own init function
         """
         host = Host()
         host.verify()
@@ -11102,7 +11360,10 @@ class HostExports(object):
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        return new_build(data)
+        build_id = new_build(data)
+        binfo = get_build(build_id, strict=True)
+        new_typed_build(binfo, 'rpm')
+        return build_id
 
     def completeBuild(self, task_id, build_id, srpm, rpms, brmap=None, logs=None):
         """Import final build contents into the database"""

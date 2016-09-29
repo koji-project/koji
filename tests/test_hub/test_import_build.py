@@ -53,12 +53,14 @@ class TestImportRPM(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.import_rpm(self.filename)
 
+    @mock.patch('kojihub.new_typed_build')
     @mock.patch('kojihub._dml')
     @mock.patch('kojihub._singleValue')
     @mock.patch('kojihub.get_build')
     @mock.patch('koji.get_rpm_header')
     def test_import_rpm_completed_build(self, get_rpm_header, get_build,
-                                        _singleValue, _dml):
+                                        _singleValue, _dml,
+                                        new_typed_build):
         get_rpm_header.return_value = self.rpm_header_retval
         get_build.return_value = {
             'state': koji.BUILD_STATES['COMPLETE'],
@@ -103,12 +105,14 @@ class TestImportRPM(unittest.TestCase):
         }
         _dml.assert_called_once_with(statement, values)
 
+    @mock.patch('kojihub.new_typed_build')
     @mock.patch('kojihub._dml')
     @mock.patch('kojihub._singleValue')
     @mock.patch('kojihub.get_build')
     @mock.patch('koji.get_rpm_header')
     def test_import_rpm_completed_source_build(self, get_rpm_header, get_build,
-                                               _singleValue, _dml):
+                                               _singleValue, _dml,
+                                               new_typed_build):
         retval = copy.copy(self.rpm_header_retval)
         retval.update({
             'filename': 'name-version-release.arch.rpm',
@@ -189,6 +193,7 @@ class TestImportBuild(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
+    @mock.patch('kojihub.new_typed_build')
     @mock.patch('kojihub._dml')
     @mock.patch('kojihub._singleValue')
     @mock.patch('kojihub.get_build')
@@ -205,7 +210,8 @@ class TestImportBuild(unittest.TestCase):
                                           new_package, context, query,
                                           import_rpm, import_rpm_file,
                                           rip_rpm_sighdr, add_rpm_sig,
-                                          get_build, _singleValue, _dml):
+                                          get_build, _singleValue, _dml,
+                                          new_typed_build):
 
         rip_rpm_sighdr.return_value = (0, 0)
 
@@ -225,6 +231,16 @@ class TestImportBuild(unittest.TestCase):
             1106: 1,
         })
         get_rpm_header.return_value = retval
+        binfo = {
+            'state': koji.BUILD_STATES['COMPLETE'],
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'id': 12345,
+        }
+        # get_build called once to check for existing,
+        # then later to get the build info
+        get_build.side_effect = [None, binfo]
 
         kojihub.import_build(self.src_filename, [self.filename])
 

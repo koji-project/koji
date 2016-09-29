@@ -1,5 +1,5 @@
 
--- vim:noet:sw=8
+-- vim:et:sw=8
 
 -- drop statements for old data have moved to schema-clear.sql
 
@@ -250,6 +250,27 @@ CREATE TABLE build (
 
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
 CREATE INDEX build_completion ON build(completion_time);
+
+
+CREATE TABLE btype (
+        id SERIAL NOT NULL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+) WITHOUT OIDS;
+
+
+-- legacy build types
+INSERT INTO btype(name) VALUES ('rpm');
+INSERT INTO btype(name) VALUES ('maven');
+INSERT INTO btype(name) VALUES ('win');
+INSERT INTO btype(name) VALUES ('image');
+
+
+CREATE TABLE build_types (
+        build_id INTEGER NOT NULL REFERENCES build(id),
+        btype_id INTEGER NOT NULL REFERENCES btype(id),
+        PRIMARY KEY (build_id, btype_id)
+) WITHOUT OIDS;
+
 
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
@@ -780,6 +801,8 @@ insert into archivetypes (name, description, extensions) values ('jnilib', 'Java
 CREATE TABLE archiveinfo (
 	id SERIAL NOT NULL PRIMARY KEY,
         type_id INTEGER NOT NULL REFERENCES archivetypes (id),
+        btype_id INTEGER REFERENCES btype(id),
+        -- ^ TODO add NOT NULL
 	build_id INTEGER NOT NULL REFERENCES build (id),
 	buildroot_id INTEGER REFERENCES buildroot (id),
 	filename TEXT NOT NULL,
@@ -806,21 +829,21 @@ CREATE TABLE image_archives (
     arch VARCHAR(16) NOT NULL
 ) WITHOUT OIDS;
 
--- tracks the contents of an image
-CREATE TABLE image_listing (
-	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
-	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
-	UNIQUE (image_id, rpm_id)
-) WITHOUT OIDS;
-CREATE INDEX image_listing_rpms on image_listing(rpm_id);
-
--- track the archive contents of an image
-CREATE TABLE image_archive_listing (
-	image_id INTEGER NOT NULL REFERENCES image_archives(archive_id),
+-- tracks the rpm contents of an image or other archive
+CREATE TABLE archive_rpm_components (
 	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
-	UNIQUE (image_id, archive_id)
+	rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+	UNIQUE (archive_id, rpm_id)
 ) WITHOUT OIDS;
-CREATE INDEX image_listing_archives on image_archive_listing(archive_id);
+CREATE INDEX rpm_components_idx on archive_rpm_components(rpm_id);
+
+-- track the archive contents of an image or other archive
+CREATE TABLE archive_components (
+	archive_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	component_id INTEGER NOT NULL REFERENCES archiveinfo(id),
+	UNIQUE (archive_id, component_id)
+) WITHOUT OIDS;
+CREATE INDEX archive_components_idx on archive_components(component_id);
 
 
 CREATE TABLE buildroot_archives (

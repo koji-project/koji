@@ -3299,15 +3299,18 @@ def anon_handle_buildinfo(options, session, args):
         print "Tags: %s" % ' '.join(taglist)
         if info.get('extra'):
             print "Extra: %(extra)r" % info
+        archives_seen = {}
         maven_archives = session.listArchives(buildID=info['id'], type='maven')
         if maven_archives:
             print "Maven archives:"
             for archive in maven_archives:
+                archives_seen.setdefault(archive['id'], 1)
                 print os.path.join(koji.pathinfo.mavenbuild(info), koji.pathinfo.mavenfile(archive))
         win_archives = session.listArchives(buildID=info['id'], type='win')
         if win_archives:
             print "Windows archives:"
             for archive in win_archives:
+                archives_seen.setdefault(archive['id'], 1)
                 print os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive))
         rpms = session.listRPMs(buildID=info['id'])
         image_info = session.getImageBuild(info['id'])
@@ -3315,7 +3318,18 @@ def anon_handle_buildinfo(options, session, args):
         if img_archives:
             print 'Image archives:'
             for archive in img_archives:
+                archives_seen.setdefault(archive['id'], 1)
                 print os.path.join(koji.pathinfo.imagebuild(info), archive['filename'])
+        archive_idx = {}
+        for archive in session.listArchives(buildID=info['id']):
+            if archive['id'] in archives_seen:
+                continue
+            archive_idx.setdefault(archive['btype'], []).append(archive)
+        for btype in archive_idx:
+            archives = archive_idx[btype]
+            print '%s Archives:' % btype.capitalize()
+            for archive in archives:
+                print os.path.join(koji.pathinfo.typedir(info, btype), archive['filename'])
         if rpms:
             print "RPMs:"
             for rpm in rpms:
