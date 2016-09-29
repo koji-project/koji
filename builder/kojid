@@ -949,11 +949,29 @@ class BuildTask(BaseTaskHandler):
             self.logger.debug('arch override: %s' % override)
             archlist = override.split()
         archdict = {}
-        for a in archlist:
-            # Filter based on canonical arches for tag
-            # This prevents building for an arch that we can't handle
-            if a == 'noarch' or koji.canonArch(a) in tag_archlist:
-                archdict[a] = 1
+
+        # Filter based on canonical arches for tag
+        # This prevents building for an arch that we can't handle
+        if 'noarch' in archlist:
+            if filter(lambda arch: arch != 'noarch', archlist):
+                _archs = archlist
+            else:
+                _archs = tag_archlist
+            if exclusivearch:
+                _archs = exclusivearch
+            if excludearch:
+                _archs = [arch for arch in _archs if arch not in excludearch]
+            archs_chosen = [arch for arch in _archs if koji.canonArch(arch) in tag_archlist and arch != 'noarch']
+            if not archs_chosen:
+                raise koji.BuildError, 'Cannot choose an arch to build this noarch package'
+            archs_chosen_len = len(archs_chosen)
+            idx = random.randint(0, archs_chosen_len - 1)
+            arch_chosen = archs_chosen[idx]
+            archdict[arch_chosen] = 1
+        else:
+            for a in archlist:
+                if koji.canonArch(a) in tag_archlist:
+                    archdict[a] = 1
         if not archdict:
             raise koji.BuildError, "No matching arches were found"
         return archdict.keys()
