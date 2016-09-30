@@ -42,9 +42,10 @@ class Session(object):
         scheme = uri[0]
         host, port = urllib.splitport(uri[1])
         key = (scheme, host, cert, timeout)
-        if self.connection and self.opts.get('keepalive'):
+        #if self.connection and self.opts.get('keepalive'):
+        if self.connection:   # XXX honor keepalive
             if key == self.connection[0]:
-                cnx = self._connection[1]
+                cnx = self.connection[1]
                 if getattr(cnx, 'sock', None):
                     return cnx
         # Otherwise we make a new one
@@ -84,7 +85,7 @@ class Session(object):
             cnx.sock.settimeout(timeout)
         return cnx
 
-    def close_connection(self):
+    def close(self):
         if self.connection:
             self.connection[1].close()
             self.connection = None
@@ -109,6 +110,9 @@ class Response(object):
             if not chunk:
                 break
             yield chunk
+
+    def close(self):
+        self.response.close()
 
 
 

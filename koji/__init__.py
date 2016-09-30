@@ -1878,7 +1878,11 @@ class ClientSession(object):
         self.multicall = False
         self._calls = []
         self.logger = logging.getLogger('koji')
-        self.rsession = requests.Session()
+        if opts.get('use_old_ssl', True):
+            import koji.compatrequests
+            self.rsession = koji.compatrequests.Session()
+        else:
+            self.rsession = requests.Session()
         self.opts.setdefault('timeout',  60 * 60 * 12)
 
     def setSession(self, sinfo):
