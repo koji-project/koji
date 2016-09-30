@@ -11,7 +11,7 @@ import httplib
 import urlparse
 import urllib
 import sys
-import ssl
+import ssl.SSLCommon
 try:
     from ssl import ssl as pyssl
 except ImportError:
@@ -27,7 +27,7 @@ class Session(object):
                 cert=None, timeout=None):
         uri = urlparse.urlsplit(url)
         path = uri[2]
-        cnx = self.get_connection(uri, cert, timeout)
+        cnx = self.get_connection(uri, cert, verify, timeout)
         cnx.putrequest('POST', path)  #XXX
         if headers:
             for k in headers:
@@ -38,10 +38,10 @@ class Session(object):
         response = cnx.getresponse()
         return Response(self, response)
 
-    def get_connection(self, uri, cert, timeout):
+    def get_connection(self, uri, cert, verify, timeout):
         scheme = uri[0]
         host, port = urllib.splitport(uri[1])
-        key = (scheme, host, cert, timeout)
+        key = (scheme, host, cert, verify, timeout)
         #if self.connection and self.opts.get('keepalive'):
         if self.connection:   # XXX honor keepalive
             if key == self.connection[0]:
@@ -50,17 +50,22 @@ class Session(object):
                     return cnx
         # Otherwise we make a new one
         default_port = 80
+        certs = {}
+        if isinstance(verify, basestring):
+            certs['peer_ca_cert'] = verify
         if cert:
-            ctx = ssl.SSLCommon.CreateSSLContext(cert) #XXX
+            certs['key_and_cert'] = cert
+            ctx = ssl.SSLCommon.CreateSSLContext(certs)
             cnxOpts = {'ssl_context' : ctx}
             cnxClass = ssl.SSLCommon.PlgHTTPSConnection
             default_port = 443
         elif scheme == 'https':
             cnxOpts = {}
-            if sys.version_info[:3] >= (2, 7, 9):
+            if sys.version_info[:3] >= (2, 7, 9) and not verify:
                 ctx = pyssl._create_unverified_context()
                 # TODO - we should default to verifying where possible
                 cnxOpts['context'] = ctx
+            # TODO honor verify
             cnxClass = httplib.HTTPSConnection
             default_port = 443
         elif scheme == 'http':
