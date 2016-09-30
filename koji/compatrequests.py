@@ -81,6 +81,7 @@ class Session(object):
             else:
                 cnxOpts['timeout'] = timeout
         # no need to close connection
+        port = (port and int(port) or default_port)
         cnx = cnxClass(host, port, **cnxOpts)
         self.connection = (key, cnx)
         if timeout_compat:
