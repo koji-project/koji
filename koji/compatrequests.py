@@ -7,6 +7,16 @@ module that is based on the older codepaths in koji. It only provides
 the bits that koji needs.
 """
 
+import httplib
+import urlparse
+import urllib
+import sys
+import ssl
+try:
+    from ssl import ssl as pyssl
+except ImportError:
+    pass
+
 
 class Session(object):
 
@@ -15,9 +25,10 @@ class Session(object):
 
     def post(self, url, data=None, headers=None, stream=None, verify=None,
                 cert=None, timeout=None):
-        cnx = self.get_connection(url, cert, timeout)
-        # TODO get handler from url
-        cnx.putrequest('POST', handler)
+        uri = urlparse.urlsplit(url)
+        path = uri[2]
+        cnx = self.get_connection(uri, cert, timeout)
+        cnx.putrequest('POST', path)  #XXX
         if headers:
             for k in headers:
                 cnx.putheader(k, headers[k])
@@ -27,18 +38,16 @@ class Session(object):
         response = cnx.getresponse()
         return Response(self, response)
 
-    def get_connection(self, url, cert, timeout):
-        key = (url, cert, timeout)
+    def get_connection(self, uri, cert, timeout):
+        scheme = uri[0]
+        host, port = urllib.splitport(uri[1])
+        key = (scheme, host, cert, timeout)
         if self.connection and self.opts.get('keepalive'):
             if key == self.connection[0]:
                 cnx = self._connection[1]
                 if getattr(cnx, 'sock', None):
                     return cnx
         # Otherwise we make a new one
-        uri = urlparse.urlsplit(url)
-        scheme = uri[0]
-        host, port = urllib.splitport(uri[1])
-        path = uri[2]
         default_port = 80
         if cert:
             ctx = ssl.SSLCommon.CreateSSLContext(cert) #XXX
@@ -73,6 +82,7 @@ class Session(object):
             # but socket supports it since 2.3
             cnx.connect()
             cnx.sock.settimeout(timeout)
+        return cnx
 
     def close_connection(self):
         if self.connection:
@@ -93,10 +103,9 @@ class Response(object):
             if (self.response.getheader("content-length", 0)):
                 self.response.read()
             # XXX wrong exception
-            raise xmlrpclib.ProtocolError(self._host + handler,
-                        response.status, response.reason, response.msg)
+            raise Exception("Server status: %s" % self.response.status)
         while True:
-            chunk = response.read(blocksize)
+            chunk = self.response.read(blocksize)
             if not chunk:
                 break
             yield chunk
