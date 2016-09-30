@@ -8,6 +8,7 @@ Koji is an RPM-based build system. The Fedora Project uses Koji for
 Koji's goal is to provide a flexible, secure, and reproducible way to build software.
 
 Key features:
+
 * New buildroot for each build
 * Robust XML-RPC APIs for easy integration with other tools
 * Web interface with SSL and Kerberos authentication
@@ -41,12 +42,14 @@ You may browse code at https://pagure.io/koji
 
 Archived releases can be found at https://fedorahosted.org/released/koji/
 
-== Documentation ==
+Documentation
+-------------
 
 See: https://docs.pagure.org/koji/
 
 
-== Related Software ==
+Related Software
+----------------
 
 * [Mock](https://fedoraproject.org/wiki/Projects/Mock): The tool Koji uses to
   generate buildroots
