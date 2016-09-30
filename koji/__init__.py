@@ -45,15 +45,14 @@ import os.path
 import pwd
 import random
 import re
-import requests
+try:
+    import requests
+except ImportError:  #pragma: no cover
+    requests = None
 import rpm
 import shutil
 import signal
 import socket
-try:
-    from ssl import ssl as pyssl
-except ImportError:  # pragma: no cover
-    pass
 import struct
 import tempfile
 import time
@@ -1886,7 +1885,7 @@ class ClientSession(object):
     def new_session(self):
         if self.rsession:
             self.rsession.close()
-        if self.opts.get('use_old_ssl', False):
+        if self.opts.get('use_old_ssl', False) or requests is None:
             import koji.compatrequests
             self.rsession = koji.compatrequests.Session()
         else:

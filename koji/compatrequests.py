@@ -28,6 +28,7 @@ class Session(object):
         uri = urlparse.urlsplit(url)
         path = uri[2]
         cnx = self.get_connection(uri, cert, verify, timeout)
+        #cnx.set_debuglevel(1)
         cnx.putrequest('POST', path)  #XXX
         if headers:
             for k in headers:
