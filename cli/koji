@@ -7175,7 +7175,7 @@ if __name__ == "__main__":
     for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug', 'max_retries',
               'retry_interval', 'offline_retry', 'offline_retry_interval',
               'anon_retry', 'keepalive', 'timeout', 'use_fast_upload',
-              'upload_blocksize', 'krb_rdns'):
+              'upload_blocksize', 'krb_rdns', 'use_old_ssl'):
         value = getattr(options,k)
         if value is not None:
             session_opts[k] = value
