@@ -26,10 +26,13 @@ class Session(object):
     def post(self, url, data=None, headers=None, stream=None, verify=None,
                 cert=None, timeout=None):
         uri = urlparse.urlsplit(url)
-        path = uri[2]
+        if uri[3]:
+            handler = "%s?%s" % (uri[2], uri[3])
+        else:
+            handler = uri[2]
         cnx = self.get_connection(uri, cert, verify, timeout)
         #cnx.set_debuglevel(1)
-        cnx.putrequest('POST', path)  #XXX
+        cnx.putrequest('POST', handler)
         if headers:
             for k in headers:
                 cnx.putheader(k, headers[k])
