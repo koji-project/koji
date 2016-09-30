@@ -57,7 +57,6 @@ from ConfigParser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
-from StringIO import StringIO
 from yum import repoMDObject
 
 #imports for LiveCD, LiveMedia, and Appliance handler
