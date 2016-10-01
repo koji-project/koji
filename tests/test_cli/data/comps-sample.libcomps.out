@@ -1,0 +1,39 @@
+Group: additional-devel (Additional Development)
+  Package: alsa-lib-devel: {'type': 'default', 'basearchonly': False}
+  Package: audit-libs-devel: {'type': 'default', 'basearchonly': False}
+  Package: binutils-devel: {'type': 'default', 'basearchonly': False}
+  Package: boost-devel: {'type': 'default', 'basearchonly': False}
+  Package: bzip2-devel: {'type': 'default', 'basearchonly': False}
+  Package: cyrus-sasl-devel: {'type': 'default', 'basearchonly': False}
+Group: backup-client (Backup Client)
+  Package: amanda-client: {'type': 'mandatory', 'basearchonly': False}
+  Package: bacula-client: {'type': 'optional', 'basearchonly': False}
+Group: backup-server (Backup Server)
+  Package: amanda-server: {'type': 'mandatory', 'basearchonly': False}
+  Package: mt-st: {'type': 'optional', 'basearchonly': False}
+  Package: mtx: {'type': 'optional', 'basearchonly': False}
+Group: ansible-node (Ansible node)
+  Package: python2-dnf: {'type': 'mandatory', 'basearchonly': False}
+  Package: libselinux-python: {'requires': u'selinux-policy', 'type': 'conditional', 'basearchonly': False}
+Group: d-development (D Development Tools and Libraries)
+  Package: ldc: {'type': 'mandatory', 'basearchonly': True}
+  Package: ldc-druntime: {'type': 'mandatory', 'basearchonly': True}
+  Package: ldc-druntime-devel: {'type': 'mandatory', 'basearchonly': True}
+  Package: ldc-phobos-devel: {'type': 'mandatory', 'basearchonly': True}
+  Package: make: {'type': 'mandatory', 'basearchonly': False}
+  Package: pkgconfig: {'type': 'mandatory', 'basearchonly': False}
+  Package: ctags: {'type': 'default', 'basearchonly': False}
+  Package: indent: {'type': 'default', 'basearchonly': False}
+  Package: astyle: {'type': 'optional', 'basearchonly': False}
+  Package: cmake: {'type': 'optional', 'basearchonly': False}
+  Package: derelict-devel: {'type': 'optional', 'basearchonly': False}
+  Package: geany: {'type': 'optional', 'basearchonly': False}
+  Package: gl3n-devel: {'type': 'optional', 'basearchonly': False}
+  Package: insight: {'type': 'optional', 'basearchonly': False}
+  Package: nemiver: {'type': 'optional', 'basearchonly': False}
+  Package: uncrustify: {'type': 'optional', 'basearchonly': False}
+Group: empty-group-1 (empty group 1)
+Group: empty-group-2 (empty group 2)
+Group: unknown-group (unknown group)
+  Package: unknown: {'type': 'unknown', 'basearchonly': False}
+  Package: unknown2: {'type': 'unknown', 'basearchonly': False}
