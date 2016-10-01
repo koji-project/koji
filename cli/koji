@@ -1765,20 +1765,25 @@ def handle_import_comps(options, session, args):
         parser.error(_("Incorrect number of arguments"))
         assert False
     activate_session(session)
+    # check if the tag exists
+    dsttag = session.getTag(args[1])
+    if dsttag is None:
+        print "No such tag: %s" % args[1]
+        return 1
     if libcomps is not None:
-        import_comps(session, args[0], args[1], local_options)
-    elif yumcomps is None:
-        import_comps_alt(session, args[0], args[2], ocal_options)
+        _import_comps(session, args[0], args[1], local_options)
+    elif yumcomps is not None:
+        _import_comps_alt(session, args[0], args[1], local_options)
     else:
         print "comps module not available"
         return 1
 
 
-def import_comps(session, filename, tag, options):
-    """Import comps data using yum.comps module"""
+def _import_comps(session, filename, tag, options):
+    """Import comps data using libcomps module"""
     comps = libcomps.Comps()
     comps.fromxml_f(filename)
-    force = options.force
+    force = options['force']
     ptypes = {
         libcomps.PACKAGE_TYPE_DEFAULT : 'default',
         libcomps.PACKAGE_TYPE_OPTIONAL : 'optional',
@@ -1807,12 +1812,12 @@ def import_comps(session, filename, tag, options):
         # libcomps does not support metapkgs
 
 
-def import_comps_alt(session, filename, tag, options):
+def _import_comps_alt(session, filename, tag, options):
     """Import comps data using yum.comps module"""
-
+    print 'WARN: yum.comps does not support the biarchonly of group and basearchonly of package'
     comps = yumcomps.Comps()
     comps.add(filename)
-    force = local_options.force
+    force = options['force']
     for group in comps.groups:
         print "Group: %(groupid)s (%(name)s)" % vars(group)
         session.groupListAdd(tag, group.groupid, force=force, display_name=group.name,
