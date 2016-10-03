@@ -9537,7 +9537,7 @@ class RootExports(object):
 
         results = []
 
-        for dep_name in ['REQUIRE', 'PROVIDE', 'CONFLICT', 'OBSOLETE']:
+        for dep_name in ['REQUIRE', 'PROVIDE', 'CONFLICT', 'OBSOLETE', 'SUGGEST', 'ENHANCE', 'SUPPLEMENT', 'RECOMMEND']:
             dep_id = getattr(koji, 'DEP_' + dep_name)
             if depType is None or depType == dep_id:
                 fields = koji.get_header_fields(rpm_path, [dep_name + 'NAME',
