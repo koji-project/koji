@@ -5477,12 +5477,15 @@ def handle_spin_livemedia(options, session, args):
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
+    parser.add_option("--can-fail", action="store", dest="optional_arches",
+        metavar="ARCH1,ARCH2,...",
+        help=_("List of archs which are not blocking for build (separated by commas."))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
     if len(args) != 5:
-        parser.error(_("Five arguments are required: a name, a version, an" +
-                       " architecture, a build target, and a relative path to" +
+        parser.error(_("Five arguments are required: a name, a version, a" +
+                       " build target, an architecture, and a relative path to" +
                        " a kickstart file."))
         assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'livemedia')
@@ -5743,6 +5746,9 @@ def handle_image_build(options, session, args):
         help=_("Create a scratch image"))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
+    parser.add_option("--can-fail", action="store", dest="optional_arches",
+        metavar="ARCH1,ARCH2,...",
+        help=_("List of archs which are not blocking for build (separated by commas."))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--wait", action="store_true",
@@ -5853,12 +5859,13 @@ def _build_image(options, task_opts, session, args, img_type):
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print
 
-    passthru_opts = [
-        'isoname', 'ksurl', 'ksversion', 'scratch', 'repo',
-        'release', 'skip_tag', 'vmem', 'vcpu', 'format', 'specfile',
-        'title', 'install_tree_url',
-        ]
     hub_opts = {}
+    hub_opts['optional_arches'] = task_opts.optional_arches.split(',')
+    passthru_opts = [
+        'format', 'install_tree_url', 'isoname', 'ksurl',
+        'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
+        'specfile', 'title', 'vcpu', 'vmem',
+        ]
     for opt in passthru_opts:
         val = getattr(task_opts, opt, None)
         if val is not None:
