@@ -274,6 +274,11 @@ $value
         <strong>Host:</strong> <a href="hostinfo?hostID=$params[1].id">$params[1].name</a><br/>
         <strong>Restart Task:</strong>
             <a href="taskinfo?taskID=$rtask.id" class="task$util.taskState($rtask.state)">$koji.taskLabel($rtask)</a><br/>
+        #elif $task.method == 'runroot'
+        <strong>Build Tag:</strong> <a href="taginfo?tagID=$params[0]">$params[0]</a><br/>
+        <strong>Arch:</strong> $params[1]<br/>
+        $printOpts($params[3])
+        <strong>Commands:</strong> $params[2]<br/>
         #else
         $params
         #end if
