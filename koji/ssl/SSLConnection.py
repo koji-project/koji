@@ -6,8 +6,8 @@
 # Modifications by Dan Williams <dcbw@redhat.com>
 
 
-from OpenSSL import SSL, crypto
-import os, string, time, socket, select
+from OpenSSL import SSL
+import time, socket, select
 
 
 class SSLConnection:

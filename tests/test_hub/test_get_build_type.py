@@ -1,7 +1,6 @@
 import unittest
 import mock
 
-import koji
 import kojihub
 
 
@@ -10,7 +9,6 @@ class TestGetBuildType(unittest.TestCase):
     @mock.patch('kojihub.get_build')
     @mock.patch('kojihub.QueryProcessor')
     def test_no_build(self, QueryProcessor, get_build):
-        mocks = [QueryProcessor, get_build]
         get_build.return_value = None
 
         # strict on
@@ -26,8 +24,6 @@ class TestGetBuildType(unittest.TestCase):
     @mock.patch('kojihub.QueryProcessor')
     def test_has_build(self, QueryProcessor, get_build, get_image_build,
                 get_win_build, get_maven_build):
-        mocks = [x for x in locals().values() if x is not self]
-
         typeinfo = {'maven': {'maven': 'foo'},
                     'win': {'win': 'foo'},
                     'image': {'image': 'foo'},

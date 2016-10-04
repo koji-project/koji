@@ -33,6 +33,7 @@ import time
 import ConfigParser
 from zlib import adler32
 
+# imported from kojiweb and kojihub
 try:
     from hashlib import md5 as md5_constructor
 except ImportError:
@@ -623,7 +624,7 @@ def parse_maven_chain(confs, scratch=False):
     for package, params in builds.items():
         depmap[package] = set(params.get('buildrequires', []))
     try:
-        order = tsort(depmap)
-    except ValueError, e:
+        tsort(depmap)
+    except ValueError:
         raise ValueError, 'No possible build order, missing/circular dependencies'
     return builds

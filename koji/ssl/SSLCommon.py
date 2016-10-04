@@ -19,7 +19,6 @@ from OpenSSL import SSL
 import SSLConnection
 import httplib
 import socket
-import SocketServer
 
 def our_verify(connection, x509, errNum, errDepth, preverifyOK):
     # print "Verify: errNum = %s, errDepth = %s, preverifyOK = %s" % (errNum, errDepth, preverifyOK)
@@ -106,7 +105,7 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
                 self.sock.connect(sa)
                 if self.debuglevel > 0:
                     print "connect: (%s, %s) [ssl]" % (self.host, self.port)
-            except socket.error, msg:
+            except socket.error:
                 if self.debuglevel > 0:
                     print 'connect fail:', (self.host, self.port)
                 if self.sock:

@@ -26,7 +26,6 @@ import koji
 from koji.util import md5_constructor
 import os
 import stat
-import time
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from socket import sslerror as socket_sslerror

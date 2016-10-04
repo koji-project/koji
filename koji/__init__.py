@@ -65,7 +65,6 @@ import xmlrpclib
 import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
-import zipfile
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
@@ -2100,7 +2099,6 @@ class ClientSession(object):
             handler, headers, request = self._prepCall(name, args, kwargs)
             tries = 0
             self.retries = 0
-            debug = self.opts.get('debug', False)
             max_retries = self.opts.get('max_retries', 30)
             interval = self.opts.get('retry_interval', 20)
             while True:
@@ -2280,7 +2278,7 @@ class ClientSession(object):
 
         # check if server supports fast upload
         try:
-            check = self._callMethod('checkUpload', (path, name))
+            self._callMethod('checkUpload', (path, name))
             # fast upload was introduced in 1.7.1, earlier servers will not
             # recognise this call and return an error
         except GenericError:
@@ -2518,7 +2516,7 @@ def _taskLabel(taskInfo):
                 extra = build_target['name']
     elif method == 'winbuild':
         if taskInfo.has_key('request'):
-            vm = taskInfo['request'][0]
+            #vm = taskInfo['request'][0]
             url = taskInfo['request'][1]
             target = taskInfo['request'][2]
             module_info = _module_info(url)
@@ -2608,7 +2606,7 @@ def fixEncoding(value, fallback='iso8859-15'):
         # decode it using the fallback encoding.
         try:
             return value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError, err:
+        except UnicodeDecodeError:
             return value.decode(fallback).encode('utf8')
 
 def add_file_logger(logger, fn):

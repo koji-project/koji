@@ -19,7 +19,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-import koji
 import sys
 import traceback
 from koji.util import LazyDict

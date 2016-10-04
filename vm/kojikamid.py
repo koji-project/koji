@@ -33,7 +33,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urlparse
 import xmlrpclib
 import base64
 import hashlib
