@@ -4676,7 +4676,7 @@ def handle_add_tag(options, session, args):
     if options.extra:
         extra = {}
         for xopt in options.extra:
-            key, value = xopt.split('=')
+            key, value = xopt.split('=', 1)
             value = arg_filter(value)
             extra[key] = value
         opts['extra'] = extra
@@ -4729,7 +4729,7 @@ def handle_edit_tag(options, session, args):
     if options.extra:
         extra = {}
         for xopt in options.extra:
-            key, value = xopt.split('=')
+            key, value = xopt.split('=', 1)
             value = arg_filter(value)
             extra[key] = value
         opts['extra'] = extra
