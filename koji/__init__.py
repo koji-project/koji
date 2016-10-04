@@ -2005,10 +2005,13 @@ class ClientSession(object):
 
         return '%s/%s@%s' % (service, servername, realm)
 
-    def ssl_login(self, cert, ca, serverca, proxyuser=None):
-        certs = {}
-        certs['key_and_cert'] = cert
-        certs['peer_ca_cert'] = serverca
+    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None):
+        cert = cert or self.opts.get('cert')
+        serverca = serverca or self.opts.get('serverca')
+        if cert is None:
+            raise AuthError('No certification provided')
+        if serverca is None:
+            raise AuthError('No server CA provided')
         # FIXME: ca is not useful here and therefore ignored, can be removed
         # when API is changed
 
@@ -2016,7 +2019,8 @@ class ClientSession(object):
         old_opts = self.opts
         self.opts = old_opts.copy()
         self.opts['timeout'] = 60
-        self.opts['certs'] = certs
+        self.opts['cert'] = cert
+        self.opts['serverca'] = serverca
         try:
             sinfo = self.callMethod('sslLogin', proxyuser)
         finally:
@@ -2024,7 +2028,8 @@ class ClientSession(object):
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
 
-        self.opts['certs'] = certs
+        self.opts['cert'] = cert
+        self.opts['serverca'] = serverca
         self.setSession(sinfo)
 
         self.authtype = AUTHTYPE_SSL
@@ -2114,13 +2119,13 @@ class ClientSession(object):
             'data': request,
             'stream': True,
         }
-        verify = self.opts.get('certs', {}).get('peer_ca_cert')
+        verify = self.opts.get('serverca')
         if verify:
             callopts['verify'] = verify
         else:
             callopts['verify'] = False
             # XXX - not great, but this is the previous behavior
-        cert = self.opts.get('certs', {}).get('key_and_cert')
+        cert = self.opts.get('cert')
         if cert:
             # TODO: we really only need to do this for ssllogin calls
             callopts['cert'] = cert
