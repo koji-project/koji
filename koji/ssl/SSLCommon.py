@@ -19,7 +19,6 @@ from OpenSSL import SSL
 import SSLConnection
 import httplib
 import socket
-import SocketServer
 
 def our_verify(connection, x509, errNum, errDepth, preverifyOK):
     # print "Verify: errNum = %s, errDepth = %s, preverifyOK = %s" % (errNum, errDepth, preverifyOK)

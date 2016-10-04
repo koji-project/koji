@@ -1,9 +1,9 @@
 import random
 from unittest import TestCase
-from mock import patch, mock_open, Mock, call
+from mock import patch, Mock, call
 from tempfile import gettempdir
 from shutil import rmtree
-from os import path, makedirs, stat, getuid, getgid
+from os import path, makedirs
 from io import StringIO
 
 import koji

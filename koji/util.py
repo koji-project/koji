@@ -33,6 +33,7 @@ import time
 import ConfigParser
 from zlib import adler32
 
+# imported from kojiweb and kojihub
 try:
     from hashlib import md5 as md5_constructor
 except ImportError:

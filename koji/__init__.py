@@ -65,7 +65,6 @@ import xmlrpclib
 import xml.sax
 import xml.sax.handler
 from xmlrpclib import loads, dumps, Fault
-import zipfile
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 

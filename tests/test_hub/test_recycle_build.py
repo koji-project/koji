@@ -1,4 +1,3 @@
-import unittest
 import mock
 
 import koji

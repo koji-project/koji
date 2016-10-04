@@ -26,8 +26,6 @@ import re
 import sys
 import mimetypes
 import Cookie
-import Cheetah.Filters
-import Cheetah.Template
 import datetime
 import logging
 import time
