@@ -1,10 +1,13 @@
+import random
 from unittest import TestCase
 from mock import patch, mock_open, Mock, call
 from tempfile import gettempdir
 from shutil import rmtree
 from os import path, makedirs, stat, getuid, getgid
 from io import StringIO
-from koji.tasks import *
+
+import koji
+from koji.tasks import scan_mounts, umount_all, safe_rmtree, BaseTaskHandler, FakeTask, SleepTask, ForkTask
 from koji import BuildError, GenericError
 
 def get_fake_mounts_file():
