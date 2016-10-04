@@ -2859,6 +2859,7 @@ def edit_tag(tagInfo, **kwargs):
         maven_support: whether Maven repos should be generated for the tag
         maven_include_all: include every build in this tag (including multiple
                            versions of the same package) in the Maven repo
+        extra: extra tag parameters (dictionary)
     """
 
     context.session.assertPerm('admin')
@@ -2933,10 +2934,10 @@ def edit_tag(tagInfo, **kwargs):
                 insert.execute()
 
 
-def old_edit_tag(tagInfo, name, arches, locked, permissionID):
+def old_edit_tag(tagInfo, name, arches, locked, permissionID, extra=None):
     """Edit information for an existing tag."""
     return edit_tag(tagInfo, name=name, arches=arches, locked=locked,
-                    perm_id=permissionID)
+                    perm_id=permissionID, extra=extra)
 
 
 def delete_tag(tagInfo):
