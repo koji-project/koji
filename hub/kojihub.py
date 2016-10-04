@@ -2737,7 +2737,7 @@ def lookup_build_target(info, strict=False, create=False):
     """Get the id,name for build target"""
     return lookup_name('build_target', info, strict, create)
 
-def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False):
+def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
 
     context.session.assertPerm('admin')
@@ -2765,6 +2765,18 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
     insert.set(maven_support=maven_support, maven_include_all=maven_include_all)
     insert.make_create()
     insert.execute()
+
+    # add extra data
+    if extra is not None:
+        for key, value in extra.iteritems():
+            data = {
+                'tag_id': tag_id,
+                'key': key,
+                'value': json.dumps(value),
+            }
+            insert = InsertProcessor('tag_extra', data=data)
+            insert.make_create()
+            insert.execute()
 
     if parent_id:
         data = {'parent_id': parent_id,

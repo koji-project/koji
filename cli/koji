@@ -4654,6 +4654,8 @@ def handle_add_tag(options, session, args):
     parser.add_option("--arches", help=_("Specify arches"))
     parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
     parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
+    parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
+                      help=_("Set tag extra option"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -4671,6 +4673,13 @@ def handle_add_tag(options, session, args):
         opts['maven_support'] = True
     if options.include_all:
         opts['maven_include_all'] = True
+    if options.extra:
+        extra = {}
+        for xopt in options.extra:
+            key, value = xopt.split('=')
+            value = arg_filter(value)
+            extra[key] = value
+        opts['extra'] = extra
     session.createTag(args[0],**opts)
 
 def handle_edit_tag(options, session, args):
