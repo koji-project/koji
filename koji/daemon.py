@@ -546,6 +546,7 @@ class TaskManager(object):
         self.options = options
         self.session = session
         self.tasks = {}
+        self.skipped_tasks = {}
         self.pids = {}
         self.subsessions = {}
         self.handlers = {}
