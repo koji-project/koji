@@ -912,7 +912,7 @@ class TaskManager(object):
                 return None
 
             return procstats
-        except IOError, e:
+        except IOError:
             # process may have already gone away
             return None
 
@@ -1103,7 +1103,6 @@ class TaskManager(object):
             self.logger.warn("Could not open")
             return False
         task_id = data['id']
-        request = data['request']
         self.tasks[task_id] = data
         # set weight
         try:

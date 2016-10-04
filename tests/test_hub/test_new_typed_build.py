@@ -13,8 +13,7 @@ class TestNewTypedBuild(unittest.TestCase):
 
         binfo = {'id': 1, 'foo': '137'}
         btype = 'sometype'
-        btype_id = 99
-        lookup_name.return_value = {'id':99, 'name':btype}
+        lookup_name.return_value = {'id': 99, 'name': btype}
 
         # no current entry
         query = QueryProcessor.return_value

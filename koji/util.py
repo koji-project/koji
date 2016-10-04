@@ -624,7 +624,7 @@ def parse_maven_chain(confs, scratch=False):
     for package, params in builds.items():
         depmap[package] = set(params.get('buildrequires', []))
     try:
-        order = tsort(depmap)
-    except ValueError, e:
+        tsort(depmap)
+    except ValueError:
         raise ValueError, 'No possible build order, missing/circular dependencies'
     return builds

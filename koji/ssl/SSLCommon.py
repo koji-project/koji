@@ -105,7 +105,7 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
                 self.sock.connect(sa)
                 if self.debuglevel > 0:
                     print "connect: (%s, %s) [ssl]" % (self.host, self.port)
-            except socket.error, msg:
+            except socket.error:
                 if self.debuglevel > 0:
                     print 'connect fail:', (self.host, self.port)
                 if self.sock:
