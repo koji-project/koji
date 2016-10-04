@@ -293,8 +293,8 @@ def index(environ, packageOrder='package_name', packageStart=None):
     values['order'] = '-id'
 
     if user:
-        packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                                start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+        kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
+                                     start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
 
         notifs = server.getBuildNotifications(user['id'])
         notifs.sort(kojiweb.util.sortByKeyFunc('id'))
@@ -790,8 +790,8 @@ def tags(environ, start=None, order=None, childID=None):
         order = 'name'
     values['order'] = order
 
-    tags = kojiweb.util.paginateMethod(server, values, 'listTags', kw=None,
-                                       start=start, dataName='tags', prefix='tag', order=order)
+    kojiweb.util.paginateMethod(server, values, 'listTags', kw=None,
+                                 start=start, dataName='tags', prefix='tag', order=order)
 
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
@@ -830,9 +830,9 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     inherited = int(inherited)
     values['inherited'] = inherited
 
-    packages = kojiweb.util.paginateResults(server, values, 'listPackages',
-                                            kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
-                                            start=start, dataName='packages', prefix='package', order=order)
+    kojiweb.util.paginateResults(server, values, 'listPackages',
+                                 kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
+                                 start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
@@ -853,10 +853,10 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     values['package'] = package
     values['packageID'] = package['id']
 
-    tags = kojiweb.util.paginateMethod(server, values, 'listTags', kw={'package': package['id']},
-                                       start=tagStart, dataName='tags', prefix='tag', order=tagOrder)
-    builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'packageID': package['id']},
-                                         start=buildStart, dataName='builds', prefix='build', order=buildOrder)
+    kojiweb.util.paginateMethod(server, values, 'listTags', kw={'package': package['id']},
+                                start=tagStart, dataName='tags', prefix='tag', order=tagOrder)
+    kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'packageID': package['id']},
+                                start=buildStart, dataName='builds', prefix='build', order=buildOrder)
 
     return _genHTML(environ, 'packageinfo.chtml')
 
@@ -1285,16 +1285,16 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        builds = kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
-                                                                                'owner': (user and user['name'] or None),
-                                                                                'type': type,
-                                                                                'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
-                                              start=start, dataName='builds', prefix='build', order=order)
+        kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
+                                                                       'owner': (user and user['name'] or None),
+                                                                       'type': type,
+                                                                       'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
+                                     start=start, dataName='builds', prefix='build', order=order)
     else:
-        builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
-                                                                               'type': type,
-                                                                               'state': state, 'prefix': prefix},
-                                             start=start, dataName='builds', prefix='build', order=order)
+        kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
+                                                                      'type': type,
+                                                                      'state': state, 'prefix': prefix},
+                                    start=start, dataName='builds', prefix='build', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
@@ -1312,8 +1312,8 @@ def users(environ, order='name', start=None, prefix=None):
 
     values['order'] = order
 
-    users = kojiweb.util.paginateMethod(server, values, 'listUsers', kw={'prefix': prefix},
-                                        start=start, dataName='users', prefix='user', order=order)
+    kojiweb.util.paginateMethod(server, values, 'listUsers', kw={'prefix': prefix},
+                                start=start, dataName='users', prefix='user', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
@@ -1333,11 +1333,11 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None, bu
     values['userID'] = userID
     values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None}, queryOpts={'countOnly': True})
 
-    packages = kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                            start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+    kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
+                                 start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
 
-    builds = kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
-                                         start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
+    kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
+                                start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
 
     return _genHTML(environ, 'userinfo.chtml')
 
@@ -1382,8 +1382,8 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
 
-    files = kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],
-                                        start=fileStart, dataName='files', prefix='file', order=fileOrder)
+    kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],
+                                start=fileStart, dataName='files', prefix='file', order=fileOrder)
 
     return _genHTML(environ, 'rpminfo.chtml')
 
@@ -1404,8 +1404,8 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     builtInRoot = None
     if archive['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
-    files = kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
-                                        start=fileStart, dataName='files', prefix='file', order=fileOrder)
+    kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
+                                start=fileStart, dataName='files', prefix='file', order=fileOrder)
     buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'archiveID': archive['id']},
                                              start=buildrootStart, dataName='buildroots', prefix='buildroot',
                                              order=buildrootOrder)
@@ -1675,15 +1675,16 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         if buildroot == None:
             raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
-        rpms = None
         if type == 'component':
-            rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs',
-                   kw={'componentBuildrootID': buildroot['id']},
-                   start=start, dataName='rpms', prefix='rpm', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                                        kw={'componentBuildrootID': buildroot['id']},
+                                        start=start, dataName='rpms',
+                                        prefix='rpm', order=order)
         elif type == 'built':
-            rpms = kojiweb.util.paginateMethod(server, values, 'listRPMs',
-                   kw={'buildrootID': buildroot['id']},
-                   start=start, dataName='rpms', prefix='rpm', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                                        kw={'buildrootID': buildroot['id']},
+                                        start=start, dataName='rpms',
+                                        prefix='rpm', order=order)
         else:
             raise koji.GenericError, 'unrecognized type of rpmlist'
 
@@ -1692,9 +1693,10 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         values['image'] = server.getArchive(imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
-            rpms =  kojiweb.util.paginateMethod(server, values, 'listRPMs',
-                    kw={'imageID': imageID}, \
-                    start=start, dataName='rpms', prefix='rpm', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listRPMs',
+                                        kw={'imageID': imageID}, \
+                                        start=start, dataName='rpms',
+                                        prefix='rpm', order=order)
         else:
             raise koji.GenericError, 'unrecognized type of image rpmlist'
 
@@ -1716,13 +1718,12 @@ def archivelist(environ, buildrootID, type, start=None, order='filename'):
     if buildroot == None:
         raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
 
-    archives = None
     if type == 'component':
-        rpms = kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
-                                           start=start, dataName='archives', prefix='archive', order=order)
+        kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
+                                    start=start, dataName='archives', prefix='archive', order=order)
     elif type == 'built':
-        rpms = kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
-                                           start=start, dataName='archives', prefix='archive', order=order)
+        kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
+                                    start=start, dataName='archives', prefix='archive', order=order)
     else:
         raise koji.GenericError, 'invalid type: %s' % type
 
@@ -1737,8 +1738,8 @@ def buildtargets(environ, start=None, order='name'):
     values = _initValues(environ, 'Build Targets', 'buildtargets')
     server = _getServer(environ)
 
-    targets = kojiweb.util.paginateMethod(server, values, 'getBuildTargets',
-                                          start=start, dataName='targets', prefix='target', order=order)
+    kojiweb.util.paginateMethod(server, values, 'getBuildTargets',
+                                start=start, dataName='targets', prefix='target', order=order)
 
     values['order'] = order
     if environ['koji.currentUser']:
@@ -1865,8 +1866,8 @@ def buildtargetdelete(environ, targetID):
     _redirect(environ, 'buildtargets')
 
 def reports(environ):
-    server = _getServer(environ)
-    values = _initValues(environ, 'Reports', 'reports')
+    _getServer(environ)
+    _initValues(environ, 'Reports', 'reports')
     return _genHTML(environ, 'reports.chtml')
 
 def buildsbyuser(environ, start=None, order='-builds'):
