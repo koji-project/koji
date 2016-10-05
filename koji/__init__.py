@@ -949,7 +949,7 @@ def _check_NVR(nvr):
 def check_NVRA(nvra, strict=False):
     """Perform basic validity checks on an NVRA
 
-    nvr may be a string or a dictionary with keys name, version, and release
+    nvra may be a string or a dictionary with keys name, version, and release
 
     This function only performs minimal, basic checking. It does not enforce
     the sort of constraints that a project might have in their packaging
@@ -966,13 +966,14 @@ def check_NVRA(nvra, strict=False):
 
 def _check_NVRA(nvra):
     if isinstance(nvra, basestring):
-            nvr = parse_NVR(nvra)
+            nvra = parse_NVRA(nvra)
     if '-' in nvra['version']:
         raise GenericError('The "-" character not allowed in version field')
     if '-' in nvra['release']:
         raise GenericError('The "-" character not allowed in release field')
     if '.' in nvra['arch']:
         raise GenericError('The "." character not allowed in arch field')
+    return True
 
 
 def is_debuginfo(name):
