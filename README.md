@@ -29,7 +29,7 @@ Communicate
 Bugs/RFEs
 ---------
 
-If you have found a bug or would like to request a new feature, please [https://pagure.io/koji/issues report an issue in Pagure].
+If you have found a bug or would like to request a new feature, please [report an issue in Pagure](https://pagure.io/koji/issues).
 
 Download
 --------
