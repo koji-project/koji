@@ -916,6 +916,65 @@ def parse_NVRA(nvra):
         ret['location'] = location
     return ret
 
+
+def check_NVR(nvr, strict=False):
+    """Perform basic validity checks on an NVR
+
+    nvr may be a string or a dictionary with keys name, version, and release
+
+    This function only performs minimal, basic checking. It does not enforce
+    the sort of constraints that a project might have in their packaging
+    guidelines.
+    """
+
+    try:
+        return _check_NVR(nvr)
+    except GenericError:
+        if strict:
+            raise
+        else:
+            return False
+
+def _check_NVR(nvr):
+    if isinstance(nvr, basestring):
+        nvr = parse_NVR(nvr)
+    if '-' in nvr['version']:
+        raise GenericError('The "-" character not allowed in version field')
+    if '-' in nvr['release']:
+        raise GenericError('The "-" character not allowed in release field')
+    # anything else?
+    return True
+
+
+def check_NVRA(nvra, strict=False):
+    """Perform basic validity checks on an NVRA
+
+    nvr may be a string or a dictionary with keys name, version, and release
+
+    This function only performs minimal, basic checking. It does not enforce
+    the sort of constraints that a project might have in their packaging
+    guidelines.
+    """
+    try:
+        return _check_NVRA(nvra)
+    except GenericError:
+        if strict:
+            raise
+        else:
+            return False
+
+
+def _check_NVRA(nvra):
+    if isinstance(nvra, basestring):
+            nvr = parse_NVR(nvra)
+    if '-' in nvra['version']:
+        raise GenericError('The "-" character not allowed in version field')
+    if '-' in nvra['release']:
+        raise GenericError('The "-" character not allowed in release field')
+    if '.' in nvra['arch']:
+        raise GenericError('The "." character not allowed in arch field')
+
+
 def is_debuginfo(name):
     """Determines if an rpm is a debuginfo rpm, based on name"""
     if name.endswith('-debuginfo') or name.find('-debuginfo-') != -1:

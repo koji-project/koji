@@ -4975,6 +4975,8 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
         self.buildinfo = buildinfo
 
+        koji.check_NVR(buildinfo, strict=True)
+
         # get typeinfo
         b_extra = self.metadata['build'].get('extra', {})
         typeinfo = b_extra.get('typeinfo', {})
@@ -5178,6 +5180,8 @@ class CG_Importer(object):
                 raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
             if fileinfo['type'] not in ['rpm', 'log']:
                 self.prep_archive(fileinfo)
+            if fileinfo['type'] == 'rpm':
+                koji.check_NVRA(fileinfo['filename'], strict=True)
             outputs.append(fileinfo)
         self.prepped_outputs = outputs
 
