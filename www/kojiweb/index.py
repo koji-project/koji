@@ -1369,14 +1369,18 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         values['conflicts'].sort(_sortbyname)
         values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
         values['requires'].sort(_sortbyname)
-        values['recommends'] = server.getRPMDeps(rpm['id'], koji.DEP_RECOMMEND)
-        values['recommends'].sort(_sortbyname)
-        values['suggests'] = server.getRPMDeps(rpm['id'], koji.DEP_SUGGEST)
-        values['suggests'].sort(_sortbyname)
-        values['supplements'] = server.getRPMDeps(rpm['id'], koji.DEP_SUPPLEMENT)
-        values['supplements'].sort(_sortbyname)
-        values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
-        values['enhances'].sort(_sortbyname)
+        if koji.RPM_SUPPORTS_OPTIONAL_DEPS:
+            values['optional_deps'] = True
+            values['recommends'] = server.getRPMDeps(rpm['id'], koji.DEP_RECOMMEND)
+            values['recommends'].sort(_sortbyname)
+            values['suggests'] = server.getRPMDeps(rpm['id'], koji.DEP_SUGGEST)
+            values['suggests'].sort(_sortbyname)
+            values['supplements'] = server.getRPMDeps(rpm['id'], koji.DEP_SUPPLEMENT)
+            values['supplements'].sort(_sortbyname)
+            values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
+            values['enhances'].sort(_sortbyname)
+        else:
+            values['optional_deps'] = False
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))

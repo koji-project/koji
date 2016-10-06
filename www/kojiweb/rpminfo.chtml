@@ -139,6 +139,7 @@
         #end if
       </td>
     </tr>
+    #if $optional_deps
     <tr>
       <th>Recommends</th>
       <td class="container">
@@ -203,6 +204,7 @@
         #end if
       </td>
     </tr>
+    #end if
     <tr>
       <th id="filelist">Files</th>
       <td class="container">
