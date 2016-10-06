@@ -92,22 +92,6 @@
       </td>
     </tr>
     <tr>
-      <th>Requires</th>
-      <td class="container">
-        #if $len($requires) > 0
-        <table class="nested">
-          #for $dep in $requires
-          <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
-          </tr>
-          #end for
-        </table>
-        #else
-        No Requires
-        #end if
-      </td>
-    </tr>
-    <tr>
       <th>Obsoletes</th>
       <td class="container">
         #if $len($obsoletes) > 0
@@ -136,6 +120,86 @@
         </table>
         #else
         No Conflicts
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Requires</th>
+      <td class="container">
+        #if $len($requires) > 0
+        <table class="nested">
+          #for $dep in $requires
+          <tr>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Requires
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Recommends</th>
+      <td class="container">
+        #if $len($recommends) > 0
+        <table class="nested">
+          #for $dep in $recommends
+          <tr>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Recommends
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Suggests</th>
+      <td class="container">
+        #if $len($suggests) > 0
+        <table class="nested">
+          #for $dep in $suggests
+          <tr>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Suggests
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Supplements</th>
+      <td class="container">
+        #if $len($supplements) > 0
+        <table class="nested">
+          #for $dep in $supplements
+          <tr>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Supplements
+        #end if
+      </td>
+    </tr>
+    <tr>
+      <th>Enhances</th>
+      <td class="container">
+        #if $len($enhances) > 0
+        <table class="nested">
+          #for $dep in $enhances
+          <tr>
+            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+          </tr>
+          #end for
+        </table>
+        #else
+        No Enhances
         #end if
       </td>
     </tr>
