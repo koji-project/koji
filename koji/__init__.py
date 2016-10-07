@@ -1570,9 +1570,9 @@ def read_config(profile_name, user_config=None):
         'poll_interval': 5,
         'krbservice': 'host',
         'krb_rdns': True,
-        'cert': '~/.koji/client.crt',
+        'cert': None,
         'ca': '',  # FIXME: remove in next major release
-        'serverca': '~/.koji/serverca.crt',
+        'serverca': None,
         'authtype': None
     }
 
@@ -1641,6 +1641,19 @@ def read_config(profile_name, user_config=None):
     if configs and not got_conf:
         sys.stderr.write("Warning: no configuration for profile name: %s\n" % profile_name)
         sys.stderr.flush()
+
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '~/.koji/client.crt',
+        'serverca': '~/.koji/serverca.crt',
+        }
+    for name in cert_defaults:
+        if result.get(name) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                result[name] = fn
+            else:
+                result[name] = ''
 
     return result
 
