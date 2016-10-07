@@ -2135,7 +2135,7 @@ class ClientSession(object):
         verify = self.opts.get('serverca')
         if verify:
             callopts['verify'] = verify
-        else:
+        elif self.opts.get('no_ssl_verify'):
             callopts['verify'] = False
             # XXX - not great, but this is the previous behavior
         cert = self.opts.get('cert')
