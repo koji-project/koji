@@ -61,6 +61,7 @@ import urllib
 import urllib2
 import urlparse
 import util
+import warnings
 import xmlrpclib
 import xml.sax
 import xml.sax.handler
@@ -2152,12 +2153,14 @@ class ClientSession(object):
                 if _key == 'data' and len(_val) > 1024:
                     _val = _val[:1024] + '...'
                 print "%s: %r" % (_key, _val)
-        r = self.rsession.post(handler, **callopts)
-        try:
-            ret = self._read_xmlrpc_response(r)
-        finally:
-            r.close()
-        return ret
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = self.rsession.post(handler, **callopts)
+            try:
+                ret = self._read_xmlrpc_response(r)
+            finally:
+                r.close()
+            return ret
 
     def _read_xmlrpc_response(self, response):
         p, u = xmlrpclib.getparser()
