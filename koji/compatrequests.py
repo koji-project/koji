@@ -65,11 +65,25 @@ class Session(object):
             default_port = 443
         elif scheme == 'https':
             cnxOpts = {}
-            if sys.version_info[:3] >= (2, 7, 9) and not verify:
+            if verify:
+                if sys.version_info[:3] >= (2, 7, 9):
+                    try:
+                        proto = pyssl.PROTOCOL_TLS
+                    except AttributeError:
+                        proto = pyssl.PROTOCOL_SSLv23
+                    ctx = pyssl.SSLContext(proto)
+                    ctx.load_verify_locations(cafile=verify)
+                    ctx.verify_mode = pyssl.CERT_REQUIRED
+                    cnxOpts['context'] = ctx
+                else:
+                    cnxOpts['cert_file'] = verify
+            elif verify is None:
+                # not specified, leave as default
+                pass
+            elif sys.version_info[:3] >= (2, 7, 9):
+                # no verify
                 ctx = pyssl._create_unverified_context()
-                # TODO - we should default to verifying where possible
                 cnxOpts['context'] = ctx
-            # TODO honor verify
             cnxClass = httplib.HTTPSConnection
             default_port = 443
         elif scheme == 'http':
