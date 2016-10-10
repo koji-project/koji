@@ -2059,6 +2059,11 @@ class ClientSession(object):
         # FIXME: ca is not useful here and therefore ignored, can be removed
         # when API is changed
 
+        # force https
+        uri = urlparse.urlsplit(self.baseurl)
+        if uri[0] != 'https':
+            self.baseurl = 'https://%s%s' % (uri[1], uri[2])
+
         # 60 second timeout during login
         old_opts = self.opts
         self.opts = old_opts.copy()
