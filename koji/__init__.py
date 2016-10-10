@@ -1864,6 +1864,35 @@ def is_cert_error(e):
     return False
 
 
+def is_conn_error(e):
+    """Determine if an error seems to be from a dropped connection"""
+    if isinstance(e, socket.error):
+        if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            return True
+        # else
+        return False
+    if isinstance(e, httplib.BadStatusLine):
+        return True
+    if requests is not None:
+        try:
+            if isinstance(e, requests.exceptions.ConnectionError):
+                # we see errors like this in keep alive timeout races
+                # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
+                e2 = getattr(e, 'args', [None])[0]
+                if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
+                    e3 = getattr(e2, 'args', [None, None])[1]
+                    if isinstance(e3, httplib.BadStatusLine):
+                        return True
+                if isinstance(e2, socket.error):
+                    # same check as unwrapped socket error
+                    if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+                        return True
+        except (TypeError, AttributeError):
+            pass
+    # otherwise
+    return False
+
+
 class VirtualMethod(object):
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
@@ -1897,6 +1926,7 @@ class ClientSession(object):
         self.opts.setdefault('timeout',  60 * 60 * 12)
 
     def new_session(self):
+        self.logger.debug("Opening new requests session")
         if self.rsession:
             self.rsession.close()
         if self.opts.get('use_old_ssl', False) or requests is None:
@@ -2116,15 +2146,11 @@ class ClientSession(object):
         for i in (0, 1):
             try:
                 return self._sendOneCall(handler, headers, request)
-            except socket.error, e:
-                self.new_session()
-                if i or getattr(e, 'errno', None) not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            except Exception, e:
+                if i or not is_conn_error(e):
                     raise
-            except httplib.BadStatusLine:
+                self.logger.debug("Connection Error: %s", e)
                 self.new_session()
-                if i:
-                    raise
-
 
     def _sendOneCall(self, handler, headers, request):
         headers = dict(headers)
