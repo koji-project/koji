@@ -1568,7 +1568,7 @@ def read_config(profile_name, user_config=None):
         'timeout' : None,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
-        'poll_interval': 5,
+        'poll_interval': 6,
         'krbservice': 'host',
         'krb_rdns': True,
         'cert': None,

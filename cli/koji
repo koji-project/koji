@@ -4360,7 +4360,7 @@ def anon_handle_list_history(options, session, args):
         if not options.watch:
             break
         else:
-            time.sleep(5)
+            time.sleep(options.poll_interval)
             # repeat query for later events
             if last_event:
                 kwargs['afterEvent'] = last_event
