@@ -213,6 +213,7 @@ class TestImportComps(unittest.TestCase):
         session.groupListAdd.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
+    @unittest.skip("unnecessary to execute everytime")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     def test_import_comps_libcomps(self, stdout):
         comps_file = os.path.dirname(__file__) + '/data/comps-example.xml'
@@ -241,6 +242,7 @@ class TestImportComps(unittest.TestCase):
             calls_file,
             stdout)
 
+    @unittest.skip("unnecessary to execute everytime")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True, new=yumcomps)
