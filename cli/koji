@@ -962,7 +962,6 @@ def handle_build(options, session, args):
             parser.error(_("Destination tag %s is locked" % dest_tag['name']))
     source = args[1]
     opts = {}
-    print build_opts
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
     for key in ('skip_tag', 'scratch', 'repo_id'):
