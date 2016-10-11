@@ -1,6 +1,5 @@
 import unittest
 
-
 import StringIO as stringio
 
 import os
@@ -24,7 +23,6 @@ cli = loadcli.cli
 
 
 class TestImportComps(unittest.TestCase):
-
     # Show long diffs in error output...
     maxDiff = None
 
@@ -311,6 +309,54 @@ class TestImportComps(unittest.TestCase):
             expected = f.read().decode('ascii')
         self.assertMultiLineEqual(str(session.mock_calls) + '\n', expected)
         self.assertNotEqual(rv, 1)
+
+
+def _generate_out_calls(method, comps_file, stdout_file, calls_file):
+    tag = 'tag'
+    force = None
+    options = {'force': force}
+
+    # Mock out the xmlrpc server
+    session = mock.MagicMock()
+
+    with open(stdout_file, 'wb') as f:
+        # redirect stdout to stdout_file
+        orig_stdout = sys.stdout
+        sys.stdout = f
+        # args: comps.xml, tag
+        # expected: success
+        method.__call__(session, comps_file, tag, options)
+        sys.stdout = orig_stdout
+    with open(calls_file, 'wb') as f:
+        f.write(str(session.mock_calls).encode('ascii') + '\n')
+
+
+def generate_out_calls():
+    """Generate .out and .calls files for tests.
+    These files should be carefully check to make sure they're excepted"""
+    path = os.path.dirname(__file__)
+
+    comps_file = path + '/data/comps-example.xml'
+    stdout_file = path + '/data/comps-example.libcomps.out'
+    calls_file = path + '/data/comps-example.libcomps.calls'
+    _generate_out_calls(cli._import_comps, comps_file, stdout_file, calls_file)
+
+    comps_file = path + '/data/comps-sample.xml'
+    stdout_file = path + '/data/comps-sample.libcomps.out'
+    calls_file = path + '/data/comps-sample.libcomps.calls'
+    _generate_out_calls(cli._import_comps, comps_file, stdout_file, calls_file)
+
+    cli.yumcomps = yumcomps
+
+    comps_file = path + '/data/comps-example.xml'
+    stdout_file = path + '/data/comps-example.yumcomps.out'
+    calls_file = path + '/data/comps-example.yumcomps.calls'
+    _generate_out_calls(cli._import_comps_alt, comps_file, stdout_file, calls_file)
+
+    comps_file = path + '/data/comps-sample.xml'
+    stdout_file = path + '/data/comps-sample.yumcomps.out'
+    calls_file = path + '/data/comps-sample.yumcomps.calls'
+    _generate_out_calls(cli._import_comps_alt, comps_file, stdout_file, calls_file)
 
 
 if __name__ == '__main__':
