@@ -35,7 +35,7 @@ BuildRequires: python
 BuildRequires: systemd
 BuildRequires: pkgconfig
 %endif
-%if 0%{?fedora}
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: python-libcomps
 %endif
 
