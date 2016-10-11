@@ -149,7 +149,7 @@ Try "%(progname)s help" to get all available commands
 Try "%(progname)s <command> --help" for help about the options of a particular command
 Try "%(progname)s help <category>" to get commands under a particular category
 Available categories are: %(categories)s
-''' % ({'progname': progname, 'categories': categories_ordered}) 
+''' % ({'progname': progname, 'categories': categories_ordered})
     return _(epilog_str)
 
 def get_options():
@@ -889,7 +889,7 @@ def _format_size(size):
 
 def _format_secs(t):
     h = t / 3600
-    t = t % 3600
+    t %= 3600
     m = t / 60
     s = t % 60
     return "%02d:%02d:%02d" % (h, m, s)
@@ -962,6 +962,7 @@ def handle_build(options, session, args):
             parser.error(_("Destination tag %s is locked" % dest_tag['name']))
     source = args[1]
     opts = {}
+    print build_opts
     if build_opts.arch_override:
         opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
     for key in ('skip_tag', 'scratch', 'repo_id'):
