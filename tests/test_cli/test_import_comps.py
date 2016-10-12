@@ -11,7 +11,14 @@ import mock
 
 import loadcli
 
-import yum.comps as yumcomps
+try:
+    import libcomps
+except ImportError:
+    libcomps = None
+try:
+    import yum.comps as yumcomps
+except ImportError:
+    yumcomps = None
 
 cli = loadcli.cli
 
@@ -213,7 +220,7 @@ class TestImportComps(unittest.TestCase):
         session.groupListAdd.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @unittest.skip("unnecessary to execute everytime")
+    @unittest.skipIf(libcomps is None, "No libcomps")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     def test_import_comps_libcomps(self, stdout):
         comps_file = os.path.dirname(__file__) + '/data/comps-example.xml'
@@ -228,6 +235,7 @@ class TestImportComps(unittest.TestCase):
             calls_file,
             stdout)
 
+    @unittest.skipIf(libcomps is None, "No libcomps")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     def test_import_comps_sample_libcomps(self, stdout):
         comps_file = os.path.dirname(__file__) + '/data/comps-sample.xml'
@@ -242,7 +250,7 @@ class TestImportComps(unittest.TestCase):
             calls_file,
             stdout)
 
-    @unittest.skip("unnecessary to execute everytime")
+    @unittest.skipIf(yumcomps is None, "No yum.comps")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True, new=yumcomps)
@@ -259,6 +267,7 @@ class TestImportComps(unittest.TestCase):
             calls_file,
             stdout)
 
+    @unittest.skipIf(yumcomps is None, "No yum.comps")
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True, new=yumcomps)
