@@ -42,6 +42,7 @@ except ImportError:
         json = None
 import ConfigParser
 import base64
+import dateutil.parser
 import errno
 import koji
 import koji.util
@@ -4213,6 +4214,22 @@ def anon_handle_list_history(options, session, args):
         assert False
     kwargs = {}
     limited = False
+    for opt in ('before', 'after'):
+        val = getattr(options, opt)
+        if not val:
+            continue
+        try:
+            ts = float(val)
+            setattr(options, opt, ts)
+            continue
+        except ValueError:
+            pass
+        try:
+            dt = dateutil.parser.parse(val)
+            ts = time.mktime(dt.timetuple())
+            setattr(options, opt, ts)
+        except:
+            parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
                 'after'):
