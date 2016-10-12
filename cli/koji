@@ -70,8 +70,7 @@ except ImportError:
     except ImportError:
         yumcomps = None
 import optparse
-#for import-comps handler (currently disabled)
-#from rhpl.comps import Comps
+
 
 # fix OptionParser for python 2.3 (optparse verion 1.4.1+)
 # code taken from optparse version 1.5a2
