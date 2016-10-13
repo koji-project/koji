@@ -69,6 +69,7 @@ class HasTest(BaseSimpleTest):
     name = "has"
 
     def __init__(self, str):
+        super(HasTest, self).__init__(str)
         try:
             self.field = str.split()[1]
         except IndexError:
@@ -328,9 +329,9 @@ class SimpleRuleSet(object):
         for (tests, negate) in self.lastrule:
             line = '&&'.join([str(t) for t in tests])
             if negate:
-                line += ' !! '
+                line += '!! '
             else:
-                line += ' :: '
+                line += ':: '
             ret.append(line)
         ret = '... '.join(ret)
         if self.lastaction is None:
