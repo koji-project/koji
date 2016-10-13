@@ -913,11 +913,9 @@ def _progress_callback(uploaded, total, piece, time, total_time):
 
 def _running_in_bg():
     try:
-        if (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0)):
-            return True
+        return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
     except OSError, e:
         return True
-    return False
 
 def handle_build(options, session, args):
     "[build] Build a package from source"
