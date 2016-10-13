@@ -29,7 +29,7 @@ import traceback
 _quoteparams = None
 try:
     from pgdb import _quoteparams
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 assert pgdb.threadsafety >= 1
 import context

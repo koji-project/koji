@@ -59,7 +59,7 @@ from koji.context import context
 
 try:
     import json
-except ImportError:
+except ImportError:  # pragma: no cover
     import simplejson as json
 
 

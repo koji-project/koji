@@ -3,6 +3,6 @@
 # our own ssl submodule masks python's in the main lib, so we import this here
 try:
     import ssl      # python's ssl module
-except ImportError:
+except ImportError:  # pragma: no cover
     # ssl module added in 2.6
     pass

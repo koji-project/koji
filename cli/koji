@@ -27,15 +27,15 @@
 import sys
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 try:
     import ast
-except ImportError:
+except ImportError:  # pragma: no cover
     ast = None
 try:
     import json
-except ImportError:
+except ImportError:  # pragma: no cover
     try:
         import simplejson as json
     except ImportError:
@@ -63,7 +63,7 @@ import urlgrabber.progress as progress
 import xmlrpclib
 try:
     import libcomps
-except ImportError:
+except ImportError:  # pragma: no cover
     libcomps = None
     try:
         import yum.comps as yumcomps
@@ -75,7 +75,7 @@ import optparse
 # fix OptionParser for python 2.3 (optparse verion 1.4.1+)
 # code taken from optparse version 1.5a2
 OptionParser = optparse.OptionParser
-if optparse.__version__ == "1.4.1+":
+if optparse.__version__ == "1.4.1+":  # pragma: no cover
     def _op_error(self, msg):
         self.print_usage(sys.stderr)
         msg = "%s: error: %s\n" % (self._get_prog_name(), msg)

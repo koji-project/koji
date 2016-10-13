@@ -13,7 +13,7 @@ try:
     from koji.util import parseStatus as _parseStatus
     from koji.daemon import log_output
     from __main__ import BuildRoot
-except ImportError:
+except ImportError:  # pragma: no cover
     compat_mode = True
     #old way
     import tasks

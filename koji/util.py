@@ -36,11 +36,11 @@ from zlib import adler32
 # imported from kojiweb and kojihub
 try:
     from hashlib import md5 as md5_constructor
-except ImportError:
+except ImportError:  # pragma: no cover
     from md5 import new as md5_constructor
 try:
     from hashlib import sha1 as sha1_constructor
-except ImportError:
+except ImportError:  # pragma: no cover
     from sha import new as sha1_constructor
 
 def _changelogDate(cldate):

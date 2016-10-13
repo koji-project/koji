@@ -23,7 +23,7 @@
 
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 import koji
 import ConfigParser

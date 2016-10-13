@@ -8,7 +8,7 @@
 
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 import koji
 from koji.util import LazyDict, LazyValue

@@ -23,7 +23,7 @@
 
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 import koji
 import koji.plugin
@@ -69,7 +69,7 @@ try:
     import hashlib
     import iso9660 # from pycdio
     image_enabled = True
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 ozif_enabled = False
@@ -87,7 +87,7 @@ try:
     # NOTE: import below requires Factory 1.1.7 or higher
     from imgfac.FactoryUtils import qemu_convert_cmd
     ozif_enabled = True
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 def main(options, session):

@@ -51,7 +51,7 @@ import socket
 import ssl.SSLCommon
 try:
     from ssl import ssl as pyssl
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 import struct
 import tempfile
