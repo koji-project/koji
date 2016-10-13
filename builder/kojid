@@ -1598,7 +1598,7 @@ class WrapperRPMTask(BaseBuildTask):
                     all_artifacts_with_path.append(artifact_name)
                 else:
                     # can't happen
-                    assert False
+                    assert False  # pragma: no cover
 
         if not artifacts:
             raise koji.BuildError, 'no output found for %s' % (task and koji.taskLabel(task) or koji.buildLabel(build))
@@ -1617,7 +1617,7 @@ class WrapperRPMTask(BaseBuildTask):
                 values['image_info'] = image_info
             else:
                 # can't happen
-                assert False
+                assert False  # pragma: no cover
         else:
             task_result = self.session.getTaskResult(task['id'])
             if task['method'] == 'buildMaven':
@@ -1633,7 +1633,7 @@ class WrapperRPMTask(BaseBuildTask):
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
             else:
                 # can't happen
-                assert False
+                assert False  # pragma: no cover
 
         scm = SCM(spec_url)
         scm.assert_allowed(self.options.allowed_scms)
@@ -4933,7 +4933,7 @@ def get_options():
     if args:
         parser.error("incorrect number of arguments")
         #not reached
-        assert False
+        assert False  # pragma: no cover
 
     # load local config
     config = ConfigParser()
@@ -5137,7 +5137,7 @@ if __name__ == "__main__":
         koji.daemonize()
         main(options, session)
         # not reached
-        assert False
+        assert False  # pragma: no cover
     elif not options.skip_main:
         koji.add_stderr_logger("koji")
         main(options, session)

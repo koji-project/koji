@@ -232,14 +232,14 @@ def get_options():
     else:
         list_commands()
         parser.error('Unknown command: %s' % args[0])
-        assert False
+        assert False  # pragma: no cover
 
     # load local config
     try:
         result = koji.read_config(options.profile, user_config=options.configFile)
     except koji.ConfigurationError, e:
         parser.error(e.args[0])
-        assert False
+        assert False  # pragma: no cover
 
     # update options according to local config
     for name, value in result.iteritems():
@@ -541,7 +541,7 @@ def handle_add_group(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a tag name and a group name"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
 
@@ -611,7 +611,7 @@ def handle_add_host(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a hostname and at least one arch"))
-        assert False
+        assert False  # pragma: no cover
     host = args[0]
     activate_session(session)
     id = session.getHost(host)
@@ -678,7 +678,7 @@ def handle_add_host_to_channel(options, session, args):
     (options, args) = parser.parse_args(args)
     if not options.list and len(args) != 2:
         parser.error(_("Please specify a hostname and a channel"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     if options.list:
         for channel in session.listChannels():
@@ -708,7 +708,7 @@ def handle_remove_host_from_channel(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a hostname and a channel"))
-        assert False
+        assert False  # pragma: no cover
     host = args[0]
     activate_session(session)
     hostinfo = session.getHost(host)
@@ -733,7 +733,7 @@ def handle_remove_channel(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     cinfo = session.getChannel(args[0])
     if not cinfo:
@@ -749,7 +749,7 @@ def handle_rename_channel(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     cinfo = session.getChannel(args[0])
     if not cinfo:
@@ -768,10 +768,10 @@ def handle_add_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     if not options.owner:
         parser.error(_("Please specify an owner for the package(s)"))
-        assert False
+        assert False  # pragma: no cover
     if not session.getUser(options.owner):
         print "User %s does not exist" % options.owner
         return 1
@@ -812,7 +812,7 @@ def handle_block_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     # check if list of packages exists for that tag already
@@ -843,7 +843,7 @@ def handle_remove_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     opts = {}
@@ -943,7 +943,7 @@ def handle_build(options, session, args):
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are required"))
-        assert False
+        assert False  # pragma: no cover
     if build_opts.arch_override and not build_opts.scratch:
         parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session)
@@ -1010,7 +1010,7 @@ def handle_chain_build(options, session, args):
     (build_opts, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("At least two arguments (a build target and a SCM URL) are required"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     target = args[0]
     build_target = session.getBuildTarget(target)
@@ -1252,7 +1252,7 @@ def handle_maven_chain(options, session, args):
     (build_opts, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Two arguments (a build target and a config file) are required"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     target = args[0]
     build_target = session.getBuildTarget(target)
@@ -1296,7 +1296,7 @@ def handle_resubmit(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a single task ID"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     taskID = int(args[0])
     if not options.quiet:
@@ -1321,7 +1321,7 @@ def handle_call(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify the name of the XML-RPC method"))
-        assert False
+        assert False  # pragma: no cover
     if options.kwargs:
         options.python = True
     if options.python and ast is None:
@@ -1450,7 +1450,7 @@ def anon_handle_mock_config(options, session, args):
             opts['repoid'] = repo['id']
     else:
         parser.error(_("Please specify one of: --tag, --target, --task, --buildroot"))
-        assert False
+        assert False  # pragma: no cover
     if options.name:
         name = options.name
     else:
@@ -1570,7 +1570,7 @@ def handle_import(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("At least one package must be specified"))
-        assert False
+        assert False  # pragma: no cover
     if options.src_epoch in ('None', 'none', '(none)'):
         options.src_epoch = None
     elif options.src_epoch:
@@ -1578,7 +1578,7 @@ def handle_import(options, session, args):
             options.src_epoch = int(options.src_epoch)
         except (ValueError, TypeError):
             parser.error(_("Invalid value for epoch: %s") % options.src_epoch)
-            assert False
+            assert False  # pragma: no cover
     activate_session(session)
     to_import = {}
     for path in args:
@@ -1717,10 +1717,10 @@ def handle_import_cg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify metadata files directory"))
-        assert False
+        assert False  # pragma: no cover
     if json is None:
         parser.error(_("Unable to find json module"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     metadata = json.load(file(args[0], 'r'))
     if 'output' not in metadata:
@@ -1770,7 +1770,7 @@ def handle_import_comps(options, session, args):
     (local_options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     # check if the tag exists
     dsttag = session.getTag(args[1])
@@ -1860,7 +1860,7 @@ def handle_import_sig(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("At least one package must be specified"))
-        assert False
+        assert False  # pragma: no cover
     for path in args:
         if not os.path.exists(path):
             parser.error(_("No such file: %s") % path)
@@ -1913,10 +1913,10 @@ def handle_write_signed_rpm(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("A signature key must be specified"))
-        assert False
+        assert False  # pragma: no cover
     if len(args) < 2 and not (options.all or options.buildid):
         parser.error(_("At least one RPM must be specified"))
-        assert False
+        assert False  # pragma: no cover
     key = args.pop(0)
     activate_session(session)
     if options.all:
@@ -1997,7 +1997,7 @@ def handle_prune_signed_copies(options, session, args):
         binfo = session.getBuild(options.build)
         if not binfo:
             parser.error('No such build: %s' % options.build)
-            assert False
+            assert False  # pragma: no cover
         builds = [("%(name)s-%(version)s-%(release)s" % binfo, binfo)]
     total_files = 0
     total_space = 0
@@ -2336,7 +2336,7 @@ def handle_list_permissions(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     if options.user:
         user = session.getUser(options.user)
@@ -2480,7 +2480,7 @@ def handle_import_in_place(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("At least one package must be specified"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     for nvr in args:
         data = koji.parse_NVR(nvr)
@@ -2512,30 +2512,30 @@ def handle_import_archive(options, session, args):
 
     if not len(args) > 1:
         parser.error(_("You must specify a build ID or N-V-R and an archive to import"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
 
     if not suboptions.type:
         parser.error(_("You must specify an archive type"))
-        assert False
+        assert False  # pragma: no cover
     if suboptions.type == 'maven':
         if not (session.hasPerm('maven-import') or session.hasPerm('admin')):
             parser.error(_("This action requires the maven-import privilege"))
-            assert False
+            assert False  # pragma: no cover
         if not suboptions.type_info:
             parser.error(_("--type-info must point to a .pom file when importing Maven archives"))
-            assert False
+            assert False  # pragma: no cover
         pom_info = koji.parse_pom(suboptions.type_info)
         maven_info = koji.pom_to_maven_info(pom_info)
         suboptions.type_info = maven_info
     elif suboptions.type == 'win':
         if not (session.hasPerm('win-import') or session.hasPerm('admin')):
             parser.error(_("This action requires the win-import privilege"))
-            assert False
+            assert False  # pragma: no cover
         if not suboptions.type_info:
             parser.error(_("--type-info must be specified"))
-            assert False
+            assert False  # pragma: no cover
         type_info = suboptions.type_info.split(':', 2)
         if len(type_info) < 2:
             parser.error(_("--type-info must be in relpath:platforms[:flags] format"))
@@ -2548,15 +2548,15 @@ def handle_import_archive(options, session, args):
     elif suboptions.type == 'image':
         if not (session.hasPerm('image-import') or session.hasPerm('admin')):
             parser.error(_("This action requires the image-import privilege"))
-            assert False
+            assert False  # pragma: no cover
         if not suboptions.type_info:
             parser.error(_("--type-info must be specified"))
-            assert False
+            assert False  # pragma: no cover
         image_info = {'arch': suboptions.type_info}
         suboptions.type_info = image_info
     else:
         parser.error(_("Unsupported archive type: %s" % suboptions.type))
-        assert False
+        assert False  # pragma: no cover
 
     buildinfo = session.getBuild(arg_filter(args[0]))
     if not buildinfo:
@@ -2579,7 +2579,7 @@ def handle_import_archive(options, session, args):
             session.createImageBuild(buildinfo)
         else:
             # should get caught above
-            assert False
+            assert False  # pragma: no cover
 
     for filepath in args[1:]:
         filename = os.path.basename(filepath)
@@ -2607,7 +2607,7 @@ def handle_grant_permission(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     perm = args[0]
     names = args[1:]
@@ -2616,7 +2616,7 @@ def handle_grant_permission(options, session, args):
         user = session.getUser(n)
         if user is None:
             parser.error(_("No such user: %s" % n))
-            assert False
+            assert False  # pragma: no cover
         users.append(user)
     kwargs = {}
     if options.new:
@@ -2632,7 +2632,7 @@ def handle_revoke_permission(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     perm = args[0]
     names = args[1:]
@@ -2641,7 +2641,7 @@ def handle_revoke_permission(options, session, args):
         user = session.getUser(n)
         if user is None:
             parser.error(_("No such user: %s" % n))
-            assert False
+            assert False  # pragma: no cover
         users.append(user)
     for user in users:
         session.revokePermission(user['name'], perm)
@@ -2656,14 +2656,14 @@ def handle_grant_cg_access(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a user and content generator"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     user = args[0]
     cg = args[1]
     uinfo = session.getUser(user)
     if uinfo is None:
         parser.error(_("No such user: %s" % user))
-        assert False
+        assert False  # pragma: no cover
     kwargs = {}
     if options.new:
         kwargs['create'] = True
@@ -2678,14 +2678,14 @@ def handle_revoke_cg_access(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a user and content generator"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     user = args[0]
     cg = args[1]
     uinfo = session.getUser(user)
     if uinfo is None:
         parser.error(_("No such user: %s" % user))
-        assert False
+        assert False  # pragma: no cover
     session.revokeCGAccess(uinfo['name'], cg)
 
 
@@ -2702,18 +2702,18 @@ def anon_handle_latest_build(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     if options.all:
         if len(args) > 1:
             parser.error(_("A package name may not be combined with --all"))
-            assert False
+            assert False  # pragma: no cover
         # Set None as the package argument
         args.append(None)
     else:
         if len(args) < 2:
             parser.error(_("A tag name and package name must be specified"))
-            assert False
+            assert False  # pragma: no cover
     pathinfo = koji.PathInfo()
 
     for pkg in args[1:]:
@@ -2771,7 +2771,7 @@ def anon_handle_list_api(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tmplist = [(x['name'], x) for x in session._listapi()]
     tmplist.sort()
@@ -2814,10 +2814,10 @@ def anon_handle_list_tagged(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
-        assert False
+        assert False  # pragma: no cover
     elif len(args) > 2:
         parser.error(_("Only one package name may be specified"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     pathinfo = koji.PathInfo()
     package = None
@@ -2906,7 +2906,7 @@ def anon_handle_list_buildroot(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     buildrootID = int(args[0])
     opts = {}
@@ -2935,7 +2935,7 @@ def anon_handle_list_untagged(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) > 1:
         parser.error(_("Only one package name may be specified"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     package = None
     if len(args) > 0:
@@ -2992,7 +2992,7 @@ def anon_handle_list_groups(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1 or len(args) > 2:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     opts = {}
     activate_session(session)
     event = koji.util.eventFromOpts(session, options)
@@ -3027,7 +3027,7 @@ def handle_add_group_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     activate_session(session)
@@ -3042,7 +3042,7 @@ def handle_block_group_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     activate_session(session)
@@ -3057,7 +3057,7 @@ def handle_unblock_group_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     activate_session(session)
@@ -3072,7 +3072,7 @@ def handle_add_group_req(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     req = args[2]
@@ -3087,7 +3087,7 @@ def handle_block_group_req(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     req = args[2]
@@ -3102,7 +3102,7 @@ def handle_unblock_group_req(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
-        assert False
+        assert False  # pragma: no cover
     tag = args[0]
     group = args[1]
     req = args[2]
@@ -3130,7 +3130,7 @@ def anon_handle_list_hosts(options, session, args):
         channel = session.getChannel(options.channel)
         if not channel:
             parser.error(_('Unknown channel: %s' % options.channel))
-            assert False
+            assert False  # pragma: no cover
         opts['channelID'] = channel['id']
     if options.ready is not None:
         opts['ready'] = options.ready
@@ -3182,20 +3182,20 @@ def anon_handle_list_pkgs(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     opts = {}
     if options.owner:
         user = session.getUser(options.owner)
         if user is None:
             parser.error(_("Invalid user"))
-            assert False
+            assert False  # pragma: no cover
         opts['userID'] = user['id']
     if options.tag:
         tag = session.getTag(options.tag)
         if tag is None:
             parser.error(_("Invalid tag"))
-            assert False
+            assert False  # pragma: no cover
         opts['tagID'] = tag['id']
     if options.package:
         opts['pkgID'] = options.package
@@ -3250,7 +3250,7 @@ def anon_handle_rpminfo(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify an RPM"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     for rpm in args:
         info = session.getRPM(rpm)
@@ -3316,7 +3316,7 @@ def anon_handle_buildinfo(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a build"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     for build in args:
         if build.isdigit():
@@ -3410,7 +3410,7 @@ def handle_clone_tag(options, session, args):
 
     if len(args) != 2:
         parser.error(_("This command takes two argument: <src-tag> <dst-tag>"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
 
     if not session.hasPerm('admin') and not options.test:
@@ -3666,10 +3666,10 @@ def handle_add_target(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a target name, a build tag, and destination tag"))
-        assert False
+        assert False  # pragma: no cover
     elif len(args) > 3:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     name = args[0]
     build_tag = args[1]
     if len(args) > 2:
@@ -3709,7 +3709,7 @@ def handle_edit_target(options, session, args):
 
     if len(args) != 1:
         parser.error(_("Please specify a build target"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
 
     if not session.hasPerm('admin'):
@@ -3751,7 +3751,7 @@ def handle_remove_target(options, session, args):
 
     if len(args) != 1:
         parser.error(_("Please specify a build target to remove"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
 
     if not session.hasPerm('admin'):
@@ -3775,7 +3775,7 @@ def handle_remove_tag(options, session, args):
 
     if len(args) != 1:
         parser.error(_("Please specify a tag to remove"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
 
     if not session.hasPerm('admin'):
@@ -3800,7 +3800,7 @@ def anon_handle_list_targets(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
 
     fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
@@ -3868,7 +3868,7 @@ def anon_handle_list_tag_inheritance(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("This command takes exctly one argument: a tag name or ID"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     event = koji.util.eventFromOpts(session, options)
     if event:
@@ -3929,13 +3929,13 @@ def anon_handle_list_tags(options, session, args):
         pkginfo = session.getPackage(options.package)
         if not pkginfo:
             parser.error(_("Invalid package %s" % options.package))
-            assert False
+            assert False  # pragma: no cover
 
     if options.build:
         buildinfo = session.getBuild(options.build)
         if not buildinfo:
             parser.error(_("Invalid build %s" % options.build))
-            assert False
+            assert False  # pragma: no cover
 
     tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
     tags.sort(lambda a,b: cmp(a['name'],b['name']))
@@ -3978,7 +3978,7 @@ def anon_handle_list_tag_history(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     kwargs = {}
     limited = False
     if options.package:
@@ -4268,7 +4268,7 @@ def anon_handle_list_history(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     kwargs = {}
     limited = False
     for opt in ('before', 'after'):
@@ -4610,7 +4610,7 @@ def anon_handle_taskinfo(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify at least one task ID"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
 
@@ -4629,7 +4629,7 @@ def anon_handle_taginfo(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a tag"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     event = koji.util.eventFromOpts(session, options)
     event_opts = {}
@@ -4733,7 +4733,7 @@ def handle_add_tag(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     if not session.hasPerm('admin'):
         print "This action requires admin privileges"
@@ -4776,7 +4776,7 @@ def handle_edit_tag(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     opts = {}
@@ -4822,7 +4822,7 @@ def handle_lock_tag(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a tag"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     pdata = session.getAllPerms()
     perm_ids = dict([(p['name'], p['id']) for p in pdata])
@@ -4870,7 +4870,7 @@ def handle_unlock_tag(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a tag"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     if options.glob:
         selected = []
@@ -4887,7 +4887,7 @@ def handle_unlock_tag(options, session, args):
             tag = session.getTag(name)
             if tag is None:
                 parser.error(_("No such tag: %s") % name)
-                assert False
+                assert False  # pragma: no cover
             selected.append(tag)
         selected = [session.getTag(name) for name in args]
     for tag in selected:
@@ -4919,7 +4919,7 @@ def handle_add_tag_inheritance(options, session, args):
 
     if len(args) != 2:
         parser.error(_("This command takes exctly two argument: a tag name or ID and that tag's new parent name or ID"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
 
@@ -4974,11 +4974,11 @@ def handle_edit_tag_inheritance(options, session, args):
 
     if len(args) < 1:
         parser.error(_("This command takes at lease one argument: a tag name or ID"))
-        assert False
+        assert False  # pragma: no cover
 
     if len(args) > 3:
         parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
 
@@ -5056,11 +5056,11 @@ def handle_remove_tag_inheritance(options, session, args):
 
     if len(args) < 1:
         parser.error(_("This command takes at lease one argument: a tag name or ID"))
-        assert False
+        assert False  # pragma: no cover
 
     if len(args) > 3:
         parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
 
@@ -5122,7 +5122,7 @@ def anon_handle_show_groups(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     groups = session.getTagGroups(tag)
@@ -5153,7 +5153,7 @@ def anon_handle_list_external_repos(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     opts = {}
     event = koji.util.eventFromOpts(session, options)
@@ -5168,7 +5168,7 @@ def anon_handle_list_external_repos(options, session, args):
         if opts['repo_info']:
             if options.inherit:
                 parser.error(_("Can't select by repo when using --inherit"))
-                assert False
+                assert False  # pragma: no cover
         if options.inherit:
             del opts['repo_info']
             data = session.getExternalRepoList(**opts)
@@ -5254,7 +5254,7 @@ def handle_add_external_repo(options, session, args):
         print "Created external repo %(id)i" % rinfo
     else:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     if options.tag:
         for tagpri in options.tag:
             tag, priority = _parse_tagpri(tagpri)
@@ -5278,7 +5278,7 @@ def handle_edit_external_repo(options, session, args):
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     opts = {}
     if options.url:
         opts['url'] = options.url
@@ -5299,7 +5299,7 @@ def handle_remove_external_repo(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Incorrect number of arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     repo = args[0]
     tags = args[1:]
@@ -5310,7 +5310,7 @@ def handle_remove_external_repo(options, session, args):
         delete = False
         if tags:
             parser.error(_("Do not specify tags when using --alltags"))
-            assert False
+            assert False  # pragma: no cover
         if not current_tags:
             print _("External repo %s not associated with any tags") % repo
             return 0
@@ -5371,7 +5371,7 @@ def handle_spin_livecd(options, session, args):
         parser.error(_("Five arguments are required: a name, a version, an" +
                        " architecture, a build target, and a relative path to" +
                        " a kickstart file."))
-        assert False
+        assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'livecd')
 
 
@@ -5418,7 +5418,7 @@ def handle_spin_livemedia(options, session, args):
         parser.error(_("Five arguments are required: a name, a version, an" +
                        " architecture, a build target, and a relative path to" +
                        " a kickstart file."))
-        assert False
+        assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'livemedia')
 
 # This handler is for spinning appliance images
@@ -5473,7 +5473,7 @@ def handle_spin_appliance(options, session, args):
         parser.error(_("Five arguments are required: a name, a version, " +
                        "an architecture, a build target, and a relative path" +
                        " to a kickstart file."))
-        assert False
+        assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'appliance')
 
 def handle_image_build_indirection(options, session, args):
@@ -5919,7 +5919,7 @@ def handle_win_build(options, session, args):
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("Exactly three arguments (a build target, a SCM URL, and a VM name) are required"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     target = args[0]
     if target.lower() == "none" and build_opts.repo_id:
@@ -5969,7 +5969,7 @@ def handle_free_task(options, session, args):
             tlist.append(int(task_id))
         except ValueError:
             parser.error(_("task-id must be an integer"))
-            assert False
+            assert False  # pragma: no cover
     for task_id in tlist:
         session.freeTask(task_id)
 
@@ -5984,7 +5984,7 @@ def handle_cancel(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("You must specify at least one task id or build"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tlist = []
     blist = []
@@ -5997,7 +5997,7 @@ def handle_cancel(options, session, args):
                 blist.append(arg)
             except koji.GenericError:
                 parser.error(_("please specify only task ids (integer) or builds (n-v-r)"))
-                assert False
+                assert False  # pragma: no cover
     if tlist:
         opts = {}
         remote_fn = session.cancelTask
@@ -6022,11 +6022,11 @@ def handle_set_task_priority(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("You must specify at least one task id"))
-        assert False
+        assert False  # pragma: no cover
 
     if options.priority is None:
         parser.error(_("You must specify --priority"))
-        assert False
+        assert False  # pragma: no cover
     try:
         tasks = [int(a) for a in args]
     except ValueError:
@@ -6106,7 +6106,7 @@ def handle_list_tasks(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
     tasklist = _list_tasks(options, session)
@@ -6130,7 +6130,7 @@ def handle_set_pkg_arches(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("Please specify an archlist, a tag, and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     arches = ' '.join(args[0].replace(',',' ').split())
     tag = args[1]
@@ -6147,7 +6147,7 @@ def handle_set_pkg_owner(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("Please specify an owner, a tag, and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     owner = args[0]
     tag = args[1]
@@ -6167,10 +6167,10 @@ def handle_set_pkg_owner_global(options, session, args):
     if options.old_user:
         if len(args) < 1:
             parser.error(_("Please specify an owner"))
-            assert False
+            assert False  # pragma: no cover
     elif len(args) < 2:
         parser.error(_("Please specify an owner and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     owner = args[0]
     packages = args[1:]
@@ -6312,7 +6312,7 @@ def handle_tag_build(opts, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tasks = []
     for pkg in args[1:]:
@@ -6340,7 +6340,7 @@ def handle_move_build(opts, session, args):
             parser.error(_("This command, with --all, takes at least three arguments: two tags and one or more package names"))
         else:
             parser.error(_("This command takes at least three arguments: two tags and one or more package n-v-r's"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tasks = []
     builds = []
@@ -6386,10 +6386,10 @@ def handle_untag_build(options, session, args):
     if options.non_latest and options.force:
         if len(args) < 1:
             parser.error(_("Please specify a tag"))
-            assert False
+            assert False  # pragma: no cover
     elif len(args) < 2:
         parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = session.getTag(args[0])
     if not tag:
@@ -6450,7 +6450,7 @@ def handle_unblock_pkg(options, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     for package in args[1:]:
@@ -6477,10 +6477,10 @@ def anon_handle_download_build(options, session, args):
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a package N-V-R or build ID"))
-        assert False
+        assert False  # pragma: no cover
     elif len(args) > 1:
         parser.error(_("Only a single package N-V-R or build ID may be specified"))
-        assert False
+        assert False  # pragma: no cover
 
     activate_session(session)
     build = args[0]
@@ -6557,7 +6557,7 @@ def anon_handle_download_build(options, session, args):
                 urls.append((url, archive['filename']))
         else:
             # can't happen
-            assert False
+            assert False  # pragma: no cover
     else:
         arches = suboptions.arches
         if len(arches) == 0:
@@ -6882,13 +6882,13 @@ def handle_regen_repo(options, session, args):
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
-        assert False
+        assert False  # pragma: no cover
     elif len(args) > 1:
         if suboptions.target:
             parser.error(_("Only a single target may be specified"))
         else:
             parser.error(_("Only a single tag name may be specified"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     tag = args[0]
     repo_opts = {}
@@ -6896,14 +6896,14 @@ def handle_regen_repo(options, session, args):
         info = session.getBuildTarget(tag)
         if not info:
             parser.error(_("No matching build target: " + tag))
-            assert False
+            assert False  # pragma: no cover
         tag = info['build_tag_name']
         info = session.getTag(tag)
     else:
         info = session.getTag(tag)
         if not info:
             parser.error(_("No matching tag: " + tag))
-            assert False
+            assert False  # pragma: no cover
         tag = info['name']
         targets = session.getBuildTargets(buildTagID=info['id'])
         if not targets:
@@ -6956,7 +6956,7 @@ def handle_moshimoshi(options, session, args):
     (opts, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
-        assert False
+        assert False  # pragma: no cover
     activate_session(session)
     u = session.getLoggedInUser()
     if not u:

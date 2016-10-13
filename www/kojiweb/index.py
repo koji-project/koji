@@ -151,10 +151,10 @@ def _assertLogin(environ):
             # send them back to the page that brought them here so they
             # can re-click the link with a valid authToken
             _redirectBack(environ, page=None, forceSSL=(_getBaseURL(environ).startswith('https://')))
-            assert False
+            assert False  # pragma: no cover
     else:
         _redirect(environ, 'login')
-        assert False
+        assert False  # pragma: no cover
 
 def _getServer(environ):
     opts = environ['koji.options']

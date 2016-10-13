@@ -94,7 +94,7 @@ def get_options():
     if args:
         parser.error("incorrect number of arguments")
         #not reached
-        assert False
+        assert False  # pragma: no cover
 
     # load local config
     config = ConfigParser()
