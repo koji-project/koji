@@ -62,12 +62,15 @@ import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
 import xmlrpclib
 try:
-    import yum.comps as yumcomps
+    import libcomps
 except ImportError:
-    yumcomps = None
+    libcomps = None
+    try:
+        import yum.comps as yumcomps
+    except ImportError:
+        yumcomps = None
 import optparse
-#for import-comps handler (currently disabled)
-#from rhpl.comps import Comps
+
 
 # fix OptionParser for python 2.3 (optparse verion 1.4.1+)
 # code taken from optparse version 1.5a2
@@ -1760,15 +1763,60 @@ def handle_import_comps(options, session, args):
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
         assert False
-    if yumcomps is None:
-        print "yum comps module not available"
-        return 1
-    # TODO: port to libcomps
-    comps = yumcomps.Comps()
-    comps.add(args[0])
-    tag = args[1]
-    force = local_options.force
     activate_session(session)
+    # check if the tag exists
+    dsttag = session.getTag(args[1])
+    if dsttag is None:
+        print "No such tag: %s" % args[1]
+        return 1
+    if libcomps is not None:
+        _import_comps(session, args[0], args[1], local_options)
+    elif yumcomps is not None:
+        _import_comps_alt(session, args[0], args[1], local_options)
+    else:
+        print "comps module not available"
+        return 1
+
+
+def _import_comps(session, filename, tag, options):
+    """Import comps data using libcomps module"""
+    comps = libcomps.Comps()
+    comps.fromxml_f(filename)
+    force = options['force']
+    ptypes = {
+        libcomps.PACKAGE_TYPE_DEFAULT : 'default',
+        libcomps.PACKAGE_TYPE_OPTIONAL : 'optional',
+        libcomps.PACKAGE_TYPE_CONDITIONAL : 'conditional',
+        libcomps.PACKAGE_TYPE_MANDATORY : 'mandatory',
+        libcomps.PACKAGE_TYPE_UNKNOWN : 'unknown',
+    }
+    for group in comps.groups:
+        print "Group: %s (%s)" % (group.id, group.name)
+        session.groupListAdd(
+                    tag, group.id, force=force, display_name=group.name,
+                    is_default=bool(group.default),
+                    uservisible=bool(group.uservisible),
+                    description=group.desc,
+                    langonly=group.lang_only,
+                    biarchonly=bool(group.biarchonly))
+        for pkg in group.packages:
+            pkgopts = {'type' : ptypes[pkg.type],
+                        'basearchonly' : bool(pkg.basearchonly),
+                        }
+            if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
+                pkgopts['requires'] = pkg.requires
+            print "  Package: %s: %r" % (pkg.name, pkgopts)
+            session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
+        # libcomps does not support group dependencies
+        # libcomps does not support metapkgs
+
+
+def _import_comps_alt(session, filename, tag, options):
+    """Import comps data using yum.comps module"""
+    print 'WARN: yum.comps does not support the biarchonly of group and basearchonly of package'
+    comps = yumcomps.Comps()
+    comps.add(filename)
+    force = options['force']
     for group in comps.groups:
         print "Group: %(groupid)s (%(name)s)" % vars(group)
         session.groupListAdd(tag, group.groupid, force=force, display_name=group.name,
@@ -1790,6 +1838,7 @@ def handle_import_comps(options, session, args):
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
         #yum.comps does not support group dependencies
         #yum.comps does not support metapkgs
+
 
 def handle_import_sig(options, session, args):
     "[admin] Import signatures into the database"

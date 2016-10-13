@@ -1,0 +1,38 @@
+WARN: yum.comps does not support the biarchonly of group and basearchonly of package
+Group: additional-devel (Additional Development)
+  Package: binutils-devel: {'type': 'default'}
+  Package: boost-devel: {'type': 'default'}
+  Package: bzip2-devel: {'type': 'default'}
+  Package: cyrus-sasl-devel: {'type': 'default'}
+  Package: audit-libs-devel: {'type': 'default'}
+  Package: alsa-lib-devel: {'type': 'default'}
+Group: ansible-node (Ansible node)
+  Package: python2-dnf: {'type': 'mandatory'}
+  Package: libselinux-python: {'requires': 'selinux-policy', 'type': 'conditional'}
+Group: backup-client (Backup Client)
+  Package: amanda-client: {'type': 'mandatory'}
+  Package: bacula-client: {'type': 'optional'}
+Group: backup-server (Backup Server)
+  Package: amanda-server: {'type': 'mandatory'}
+  Package: mtx: {'type': 'optional'}
+  Package: mt-st: {'type': 'optional'}
+Group: d-development (D Development Tools and Libraries)
+  Package: ldc: {'type': 'mandatory'}
+  Package: ldc-druntime: {'type': 'mandatory'}
+  Package: make: {'type': 'mandatory'}
+  Package: pkgconfig: {'type': 'mandatory'}
+  Package: ldc-phobos-devel: {'type': 'mandatory'}
+  Package: ldc-druntime-devel: {'type': 'mandatory'}
+  Package: ctags: {'type': 'default'}
+  Package: indent: {'type': 'default'}
+  Package: geany: {'type': 'optional'}
+  Package: cmake: {'type': 'optional'}
+  Package: derelict-devel: {'type': 'optional'}
+  Package: insight: {'type': 'optional'}
+  Package: nemiver: {'type': 'optional'}
+  Package: gl3n-devel: {'type': 'optional'}
+  Package: astyle: {'type': 'optional'}
+  Package: uncrustify: {'type': 'optional'}
+Group: empty-group-1 (empty group 1)
+Group: empty-group-2 (empty group 2)
+Group: unknown-group (unknown group)
