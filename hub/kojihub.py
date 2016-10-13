@@ -8172,10 +8172,10 @@ def importImageInternal(task_id, build_id, imgdata):
     q = """INSERT INTO archive_rpm_components (archive_id,rpm_id)
            VALUES (%(archive_id)i,%(rpm_id)i)"""
     for archive in archives:
-        sys.stderr.write('working on archive %s' % archive)
+        logger.info('working on archive %s', archive)
         if archive['filename'].endswith('xml'):
             continue
-        sys.stderr.write('associating installed rpms with %s' % archive['id'])
+        logger.info('associating installed rpms with %s', archive['id'])
         for rpm_id in rpm_ids:
             _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
 
