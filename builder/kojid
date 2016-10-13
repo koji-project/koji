@@ -979,7 +979,8 @@ class BuildTask(BaseTaskHandler):
         self.logger.debug("Waiting on subtasks...")
 
         # wait for subtasks to finish
-        results = self.wait(subtasks.values(), all=True, failany=True)
+        failany = not getattr(self.options, 'build_arch_can_fail', False)
+        results = self.wait(subtasks.values(), all=True, failany=failany)
 
         # finalize import
         # merge data into needed args for completeBuild call
@@ -4999,7 +5000,8 @@ def get_options():
                     quit("value for %s option must be a valid integer" % name)
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
-                          'support_rpm_source_layout', 'krb_rdns']:
+                          'support_rpm_source_layout', 'krb_rdns',
+                          'build_arch_can_fail']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
