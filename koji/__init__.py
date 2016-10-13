@@ -94,6 +94,14 @@ RPM_FILEDIGESTALGO_IDS = {
     11:   'SHA224'
     }
 
+# rpm 4.12 introduces optional deps
+try:
+    RPM_SUPPORTS_OPTIONAL_DEPS = int(rpm.__version_info__[0]) > 4 or \
+                                 (int(rpm.__version_info__[0]) == 4 and int(rpm.__version_info__[1]) >= 12)
+except AttributeError:
+    # older versions don't even have __version_info__
+    RPM_SUPPORTS_OPTIONAL_DEPS = False
+
 class Enum(dict):
     """A simple class to track our enumerated constants
 
@@ -181,6 +189,10 @@ DEP_REQUIRE = 0
 DEP_PROVIDE = 1
 DEP_OBSOLETE = 2
 DEP_CONFLICT = 3
+DEP_SUGGEST = 4
+DEP_ENHANCE = 5
+DEP_SUPPLEMENT = 6
+DEP_RECOMMEND = 7
 
 #dependency flags
 RPMSENSE_LESS = 2
@@ -853,6 +865,11 @@ def get_rpm_header(f, ts=None):
 
 def get_header_field(hdr, name):
     """Extract named field from an rpm header"""
+    if not RPM_SUPPORTS_OPTIONAL_DEPS and name in ('SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
+                                                   'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
+                                                   'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
+                                                   'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
+        return []
     idx = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
     if idx is None:
         raise GenericError, "No such rpm header field: %s" % name

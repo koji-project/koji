@@ -2,8 +2,11 @@
 
 """Test the __init__.py module"""
 
-import koji
+import os
+import rpm
 import unittest
+
+import koji
 
 class INITTestCase(unittest.TestCase):
     """Main test case container"""
@@ -106,6 +109,37 @@ class INITTestCase(unittest.TestCase):
             self.assertEqual(koji.check_NVRA(value), False)
             self.assertRaises(koji.GenericError,
                               koji.check_NVRA, value, strict=True)
+
+
+class HeaderTestCase(unittest.TestCase):
+    rpm_path = os.path.join(os.path.dirname(__file__), 'data/rpms/test-deps-1-1.fc24.x86_64.rpm')
+
+    def setUp(self):
+        self.fd = open(self.rpm_path)
+
+    def tearDown(self):
+        self.fd.close()
+
+    def test_get_rpm_header(self):
+        self.assertRaises(IOError, koji.get_rpm_header, 'nonexistent_path')
+        self.assertRaises(AttributeError, koji.get_rpm_header, None)
+        self.assertIsInstance(koji.get_rpm_header(self.rpm_path), rpm.hdr)
+        self.assertIsInstance(koji.get_rpm_header(self.fd), rpm.hdr)
+        # TODO:
+        # test ts
+
+    def test_get_header_fields(self):
+        # incorrect
+        self.assertRaises(IOError, koji.get_header_fields, 'nonexistent_path', [])
+        self.assertRaises(koji.GenericError, koji.get_header_fields, self.rpm_path, 'nonexistent_header')
+        self.assertEqual(koji.get_header_fields(self.rpm_path, []), {})
+
+        # correct
+        self.assertEqual(['REQUIRES'], koji.get_header_fields(self.rpm_path, ['REQUIRES']).keys())
+        self.assertEqual(['PROVIDES', 'REQUIRES'], sorted(koji.get_header_fields(self.rpm_path, ['REQUIRES', 'PROVIDES'])))
+        hdr = koji.get_rpm_header(self.rpm_path)
+        self.assertEqual(['REQUIRES'], koji.get_header_fields(hdr, ['REQUIRES']).keys())
+
 
 if __name__ == '__main__':
     unittest.main()
