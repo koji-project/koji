@@ -719,6 +719,8 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
+                'use_old_ssl': False,
+                'no_ssl_verify': False,
                 'max_delete_processes': 4,
                 'max_repo_tasks' : 4,
                 'max_repo_tasks_maven' : 2,
@@ -737,7 +739,8 @@ def get_options():
                     'max_delete_processes', 'max_repo_tasks_maven', 'delete_batch_size', )
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
-        bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry', 'krb_rdns')
+        bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',
+                     'krb_rdns', 'use_old_ssl', 'no_ssl_verify')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
