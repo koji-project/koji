@@ -5074,16 +5074,8 @@ if __name__ == "__main__":
     if options.admin_emails:
         koji.add_mail_logger("koji", options.admin_emails)
 
-    #build session options
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'debug_xmlrpc', 'debug',
-              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval',
-              'keepalive', 'timeout', 'use_fast_upload',
-             ):
-        v = getattr(options, k, None)
-        if v is not None:
-            session_opts[k] = v
     #start a session and login
+    session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
     if os.path.isfile(options.cert):
         try:

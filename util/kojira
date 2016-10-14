@@ -791,10 +791,8 @@ if  __name__ == "__main__":
         logger.setLevel(logging.ERROR)
     else:
         logger.setLevel(logging.WARNING)
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'debug_xmlrpc', 'debug',
-              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval'):
-        session_opts[k] = getattr(options,k)
+
+    session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server,session_opts)
     if os.path.isfile(options.cert):
         # authenticate using SSL client certificates
