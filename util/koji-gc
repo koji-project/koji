@@ -36,35 +36,6 @@ if optparse.__version__ == "1.4.1+":
         sys.exit(2)
     OptionParser.error = _op_error
 
-class MySession(koji.ClientSession):
-    """This is a hack to work around server timeouts"""
-
-    def _callMethod(self, name, args, kwargs):
-        retries = 10
-        i = 0
-        while True:
-            i += 1
-            try:
-                return super(MySession, self)._callMethod(name, args, kwargs)
-            except (socket.timeout, socket.error, xmlrpclib.ProtocolError), e:
-                if i > retries:
-                    raise
-                else:
-                    print "Socket Error: %s [%i], retrying..." % (e, i)
-                    time.sleep(60)
-
-    #an even worse hack
-    def multiCall(self):
-        if not self.multicall:
-            raise GenericError, 'ClientSession.multicall must be set to True before calling multiCall()'
-        if len(self._calls) == 0:
-            return []
-
-        self.multicall = False
-        calls = self._calls
-        self._calls = []
-        return self._callMethod('multiCall', (calls,), {})
-
 
 def _(args):
     """Stub function for translation"""
@@ -88,7 +59,7 @@ def get_options():
     parser.add_option("--noauth", action="store_true", default=False,
                       help=_("do not authenticate"))
     parser.add_option("--network-hack", action="store_true", default=False,
-                      help=_("enable hackish workaround for broken networks"))
+                      help=optparse.SUPPRESS_HELP)  # no longer used
     parser.add_option("--cert", default='/etc/koji-gc/client.crt',
                       help=_("Client SSL certificate file for authentication"))
     parser.add_option("--ca", default='',
@@ -926,15 +897,8 @@ if __name__ == "__main__":
 
     options, args = get_options()
 
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'email_domain',
-                'debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options,k)
-    if options.network_hack:
-        socket.setdefaulttimeout(180)
-        session = MySession(options.server, session_opts)
-    else:
-        session = koji.ClientSession(options.server, session_opts)
+    session_opts = koji.grab_session_options(options)
+    session = koji.ClientSession(options.server, session_opts)
     rv = 0
     try:
         if not options.skip_main:
