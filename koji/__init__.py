@@ -1936,6 +1936,7 @@ def grab_session_options(options):
         value = getattr(options, key)
         if value is not None:
             ret[key] = value
+    return ret
 
 
 class ClientSession(object):
