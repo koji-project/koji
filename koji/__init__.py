@@ -1906,6 +1906,38 @@ class VirtualMethod(object):
         return self.__func(self.__name, args, opts)
 
 
+def grab_session_options(options):
+    '''Convert optparse options to a dict that ClientSession can handle'''
+    s_opts = (
+        'user',
+        'password',
+        'krbservice',
+        'debug_xmlrpc',
+        'debug',
+        'max_retries',
+        'retry_interval',
+        'offline_retry',
+        'offline_retry_interval',
+        'anon_retry',
+        'keepalive',
+        'timeout',
+        'use_fast_upload',
+        'upload_blocksize',
+        'krb_rdns',
+        'use_old_ssl',
+        'no_ssl_verify',
+        'serverca',
+        )
+    # cert is omitted for now
+    ret = {}
+    for key in s_opts:
+        if not hasattr(options, key):
+            continue
+        value = getattr(options, key)
+        if value is not None:
+            ret[key] = value
+
+
 class ClientSession(object):
 
     def __init__(self, baseurl, opts=None, sinfo=None):
@@ -1924,6 +1956,7 @@ class ClientSession(object):
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout',  60 * 60 * 12)
+
 
     def new_session(self):
         self.logger.debug("Opening new requests session")
