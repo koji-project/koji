@@ -125,6 +125,8 @@ def get_options():
                 'server': None,
                 'user': None,
                 'password': None,
+                'use_old_ssl': False,
+                'no_ssl_verify': False,
                 'retry_interval': 60,
                 'max_retries': 120,
                 'offline_retry': True,
@@ -142,7 +144,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'krb_rdns']:
+            elif name in ['offline_retry', 'krb_rdns', 'use_old_ssl',
+                          'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
