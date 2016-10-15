@@ -328,9 +328,6 @@ Task info: weburl/taskinfo?taskID=1
 
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
-
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         # Run it and check immediate output
@@ -373,9 +370,6 @@ Task info: weburl/taskinfo?taskID=1
         args = [target, source]
 
         progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -421,9 +415,6 @@ Task info: weburl/taskinfo?taskID=1
         opts = {'arch_override': arch_override, 'scratch': True}
         priority = None
 
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
-
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         self.session.build.return_value = task_id
@@ -466,9 +457,6 @@ Task info: weburl/taskinfo?taskID=1
         priority = 5
         opts = {}
 
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
-
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         self.session.build.return_value = task_id
@@ -509,9 +497,6 @@ Task info: weburl/taskinfo?taskID=1
         args = [target, source]
         opts = {}
         priority = None
-
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -556,9 +541,6 @@ Task info: weburl/taskinfo?taskID=1
         args = ['--noprogress', target, source]
         opts = {}
         priority = None
-
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -605,9 +587,6 @@ Task info: weburl/taskinfo?taskID=1
         opts = {}
         priority = None
 
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
-
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         self.session.build.return_value = task_id
@@ -648,9 +627,6 @@ Task info: weburl/taskinfo?taskID=1
         args = ['--wait', target, source]
         opts = {}
         priority = None
-
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -695,9 +671,6 @@ Task info: weburl/taskinfo?taskID=1
         args = ['--nowait', target, source]
         opts = {}
         priority = None
-
-        # Mock out the xmlrpc server
-        self.session = mock.MagicMock()
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
