@@ -857,7 +857,7 @@ class BuildTask(BaseTaskHandler):
         #(initBuild raises an exception if there is a conflict)
         try:
             self.extra_information = { "src": src, "data": data, "target": target }
-            srpm,rpms,brmap,logs = self.runBuilds(srpm,build_tag,archlist,repo_info['id'])
+            srpm,rpms,brmap,logs = self.runBuilds(srpm, build_tag, archlist, repo_info['id'], extra)
 
             if opts.get('scratch'):
                 #scratch builds do not get imported
@@ -949,42 +949,54 @@ class BuildTask(BaseTaskHandler):
             self.logger.debug('arch override: %s' % override)
             archlist = override.split()
         archdict = {}
-
-        # Filter based on canonical arches for tag
-        # This prevents building for an arch that we can't handle
-        if 'noarch' in archlist:
-            if filter(lambda arch: arch != 'noarch', archlist):
-                _archs = archlist
-            else:
-                _archs = tag_archlist
-            if exclusivearch:
-                _archs = exclusivearch
-            if excludearch:
-                _archs = [arch for arch in _archs if arch not in excludearch]
-            archs_chosen = [arch for arch in _archs if koji.canonArch(arch) in tag_archlist and arch != 'noarch']
-            if not archs_chosen:
-                raise koji.BuildError, 'Cannot choose an arch to build this noarch package'
-            archs_chosen_len = len(archs_chosen)
-            idx = random.randint(0, archs_chosen_len - 1)
-            arch_chosen = archs_chosen[idx]
-            archdict[arch_chosen] = 1
-        else:
-            for a in archlist:
-                if koji.canonArch(a) in tag_archlist:
-                    archdict[a] = 1
+        for a in archlist:
+            # Filter based on canonical arches for tag
+            # This prevents building for an arch that we can't handle
+            if a == 'noarch' or koji.canonArch(a) in tag_archlist:
+                archdict[a] = 1
         if not archdict:
             raise koji.BuildError, "No matching arches were found"
         return archdict.keys()
 
-    def runBuilds(self, srpm, build_tag, archlist, repo_id):
+    def choose_taskarch(self, arch, srpm, build_tag, extra=None):
+        if koji.util.multi_fnmatch(arch, self.options.literal_task_arches):
+            return arch
+        if arch != 'noarch':
+            return koji.canonArch(arch)
+
+        h = self.readSRPMHeader(srpm)
+        buildarchs = h[rpm.RPMTAG_BUILDARCHS]
+        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
+        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+
+        if arch in buildarchs and \
+          len(buildarchs) == 1 and \
+          not exclusivearch and \
+          excludearch and \
+          arch not in excludearch:
+            self.logger.debug('find semi-noarch package')
+            buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
+            arches = buildconfig['arches']
+            tag_archlist = [koji.canonArch(a) for a in arches.split()]
+            if extra:
+              arches = "%s %s" % (arches,extra)
+
+            archlist = [a for a in arches.split() if a not in excludearch]
+            archlist = [a for a in archlist if koji.canonArch(a) in tag_archlist]
+            if not archlist:
+              raise koji.BuildError, "No matching arches were found to build this semi-noarch package"
+            else:
+              self.logger.debug("find architectures to build this semi-noarch: %s" % ', '.join(archlist))
+            return random.choice(archlist)
+        else:
+            return koji.canonArch(arch)
+
+    def runBuilds(self, srpm, build_tag, archlist, repo_id, extra=None):
         self.logger.debug("Spawning jobs for arches: %r" % (archlist))
         subtasks = {}
         keep_srpm = True
         for arch in archlist:
-            if koji.util.multi_fnmatch(arch, self.options.literal_task_arches):
-                taskarch = arch
-            else:
-                taskarch = koji.canonArch(arch)
+            taskarch = self.choose_taskarch(arch, srpm, build_tag, extra)
             subtasks[arch] = self.session.host.subtask(method='buildArch',
                                                        arglist=[srpm, build_tag, arch, keep_srpm, {'repo_id': repo_id}],
                                                        label=arch,
