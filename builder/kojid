@@ -959,10 +959,14 @@ class BuildTask(BaseTaskHandler):
         return archdict.keys()
 
     def choose_taskarch(self, arch, srpm, build_tag, extra=None):
+        """Adjust the arch for buildArch subtask as needed"""
         if koji.util.multi_fnmatch(arch, self.options.literal_task_arches):
             return arch
         if arch != 'noarch':
             return koji.canonArch(arch)
+
+        # For noarch, attempt to honor ExcludeArch/ExclusiveArch
+        # see https://pagure.io/koji/issue/19
 
         h = self.readSRPMHeader(srpm)
         buildarchs = h[rpm.RPMTAG_BUILDARCHS]
