@@ -6100,10 +6100,7 @@ def add_rpm_sig(an_rpm, sighdr):
         #TODO[?] - if sighash is the same, handle more gracefully
         nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
         raise koji.GenericError, "Signature already exists for package %s, key %s" % (nvra, sigkey)
-    callback_info = copy.copy(rinfo)
-    callback_info['sigkey'] = sigkey
-    callback_info['sighash'] = sighash
-    koji.plugin.run_callbacks('preRPMSign', attribute='sighash', old=None, new=sighash, info=callback_info)
+    koji.plugin.run_callbacks('preRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
     insert = """INSERT INTO rpmsigs(rpm_id, sigkey, sighash)
     VALUES (%(rpm_id)s, %(sigkey)s, %(sighash)s)"""
     _dml(insert, locals())
@@ -6113,7 +6110,7 @@ def add_rpm_sig(an_rpm, sighdr):
     fo = file(sigpath, 'wb')
     fo.write(sighdr)
     fo.close()
-    koji.plugin.run_callbacks('postRPMSign', attribute='sighash', old=None, new=sighash, info=callback_info)
+    koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
 
 def _scan_sighdr(sighdr, fn):
     """Splices sighdr with other headers from fn and queries (no payload)"""
