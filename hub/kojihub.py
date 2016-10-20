@@ -4898,7 +4898,7 @@ class CG_Importer(object):
         self.import_metadata()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
-                    directory=directory, buildinfo=self.buildinfo)
+                                  directory=directory, build=self.buildinfo)
 
         return self.buildinfo
 
@@ -5450,7 +5450,7 @@ def import_build_in_place(build):
     WHERE id=%(build_id)i"""
     _dml(update, locals())
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
-    koji.plugin.run_callbacks('postImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
+    koji.plugin.run_callbacks('postImport', type='build', in_place=True, build=buildinfo, srpm=srpm, rpms=rpms)
     return build_id
 
 def _import_wrapper(task_id, build_info, rpm_results):
@@ -8183,7 +8183,7 @@ def importImageInternal(task_id, build_id, imgdata):
             _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
-                              fullpath=fullpath)
+                              build=build_info, fullpath=fullpath)
 
 #
 # XMLRPC Methods
