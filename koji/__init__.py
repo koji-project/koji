@@ -2098,6 +2098,9 @@ class ClientSession(object):
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
 
+        # Force a new session
+        self.new_session()
+
         # 60 second timeout during login
         old_opts = self.opts
         self.opts = old_opts.copy()
