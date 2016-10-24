@@ -1,0 +1,89 @@
+import copy
+import mock
+import shutil
+import tempfile
+import unittest
+
+import koji
+import kojihub
+
+QP = kojihub.QueryProcessor
+UP = kojihub.UpdateProcessor
+IP = kojihub.InsertProcessor
+
+
+class TestTagBuild(unittest.TestCase):
+
+    def getInsert(self, *args, **kwargs):
+        insert = IP(*args, **kwargs)
+        insert.execute = mock.MagicMock()
+        self.inserts.append(insert)
+        return insert
+
+    def getUpdate(self, *args, **kwargs):
+        update = UP(*args, **kwargs)
+        update.execute = mock.MagicMock()
+        self.updates.append(updates)
+        return update
+
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = self.query_executeOne
+        query.iterate = mock.MagicMock()
+        self.queries.append(query)
+        return query
+
+    def setUp(self):
+        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+                side_effect=self.getInsert).start()
+        self.inserts = []
+        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+                side_effect=self.getUpdate).start()
+        self.updates = []
+        self.query_executeOne = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                side_effect=self.getQuery).start()
+        self.queries = []
+        self._dml = mock.patch('kojihub._dml').start()
+        self.get_tag = mock.patch('kojihub.get_tag').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
+        self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
+        self.check_tag_access = mock.patch('kojihub.check_tag_access').start()
+        self.writeInheritanceData = mock.patch('kojihub.writeInheritanceData').start()
+        self.context = mock.patch('kojihub.context').start()
+        # It seems MagicMock will not automatically handle attributes that
+        # start with "assert"
+        self.context.session.assertPerm = mock.MagicMock()
+        self.context.session.assertLogin = mock.MagicMock()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_simple_tag(self):
+        self.check_tag_access.return_value = (True, False, "")
+        self.get_build.return_value = {
+            'id': 1,
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'state': koji.BUILD_STATES['COMPLETE'],
+        }
+        # set return for the already tagged check
+        self.query_executeOne.return_value = None
+
+        # call it
+        kojihub._tag_build('sometag', 'name-version-release')
+
+        self.get_tag.called_once_with('sometag', strict=True)
+
+        # check the insert
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'tag_listing')
+        values = {
+        }
+        self.assertEqual(insert.data, values)
+        self.assertEqual(insert.rawdata, {})
+        insert = self.inserts[0]
