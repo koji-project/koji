@@ -1461,16 +1461,22 @@ def _tag_build(tag, build, user_id=None, force=False):
     else:
         # use the user associated with the current session
         user = get_user(context.session.user_id, strict=True)
+    #access check
+    assert_tag_access(tag['id'], user_id=user_id, force=force)
+    return _direct_tag_build(tag, build, user, force)
+
+
+def _direct_tag_build(tag, build, user, force=False):
+    """Directly tag a build. No access check or user lookup."""
     koji.plugin.run_callbacks('preTag', tag=tag, build=build, user=user, force=force)
     tag_id = tag['id']
     build_id = build['id']
+    user_id = user['id']
     nvr = "%(name)s-%(version)s-%(release)s" % build
     if build['state'] != koji.BUILD_STATES['COMPLETE']:
         # incomplete builds may not be tagged, not even when forced
         state = koji.BUILD_STATES[build['state']]
         raise koji.TagError, "build %s not complete: state %s" % (nvr, state)
-    #access check
-    assert_tag_access(tag['id'], user_id=user_id, force=force)
     # see if it's already tagged
     retag = False
     table = 'tag_listing'
@@ -2740,10 +2746,16 @@ def lookup_build_target(info, strict=False, create=False):
     """Get the id,name for build target"""
     return lookup_name('build_target', info, strict, create)
 
+
 def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
-
     context.session.assertPerm('admin')
+    return _create_tag(name, parent, arches, perm, locked, maven_support, maven_include_all, extra)
+
+
+def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
+    """Create a new tag, without access check"""
+
     if not context.opts.get('EnableMaven') and (maven_support or maven_include_all):
         raise koji.GenericError, "Maven support not enabled"
 
