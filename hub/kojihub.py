@@ -836,6 +836,13 @@ def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
 
 def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, force=False, update=False):
     """Add to (or update) package list for tag"""
+    return _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches,
+            force, update, policy=True)
+
+
+def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
+        update, policy=False):
+    """Like pkglist_add, but without policy or access check"""
     #access control comes a little later (via an assert_policy)
     #should not make any changes until after policy is checked
     tag = get_tag(taginfo, strict=True)
@@ -851,15 +858,12 @@ def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, for
         action = 'update'
     elif bool(block):
         action = 'block'
-    context.session.assertLogin()
-    policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
-    #don't check policy for admins using force
-    if not (force and context.session.hasPerm('admin')):
-        assert_policy('package_list', policy_data)
-    return _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force, update)
-
-
-def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force, update):
+    if policy:
+        context.session.assertLogin()
+        policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
+        #don't check policy for admins using force
+        if not (force and context.session.hasPerm('admin')):
+            assert_policy('package_list', policy_data)
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
