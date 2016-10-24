@@ -856,6 +856,10 @@ def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, for
     #don't check policy for admins using force
     if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
+    return _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force, update)
+
+
+def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force, update):
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
