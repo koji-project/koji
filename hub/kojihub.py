@@ -1475,7 +1475,7 @@ def _tag_build(tag, build, user_id=None, force=False):
 
 
 def _direct_tag_build(tag, build, user, force=False):
-    """Directly tag a build. No access check or user lookup."""
+    """Directly tag a build. No access check or value lookup."""
     koji.plugin.run_callbacks('preTag', tag=tag, build=build, user=user, force=force)
     tag_id = tag['id']
     build_id = build['id']
@@ -1527,10 +1527,15 @@ def _untag_build(tag, build, user_id=None, strict=True, force=False):
     else:
         # use the user associated with the current session
         user = get_user(context.session.user_id, strict=True)
-    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id, user_id=user_id, force=force)
+    return _direct_untag_build(tag, build, user, strict, force)
+
+
+def _direct_untag_build(tag, build, user, strict=True, force=False):
+    """Directly untag a build. No access check or value lookup."""
+    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     update = UpdateProcessor('tag_listing', values=locals(),
                 clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
     update.make_revoke(user_id=user_id)
