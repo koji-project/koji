@@ -142,7 +142,6 @@ class TestRuleHandling(unittest.TestCase):
         self.assertEqual(action, None)
 
     def test_custom_rules(self):
-        #import pdb; pdb.set_trace()
         tests = koji.policy.findSimpleTests([globals(), koji.policy.__dict__])
 
         rules = ['bool_check :: True', 'all :: False']
