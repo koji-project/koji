@@ -4898,7 +4898,7 @@ class CG_Importer(object):
         self.import_metadata()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
-                    directory=directory, buildinfo=self.buildinfo)
+                                  directory=directory, build=self.buildinfo)
 
         return self.buildinfo
 
@@ -5450,7 +5450,7 @@ def import_build_in_place(build):
     WHERE id=%(build_id)i"""
     _dml(update, locals())
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
-    koji.plugin.run_callbacks('postImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
+    koji.plugin.run_callbacks('postImport', type='build', in_place=True, build=buildinfo, srpm=srpm, rpms=rpms)
     return build_id
 
 def _import_wrapper(task_id, build_info, rpm_results):
@@ -6100,10 +6100,7 @@ def add_rpm_sig(an_rpm, sighdr):
         #TODO[?] - if sighash is the same, handle more gracefully
         nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
         raise koji.GenericError, "Signature already exists for package %s, key %s" % (nvra, sigkey)
-    callback_info = copy.copy(rinfo)
-    callback_info['sigkey'] = sigkey
-    callback_info['sighash'] = sighash
-    koji.plugin.run_callbacks('preRPMSign', attribute='sighash', old=None, new=sighash, info=callback_info)
+    koji.plugin.run_callbacks('preRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
     insert = """INSERT INTO rpmsigs(rpm_id, sigkey, sighash)
     VALUES (%(rpm_id)s, %(sigkey)s, %(sighash)s)"""
     _dml(insert, locals())
@@ -6113,7 +6110,7 @@ def add_rpm_sig(an_rpm, sighdr):
     fo = file(sigpath, 'wb')
     fo.write(sighdr)
     fo.close()
-    koji.plugin.run_callbacks('postRPMSign', attribute='sighash', old=None, new=sighash, info=callback_info)
+    koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
 
 def _scan_sighdr(sighdr, fn):
     """Splices sighdr with other headers from fn and queries (no payload)"""
@@ -8183,7 +8180,7 @@ def importImageInternal(task_id, build_id, imgdata):
             _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
-                              fullpath=fullpath)
+                              build=build_info, fullpath=fullpath)
 
 #
 # XMLRPC Methods
