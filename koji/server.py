@@ -25,7 +25,7 @@ from koji.util import LazyDict
 
 try:
     from mod_python import apache
-except ImportError:
+except ImportError:  # pragma: no cover
     apache = None
 
 

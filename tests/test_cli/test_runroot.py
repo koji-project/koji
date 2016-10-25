@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import koji
 
 import StringIO as stringio
 
@@ -15,6 +16,7 @@ class TestListCommands(unittest.TestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
         self.args = mock.MagicMock()
         self.original_parser = cli.OptionParser
         cli.OptionParser = mock.MagicMock()

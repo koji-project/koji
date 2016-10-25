@@ -22,7 +22,7 @@
 
 try:
     import krbV
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 import sys
 import os
