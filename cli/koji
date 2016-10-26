@@ -149,7 +149,7 @@ Try "%(progname)s help" to get all available commands
 Try "%(progname)s <command> --help" for help about the options of a particular command
 Try "%(progname)s help <category>" to get commands under a particular category
 Available categories are: %(categories)s
-''' % ({'progname': progname, 'categories': categories_ordered}) 
+''' % ({'progname': progname, 'categories': categories_ordered})
     return _(epilog_str)
 
 def get_options():
@@ -889,7 +889,7 @@ def _format_size(size):
 
 def _format_secs(t):
     h = t / 3600
-    t = t % 3600
+    t %= 3600
     m = t / 60
     s = t % 60
     return "%02d:%02d:%02d" % (h, m, s)
@@ -913,11 +913,9 @@ def _progress_callback(uploaded, total, piece, time, total_time):
 
 def _running_in_bg():
     try:
-        if (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0)):
-            return True
+        return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
     except OSError, e:
         return True
-    return False
 
 def handle_build(options, session, args):
     "[build] Build a package from source"
@@ -1003,8 +1001,8 @@ def handle_chain_build(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
-    parser.add_option("--noprogress", action="store_true",
-                      help=_("Do not display progress of the upload"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
@@ -1061,14 +1059,14 @@ def handle_chain_build(options, session, args):
         priority = 5
 
     task_id = session.chainBuild(src_list, target, priority=priority)
-
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if not build_opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or build_opts.nowait:
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id],quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet)
 
 def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
