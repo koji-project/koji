@@ -38,7 +38,11 @@ import imp
 import logging
 import logging.handlers
 from koji.util import md5_constructor
-from OpenSSL.SSL import Error as SSL_Error
+try:
+    from OpenSSL.SSL import Error as SSL_Error
+except Exception:
+    # XXX
+    pass
 import optparse
 import os
 import os.path
