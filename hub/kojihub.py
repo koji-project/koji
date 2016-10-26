@@ -3543,7 +3543,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
               ('rpminfo.metadata_only', 'metadata_only'),
               ('rpminfo.extra', 'extra'),
              ]
-    joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
+    joins = ['LEFT JOIN external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
 
     if buildID != None:
@@ -9311,10 +9311,10 @@ class RootExports(object):
                   ('users.id', 'owner_id'), ('users.name', 'owner_name')]
 
         tables = ['build']
-        joins = ['events ON build.create_event = events.id',
-                 'package ON build.pkg_id = package.id',
-                 'volume ON build.volume_id = volume.id',
-                 'users ON build.owner = users.id']
+        joins = ['LEFT JOIN events ON build.create_event = events.id',
+                 'LEFT JOIN package ON build.pkg_id = package.id',
+                 'LEFT JOIN volume ON build.volume_id = volume.id',
+                 'LEFT JOIN users ON build.owner = users.id']
         clauses = []
         if packageID != None:
             clauses.append('package.id = %(packageID)i')
@@ -10033,7 +10033,7 @@ class RootExports(object):
             queryOpts = {}
 
         tables = ['task']
-        joins = ['users ON task.owner = users.id']
+        joins = ['LEFT JOIN users ON task.owner = users.id']
         flist = Task.fields + (
                     ('task.request', 'request'),
                     ('task.result', 'result'),
