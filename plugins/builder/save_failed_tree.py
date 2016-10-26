@@ -6,6 +6,7 @@ from __main__ import BuildRoot
 
 __all__ = ('SaveFailedTreeTask',)
 
+
 def omit_ccache(tarinfo):
     if fnmatch.fnmatch(tarinfo.name, '*/tmp/krb5cc') or \
        fnmatch.fnmatch(tarinfo.name, '*/etc/*.keytab'):
@@ -14,11 +15,9 @@ def omit_ccache(tarinfo):
         return tarinfo
 
 
-
 class SaveFailedTreeTask(tasks.BaseTaskHandler):
     Methods = ['saveFailedTree']
     _taskWeight = 3.0
-
 
     def handler(self, taskID, full=False):
         self.logger.debug("Starting saving buildroots for task %d [full=%s]" % (taskID, full))

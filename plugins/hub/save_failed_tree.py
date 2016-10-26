@@ -1,14 +1,19 @@
+import sys
 import koji
 from koji.plugin import export
 
-import sys
 sys.path.insert(0, '/usr/share/koji-hub/')
 import kojihub
 
 __all__ = ('saveFailedTree',)
 
+
 @export
 def saveFailedTree(taskID, full=False, **opts):
+    '''xmlrpc method for creating saveFailedTree task. If arguments are
+    invalid, error message is returned. Otherwise task id of newly created
+    task is returned.'''
+
     # let it raise errors
     taskID = int(taskID)
     full = bool(full)

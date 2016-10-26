@@ -7202,6 +7202,52 @@ def handle_runroot(options, session, args):
         sys.exit(1)
     return
 
+def handle_save_failed_tree(options, session, args):
+    "Create tarball with whole buildtree"
+    usage = _("usage: %prog save-failed-tree [options] taskID")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.disable_interspersed_args()
+    parser.add_option("-f", "--full", action="store_true", default=False,
+            help=_("Download whole tree, if not specified, only builddir will be downloaded"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--nowait", action="store_true",
+                      help=_("Don't wait on build"))
+
+    (opts, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("List exactly one taskID"))
+
+    try:
+        taskID = int(args[0])
+    except ValueError:
+        parser.error(_("Task ID must be an integer."))
+
+    activate_session(session)
+    try:
+        task_id = session.saveFailedTree(taskID, opts.full)
+    except koji.GenericError as e:
+        if 'Invalid method' in str(e):
+            print "* The save_failed_tree plugin appears to not be installed" \
+                  " on the koji hub.  Please contact the administrator."
+        raise
+
+    if type(task_id) != int:
+        print 'Error: %s' % task_id
+        return
+
+    if not opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+
+    if opts.nowait:
+        return
+    else:
+        session.logout()
+        watch_tasks(session, [task_id], quiet=opts.quiet)
+
 
 def handle_help(options, session, args):
     "[info] List available commands"
