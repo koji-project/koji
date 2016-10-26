@@ -41,7 +41,10 @@ Special task method is created for achieving this which is called
 After task finishes, one can find the tarball on relevant task web page (URL
 will be printed to stdout until ``--quiet`` is used.
 
-Currently plugin allow to save trees only for ``buildArch`` tasks and anybody
+Plugin allow to save trees only for tasks defined in config
+``/etc/koji-hub/plugins/save_failed_tree.conf``. Option
+``allowed_methods`` contains list of comma-delimited names of tasks. Default
+configuration contains line: ``allowed_methods = buildArch``. Anybody
 is allowed to create this type of task (and download tarball).
 
 .. warning::
