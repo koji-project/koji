@@ -374,27 +374,28 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError, "Already logged in"
 
-        if context.environ['wsgi.url_scheme'] != 'https':
-            raise koji.AuthError, 'cannot call sslLogin() via a non-https connection: %s' % context.environ['wsgi.url_scheme']
+        if context.environ.get('REMOTE_USER'):
+            username = context.environ.get('REMOTE_USER')
+            client_dn = username
+            authtype = koji.AUTHTYPE_GSSAPI
+        else:
+            if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
+                raise koji.AuthError, 'could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY')
 
-        if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-            raise koji.AuthError, 'could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY')
-
-        name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
-        client_name = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
-        if not client_name:
-            raise koji.AuthError, 'unable to get user information (%s) from client certificate' % name_dn_component
+            name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
+            username = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
+            if not username:
+                raise koji.AuthError, 'unable to get user information (%s) from client certificate' % name_dn_component
+            client_dn = context.environ.get('SSL_CLIENT_S_DN')
+            authtype = koji.AUTHTYPE_SSL
 
         if proxyuser:
-            client_dn = context.environ.get('SSL_CLIENT_S_DN')
             proxy_dns = [dn.strip() for dn in context.opts.get('ProxyDNs', '').split('|')]
             if client_dn in proxy_dns:
                 # the SSL-authenticated user authorized to login other users
                 username = proxyuser
             else:
                 raise koji.AuthError, '%s is not authorized to login other users' % client_dn
-        else:
-            username = client_name
 
         cursor = context.cnx.cursor()
         query = """SELECT id FROM users
@@ -416,7 +417,7 @@ class Session(object):
         if hostip == '127.0.0.1':
             hostip = socket.gethostbyname(socket.gethostname())
 
-        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_SSL)
+        sinfo = self.createSession(user_id, hostip, authtype)
         return sinfo
 
     def makeExclusive(self, force=False):

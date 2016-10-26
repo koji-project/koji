@@ -57,6 +57,10 @@ try:
     import requests
 except ImportError:  #pragma: no cover
     requests = None
+try:
+    from requests_kerberos import HTTPKerberosAuth
+except ImportError:  #pragma: no cover
+    HTTPKerberosAuth = None
 import rpm
 import shutil
 import signal
@@ -192,6 +196,7 @@ USER_STATUS = Enum((
 AUTHTYPE_NORMAL = 0
 AUTHTYPE_KERB = 1
 AUTHTYPE_SSL = 2
+AUTHTYPE_GSSAPI = 3
 
 #dependency types
 DEP_REQUIRE = 0
@@ -2017,6 +2022,14 @@ class ClientSession(object):
         principal.  The principal must be in the "ProxyPrincipals" list on
         the server side."""
 
+        if principal is None and keytab is None and ccache is None:
+            try:
+                # Silently try GSSAPI first
+                if self.gssapi_login(proxyuser=proxyuser):
+                    return True
+            except:
+                pass
+
         if not krbV:
             raise exceptions.ImportError(
                 "Please install python-krbV to use kerberos."
@@ -2093,6 +2106,37 @@ class ClientSession(object):
         service = self.opts.get('krbservice', 'host')
 
         return '%s/%s@%s' % (service, servername, realm)
+
+    def gssapi_login(self, proxyuser=None):
+        if not HTTPKerberosAuth:
+            raise exceptions.ImportError(
+                "Please install python-requests-kerberos to use GSSAPI."
+            )
+
+        # force https
+        uri = urlparse.urlsplit(self.baseurl)
+        if uri[0] != 'https':
+            self.baseurl = 'https://%s%s' % (uri[1], uri[2])
+
+        # Force a new session
+        self.new_session()
+
+        # 60 second timeout during login
+        old_opts = self.opts
+        self.opts = old_opts.copy()
+        self.opts['timeout'] = 60
+        self.opts['auth'] = HTTPKerberosAuth()
+        try:
+            sinfo = self.callMethod('sslLogin', proxyuser)
+        finally:
+            self.opts = old_opts
+        if not sinfo:
+            raise AuthError, 'unable to obtain a session'
+
+        self.setSession(sinfo)
+
+        self.authtype = AUTHTYPE_GSSAPI
+        return True
 
     def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None):
         cert = cert or self.opts.get('cert')
@@ -2222,6 +2266,9 @@ class ClientSession(object):
         if cert:
             # TODO: we really only need to do this for ssllogin calls
             callopts['cert'] = cert
+        auth = self.opts.get('auth')
+        if auth:
+            callopts['auth'] = auth
         timeout = self.opts.get('timeout')
         if timeout:
             callopts['timeout'] = timeout

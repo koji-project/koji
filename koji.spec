@@ -29,6 +29,7 @@ Requires: python-krbV >= 1.0.13
 Requires: rpm-python
 Requires: pyOpenSSL
 Requires: python-requests
+Requires: python-requests-kerberos
 Requires: python-urlgrabber
 Requires: python-dateutil
 BuildRequires: python
