@@ -103,6 +103,7 @@ class TestCGImporter(unittest.TestCase):
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.prep_build()
+        x.prepped_outputs = []
         get_build.return_value = {'id': 43, 'package_id': 1,
                                   'package_name': 'testpkg',
                                   'name': 'testpkg', 'version': '1.0.1e',
