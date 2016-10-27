@@ -599,7 +599,7 @@ def handle_assign_task(options, session, args):
     if ret:
         print 'assigned task %d to host %s' % (task_id, hostname)
     else:
-        print 'failed to assign task %d to host %s' %s (task_id, hostname)
+        print 'failed to assign task %d to host %s' % (task_id, hostname)
 
 
 def handle_add_host(options, session, args):
