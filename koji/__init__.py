@@ -38,10 +38,14 @@ import imp
 import logging
 import logging.handlers
 from koji.util import md5_constructor
+SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
-except Exception:
-    # XXX
+except Exception:  #pragma: no cover
+    # the hub imports koji, and sometimes this import fails there
+    # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine
+    # unfortunately the workaround at the above link does not always work, so
+    # we ignore it here
     pass
 import optparse
 import os
@@ -1834,6 +1838,9 @@ pathinfo = PathInfo()
 def is_cert_error(e):
     """Determine if an OpenSSL error is due to a bad cert"""
 
+    if SSL_Error is None:  #pragma: no cover
+        # import failed, so we can't determine
+        raise Exception("OpenSSL library did not load")
     if not isinstance(e, SSL_Error):
         return False
 
