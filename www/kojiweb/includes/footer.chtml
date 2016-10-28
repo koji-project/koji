@@ -2,8 +2,8 @@
         </div>
 
         <p id="footer">
-          Copyright &copy; 2006-2014 Red Hat, Inc.
-          <a href="https://fedorahosted.org/koji/"><img src="$util.themePath('images/powered-by-koji.png')" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
+          Copyright &copy; 2006-2016 Red Hat, Inc.
+          <a href="https://pagure.io/koji/"><img src="$util.themePath('images/powered-by-koji.png')" alt="Powered By Koji" id="PoweredByKojiLogo"/></a>
         </p>
 
 #set $localfooterpath=$util.themePath("extra-footer.html", local=True)
