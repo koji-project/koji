@@ -62,7 +62,7 @@
       <th>Size</th><td>$rpm.size</td>
     </tr>
     <tr>
-      <th>Payload Hash</th><td>$rpm.payloadhash</td>
+      <th>SIGMD5</th><td>$rpm.payloadhash</td>
     </tr>
     #if $builtInRoot
     <tr>
