@@ -831,7 +831,7 @@ def handle_block_pkg(options, session, args):
         return ret
     session.multicall = True
     for package in args[1:]:
-        session.packageListBlock(tag,package)
+        session.packageListBlock(tag, package)
     session.multiCall(strict=True)
 
 def handle_remove_pkg(options, session, args):
@@ -1066,11 +1066,12 @@ def handle_chain_build(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
 
 def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
     usage = _("usage: %prog maven-build [options] target URL")
+    usage += _("\n       %prog maven-build --ini=CONFIG... [options] target")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--patches", action="store", metavar="URL",
@@ -1111,13 +1112,13 @@ def handle_maven_build(options, session, args):
                       help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
-    parser.add_option("--noprogress", action="store_true",
-                      help=_("Do not display progress of the upload"))
+    parser.add_option("--quiet", action="store_true",
+                      help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
     if build_opts.inis:
-        if len(args)!= 1:
+        if len(args) != 1:
             parser.error(_("Exactly one argument (a build target) is required"))
     else:
         if len(args) != 2:
@@ -1144,9 +1145,9 @@ def handle_maven_build(options, session, args):
         source = opts.pop('scmurl')
     else:
         source = args[1]
-        if '://' not in source:
-            parser.error(_("Invalid SCM URL: %s" % source))
         opts = koji.util.maven_opts(build_opts, scratch=build_opts.scratch)
+    if '://' not in source:
+        parser.error(_("Invalid SCM URL: %s" % source))
     if build_opts.debug:
         opts.setdefault('maven_options', []).append('--debug')
     if build_opts.skip_tag:
@@ -1156,13 +1157,14 @@ def handle_maven_build(options, session, args):
         #relative to koji.PRIO_DEFAULT
         priority = 5
     task_id = session.mavenBuild(source, target, opts, priority=priority)
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    if not build_opts.quiet:
+        print "Created task:", task_id
+        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
     if _running_in_bg() or build_opts.nowait:
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id],quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
 
 def handle_wrapper_rpm(options, session, args):
     """[build] Build wrapper rpms for any archives associated with a build."""

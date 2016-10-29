@@ -203,7 +203,7 @@ Options:
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         # Run it and check immediate output
-        # args: target, target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
+        # args: target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, dest_tag is locked
         with self.assertRaises(SystemExit) as cm:
             cli.handle_chain_build(self.options, self.session, args)
