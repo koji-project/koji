@@ -2921,7 +2921,7 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_include_all': 'maven_include_all'
              }
     clauses = [eventCondition(event, table='tag_config')]
-    if isinstance(tagInfo, int):
+    if isinstance(tagInfo, (int, long)):
         clauses.append("tag.id = %(tagInfo)i")
     elif isinstance(tagInfo, basestring):
         clauses.append("tag.name = %(tagInfo)s")
@@ -9312,7 +9312,7 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
@@ -9323,14 +9323,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             tag = get_tag_id(tag, strict=True)
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
@@ -9487,14 +9487,14 @@ class RootExports(object):
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
         """List latest builds for tag (inheritance enabled)"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
@@ -9554,13 +9554,13 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
@@ -9571,7 +9571,7 @@ class RootExports(object):
             stops = {}
         if jumps is None:
             jumps = {}
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
@@ -9598,7 +9598,7 @@ class RootExports(object):
         - buildroot_id
 
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
-        if not isinstance(build, int):
+        if not isinstance(build, (int, long)):
             #lookup build id
             build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
@@ -9963,7 +9963,7 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None):
-        if isinstance(tag, int):
+        if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
