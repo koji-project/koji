@@ -70,6 +70,15 @@ class TestTagBuild(unittest.TestCase):
             'release': 'release',
             'state': koji.BUILD_STATES['COMPLETE'],
         }
+        self.get_tag.return_value = {
+            'id': 777,
+            'name': 'tag',
+        }
+        self.get_user.return_value = {
+            'id': 999,
+            'name': 'user',
+        }
+        self.context.event_id = 42
         # set return for the already tagged check
         self.query_executeOne.return_value = None
 
@@ -83,6 +92,10 @@ class TestTagBuild(unittest.TestCase):
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'tag_listing')
         values = {
+            'build_id': 1,
+            'create_event': 42,
+            'creator_id': 999,
+            'tag_id': 777
         }
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
