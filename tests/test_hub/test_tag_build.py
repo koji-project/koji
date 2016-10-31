@@ -23,7 +23,7 @@ class TestTagBuild(unittest.TestCase):
     def getUpdate(self, *args, **kwargs):
         update = UP(*args, **kwargs)
         update.execute = mock.MagicMock()
-        self.updates.append(updates)
+        self.updates.append(update)
         return update
 
     def getQuery(self, *args, **kwargs):
@@ -86,6 +86,8 @@ class TestTagBuild(unittest.TestCase):
         kojihub._tag_build('sometag', 'name-version-release')
 
         self.get_tag.called_once_with('sometag', strict=True)
+        self.get_build.called_once_with('name-version-release', strict=True)
+        self.context.session.assertPerm.called_with('admin')
 
         # check the insert
         self.assertEqual(len(self.inserts), 1)
@@ -100,3 +102,50 @@ class TestTagBuild(unittest.TestCase):
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
         insert = self.inserts[0]
+
+
+    def test_simple_untag(self):
+        self.check_tag_access.return_value = (True, False, "")
+        self.get_build.return_value = {
+            'id': 1,
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'state': koji.BUILD_STATES['COMPLETE'],
+        }
+        self.get_tag.return_value = {
+            'id': 777,
+            'name': 'tag',
+        }
+        self.get_user.return_value = {
+            'id': 999,
+            'name': 'user',
+        }
+        self.context.event_id = 42
+        # set return for the already tagged check
+        self.query_executeOne.return_value = None
+
+        # call it
+        kojihub._untag_build('sometag', 'name-version-release')
+
+        self.get_tag.called_once_with('sometag', strict=True)
+        self.get_build.called_once_with('name-version-release', strict=True)
+        self.context.session.assertPerm.called_with('admin')
+        self.assertEqual(len(self.inserts), 0)
+
+        # check the update
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'tag_listing')
+        values = {
+            'build_id': 1,
+            'tag_id': 777
+        }
+        data = {
+            'revoke_event': 42,
+            'revoker_id': 999,
+        }
+        self.assertEqual(update.rawdata, {'active': 'NULL'})
+        self.assertEqual(update.data, data)
+        self.assertEqual(update.values, values)
+        update = self.updates[0]

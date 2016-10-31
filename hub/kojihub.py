@@ -1543,7 +1543,8 @@ def _untag_build(tag, build, user_id=None, strict=True, force=False):
 def _direct_untag_build(tag, build, user, strict=True, force=False):
     """Directly untag a build. No access check or value lookup."""
     koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
-    update = UpdateProcessor('tag_listing', values=locals(),
+    values = {'tag_id': tag['id'], 'build_id': build['id']}
+    update = UpdateProcessor('tag_listing', values=values,
                 clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
     update.make_revoke(user_id=user['id'])
     count = update.execute()
