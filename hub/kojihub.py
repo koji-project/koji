@@ -922,16 +922,23 @@ def pkglist_remove(taginfo, pkginfo, force=False):
     The main reason to remove an entry like this is to remove an override so
     that the package data can be inherited from elsewhere.
     """
+    _direct_pkglist_remove(taginfo, pkginfo, force, policy=True)
+
+
+def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
+    """Like pkglist_remove, but without policy check"""
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
-    context.session.assertLogin()
-    policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
-    #don't check policy for admins using force
-    if not (force and context.session.hasPerm('admin')):
-        assert_policy('package_list', policy_data)
+    if policy:
+        context.session.assertLogin()
+        policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
+        #don't check policy for admins using force
+        if not (force and context.session.hasPerm('admin')):
+            assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
     _pkglist_remove(tag['id'], pkg['id'])
     koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
+
 
 def pkglist_block(taginfo, pkginfo):
     """Block the package in tag"""
