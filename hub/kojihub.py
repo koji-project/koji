@@ -1545,12 +1545,13 @@ def _direct_untag_build(tag, build, user, strict=True, force=False):
     koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     update = UpdateProcessor('tag_listing', values=locals(),
                 clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
-    update.make_revoke(user_id=user_id)
+    update.make_revoke(user_id=user['id'])
     count = update.execute()
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr, tag['name'])
     koji.plugin.run_callbacks('postUntag', tag=tag, build=build, user=user, force=force, strict=strict)
+
 
 # tag-group operations
 #       add
@@ -1559,10 +1560,16 @@ def _direct_untag_build(tag, build, user, strict=True, force=False):
 #       unblock
 #       list (readTagGroups)
 
+
 def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     """Add to (or update) group list for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grplist_add(taginfo, grpinfo, block, force, **opts)
+
+
+def _grplist_add(taginfo, grpinfo, block, force, **opts):
+    """grplist_add without permission check"""
     tag = get_tag(taginfo)
     group = lookup_group(grpinfo, create=True)
     block = bool(block)
@@ -1608,6 +1615,7 @@ def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grplist_remove(taginfo, grpinfo, force=False):
     """Remove group from the list for tag
 
@@ -1616,6 +1624,11 @@ def grplist_remove(taginfo, grpinfo, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grplist_remove(taginfo, grpinfo, force)
+
+
+def _grplist_remove(taginfo, grpinfo, force):
+    """grplist_remove without permssion check"""
     tag = get_tag(taginfo)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
@@ -1625,9 +1638,11 @@ def grplist_remove(taginfo, grpinfo, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grplist_block(taginfo, grpinfo):
     """Block the group in tag"""
     grplist_add(taginfo, grpinfo, block=True)
+
 
 def grplist_unblock(taginfo, grpinfo):
     """Unblock the group in tag
@@ -1637,6 +1652,11 @@ def grplist_unblock(taginfo, grpinfo):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grplist_unblock(taginfo, grpinfo)
+
+
+def _grplist_unblock(taginfo, grpinfo):
+    """grplist_unblock without permssion check"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
@@ -1661,10 +1681,16 @@ def grplist_unblock(taginfo, grpinfo):
 #       unblock
 #       list (readTagGroups)
 
+
 def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     """Add package to group for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts)
+
+
+def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
+    """grp_pkg_add without permssion checks"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     block = bool(block)
@@ -1715,6 +1741,7 @@ def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     """Remove package from the list for group-tag
 
@@ -1723,6 +1750,11 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grp_pkg_remove(taginfo, grpinfo, pkg_name, force)
+
+
+def _grp_pkg_remove(taginfo, grpinfo, pkg_name, force):
+    """grp_pkg_remove without permssion checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
@@ -1730,9 +1762,11 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grp_pkg_block(taginfo, grpinfo, pkg_name):
     """Block the package in group-tag"""
     grp_pkg_add(taginfo, grpinfo, pkg_name, block=True)
+
 
 def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     """Unblock the package in group-tag
@@ -1742,6 +1776,11 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grp_pkg_unblock(taginfo, grpinfo, pkg_name)
+
+
+def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
+    """grp_pkg_unblock without permission checks"""
     table = 'group_package_listing'
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
@@ -1757,6 +1796,7 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     update.make_revoke()
     update.execute()
 
+
 # tag-group-req operations
 #       add
 #       remove
@@ -1764,10 +1804,16 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
 #       unblock
 #       list (readTagGroups)
 
+
 def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     """Add group requirement to group for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts)
+
+
+def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
+    """grp_req_add without permssion checks"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True, create=False)
     req = lookup_group(reqinfo, strict=True, create=False)
@@ -1819,6 +1865,7 @@ def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     """Remove group requirement from the list for group-tag
 
@@ -1827,6 +1874,11 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grp_req_remove(taginfo, grpinfo, reqinfo, force)
+
+
+def _grp_req_remove(taginfo, grpinfo, reqinfo, force):
+    """grp_req_remove without permission checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
@@ -1835,9 +1887,11 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grp_req_block(taginfo, grpinfo, reqinfo):
     """Block the group requirement in group-tag"""
     grp_req_add(taginfo, grpinfo, reqinfo, block=True)
+
 
 def grp_req_unblock(taginfo, grpinfo, reqinfo):
     """Unblock the group requirement in group-tag
@@ -1847,6 +1901,11 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grp_req_unblock(taginfo, grpinfo, reqinfo)
+
+
+def _grp_req_unblock(taginfo, grpinfo, reqinfo):
+    """grp_req_unblock without permssion checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
@@ -1863,6 +1922,7 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
+
 
 def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True):
     """Return group data for the tag
