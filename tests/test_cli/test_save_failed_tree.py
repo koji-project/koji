@@ -110,19 +110,28 @@ class TestSaveFailedTree(unittest.TestCase):
         self.parser.parse_args.return_value = [options, arguments]
         self.assertRaises(Exception, cli.handle_save_failed_tree, self.options,
                           self.session, self.args)
+        cli.logger = mock.MagicMock()
 
         # plugin not installed
         arguments = [123]
         self.parser.parse_args.return_value = [options, arguments]
         self.session.saveFailedTree.side_effect = koji.GenericError("Invalid method")
-        self.assertRaises(koji.GenericError, cli.handle_save_failed_tree,
-                          self.options, self.session, self.args)
-
-        # something wrong happened in task
-        stdout.seek(0)
-        stdout.truncate()
-        self.session.saveFailedTree.return_value = 'xyz'
-        self.session.saveFailedTree.side_effect = None
         cli.handle_save_failed_tree(self.options, self.session, self.args)
         actual = stdout.getvalue()
-        self.assertEqual(actual, 'Error: xyz\n')
+        self.assertTrue('The save_failed_tree plugin appears to not be installed' in actual)
+
+        # Task which is not FAILED
+        stdout.seek(0)
+        stdout.truncate()
+        self.session.saveFailedTree.side_effect = koji.PreBuildError('Only failed tasks can upload their buildroots.')
+        cli.handle_save_failed_tree(self.options, self.session, self.args)
+        actual = stdout.getvalue()
+        self.assertTrue('Only failed tasks can upload their buildroots.' in actual)
+
+        # Disabled/unsupported task
+        stdout.seek(0)
+        stdout.truncate()
+        self.session.saveFailedTree.side_effect = koji.PreBuildError('tasks can upload their buildroots (Task')
+        cli.handle_save_failed_tree(self.options, self.session, self.args)
+        actual = stdout.getvalue()
+        self.assertTrue('Task of this type has disabled support for uploading' in actual)

@@ -7229,15 +7229,22 @@ def handle_save_failed_tree(options, session, args):
     try:
         task_id = session.saveFailedTree(taskID, opts.full)
     except koji.GenericError as e:
-        if 'Invalid method' in str(e):
-            print "* The save_failed_tree plugin appears to not be installed" \
-                  " on the koji hub.  Please contact the administrator."
-        raise
-
-    if type(task_id) != int:
-        print 'Error: %s' % task_id
-        return
-
+        m = str(e)
+        if 'Only failed tasks can upload their buildroots.' in m:
+            print _("Only failed tasks can upload their buildroots.")
+        elif 'tasks can upload their buildroots (Task' in m:
+            print _("Task of this type has disabled support for uploading" \
+                    " buildroot. (configurable on hub)")
+        elif 'Invalid method' in m:
+            print _("* The save_failed_tree plugin appears to not be installed" \
+                    " on the koji hub.  Please contact the administrator.")
+        if logger.isEnabledFor(logging.DEBUG):
+            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+            logger.debug(tb_str)
+        return 1
+    except koji.ActionNotAllowed:
+        print _("Only task owner or admin can run this task.")
+        return 1
     if not opts.quiet:
         print "Created task:", task_id
         print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
