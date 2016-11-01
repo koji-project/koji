@@ -3067,6 +3067,7 @@ def delete_tag(tagInfo):
     _tagDelete('tag_config', tagID)
     #technically, to 'delete' the tag we only have to revoke the tag_config entry
     #these remaining revocations are more for cleanup.
+    _tagDelete('tag_extra', tagID)
     _tagDelete('tag_inheritance', tagID)
     _tagDelete('tag_inheritance', tagID, 'parent_id')
     _tagDelete('build_target_config', tagID, 'build_tag')
