@@ -35,10 +35,11 @@ class TestUploadProgressCallBack(unittest.TestCase):
         cli._progress_callback(12300, 234000, 5670, 80, 900)
         cli._progress_callback(45600, 234000, 5670, 0, 900)
         cli._progress_callback(234000, 234000, 5670, 80, 900)
-        self.assertMultiLineEqual(stdout.getvalue(),
-                                  '[=                                   ]  05% 00:15:00  12.01 KiB    70.88 B/sec\r'
-                                  '[=======                             ]  19% 00:15:00  44.53 KiB        - B/sec\r'
-                                  '[====================================] 100% 00:15:00 228.52 KiB   260.00 B/sec\r')
+        self.assertMultiLineEqual(
+            stdout.getvalue(),
+            '[=                                   ]  05% 00:15:00  12.01 KiB    70.88 B/sec\r'
+            '[=======                             ]  19% 00:15:00  44.53 KiB        - B/sec\r'
+            '[====================================] 100% 00:15:00 228.52 KiB   260.00 B/sec\r')
 
 
 if __name__ == '__main__':

@@ -36,12 +36,24 @@ class TestChainBuild(unittest.TestCase):
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
-        sources = [['http://scm1'], ['http://scm2', 'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
+        sources = [['http://scm1'], ['http://scm2',
+                                     'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
         task_id = 1
         args = [target] + source_args
         priority = None
@@ -64,10 +76,12 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.session.chainBuild.assert_called_once_with(
+            sources, target, priority=priority)
         running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(self.session, [task_id], quiet=self.options.quiet)
+        watch_tasks_mock.assert_called_once_with(
+            self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
@@ -76,7 +90,12 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
     def test_handle_chain_build_no_arg(
-            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stderr, stdout):
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stderr,
+            stdout):
         args = []
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
@@ -111,7 +130,12 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
     def test_handle_chain_build_help(
-            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stderr, stdout):
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stderr,
+            stdout):
         args = ['--help']
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
@@ -148,11 +172,23 @@ Options:
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_target_not_found(self, watch_tasks_mock, running_in_bg_mock,
-                                                 activate_session_mock, stderr):
+    def test_handle_chain_build_target_not_found(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stderr):
         target = 'target'
         target_info = None
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
         args = [target] + source_args
 
         progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -185,17 +221,32 @@ Options:
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_build_dest_tag_locked(self, watch_tasks_mock, running_in_bg_mock,
-                                          activate_session_mock, stderr):
+    def test_handle_build_dest_tag_locked(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stderr):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': True}
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
         args = [target] + source_args
 
         progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -229,18 +280,30 @@ Options:
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_build_dest_tag_not_inherited_by_build_tag(self, watch_tasks_mock, running_in_bg_mock,
-                                                              activate_session_mock, stdout):
+    def test_handle_build_dest_tag_not_inherited_by_build_tag(
+            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'name': target, 'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'name': target,
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
         args = [target] + source_args
 
         self.session.getBuildTarget.return_value = target_info
@@ -269,18 +332,32 @@ Target target is not usable for a chain-build
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_invalidated_src(self, watch_tasks_mock, running_in_bg_mock,
-                                                activate_session_mock):
+    def test_handle_chain_build_invalidated_src(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['badnvr', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+        source_args = [
+            'badnvr',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
         args = [target] + source_args
 
         self.session.getBuildTarget.return_value = target_info
@@ -297,8 +374,10 @@ Target target is not usable for a chain-build
             # Finally, assert that things were called as we expected.
             activate_session_mock.assert_called_once_with(self.session)
             self.session.getBuildTarget.assert_called_once_with(target)
-            self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
-            self.session.getFullInheritance.assert_called_once_with(build_tag_id)
+            self.session.getTag.assert_called_once_with(
+                dest_tag_id, strict=True)
+            self.session.getFullInheritance.assert_called_once_with(
+                build_tag_id)
             self.session.chainBuild.assert_not_called()
             running_in_bg_mock.assert_not_called()
             self.session.logout.assert_not_called()
@@ -306,7 +385,15 @@ Target target is not usable for a chain-build
             self.assertEqual(rv, 1)
 
         with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
-            source_args = ['path/n-v-r', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+            source_args = [
+                'path/n-v-r',
+                ':',
+                'http://scm2',
+                'http://scm3',
+                'n-v-r-1',
+                ':',
+                'n-v-r-2',
+                'n-v-r-3']
             args = [target] + source_args
             # args: target path/n-v-r : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
@@ -316,7 +403,15 @@ Target target is not usable for a chain-build
             self.assertMultiLineEqual(actual, expected)
 
         with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
-            source_args = ['badn-vr', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+            source_args = [
+                'badn-vr',
+                ':',
+                'http://scm2',
+                'http://scm3',
+                'n-v-r-1',
+                ':',
+                'n-v-r-2',
+                'n-v-r-3']
             args = [target] + source_args
             # args: target badn-vr : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
@@ -326,7 +421,15 @@ Target target is not usable for a chain-build
             self.assertMultiLineEqual(actual, expected)
 
         with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
-            source_args = ['badn-v-r.rpm', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
+            source_args = [
+                'badn-v-r.rpm',
+                ':',
+                'http://scm2',
+                'http://scm3',
+                'n-v-r-1',
+                ':',
+                'n-v-r-2',
+                'n-v-r-3']
             args = [target] + source_args
             # args: target badn-v-r.rpm : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
@@ -359,19 +462,35 @@ If there are no dependencies, use the build command instead
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_background(self, watch_tasks_mock, running_in_bg_mock,
-                                           activate_session_mock, stdout):
+    def test_handle_chain_build_background(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
-        sources = [['http://scm1'], ['http://scm2', 'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
+        sources = [['http://scm1'], ['http://scm2',
+                                     'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
         task_id = 1
         args = ['--background', target] + source_args
         priority = 5
@@ -394,29 +513,47 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.session.chainBuild.assert_called_once_with(
+            sources, target, priority=priority)
         running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(self.session, [task_id], quiet=self.options.quiet)
+        watch_tasks_mock.assert_called_once_with(
+            self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_quiet(self, watch_tasks_mock, running_in_bg_mock,
-                                      activate_session_mock, stdout):
+    def test_handle_chain_build_quiet(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
-        sources = [['http://scm1'], ['http://scm2', 'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
+        sources = [['http://scm1'], ['http://scm2',
+                                     'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
         task_id = 1
         self.options.quiet = True
         args = ['--quiet', target] + source_args
@@ -438,29 +575,47 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.session.chainBuild.assert_called_once_with(
+            sources, target, priority=priority)
         running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(self.session, [task_id], quiet=self.options.quiet)
+        watch_tasks_mock.assert_called_once_with(
+            self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=stringio.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=True)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_running_in_bg(self, watch_tasks_mock, running_in_bg_mock,
-                                              activate_session_mock, stdout):
+    def test_handle_chain_build_running_in_bg(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
-        sources = [['http://scm1'], ['http://scm2', 'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
+        sources = [['http://scm1'], ['http://scm2',
+                                     'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
         task_id = 1
         args = [target] + source_args
         priority = None
@@ -483,7 +638,8 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.session.chainBuild.assert_called_once_with(
+            sources, target, priority=priority)
         running_in_bg_mock.assert_called_once()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
@@ -493,19 +649,35 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
-    def test_handle_chain_build_nowait(self, watch_tasks_mock, running_in_bg_mock,
-                                       activate_session_mock, stdout):
+    def test_handle_chain_build_nowait(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            activate_session_mock,
+            stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
         build_tag = 'build_tag'
         build_tag_id = 3
-        target_info = {'dest_tag': dest_tag_id, 'dest_tag_name': dest_tag, 'build_tag': build_tag_id,
-                       'build_tag_name': build_tag}
+        target_info = {
+            'dest_tag': dest_tag_id,
+            'dest_tag_name': dest_tag,
+            'build_tag': build_tag_id,
+            'build_tag_name': build_tag}
         dest_tag_info = {'id': 2, 'name': dest_tag, 'locked': False}
         tag_tree = [{'parent_id': 2}, {'parent_id': 4}, {'parent_id': 5}]
-        source_args = ['http://scm1', ':', 'http://scm2', 'http://scm3', 'n-v-r-1', ':', 'n-v-r-2', 'n-v-r-3']
-        sources = [['http://scm1'], ['http://scm2', 'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
+        source_args = [
+            'http://scm1',
+            ':',
+            'http://scm2',
+            'http://scm3',
+            'n-v-r-1',
+            ':',
+            'n-v-r-2',
+            'n-v-r-3']
+        sources = [['http://scm1'], ['http://scm2',
+                                     'http://scm3', 'n-v-r-1'], ['n-v-r-2', 'n-v-r-3']]
         task_id = 1
         args = ['--nowait', target] + source_args
         priority = None
@@ -528,7 +700,8 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.session.chainBuild.assert_called_once_with(
+            sources, target, priority=priority)
         running_in_bg_mock.assert_called_once()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()

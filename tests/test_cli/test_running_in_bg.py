@@ -8,6 +8,7 @@ cli = loadcli.cli
 
 
 class TestRunningInBg(unittest.TestCase):
+
     @mock.patch('koji_cli.os')
     def test_running_in_bg(self, os_mock):
         os_mock.isatty.return_value = False
