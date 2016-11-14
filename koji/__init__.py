@@ -1823,24 +1823,24 @@ class PathInfo(object):
         """Return the relative path for the task work directory"""
         return "tasks/%s/%s" % (task_id % 10000, task_id)
 
-    def work(self):
+    def work(self, volume=None):
         """Return the work dir"""
-        return self.topdir + '/work'
+        return self.volumedir(volume) + '/work'
 
-    def tmpdir(self):
+    def tmpdir(self, volume=None):
         """Return a path to a unique directory under work()/tmp/"""
         tmp = None
         while tmp is None or os.path.exists(tmp):
-            tmp = self.work() + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS) for dummy in '123456'])
+            tmp = self.work(volume) + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS) for dummy in '123456'])
         return tmp
 
     def scratch(self):
         """Return the main scratch dir"""
         return self.topdir + '/scratch'
 
-    def task(self, task_id):
+    def task(self, task_id, volume=None):
         """Return the output directory for the task with the given id"""
-        return self.work() + '/' + self.taskrelpath(task_id)
+        return self.work(volume=volume) + '/' + self.taskrelpath(task_id)
 
 pathinfo = PathInfo()
 
@@ -2451,7 +2451,7 @@ class ClientSession(object):
         #    raise AttributeError("no attribute %r" % name)
         return VirtualMethod(self._callMethod, name)
 
-    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False):
+    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False, volume=None):
         if blocksize is None:
             blocksize = self.opts.get('upload_blocksize', 1048576)
 
@@ -2476,7 +2476,7 @@ class ClientSession(object):
             if not chunk and not first_cycle:
                 break
             first_cycle = False
-            result = self._callMethod('rawUpload', (chunk, ofs, path, name), {'overwrite':overwrite})
+            result = self._callMethod('rawUpload', (chunk, ofs, path, name), {'overwrite':overwrite, 'volume': volume})
             if self.retries > 1:
                 problems = True
             hexdigest = util.adler32_constructor(chunk).hexdigest()
@@ -2509,7 +2509,7 @@ class ClientSession(object):
                     % (path, name, result['hexdigest'], full_chksum.hexdigest()))
         self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
 
-    def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False):
+    def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False, volume=None):
         """prep a rawUpload call"""
         if not self.logged_in:
             raise ActionNotAllowed("you must be logged in to upload")
@@ -2532,13 +2532,13 @@ class ClientSession(object):
         request = chunk
         return handler, headers, request
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True, volume=None):
         """upload a file in chunks using the uploadFile call"""
         if blocksize is None:
             blocksize = self.opts.get('upload_blocksize', 1048576)
 
         if self.opts.get('use_fast_upload'):
-            self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
+            self.fastUpload(localfile, path, name, callback, blocksize, overwrite, volume=volume)
             return
         if name is None:
             name = os.path.basename(localfile)
@@ -2551,7 +2551,7 @@ class ClientSession(object):
         except GenericError:
             pass
         else:
-            self.fastUpload(localfile, path, name, callback, blocksize, overwrite)
+            self.fastUpload(localfile, path, name, callback, blocksize, overwrite, volume=volume)
             return
 
         start = time.time()
@@ -2584,7 +2584,7 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
-                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data):
+                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data, volume=volume):
                     break
                 if tries <= retries:
                     tries += 1

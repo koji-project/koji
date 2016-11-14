@@ -673,6 +673,7 @@ def taskinfo(environ, taskID):
     values['abbr_result_text'] = abbr_result_text
 
     output = server.listTaskOutput(task['id'])
+    output = [p[len(koji.pathinfo.topdir):] for p in output]
     output.sort(_sortByExtAndName)
     values['output'] = output
     if environ['koji.currentUser']:
@@ -717,8 +718,8 @@ def canceltask(environ, taskID):
 
 def _sortByExtAndName(a, b):
     """Sort two filenames, first by extension, and then by name."""
-    aRoot, aExt = os.path.splitext(a)
-    bRoot, bExt = os.path.splitext(b)
+    aRoot, aExt = os.path.splitext(os.path.basename(a))
+    bRoot, bExt = os.path.splitext(os.path.basename(b))
     return cmp(aExt, bExt) or cmp(aRoot, bRoot)
 
 def getfile(environ, taskID, name, offset=None, size=None):
@@ -726,6 +727,7 @@ def getfile(environ, taskID, name, offset=None, size=None):
     taskID = int(taskID)
 
     output = server.listTaskOutput(taskID, stat=True)
+    name = os.path.join(koji.pathinfo.topdir, name[1:])
     file_info = output.get(name)
     if not file_info:
         raise koji.GenericError('no file "%s" output by task %i' % (name, taskID))

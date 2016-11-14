@@ -4268,29 +4268,31 @@ def list_task_output(taskID, stat=False):
 
     If stat is True, return a map of filename -> stat_info where stat_info
     is a map containing the values of the st_* attributes returned by
-    os.stat()."""
-    taskDir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID))
+    os.stat().
+
+    It goes through all available volumes"""
     if stat:
         result = {}
     else:
         result = []
-    if not os.path.isdir(taskDir):
-        return result
-    for path, dirs, files in os.walk(taskDir):
-        relpath = path[len(taskDir) + 1:]
-        for filename in files:
-            relfilename = os.path.join(relpath, filename)
-            if stat:
-                stat_info = os.stat(os.path.join(path, filename))
-                stat_map = {}
-                for attr in dir(stat_info):
-                    if attr == 'st_size':
-                        stat_map[attr] = str(getattr(stat_info, attr))
-                    elif attr in ('st_atime', 'st_mtime', 'st_ctime'):
-                        stat_map[attr] = getattr(stat_info, attr)
-                result[relfilename] = stat_map
-            else:
-                result.append(relfilename)
+    for vol_info in list_volumes():
+        taskDir = '%s/%s' % (koji.pathinfo.work(volume=vol_info['name']), koji.pathinfo.taskrelpath(taskID))
+        if not os.path.isdir(taskDir):
+            continue
+        for path, dirs, files in os.walk(taskDir):
+            for filename in files:
+                filename = os.path.join(path, filename)
+                if stat:
+                    stat_info = os.stat(filename)
+                    stat_map = {}
+                    for attr in dir(stat_info):
+                        if attr == 'st_size':
+                            stat_map[attr] = str(getattr(stat_info, attr))
+                        elif attr in ('st_atime', 'st_mtime', 'st_ctime'):
+                            stat_map[attr] = getattr(stat_info, attr)
+                    result[filename] = stat_map
+                else:
+                    result.append(filename)
     return result
 
 def _fetchMulti(query, values):
@@ -8683,7 +8685,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return make_task(*args, **opts)
 
-    def uploadFile(self, path, name, size, md5sum, offset, data):
+    def uploadFile(self, path, name, size, md5sum, offset, data, volume=None):
         #path: the relative path to upload to
         #name: the name of the file
         #size: size of contents (bytes)
@@ -8715,7 +8717,7 @@ class RootExports(object):
             if verify is not None:
                 if digest != sum_cls(contents).hexdigest():
                     return False
-        fn = get_upload_path(path, name, create=True)
+        fn = get_upload_path(path, name, create=True, volume=volume)
         try:
             st = os.lstat(fn)
         except OSError, e:
@@ -8829,7 +8831,11 @@ class RootExports(object):
         given ID."""
         if '..' in fileName:
             raise koji.GenericError('Invalid file name: %s' % fileName)
-        filePath = '%s/%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID), fileName)
+        if not fileName.startswith('/'):
+            filePath = '%s/%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(taskID), fileName)
+        else:
+            filePath = fileName
+            assert(koji.pathinfo.taskrelpath(taskID) in filePath)
         filePath = os.path.normpath(filePath)
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
@@ -12240,7 +12246,12 @@ class HostExports(object):
         return host.isEnabled()
 
 
-def get_upload_path(reldir, name, create=False):
+def get_upload_path(reldir, name, create=False, volume=None):
+    if volume is not None:
+        volinfo = lookup_name('volume', volume, strict=True)
+        pathinfo = koji.PathInfo(topdir=koji.pathinfo.volumedir(volinfo['name']))
+    else:
+        pathinfo = koji.pathinfo
     orig_reldir = reldir
     orig_name = name
     # lots of sanity checks
@@ -12264,7 +12275,7 @@ def get_upload_path(reldir, name, create=False):
         host.verify()
         Task(task_id).assertHost(host.id)
         check_user = False
-    udir = os.path.join(koji.pathinfo.work(), reldir)
+    udir = os.path.join(pathinfo.work(), reldir)
     if create:
         koji.ensuredir(udir)
         if check_user:

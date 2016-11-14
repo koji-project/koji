@@ -262,7 +262,7 @@ class BaseTaskHandler(object):
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
 
-    def uploadFile(self, filename, relPath=None, remoteName=None):
+    def uploadFile(self, filename, relPath=None, remoteName=None, volume=None):
         """Upload the file with the given name to the task output directory
         on the hub."""
         uploadPath = self.getUploadDir()
@@ -271,9 +271,9 @@ class BaseTaskHandler(object):
             uploadPath += '/' + relPath
         # Only upload files with content
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
-            self.session.uploadWrapper(filename, uploadPath, remoteName)
+            self.session.uploadWrapper(filename, uploadPath, remoteName, volume=volume)
 
-    def uploadTree(self, dirpath, flatten=False):
+    def uploadTree(self, dirpath, flatten=False, volume=None):
         """Upload the directory tree at dirpath to the task directory on the
         hub, preserving the directory structure"""
         dirpath = dirpath.rstrip('/')
@@ -283,7 +283,7 @@ class BaseTaskHandler(object):
             else:
                 relpath = path[len(dirpath) + 1:]
             for filename in files:
-                self.uploadFile(os.path.join(path, filename), relpath)
+                self.uploadFile(os.path.join(path, filename), relpath, volume=volume)
 
     def chownTree(self, dirpath, uid, gid):
         """chown the given path and all files and directories under

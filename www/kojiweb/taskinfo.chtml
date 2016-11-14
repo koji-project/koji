@@ -413,7 +413,7 @@ $value
       <th>Output</th>
       <td>
         #for $filename in $output
-        <a href="$pathinfo.task($task.id)/$urllib.quote($filename)">$filename</a>
+        <a href="$pathinfo.topdir$urllib.quote($filename)">$filename</a><br/>
            #if $filename.endswith('.log')
            (<a href="getfile?taskID=$task.id&name=$urllib.quote($filename)&offset=-4000">tail</a>)
            #end if
