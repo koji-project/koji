@@ -5478,7 +5478,7 @@ def handle_spin_livemedia(options, session, args):
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--can-fail", action="store", dest="optional_arches",
-        metavar="ARCH1,ARCH2,...",
+        metavar="ARCH1,ARCH2,...", default="",
         help=_("List of archs which are not blocking for build (separated by commas."))
     (task_options, args) = parser.parse_args(args)
 
@@ -5747,7 +5747,7 @@ def handle_image_build(options, session, args):
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--can-fail", action="store", dest="optional_arches",
-        metavar="ARCH1,ARCH2,...",
+        metavar="ARCH1,ARCH2,...", default="",
         help=_("List of archs which are not blocking for build (separated by commas."))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
