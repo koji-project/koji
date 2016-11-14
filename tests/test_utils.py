@@ -433,6 +433,45 @@ class MavenUtilTestCase(unittest.TestCase):
                 cm.exception.args[0],
                 'No possible build order, missing/circular dependencies')
 
+    def test_tsort(self):
+        # success, one path
+        parts = {
+            'p1': {'p2', 'p3'},
+            'p2': {'p3'},
+            'p3': set()
+        }
+        self.assertEqual(koji.util.tsort(parts),
+                         [{'p3'}, {'p2'}, {'p1'}])
+        # success, multi-path
+        parts = {
+            'p1': {'p2'},
+            'p2': {'p4'},
+            'p3': {'p4'},
+            'p4': set(),
+            'p5': set()
+        }
+        self.assertEqual(koji.util.tsort(parts),
+                         [{'p4', 'p5'}, {'p2', 'p3'}, {'p1'}])
+        # failed, missing child 'p4'
+        parts = {
+            'p1': {'p2'},
+            'p2': {'p3'},
+            'p3': {'p4'}
+        }
+        with self.assertRaises(ValueError) as cm:
+            koji.util.tsort(parts)
+        self.assertEqual(cm.exception.args[0], 'total ordering not possible')
+
+        # failed, circular
+        parts = {
+            'p1': {'p2'},
+            'p2': {'p3'},
+            'p3': {'p1'}
+        }
+        with self.assertRaises(ValueError) as cm:
+            koji.util.tsort(parts)
+        self.assertEqual(cm.exception.args[0], 'total ordering not possible')
+
     def _read_conf(self, cfile):
         config = ConfigParser.ConfigParser()
         path = os.path.dirname(__file__)
