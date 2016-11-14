@@ -572,7 +572,6 @@ def parse_maven_params(confs, chain=False, scratch=False):
         conf_fd.close()
     builds = {}
     for package in config.sections():
-        params = {}
         buildtype = 'maven'
         if config.has_option(package, 'type'):
             buildtype = config.get(package, 'type')
