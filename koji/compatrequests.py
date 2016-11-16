@@ -14,7 +14,7 @@ import sys
 import ssl.SSLCommon
 try:
     from ssl import ssl as pyssl
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 
