@@ -1,5 +1,6 @@
 import mock
 import unittest
+import urlparse
 
 import koji.compatrequests
 
@@ -53,3 +54,81 @@ class TestResponse(unittest.TestCase):
         with self.assertRaises(Exception):
             list(self.response.iter_content())
         self.response.response.read.assert_called_once()
+
+
+class TestSessionPost(unittest.TestCase):
+
+    def test_simple(self):
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain.org/KOJIHUB'
+        cnx = mock.MagicMock()
+        session.get_connection = mock.MagicMock()
+        session.get_connection.return_value = cnx
+        response = mock.MagicMock()
+        cnx.getresponse.return_value = response
+
+        ret  = session.post(url, data="data", headers={"foo": "bar"})
+        cnx.putrequest.assert_called_once_with('POST', '/KOJIHUB')
+        cnx.putheader.assert_called_once_with('foo', 'bar')
+        cnx.send.assert_called_once_with("data")
+        self.assertEqual(ret.response, response)
+
+    def test_less_simple(self):
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain.org/KOJIHUB?a=1&b=2'
+        cnx = mock.MagicMock()
+        session.get_connection = mock.MagicMock()
+        session.get_connection.return_value = cnx
+        response = mock.MagicMock()
+        cnx.getresponse.return_value = response
+
+        ret  = session.post(url, data="data", headers={"foo": "bar"},
+                cert="cert", verify="verify", stream=True, timeout=1701)
+        cnx.putrequest.assert_called_once_with('POST', '/KOJIHUB?a=1&b=2')
+        cnx.putheader.assert_called_once_with('foo', 'bar')
+        cnx.send.assert_called_once_with("data")
+        self.assertEqual(ret.response, response)
+
+
+class TestSessionConnection(unittest.TestCase):
+
+    @mock.patch('httplib.HTTPConnection')
+    def test_http(self, HTTPConnection):
+        # no cert, no verify, no timeout
+        session = koji.compatrequests.Session()
+        url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+
+        cnx = session.get_connection(uri, None, None, None)
+        HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80)
+        key = ('http', 'www.fakedomain234234.org', None, None, None)
+        self.assertEqual(session.connection, (key, cnx))
+
+        # and close it
+        session.close()
+        self.assertEqual(session.connection, None)
+        cnx.close.assert_called_with()
+
+        # double close should not error
+        session.close()
+
+
+    def test_cached(self):
+        session = koji.compatrequests.Session()
+        url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        key = ('http', 'www.fakedomain234234.org', None, None, None)
+        cnx = mock.MagicMock()
+        session.connection = (key, cnx)
+
+        ret = session.get_connection(uri, None, None, None)
+        self.assertEqual(ret, cnx)
+
+    def test_badproto(self):
+        session = koji.compatrequests.Session()
+        url = 'nosuchproto://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+
+        with self.assertRaises(IOError):
+            ret = session.get_connection(uri, None, None, None)
+
