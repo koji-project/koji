@@ -11450,6 +11450,9 @@ class HostExports(object):
         task.assertHost(host.id)
         logger.debug('scratch image results: %s' % results)
         for sub_results in results.values():
+            if 'task_id' not in sub_results:
+                logger.warning('Task %s failed, no image available' % task_id)
+                continue
             workdir = koji.pathinfo.task(sub_results['task_id'])
             scratchdir = koji.pathinfo.scratch()
             username = get_user(task.getOwner())['name']
@@ -11830,6 +11833,9 @@ class HostExports(object):
         moving the image to its final location.
         """
         for sub_results in results.values():
+            if 'task_id' not in sub_results:
+                logger.warning('Task %s failed, no image available' % task_id)
+                continue
             importImageInternal(task_id, build_id, sub_results)
             if sub_results.has_key('rpmresults'):
                 rpm_results = sub_results['rpmresults']
