@@ -112,7 +112,6 @@ class TestSessionConnection(unittest.TestCase):
         # double close should not error
         session.close()
 
-
     def test_cached(self):
         session = koji.compatrequests.Session()
         url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
@@ -131,4 +130,92 @@ class TestSessionConnection(unittest.TestCase):
 
         with self.assertRaises(IOError):
             ret = session.get_connection(uri, None, None, None)
+
+    @mock.patch('httplib.HTTPConnection')
+    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    def test_timeout(self, HTTPConnection):
+        # no cert, no verify
+        session = koji.compatrequests.Session()
+        url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        timeout = 1701
+
+        cnx = session.get_connection(uri, None, None, 1701)
+        HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80, timeout=1701)
+        key = ('http', 'www.fakedomain234234.org', None, None, 1701)
+        self.assertEqual(session.connection, (key, cnx))
+
+    @mock.patch('httplib.HTTPConnection')
+    @mock.patch('sys.version_info', new=(2, 4, 3, 'final', 0))
+    def test_timeout_compat(self, HTTPConnection):
+        # no cert, no verify
+        session = koji.compatrequests.Session()
+        url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        timeout = 1701
+
+        cnx = session.get_connection(uri, None, None, 1701)
+        HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80)
+        key = ('http', 'www.fakedomain234234.org', None, None, 1701)
+        self.assertEqual(session.connection, (key, cnx))
+        cnx.connect.assert_called_once()
+        cnx.sock.settimeout.assert_called_with(1701)
+
+    @mock.patch('httplib.HTTPSConnection')
+    def test_https(self, HTTPSConnection):
+        # no cert, no verify, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+
+        cnx = session.get_connection(uri, None, None, None)
+        HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443)
+        key = ('https', 'www.fakedomain234234.org', None, None, None)
+        self.assertEqual(session.connection, (key, cnx))
+
+    @mock.patch('koji.ssl.SSLCommon.CreateSSLContext')
+    @mock.patch('koji.ssl.SSLCommon.PlgHTTPSConnection')
+    def test_cert(self, PlgHTTPSConnection, CreateSSLContext):
+        # no verify, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        cert = '/path/to/cert/file'
+        context = mock.MagicMock()
+        CreateSSLContext.return_value = context
+
+        cnx = session.get_connection(uri, cert, None, None)
+        PlgHTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443, ssl_context=context)
+        key = ('https', 'www.fakedomain234234.org', cert, None, None)
+        self.assertEqual(session.connection, (key, cnx))
+
+    @mock.patch('ssl._create_unverified_context')
+    @mock.patch('httplib.HTTPSConnection')
+    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    def test_unverified(self, HTTPSConnection, create_unverified_context):
+        # no cert, verify=False, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        context = mock.MagicMock()
+        create_unverified_context.return_value = context
+
+        cnx = session.get_connection(uri, None, False, None)
+        create_unverified_context.assert_called_once()
+        HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443, context=context)
+        key = ('https', 'www.fakedomain234234.org', None, False, None)
+        self.assertEqual(session.connection, (key, cnx))
+
+    @mock.patch('httplib.HTTPSConnection')
+    @mock.patch('sys.version_info', new=(2, 4, 3, 'final', 0))
+    def test_unverified_compat(self, HTTPSConnection):
+        # no cert, verify=False, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+
+        cnx = session.get_connection(uri, None, False, None)
+        HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443)
+        key = ('https', 'www.fakedomain234234.org', None, False, None)
+        self.assertEqual(session.connection, (key, cnx))
 
