@@ -219,3 +219,41 @@ class TestSessionConnection(unittest.TestCase):
         key = ('https', 'www.fakedomain234234.org', None, False, None)
         self.assertEqual(session.connection, (key, cnx))
 
+    @mock.patch('ssl._create_unverified_context')
+    @mock.patch('ssl.SSLContext')
+    @mock.patch('httplib.HTTPSConnection')
+    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    def test_verify(self, HTTPSConnection, SSLContext, create_unverified_context):
+        # no cert, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        context = mock.MagicMock()
+        SSLContext.return_value = context
+        verify = '/path/to/verify/cert'
+
+        cnx = session.get_connection(uri, None, verify, None)
+        create_unverified_context.assert_not_called()
+        SSLContext.assert_called_once()
+        context.load_verify_locations.called_once_with(cafile=verify)
+        HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443, context=context)
+        key = ('https', 'www.fakedomain234234.org', None, verify, None)
+        self.assertEqual(session.connection, (key, cnx))
+
+    @mock.patch('ssl._create_unverified_context')
+    @mock.patch('ssl.SSLContext')
+    @mock.patch('httplib.HTTPSConnection')
+    @mock.patch('sys.version_info', new=(2, 4, 3, 'final', 0))
+    def test_verify_compat(self, HTTPSConnection, SSLContext, create_unverified_context):
+        # no cert, no timeout
+        session = koji.compatrequests.Session()
+        url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
+        uri = urlparse.urlsplit(url)
+        verify = '/path/to/verify/cert'
+
+        cnx = session.get_connection(uri, None, verify, None)
+        create_unverified_context.assert_not_called()
+        SSLContext.assert_not_called()
+        HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443, cert_file=verify)
+        key = ('https', 'www.fakedomain234234.org', None, verify, None)
+        self.assertEqual(session.connection, (key, cnx))
