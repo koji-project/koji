@@ -351,12 +351,20 @@ def generate_out_calls():
     comps_file = path + '/data/comps-example.xml'
     stdout_file = path + '/data/comps-example.yumcomps.out'
     calls_file = path + '/data/comps-example.yumcomps.calls'
-    _generate_out_calls(cli._import_comps_alt, comps_file, stdout_file, calls_file)
+    _generate_out_calls(
+        cli._import_comps_alt,
+        comps_file,
+        stdout_file,
+        calls_file)
 
     comps_file = path + '/data/comps-sample.xml'
     stdout_file = path + '/data/comps-sample.yumcomps.out'
     calls_file = path + '/data/comps-sample.yumcomps.calls'
-    _generate_out_calls(cli._import_comps_alt, comps_file, stdout_file, calls_file)
+    _generate_out_calls(
+        cli._import_comps_alt,
+        comps_file,
+        stdout_file,
+        calls_file)
 
 
 if __name__ == '__main__':
