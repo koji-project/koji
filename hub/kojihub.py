@@ -836,6 +836,13 @@ def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
 
 def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, force=False, update=False):
     """Add to (or update) package list for tag"""
+    return _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches,
+            force, update, policy=True)
+
+
+def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
+        update, policy=False):
+    """Like pkglist_add, but without policy or access check"""
     #access control comes a little later (via an assert_policy)
     #should not make any changes until after policy is checked
     tag = get_tag(taginfo, strict=True)
@@ -851,11 +858,12 @@ def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, for
         action = 'update'
     elif bool(block):
         action = 'block'
-    context.session.assertLogin()
-    policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
-    #don't check policy for admins using force
-    if not (force and context.session.hasPerm('admin')):
-        assert_policy('package_list', policy_data)
+    if policy:
+        context.session.assertLogin()
+        policy_data = {'tag' : tag_id, 'action' : action, 'package' : pkginfo, 'force' : force}
+        #don't check policy for admins using force
+        if not (force and context.session.hasPerm('admin')):
+            assert_policy('package_list', policy_data)
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
@@ -914,16 +922,23 @@ def pkglist_remove(taginfo, pkginfo, force=False):
     The main reason to remove an entry like this is to remove an override so
     that the package data can be inherited from elsewhere.
     """
+    _direct_pkglist_remove(taginfo, pkginfo, force, policy=True)
+
+
+def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
+    """Like pkglist_remove, but without policy check"""
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
-    context.session.assertLogin()
-    policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
-    #don't check policy for admins using force
-    if not (force and context.session.hasPerm('admin')):
-        assert_policy('package_list', policy_data)
+    if policy:
+        context.session.assertLogin()
+        policy_data = {'tag' : tag['id'], 'action' : 'remove', 'package' : pkg['id'], 'force' : force}
+        #don't check policy for admins using force
+        if not (force and context.session.hasPerm('admin')):
+            assert_policy('package_list', policy_data)
     koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
     _pkglist_remove(tag['id'], pkg['id'])
     koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
+
 
 def pkglist_block(taginfo, pkginfo):
     """Block the package in tag"""
@@ -1461,16 +1476,22 @@ def _tag_build(tag, build, user_id=None, force=False):
     else:
         # use the user associated with the current session
         user = get_user(context.session.user_id, strict=True)
+    #access check
+    assert_tag_access(tag['id'], user_id=user_id, force=force)
+    return _direct_tag_build(tag, build, user, force)
+
+
+def _direct_tag_build(tag, build, user, force=False):
+    """Directly tag a build. No access check or value lookup."""
     koji.plugin.run_callbacks('preTag', tag=tag, build=build, user=user, force=force)
     tag_id = tag['id']
     build_id = build['id']
+    user_id = user['id']
     nvr = "%(name)s-%(version)s-%(release)s" % build
     if build['state'] != koji.BUILD_STATES['COMPLETE']:
         # incomplete builds may not be tagged, not even when forced
         state = koji.BUILD_STATES[build['state']]
         raise koji.TagError, "build %s not complete: state %s" % (nvr, state)
-    #access check
-    assert_tag_access(tag['id'], user_id=user_id, force=force)
     # see if it's already tagged
     retag = False
     table = 'tag_listing'
@@ -1513,18 +1534,25 @@ def _untag_build(tag, build, user_id=None, strict=True, force=False):
     else:
         # use the user associated with the current session
         user = get_user(context.session.user_id, strict=True)
-    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     tag_id = tag['id']
     build_id = build['id']
     assert_tag_access(tag_id, user_id=user_id, force=force)
-    update = UpdateProcessor('tag_listing', values=locals(),
+    return _direct_untag_build(tag, build, user, strict, force)
+
+
+def _direct_untag_build(tag, build, user, strict=True, force=False):
+    """Directly untag a build. No access check or value lookup."""
+    koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
+    values = {'tag_id': tag['id'], 'build_id': build['id']}
+    update = UpdateProcessor('tag_listing', values=values,
                 clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
-    update.make_revoke(user_id=user_id)
+    update.make_revoke(user_id=user['id'])
     count = update.execute()
     if count == 0 and strict:
         nvr = "%(name)s-%(version)s-%(release)s" % build
         raise koji.TagError, "build %s not in tag %s" % (nvr, tag['name'])
     koji.plugin.run_callbacks('postUntag', tag=tag, build=build, user=user, force=force, strict=strict)
+
 
 # tag-group operations
 #       add
@@ -1533,10 +1561,16 @@ def _untag_build(tag, build, user_id=None, strict=True, force=False):
 #       unblock
 #       list (readTagGroups)
 
+
 def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     """Add to (or update) group list for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grplist_add(taginfo, grpinfo, block, force, **opts)
+
+
+def _grplist_add(taginfo, grpinfo, block, force, **opts):
+    """grplist_add without permission check"""
     tag = get_tag(taginfo)
     group = lookup_group(grpinfo, create=True)
     block = bool(block)
@@ -1582,6 +1616,7 @@ def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grplist_remove(taginfo, grpinfo, force=False):
     """Remove group from the list for tag
 
@@ -1590,6 +1625,11 @@ def grplist_remove(taginfo, grpinfo, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grplist_remove(taginfo, grpinfo, force)
+
+
+def _grplist_remove(taginfo, grpinfo, force):
+    """grplist_remove without permssion check"""
     tag = get_tag(taginfo)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
@@ -1599,9 +1639,11 @@ def grplist_remove(taginfo, grpinfo, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grplist_block(taginfo, grpinfo):
     """Block the group in tag"""
     grplist_add(taginfo, grpinfo, block=True)
+
 
 def grplist_unblock(taginfo, grpinfo):
     """Unblock the group in tag
@@ -1611,6 +1653,11 @@ def grplist_unblock(taginfo, grpinfo):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grplist_unblock(taginfo, grpinfo)
+
+
+def _grplist_unblock(taginfo, grpinfo):
+    """grplist_unblock without permssion check"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
@@ -1635,10 +1682,16 @@ def grplist_unblock(taginfo, grpinfo):
 #       unblock
 #       list (readTagGroups)
 
+
 def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     """Add package to group for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts)
+
+
+def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
+    """grp_pkg_add without permssion checks"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     block = bool(block)
@@ -1689,6 +1742,7 @@ def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     """Remove package from the list for group-tag
 
@@ -1697,6 +1751,11 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grp_pkg_remove(taginfo, grpinfo, pkg_name, force)
+
+
+def _grp_pkg_remove(taginfo, grpinfo, pkg_name, force):
+    """grp_pkg_remove without permssion checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
@@ -1704,9 +1763,11 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grp_pkg_block(taginfo, grpinfo, pkg_name):
     """Block the package in group-tag"""
     grp_pkg_add(taginfo, grpinfo, pkg_name, block=True)
+
 
 def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     """Unblock the package in group-tag
@@ -1716,6 +1777,11 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grp_pkg_unblock(taginfo, grpinfo, pkg_name)
+
+
+def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
+    """grp_pkg_unblock without permission checks"""
     table = 'group_package_listing'
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
@@ -1731,6 +1797,7 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     update.make_revoke()
     update.execute()
 
+
 # tag-group-req operations
 #       add
 #       remove
@@ -1738,10 +1805,16 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
 #       unblock
 #       list (readTagGroups)
 
+
 def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     """Add group requirement to group for tag"""
     #only admins....
     context.session.assertPerm('admin')
+    _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts)
+
+
+def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
+    """grp_req_add without permssion checks"""
     tag = lookup_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True, create=False)
     req = lookup_group(reqinfo, strict=True, create=False)
@@ -1793,6 +1866,7 @@ def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     insert.make_create()
     insert.execute()
 
+
 def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     """Remove group requirement from the list for group-tag
 
@@ -1801,6 +1875,11 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     """
     #only admins....
     context.session.assertPerm('admin')
+    _grp_req_remove(taginfo, grpinfo, reqinfo, force)
+
+
+def _grp_req_remove(taginfo, grpinfo, reqinfo, force):
+    """grp_req_remove without permission checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
@@ -1809,9 +1888,11 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     update.make_revoke()
     update.execute()
 
+
 def grp_req_block(taginfo, grpinfo, reqinfo):
     """Block the group requirement in group-tag"""
     grp_req_add(taginfo, grpinfo, reqinfo, block=True)
+
 
 def grp_req_unblock(taginfo, grpinfo, reqinfo):
     """Unblock the group requirement in group-tag
@@ -1821,6 +1902,11 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     """
     # only admins...
     context.session.assertPerm('admin')
+    _grp_req_unblock(taginfo, grpinfo, reqinfo)
+
+
+def _grp_req_unblock(taginfo, grpinfo, reqinfo):
+    """grp_req_unblock without permssion checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
@@ -1837,6 +1923,7 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
+
 
 def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True):
     """Return group data for the tag
@@ -2740,10 +2827,16 @@ def lookup_build_target(info, strict=False, create=False):
     """Get the id,name for build target"""
     return lookup_name('build_target', info, strict, create)
 
+
 def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
-
     context.session.assertPerm('admin')
+    return _create_tag(name, parent, arches, perm, locked, maven_support, maven_include_all, extra)
+
+
+def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
+    """Create a new tag, without access check"""
+
     if not context.opts.get('EnableMaven') and (maven_support or maven_include_all):
         raise koji.GenericError, "Maven support not enabled"
 
@@ -2828,7 +2921,7 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_include_all': 'maven_include_all'
              }
     clauses = [eventCondition(event, table='tag_config')]
-    if isinstance(tagInfo, int):
+    if isinstance(tagInfo, (int, long)):
         clauses.append("tag.id = %(tagInfo)i")
     elif isinstance(tagInfo, basestring):
         clauses.append("tag.name = %(tagInfo)s")
@@ -2974,6 +3067,7 @@ def delete_tag(tagInfo):
     _tagDelete('tag_config', tagID)
     #technically, to 'delete' the tag we only have to revoke the tag_config entry
     #these remaining revocations are more for cleanup.
+    _tagDelete('tag_extra', tagID)
     _tagDelete('tag_inheritance', tagID)
     _tagDelete('tag_inheritance', tagID, 'parent_id')
     _tagDelete('build_target_config', tagID, 'build_tag')
@@ -9219,7 +9313,7 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
@@ -9230,14 +9324,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             tag = get_tag_id(tag, strict=True)
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
@@ -9394,14 +9488,14 @@ class RootExports(object):
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
         """List latest builds for tag (inheritance enabled)"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
@@ -9461,13 +9555,13 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
@@ -9478,7 +9572,7 @@ class RootExports(object):
             stops = {}
         if jumps is None:
             jumps = {}
-        if not isinstance(tag, int):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
@@ -9505,7 +9599,7 @@ class RootExports(object):
         - buildroot_id
 
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
-        if not isinstance(build, int):
+        if not isinstance(build, (int, long)):
             #lookup build id
             build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
@@ -9870,7 +9964,7 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None):
-        if isinstance(tag, int):
+        if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
