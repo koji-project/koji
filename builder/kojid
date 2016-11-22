@@ -4974,6 +4974,8 @@ def get_options():
                 'offline_retry_interval': 120,
                 'keepalive' : True,
                 'timeout' : None,
+                'use_old_ssl' : False,
+                'no_ssl_verify' : False,
                 'use_fast_upload': True,
                 'use_createrepo_c': False,
                 'createrepo_skip_stat': True,
@@ -5001,7 +5003,7 @@ def get_options():
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
                           'support_rpm_source_layout', 'krb_rdns',
-                          'build_arch_can_fail']:
+                          'build_arch_can_fail', 'use_old_ssl', 'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -5074,16 +5076,8 @@ if __name__ == "__main__":
     if options.admin_emails:
         koji.add_mail_logger("koji", options.admin_emails)
 
-    #build session options
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'krb_rdns', 'debug_xmlrpc', 'debug',
-              'retry_interval', 'max_retries', 'offline_retry', 'offline_retry_interval',
-              'keepalive', 'timeout', 'use_fast_upload',
-             ):
-        v = getattr(options, k, None)
-        if v is not None:
-            session_opts[k] = v
     #start a session and login
+    session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
     if os.path.isfile(options.cert):
         try:

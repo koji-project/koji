@@ -4360,7 +4360,7 @@ def anon_handle_list_history(options, session, args):
         if not options.watch:
             break
         else:
-            time.sleep(5)
+            time.sleep(options.poll_interval)
             # repeat query for later events
             if last_event:
                 kwargs['afterEvent'] = last_event
@@ -7171,15 +7171,8 @@ if __name__ == "__main__":
     else:
         logger.setLevel(logging.WARN)
 
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug', 'max_retries',
-              'retry_interval', 'offline_retry', 'offline_retry_interval',
-              'anon_retry', 'keepalive', 'timeout', 'use_fast_upload',
-              'upload_blocksize', 'krb_rdns'):
-        value = getattr(options,k)
-        if value is not None:
-            session_opts[k] = value
-    session = koji.ClientSession(options.server,session_opts)
+    session_opts = koji.grab_session_options(options)
+    session = koji.ClientSession(options.server, session_opts)
     rv = 0
     try:
         rv = locals()[command].__call__(options, session, args)

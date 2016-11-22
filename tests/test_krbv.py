@@ -9,8 +9,7 @@ import koji
 class KrbVTestCase(unittest.TestCase):
 
     @mock.patch('koji.krbV', new=None)
-    @mock.patch('koji.ClientSession._setup_connection')
-    def test_krbv_disabled(self, krbV):
+    def test_krbv_disabled(self):
         """ Test that when krbV is absent, we behave rationally. """
         self.assertEquals(koji.krbV, None)
         session = koji.ClientSession('whatever')

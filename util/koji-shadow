@@ -1326,9 +1326,7 @@ if __name__ == "__main__":
 
     options, args = get_options()
 
-    session_opts = {}
-    for k in ('user', 'password', 'krbservice', 'debug_xmlrpc', 'debug'):
-        session_opts[k] = getattr(options, k)
+    session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
     if not options.noauth:
         activate_session(session)

@@ -750,7 +750,7 @@ def application(environ, start_response):
             except Exception:
                 return offline_reply(start_response, msg="database outage")
             h = ModXMLRPCRequestHandler(registry)
-            if environ['CONTENT_TYPE'] == 'application/octet-stream':
+            if environ.get('CONTENT_TYPE') == 'application/octet-stream':
                 response = h._wrap_handler(h.handle_upload, environ)
             else:
                 response = h._wrap_handler(h.handle_rpc, environ)

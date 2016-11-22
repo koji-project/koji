@@ -38,21 +38,29 @@ import imp
 import logging
 import logging.handlers
 from koji.util import md5_constructor
+SSL_Error = None
+try:
+    from OpenSSL.SSL import Error as SSL_Error
+except Exception:  #pragma: no cover
+    # the hub imports koji, and sometimes this import fails there
+    # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine
+    # unfortunately the workaround at the above link does not always work, so
+    # we ignore it here
+    pass
 import optparse
 import os
 import os.path
 import pwd
 import random
 import re
+try:
+    import requests
+except ImportError:  #pragma: no cover
+    requests = None
 import rpm
 import shutil
 import signal
 import socket
-import ssl.SSLCommon
-try:
-    from ssl import ssl as pyssl
-except ImportError:  # pragma: no cover
-    pass
 import struct
 import tempfile
 import time
@@ -61,6 +69,7 @@ import urllib
 import urllib2
 import urlparse
 import util
+import warnings
 import xmlrpclib
 import xml.sax
 import xml.sax.handler
@@ -1562,16 +1571,17 @@ def read_config(profile_name, user_config=None):
         'anon_retry' : None,
         'offline_retry' : None,
         'offline_retry_interval' : None,
+        'use_old_ssl' : False,
         'keepalive' : True,
         'timeout' : None,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
-        'poll_interval': 5,
+        'poll_interval': 6,
         'krbservice': 'host',
         'krb_rdns': True,
-        'cert': '~/.koji/client.crt',
+        'cert': None,
         'ca': '',  # FIXME: remove in next major release
-        'serverca': '~/.koji/serverca.crt',
+        'serverca': None,
         'authtype': None
     }
 
@@ -1623,7 +1633,8 @@ def read_config(profile_name, user_config=None):
                 #options *can* be set via the config file. Such options should
                 #not have a default value set in the option parser.
                 if result.has_key(name):
-                    if name in ('anon_retry', 'offline_retry', 'keepalive', 'use_fast_upload', 'krb_rdns'):
+                    if name in ('anon_retry', 'offline_retry', 'keepalive',
+                                'use_fast_upload', 'krb_rdns', 'use_old_ssl'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
                                   'offline_retry_interval', 'poll_interval', 'timeout',
@@ -1639,6 +1650,19 @@ def read_config(profile_name, user_config=None):
     if configs and not got_conf:
         sys.stderr.write("Warning: no configuration for profile name: %s\n" % profile_name)
         sys.stderr.flush()
+
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '~/.koji/client.crt',
+        'serverca': '~/.koji/serverca.crt',
+        }
+    for name in cert_defaults:
+        if result.get(name) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                result[name] = fn
+            else:
+                result[name] = ''
 
     return result
 
@@ -1810,6 +1834,76 @@ class PathInfo(object):
 
 pathinfo = PathInfo()
 
+
+def is_cert_error(e):
+    """Determine if an OpenSSL error is due to a bad cert"""
+
+    if SSL_Error is None:  #pragma: no cover
+        # import failed, so we can't determine
+        raise Exception("OpenSSL library did not load")
+    if not isinstance(e, SSL_Error):
+        return False
+
+    # pyOpenSSL doesn't use different exception
+    # subclasses, we have to actually parse the args
+    for arg in e.args:
+        # First, check to see if 'arg' is iterable because
+        # it can be anything..
+        try:
+            iter(arg)
+        except TypeError:
+            continue
+
+        # We do all this so that we can detect cert expiry
+        # so we can avoid retrying those over and over.
+        for items in arg:
+            try:
+                iter(items)
+            except TypeError:
+                continue
+
+            if len(items) != 3:
+                continue
+
+            _, _, ssl_reason = items
+
+            if ('certificate revoked' in ssl_reason or
+                    'certificate expired' in ssl_reason):
+                return True
+
+    #otherwise
+    return False
+
+
+def is_conn_error(e):
+    """Determine if an error seems to be from a dropped connection"""
+    if isinstance(e, socket.error):
+        if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            return True
+        # else
+        return False
+    if isinstance(e, httplib.BadStatusLine):
+        return True
+    if requests is not None:
+        try:
+            if isinstance(e, requests.exceptions.ConnectionError):
+                # we see errors like this in keep alive timeout races
+                # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
+                e2 = getattr(e, 'args', [None])[0]
+                if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
+                    e3 = getattr(e2, 'args', [None, None])[1]
+                    if isinstance(e3, httplib.BadStatusLine):
+                        return True
+                if isinstance(e2, socket.error):
+                    # same check as unwrapped socket error
+                    if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+                        return True
+        except (TypeError, AttributeError):
+            pass
+    # otherwise
+    return False
+
+
 class VirtualMethod(object):
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
@@ -1823,6 +1917,39 @@ class VirtualMethod(object):
         return self.__func(self.__name, args, opts)
 
 
+def grab_session_options(options):
+    '''Convert optparse options to a dict that ClientSession can handle'''
+    s_opts = (
+        'user',
+        'password',
+        'krbservice',
+        'debug_xmlrpc',
+        'debug',
+        'max_retries',
+        'retry_interval',
+        'offline_retry',
+        'offline_retry_interval',
+        'anon_retry',
+        'keepalive',
+        'timeout',
+        'use_fast_upload',
+        'upload_blocksize',
+        'krb_rdns',
+        'use_old_ssl',
+        'no_ssl_verify',
+        'serverca',
+        )
+    # cert is omitted for now
+    ret = {}
+    for key in s_opts:
+        if not hasattr(options, key):
+            continue
+        value = getattr(options, key)
+        if value is not None:
+            ret[key] = value
+    return ret
+
+
 class ClientSession(object):
 
     def __init__(self, baseurl, opts=None, sinfo=None):
@@ -1833,54 +1960,25 @@ class ClientSession(object):
             opts = opts.copy()
         self.baseurl = baseurl
         self.opts = opts
-        self._connection = None
-        self._setup_connection()
         self.authtype = None
         self.setSession(sinfo)
         self.multicall = False
         self._calls = []
         self.logger = logging.getLogger('koji')
+        self.rsession = None
+        self.new_session()
+        self.opts.setdefault('timeout',  60 * 60 * 12)
 
-    def _setup_connection(self):
-        uri = urlparse.urlsplit(self.baseurl)
-        scheme = uri[0]
-        self._host, _port = urllib.splitport(uri[1])
-        self.explicit_port = bool(_port)
-        self._path = uri[2]
-        default_port = 80
-        if self.opts.get('certs'):
-            ctx = ssl.SSLCommon.CreateSSLContext(self.opts['certs'])
-            cnxOpts = {'ssl_context' : ctx}
-            cnxClass = ssl.SSLCommon.PlgHTTPSConnection
-            default_port = 443
-        elif scheme == 'https':
-            cnxOpts = {}
-            if sys.version_info[:3] >= (2, 7, 9):
-                #ctx = pyssl.SSLContext(pyssl.PROTOCOL_SSLv23)
-                ctx = pyssl._create_unverified_context()
-                # TODO - we should default to verifying where possible
-                cnxOpts['context'] = ctx
-            cnxClass = httplib.HTTPSConnection
-            default_port = 443
-        elif scheme == 'http':
-            cnxOpts = {}
-            cnxClass = httplib.HTTPConnection
+
+    def new_session(self):
+        self.logger.debug("Opening new requests session")
+        if self.rsession:
+            self.rsession.close()
+        if self.opts.get('use_old_ssl', False) or requests is None:
+            import koji.compatrequests
+            self.rsession = koji.compatrequests.Session()
         else:
-            raise IOError, "unsupported XML-RPC protocol"
-        # set a default 12 hour connection timeout.
-        # Some Koji operations can take a long time to return, but after 12
-        # hours we can assume something is seriously wrong.
-        timeout = self.opts.setdefault('timeout', 60 * 60 * 12)
-        self._timeout_compat = False
-        if timeout:
-            if sys.version_info[:3] < (2, 6, 0) and 'ssl_context' not in cnxOpts:
-                self._timeout_compat = True
-            else:
-                cnxOpts['timeout'] = timeout
-        self._port = (_port and int(_port) or default_port)
-        self._cnxOpts = cnxOpts
-        self._cnxClass = cnxClass
-        self._close_connection()
+            self.rsession = requests.Session()
 
     def setSession(self, sinfo):
         """Set the session info
@@ -1890,7 +1988,6 @@ class ClientSession(object):
             self.logged_in = False
             self.callnum = None
             # do we need to do anything else here?
-            self._setup_connection()
             self.authtype = None
         else:
             self.logged_in = True
@@ -1985,44 +2082,51 @@ class ClientSession(object):
     def _serverPrincipal(self, cprinc):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
+
+        uri = urlparse.urlsplit(self.baseurl)
+        host, port = urllib.splitport(uri[1])
         if self.opts.get('krb_rdns', True):
-            servername = socket.getfqdn(self._host)
+            servername = socket.getfqdn(host)
         else:
-            servername = self._host
-        #portspec = servername.find(':')
-        #if portspec != -1:
-        #    servername = servername[:portspec]
+            servername = host
         realm = cprinc.realm
         service = self.opts.get('krbservice', 'host')
 
         return '%s/%s@%s' % (service, servername, realm)
 
-    def ssl_login(self, cert, ca, serverca, proxyuser=None):
-        certs = {}
-        certs['key_and_cert'] = cert
-        certs['peer_ca_cert'] = serverca
+    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None):
+        cert = cert or self.opts.get('cert')
+        serverca = serverca or self.opts.get('serverca')
+        if cert is None:
+            raise AuthError('No certification provided')
+        if serverca is None:
+            raise AuthError('No server CA provided')
         # FIXME: ca is not useful here and therefore ignored, can be removed
         # when API is changed
 
-        ctx = ssl.SSLCommon.CreateSSLContext(certs)
-        self._cnxOpts = {'ssl_context' : ctx}
+        # force https
+        uri = urlparse.urlsplit(self.baseurl)
+        if uri[0] != 'https':
+            self.baseurl = 'https://%s%s' % (uri[1], uri[2])
+
+        # Force a new session
+        self.new_session()
+
         # 60 second timeout during login
-        old_timeout = self._cnxOpts.get('timeout')
-        self._cnxOpts['timeout'] = 60
+        old_opts = self.opts
+        self.opts = old_opts.copy()
+        self.opts['timeout'] = 60
+        self.opts['cert'] = cert
+        self.opts['serverca'] = serverca
         try:
-            self._cnxClass = ssl.SSLCommon.PlgHTTPSConnection
-            if self._port == 80 and not self.explicit_port:
-                self._port = 443
             sinfo = self.callMethod('sslLogin', proxyuser)
         finally:
-            if old_timeout is None:
-                del self._cnxOpts['timeout']
-            else:
-                self._cnxOpts['timeout'] = old_timeout
+            self.opts = old_opts
         if not sinfo:
             raise AuthError, 'unable to obtain a session'
 
-        self.opts['certs'] = certs
+        self.opts['cert'] = cert
+        self.opts['serverca'] = serverca
         self.setSession(sinfo)
 
         self.authtype = AUTHTYPE_SSL
@@ -2076,11 +2180,11 @@ class ClientSession(object):
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = "%s?%s" % (self._path, urllib.urlencode(sinfo))
+            handler = "%s?%s" % (self.baseurl, urllib.urlencode(sinfo))
         elif name == 'sslLogin':
-            handler = self._path + '/ssllogin'
+            handler = self.baseurl + '/ssllogin'
         else:
-            handler = self._path
+            handler = self.baseurl
         request = dumps(args, name, allow_none=1)
         headers = [
             # connection class handles Host
@@ -2095,65 +2199,60 @@ class ClientSession(object):
         for i in (0, 1):
             try:
                 return self._sendOneCall(handler, headers, request)
-            except socket.error, e:
-                self._close_connection()
-                if i or getattr(e, 'errno', None) not in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            except Exception, e:
+                if i or not is_conn_error(e):
                     raise
-            except httplib.BadStatusLine:
-                self._close_connection()
-                if i:
-                    raise
-
+                self.logger.debug("Connection Error: %s", e)
+                self.new_session()
 
     def _sendOneCall(self, handler, headers, request):
-        cnx = self._get_connection()
+        headers = dict(headers)
+        callopts = {
+            'headers': headers,
+            'data': request,
+            'stream': True,
+        }
+        verify = self.opts.get('serverca')
+        if verify:
+            callopts['verify'] = verify
+        elif self.opts.get('no_ssl_verify'):
+            callopts['verify'] = False
+            # XXX - not great, but this is the previous behavior
+        cert = self.opts.get('cert')
+        if cert:
+            # TODO: we really only need to do this for ssllogin calls
+            callopts['cert'] = cert
+        timeout = self.opts.get('timeout')
+        if timeout:
+            callopts['timeout'] = timeout
         if self.opts.get('debug_xmlrpc', False):
-            cnx.set_debuglevel(1)
-        cnx.putrequest('POST', handler)
-        for n, v in headers:
-            cnx.putheader(n, v)
-        cnx.endheaders()
-        cnx.send(request)
-        response = cnx.getresponse()
+            print "url: %s" % handler
+            for _key in callopts:
+                _val = callopts[_key]
+                if _key == 'data' and len(_val) > 1024:
+                    _val = _val[:1024] + '...'
+                print "%s: %r" % (_key, _val)
+        catcher = None
+        if hasattr(warnings, 'catch_warnings'):
+            # TODO: convert to a with statement when we drop 2.4.3 support
+            catcher = warnings.catch_warnings()
+            catcher.__enter__()
         try:
-            ret = self._read_xmlrpc_response(response, handler)
+            if catcher:
+                warnings.simplefilter("ignore")
+            r = self.rsession.post(handler, **callopts)
+            try:
+                ret = self._read_xmlrpc_response(r)
+            finally:
+                r.close()
         finally:
-            response.close()
+            if catcher:
+                catcher.__exit__()
         return ret
 
-    def _get_connection(self):
-        key = (self._cnxClass, self._host, self._port)
-        if self._connection and self.opts.get('keepalive'):
-            if key == self._connection[0]:
-                cnx = self._connection[1]
-                if getattr(cnx, 'sock', None):
-                    return cnx
-        cnx = self._cnxClass(self._host, self._port, **self._cnxOpts)
-        self._connection = (key, cnx)
-        if self._timeout_compat:
-            # in python < 2.6 httplib does not support the timeout option
-            # but socket supports it since 2.3
-            cnx.connect()
-            cnx.sock.settimeout(self.opts['timeout'])
-        return cnx
-
-    def _close_connection(self):
-        if self._connection:
-            self._connection[1].close()
-            self._connection = None
-
-    def _read_xmlrpc_response(self, response, handler=''):
-        #XXX honor debug_xmlrpc
-        if response.status != 200:
-            if (response.getheader("content-length", 0)):
-                response.read()
-            raise xmlrpclib.ProtocolError(self._host + handler,
-                        response.status, response.reason, response.msg)
+    def _read_xmlrpc_response(self, response):
         p, u = xmlrpclib.getparser()
-        while True:
-            chunk = response.read(8192)
-            if not chunk:
-                break
+        for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
                 print "body: %r" % chunk
             p.feed(chunk)
@@ -2207,9 +2306,9 @@ class ClientSession(object):
                     raise
                 except Exception, e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
-                    self._close_connection()
+                    self.new_session()
 
-                    if ssl.SSLCommon.is_cert_error(e):
+                    if is_cert_error(e):
                         # There's no point in retrying for this
                         raise
 
@@ -2333,7 +2432,7 @@ class ClientSession(object):
             args['overwrite'] = "1"
         size = len(chunk)
         self.callnum += 1
-        handler = "%s?%s" % (self._path, urllib.urlencode(args))
+        handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
         headers = [
             ('User-Agent', 'koji/1.7'),  #XXX
             ("Content-Type", "application/octet-stream"),
