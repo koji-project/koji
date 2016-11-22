@@ -428,7 +428,7 @@ class Task(object):
         the request will be decoded and included in the dictionary."""
         q = """SELECT %s FROM task WHERE id = %%(id)i""" % ','.join([f[0] for f in self.fields])
         result = _singleRow(q, vars(self), [f[1] for f in self.fields], strict)
-        if request:
+        if result and request:
             result['request'] = self.getRequest()
         return result
 
