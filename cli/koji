@@ -6968,6 +6968,8 @@ def handle_moshimoshi(options, session, args):
     authtype = u.get('authtype', getattr(session, 'authtype', None))
     if authtype == koji.AUTHTYPE_NORMAL:
         print "Authenticated via password"
+    elif authtype == koji.AUTHTYPE_GSSAPI:
+        print "Authenticated via GSSAPI"
     elif authtype == koji.AUTHTYPE_KERB:
         print "Authenticated via Kerberos principal %s" % u["krb_principal"]
     elif authtype == koji.AUTHTYPE_SSL:
