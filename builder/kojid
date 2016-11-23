@@ -2421,6 +2421,16 @@ class BuildLiveMediaTask(BuildImageTask):
 
             self.logger.debug('subtask results: %r', results)
 
+            # if everything failed, fail even if all subtasks are in canfail
+            self.logger.debug('subtask results: %r', results)
+            all_failed = True
+            for result in results.values():
+                if not isinstance(result, dict) or 'faultCode' not in result:
+                    all_failed = False
+                    break
+            if all_failed:
+                raise koji.GenericError("all subtasks failed")
+
             # determine ignored arch failures
             ignored_arches = set()
             for arch in arches:
