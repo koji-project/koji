@@ -2146,13 +2146,14 @@ class ClientSession(object):
         self.opts['timeout'] = 60
         self.opts['auth'] = HTTPKerberosAuth()
         try:
-            # Depending on the server configuration, we might not be able to
-            # connect without client certificate, which means that the conn
-            # will fail with a handshake failure, which is retried by default.
-            sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
-        except:
-            # Auth with https didn't work. Restore for the next attempt.
-            self.baseurl = old_baseurl
+            try:
+                # Depending on the server configuration, we might not be able to
+                # connect without client certificate, which means that the conn
+                # will fail with a handshake failure, which is retried by default.
+                sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
+            except:
+                # Auth with https didn't work. Restore for the next attempt.
+                self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
         if not sinfo:
