@@ -1922,6 +1922,7 @@ def handle_import_sig(options, session, args):
         if not options.test:
             session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
 
+
 def handle_write_signed_rpm(options, session, args):
     "[admin] Write signed RPMs to disk"
     usage = _("usage: %prog write-signed-rpm [options] <signature-key> n-v-r [n-v-r...]")
@@ -1940,21 +1941,31 @@ def handle_write_signed_rpm(options, session, args):
     activate_session(session)
     if options.all:
         rpms = session.queryRPMSigs(sigkey=key)
-        count = 1
-        for rpm in rpms:
-            print("%d/%d" % (count, len(rpms)))
-            count += 1
-            session.writeSignedRPM(rpm['rpm_id'], key)
+        rpms = [session.getRPM(r['rpm_id']) for r in rpms]
     elif options.buildid:
         rpms = session.listRPMs(int(options.buildid))
-        for rpm in rpms:
-            session.writeSignedRPM(rpm['id'], key)
     else:
-        for nvr in args:
+        rpms = []
+        bad = []
+        for nvra in args:
+            try:
+                koji.parse_NVRA(nvra)
+                rinfo = session.getRPM(nvra, strict=True)
+                if rinfo:
+                    rpms.append(rinfo)
+            except koji.GenericError:
+                bad.append(nvra)
+        # for historical reasons, we also accept nvrs
+        for nvr in bad:
             build = session.getBuild(nvr)
-            rpms = session.listRPMs(buildID=build['id'])
-            for rpm in rpms:
-                session.writeSignedRPM(rpm['id'], key)
+            if not build:
+                raise koji.GenericError("No such rpm or build: %s" % nvr)
+            rpms.extend(session.listRPMs(buildID=build['id']))
+    for i, rpminfo in enumerate(rpms):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
+        print "[%d/%d] %s" % (i+1, len(rpms), nvra)
+        session.writeSignedRPM(rpminfo['id'], key)
+
 
 def handle_prune_signed_copies(options, session, args):
     "[admin] Prune signed copies"
