@@ -64,7 +64,5 @@ is allowed to create this type of task (and download tarball).
 
 TODO
 ----
- * Make allowed task types configurable on hub
- * Restricted access (original owner, special permission, ...)
  * Separate volume/directory on hub
  * garbage collector + policy for retaining generated tarballs
