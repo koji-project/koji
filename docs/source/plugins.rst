@@ -17,6 +17,17 @@ build failed. Reconstructing this environment via mock needn't end with
 exactly same structure (due to builder settings, etc.). In such case this
 plugin can be used to retrieve tarball with complete mock tree.
 
+Additional feature is that some paths from buildroot can be left out from
+tarball. Feature can be configured via
+`/etc/kojid/plugins/save_failed_tree.conf` file. Currently only field
+filters.paths is used and it consists of globs (standard python's fnmatch is
+used) separated by ':'.
+
+.. code-block:: ini
+
+  [filters]
+  paths = /etc/*.keytab:/tmp/secret_data
+
 .. warning::
   For security reasons, currently all ``/tmp/krb5cc*`` and ``/etc/*.keytab``
   files are removed from tarball. If we found some other dangerous pieces,
