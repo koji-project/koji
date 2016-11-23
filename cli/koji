@@ -7131,7 +7131,7 @@ def handle_signed_repo(options, session, args):
     if not taginfo:
         parser.error(_('unknown tag %s') % tag)
     if len(task_opts.arch) == 0:
-        task_opts.arch = taginfo['arches']
+        task_opts.arch = taginfo['arches'].split()
         if task_opts.arch == None:
             parser.error(_('No arches given and no arches associated with tag'))
     else:
