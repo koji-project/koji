@@ -2149,7 +2149,7 @@ class ClientSession(object):
             # Depending on the server configuration, we might not be able to
             # connect without client certificate, which means that the conn
             # will fail with a handshake failure, which is retried by default.
-            sinfo = self.callMethod('sslLogin', proxyuser, retry=False)
+            sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
         except:
             # Auth with https didn't work. Restore for the next attempt.
             self.baseurl = old_baseurl
@@ -2236,11 +2236,7 @@ class ClientSession(object):
 
     def callMethod(self, name, *args, **opts):
         """compatibility wrapper for _callMethod"""
-        retry = True
-        if 'retry' in opts:
-            retry = opts['retry']
-            del opts['retry']
-        return self._callMethod(name, args, opts, retry=retry)
+        return self._callMethod(name, args, opts)
 
     def _prepCall(self, name, args, kwargs=None):
         #pass named opts in a way the server can understand
