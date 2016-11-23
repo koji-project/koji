@@ -1840,6 +1840,24 @@ class PathInfo(object):
 pathinfo = PathInfo()
 
 
+def is_requests_cert_error(e):
+    """Determine if a requests error is due to a bad cert"""
+
+    if requests is None:  #pragma: no cover
+        # We are not using requests, so this is not a requests cert error
+        return False
+    if not isinstance(e, requests.exceptions.SSLError):
+        return False
+
+    # Using str(e) is slightly ugly, but the error stacks in python-requests
+    # are way more ugly.
+    if ('certificate revoked' in str(e) or
+            'certificate expired' in str(e)):
+        return True
+
+    return False
+
+
 def is_cert_error(e):
     """Determine if an OpenSSL error is due to a bad cert"""
 
@@ -2355,7 +2373,7 @@ class ClientSession(object):
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self.new_session()
 
-                    if is_cert_error(e):
+                    if is_cert_error(e) or is_requests_cert_error(e):
                         # There's no point in retrying for this
                         raise
 
