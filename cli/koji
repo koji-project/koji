@@ -2308,6 +2308,8 @@ def handle_add_volume(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error("Command requires exactly one volume-name.")
     name = args[0]
     volinfo = session.getVolume(name)
     if volinfo:
