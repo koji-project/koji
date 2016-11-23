@@ -1872,6 +1872,8 @@ def handle_import_sig(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--with-unsigned", action="store_true",
                       help=_("Also import unsigned sig headers"))
+    parser.add_option("--write", action="store_true",
+                      help=_("Also write the signed copies"))
     parser.add_option("--test", action="store_true",
                       help=_("Test mode -- don't actually import"))
     (options, args) = parser.parse_args(args)
@@ -1921,6 +1923,9 @@ def handle_import_sig(options, session, args):
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
             session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
+        print _("Writing signed copy")
+        if not options.test:
+            session.writeSignedRPM(rinfo['id'], sigkey)
 
 
 def handle_write_signed_rpm(options, session, args):
