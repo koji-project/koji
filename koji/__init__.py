@@ -2145,7 +2145,10 @@ class ClientSession(object):
         self.opts['timeout'] = 60
         self.opts['auth'] = HTTPKerberosAuth()
         try:
-            sinfo = self.callMethod('sslLogin', proxyuser)
+            # Depending on the server configuration, we might not be able to
+            # connect without client certificate, which means that the conn
+            # will fail with a handshake failure, which is retried by default.
+            sinfo = self.callMethod('sslLogin', proxyuser, retry=False)
         finally:
             self.opts = old_opts
         if not sinfo:
