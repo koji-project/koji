@@ -2132,6 +2132,7 @@ class ClientSession(object):
             )
 
         # force https
+        old_baseurl = self.baseurl
         uri = urlparse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
@@ -2149,6 +2150,9 @@ class ClientSession(object):
             # connect without client certificate, which means that the conn
             # will fail with a handshake failure, which is retried by default.
             sinfo = self.callMethod('sslLogin', proxyuser, retry=False)
+        except:
+            # Auth with https didn't work. Restore for the next attempt.
+            self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
         if not sinfo:
