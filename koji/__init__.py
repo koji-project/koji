@@ -1840,6 +1840,24 @@ class PathInfo(object):
 pathinfo = PathInfo()
 
 
+def is_requests_cert_error(e):
+    """Determine if a requests error is due to a bad cert"""
+
+    if requests is None:  #pragma: no cover
+        # We are not using requests, so this is not a requests cert error
+        return False
+    if not isinstance(e, requests.exceptions.SSLError):
+        return False
+
+    # Using str(e) is slightly ugly, but the error stacks in python-requests
+    # are way more ugly.
+    if ('certificate revoked' in str(e) or
+            'certificate expired' in str(e)):
+        return True
+
+    return False
+
+
 def is_cert_error(e):
     """Determine if an OpenSSL error is due to a bad cert"""
 
@@ -2114,6 +2132,7 @@ class ClientSession(object):
             )
 
         # force https
+        old_baseurl = self.baseurl
         uri = urlparse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
@@ -2127,7 +2146,14 @@ class ClientSession(object):
         self.opts['timeout'] = 60
         self.opts['auth'] = HTTPKerberosAuth()
         try:
-            sinfo = self.callMethod('sslLogin', proxyuser)
+            try:
+                # Depending on the server configuration, we might not be able to
+                # connect without client certificate, which means that the conn
+                # will fail with a handshake failure, which is retried by default.
+                sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
+            except:
+                # Auth with https didn't work. Restore for the next attempt.
+                self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
         if not sinfo:
@@ -2309,7 +2335,7 @@ class ClientSession(object):
             result = result[0]
         return result
 
-    def _callMethod(self, name, args, kwargs=None):
+    def _callMethod(self, name, args, kwargs=None, retry=True):
         """Make a call to the hub with retries and other niceties"""
 
         if self.multicall:
@@ -2355,7 +2381,7 @@ class ClientSession(object):
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self.new_session()
 
-                    if is_cert_error(e):
+                    if is_cert_error(e) or is_requests_cert_error(e):
                         # There's no point in retrying for this
                         raise
 
@@ -2364,6 +2390,10 @@ class ClientSession(object):
                         #this behavior is governed by the anon_retry opt.
                         if not self.opts.get('anon_retry', False):
                             raise
+
+                    if not retry:
+                        raise
+
                     if tries > max_retries:
                         raise
                     #otherwise keep retrying
