@@ -2229,7 +2229,11 @@ class ClientSession(object):
 
     def callMethod(self, name, *args, **opts):
         """compatibility wrapper for _callMethod"""
-        return self._callMethod(name, args, opts)
+        retry = True
+        if 'retry' in opts:
+            retry = opts['retry']
+            del opts['retry']
+        return self._callMethod(name, args, opts, retry=retry)
 
     def _prepCall(self, name, args, kwargs=None):
         #pass named opts in a way the server can understand
@@ -2327,7 +2331,7 @@ class ClientSession(object):
             result = result[0]
         return result
 
-    def _callMethod(self, name, args, kwargs=None):
+    def _callMethod(self, name, args, kwargs=None, retry=True):
         """Make a call to the hub with retries and other niceties"""
 
         if self.multicall:
@@ -2382,6 +2386,10 @@ class ClientSession(object):
                         #this behavior is governed by the anon_retry opt.
                         if not self.opts.get('anon_retry', False):
                             raise
+
+                    if not retry:
+                        raise
+
                     if tries > max_retries:
                         raise
                     #otherwise keep retrying
