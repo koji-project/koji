@@ -2234,7 +2234,7 @@ class ClientSession(object):
             # connection class handles Host
             ('User-Agent', 'koji/1.7'),  #XXX
             ('Content-Type', 'text/xml'),
-            ('Content-Length', len(request)),
+            ('Content-Length', str(len(request))),
         ]
         return handler, headers, request
 
