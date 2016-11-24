@@ -833,9 +833,9 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     inherited = int(inherited)
     values['inherited'] = inherited
 
-    packages = kojiweb.util.paginateMethod(server, values, 'listPackages',
-                                            kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
-                                            start=start, dataName='packages', prefix='package', order=order)
+    kojiweb.util.paginateMethod(server, values, 'listPackages',
+                                    kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
+                                    start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
