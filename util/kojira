@@ -344,42 +344,42 @@ class RepoManager(object):
         if self.delete_pids:
             #skip
             return
-        self.logger.debug("Scanning %s for repos" % topdir)
-        self.logger.debug('max age allowed: %s seconds (from %s)' %
-            (getattr(self.options, timername), timername))
+        self.logger.debug("Scanning %s for repos", topdir)
+        self.logger.debug('max age allowed: %s seconds (from %s)',
+                getattr(self.options, timername), timername)
         for tag in os.listdir(topdir):
             tagdir = "%s/%s" % (topdir, tag)
             if not os.path.isdir(tagdir):
-                self.logger.debug("%s is not a directory, skipping" % tagdir)
+                self.logger.debug("%s is not a directory, skipping", tagdir)
                 continue
             for repo_id in os.listdir(tagdir):
                 try:
                     repo_id = int(repo_id)
                 except ValueError:
-                    self.logger.debug("%s not an int, skipping" % tagdir)
+                    self.logger.debug("%s not an int, skipping", tagdir)
                     continue
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
-                    self.logger.debug("%s not a directory, skipping" % repodir)
+                    self.logger.debug("%s not a directory, skipping", repodir)
                     continue
                 if repo_id in self.repos:
                     #we're already managing it, no need to deal with it here
-                    self.logger.debug("seen %s already, skipping" % repodir)
+                    self.logger.debug("seen %s already, skipping", repodir)
                     continue
                 try:
                     dir_ts = os.stat(repodir).st_mtime
                 except OSError:
                     #just in case something deletes the repo out from under us
-                    self.logger.debug("%s deleted already?!" % repodir)
+                    self.logger.debug("%s deleted already?!", repodir)
                     continue
                 rinfo = self.session.repoInfo(repo_id)
                 if rinfo is None:
                     if not self.options.ignore_stray_repos:
                         age = time.time() - dir_ts
-                        self.logger.debug("did not expect %s; age: %s" %
-                            (repodir, age))
+                        self.logger.debug("did not expect %s; age: %s",
+                                repodir, age)
                         if age > getattr(self.options, timername):
-                            self.logger.info("Removing unexpected directory (no such repo): %s" % repodir)
+                            self.logger.info("Removing unexpected directory (no such repo): %s", repodir)
                             self.rmtree(repodir)
                     continue
                 if rinfo['tag_name'] != tag:
