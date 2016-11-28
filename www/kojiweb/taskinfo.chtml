@@ -394,10 +394,10 @@ $value
       <th>Result</th>
       <td>
       #if $abbr_result_text
-        <a href="#" collapse" id="toggle-abbreviated-result" style="display: none;">Show abbreviated results</a>
         <div id="abbr-result">
         $abbr_result_text
         </div>
+        <a href="#" collapse" id="toggle-abbreviated-result" style="display: none;">Show abbreviated results</a>
         <a href="#" collapse" id="toggle-full-result" style="display: none;">Show complete results</a>
         <div id="full-result">
         $full_result_text
