@@ -2419,8 +2419,6 @@ class BuildLiveMediaTask(BuildImageTask):
             self.logger.debug("Waiting on livemedia subtasks...")
             results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
 
-            self.logger.debug('subtask results: %r', results)
-
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.debug('subtask results: %r', results)
             all_failed = True
