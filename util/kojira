@@ -357,9 +357,6 @@ class RepoManager(object):
                     repo_id = int(repo_id)
                 except ValueError:
                     self.logger.debug("%s not an int, skipping" % tagdir)
-                    # This condition is how signed repos are not removed by
-                    # the first call to this method. Although, if someone has
-                    # tags that are just integers, that could be a problem.
                     continue
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
@@ -642,14 +639,15 @@ def main(options, session):
     curr_chk_thread = start_currency_checker(session, repomgr)
     # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
+    repodir = "%s/repos" % pathinfo.topdir
+    signedrepodir = "%s/repos-signed" % pathinfo.topdir
     while True:
         try:
             repomgr.updateRepos()
             repomgr.checkQueue()
             repomgr.printState()
-            repodir = "%s/repos" % pathinfo.topdir
             repomgr.pruneLocalRepos(repodir, 'deleted_repo_lifetime')
-            repomgr.pruneLocalRepos(repodir + '/signed', 'signed_repo_lifetime')
+            repomgr.pruneLocalRepos(signedrepodir, 'signed_repo_lifetime')
             if not curr_chk_thread.isAlive():
                 logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
