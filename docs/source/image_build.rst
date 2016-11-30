@@ -368,7 +368,7 @@ A few notes on the syntax:
 * options on the command line that can be used multiple times can accept
   values here as comma-separated strings
 * options with a hyphen need to use an underscore instead. ``--disk-size`` for
-  example would be disk_size in the config file
+  example would be ``disk_size`` in the config file
 
 OVA Features
 ------------
