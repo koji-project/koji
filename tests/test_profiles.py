@@ -22,7 +22,7 @@ class ProfilesTestCase(unittest.TestCase):
             for n in errors:
                 err = errors[n]
                 if err is not None:
-                    print err
+                    print(err)
                     assert False
 
 

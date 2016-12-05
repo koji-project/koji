@@ -129,7 +129,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                     os.close(fd)
                 except:
                     pass
-            print msg
+            print(msg)
             os._exit(1)
     else:
         if chroot:
@@ -147,8 +147,8 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                     # will happen if the forked process has not created the logfile yet
                     continue
                 except:
-                    print 'Error reading log file: %s' % outfile
-                    print ''.join(traceback.format_exception(*sys.exc_info()))
+                    print('Error reading log file: %s' % outfile)
+                    print(''.join(traceback.format_exception(*sys.exc_info())))
 
             incremental_upload(session, remotename, outfd, uploadpath)
 

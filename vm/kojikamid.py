@@ -700,18 +700,18 @@ def main():
                            '--desc', 'Runs Koji tasks assigned to a VM'],
                           log=False)
         if ret:
-            print 'Error installing %s service, output was: %s' % (prog, output)
+            print('Error installing %s service, output was: %s' % (prog, output))
             sys.exit(1)
         else:
-            print 'Successfully installed the %s service' % prog
+            print('Successfully installed the %s service' % prog)
             sys.exit(0)
     elif opts.uninstall:
         ret, output = run(['/bin/cygrunsrv', '--remove', prog], log=False)
         if ret:
-            print 'Error removing the %s service, output was: %s' % (prog, output)
+            print('Error removing the %s service, output was: %s' % (prog, output))
             sys.exit(1)
         else:
-            print 'Successfully removed the %s service' % prog
+            print('Successfully removed the %s service' % prog)
             sys.exit(0)
 
     handler = setup_logging(opts)

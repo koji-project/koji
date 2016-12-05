@@ -54,10 +54,10 @@ Print configuration::
     ppc_koji = koji.get_profile_module("ppc-koji")
 
     for i in (fedora_koji, ppc_koji):
-        print "PROFILE: %s" % i.config.profile
+        print("PROFILE: %s" % i.config.profile)
         for key, value in sorted(i.config.__dict__.items()):
-            print "    %s = %s" % (key, value)
-        print
+            print("    %s = %s" % (key, value))
+        print("")
 
 
 Use ClientSession::
@@ -66,7 +66,7 @@ Use ClientSession::
 
     koji_module = koji.get_profile_module("koji")
     client = koji_module.ClientSession(koji_module.config.server)
-    print client.listTags()
+    print(client.listTags())
 
 
 TODO

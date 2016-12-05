@@ -154,7 +154,7 @@ class RepoMerge(object):
         for r in self.repolist:
             count +=1
             rid = 'repo%s' % count
-            print >> sys.stderr, 'Adding repo: ' + r
+            sys.stderr.write('Adding repo: %s\n' % r)
             n = self.yumbase.add_enable_repo(rid, baseurls=[r])
             n._merge_rank = count
 
@@ -231,8 +231,8 @@ class RepoMerge(object):
                                     '%s < %s\n' % (pkg.sourcerpm, other_srpm))
                         # otherwise same, so we already have it
                 elif self.blocked.has_key(srpm_name):
-                    print >> sys.stderr, 'Ignoring blocked package: %s\n' \
-                            % pkg.sourcerpm
+                    sys.stderr.write('Ignoring blocked package: %s\n\n' % \
+                                     pkg.sourcerpm)
                     continue
                 else:
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)

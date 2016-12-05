@@ -21,7 +21,7 @@ import httplib
 import socket
 
 def our_verify(connection, x509, errNum, errDepth, preverifyOK):
-    # print "Verify: errNum = %s, errDepth = %s, preverifyOK = %s" % (errNum, errDepth, preverifyOK)
+    # print("Verify: errNum = %s, errDepth = %s, preverifyOK = %s" % (errNum, errDepth, preverifyOK))
 
     # preverifyOK should tell us whether or not the client's certificate
     # correctly authenticates against the CA chain
@@ -67,10 +67,10 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
                     self.sock.settimeout(self._timeout)
                 self.sock.connect(sa)
                 if self.debuglevel > 0:
-                    print "connect: (%s, %s) [ssl]" % (self.host, self.port)
+                    print("connect: (%s, %s) [ssl]" % (self.host, self.port))
             except socket.error:
                 if self.debuglevel > 0:
-                    print 'connect fail:', (self.host, self.port)
+                    print('connect fail:', (self.host, self.port))
                 if self.sock:
                     self.sock.close()
                 self.sock = None

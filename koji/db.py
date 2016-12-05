@@ -190,4 +190,4 @@ def connect():
 
 if __name__ == "__main__":
     setDBopts(database="test", user="test")
-    print "This is a Python library"
+    print("This is a Python library")

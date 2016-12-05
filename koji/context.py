@@ -85,9 +85,9 @@ if __name__ == '__main__':
 
     #context.foo = 1
     #context.bar = 2
-    print context
+    print(context)
     #del context.bar
-    print context
+    print(context)
 
     import random
     import time
@@ -95,18 +95,18 @@ if __name__ == '__main__':
         context.foo = random.random()
         time.sleep(1.5+random.random())
         context._threadclear()
-        print context
+        print(context)
 
     for x in xrange(1, 10):
         thread.start_new_thread(test, ())
 
     time.sleep(4)
-    print
-    print context
+    print('')
+    print(context)
 
     context.foo = 1
     context.bar = 2
-    print context.foo, context.bar
-    print context
+    print(context.foo, context.bar)
+    print(context)
     context._threadclear()
-    print context
+    print(context)

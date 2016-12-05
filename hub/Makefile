@@ -2,8 +2,8 @@ PYTHON=python
 PACKAGE = $(shell basename `pwd`)
 LIBEXECFILES = rpmdiff
 PYFILES = $(wildcard *.py)
-PYVER := $(shell $(PYTHON) -c 'import sys; print "%.3s" %(sys.version)')
-PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print sys.prefix')
+PYVER := $(shell $(PYTHON) -c 'import sys; print("%.3s" %(sys.version))')
+PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print(sys.prefix)')
 PYLIBDIR = $(PYSYSDIR)/lib/python$(PYVER)
 PKGDIR = $(PYLIBDIR)/site-packages/$(PACKAGE)
 
