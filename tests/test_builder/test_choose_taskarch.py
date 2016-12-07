@@ -53,6 +53,7 @@ class TestChooseTaskarch(unittest.TestCase):
         self.assertEqual(result, 'noarch')
 
     def test_excluded_arch(self):
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
         # random choice involved, so we repeat this a few times
         for i in range(20):
             self.readSRPMHeader.return_value = FakeHeader(
@@ -60,8 +61,46 @@ class TestChooseTaskarch(unittest.TestCase):
             result = self.handler.choose_taskarch('noarch', 'srpm', 'build_tag')
             self.assertNotEqual(result, 'noarch')
             self.assertNotEqual(result, 'ppc64')
-            assert result in self.getBuildConfig()['arches'].split()
+            self.assertIn(result, tag_arches)
 
+    def test_exclusive_arch(self):
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
+        # random choice involved, so we repeat this a few times
+        for i in range(20):
+            self.readSRPMHeader.return_value = FakeHeader(
+                    buildarchs=['noarch'], exclusivearch=['noarch', 'armv7hl'], excludearch=[])
+            result = self.handler.choose_taskarch('noarch', 'srpm', 'build_tag')
+            self.assertNotEqual(result, 'noarch')
+            self.assertEqual(result, koji.canonArch('armv7hl'))
+            self.assertIn(result, tag_arches)
 
+    def test_excluded_irrelevant(self):
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
+        self.readSRPMHeader.return_value = FakeHeader(
+                buildarchs=['noarch'], exclusivearch=[], excludearch=['nosucharch'])
+        result = self.handler.choose_taskarch('noarch', 'srpm', 'build_tag')
+        self.assertEqual(result, 'noarch')
 
- 
+    def test_literal_arch(self):
+        self.options.literal_task_arches = 'ARCH'
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
+        result = self.handler.choose_taskarch('ARCH', 'srpm', 'build_tag')
+        self.assertEqual(result, 'ARCH')
+
+    def test_all_excluded(self):
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
+        # random choice involved, so we repeat this a few times
+        for i in range(20):
+            self.readSRPMHeader.return_value = FakeHeader(
+                    buildarchs=['noarch'], exclusivearch=[], excludearch=tag_arches)
+            with self.assertRaises(koji.BuildError):
+                result = self.handler.choose_taskarch('noarch', 'srpm', 'build_tag')
+
+    def test_too_exclusive(self):
+        tag_arches = [koji.canonArch(a) for a in self.getBuildConfig()['arches'].split()]
+        # random choice involved, so we repeat this a few times
+        for i in range(20):
+            self.readSRPMHeader.return_value = FakeHeader(
+                    buildarchs=['noarch'], exclusivearch=['missing_arch'], excludearch=[])
+            with self.assertRaises(koji.BuildError):
+                result = self.handler.choose_taskarch('noarch', 'srpm', 'build_tag')
