@@ -2484,6 +2484,9 @@ class BuildLiveMediaTask(BuildImageTask):
 # Other chroot-based image handlers should inherit this.
 class ImageTask(BaseTaskHandler):
     Methods = []
+    # default to bind mounting /dev, but allow subclasses to change
+    # this
+    bind_opts = {'dirs' : {'/dev' : '/dev',}}
 
     def makeImgBuildRoot(self, buildtag, repoinfo, arch, inst_group):
         """
@@ -2498,14 +2501,11 @@ class ImageTask(BaseTaskHandler):
         @returns: a buildroot object
         """
 
-        # Here we configure mock to bind mount a set of /dev directories
-        bind_opts = {'dirs' : {'/dev' : '/dev',}}
-        if os.path.exists('/selinux'):
-            bind_opts['dirs']['/selinux'] = '/selinux'
         rootopts = {'install_group': inst_group,
                     'setup_dns': True,
-                    'repo_id': repoinfo['id'],
-                    'bind_opts' : bind_opts}
+                    'repo_id': repoinfo['id']}
+        if self.bind_opts:
+            rootopts['bind_opts'] = self.bind_opts
 
         broot = BuildRoot(self.session, self.options, buildtag, arch, self.id, **rootopts)
         broot.workdir = self.workdir
@@ -2933,6 +2933,9 @@ class LiveMediaTask(ImageTask):
 
     Methods = ['createLiveMedia']
     _taskWeight = 1.5
+    # For livemedia-creator we do not want to bind mount /dev, see
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1315541
+    bind_opts = {}
 
     def genISOManifest(self, image, manifile):
         """
