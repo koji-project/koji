@@ -62,7 +62,7 @@
       <th>Size</th><td>$rpm.size</td>
     </tr>
     <tr>
-      <th>SIGMD5</th><td>$rpm.payloadhash</td>
+      <th><label title="The MD5 digest of the combined header and payload contents. You can query it by `rpmkeys -Kv foo.rpm`">SIGMD5</label></th><td>$rpm.payloadhash</td>
     </tr>
     #if $builtInRoot
     <tr>
