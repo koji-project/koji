@@ -1587,6 +1587,7 @@ def read_config(profile_name, user_config=None):
         'cert': None,
         'ca': '',  # FIXME: remove in next major release
         'serverca': None,
+        'no_ssl_verify': False,
         'authtype': None
     }
 
