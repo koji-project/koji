@@ -1,3 +1,9 @@
+-- PLEASE READ
+-- This was an interim schema update script for changes introduced after
+-- 1.10.1.
+-- You probably want schema-upgrade-1.10-1.11.sql instead of this
+
+
 BEGIN;
 
 -- New tables
