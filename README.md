@@ -49,7 +49,6 @@ See: https://docs.pagure.org/koji/
 Related Software
 ----------------
 
-* [Mock](https://fedoraproject.org/wiki/Projects/Mock): The tool Koji uses to
-  generate buildroots
+* [Mock](https://fedoraproject.org/wiki/Projects/Mock): The tool Koji uses to generate buildroots
 * [Yum](http://yum.baseurl.org/)
 * [Mash](https://git.fedorahosted.org/cgit/mash/)
