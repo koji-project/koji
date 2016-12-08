@@ -705,6 +705,21 @@ class BuildRoot(object):
             rpm_info['external_repo'] = erepo
             rpm_info['location'] = erepo['external_repo_id']
 
+    def relpath(self, path):
+        """
+        :param path:
+            A reference within the BuildRoot but as an absolute path from
+            without a chroot.
+        :return:
+            The equivalent absolute path from within a chroot of the BuildRoot.
+        """
+        root = self.rootdir()
+        if os.path.commonprefix([root, path]) != root:
+            raise ValueError(
+                'path %r is not within the BuildRoot at %r' % (path, root)
+            )
+        return os.path.join('/', os.path.relpath(path, root))
+
     def resultdir(self):
         return "%s/%s/result" % (self.options.mockdir, self.name)
 
