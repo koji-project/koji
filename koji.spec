@@ -15,7 +15,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.10.1
+Version: 1.11.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
