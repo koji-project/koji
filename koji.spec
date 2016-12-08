@@ -350,6 +350,18 @@ fi
 %endif
 
 %changelog
+* Thu Dec  8 2016 Mike McLean <mikem at redhat.com> - 1.11.0-1
+- content generator support
+- generic build type support (btypes)
+- use python-requests for client connections
+- support gssapi auth
+- unit tests
+- protonmsg messaging plugin
+- lots of code cleanup
+- better documentation
+- support building images with LiveMedia
+- many other fixes and enhancements
+
 * Thu Oct 29 2015 Mike McLean <mikem at redhat.com> - 1.10.1-1
 - fixes for SSL errors
 - add support for Image Factory generation of VMWare Fusion Vagrant boxes
