@@ -68,7 +68,9 @@ License: LGPLv2
 Requires: %{name} = %{version}-%{release}
 Requires: %{name}-hub = %{version}-%{release}
 Requires: python-qpid >= 0.7
+%if 0%{?rhel} >= 6
 Requires: python-qpid-proton
+%endif
 %if 0%{?rhel} == 5
 Requires: python-ssl
 %endif
