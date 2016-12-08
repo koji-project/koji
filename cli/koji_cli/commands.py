@@ -5249,6 +5249,13 @@ def handle_spin_livemedia(options, session, args):
     parser.add_option("--can-fail", action="store", dest="optional_arches",
         metavar="ARCH1,ARCH2,...", default="",
         help=_("List of archs which are not blocking for build (separated by commas."))
+    parser.add_option('--lorax_dir', metavar='DIR',
+                      help=_('The relative path to the lorax templates '
+                             'directory within the checkout of "lorax_url".'))
+    parser.add_option('--lorax_url', metavar='URL',
+                      help=_('The URL to the SCM containing any custom lorax '
+                             'templates that are to be used to override the '
+                             'default templates.'))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
@@ -5257,6 +5264,9 @@ def handle_spin_livemedia(options, session, args):
                        " build target, an architecture, and a relative path to" +
                        " a kickstart file."))
         assert False  # pragma: no cover
+    if task_options.lorax_url is not None and task_options.lorax_dir is None:
+        parser.error(_('The "--lorax_url" option requires that "--lorax_dir" '
+                       'also be used.'))
     _build_image(options, task_options, session, args, 'livemedia')
 
 
@@ -5638,6 +5648,7 @@ def _build_image(options, task_opts, session, args, img_type):
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
         'specfile', 'title', 'vcpu', 'vmem', 'optional_arches',
+        'lorax_dir', 'lorax_url',
         ]
     for opt in passthru_opts:
         val = getattr(task_opts, opt, None)

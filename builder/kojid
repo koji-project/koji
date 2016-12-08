@@ -3081,6 +3081,29 @@ class LiveMediaTask(ImageTask):
     # https://bugzilla.redhat.com/show_bug.cgi?id=1315541
     bind_opts = {}
 
+    def fetch_lorax_templates_from_scm(self, build_root):
+        """
+        Make a checkout of the lorax templates from SCM so that they may be
+        passed to livemedia-creator.  Here we are operating outside the chroot
+        of the BuildRoot.  The following options are essential:
+            - lorax_url points to the SCM containing the templates.
+            - lorax_dir provides a relative reference to the templates within
+            the checkout.
+
+        :param build_root:
+            The BuildRoot instance to receive the checkout.
+        :return:
+            An absolute path (from within the chroot) to where livemedia-creator
+            can find the checked out templates.
+        """
+        scm = SCM(self.opts['lorax_url'])
+        scm.assert_allowed(self.options.allowed_scms)
+        logfile = os.path.join(self.workdir, 'lorax-templates-checkout.log')
+        checkout_dir = scm.checkout(os.path.join(build_root.rootdir(), 'tmp'),
+                                    self.session, self.getUploadDir(), logfile)
+        return os.path.join(build_root.relpath(checkout_dir),
+                            self.opts['lorax_dir'])
+
     def genISOManifest(self, image, manifile):
         """
         Using iso9660 from pycdio, get the file manifest of the given image,
@@ -3193,6 +3216,10 @@ class LiveMediaTask(ImageTask):
 
         if arch == 'x86_64':
             cmd.append('--macboot')
+
+        if 'lorax_url' in self.opts:
+            templates_dir = self.fetch_lorax_templates_from_scm(broot)
+            cmd.extend(['--lorax-templates', templates_dir])
 
 
         # Run livemedia-creator
