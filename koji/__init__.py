@@ -1587,6 +1587,7 @@ def read_config(profile_name, user_config=None):
         'cert': None,
         'ca': '',  # FIXME: remove in next major release
         'serverca': None,
+        'no_ssl_verify': False,
         'authtype': None
     }
 
@@ -1851,8 +1852,10 @@ def is_requests_cert_error(e):
 
     # Using str(e) is slightly ugly, but the error stacks in python-requests
     # are way more ugly.
-    if ('certificate revoked' in str(e) or
-            'certificate expired' in str(e)):
+    errstr = str(e)
+    if ('certificate revoked' in errstr or
+            'certificate expired' in errstr or
+            'certificate verify failed' in errstr):
         return True
 
     return False
