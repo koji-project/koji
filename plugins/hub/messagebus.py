@@ -45,6 +45,7 @@ class tlstimeout(qpid.messaging.transports.tls):
         self.tls = wrap_socket(self.socket, keyfile=conn.ssl_keyfile, certfile=conn.ssl_certfile, ca_certs=conn.ssl_trustfile)
         self.socket.setblocking(0)
         self.state = None
+        self.write_retry = None
 
 qpid.messaging.transports.TRANSPORTS['tls+timeout'] = tlstimeout
 
