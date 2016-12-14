@@ -430,6 +430,8 @@ def load_config(environ):
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],
 
+        ['CheckClientIP', 'boolean', True],
+
         ['LoginCreatesUser', 'boolean', True],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
