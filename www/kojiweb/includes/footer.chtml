@@ -18,6 +18,10 @@ $localfooter
 
       </div>
     </div>
-
+#set $localbottompath=$util.themePath("extra-bottom.html", local=True)
+#if os.path.exists($localbottompath)
+#set $localbottom="".join(open($localbottompath).readlines())
+$localbottom
+#end if
   </body>
 </html>
