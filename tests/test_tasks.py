@@ -78,7 +78,8 @@ class TasksTestCase(TestCase):
         fake_mounts_file_contents = get_fake_mounts_file()
 
         with patch('{0}.open'.format(__name__), return_value=fake_mounts_file_contents, create=True):
-            self.assertEquals(scan_mounts('/dev'), ['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/hugepages', '/dev'])
+            self.assertIn(scan_mounts('/dev'), [['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/hugepages', '/dev'],
+                                                ['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/console', '/dev']])
 
     def test_scan_mounts_no_results(self):
         """ Tests the scan_mounts function with a mocked /proc/mounts file. An argument of /nonexistent/path

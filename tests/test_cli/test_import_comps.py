@@ -305,9 +305,13 @@ class TestImportComps(unittest.TestCase):
             expected = f.read().decode('ascii')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
         # compare mock_calls by literal string
+        call = mock.call
         with open(calls_file, 'rb') as f:
-            expected = f.read().decode('ascii')
-        self.assertMultiLineEqual(str(session.mock_calls) + '\n', expected)
+            expected = eval(f.read().decode('ascii'))
+        if hasattr(session, 'assertHasCalls'):
+            session.assertHasCalls(expected)
+        else:
+            session.assert_has_calls(expected)
         self.assertNotEqual(rv, 1)
 
 
