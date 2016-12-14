@@ -1584,6 +1584,8 @@ def read_config(profile_name, user_config=None):
         'poll_interval': 6,
         'krbservice': 'host',
         'krb_rdns': True,
+        'principal': None,
+        'keytab': None,
         'cert': None,
         'ca': '',  # FIXME: remove in next major release
         'serverca': None,
