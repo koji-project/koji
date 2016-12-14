@@ -393,22 +393,20 @@ $value
     <tr>
       <th>Result</th>
       <td>
-        <a href="#" collapse" id="toggle-result" style="display: none;">Show results</a>
-        <div id="result">
-        #if $excClass
-          <pre>
-          #if $hasattr($result, 'faultString')
-$cgi.escape($result.faultString.strip())
-          #else
-${excClass.__name__}: $cgi.escape($str($result))
-          #end if
-          </pre>
-        #elif $isinstance($result, dict)
-        $printMap($result)
-        #else
-        $printValue('', $result)
-        #end if
+      #if $abbr_result_text
+        <div id="abbr-result">
+        $abbr_result_text
         </div>
+        <div id="full-result">
+        $full_result_text
+        </div>
+        <a href="#" collapse" id="toggle-abbreviated-result" style="display: none;">Show abbreviated results</a>
+        <a href="#" collapse" id="toggle-full-result" style="display: none;">Show complete results</a>
+      #else
+         <div id="result">
+        $full_result_text
+        </div>
+      #end if
       </td>
     </tr>
     <tr>
@@ -430,25 +428,36 @@ ${excClass.__name__}: $cgi.escape($str($result))
     </tr>
   </table>
 
+#if $abbr_result_text
   <script type="text/javascript">
     (function() {
-       var r = document.getElementById('result'),
-       t = document.getElementById('toggle-result');
-       r.style.display = 'none';
-       t.style.display = 'block';
-       t.text = 'Show result';
-       t.onclick = function(e) {
-         if(r.style.display == 'none') {
-           r.style.display = 'block';
-           t.text = 'Hide result';
-           }
+       var abbr = document.getElementById('abbr-result');
+       var full = document.getElementById('full-result');
+       var link_to_show_abbr = document.getElementById('toggle-abbreviated-result');
+       var link_to_show_full = document.getElementById('toggle-full-result');
+       full.style.display = 'none';
+       abbr.style.display = 'block'
+       link_to_show_full.style.display = 'inline'
+       link_to_show_abbr.style.display = 'none'
+       var trigger = function(e) {
+         if (link_to_show_abbr.style.display == 'none') {
+           link_to_show_abbr.style.display = 'inline'
+           link_to_show_full.style.display = 'none'
+           abbr.style.display = 'none';
+           full.style.display = 'block'
+         }
          else {
-           r.style.display = 'none';
-           t.text = 'Show result';
+           link_to_show_abbr.style.display = 'none'
+           link_to_show_full.style.display = 'inline'
+           abbr.style.display = 'block';
+           full.style.display = 'none'
          }
          return false;
        };
+
+       link_to_show_full.onclick = trigger
+       link_to_show_abbr.onclick = trigger
     })();
   </script>
-
+#end if
 #include "includes/footer.chtml"
