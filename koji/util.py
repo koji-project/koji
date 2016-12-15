@@ -319,6 +319,56 @@ def rmtree(path):
         os.rmdir(dirpath)
 
 
+def rmtree2(path):
+    """Reimplement to avoid forming long paths"""
+    st = os.lstat(path)
+    if not stat.S_ISDIR(st.st_mode):
+        raise koji.GenericError, "Not a directory: %s" % path
+    dev = st.st_dev
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        _rmtree2(dev)
+    finally:
+        os.chdir(cwd)
+    os.rmdir(path)
+
+
+def _rmtree2(dev):
+    dirstack = []
+    while True:
+        dirs = _stripcwd(dev)
+        # if no dirs, walk back up until we find some
+        while not dirs and dirstack:
+            os.chdir('..')
+            dirs = dirstack.pop()
+            empty_dir = dirs.pop()
+            os.rmdir(empty_dir)
+        if not dirs:
+            # we are done
+            break
+        # otherwise go deeper
+        subdir = dirs[-1]
+        # note: we do not pop here because we need to remember to remove subdir later
+        dirstack.append(dirs)
+        os.chdir(subdir)
+
+
+def _stripcwd(dev):
+    """Unlink all files in cwd and return list of subdirs"""
+    dirs = []
+    for fn in os.listdir('.'):
+        st = os.lstat(fn)
+        if st.st_dev != dev:
+            # don't cross fs boundary
+            continue
+        if stat.S_ISDIR(st.st_mode):
+            dirs.append(fn)
+        else:
+            os.unlink(fn)
+    return dirs
+
+
 def safer_move(src, dst):
     """Rename if possible, copy+rm otherwise
 
