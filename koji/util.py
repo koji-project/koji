@@ -320,7 +320,9 @@ def rmtree(path):
 
 
 def rmtree2(path):
-    """Reimplement to avoid forming long paths"""
+    """Delete a directory tree without crossing fs boundaries"""
+    # implemented to avoid forming long paths
+    # see: https://pagure.io/koji/issue/201
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
         raise koji.GenericError, "Not a directory: %s" % path
