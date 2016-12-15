@@ -345,7 +345,11 @@ def _rmtree2(dev):
             os.chdir('..')
             dirs = dirstack.pop()
             empty_dir = dirs.pop()
-            os.rmdir(empty_dir)
+            try:
+                os.rmdir(empty_dir)
+            except OSError:
+                # we'll still fail at the top level
+                pass
         if not dirs:
             # we are done
             break
@@ -367,7 +371,11 @@ def _stripcwd(dev):
         if stat.S_ISDIR(st.st_mode):
             dirs.append(fn)
         else:
-            os.unlink(fn)
+            try:
+                os.unlink(fn)
+            except OSError:
+                # we'll still fail at the top level
+                pass
     return dirs
 
 
