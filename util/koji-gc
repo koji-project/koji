@@ -352,7 +352,7 @@ def activate_session(session):
     elif options.user:
         #authenticate using user/password
         session.login()
-    elif has_krb_creds():
+    elif has_krb_creds() or (options.keytab and options.principal):
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
