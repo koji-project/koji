@@ -129,8 +129,9 @@ def get_options():
         config = None
     else:
         config.read(cf)
-        #allow config file to update defaults for certain options
+        # List of values read from config file to update default parser values
         cfgmap = [
+            # name, alias, type
             ['keytab', None, 'string'],
             ['principal', None, 'string'],
             ['krbservice', None, 'string'],
