@@ -76,7 +76,7 @@ amount of time, especially when tagging a large number of packages.
    the minimal buildroot
 
 You can find out what the current build group for Fedora is by running
-``koji -s <nowiki>http://$ARCH.koji.fedoraproject.org/kojihub</nowiki> list-groups f17-build``
+``koji -s <nowiki>https://$ARCH.koji.fedoraproject.org/kojihub</nowiki> list-groups f17-build``
 against the Fedora Koji instance for your $ARCH. This is probably a good
 starting point for your minimal buildroot.
 

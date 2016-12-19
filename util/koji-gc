@@ -381,7 +381,7 @@ At the end of that period they will be deleted permanently. This
 garbage collection is a normal part of build system operation.
 Please see the following url for more information:
 
-    http://fedoraproject.org/wiki/Koji/GarbageCollection"""
+    https://fedoraproject.org/wiki/Koji/GarbageCollection"""
     fmt="""\
 Build: %%(name)s-%%(version)s-%%(release)s
 %s/buildinfo?buildID=%%(id)i""" % options.weburl

@@ -103,7 +103,7 @@ The web interface
    next section if you like.}}
 
 The primary interface for viewing Koji data is a web application. It is
-available at http://koji.fedoraproject.org/koji/ . Most of the interface
+available at https://koji.fedoraproject.org/koji/ . Most of the interface
 is read-only, but with sufficient privileges, you can log in and perform
 some additional actions. For example:
 
@@ -382,9 +382,9 @@ for example to get the latest buildroot for dist-f12-build run
 
 ::
 
-    koji mock-config --tag dist-f12-build --arch=x86_64 --topurl=http://kojipkgs.fedoraproject.org/ dist-f12
+    koji mock-config --tag dist-f12-build --arch=x86_64 --topurl=https://kojipkgs.fedoraproject.org/ dist-f12
 
-you will need to pass in --topurl=http://kojipkgs.fedoraproject.org/ to
+you will need to pass in --topurl=https://kojipkgs.fedoraproject.org/ to
 any mock-config command to get a working mock-config from fedoras koji.
 
 Using Koji to control tasks

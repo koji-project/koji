@@ -445,7 +445,7 @@ class adler32_constructor(object):
     def __init__(self, arg=''):
         self._value = adler32(arg) & 0xffffffffL
         #the bitwise and works around a bug in some versions of python
-        #see: http://bugs.python.org/issue1202
+        #see: https://bugs.python.org/issue1202
 
     def update(self, arg):
         self._value = adler32(arg, self._value) & 0xffffffffL

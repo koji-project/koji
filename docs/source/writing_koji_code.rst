@@ -102,20 +102,20 @@ file had this:
 
     [Fedora]
     authtype = ssl
-    server = http://koji.fedoraproject.org/kojihub
+    server = https://koji.fedoraproject.org/kojihub
     topdir = /mnt/koji
-    weburl = http://koji.fedoraproject.org/koji
-    #pkgurl = http://koji.fedoraproject.org/packages
+    weburl = https://koji.fedoraproject.org/koji
+    #pkgurl = https://koji.fedoraproject.org/packages
     cert = ~/.fedora.cert
     ca = ~/.fedora-upload-ca.cert
     serverca = ~/.fedora-server-ca.cert
 
     [MyKoji]
-    server = http://koji.mydomain.com/kojihub
+    server = https://koji.mydomain.com/kojihub
     authtype = kerberos
     topdir = /mnt/koji
-    weburl = http://koji.mydomain.com/koji
-    topurl = http://download.mydomain.com/kojifiles
+    weburl = https://koji.mydomain.com/koji
+    topurl = https://download.mydomain.com/kojifiles
 
 you could pass Fedora or MyKoji to --profile.
 

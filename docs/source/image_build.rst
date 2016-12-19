@@ -283,7 +283,7 @@ building a disk image.
 
 ::
 
-    $ koji image-build --repo 'http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/' --kickstart fedora-server.ks --scratch --distro Fedora-22 --format qcow2 fedora-server-kvm 22 'http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/' x86_64
+    $ koji image-build --repo 'https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/' --kickstart fedora-server.ks --scratch --distro Fedora-22 --format qcow2 fedora-server-kvm 22 'https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/' x86_64
 
 This example builds a scratch qcow2 disk image using packages from an
 additional yum repository. Without this option the yum repo to populate the
@@ -349,12 +349,12 @@ could look like:
     name = fedora-server-docker
     version = 22
     target = f22-candidate
-    install_tree = http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/
+    install_tree = https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/
     arches = x86_64
 
     format = qcow2,rhevm-ova,vsphere-ova
     distro = Fedora-22
-    repo = http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/
+    repo = https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/
     disk_size = 20
 
     ksversion = DEVEL
@@ -554,7 +554,7 @@ installation locally using something like Gnome's Virtual Machine Manager
 * Select a Network Install
 * For the Operating System Install URL use the same one you gave to Koji. It
   will be something like
-  http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/x86_64/os/
+  https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/x86_64/os/
 * Set the Kickstart URL to where your kickstart file is. You may need to make
   it available over http.
 * Bump the memory to 2048M for good measure
@@ -739,7 +739,7 @@ section instead.
                 <version>22</version>
                 <arch>x86_64</arch>
                 <install type='url'>
-                    <url>http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/x86_64/os/</url>
+                    <url>https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/x86_64/os/</url>
                 </install>
                 <icicle>
                     <extra_command>rpm -qa --qf '%{NAME},%{VERSION},%{RELEASE},%{ARCH},%{EPOCH},%{SIZE},%{SIGMD5},%{BUILDTIME}\n'</extra_command>
@@ -789,7 +789,7 @@ Koji Preparation
                 koji add-tag jay-fedora22-candidate --parent jay-fedora22
                 koji add-tag-inheritance --priority 40 jay-fedora22-build fedora22
                 koji add-pkg --owner kojiadmin jay-fedora22 fedora-server-ec2 fedora-server-kvm
-                koji add-external-repo -t fedora::20 fedora22 'http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/'
+                koji add-external-repo -t fedora::20 fedora22 'https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/'
                 koji add-target jay-fedora22-candidate jay-fedora22-build
                 koji regen-repo jay-fedora22-build
         #.  Grab a kickstart file from an image task in Koji that relates to what you want to test.
@@ -797,7 +797,7 @@ Koji Preparation
 
             ::
 
-                koji image-build fedora-server-ec2 22 --distro Fedora-22 jay-fedora22-candidate --kickstart fedora-server-starter-ec2.ks 'http://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/'
+                koji image-build fedora-server-ec2 22 --distro Fedora-22 jay-fedora22-candidate --kickstart fedora-server-starter-ec2.ks 'https://alt.fedoraproject.org/pub/alt/releases/22/Cloud/$arch/os/'
 
 
 Building Appliances
@@ -937,7 +937,7 @@ to be.
 .. _livecd-tools: https://github.com/rhinstaller/livecd-tools/
 .. _livecd-creator: https://fedoraproject.org/wiki/FedoraLiveCD
 .. _ImageFactory: http://imgfac.org/
-.. _Oz: http://github.com/clalancette/oz
+.. _Oz: https://github.com/clalancette/oz
 .. _how to use Oz: https://github.com/clalancette/oz/wiki
 .. _how to use ImageFactory: http://imgfac.org/documentation/
-.. _appliance-creator: http://fedoraproject.org/wiki/Features/ApplianceTools
+.. _appliance-creator: https://fedoraproject.org/wiki/Features/ApplianceTools

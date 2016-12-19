@@ -3,7 +3,7 @@ import sys
 
 # We have to do this craziness because 'import koji' is ambiguous.  Is it the
 # koji module, or the koji cli module.  Jump through hoops accordingly.
-# http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+# https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 CLI_FILENAME = os.path.dirname(__file__) + "/../../cli/koji"
 if sys.version_info[0] >= 3:
     import importlib.util

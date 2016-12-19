@@ -186,6 +186,6 @@ dist-build tag
 For packages that incorporate the %dist tags in their filename, they
 expect %dist to be defined in /etc/rpm/macros.dist, which was added in
 Fedora 7. For building on RHEL5/FC6 and earlier, koji needs the
-`http://buildsys.fedoraproject.org/buildgroups/
-buildsys-macros <http://buildsys.fedoraproject.org/buildgroups/ buildsys-macros>`__
+`https://buildsys.fedoraproject.org/buildgroups/
+buildsys-macros <https://buildsys.fedoraproject.org/buildgroups/ buildsys-macros>`__
 package tagged under the dist-build tag.
