@@ -1028,7 +1028,7 @@ class TaskManager(object):
         #                       df -iP path ?
         #               memory (meminfo/vmstat)
         #                       vmstat fields 3-6 (also 7-8 for swap)
-        #                       http://www.redhat.com/advice/tips/meminfo.html
+        #                       https://www.redhat.com/advice/tips/meminfo.html
         #               cpu cycles (vmstat?)
         #                       vmstat fields 13-16 (and others?)
         #       others?:

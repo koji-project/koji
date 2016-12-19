@@ -21,7 +21,7 @@ License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
 Summary: Build system tools
 Group: Applications/System
-URL: http://fedorahosted.org/koji
+URL: https://pagure.io/koji
 Source: https://fedorahosted.org/released/koji/koji-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
