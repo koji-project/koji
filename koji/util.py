@@ -286,7 +286,7 @@ def rmtree(path):
     # see: https://pagure.io/koji/issue/201
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
-        raise koji.GenericError, "Not a directory: %s" % path
+        raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
     cwd = os.getcwd()
     try:
