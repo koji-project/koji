@@ -282,41 +282,62 @@ def lazysetattr(object, name, func, args, kwargs=None, cache=False):
 
 def rmtree(path):
     """Delete a directory tree without crossing fs boundaries"""
+    # implemented to avoid forming long paths
+    # see: https://pagure.io/koji/issue/201
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
-        raise koji.GenericError, "Not a directory: %s" % path
+        raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
-    dirlist = []
-    for dirpath, dirnames, filenames in os.walk(path):
-        dirlist.append(dirpath)
-        newdirs = []
-        dirsyms = []
-        for fn in dirnames:
-            path = os.path.join(dirpath, fn)
-            st = os.lstat(path)
-            if st.st_dev != dev:
-                # don't cross fs boundary
-                continue
-            if stat.S_ISLNK(st.st_mode):
-                #os.walk includes symlinks to dirs here
-                dirsyms.append(fn)
-                continue
-            newdirs.append(fn)
-        #only walk our filtered dirs
-        dirnames[:] = newdirs
-        for fn in filenames + dirsyms:
-            path = os.path.join(dirpath, fn)
-            st = os.lstat(path)
-            if st.st_dev != dev:
-                #shouldn't happen, but just to be safe...
-                continue
-            os.unlink(path)
-    dirlist.reverse()
-    for dirpath in dirlist:
-        if os.listdir(dirpath):
-            # dir not empty. could happen if a mount was present
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        _rmtree(dev)
+    finally:
+        os.chdir(cwd)
+    os.rmdir(path)
+
+
+def _rmtree(dev):
+    dirstack = []
+    while True:
+        dirs = _stripcwd(dev)
+        # if no dirs, walk back up until we find some
+        while not dirs and dirstack:
+            os.chdir('..')
+            dirs = dirstack.pop()
+            empty_dir = dirs.pop()
+            try:
+                os.rmdir(empty_dir)
+            except OSError:
+                # we'll still fail at the top level
+                pass
+        if not dirs:
+            # we are done
+            break
+        # otherwise go deeper
+        subdir = dirs[-1]
+        # note: we do not pop here because we need to remember to remove subdir later
+        dirstack.append(dirs)
+        os.chdir(subdir)
+
+
+def _stripcwd(dev):
+    """Unlink all files in cwd and return list of subdirs"""
+    dirs = []
+    for fn in os.listdir('.'):
+        st = os.lstat(fn)
+        if st.st_dev != dev:
+            # don't cross fs boundary
             continue
-        os.rmdir(dirpath)
+        if stat.S_ISDIR(st.st_mode):
+            dirs.append(fn)
+        else:
+            try:
+                os.unlink(fn)
+            except OSError:
+                # we'll still fail at the top level
+                pass
+    return dirs
 
 
 def safer_move(src, dst):
