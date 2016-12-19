@@ -93,17 +93,17 @@ Fedora 10
 
 ::
 
-    http://mirrors.kernel.org/fedora/releases/10/Everything/\$arch/os/
-    http://mirrors.kernel.org/fedora/updates/10/\$arch/
+    https://mirrors.kernel.org/fedora/releases/10/Everything/\$arch/os/
+    https://mirrors.kernel.org/fedora/updates/10/\$arch/
 
 CentOS 5 and EPEL
 -----------------
 
 ::
 
-    http://mirrors.kernel.org/centos/5/os/\$arch/
-    http://mirrors.kernel.org/centos/5/updates/\$arch/
-    http://mirrors.kernel.org/fedora-epel/5/\$arch/
+    https://mirrors.kernel.org/centos/5/os/\$arch/
+    https://mirrors.kernel.org/centos/5/updates/\$arch/
+    https://mirrors.kernel.org/fedora-epel/5/\$arch/
 
 Example tags and targets
 ========================

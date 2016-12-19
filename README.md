@@ -1,7 +1,7 @@
 koji - RPM building and tracking system
 =======================================
 
-Koji is an RPM-based build system. The Fedora Project uses Koji for [their build system](http://koji.fedoraproject.org/koji/), as do [several other projects](https://fedoraproject.org/wiki/Koji/RunsHere).
+Koji is an RPM-based build system. The Fedora Project uses Koji for [their build system](https://koji.fedoraproject.org/koji/), as do [several other projects](https://fedoraproject.org/wiki/Koji/RunsHere).
 
 Koji's goal is to provide a flexible, secure, and reproducible way to build software.
 
