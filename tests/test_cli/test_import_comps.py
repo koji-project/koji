@@ -1,13 +1,9 @@
+import json
 import unittest
-
 import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
-
 import loadcli
 
 try:
@@ -304,10 +300,12 @@ class TestImportComps(unittest.TestCase):
         with open(stdout_file, 'rb') as f:
             expected = f.read().decode('ascii')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
-        # compare mock_calls by literal string
-        call = mock.call
-        with open(calls_file, 'rb') as f:
-            expected = eval(f.read().decode('ascii'))
+
+        # compare mock_calls stored as json
+        expected = []
+        for c in json.load(open(calls_file, 'rt')):
+            expected.append(getattr(mock.call, c[0]).__call__(*c[1], **c[2]))
+
         if hasattr(session, 'assertHasCalls'):
             session.assertHasCalls(expected)
         else:
