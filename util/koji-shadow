@@ -307,17 +307,18 @@ def activate_session(session):
     """Test and login the session is applicable"""
     global options
 
-    # convert to absolute paths
-    options.auth_cert  = os.path.expanduser(options.auth_cert)
-    options.auth_ca  = os.path.expanduser(options.auth_ca)
-    options.serverca  = os.path.expanduser(options.serverca)
-
     if options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.auth_cert):
-        # authenticate using SSL client cert
-        session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
+    elif options.auth_cert and options.auth_ca and options.serverca:
+        # convert to absolute paths
+        options.auth_cert  = os.path.expanduser(options.auth_cert)
+        options.auth_ca  = os.path.expanduser(options.auth_ca)
+        options.serverca  = os.path.expanduser(options.serverca)
+
+        if os.path.isfile(options.auth_cert):
+            # authenticate using SSL client cert
+            session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
     elif options.user:
         #authenticate using user/password
         session.login()
