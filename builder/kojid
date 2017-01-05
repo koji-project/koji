@@ -5015,9 +5015,9 @@ def get_options():
                                      'resolver-status.properties *.lastUpdated',
                 'failed_buildroot_lifetime' : 3600 * 4,
                 'rpmbuild_timeout' : 3600 * 24,
-                'cert': '/etc/kojid/client.crt',
+                'cert': None,
                 'ca': '',  # FIXME: Unused, remove in next major release
-                'serverca': '/etc/kojid/serverca.crt'}
+                'serverca': None}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
@@ -5073,6 +5073,17 @@ def get_options():
         logger.warning("The pkgurl option is obsolete")
     if options.debug_mock:
         logger.warning("The debug-mock option is obsolete")
+
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '/etc/kojid/client.crt',
+        'serverca': '/etc/kojid/serverca.crt',
+    }
+    for name in cert_defaults:
+        if getattr(options, name, None) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                setattr(options, name, fn)
 
     return options
 

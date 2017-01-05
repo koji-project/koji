@@ -62,12 +62,10 @@ def get_options():
                       help=_("do not authenticate"))
     parser.add_option("--network-hack", action="store_true", default=False,
                       help=optparse.SUPPRESS_HELP)  # no longer used
-    parser.add_option("--cert", default='/etc/koji-gc/client.crt',
-                      help=_("Client SSL certificate file for authentication"))
+    parser.add_option("--cert", help=_("Client SSL certificate file for authentication"))
     parser.add_option("--ca", default='',
                       help=_("ignored"))  # FIXME: remove in next major release
-    parser.add_option("--serverca", default='/etc/koji-gc/serverca.crt',
-                      help=_("CA cert file that issued the hub certificate"))
+    parser.add_option("--serverca", help=_("CA cert file that issued the hub certificate"))
     parser.add_option("-n", "--test", action="store_true", default=False,
                       help=_("test mode"))
     parser.add_option("-d", "--debug", action="store_true", default=False,
@@ -213,6 +211,17 @@ def get_options():
         except ValueError:
             parser.error(_("Invalid time interval: %s") % value)
 
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '/etc/koji-gc/client.crt',
+        'serverca': '/etc/koji-gc/serverca.crt',
+    }
+    for name in cert_defaults:
+        if getattr(options, name, None) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                setattr(options, name, fn)
+
     return options, args
 
 def check_tag(name):
@@ -350,7 +359,7 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.cert):
+    elif options.cert is not None and os.path.isfile(options.cert):
         # authenticate using SSL client cert
         session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
     elif options.user:
