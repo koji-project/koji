@@ -627,9 +627,15 @@ def readDescendantsData(tag_id, event=None):
     data = [dict(zip(fields, x)) for x in c.fetchall()]
     return data
 
+
 def writeInheritanceData(tag_id, changes, clear=False):
     """Add or change inheritance data for a tag"""
     context.session.assertPerm('admin')
+    _writeInheritanceData(tag_id, changes, clear)
+
+
+def _writeInheritanceData(tag_id, changes, clear=False):
+    """Add or change inheritance data for a tag"""
     fields = ('parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter')
     if isinstance(changes, dict):
         changes = [changes]
@@ -2971,6 +2977,11 @@ def edit_tag(tagInfo, **kwargs):
     """
 
     context.session.assertPerm('admin')
+    _edit_tag(tagInfo, **kwargs)
+
+
+def _edit_tag(tagInfo, **kwargs):
+    """Edit information for an existing tag."""
     if not context.opts.get('EnableMaven') \
                 and dslice(kwargs, ['maven_support', 'maven_include_all'], strict=False):
         raise koji.GenericError, "Maven support not enabled"
@@ -3050,8 +3061,12 @@ def old_edit_tag(tagInfo, name, arches, locked, permissionID, extra=None):
 
 def delete_tag(tagInfo):
     """Delete the specified tag."""
-
     context.session.assertPerm('admin')
+    _delete_tag(tagInfo)
+
+
+def _delete_tag(tagInfo):
+    """Delete the specified tag."""
 
     #We do not ever DELETE tag data. It is versioned -- we revoke it instead.
 
