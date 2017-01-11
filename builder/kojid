@@ -2413,6 +2413,7 @@ class BuildLiveMediaTask(BuildImageTask):
                     label='livemedia %s' % arch, arch=arch)
                 if arch in opts.get('optional_arches', []):
                     canfail.append(subtasks[arch])
+            self.logger.debug("Tasks that can fail: %r", canfail)
 
 
             self.logger.debug("Got image subtasks: %r", subtasks)

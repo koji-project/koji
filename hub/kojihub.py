@@ -11098,6 +11098,8 @@ class Host(object):
         return [finished, unfinished]
 
     def taskWaitResults(self, parent, tasks, canfail=None):
+        if canfail is None:
+            canfail = []
         results = {}
         # If we're getting results, we're done waiting
         self.taskUnwait(parent)
@@ -11121,7 +11123,7 @@ class Host(object):
         results = []
         for task_id in tasks:
             task = Task(task_id)
-            raise_fault = (task in canfail)
+            raise_fault = (task_id not in canfail)
             results.append([task_id, task.getResult(raise_fault=raise_fault)])
         return results
 
