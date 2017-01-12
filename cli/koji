@@ -4320,6 +4320,7 @@ def anon_handle_list_history(options, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Show more detail"))
     parser.add_option("-e", "--events", action="store_true", help=_("Show event ids"))
     parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
+    global_options = options
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -4415,7 +4416,7 @@ def anon_handle_list_history(options, session, args):
         if not options.watch:
             break
         else:
-            time.sleep(options.poll_interval)
+            time.sleep(global_options.poll_interval)
             # repeat query for later events
             if last_event:
                 kwargs['afterEvent'] = last_event
