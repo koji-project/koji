@@ -110,6 +110,7 @@ SELECT statement_timestamp(), 'Altering buildroot table (altering constraints)' 
 ALTER TABLE buildroot ADD CONSTRAINT cg_sane CHECK (
         (cg_id IS NULL AND cg_version IS NULL)
         OR (cg_id IS NOT NULL AND cg_version IS NOT NULL));
+UPDATE TABLE buildroot SET container_type = 'chroot' WHERE container_type IS NULL AND container_arch IS NOT NULL;
 ALTER TABLE buildroot ADD CONSTRAINT container_sane CHECK (
         (container_type IS NULL AND container_arch IS NULL)
         OR (container_type IS NOT NULL AND container_arch IS NOT NULL));
