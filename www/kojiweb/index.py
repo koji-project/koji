@@ -742,7 +742,7 @@ def getfile(environ, taskID, name, offset=None, size=None):
         else:
             ctype = 'application/octet-stream'
     if ctype != 'text/plain':
-        environ['koji.headers'].append('Content-Disposition', 'attachment; filename=%s' % name)
+        environ['koji.headers'].append(['Content-Disposition', 'attachment; filename=%s' % name])
     environ['koji.headers'].append(['Content-Type', ctype])
 
     file_size = int(file_info['st_size'])
