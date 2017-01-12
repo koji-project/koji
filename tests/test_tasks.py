@@ -1,14 +1,16 @@
 import random
+from io import StringIO
+from os import path, makedirs
+from shutil import rmtree
+from tempfile import gettempdir
 from unittest import TestCase
 from mock import patch, Mock, call
-from tempfile import gettempdir
-from shutil import rmtree
-from os import path, makedirs
-from io import StringIO
 
 import koji
-from koji.tasks import scan_mounts, umount_all, safe_rmtree, BaseTaskHandler, FakeTask, SleepTask, ForkTask
-from koji import BuildError, GenericError
+from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, \
+                       WaitTestTask, scan_mounts, umount_all, \
+                       safe_rmtree
+
 
 def get_fake_mounts_file():
     """ Returns contents of /prc/mounts in a file-like object
@@ -271,7 +273,7 @@ class TasksTestCase(TestCase):
         obj.session.host.taskWaitResults.return_value = taskWaitResults
         self.assertEquals(obj.wait([1551234, 1591234]), dict(taskWaitResults))
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=[])
 
     def test_BaseTaskHandler_wait_some_not_done(self):
         """ Tests that the wait function returns the one finished subtask results of
@@ -296,7 +298,7 @@ class TasksTestCase(TestCase):
         obj.session.host.taskWaitResults.return_value = taskWaitResults
         self.assertEquals(obj.wait([1551234, 1591234]), dict(taskWaitResults))
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234], canfail=[])
 
     @patch('signal.pause', return_value=None)
     def test_BaseTaskHandler_wait_some_not_done_all_set(self, mock_signal_pause):
@@ -336,7 +338,7 @@ class TasksTestCase(TestCase):
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
         obj.session.host.taskWait.assert_has_calls([call(12345678), call(12345678)])
         mock_signal_pause.assert_called_once_with()
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=[])
 
     def test_BaseTaskHandler_wait_some_not_done_all_set_failany_set_failed_task(self):
         """ Tests that the wait function raises an exception when one of the subtask fails when the failany flag is set
@@ -348,11 +350,11 @@ class TasksTestCase(TestCase):
         obj.session = Mock()
         obj.session.host.taskSetWait.return_value = None
         obj.session.host.taskWait.side_effect = [[[1551234], [1591234]], [[1551234, 1591234], []]]
-        obj.session.getTaskResult.side_effect = GenericError('Uh oh, we\'ve got a problem here!')
+        obj.session.getTaskResult.side_effect = koji.GenericError('Uh oh, we\'ve got a problem here!')
         try:
             obj.wait([1551234, 1591234], all=True, failany=True)
             raise Exception('A GeneralError was not raised.')
-        except GenericError as e:
+        except koji.GenericError as e:
             self.assertEquals(e.message, 'Uh oh, we\'ve got a problem here!')
             obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
 
@@ -509,7 +511,7 @@ class TasksTestCase(TestCase):
         try:
             obj.find_arch('noarch', host, None)
             raise Exception('The BuildError Exception was not raised')
-        except BuildError as e:
+        except koji.BuildError as e:
             self.assertEquals(e.message, 'No arch list for this host: test.domain.local')
 
     def test_BaseTaskHandler_find_arch_noarch_bad_tag(self):
@@ -524,7 +526,7 @@ class TasksTestCase(TestCase):
         try:
             obj.find_arch('noarch', host, tag)
             raise Exception('The BuildError Exception was not raised')
-        except BuildError as e:
+        except koji.BuildError as e:
             self.assertEquals(e.message, 'No arch list for tag: some_package-1.2-build')
 
     def test_BaseTaskHandler_find_arch_noarch(self):
@@ -550,7 +552,7 @@ class TasksTestCase(TestCase):
         try:
             obj.find_arch('noarch', host, tag)
             raise Exception('The BuildError Exception was not raised')
-        except BuildError as e:
+        except koji.BuildError as e:
             self.assertEquals(e.message, ('host test.domain.local (i386) does not support '
                                           'any arches of tag some_package-1.2-build (aarch64, x86_64)'))
 
@@ -646,7 +648,7 @@ class TasksTestCase(TestCase):
         try:
             obj.getRepo(8472)
             raise Exception('The BuildError Exception was not raised')
-        except BuildError as e:
+        except koji.BuildError as e:
             obj.session.getRepo.assert_called_once_with(8472)
             self.assertEquals(e.message, 'no repo (and no target) for tag rhel-7.3-build')
 
@@ -671,3 +673,42 @@ class TasksTestCase(TestCase):
         obj = ForkTask(123, 'fork', [1, 20], None, None, (get_tmp_dir_path('ForkTask')))
         obj.run()
         mock_spawnvp.assert_called_once_with(1, 'sleep', ['sleep', '20'])
+
+    @patch('signal.pause', return_value=None)
+    @patch('time.sleep')
+    def test_WaitTestTask_handler(self, mock_sleep, mock_signal_pause):
+        """ Tests that the WaitTestTask handler can be instantiated and runs appropriately based on the input
+            Specifically, that forking works and canfail behaves correctly.
+        """
+        self.mock_subtask_id = 1
+        def mock_subtask(method, arglist, id, **opts):
+            self.assertEqual(method, 'sleep')
+            task_id = self.mock_subtask_id
+            self.mock_subtask_id += 1
+            obj = SleepTask(task_id, 'sleep', arglist, None, None, (get_tmp_dir_path('SleepTask')))
+            obj.run()
+            return task_id
+
+        mock_taskWait = [
+            [[], [1, 2, 3, 4]],
+            [[3, 4], [1, 2]],
+            [[1, 2, 3, 4], []],
+        ]
+        def mock_getTaskResult(task_id):
+            if task_id == 4:
+                raise koji.GenericError()
+
+
+        obj = WaitTestTask(123, 'waittest', [3], None, None, (get_tmp_dir_path('WaitTestTask')))
+        obj.session = Mock()
+        obj.session.host.subtask.side_effect = mock_subtask
+        obj.session.getTaskResult.side_effect = mock_getTaskResult
+        obj.session.host.taskWait.side_effect = mock_taskWait
+        obj.session.host.taskWaitResults.return_value = [ ['1', {}], ['2', {}], ['3', {}], ['4', {}], ]
+        obj.run()
+        #self.assertEqual(mock_sleep.call_count, 4)
+        obj.session.host.taskSetWait.assert_called_once()
+        obj.session.host.taskWait.assert_has_calls([call(123), call(123), call(123)])
+        # getTaskResult should be called in 2nd round only for task 3, as 4
+        # will be skipped as 'canfail'
+        obj.session.getTaskResult.assert_has_calls([call(3)])

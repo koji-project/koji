@@ -400,7 +400,7 @@ class Task(object):
         params, method = xmlrpclib.loads(xml_request)
         return params
 
-    def getResult(self):
+    def getResult(self, raise_fault=True):
         query = """SELECT state,result FROM task WHERE id = %(id)i"""
         r = _fetchSingle(query, vars(self))
         if not r:
@@ -410,17 +410,20 @@ class Task(object):
             raise koji.GenericError, "Task %i is canceled" % self.id
         elif koji.TASK_STATES[state] not in ['CLOSED', 'FAILED']:
             raise koji.GenericError, "Task %i is not finished" % self.id
-        # If the result is a Fault, then loads will raise it
-        # This is probably what we want to happen.
-        # Note that you can't really 'return' a fault over xmlrpc, you
-        # can only 'raise' them.
-        # If you try to return a fault as a value, it gets reduced to
-        # a mere struct.
-        # f = Fault(1,"hello"); print dumps((f,))
         if xml_result.find('<?xml', 0, 10) == -1:
             #handle older base64 encoded data
             xml_result = base64.decodestring(xml_result)
-        result, method = xmlrpclib.loads(xml_result)
+        try:
+            # If the result is a Fault, then loads will raise it
+            # This is normally what we want to happen
+            result, method = xmlrpclib.loads(xml_result)
+        except xmlrpclib.Fault, fault:
+            if raise_fault:
+                raise
+            # Note that you can't really return a fault over xmlrpc, except by
+            # raising it. We return a dictionary in the same format that
+            # multiCall does.
+            return {'faultCode': fault.faultCode, 'faultString': fault.faultString}
         return result[0]
 
     def getInfo(self, strict=True, request=False):
@@ -10066,9 +10069,9 @@ class RootExports(object):
         task = Task(taskId)
         return task.getRequest()
 
-    def getTaskResult(self, taskId):
+    def getTaskResult(self, taskId, raise_fault=True):
         task = Task(taskId)
-        return task.getResult()
+        return task.getResult(raise_fault=raise_fault)
 
     def getTaskInfo(self, task_id, request=False):
         """Get information about a task"""
@@ -11094,7 +11097,10 @@ class Host(object):
                 c.execute(q, locals())
         return [finished, unfinished]
 
-    def taskWaitResults(self, parent, tasks):
+    def taskWaitResults(self, parent, tasks, canfail=None):
+        if canfail is None:
+            canfail = []
+        results = {}
         # If we're getting results, we're done waiting
         self.taskUnwait(parent)
         c = context.cnx.cursor()
@@ -11108,16 +11114,17 @@ class Host(object):
             # Query all subtasks
             tasks = []
             c.execute(q, locals())
-            for id, state in c.fetchall():
+            for task_id, state in c.fetchall():
                 if state == canceled:
                     raise koji.GenericError, "Subtask canceled"
                 elif state in (closed, failed):
-                    tasks.append(id)
+                    tasks.append(task_id)
         # Would use a dict, but xmlrpc requires the keys to be strings
         results = []
-        for id in tasks:
-            task = Task(id)
-            results.append([id, task.getResult()])
+        for task_id in tasks:
+            task = Task(task_id)
+            raise_fault = (task_id not in canfail)
+            results.append([task_id, task.getResult(raise_fault=raise_fault)])
         return results
 
     def getHostTasks(self):
@@ -11301,10 +11308,10 @@ class HostExports(object):
         host.verify()
         return host.taskWait(parent)
 
-    def taskWaitResults(self, parent, tasks):
+    def taskWaitResults(self, parent, tasks, canfail=None):
         host = Host()
         host.verify()
-        return host.taskWaitResults(parent, tasks)
+        return host.taskWaitResults(parent, tasks, canfail)
 
     def subtask(self, method, arglist, parent, **opts):
         host = Host()
@@ -11445,6 +11452,9 @@ class HostExports(object):
         task.assertHost(host.id)
         logger.debug('scratch image results: %s' % results)
         for sub_results in results.values():
+            if 'task_id' not in sub_results:
+                logger.warning('Task %s failed, no image available' % task_id)
+                continue
             workdir = koji.pathinfo.task(sub_results['task_id'])
             scratchdir = koji.pathinfo.scratch()
             username = get_user(task.getOwner())['name']
@@ -11825,6 +11835,9 @@ class HostExports(object):
         moving the image to its final location.
         """
         for sub_results in results.values():
+            if 'task_id' not in sub_results:
+                logger.warning('Task %s failed, no image available' % task_id)
+                continue
             importImageInternal(task_id, build_id, sub_results)
             if sub_results.has_key('rpmresults'):
                 rpm_results = sub_results['rpmresults']

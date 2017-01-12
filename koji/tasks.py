@@ -187,15 +187,20 @@ class BaseTaskHandler(object):
         safe_rmtree(self.workdir, unmount=False, strict=True)
         #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
-    def wait(self, subtasks=None, all=False, failany=False):
+    def wait(self, subtasks=None, all=False, failany=False, canfail=None):
         """Wait on subtasks
 
         subtasks is a list of integers (or an integer). If more than one subtask
         is specified, then the default behavior is to return when any of those
         tasks complete. However, if all is set to True, then it waits for all of
-        them to complete.  If all and failany are both set to True, then each
-        finished task will be checked for failure, and a failure will cause all
-        of the unfinished tasks to be cancelled.
+        them to complete.
+
+        If all and failany are both set to True, then each finished task will
+        be checked for failure, and a failure will cause all of the unfinished
+        tasks to be cancelled.
+
+        If canfail is given a list of task ids, then those tasks can fail
+        without affecting the other tasks.
 
         special values:
             subtasks = None     specify all subtasks
@@ -206,6 +211,9 @@ class BaseTaskHandler(object):
             the database and will send the subprocess corresponding to the
             subtask a SIGUSR2 to wake it up when subtasks complete.
         """
+
+        if canfail is None:
+            canfail = []
         if isinstance(subtasks, int):
             # allow single integer w/o enclosing list
             subtasks = [subtasks]
@@ -221,6 +229,9 @@ class BaseTaskHandler(object):
                     if failany:
                         failed = False
                         for task in finished:
+                            if task in canfail:
+                                # no point in checking
+                                continue
                             try:
                                 self.session.getTaskResult(task)
                             except (koji.GenericError, xmlrpclib.Fault), task_error:
@@ -243,9 +254,10 @@ class BaseTaskHandler(object):
             self.logger.debug("...waking up")
         self.logger.debug("Finished waiting")
         if all:
-            return dict(self.session.host.taskWaitResults(self.id, subtasks))
-        else:
-            return dict(self.session.host.taskWaitResults(self.id, finished))
+            finished = subtasks
+        return dict(self.session.host.taskWaitResults(self.id, finished,
+                                                    canfail=canfail))
+
 
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
@@ -390,17 +402,23 @@ class ForkTask(BaseTaskHandler):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
 
 class WaitTestTask(BaseTaskHandler):
+    """
+    Tests self.wait()
+
+    Starts few tasks which just sleeps. One of them will fail due to bad
+    arguments. As it is listed as 'canfail' it shouldn't affect overall
+    CLOSED status.
+    """
     Methods = ['waittest']
     _taskWeight = 0.1
     def handler(self, count, seconds=10):
         tasks = []
         for i in xrange(count):
-            task_id = self.session.host.subtask(method='sleep',
-                                                arglist=[seconds],
-                                                label=str(i),
-                                                parent=self.id)
+            task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i), parent=self.id)
             tasks.append(task_id)
-        results = self.wait(all=True)
+        bad_task = self.subtask('sleep', ['BAD_ARG'], label='bad')
+        tasks.append(bad_task)
+        results = self.wait(subtasks=tasks, all=True, failany=True, canfail=[bad_task])
         self.logger.info(pprint.pformat(results))
 
 
