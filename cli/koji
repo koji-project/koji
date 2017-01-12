@@ -302,6 +302,14 @@ def print_task_recurse(task,depth=0):
     for child in task.get('children',()):
         print_task_recurse(child,depth+1)
 
+def parse_arches(arches, to_list=False):
+    """Parse comma or space-separated list of arches and return
+       only space-separated one."""
+    arches = arches.replace(',', ' ').split()
+    if to_list:
+        return arches
+    else:
+        return ' '.join(arches)
 
 class TaskWatcher(object):
 
@@ -631,7 +639,7 @@ def handle_edit_host(options, session, args):
     usage = _("usage: %prog edit-host hostname ... [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--arches", help=_("Space-separated list of supported architectures"))
+    parser.add_option("--arches", help=_("Space or comma-separated list of supported architectures"))
     parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
     parser.add_option("--description", metavar="DESC", help=_("Description of this host"))
     parser.add_option("--comment", help=_("A brief comment about this host"))
@@ -645,6 +653,8 @@ def handle_edit_host(options, session, args):
     for key, val in subopts.__dict__.items():
         if val is not None:
             vals[key] = val
+    if 'arches' in vals:
+        vals['arches'] = parse_arches(vals['arches'])
 
     session.multicall = True
     for host in args:
@@ -794,7 +804,7 @@ def handle_add_pkg(options, session, args):
             continue
         to_add.append(package)
     if options.extra_arches:
-        opts['extra_arches'] = ' '.join(options.extra_arches.replace(',',' ').split())
+        opts['extra_arches'] = parse_arches(options.extra_arches)
 
     # add the packages
     print "Adding %i packages to tag %s" % (len(to_add), dsttag['name'])
@@ -961,7 +971,7 @@ def handle_build(options, session, args):
     source = args[1]
     opts = {}
     if build_opts.arch_override:
-        opts['arch_override'] = ' '.join(build_opts.arch_override.replace(',',' ').split())
+        opts['arch_override'] = parse_arches(build_opts.arch_override)
     for key in ('skip_tag', 'scratch', 'repo_id'):
         val = getattr(build_opts, key)
         if val is not None:
@@ -4798,7 +4808,7 @@ def handle_add_tag(options, session, args):
     if options.parent:
         opts['parent'] = options.parent
     if options.arches:
-        opts['arches'] = ' '.join(options.arches.replace(',',' ').split())
+        opts['arches'] = parse_arches(options.arches)
     if options.maven_support:
         opts['maven_support'] = True
     if options.include_all:
@@ -4837,7 +4847,7 @@ def handle_edit_tag(options, session, args):
     tag = args[0]
     opts = {}
     if options.arches:
-        opts['arches'] = ' '.join(options.arches.replace(',',' ').split())
+        opts['arches'] = parse_arches(options.arches)
     if options.no_perm:
         opts['perm_id'] = None
     elif options.perm:
@@ -6114,8 +6124,7 @@ def _list_tasks(options, session):
             sys.exit(1)
         callopts['owner'] = user['id']
     if options.arch:
-        arches = options.arch.replace(',',' ').split()
-        callopts['arch'] = arches
+        callopts['arch'] = parse_arches(options.arch, to_list=True)
     if options.method:
         callopts['method'] = options.method
     if options.channel:
@@ -6188,7 +6197,7 @@ def handle_set_pkg_arches(options, session, args):
         parser.error(_("Please specify an archlist, a tag, and at least one package"))
         assert False  # pragma: no cover
     activate_session(session)
-    arches = ' '.join(args[0].replace(',',' ').split())
+    arches = parse_arches(args[0])
     tag = args[1]
     for package in args[2:]:
         #really should implement multicall...
