@@ -729,9 +729,9 @@ def get_options():
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
                 'sleeptime' : 15,
-                'cert': '/etc/kojira/client.crt',
+                'cert': None,
                 'ca': '',  # FIXME: unused, remove in next major release
-                'serverca': '/etc/kojira/serverca.crt'
+                'serverca': None,
                 }
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
@@ -755,6 +755,16 @@ def get_options():
             setattr(options, name, value)
     if options.logfile in ('','None','none'):
         options.logfile = None
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '/etc/kojira/client.crt',
+        'serverca': '/etc/kojira/serverca.crt',
+    }
+    for name in cert_defaults:
+        if getattr(options, name, None) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                setattr(options, name, fn)
     return options
 
 def quit(msg=None, code=1):
@@ -797,7 +807,7 @@ if  __name__ == "__main__":
 
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server,session_opts)
-    if os.path.isfile(options.cert):
+    if options.cert is not None and os.path.isfile(options.cert):
         # authenticate using SSL client certificates
         session.ssl_login(options.cert, None, options.serverca)
     elif options.user:
