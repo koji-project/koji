@@ -9873,14 +9873,12 @@ class RootExports(object):
             A list of maps is returned, and each map contains key
             'package_name' and 'package_id'.
         """
-        _escape = lambda _str: _str.replace('_', '#_').replace('%', '#%')
         fields = (('package.id', 'package_id'),
                       ('package.name', 'package_name'))
         if prefix is None:
             clauses = None
         else:
-            prefix = _escape(prefix)
-            clauses = ["""package.name ILIKE '%(prefix)s%%' ESCAPE '#'"""]
+            clauses = ["""package.name ILIKE %(prefix)s || '%%'"""]
         query = QueryProcessor(
             tables=['package'], clauses=clauses, values=locals(),
             columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
