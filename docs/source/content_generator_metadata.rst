@@ -42,7 +42,14 @@ The build map contains the following entries:
 -  start\_time: The time the build started, in seconds since the epoch.
 -  end\_time: The time the build was completed, in seconds since the
    epoch.
--  extra: A map of extra metadata associated with the build.
+-  extra: A map of extra metadata associated with the build, which
+   must include one of:
+
+   - typeinfo: A map whose single entry is the name of the content
+     generator type, which is a map containing type-specific
+     information for this build.
+   - maven, win, or image: Legacy content generator type names which
+     appear at this level instead of inside typeinfo.
 
 buildroots
 ----------
