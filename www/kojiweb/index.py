@@ -417,38 +417,6 @@ def notificationdelete(environ, notificationID):
     _redirect(environ, 'index')
 
 
-# All Tasks
-_TASKS = ['build',
-          'buildSRPMFromSCM',
-          'buildArch',
-          'chainbuild',
-          'maven',
-          'buildMaven',
-          'chainmaven',
-          'wrapperRPM',
-          'winbuild',
-          'vmExec',
-          'waitrepo',
-          'tagBuild',
-          'newRepo',
-          'createrepo',
-          'buildNotification',
-          'tagNotification',
-          'dependantTask',
-          'livecd',
-          'createLiveCD',
-          'appliance',
-          'createAppliance',
-          'image',
-          'createImage',
-          'runroot',
-          'livemedia',
-          'createLiveMedia']
-# Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image', 'livemedia']
-# Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
-
 def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
     server = _getServer(environ)
@@ -467,15 +435,15 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
-    if method in _TASKS:
+    if method in environ['koji.options']['Tasks']:
         opts['method'] = method
     else:
         method = 'all'
     values['method'] = method
-    values['alltasks'] = _TASKS
+    values['alltasks'] = environ['koji.options']['Tasks']
 
     treeEnabled = True
-    if hostID or (method not in ['all'] + _PARENT_TASKS):
+    if hostID or (method not in ['all'] + environ['koji.options']['ParentTasks']):
         # force flat view if we're filtering by a hostID or a task that never has children
         if view == 'tree':
             view = 'flat'
@@ -484,7 +452,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
     values['treeEnabled'] = treeEnabled
 
     toplevelEnabled = True
-    if method not in ['all'] + _TOPLEVEL_TASKS:
+    if method not in ['all'] + environ['koji.options']['ToplevelTasks']:
         # force flat view if we're viewing a task that is never a top-level task
         if view == 'toplevel':
             view = 'flat'
