@@ -314,6 +314,13 @@ $value
       <th>Build</th><td><a href="buildinfo?buildID=$taskBuild.build_id">$koji.buildLabel($taskBuild)</a></td>
     </tr>
     #end if
+    #if $taskBuilds
+    #for $build in $taskBuilds
+    <tr>
+      <th>Build</th><td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
+    </tr>
+    #end for
+    #end if
     <tr>
       <th>Created</th><td>$util.formatTimeLong($task.create_time)</td>
     </tr>
