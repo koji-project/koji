@@ -52,7 +52,7 @@ License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: mod_wsgi
-Requires: postgresql-python
+Requires: python-psycopg2
 %if 0%{?rhel} == 5
 Requires: python-simplejson
 %endif
@@ -153,7 +153,7 @@ virtual machine. This package is not required for most installations.
 Summary: Koji Utilities
 Group: Applications/Internet
 License: LGPLv2
-Requires: postgresql-python
+Requires: python-psycopg2
 Requires: %{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
@@ -171,7 +171,7 @@ License: LGPLv2
 Requires: httpd
 Requires: mod_wsgi
 Requires: mod_auth_kerb
-Requires: postgresql-python
+Requires: python-psycopg2
 Requires: python-cheetah
 Requires: %{name} = %{version}-%{release}
 Requires: python-krbV >= 1.0.13
