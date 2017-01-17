@@ -331,12 +331,11 @@ def paginateResults(server, values, methodName, args=None, kw=None,
     if not dataName:
         raise StandardError, 'dataName must be specified'
 
-    totalRows = server.count(methodName, *args, **kw)
-
     kw['filterOpts'] = {'order': order,
                         'offset': start,
                         'limit': pageSize}
-    data = server.filterResults(methodName, *args, **kw)
+
+    totalRows, data = server.countAndFilterResults(methodName, *args, **kw)
     count = len(data)
 
     _populateValues(values, dataName, prefix, data, totalRows, start, count, pageSize, order)
