@@ -129,8 +129,6 @@ def get_options():
                       help=_("location to store work files"))
     parser.add_option("--auth-cert",
                       help=_("Certificate for authentication"))
-    parser.add_option("--auth-ca",
-                      help=_("CA certificate for authentication"))
     parser.add_option("--serverca",
                       help=_("Server CA certificate"))
     parser.add_option("--rules",
@@ -208,7 +206,6 @@ def get_options():
             ['max_jobs', None, 'int'],
             ['serverca', None, 'string'],
             ['auth_cert', None, 'string'],
-            ['auth_ca', None, 'string'],
             ['arches', None, 'string'],
             ]
 
@@ -310,15 +307,14 @@ def activate_session(session):
     if options.noauth:
         #skip authentication
         pass
-    elif options.auth_cert and options.auth_ca and options.serverca:
+    elif options.auth_cert and options.serverca:
         # convert to absolute paths
         options.auth_cert  = os.path.expanduser(options.auth_cert)
-        options.auth_ca  = os.path.expanduser(options.auth_ca)
         options.serverca  = os.path.expanduser(options.serverca)
 
         if os.path.isfile(options.auth_cert):
             # authenticate using SSL client cert
-            session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
+            session.ssl_login(cert=options.auth_cert, serverca=options.serverca, proxyuser=options.runas)
     elif options.user:
         #authenticate using user/password
         session.login()
