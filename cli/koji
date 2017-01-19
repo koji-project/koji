@@ -28,7 +28,7 @@ import sys
 try:
     import krbV
 except ImportError:  # pragma: no cover
-    pass
+    krbV = None
 try:
     import ast
 except ImportError:  # pragma: no cover
@@ -7191,7 +7191,7 @@ def warn(msg):
     sys.stderr.flush()
 
 def has_krb_creds():
-    if not sys.modules.has_key('krbV'):
+    if krbV is None:
         return False
     try:
         ctx = krbV.default_context()
@@ -7219,10 +7219,13 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error, e:
-            error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
         except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
+        except Exception, e:
+            if krbV is not None and isinstance(e, krbV.Krb5Error):
+                error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
+            else:
+                raise
     if not options.noauth and options.authtype != "noauth" and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
