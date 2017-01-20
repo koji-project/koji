@@ -1688,6 +1688,15 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
         fo = open(fn)
     else:
         raise GenericError("No access method for remote file: %s" % relpath)
+    if relpath.endswith('.rpm'):
+        # Do a initial sanity check on any RPM we opened.
+        # This is basically to detect issues with RPMs before they break builds
+        # in unknown ways.
+        # Note that this does not always catch every possible issue, but it
+        # will at least catch issues like when an RPM is only partly downloaded
+        # (see issue #290).
+        rpm.TransactionSet().hdrCheck(fo.read())
+        fo.seek(0)
     return fo
 
 
