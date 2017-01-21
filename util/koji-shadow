@@ -1122,7 +1122,7 @@ class BuildTracker(object):
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
             if not_replaced and len(not_replaced) < 8:
-                log('', ' '.join([b.nvr for b in not_replaced]))
+                log(' '.join([b.nvr for b in not_replaced]))
         #generate a report of the most frequent problem deps
         problem_counts = {}
         for build in self.state_idx['brokendeps'].values():
