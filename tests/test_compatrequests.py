@@ -47,13 +47,13 @@ class TestResponse(unittest.TestCase):
         self.response.response.status = 404
         self.response.response.getheader.return_value = 0
         with self.assertRaises(Exception):
-            list(self.response.iter_content())
+            list(self.response.iter_content(8192))
         self.response.response.read.assert_not_called()
 
         self.response.response.status = 404
         self.response.response.getheader.return_value = 42
         with self.assertRaises(Exception):
-            list(self.response.iter_content())
+            list(self.response.iter_content(8192))
         self.response.response.read.assert_called_once()
 
         self.response.response.status = 404
