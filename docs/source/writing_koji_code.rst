@@ -124,7 +124,7 @@ Creating Tasks
 
 Once options are processed and understood, a task needs to be created on
 the hub so that a builder can come along and take it. This is
-accomplished with the ``maskTask`` method (defined on the Hub, so call
+accomplished with the ``makeTask`` method (defined on the Hub, so call
 it on the ``session`` object). The name of the task should match the
 name given to the task handler in the builder, which is explained later
 on.
