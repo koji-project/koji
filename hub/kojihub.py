@@ -3499,6 +3499,11 @@ def get_next_release(build_info):
         release = '1'
     elif release.isdigit():
         release = str(int(release) + 1)
+    elif len(release.split('.')) == 2 and release.split('.')[0].isdigit():
+        # Handle the N.%{dist} case
+        r_split = release.split('.')
+        r_split[0] = str(int(r_split[0]) + 1)
+        release = '.'.join(r_split)
     else:
         raise koji.BuildError, 'Unable to increment release value: %s' % release
     return release
