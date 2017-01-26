@@ -33,7 +33,7 @@ class TestGetNextRelease(unittest.TestCase):
             # [release, bumped_release],
             ['1.el6', '2.el6'],
             ['1.fc23', '2.fc23'],
-            ['4.5.fc23', '4.6.fc23'],
+            ['45.fc23', '46.fc23'],
         ]
         for a, b in data:
             self.query.executeOne.return_value = {'release': a}
@@ -47,6 +47,7 @@ class TestGetNextRelease(unittest.TestCase):
             "foo.bar",
             "a.b.c.d",
             "a..b..c",
+            "1.2.fc23",
         ]
         for val in data:
             self.query.executeOne.return_value = {'release': val}
