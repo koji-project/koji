@@ -129,8 +129,8 @@ def get_options():
                       help=_("location to store work files"))
     parser.add_option("--auth-cert",
                       help=_("Certificate for authentication"))
-    parser.add_option("--auth-ca",
-                      help=_("CA certificate for authentication"))
+    parser.add_option("--auth-ca",  # DEPRECATED and ignored
+                      help=optparse.SUPPRESS_HELP)
     parser.add_option("--serverca",
                       help=_("Server CA certificate"))
     parser.add_option("--rules",
@@ -208,7 +208,6 @@ def get_options():
             ['max_jobs', None, 'int'],
             ['serverca', None, 'string'],
             ['auth_cert', None, 'string'],
-            ['auth_ca', None, 'string'],
             ['arches', None, 'string'],
             ]
 
@@ -307,17 +306,17 @@ def activate_session(session):
     """Test and login the session is applicable"""
     global options
 
-    # convert to absolute paths
-    options.auth_cert  = os.path.expanduser(options.auth_cert)
-    options.auth_ca  = os.path.expanduser(options.auth_ca)
-    options.serverca  = os.path.expanduser(options.serverca)
-
     if options.noauth:
         #skip authentication
         pass
-    elif os.path.isfile(options.auth_cert):
-        # authenticate using SSL client cert
-        session.ssl_login(options.auth_cert, options.auth_ca, options.serverca, proxyuser=options.runas)
+    elif options.auth_cert and options.serverca:
+        # convert to absolute paths
+        options.auth_cert  = os.path.expanduser(options.auth_cert)
+        options.serverca  = os.path.expanduser(options.serverca)
+
+        if os.path.isfile(options.auth_cert):
+            # authenticate using SSL client cert
+            session.ssl_login(cert=options.auth_cert, serverca=options.serverca, proxyuser=options.runas)
     elif options.user:
         #authenticate using user/password
         session.login()
@@ -1125,7 +1124,7 @@ class BuildTracker(object):
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
             if not_replaced and len(not_replaced) < 8:
-                log('', ' '.join([b.nvr for b in not_replaced]))
+                log(' '.join([b.nvr for b in not_replaced]))
         #generate a report of the most frequent problem deps
         problem_counts = {}
         for build in self.state_idx['brokendeps'].values():
