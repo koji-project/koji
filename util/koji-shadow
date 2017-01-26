@@ -129,6 +129,8 @@ def get_options():
                       help=_("location to store work files"))
     parser.add_option("--auth-cert",
                       help=_("Certificate for authentication"))
+    parser.add_option("--auth-ca",  # DEPRECATED and ignored
+                      help=optparse.SUPPRESS_HELP)
     parser.add_option("--serverca",
                       help=_("Server CA certificate"))
     parser.add_option("--rules",
