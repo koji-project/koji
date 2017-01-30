@@ -1,3 +1,4 @@
+import httplib
 import mock
 import unittest
 import urlparse
@@ -54,6 +55,13 @@ class TestResponse(unittest.TestCase):
         with self.assertRaises(Exception):
             list(self.response.iter_content())
         self.response.response.read.assert_called_once()
+
+        self.response.response.status = 404
+        self.response.response.reason = 'Not Found'
+        self.response.response.getheader.return_value = 42
+        with self.assertRaises(httplib.HTTPException):
+            self.response.raise_for_status()
+
 
 
 class TestSessionPost(unittest.TestCase):
