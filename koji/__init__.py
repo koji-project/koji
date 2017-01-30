@@ -2321,6 +2321,7 @@ class ClientSession(object):
             if catcher:
                 warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
+            r.raise_for_status()
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
