@@ -441,7 +441,6 @@ def watch_tasks(session,tasklist,quiet=False):
     if not quiet:
         print("Watching tasks (this may be safely interrupted)...")
     sys.stdout.flush()
-    rv = 0
     try:
         tasks = {}
         for task_id in tasklist:
@@ -475,7 +474,7 @@ def watch_tasks(session,tasklist,quiet=False):
 
             sys.stdout.flush()
             time.sleep(options.poll_interval)
-    except (KeyboardInterrupt):
+    except KeyboardInterrupt:
         if tasks and not quiet:
             progname = os.path.basename(sys.argv[0]) or 'koji'
             tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
@@ -484,8 +483,7 @@ def watch_tasks(session,tasklist,quiet=False):
 """Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 %s""" % (progname, '\n'.join(tlist)))
-        rv = 1
-    return rv
+        raise
 
 def watch_logs(session, tasklist, opts):
     global options
@@ -498,48 +496,45 @@ def watch_logs(session, tasklist, opts):
         state = koji.TASK_STATES[info['state']]
         return (state in ['CLOSED','CANCELED','FAILED'])
 
-    try:
-        offsets = {}
-        for task_id in tasklist:
-            offsets[task_id] = {}
+    offsets = {}
+    for task_id in tasklist:
+        offsets[task_id] = {}
 
-        lastlog = None
-        while True:
-            for task_id in tasklist[:]:
-                if _isDone(session, task_id):
-                    tasklist.remove(task_id)
+    lastlog = None
+    while True:
+        for task_id in tasklist[:]:
+            if _isDone(session, task_id):
+                tasklist.remove(task_id)
 
-                output = session.listTaskOutput(task_id)
+            output = session.listTaskOutput(task_id)
 
-                if opts.log:
-                    logs = [filename for filename in output if filename == opts.log]
-                else:
-                    logs = [filename for filename in output if filename.endswith('.log')]
+            if opts.log:
+                logs = [filename for filename in output if filename == opts.log]
+            else:
+                logs = [filename for filename in output if filename.endswith('.log')]
 
-                taskoffsets = offsets[task_id]
-                for log in logs:
-                    contents = 'placeholder'
-                    while contents:
-                        if log not in taskoffsets:
-                            taskoffsets[log] = 0
+            taskoffsets = offsets[task_id]
+            for log in logs:
+                contents = 'placeholder'
+                while contents:
+                    if log not in taskoffsets:
+                        taskoffsets[log] = 0
 
-                        contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
-                        taskoffsets[log] += len(contents)
-                        if contents:
-                            currlog = "%d:%s:" % (task_id, log)
-                            if currlog != lastlog:
-                                if lastlog:
-                                    sys.stdout.write("\n")
-                                sys.stdout.write("==> %s <==\n" % currlog)
-                                lastlog = currlog
-                            sys.stdout.write(contents)
+                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
+                    taskoffsets[log] += len(contents)
+                    if contents:
+                        currlog = "%d:%s:" % (task_id, log)
+                        if currlog != lastlog:
+                            if lastlog:
+                                sys.stdout.write("\n")
+                            sys.stdout.write("==> %s <==\n" % currlog)
+                            lastlog = currlog
+                        sys.stdout.write(contents)
 
-            if not tasklist:
-                break
+        if not tasklist:
+            break
 
-            time.sleep(options.poll_interval)
-    except (KeyboardInterrupt):
-        pass
+        time.sleep(options.poll_interval)
 
 def handle_add_group(options, session, args):
     "[admin] Add a group to a tag"
@@ -6983,7 +6978,7 @@ def anon_handle_wait_repo(options, session, args):
                     print("Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
             return 1
 
-        time.sleep(60)
+        time.sleep(options.poll_interval)
         last_repo = repo
         repo = session.getRepo(tag_id)
 
@@ -7163,7 +7158,7 @@ def handle_runroot(options, session, args):
         # this is probably the right thing to do here
         print("User interrupt: canceling runroot task")
         session.cancelTask(task_id)
-        return
+        raise
     output = None
     if "runroot.log" in session.listTaskOutput(task_id):
         output = session.downloadTaskOutput(task_id, "runroot.log")
@@ -7308,9 +7303,7 @@ if __name__ == "__main__":
         rv = locals()[command].__call__(options, session, args)
         if not rv:
             rv = 0
-    except KeyboardInterrupt:
-        pass
-    except SystemExit:
+    except (KeyboardInterrupt, SystemExit):
         rv = 1
     except:
         if options.debug:
