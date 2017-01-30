@@ -5860,7 +5860,8 @@ def _build_image(options, task_opts, session, args, img_type):
         print
 
     hub_opts = {}
-    hub_opts['optional_arches'] = task_opts.optional_arches.split(',')
+    if hasattr(task_opts, 'optional_arches'):
+        hub_opts['optional_arches'] = task_opts.optional_arches.split(',')
     passthru_opts = [
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
