@@ -286,8 +286,8 @@ class TestImportComps(unittest.TestCase):
             calls_file,
             stdout):
         tag = 'tag'
-        force = None
-        options = {'force': force}
+        options = mock.MagicMock()
+        options.force = None
 
         # Mock out the xmlrpc server
         session = mock.MagicMock()

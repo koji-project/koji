@@ -1800,7 +1800,7 @@ def _import_comps(session, filename, tag, options):
     """Import comps data using libcomps module"""
     comps = libcomps.Comps()
     comps.fromxml_f(filename)
-    force = options['force']
+    force = options.force
     ptypes = {
         libcomps.PACKAGE_TYPE_DEFAULT : 'default',
         libcomps.PACKAGE_TYPE_OPTIONAL : 'optional',
@@ -1834,7 +1834,7 @@ def _import_comps_alt(session, filename, tag, options):
     print 'WARN: yum.comps does not support the biarchonly of group and basearchonly of package'
     comps = yumcomps.Comps()
     comps.add(filename)
-    force = options['force']
+    force = options.force
     for group in comps.groups:
         print "Group: %(groupid)s (%(name)s)" % vars(group)
         session.groupListAdd(tag, group.groupid, force=force, display_name=group.name,
