@@ -2121,6 +2121,7 @@ class BuildBaseImageTask(BuildImageTask):
 
             subtasks = {}
             self.logger.debug("Spawning jobs for image arches: %r" % (arches))
+            canfail = []
             for arch in arches:
                 inst_url = inst_tree.replace('$arch', arch)
                 subtasks[arch] = self.session.host.subtask(
@@ -2128,9 +2129,30 @@ class BuildBaseImageTask(BuildImageTask):
                     arglist=[name, version, release, arch, target_info,
                     build_tag, repo_info, inst_url, opts],
                     label=arch, parent=self.id, arch=arch)
+                if arch in opts.get('optional_arches', []):
+                    canfail.append(subtasks[arch])
             self.logger.debug("Got image subtasks: %r" % (subtasks))
-            self.logger.debug("Waiting on image subtasks...")
-            results = self.wait(subtasks.values(), all=True, failany=True)
+            self.logger.debug("Waiting on image subtasks (%s can fail)..." % canfail)
+            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
+
+            # if everything failed, fail even if all subtasks are in canfail
+            self.logger.debug('subtask results: %r', results)
+            all_failed = True
+            for result in results.values():
+                if not isinstance(result, dict) or 'faultCode' not in result:
+                    all_failed = False
+                    break
+            if all_failed:
+                raise koji.GenericError("all subtasks failed")
+
+            # determine ignored arch failures
+            ignored_arches = set()
+            for arch in arches:
+                if arch in opts.get('optional_arches', []):
+                    task_id = subtasks[arch]
+                    result = results[task_id]
+                    if isinstance(result, dict) and 'faultCode' in result:
+                        ignored_arches.add(arch)
 
             # wrap in an RPM if asked
             rpm_results = None
@@ -2139,7 +2161,7 @@ class BuildBaseImageTask(BuildImageTask):
                 # get around an xmlrpc limitation, use arches for keys instead
                 results[arch] = results[subtasks[arch]]
                 del results[subtasks[arch]]
-                if spec_url:
+                if spec_url and arch not in ignored_arches:
                     subtask = subtasks[arch]
                     results[arch]['rpmresults'] = self.buildWrapperRPM(
                         spec_url, subtask, target_info, bld_info,
