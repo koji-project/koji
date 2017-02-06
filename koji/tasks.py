@@ -96,13 +96,6 @@ def safe_rmtree(path, unmount=False, strict=True):
 
 
 
-SIGNATURES = {
-    # like getargspec -- args, varargs, keywords, defaults
-    'sleep' : (['n'], None, None, None),
-    'fork' : (['n', 'm'], None, None, None),
-}
-
-
 def apply_argspec(argspec, args, kwargs=None):
     """Apply an argspec to the given args and return a dictionary"""
     if kwargs is None:
@@ -140,13 +133,6 @@ def apply_argspec(argspec, args, kwargs=None):
     return data
 
 
-def parse_request(method, request):
-    """Parse a task request into """
-
-    argspec = SIGNATURES.get(method)
-    if not argspec:
-        raise koji.GenericError, "Unknown method"
-
 
 class ServerExit(Exception):
     """Raised to shutdown the server"""
@@ -155,6 +141,146 @@ class ServerExit(Exception):
 class ServerRestart(Exception):
     """Raised to restart the server"""
     pass
+
+
+def parse_task_params(method, params):
+    """Parse task params into a dictionary
+
+    New tasks should already be dictionaries
+    """
+
+    # check for new style
+    if (len(params) == 1 and isinstance(params[0], dict)
+                and '__method__' in params[0]):
+        return params[0]
+
+    # otherwise sort out the legacy signatures
+    args, kwargs = koji.decode_args(*params)
+
+    if method not in LEGACY_SIGNATURES:
+        raise TypeError, "No legacy signature for %s" % method
+
+    err = None
+    for argspec in LEGACY_SIGNATURES[method]:
+        try:
+            params = apply_argspec(argspec, args, kwargs)
+            break
+        except koji.ParameterError, e:
+            if not err:
+                err = e.message
+    else:
+        raise koji.ParameterError, "Invalid signature for %s: %s" % (method, err)
+
+    return params
+
+
+LEGACY_SIGNATURES = {
+    # key is method name, value is list of possible signatures
+    # signatures are like getargspec -- args, varargs, keywords, defaults
+    'chainbuild' : [
+        [['srcs', 'target', 'opts'], None, None, (None,)],
+    ],
+    'waitrepo' : [
+        [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
+    ],
+    'createLiveMedia' : [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'createAppliance' : [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'livecd' : [
+        [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'buildNotification' : [
+        [['recipients', 'build', 'target', 'weburl'], None, None, None],
+    ],
+    'buildMaven' : [
+        [['url', 'build_tag', 'opts'], None, None, (None,)],
+    ],
+    'build' : [
+        [['src', 'target', 'opts'], None, None, (None,)],
+    ],
+    'buildSRPMFromSCM' : [
+        [['url', 'build_tag', 'opts'], None, None, (None,)],
+    ],
+    'createrepo' : [
+        [['repo_id', 'arch', 'oldrepo'], None, None, None],
+    ],
+    'livemedia' : [
+        [['name', 'version', 'arches', 'target', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'indirectionimage' : [
+        [['opts'], None, None, None],
+    ],
+    'wrapperRPM' : [
+        [['spec_url', 'build_target', 'build', 'task', 'opts'], None, None, (None,)],
+    ],
+    'createLiveCD' : [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'appliance' : [
+        [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
+    ],
+    'image' : [
+        [['name', 'version', 'arches', 'target', 'inst_tree', 'opts'], None, None, (None,)],
+    ],
+    'tagBuild' : [
+        [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'], None, None, (False, None, False)],
+    ],
+    'chainmaven' : [
+        [['builds', 'target', 'opts'], None, None, (None,)],
+    ],
+    'newRepo' : [
+        [['tag', 'event', 'src', 'debuginfo'], None, None, (None, False, False)],
+    ],
+    'createImage' : [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'inst_tree', 'opts'], None, None, (None,)],
+    ],
+    'tagNotification' : [
+        [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info', 'ignore_success', 'failure_msg'], None, None, (None, '')],
+    ],
+    'buildArch' : [
+        [['pkg', 'root', 'arch', 'keep_srpm', 'opts'], None, None, (None,)],
+    ],
+    'maven' : [
+        [['url', 'target', 'opts'], None, None, (None,)],
+    ],
+    'waittest' : [
+        [['count', 'seconds'], None, None, (10,)],
+    ],
+    'default' : [
+        [[], 'args', 'opts', None],
+    ],
+    'shutdown' : [
+        [[], None, None, None],
+    ],
+    'restartVerify' : [
+        [['task_id', 'host'], None, None, None],
+    ],
+    'someMethod' : [
+        [[], 'args', None, None],
+    ],
+    'restart' : [
+        [['host'], None, None, None],
+    ],
+    'fork' : [
+        [['n', 'm'], None, None, (5, 37)],
+    ],
+    'sleep' : [
+        [['n'], None, None, None],
+    ],
+    'dependantTask' : [
+        [['wait_list', 'task_list'], None, None, None],
+    ],
+    'subtask' : [
+        [['n'], None, None, (4,)],
+    ],
+    'restartHosts' : [
+        [[], None, None, None],
+    ],
+}
+
 
 class BaseTaskHandler(object):
     """The base class for task handlers
@@ -197,6 +323,9 @@ class BaseTaskHandler(object):
     def handler(self):
         """(abstract) the handler for the task."""
         raise NotImplementedError
+
+    def parseParams(self):
+        tp = parse_task_params(self.params)
 
     def run(self):
         """Execute the task"""
