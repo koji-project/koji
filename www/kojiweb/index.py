@@ -439,6 +439,7 @@ _TASKS = ['build',
           'appliance',
           'createAppliance',
           'image',
+          'indirectionimage',
           'createImage',
           'livemedia',
           'createLiveMedia']
