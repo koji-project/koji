@@ -64,6 +64,14 @@ class ArgspecCase(unittest.TestCase):
         self.assertRaises(koji.ParameterError, koji.tasks.apply_argspec,
             argspec, (1,2), {'b':2} )
 
+        # with defaults
+        argspec = (['a', 'b'], None, None, [1,2])
+        ret = koji.tasks.apply_argspec(argspec, (), {})
+        self.assertEqual(ret, {'a':1, 'b':2})
+        argspec = (['a', 'b'], None, None, [2])
+        ret = koji.tasks.apply_argspec(argspec, (1,), {})
+        self.assertEqual(ret, {'a':1, 'b':2})
+
 
 if __name__ == '__main__':
     unittest.main()

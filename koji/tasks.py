@@ -122,7 +122,7 @@ def apply_argspec(argspec, args, kwargs=None):
         else:
             data[f_varkw][arg] = kwargs[arg]
     if f_defaults:
-        for arg, val in f_defaults:
+        for arg, val in zip(f_args[-len(f_defaults):], f_defaults):
             data.setdefault(arg, val)
     for n, arg in enumerate(f_args):
         if arg not in data:
