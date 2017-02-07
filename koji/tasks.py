@@ -101,7 +101,6 @@ def apply_argspec(argspec, args, kwargs=None):
     if kwargs is None:
         kwargs = {}
     f_args, f_varargs, f_varkw, f_defaults = argspec
-    print argspec, args, kwargs
     data = dict(zip(f_args, args))
     if len(args) > len(f_args):
         if not f_varargs:
@@ -152,7 +151,9 @@ def parse_task_params(method, params):
     # check for new style
     if (len(params) == 1 and isinstance(params[0], dict)
                 and '__method__' in params[0]):
-        return params[0]
+        ret = params[0].copy()
+        del ret['__method__']
+        return ret
 
     # otherwise sort out the legacy signatures
     args, kwargs = koji.decode_args(*params)
@@ -278,6 +279,9 @@ LEGACY_SIGNATURES = {
     ],
     'restartHosts' : [
         [[], None, None, None],
+    ],
+    'runroot' : [
+        [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch', 'weight', 'upload_logs', 'new_chroot'], None, None, (False, [], [], None, False, None, None, False)],
     ],
 }
 
