@@ -4,6 +4,7 @@ Defining Hub Policies
 
 Defining a policy on the hub allows you fine control over certain activities
 in the system. At present, policy allows you to control:
+
 * tag/untag/move operations
 * allowing builds from srpm
 * allowing builds from expired repos
@@ -14,6 +15,7 @@ In the future, we expect to add more policy hooks for controlling more aspects
 of the system.
 
 Policy configuration is optional. If you don't define one, then by default:
+
 * tag/untag/move operations are governed by tag locks/permissions
 * builds from srpm are only allowed for admins
 * builds from expired repos are only allowed for admins
