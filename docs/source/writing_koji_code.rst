@@ -656,13 +656,15 @@ changes to the code. To do so, just run ``make test`` in your terminal.
 You will need to install the following packages to actually run the tests.
 
  * ``findutils``
- * ``postgresql-python``
  * ``pyOpenSSL``
  * ``python-coverage``
  * ``python-krbV``
  * ``python-mock``
  * ``python-simplejson``
  * ``python-urlgrabber``
+ * ``python-psycopg2``
+ * ``python-requests``
+ * ``python-qpid-proton``
 
-Please note that it is currently not possible to use *virtualenv* when hacking
+Please note that it is currently not supported to use *virtualenv* when hacking
 on Koji.
