@@ -42,6 +42,8 @@ The build map contains the following entries:
 -  start\_time: The time the build started, in seconds since the epoch.
 -  end\_time: The time the build was completed, in seconds since the
    epoch.
+-  owner: The owner of the build task in username format. This field
+   is optional.
 -  extra: A map of extra metadata associated with the build, which
    must include one of:
 
@@ -157,7 +159,8 @@ The below JSON is based loosely on the output of a docker image build.
                "source": "git://git.engineering.redhat.com/users/vpavlin/tdl_templates.git#a14f145244",
                "extra": {},
                "start_time": 1423148398,
-               "end_time": 1423148828},
+               "end_time": 1423148828,
+               "owner": "jdoe"},
      "buildroots": [{"id": 1,
                      "host": {"os": "rhel-7",
                               "arch": "x86_64"},

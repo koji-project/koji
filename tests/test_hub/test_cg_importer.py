@@ -68,12 +68,14 @@ class TestCGImporter(unittest.TestCase):
         assert x.cgs
         assert isinstance(x.cgs, set)
 
+    @mock.patch("kojihub.get_user")
     @mock.patch('kojihub.context')
     @mock.patch("koji.pathinfo.work")
-    def test_prep_build(self, work, context):
+    def test_prep_build(self, work, context, get_user):
         work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
+        get_user.return_value = {'id': 123}
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.prep_build()
@@ -90,16 +92,18 @@ class TestCGImporter(unittest.TestCase):
         with self.assertRaises(GenericError):
             x.prep_build()
 
+    @mock.patch("kojihub.get_user")
     @mock.patch('kojihub.get_build')
     @mock.patch('kojihub.new_build')
     @mock.patch('kojihub.context')
     @mock.patch("koji.pathinfo.work")
-    def test_get_build(self, work, context, new_build_id, get_build):
+    def test_get_build(self, work, context, new_build_id, get_build, get_user):
         work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
         new_build_id.return_value = 42
         get_build.return_value = False
+        get_user.return_value = {'id': 123}
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.prep_build()

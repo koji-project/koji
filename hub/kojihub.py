@@ -5095,6 +5095,11 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
             buildinfo['completion_time'] = \
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
+            owner = metadata['build'].get('owner', None)
+            if owner:
+                if not isinstance(owner, basestring):
+                    raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
+                buildinfo['owner'] = get_user(owner, strict=True)['id']
         self.buildinfo = buildinfo
 
         koji.check_NVR(buildinfo, strict=True)
