@@ -72,11 +72,7 @@ class Session(object):
                 self.message = 'no session args'
                 return
             args = cgi.parse_qs(args, strict_parsing=True)
-        if hostip is None:
-            hostip = context.environ['REMOTE_ADDR']
-            #XXX - REMOTE_ADDR not promised by wsgi spec
-            if hostip == '127.0.0.1':
-                hostip = socket.gethostbyname(socket.gethostname())
+        hostip = self.get_remote_ip(override=hostip)
         try:
             id = long(args['session-id'][0])
             key = args['session-key'][0]
@@ -239,6 +235,18 @@ class Session(object):
             raise koji.AuthLockError, self.lockerror
         return True
 
+    def get_remote_ip(self, override=None):
+        if not context.opts['CheckClientIP']:
+            return '-'
+        elif override is not None:
+            return override
+        else:
+            hostip = context.environ['REMOTE_ADDR']
+            #XXX - REMOTE_ADDR not promised by wsgi spec
+            if hostip == '127.0.0.1':
+                hostip = socket.gethostbyname(socket.gethostname())
+            return hostip
+
     def checkLoginAllowed(self, user_id):
         """Verify that the user is allowed to login"""
         cursor = context.cnx.cursor()
@@ -260,12 +268,7 @@ class Session(object):
             raise koji.AuthError, 'invalid username or password'
         if self.logged_in:
             raise koji.GenericError, "Already logged in"
-        hostip = opts.get('hostip')
-        if hostip is None:
-            hostip = context.environ['REMOTE_ADDR']
-            #XXX - REMOTE_ADDR not promised by wsgi spec
-            if hostip == '127.0.0.1':
-                hostip = socket.gethostbyname(socket.gethostname())
+        hostip = self.get_remote_ip(override=opts.get('hostip'))
 
         # check passwd
         c = context.cnx.cursor()
@@ -332,10 +335,7 @@ class Session(object):
 
         self.checkLoginAllowed(user_id)
 
-        hostip = context.environ['REMOTE_ADDR']
-        #XXX - REMOTE_ADDR not promised by wsgi spec
-        if hostip == '127.0.0.1':
-            hostip = socket.gethostbyname(socket.gethostname())
+        hostip = self.get_remote_ip()
 
         sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_KERB)
 
@@ -412,10 +412,7 @@ class Session(object):
 
         self.checkLoginAllowed(user_id)
 
-        hostip = context.environ['REMOTE_ADDR']
-        #XXX - REMOTE_ADDR not promised by wsgi spec
-        if hostip == '127.0.0.1':
-            hostip = socket.gethostbyname(socket.gethostname())
+        hostip = self.get_remote_ip()
 
         sinfo = self.createSession(user_id, hostip, authtype)
         return sinfo
