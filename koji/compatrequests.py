@@ -121,6 +121,11 @@ class Response(object):
         self.session = session
         self.response = response
 
+    def raise_for_status(self):
+        if self.response.status >= 400:
+            raise httplib.HTTPException("HTTP %s: %s" % (self.response.status,
+                    self.response.reason))
+
     def iter_content(self, blocksize=8192):
         # should we check this in Session.post()?
         # should we even check this here?
