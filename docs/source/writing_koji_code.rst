@@ -644,7 +644,7 @@ submit a PR before your code is complete.
 
 The preferred way to request early feedback is to push your changes to a your
 own koji fork and then send an email to
-`koji-devel AT lists.fedorahosted.org<https://lists.fedorahosted.org/mailman/listinfo/koji-devel>`__
+`koji-devel AT lists.fedorahosted.org <https://lists.fedorahosted.org/mailman/listinfo/koji-devel>`__
 requesting review. This approach is one step short of a PR, making it easy to
 upgrade to a PR once the changes are ready.
 
