@@ -82,9 +82,25 @@ or ``fedora-packager-setup`` should fetch it. This certificate may also
 be needed to let `https koji <https://koji.fedroraproject.org>`__ URLs
 resolve without untrusted-CA warnings.
 
-.. raw:: mediawiki
+.. warning::
 
-   {{admon/warning|RHEL6 cert bug|If you're using RHEL6, an incompatibility between RHEL6's openssl and nss causes certificates downloaded from fas to fail to work with some fedpkg tools.  [[https://bugzilla.redhat.com/show_bug.cgi?id=631000 Bug 631000 rhel6 openssl creates PKCS#8 encoded PEM RSA private key files, nss can't read them]].  The cert can be made compatible using this command: <code>(openssl x509 -in ~/.fedora.cert -text; echo; openssl rsa -in ~/.fedora.cert) > fedora.cert.new</code>}}
+   If you're using RHEL6, an incompatibility
+   between RHEL6's openssl and nss causes certificates downloaded from fas to
+   fail to work with some fedpkg tools.
+   `Bug 631000 rhel6
+   openssl creates PKCS#8 encoded PEM RSA private key files, nss can't read
+   them <https://bugzilla.redhat.com/show_bug.cgi?id=631000>`_.  The cert can be made compatible using this command:
+   `openssl x509 -in ~/.fedora.cert -text; echo; openssl rsa -in
+   ~/.fedora.cert) > fedora.cert.new`
+
+.. warning::
+
+   You can also have problem in Fedora/RHEL if you are going to use GSSAPI
+   authentication. These distributions have changed default `rdns=false` in
+   /etc/krb5.conf. If you encounter
+   `requests_kerberos.exceptions.MutualAuthenticationError: Unable to
+   authenticate <Response [200]>` error, maybe you are hitting this problem.
+   `More info in pagure issue <https://pagure.io/koji/issue/288>`_.
 
 Koji Config
 ^^^^^^^^^^^
