@@ -416,7 +416,6 @@ def notificationdelete(environ, notificationID):
 
     _redirect(environ, 'index')
 
-
 # All Tasks
 _TASKS = ['build',
           'buildSRPMFromSCM',
@@ -441,7 +440,6 @@ _TASKS = ['build',
           'createAppliance',
           'image',
           'createImage',
-          'runroot',
           'livemedia',
           'createLiveMedia']
 # Tasks that can exist without a parent
@@ -467,15 +465,15 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     values['users'] = server.listUsers(queryOpts={'order': 'name'})
 
-    if method in _TASKS:
+    if method in _TASKS + environ['koji.options']['Tasks']:
         opts['method'] = method
     else:
         method = 'all'
     values['method'] = method
-    values['alltasks'] = _TASKS
+    values['alltasks'] = _TASKS + environ['koji.options']['Tasks']
 
     treeEnabled = True
-    if hostID or (method not in ['all'] + _PARENT_TASKS):
+    if hostID or (method not in ['all'] + _PARENT_TASKS + environ['koji.options']['ParentTasks']):
         # force flat view if we're filtering by a hostID or a task that never has children
         if view == 'tree':
             view = 'flat'
@@ -484,7 +482,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
     values['treeEnabled'] = treeEnabled
 
     toplevelEnabled = True
-    if method not in ['all'] + _TOPLEVEL_TASKS:
+    if method not in ['all'] + _TOPLEVEL_TASKS + environ['koji.options']['ToplevelTasks']:
         # force flat view if we're viewing a task that is never a top-level task
         if view == 'toplevel':
             view = 'flat'

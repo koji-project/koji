@@ -93,6 +93,10 @@ class Dispatcher(object):
         ['LogLevel', 'string', 'WARNING'],
         ['LogFormat', 'string', '%(msecs)d [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s %(name)s: %(message)s'],
 
+        ['Tasks', 'list', []],
+        ['ToplevelTasks', 'list', []],
+        ['ParentTasks', 'list', []],
+
         ['RLIMIT_AS', 'string', None],
         ['RLIMIT_CORE', 'string', None],
         ['RLIMIT_CPU', 'string', None],
@@ -153,6 +157,8 @@ class Dispatcher(object):
                         opts[name] = config.getint(*key)
                     elif dtype == 'boolean':
                         opts[name] = config.getboolean(*key)
+                    elif dtype == 'list':
+                        opts[name] = [x.strip() for x in config.get(*key).split(',')]
                     else:
                         opts[name] = config.get(*key)
                 else:
