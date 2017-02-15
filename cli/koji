@@ -5778,6 +5778,9 @@ def handle_image_build(options, session, args):
             if config.has_option(section, arg):
                 setattr(task_options, arg, config.get(section, arg).split(','))
                 config.remove_option(section, arg)
+        if config.has_option(section, 'can_fail'):
+            setattr(task_options, 'optional_arches', config.get(section, 'can_fail').split(','))
+            config.remove_option(section, 'can_fail')
         # handle everything else
         for k, v in config.items(section):
             setattr(task_options, k, v)
@@ -5865,7 +5868,7 @@ def _build_image(options, task_opts, session, args, img_type):
     passthru_opts = [
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
-        'specfile', 'title', 'vcpu', 'vmem',
+        'specfile', 'title', 'vcpu', 'vmem', 'optional_arches',
         ]
     for opt in passthru_opts:
         val = getattr(task_opts, opt, None)
@@ -5935,7 +5938,8 @@ def _build_image_oz(options, task_opts, session, args):
     hub_opts = {}
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
                 'release', 'skip_tag', 'specfile', 'distro', 'format',
-                'disk_size', 'ova_option', 'factory_parameter'):
+                'disk_size', 'ova_option', 'factory_parameter',
+                'optional_arches'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
