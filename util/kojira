@@ -159,6 +159,7 @@ class ManagedRepo(object):
             times = [self.event_ts, mtime, self.first_seen, self.expire_ts]
             times = [ts for ts in times if ts is not None]
             age = time.time() - max(times)
+            self.logger.debug("Repo %s (%s) age: %i sec", self.repo_id, path, age)
             if age < lifetime:
                 return False
         self.logger.debug("Attempting to delete repo %s.." % self.repo_id)
