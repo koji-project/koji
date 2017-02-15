@@ -137,8 +137,11 @@ class ManagedRepo(object):
         rinfo = self.session.repoInfo(self.repo_id, strict=True)
         if rinfo['signed']:
             path = pathinfo.signedrepo(self.repo_id, tag_name)
+            lifetime = self.options.signed_repo_lifetime
         else:
             path = pathinfo.repo(self.repo_id, tag_name)
+            lifetime = self.options.deleted_repo_lifetime
+            # (should really be called expired_repo_lifetime)
         try:
             #also check dir age. We do this because a repo can be created from an older event
             #and should not be removed based solely on that event's timestamp.
@@ -156,8 +159,7 @@ class ManagedRepo(object):
             times = [self.event_ts, mtime, self.first_seen, self.expire_ts]
             times = [ts for ts in times if ts is not None]
             age = time.time() - max(times)
-            if age < self.options.deleted_repo_lifetime:
-                #XXX should really be called expired_repo_lifetime
+            if age < lifetime:
                 return False
         self.logger.debug("Attempting to delete repo %s.." % self.repo_id)
         if self.state != koji.REPO_EXPIRED:
@@ -389,7 +391,6 @@ class RepoManager(object):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
                     self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
                     if age > getattr(self.options, timername):
-                        #XXX should really be called expired_repo_lifetime
                         logger.info("Removing stray repo (state=%s): %s" % (koji.REPO_STATES[rinfo['state']], repodir))
                         self.rmtree(repodir)
 
