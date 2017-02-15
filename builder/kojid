@@ -35,7 +35,7 @@ import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM
 from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
 from koji.util import parseStatus, isSuccess, dslice, dslice_ex
-import multilib
+import multilib.multilib as multilib
 import os
 import pwd
 import grp
