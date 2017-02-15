@@ -12351,14 +12351,19 @@ class HostExports(object):
                         bnp = os.path.basename(rpmpath)
                         bnplet = bnp[0].lower()
                         koji.ensuredir(os.path.join(archdir, bnplet))
+                        l_dst = os.path.join(archdir, bnplet, bnp)
+                        if os.path.exists(l_dst):
+                            logger.warning("Path exists: %s", l_dst)
+                            continue
+                        logger.debug("os.link(%r, %r)", rpmpath, l_dst)
                         try:
-                            os.link(rpmpath, os.path.join(archdir, bnplet, bnp))
+                            os.link(rpmpath, l_dst)
                         except OSError, ose:
                             if ose.errno == 18:
                                 shutil.copy2(
                                     rpmpath, os.path.join(archdir, bnplet, bnp))
                             else:
-                                raise ose
+                                raise
             safer_move(src, dst)
 
     def isEnabled(self):

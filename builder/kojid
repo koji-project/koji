@@ -5185,7 +5185,12 @@ enabled=1
             bnplet = bnp[0].lower()
             pkgwriter.write(bnplet + '/' + bnp + '\n')
             koji.ensuredir(os.path.join(self.repodir, bnplet))
-            os.symlink(ml_pkg, os.path.join(self.repodir, bnplet, bnp))
+            dst = os.path.join(self.repodir, bnplet, bnp)
+            if os.path.exists(dst):
+                self.logger.warning("Path exists: %r", dst)
+                continue
+            self.logger.debug("os.symlink(%r, %r)", ml_pkg, dst)
+            os.symlink(ml_pkg, dst)
             self.keypaths[bnp] = ml_pkg
 
 
@@ -5240,7 +5245,9 @@ enabled=1
                 pkglist.write(bnplet + '/' + bnp + '\n')
                 koji.ensuredir(os.path.join(self.repodir, bnplet))
                 self.keypaths[bnp] = pkgpath
-                os.symlink(pkgpath, os.path.join(self.repodir, bnplet, bnp))
+                dst = os.path.join(self.repodir, bnplet, bnp)
+                self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
+                os.symlink(pkgpath, dst)
         pkglist.close()
         if len(fs_missing) > 0:
             raise koji.GenericError('Packages missing from the filesystem:\n' +
