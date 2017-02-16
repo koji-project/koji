@@ -1152,7 +1152,7 @@ class BuildArchTask(BaseBuildTask):
             mocklog = 'mock_output.log'
             f = os.path.join(broot.workdir, mocklog)
             if os.path.exists(f):
-                log_files.append(f)
+                log_files.append(os.path.basename(f))
         self.logger.debug("rpms: %r" % rpm_files)
         self.logger.debug("srpms: %r" % srpm_files)
         self.logger.debug("logs: %r" % log_files)
