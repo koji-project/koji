@@ -3371,6 +3371,8 @@ def get_user(userInfo=None, strict=False):
     query = QueryProcessor(tables=['users'], columns=fields,
                            clauses=clauses, values=data)
     user = query.executeOne()
+    if not user and strict:
+        raise koji.GenericError("No such user: %r" % userInfo)
     return user
 
 
