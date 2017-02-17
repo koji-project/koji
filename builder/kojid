@@ -5164,6 +5164,9 @@ enabled=1
         ml_needed = set()
         for f in yumbase.tsInfo.getMembers():
             bnp = os.path.basename(f.po.localPkg())
+            if f.arch == 'noarch':
+                # noarch packages should already be there
+                continue
             dep_path = os.path.join(mldir, bnp[0].lower(), bnp)
             ml_needed.add(dep_path)
             self.logger.debug("added %s" % dep_path)
@@ -5183,12 +5186,12 @@ enabled=1
         for ml_pkg in ml_needed:
             bnp = os.path.basename(ml_pkg)
             bnplet = bnp[0].lower()
-            pkgwriter.write(bnplet + '/' + bnp + '\n')
             koji.ensuredir(os.path.join(self.repodir, bnplet))
             dst = os.path.join(self.repodir, bnplet, bnp)
             if os.path.exists(dst):
                 self.logger.warning("Path exists: %r", dst)
                 continue
+            pkgwriter.write(bnplet + '/' + bnp + '\n')
             self.logger.debug("os.symlink(%r, %r)", ml_pkg, dst)
             os.symlink(ml_pkg, dst)
             self.keypaths[bnp] = ml_pkg
