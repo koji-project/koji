@@ -33,7 +33,6 @@ Contents
     using_the_koji_build_system
     writing_a_plugin
     writing_koji_code
-    content_generators
     content_generator_metadata
 
 HowTos

@@ -631,6 +631,8 @@ Here are some guidelines on producing preferable pull requests.
    with new code
 -  Please maintain backward-compatibility up to RHEL 5 (which means
    Python 2.4)
+- Check, that unit tests are not broken. Simply run ``make test`` in main
+  directory of your branch.
 
 Note that the core development team for Koji is small, so it may take a few
 days for someone to reply to your request.
@@ -669,3 +671,7 @@ You will need to install the following packages to actually run the tests.
 
 Please note that it is currently not supported to use *virtualenv* when hacking
 on Koji.
+
+Unit tests are run automatically for any commit in master branch. We use
+Fedora's jenkins instance for that. Details are given here: :doc:`Unit tests
+in Fedora's Jenkins <configuring_jenkins>`.
