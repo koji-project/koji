@@ -419,9 +419,12 @@ refer to the document linked above for instructions."""
     else:
         if options.debug:
             print "Sending warning notice to %s" % msg['To']
-        s = smtplib.SMTP(options.smtp_host)
-        s.sendmail(msg['From'], msg['To'], msg.as_string())
-        s.quit()
+        try:
+            s = smtplib.SMTP(options.smtp_host)
+            s.sendmail(msg['From'], msg['To'], msg.as_string())
+            s.quit()
+        except:
+            print "FAILED: Sending warning notice to %s" % msg['To']
 
 
 def main(args):
