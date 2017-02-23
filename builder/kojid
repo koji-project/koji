@@ -5161,14 +5161,11 @@ enabled=1
         # step 4: execute yum transaction to get dependencies
         self.logger.info("Resolving depenencies for arch %s" % arch)
         rc, errors = yumbase.resolveDeps()
-        ml_needed = set()
-        for f in yumbase.tsInfo.getMembers():
-            bnp = os.path.basename(f.po.localPkg())
-            if f.arch == 'noarch':
-                # noarch packages should already be there
-                continue
+        ml_needed = {}
+        for tspkg in yumbase.tsInfo.getMembers():
+            bnp = os.path.basename(tspkg.po.localPkg())
             dep_path = os.path.join(mldir, bnp[0].lower(), bnp)
-            ml_needed.add(dep_path)
+            ml_needed[dep_path] = tspkg
             self.logger.debug("added %s" % dep_path)
             if not os.path.exists(dep_path):
                 self.logger.error('%s (multilib dep) not on filesystem' % dep_path)
@@ -5183,18 +5180,21 @@ enabled=1
 
         # step 5: add dependencies to our package list
         pkgwriter = open(self.pkglist, 'a')
-        for ml_pkg in ml_needed:
-            bnp = os.path.basename(ml_pkg)
+        for dep_path in ml_needed:
+            tspkg = ml_needed[dep_path]
+            bnp = os.path.basename(dep_path)
             bnplet = bnp[0].lower()
             koji.ensuredir(os.path.join(self.repodir, bnplet))
             dst = os.path.join(self.repodir, bnplet, bnp)
             if os.path.exists(dst):
-                self.logger.warning("Path exists: %r", dst)
+                # we expect duplication with noarch, but not other arches
+                if tspkg.arch != 'noarch':
+                    self.logger.warning("Path exists: %r", dst)
                 continue
             pkgwriter.write(bnplet + '/' + bnp + '\n')
-            self.logger.debug("os.symlink(%r, %r)", ml_pkg, dst)
-            os.symlink(ml_pkg, dst)
-            self.keypaths[bnp] = ml_pkg
+            self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
+            os.symlink(dep_path, dst)
+            self.keypaths[bnp] = dep_path
 
 
     def make_pkglist(self, tag_id, arch, keys, opts):
