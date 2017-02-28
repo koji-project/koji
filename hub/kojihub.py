@@ -2447,31 +2447,32 @@ def signed_repo_init(tag, keys, task_opts):
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
+    event = task_opts.get('event')
     arches = set([koji.canonArch(a) for a in task_opts['arch']])
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
-            with_debuginfo=False, event=task_opts['event'], repo_id=None,
+            with_debuginfo=False, event=event, repo_id=None,
             signed=True, keys=keys, arches=arches, task_opts=task_opts)
-    if not task_opts['event']:
-        task_opts['event'] = get_event()
+    if not event:
+        event = get_event()
     repo_id = nextval('repo_id_seq')
     insert = InsertProcessor('repo')
-    insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
+    insert.set(id=repo_id, create_event=event, tag_id=tag_id,
         state=state, signed=True)
     insert.execute()
     repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
     for arch in arches:
         koji.ensuredir(os.path.join(repodir, arch))
     # handle comps
-    if task_opts['comps']:
+    if task_opts.get('comps'):
         groupsdir = os.path.join(repodir, 'groups')
         koji.ensuredir(groupsdir)
         shutil.copyfile(os.path.join(koji.pathinfo.work(),
             task_opts['comps']), groupsdir + '/comps.xml')
     # note: we need to match args from the other postRepoInit callback
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
-            with_debuginfo=False, event=task_opts['event'], repo_id=repo_id)
-    return repo_id, task_opts['event']
+            with_debuginfo=False, event=event, repo_id=repo_id)
+    return repo_id, event
 
 
 def repo_set_state(repo_id, state, check=True):
