@@ -282,7 +282,7 @@ def ensure_connection(session):
 
 def print_task_headers():
     """Print the column headers"""
-    print "ID       Pri  Owner                State    Arch       Name"
+    print("ID       Pri  Owner                State    Arch       Name")
 
 def print_task(task,depth=0):
     """Print a task"""
@@ -294,7 +294,7 @@ def print_task(task,depth=0):
     else:
         indent = ''
     label = koji.taskLabel(task)
-    print ''.join([fmt % task, indent, label])
+    print(''.join([fmt % task, indent, label]))
 
 def print_task_recurse(task,depth=0):
     """Print a task and its children"""
@@ -342,7 +342,7 @@ class TaskWatcher(object):
         except (xmlrpclib.Fault,koji.GenericError),e:
             error = e
         if error is None:
-            # print "%s: complete" % self.str()
+            # print("%s: complete" % self.str())
             # We already reported this task as complete in update()
             return ''
         else:
@@ -357,7 +357,7 @@ class TaskWatcher(object):
         self.info = self.session.getTaskInfo(self.id, request=True)
         if self.info is None:
             if not self.quiet:
-                print "No such task id: %i" % self.id
+                print("No such task id: %i" % self.id)
             sys.exit(1)
         state = self.info['state']
         if last:
@@ -365,13 +365,13 @@ class TaskWatcher(object):
             laststate = last['state']
             if laststate != state:
                 if not self.quiet:
-                    print "%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info))
+                    print("%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info)))
                 return True
             return False
         else:
             # First time we're seeing this task, so just show the current state
             if not self.quiet:
-                print "%s: %s" % (self.str(), self.display_state(self.info))
+                print("%s: %s" % (self.str(), self.display_state(self.info)))
             return False
 
     def is_done(self):
@@ -417,7 +417,7 @@ def display_tasklist_status(tasks):
             open += 1
         elif status == koji.TASK_STATES['FREE']:
             free += 1
-    print "  %d free  %d open  %d done  %d failed" % (free, open, done, failed)
+    print("  %d free  %d open  %d done  %d failed" % (free, open, done, failed))
 
 def display_task_results(tasks):
     for task in [task for task in tasks.values() if task.level == 0]:
@@ -425,21 +425,21 @@ def display_task_results(tasks):
         task_label = task.str()
 
         if state == koji.TASK_STATES['CLOSED']:
-            print '%s completed successfully' % task_label
+            print('%s completed successfully' % task_label)
         elif state == koji.TASK_STATES['FAILED']:
-            print '%s failed' % task_label
+            print('%s failed' % task_label)
         elif state == koji.TASK_STATES['CANCELED']:
-            print '%s was canceled' % task_label
+            print('%s was canceled' % task_label)
         else:
             # shouldn't happen
-            print '%s has not completed' % task_label
+            print('%s has not completed' % task_label)
 
 def watch_tasks(session,tasklist,quiet=False):
     global options
     if not tasklist:
         return
     if not quiet:
-        print "Watching tasks (this may be safely interrupted)..."
+        print("Watching tasks (this may be safely interrupted)...")
     sys.stdout.flush()
     rv = 0
     try:
@@ -469,7 +469,7 @@ def watch_tasks(session,tasklist,quiet=False):
                         all_done = False
             if all_done:
                 if not quiet:
-                    print
+                    print('')
                     display_task_results(tasks)
                 break
 
@@ -480,20 +480,20 @@ def watch_tasks(session,tasklist,quiet=False):
             progname = os.path.basename(sys.argv[0]) or 'koji'
             tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
                             for t in tasks.values() if not t.is_done()]
-            print \
+            print( \
 """Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
-%s""" % (progname, '\n'.join(tlist))
+%s""" % (progname, '\n'.join(tlist)))
         rv = 1
     return rv
 
 def watch_logs(session, tasklist, opts):
     global options
-    print "Watching logs (this may be safely interrupted)..."
+    print("Watching logs (this may be safely interrupted)...")
     def _isDone(session, taskId):
         info = session.getTaskInfo(taskId)
         if info is None:
-            print "No such task id: %i" % taskId
+            print("No such task id: %i" % taskId)
             sys.exit(1)
         state = koji.TASK_STATES[info['state']]
         return (state in ['CLOSED','CANCELED','FAILED'])
@@ -555,18 +555,18 @@ def handle_add_group(options, session, args):
 
     activate_session(session)
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return 1
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        print "Unknown tag: %s" % tag
+        print("Unknown tag: %s" % tag)
         return 1
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
     if group_id is not None:
-        print "Group %s already exists for tag %s" % (group, tag)
+        print("Group %s already exists for tag %s" % (group, tag))
         return 1
 
     session.groupListAdd(tag, group)
@@ -600,14 +600,14 @@ def handle_assign_task(options, session, args):
 
     activate_session(session)
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return 1
 
     ret = session.assignTask(task_id, hostname, force)
     if ret:
-        print 'assigned task %d to host %s' % (task_id, hostname)
+        print('assigned task %d to host %s' % (task_id, hostname))
     else:
-        print 'failed to assign task %d to host %s' % (task_id, hostname)
+        print('failed to assign task %d to host %s' % (task_id, hostname))
 
 
 def handle_add_host(options, session, args):
@@ -624,7 +624,7 @@ def handle_add_host(options, session, args):
     activate_session(session)
     id = session.getHost(host)
     if id:
-        print "%s is already in the database" % host
+        print("%s is already in the database" % host)
         return 1
     else:
         kwargs = {}
@@ -632,7 +632,7 @@ def handle_add_host(options, session, args):
             kwargs['krb_principal'] = options.krb_principal
         id = session.addHost(host, args[1:], **kwargs)
         if id:
-            print "%s added: id %d" % (host, id)
+            print("%s added: id %d" % (host, id))
 
 def handle_edit_host(options, session, args):
     "[admin] Edit a host"
@@ -662,11 +662,11 @@ def handle_edit_host(options, session, args):
     error = False
     for host, [info] in zip(args, session.multiCall(strict=True)):
         if not info:
-            print _("Host %s does not exist") % host
+            print(_("Host %s does not exist") % host)
             error = True
 
     if error:
-        print _("No changes made, please correct the command line")
+        print(_("No changes made, please correct the command line"))
         return 1
 
     session.multicall = True
@@ -674,9 +674,9 @@ def handle_edit_host(options, session, args):
         session.editHost(host, **vals)
     for host, [result] in zip(args, session.multiCall(strict=True)):
         if result:
-            print _("Edited %s") % host
+            print(_("Edited %s") % host)
         else:
-            print _("No changes made to %s") % host
+            print(_("No changes made to %s") % host)
 
 def handle_add_host_to_channel(options, session, args):
     "[admin] Add a host to a channel"
@@ -692,18 +692,18 @@ def handle_add_host_to_channel(options, session, args):
     activate_session(session)
     if options.list:
         for channel in session.listChannels():
-            print channel['name']
+            print(channel['name'])
         return
     channel = args[1]
     if not options.new:
         channelinfo = session.getChannel(channel)
         if not channelinfo:
-            print "No such channel: %s" % channel
+            print("No such channel: %s" % channel)
             return 1
     host = args[0]
     hostinfo = session.getHost(host)
     if not hostinfo:
-        print "No such host: %s" % host
+        print("No such host: %s" % host)
         return 1
     kwargs = {}
     if options.new:
@@ -723,13 +723,13 @@ def handle_remove_host_from_channel(options, session, args):
     activate_session(session)
     hostinfo = session.getHost(host)
     if not hostinfo:
-        print "No such host: %s" % host
+        print("No such host: %s" % host)
         return 1
     hostchannels = [c['name'] for c in session.listChannels(hostinfo['id'])]
 
     channel = args[1]
     if channel not in hostchannels:
-        print "Host %s is not a member of channel %s" % (host, channel)
+        print("Host %s is not a member of channel %s" % (host, channel))
         return 1
 
     session.removeHostFromChannel(host, channel)
@@ -747,7 +747,7 @@ def handle_remove_channel(options, session, args):
     activate_session(session)
     cinfo = session.getChannel(args[0])
     if not cinfo:
-        print "No such channel: %s" % args[0]
+        print("No such channel: %s" % args[0])
         return 1
     session.removeChannel(args[0], force=options.force)
 
@@ -763,7 +763,7 @@ def handle_rename_channel(options, session, args):
     activate_session(session)
     cinfo = session.getChannel(args[0])
     if not cinfo:
-        print "No such channel: %s" % args[0]
+        print("No such channel: %s" % args[0])
         return 1
     session.renameChannel(args[0], args[1])
 
@@ -783,7 +783,7 @@ def handle_add_pkg(options, session, args):
         parser.error(_("Please specify an owner for the package(s)"))
         assert False  # pragma: no cover
     if not session.getUser(options.owner):
-        print "User %s does not exist" % options.owner
+        print("User %s does not exist" % options.owner)
         return 1
     activate_session(session)
     tag = args[0]
@@ -793,21 +793,21 @@ def handle_add_pkg(options, session, args):
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
     if dsttag is None:
-        print "No such tag: %s" % tag
+        print("No such tag: %s" % tag)
         sys.exit(1)
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
     to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if not package_id is None:
-            print "Package %s already exists in tag %s" % (package, tag)
+            print("Package %s already exists in tag %s" % (package, tag))
             continue
         to_add.append(package)
     if options.extra_arches:
         opts['extra_arches'] = parse_arches(options.extra_arches)
 
     # add the packages
-    print "Adding %i packages to tag %s" % (len(to_add), dsttag['name'])
+    print("Adding %i packages to tag %s" % (len(to_add), dsttag['name']))
     session.multicall = True
     for package in to_add:
         session.packageListAdd(tag, package, options.owner, **opts)
@@ -828,14 +828,14 @@ def handle_block_pkg(options, session, args):
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
     if dsttag is None:
-        print "No such tag: %s" % tag
+        print("No such tag: %s" % tag)
         return 1
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if package_id is None:
-            print "Package %s doesn't exist in tag %s" % (package, tag)
+            print("Package %s doesn't exist in tag %s" % (package, tag))
             ret = 1
     if ret:
         return ret
@@ -861,14 +861,14 @@ def handle_remove_pkg(options, session, args):
     # check if list of packages exists for that tag already
     dsttag=session.getTag(tag)
     if dsttag is None:
-        print "No such tag: %s" % tag
+        print("No such tag: %s" % tag)
         return 1
     pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if package_id is None:
-            print "Package %s is not in tag %s" % (package, tag)
+            print("Package %s is not in tag %s" % (package, tag))
             ret = 1
     if ret:
         return ret
@@ -984,19 +984,19 @@ def handle_build(options, session, args):
     if '://' not in source:
         #treat source as an srpm and upload it
         if not build_opts.quiet:
-            print "Uploading srpm: %s" % source
+            print("Uploading srpm: %s" % source)
         serverdir = _unique_path('cli-build')
         if _running_in_bg() or build_opts.noprogress or build_opts.quiet:
             callback = None
         else:
             callback = _progress_callback
         session.uploadWrapper(source, serverdir, callback=callback)
-        print
+        print('')
         source = "%s/%s" % (serverdir, os.path.basename(source))
     task_id = session.build(source, target, opts, priority=priority)
     if not build_opts.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet)
@@ -1032,8 +1032,8 @@ def handle_chain_build(options, session, args):
     # otherwise there is no way that a chain-build can work
     ancestors = session.getFullInheritance(build_target['build_tag'])
     if dest_tag['id'] not in [build_target['build_tag']] + [ancestor['parent_id'] for ancestor in ancestors]:
-        print _("Packages in destination tag %(dest_tag_name)s are not inherited by build tag %(build_tag_name)s" % build_target)
-        print _("Target %s is not usable for a chain-build" % build_target['name'])
+        print(_("Packages in destination tag %(dest_tag_name)s are not inherited by build tag %(build_tag_name)s" % build_target))
+        print(_("Target %s is not usable for a chain-build" % build_target['name']))
         return 1
 
     sources = args[1:]
@@ -1055,7 +1055,7 @@ def handle_chain_build(options, session, args):
             # quick check that it looks like a N-V-R
             build_level.append(src)
         else:
-            print _('"%s" is not a SCM URL or package N-V-R' % src)
+            print(_('"%s" is not a SCM URL or package N-V-R' % src))
             return 1
     if build_level:
         src_list.append(build_level)
@@ -1070,8 +1070,8 @@ def handle_chain_build(options, session, args):
 
     task_id = session.chainBuild(src_list, target, priority=priority)
     if not build_opts.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if _running_in_bg() or build_opts.nowait:
         return
     else:
@@ -1168,8 +1168,8 @@ def handle_maven_build(options, session, args):
         priority = 5
     task_id = session.mavenBuild(source, target, opts, priority=priority)
     if not build_opts.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if _running_in_bg() or build_opts.nowait:
         return
     else:
@@ -1234,8 +1234,8 @@ def handle_wrapper_rpm(options, session, args):
     if build_opts.scratch:
         opts['scratch'] = True
     task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    print("Created task: %d" % task_id)
+    print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if _running_in_bg() or build_opts.nowait:
         return
     else:
@@ -1286,8 +1286,8 @@ def handle_maven_chain(options, session, args):
     if build_opts.background:
         priority = 5
     task_id = session.chainMaven(builds, target, opts, priority=priority)
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    print("Created task: %d" % task_id)
+    print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if _running_in_bg() or build_opts.nowait:
         return
     else:
@@ -1310,11 +1310,11 @@ def handle_resubmit(options, session, args):
     activate_session(session)
     taskID = int(args[0])
     if not options.quiet:
-        print "Resubmitting the following task:"
+        print("Resubmitting the following task:")
         _printTaskInfo(session, taskID, 0, False, True)
     newID = session.resubmitTask(taskID)
     if not options.quiet:
-        print "Resubmitted task %s as new task %s" % (taskID, newID)
+        print("Resubmitted task %s as new task %s" % (taskID, newID))
     if _running_in_bg() or options.nowait:
         return
     else:
@@ -1407,10 +1407,10 @@ def anon_handle_mock_config(options, session, args):
             parser.error(_("Task id must be an integer"))
         broots = session.listBuildroots(taskID=task_id)
         if not broots:
-            print _("No buildroots for task %s (or no such task)") % options.task
+            print(_("No buildroots for task %s (or no such task)") % options.task)
             return 1
         if len(broots) > 1:
-            print _("Multiple buildroots found: %s" % [br['id'] for br in broots])
+            print(_("Multiple buildroots found: %s" % [br['id'] for br in broots]))
         brootinfo = broots[-1]
         if options.latest:
             opts['repoid'] = 'latest'
@@ -1421,7 +1421,7 @@ def anon_handle_mock_config(options, session, args):
         def_name = "%s-task_%i" % (opts['tag_name'], task_id)
     elif options.tag:
         if not options.arch:
-            print _("Please specify an arch")
+            print(_("Please specify an arch"))
             return 1
         tag = session.getTag(options.tag)
         if not tag:
@@ -1429,7 +1429,7 @@ def anon_handle_mock_config(options, session, args):
         arch = options.arch
         config = session.getBuildConfig(tag['id'])
         if not config:
-            print _("Could not get config info for tag: %(name)s") % tag
+            print(_("Could not get config info for tag: %(name)s") % tag)
             return 1
         opts['tag_name'] = tag['name']
         if options.latest:
@@ -1437,13 +1437,13 @@ def anon_handle_mock_config(options, session, args):
         else:
             repo = session.getRepo(config['id'])
             if not repo:
-                print _("Could not get a repo for tag: %(name)s") % tag
+                print(_("Could not get a repo for tag: %(name)s") % tag)
                 return 1
             opts['repoid'] = repo['id']
         def_name = "%(tag_name)s-repo_%(repoid)s" % opts
     elif options.target:
         if not options.arch:
-            print _("Please specify an arch")
+            print(_("Please specify an arch"))
             return 1
         arch = options.arch
         target = session.getBuildTarget(options.target)
@@ -1455,7 +1455,7 @@ def anon_handle_mock_config(options, session, args):
         else:
             repo = session.getRepo(target['build_tag'])
             if not repo:
-                print _("Could not get a repo for tag: %(name)s") % opts['tag_name']
+                print(_("Could not get a repo for tag: %(name)s") % opts['tag_name'])
                 return 1
             opts['repoid'] = repo['id']
     else:
@@ -1471,7 +1471,7 @@ def anon_handle_mock_config(options, session, args):
         fo.write(output)
         fo.close()
     else:
-        print output
+        print(output)
 
 def handle_disable_host(options, session, args):
     "[admin] Mark one or more hosts as disabled"
@@ -1488,10 +1488,10 @@ def handle_disable_host(options, session, args):
     error = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
-            print "Host %s does not exist" % host
+            print("Host %s does not exist" % host)
             error = True
     if error:
-        print "No changes made. Please correct the command line."
+        print("No changes made. Please correct the command line.")
         return 1
     session.multicall = True
     for host in args:
@@ -1515,10 +1515,10 @@ def handle_enable_host(options, session, args):
     error = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
-            print "Host %s does not exist" % host
+            print("Host %s does not exist" % host)
             error = True
     if error:
-        print "No changes made. Please correct the command line."
+        print("No changes made. Please correct the command line.")
         return 1
     session.multicall = True
     for host in args:
@@ -1562,7 +1562,7 @@ def linked_upload(localfile, path, name=None):
         # fix uid/gid to keep httpd happy
         st = os.stat(koji.pathinfo.work())
         os.chown(dest_dir, st.st_uid, st.st_gid)
-        print "Linking rpm to: %s" % dst
+        print("Linking rpm to: %s" % dst)
         os.link(localfile, dst)
     finally:
         os.umask(old_umask)
@@ -1612,10 +1612,10 @@ def handle_import(options, session, args):
             #no srpm included, check for build
             binfo = session.getBuild(nvr)
             if not binfo:
-                print _("Missing build or srpm: %s") % nvr
+                print(_("Missing build or srpm: %s") % nvr)
                 builds_missing = True
     if builds_missing and not options.create_build:
-        print _("Aborting import")
+        print(_("Aborting import"))
         return
 
     #local function to help us out below
@@ -1624,32 +1624,32 @@ def handle_import(options, session, args):
         prev = session.getRPM(rinfo)
         if prev and not prev.get('external_repo_id', 0):
             if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
-                print _("RPM already imported: %s") % path
+                print(_("RPM already imported: %s") % path)
             else:
-                print _("WARNING: md5sum mismatch for %s") % path
-            print _("Skipping import")
+                print(_("WARNING: md5sum mismatch for %s") % path)
+            print(_("Skipping import"))
             return
         if options.test:
-            print _("Test mode -- skipping import for %s") % path
+            print(_("Test mode -- skipping import for %s") % path)
             return
         serverdir = _unique_path('cli-import')
         if options.link:
             linked_upload(path, serverdir)
         else:
-            print _("uploading %s...") % path,
+            sys.stdout.write(_("uploading %s... ") % path)
             sys.stdout.flush()
             session.uploadWrapper(path, serverdir)
-            print _("done")
+            print(_("done"))
             sys.stdout.flush()
-        print _("importing %s...") % path,
+        sys.stdout.write(_("importing %s... ") % path)
         sys.stdout.flush()
         try:
             session.importRPM(serverdir, os.path.basename(path))
         except koji.GenericError, e:
-            print _("\nError importing: %s" % str(e).splitlines()[-1])
+            print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
-            print _("done")
+            print(_("done"))
         sys.stdout.flush()
 
     for nvr in nvrs:
@@ -1662,10 +1662,10 @@ def handle_import(options, session, args):
                 need_build = False
             elif b_state in ['FAILED', 'CANCELED']:
                 if not options.create_build:
-                    print _("Build %s state is %s. Skipping import") % (nvr, b_state)
+                    print(_("Build %s state is %s. Skipping import") % (nvr, b_state))
                     continue
             else:
-                print _("Build %s exists with state=%s. Skipping import") % (nvr, b_state)
+                print(_("Build %s exists with state=%s. Skipping import") % (nvr, b_state))
                 continue
 
         # import srpms first, if any
@@ -1673,7 +1673,7 @@ def handle_import(options, session, args):
             if data['sourcepackage']:
                 if binfo and b_state != 'COMPLETE':
                     # need to fix the state
-                    print _("Creating empty build: %s") % nvr
+                    print(_("Creating empty build: %s") % nvr)
                     b_data = koji.util.dslice(binfo, ['name', 'version', 'release'])
                     b_data['epoch'] = data['epoch']
                     session.createEmptyBuild(**b_data)
@@ -1687,11 +1687,11 @@ def handle_import(options, session, args):
                 if binfo:
                     # should have caught this earlier, but just in case...
                     b_state = koji.BUILD_STATES[binfo['state']]
-                    print _("Build %s state is %s. Skipping import") % (nvr, b_state)
+                    print(_("Build %s state is %s. Skipping import") % (nvr, b_state))
                     continue
                 else:
-                    print _("No such build: %s (include matching srpm or use "
-                            "--create-build option to add it)") % nvr
+                    print(_("No such build: %s (include matching srpm or use "
+                            "--create-build option to add it)") % nvr)
                     continue
             else:
                 # let's make a new build
@@ -1703,9 +1703,9 @@ def handle_import(options, session, args):
                     data = to_import[nvr][0][1]
                     b_data['epoch'] = data['epoch']
                 if options.test:
-                    print _("Test mode -- would have created empty build: %s") % nvr
+                    print(_("Test mode -- would have created empty build: %s") % nvr)
                 else:
-                    print _("Creating empty build: %s") % nvr
+                    print(_("Creating empty build: %s") % nvr)
                     session.createEmptyBuild(**b_data)
                     binfo = session.getBuild(nvr)
 
@@ -1734,7 +1734,7 @@ def handle_import_cg(options, session, args):
     activate_session(session)
     metadata = json.load(file(args[0], 'r'))
     if 'output' not in metadata:
-        print _("Metadata contains no output")
+        print(_("Metadata contains no output"))
         sys.exit(1)
     localdir = args[1]
 
@@ -1763,10 +1763,10 @@ def handle_import_cg(options, session, args):
         if options.link:
             linked_upload(localpath, relpath)
         else:
-            print "Uploading %s" % localpath
+            print("Uploading %s" % localpath)
             session.uploadWrapper(localpath, relpath, callback=callback)
             if callback:
-                print
+                print('')
 
     session.CGImport(metadata, serverdir)
 
@@ -1785,14 +1785,14 @@ def handle_import_comps(options, session, args):
     # check if the tag exists
     dsttag = session.getTag(args[1])
     if dsttag is None:
-        print "No such tag: %s" % args[1]
+        print("No such tag: %s" % args[1])
         return 1
     if libcomps is not None:
         _import_comps(session, args[0], args[1], local_options)
     elif yumcomps is not None:
         _import_comps_alt(session, args[0], args[1], local_options)
     else:
-        print "comps module not available"
+        print("comps module not available")
         return 1
 
 
@@ -1809,7 +1809,7 @@ def _import_comps(session, filename, tag, options):
         libcomps.PACKAGE_TYPE_UNKNOWN : 'unknown',
     }
     for group in comps.groups:
-        print "Group: %s (%s)" % (group.id, group.name)
+        print("Group: %s (%s)" % (group.id, group.name))
         session.groupListAdd(
                     tag, group.id, force=force, display_name=group.name,
                     is_default=bool(group.default),
@@ -1823,7 +1823,7 @@ def _import_comps(session, filename, tag, options):
                         }
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
-            print "  Package: %s: %r" % (pkg.name, pkgopts)
+            print("  Package: %s: %r" % (pkg.name, pkgopts))
             session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
         # libcomps does not support group dependencies
         # libcomps does not support metapkgs
@@ -1831,12 +1831,12 @@ def _import_comps(session, filename, tag, options):
 
 def _import_comps_alt(session, filename, tag, options):
     """Import comps data using yum.comps module"""
-    print 'WARN: yum.comps does not support the biarchonly of group and basearchonly of package'
+    print('WARN: yum.comps does not support the biarchonly of group and basearchonly of package')
     comps = yumcomps.Comps()
     comps.add(filename)
     force = options.force
     for group in comps.groups:
-        print "Group: %(groupid)s (%(name)s)" % vars(group)
+        print("Group: %(groupid)s (%(name)s)" % vars(group))
         session.groupListAdd(tag, group.groupid, force=force, display_name=group.name,
                         is_default=bool(group.default),
                         uservisible=bool(group.user_visible),
@@ -1852,7 +1852,7 @@ def _import_comps_alt(session, filename, tag, options):
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
                 #yum.comps does not support basearchonly
-                print "  Package: %s: %r" % (pkg, pkgopts)
+                print("  Package: %s: %r" % (pkg, pkgopts))
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
         #yum.comps does not support group dependencies
         #yum.comps does not support metapkgs
@@ -1885,7 +1885,7 @@ def handle_import_sig(options, session, args):
         if not sigkey:
             sigkey = ""
             if not options.with_unsigned:
-                print _("Skipping unsigned package: %s" % path)
+                print(_("Skipping unsigned package: %s" % path))
                 continue
         else:
             sigkey = koji.get_sigpacket_key_id(sigkey)
@@ -1893,10 +1893,10 @@ def handle_import_sig(options, session, args):
         del data['sigpgp']
         rinfo = session.getRPM(data)
         if not rinfo:
-            print "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data
+            print("No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data)
             continue
         if rinfo.get('external_repo_id'):
-            print "Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo
+            print("Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo)
             continue
         sighdr = koji.rip_rpm_sighdr(path)
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
@@ -1904,12 +1904,12 @@ def handle_import_sig(options, session, args):
         if previous:
             sighash = md5_constructor(sighdr).hexdigest()
             if previous[0]['sighash'] == sighash:
-                print _("Signature already imported: %s") % path
+                print(_("Signature already imported: %s") % path)
                 continue
             else:
-                print _("Warning: signature mismatch: %s") % path
+                print(_("Warning: signature mismatch: %s") % path)
                 continue
-        print _("Importing signature [key %s] from %s...") % (sigkey, path)
+        print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
             session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
 
@@ -1933,7 +1933,7 @@ def handle_write_signed_rpm(options, session, args):
         rpms = session.queryRPMSigs(sigkey=key)
         count = 1
         for rpm in rpms:
-            print "%d/%d" % (count, len(rpms))
+            print("%d/%d" % (count, len(rpms)))
             count += 1
             session.writeSignedRPM(rpm['rpm_id'], key)
     elif options.buildid:
@@ -1990,17 +1990,17 @@ def handle_prune_signed_copies(options, session, args):
         options.verbose = True
     cutoff_ts = time.time() - options.days * 24 * 3600
     if options.debug:
-        print "Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts))
+        print("Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts)))
     if not options.build:
         if options.verbose:
-            print "Getting builds..."
+            print("Getting builds...")
         qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
         if options.package:
             pkginfo = session.getPackage(options.package)
             qopts['packageID'] = pkginfo['id']
         builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
         if options.verbose:
-            print "...got %i builds" % len(builds)
+            print("...got %i builds" % len(builds))
         builds.sort()
     else:
         #single build
@@ -2031,7 +2031,7 @@ def handle_prune_signed_copies(options, session, args):
         if not binfo.has_key('name'):
             binfo['name'] = binfo['package_name']
         if options.debug:
-            print "DEBUG: %s" % nvr
+            print("DEBUG: %s" % nvr)
         #see how recently this build was latest for a tag
         is_latest = False
         is_protected = False
@@ -2042,17 +2042,17 @@ def handle_prune_signed_copies(options, session, args):
             #that the build was recently untagged from
             tags.setdefault(entry['tag_name'], 1)
         if options.debug:
-            print "Tags: %s" % tags.keys()
+            print("Tags: %s" % tags.keys())
         for tag_name in tags:
             if tag_name == options.trashcan_tag:
                 if options.debug:
-                    print "Ignoring trashcan tag for build %s" % nvr
+                    print("Ignoring trashcan tag for build %s" % nvr)
                 continue
             ignore_tag = False
             for pattern in options.ignore_tag:
                 if fnmatch.fnmatch(tag_name, pattern):
                     if options.debug:
-                        print "Ignoring tag %s for build %s" % (tag_name, nvr)
+                        print("Ignoring tag %s for build %s" % (tag_name, nvr))
                     ignore_tag = True
                     break
             if ignore_tag:
@@ -2085,13 +2085,13 @@ def handle_prune_signed_copies(options, session, args):
                 raise koji.GenericError, "No creation event found for %s in %s" % (nvr, tag_name)
             our_entry = entry
             if options.debug:
-                print _histline(event_id, our_entry)
+                print(_histline(event_id, our_entry))
             #now go through the events since most recent creation entry
             timeline = timeline[i+1:]
             if not timeline:
                 is_latest = True
                 if options.debug:
-                    print "%s is latest in tag %s" % (nvr, tag_name)
+                    print("%s is latest in tag %s" % (nvr, tag_name))
                 break
             #before we go any further, is this a protected tag?
             protect_tag = False
@@ -2106,14 +2106,14 @@ def handle_prune_signed_copies(options, session, args):
                 if our_entry['revoke_event'] is None:
                     #we're still tagged with a protected tag
                     if options.debug:
-                        print "Build %s has protected tag %s" % (nvr, tag_name)
+                        print("Build %s has protected tag %s" % (nvr, tag_name))
                     is_protected = True
                     break
                 elif our_entry['revoke_ts'] > cutoff_ts:
                     #we were still tagged here sometime before the cutoff
                     if options.debug:
-                        print "Build %s had protected tag %s until %s" \
-                                % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts'])))
+                        print("Build %s had protected tag %s until %s" \
+                                % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts']))))
                     is_protected = True
                     break
             replaced_ts = None
@@ -2126,7 +2126,7 @@ def handle_prune_signed_copies(options, session, args):
                 #Note however that if the superceding entry is itself revoked, then
                 #our build could become latest again
                 if options.debug:
-                    print _histline(event_id, entry)
+                    print(_histline(event_id, entry))
                 if entry['build_id'] == binfo['id']:
                     if is_create:
                         #shouldn't happen
@@ -2165,31 +2165,31 @@ def handle_prune_signed_copies(options, session, args):
                     #turns out we are still latest
                     is_latest = True
                     if options.debug:
-                        print "%s is latest (again) in tag %s" % (nvr, tag_name)
+                        print("%s is latest (again) in tag %s" % (nvr, tag_name))
                     break
                 else:
                     #replaced (but not revoked)
                     timestamps.append(replaced_ts)
                     if options.debug:
-                        print "tag %s: %s not latest (replaced %s)" \
-                                % (tag_name, nvr, time.asctime(time.localtime(replaced_ts)))
+                        print("tag %s: %s not latest (replaced %s)" \
+                                % (tag_name, nvr, time.asctime(time.localtime(replaced_ts))))
             elif replaced_ts is None:
                 #revoked but not replaced
                 timestamps.append(revoke_ts)
                 if options.debug:
-                    print "tag %s: %s not latest (revoked %s)" \
-                            % (tag_name, nvr, time.asctime(time.localtime(revoke_ts)))
+                    print("tag %s: %s not latest (revoked %s)" \
+                            % (tag_name, nvr, time.asctime(time.localtime(revoke_ts))))
             else:
                 #revoked AND replaced
                 timestamps.append(min(revoke_ts, replaced_ts))
                 if options.debug:
-                    print "tag %s: %s not latest (revoked %s, replaced %s)" \
+                    print("tag %s: %s not latest (revoked %s, replaced %s)" \
                             % (tag_name, nvr, time.asctime(time.localtime(revoke_ts)),
-                                time.asctime(time.localtime(replaced_ts)))
+                                time.asctime(time.localtime(replaced_ts))))
             last_latest = max(timestamps)
             if last_latest > cutoff_ts:
                 if options.debug:
-                    print "%s was latest past the cutoff" % nvr
+                    print("%s was latest past the cutoff" % nvr)
                 is_latest = True
                 break
         if is_latest:
@@ -2211,7 +2211,7 @@ def handle_prune_signed_copies(options, session, args):
         build_files = 0
         build_space = 0
         if not by_sig and options.debug:
-            print "(build has no signatures)"
+            print("(build has no signatures)")
         for sigkey, rpms in by_sig.iteritems():
             mycount = 0
             archdirs = {}
@@ -2224,21 +2224,21 @@ def handle_prune_signed_copies(options, session, args):
                     continue
                 if not stat.S_ISREG(st.st_mode):
                     #warn about this
-                    print "Skipping %s. Not a regular file" % signedpath
+                    print("Skipping %s. Not a regular file" % signedpath)
                     continue
                 if st.st_mtime > cutoff_ts:
-                    print "Skipping %s. File newer than cutoff" % signedpath
+                    print("Skipping %s. File newer than cutoff" % signedpath)
                     continue
                 if options.test:
-                    print "Would have unlinked: %s" % signedpath
+                    print("Would have unlinked: %s" % signedpath)
                 else:
                     if options.verbose:
-                        print "Unlinking: %s" % signedpath
+                        print("Unlinking: %s" % signedpath)
                     try:
                         os.unlink(signedpath)
                     except OSError, e:
-                        print "Error removing %s: %s" % (signedpath, e)
-                        print "This script needs write access to %s" % koji.BASEDIR
+                        print("Error removing %s: %s" % (signedpath, e))
+                        print("This script needs write access to %s" % koji.BASEDIR)
                         continue
                 mycount +=1
                 build_files += 1
@@ -2250,38 +2250,38 @@ def handle_prune_signed_copies(options, session, args):
                 sigdirs[os.path.dirname(mydir)] = 1
             for dir in archdirs:
                 if options.test:
-                    print "Would have removed dir: %s" % dir
+                    print("Would have removed dir: %s" % dir)
                 else:
                     if options.verbose:
-                        print "Removing dir: %s" % dir
+                        print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
                     except OSError, e:
-                        print "Error removing %s: %s" % (signedpath, e)
+                        print("Error removing %s: %s" % (signedpath, e))
             if len(sigdirs) == 1:
                 dir = sigdirs.keys()[0]
                 if options.test:
-                    print "Would have removed dir: %s" % dir
+                    print("Would have removed dir: %s" % dir)
                 else:
                     if options.verbose:
-                        print "Removing dir: %s" % dir
+                        print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
                     except OSError, e:
-                        print "Error removing %s: %s" % (signedpath, e)
+                        print("Error removing %s: %s" % (signedpath, e))
             elif len(sigdirs) > 1:
-                print "Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs)
+                print("Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs))
         if build_files:
             total_files += build_files
             total_space += build_space
             if options.verbose:
-                print "Build: %s, Removed %i signed copies (%i bytes). Total: %i/%i" \
-                        % (nvr, build_files, build_space, total_files, total_space)
+                print("Build: %s, Removed %i signed copies (%i bytes). Total: %i/%i" \
+                        % (nvr, build_files, build_space, total_files, total_space))
         elif options.debug and by_sig:
-            print "(build has no signed copies)"
-    print "--- Grand Totals ---"
-    print "Files: %i" % total_files
-    print "Bytes: %i" % total_space
+            print("(build has no signed copies)")
+    print("--- Grand Totals ---")
+    print("Files: %i" % total_files)
+    print("Bytes: %i" % total_space)
 
 def handle_set_build_volume(options, session, args):
     "[admin] Move a build to a different volume"
@@ -2292,25 +2292,25 @@ def handle_set_build_volume(options, session, args):
     (options, args) = parser.parse_args(args)
     volinfo = session.getVolume(args[0])
     if not volinfo:
-        print "No such volume: %s" % args[0]
+        print("No such volume: %s" % args[0])
         return 1
     activate_session(session)
     builds = []
     for nvr in args[1:]:
         binfo = session.getBuild(nvr)
         if not binfo:
-            print "No such build: %s" % nvr
+            print("No such build: %s" % nvr)
         elif binfo['volume_id'] == volinfo['id']:
-            print "Build %s already on volume %s" %(nvr, volinfo['name'])
+            print("Build %s already on volume %s" %(nvr, volinfo['name']))
         else:
             builds.append(binfo)
     if not builds:
-        print "No builds to move"
+        print("No builds to move")
         return 1
     for binfo in builds:
         session.changeBuildVolume(binfo['id'], volinfo['id'])
         if options.verbose:
-            print "%s: %s -> %s" % (binfo['nvr'], binfo['volume_name'], volinfo['name'])
+            print("%s: %s -> %s" % (binfo['nvr'], binfo['volume_name'], volinfo['name']))
 
 def handle_add_volume(options, session, args):
     "[admin] Add a new storage volume"
@@ -2323,11 +2323,11 @@ def handle_add_volume(options, session, args):
     name = args[0]
     volinfo = session.getVolume(name)
     if volinfo:
-        print "Volume %s already exists" % name
+        print("Volume %s already exists" % name)
         return 1
     activate_session(session)
     volinfo = session.addVolume(name)
-    print "Added volume %(name)s with id %(id)i" % volinfo
+    print("Added volume %(name)s with id %(id)i" % volinfo)
 
 def handle_list_volumes(options, session, args):
     "[info] List storage volumes"
@@ -2336,7 +2336,7 @@ def handle_list_volumes(options, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     for volinfo in session.listVolumes():
-        print volinfo['name']
+        print(volinfo['name'])
 
 def handle_list_permissions(options, session, args):
     "[admin] List user permissions"
@@ -2353,7 +2353,7 @@ def handle_list_permissions(options, session, args):
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            print "User %s does not exist" % options.user
+            print("User %s does not exist" % options.user)
             return 1
         perms = session.getUserPerms(user['id'])
     elif options.mine:
@@ -2361,7 +2361,7 @@ def handle_list_permissions(options, session, args):
     else:
         perms = [p['name'] for p in session.getAllPerms()]
     for perm in perms:
-        print perm
+        print(perm)
 
 def handle_add_user(options, session, args):
     "[admin] Add a user"
@@ -2382,7 +2382,7 @@ def handle_add_user(options, session, args):
         status = koji.USER_STATUS['NORMAL']
     activate_session(session)
     user_id = session.createUser(username, status=status, krb_principal=options.principal)
-    print "Added user %s (%i)" % (username, user_id)
+    print("Added user %s (%i)" % (username, user_id))
 
 def handle_enable_user(options, session, args):
     "[admin] Enable logins by a user"
@@ -2435,7 +2435,7 @@ def handle_list_signed(options, session, args):
         if rinfo is None:
             parser.error(_("No such RPM: %s") % options.rpm)
         if rinfo.get('external_repo_id'):
-            print "External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo
+            print("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo)
             return 1
         qopts['rpm_id'] = rinfo['id']
     if options.build:
@@ -2451,9 +2451,9 @@ def handle_list_signed(options, session, args):
     else:
         sigs = session.queryRPMSigs(**qopts)
     if options.tag:
-        print "getting tag listing"
+        print("getting tag listing")
         rpms, builds = session.listTaggedRPMS(options.tag, inherit=False, latest=False)
-        print "got tag listing"
+        print("got tag listing")
         tagged = {}
         for binfo in builds:
             build_idx.setdefault(binfo['id'], binfo)
@@ -2480,9 +2480,9 @@ def handle_list_signed(options, session, args):
         signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rinfo, sigkey))
         if not os.path.exists(signedpath):
             if options.debug:
-                print "No copy: %s" % signedpath
+                print("No copy: %s" % signedpath)
             continue
-        print signedpath
+        print(signedpath)
 
 def handle_import_in_place(options, session, args):
     "[admin] Import RPMs that are already in place"
@@ -2496,14 +2496,14 @@ def handle_import_in_place(options, session, args):
     activate_session(session)
     for nvr in args:
         data = koji.parse_NVR(nvr)
-        print _("importing %s...") % nvr,
+        sys.stdout.write(_("importing %s... ") % nvr)
         try:
             session.importBuildInPlace(data)
         except koji.GenericError, e:
-            print _("\nError importing: %s" % str(e).splitlines()[-1])
+            print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
-            print _("done")
+            print(_("done"))
         sys.stdout.flush()
 
 def handle_import_archive(options, session, args):
@@ -2595,7 +2595,7 @@ def handle_import_archive(options, session, args):
 
     for filepath in args[1:]:
         filename = os.path.basename(filepath)
-        print "Uploading archive: %s" % filename
+        print("Uploading archive: %s" % filename)
         serverdir = _unique_path('cli-import')
         if _running_in_bg() or suboptions.noprogress:
             callback = None
@@ -2605,10 +2605,10 @@ def handle_import_archive(options, session, args):
             linked_upload(filepath, serverdir)
         else:
             session.uploadWrapper(filepath, serverdir, callback=callback)
-        print
+        print('')
         serverpath = "%s/%s" % (serverdir, filename)
         session.importArchive(serverpath, buildinfo, suboptions.type, suboptions.type_info)
-        print "Imported: %s" % filename
+        print("Imported: %s" % filename)
 
 def handle_grant_permission(options, session, args):
     "[admin] Grant a permission to a user"
@@ -2762,17 +2762,17 @@ def anon_handle_latest_build(options, session, args):
                     fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
             if not options.quiet:
                 if options.type == 'maven':
-                    print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
-                    print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
+                    print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
+                    print("%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16))
                 else:
-                    print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
-                    print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+                    print("%-40s  %-20s  %s" % ("Build","Tag","Built by"))
+                    print("%s  %s  %s" % ("-"*40, "-"*20, "-"*16))
                 options.quiet = True
 
         output = [ fmt % x for x in data]
         output.sort()
         for line in output:
-            print line
+            print(line)
 
 
 def anon_handle_list_api(options, session, args):
@@ -2802,9 +2802,9 @@ def anon_handle_list_api(options, session, args):
             args = "(%s)" % ", ".join(expanded)
         else:
             args = "()"
-        print '%s%s' % (x['name'], args)
+        print('%s%s' % (x['name'], args))
         if x['doc']:
-            print "  description: %s" % x['doc']
+            print("  description: %s" % x['doc'])
 
 def anon_handle_list_tagged(options, session, args):
     "[info] List the builds or rpms in a tag"
@@ -2855,7 +2855,7 @@ def anon_handle_list_tagged(options, session, args):
     if event:
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
@@ -2896,16 +2896,16 @@ def anon_handle_list_tagged(options, session, args):
                 fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
         if not options.quiet:
             if options.type == 'maven':
-                print "%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by")
-                print "%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16)
+                print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
+                print("%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16))
             else:
-                print "%-40s  %-20s  %s" % ("Build","Tag","Built by")
-                print "%s  %s  %s" % ("-"*40, "-"*20, "-"*16)
+                print("%-40s  %-20s  %s" % ("Build","Tag","Built by"))
+                print("%s  %s  %s" % ("-"*40, "-"*20, "-"*16))
 
     output = [ fmt % x for x in data]
     output.sort()
     for line in output:
-        print line
+        print(line)
 
 def anon_handle_list_buildroot(options, session, args):
     "[info] List the rpms used in or built in a buildroot"
@@ -2933,9 +2933,9 @@ def anon_handle_list_buildroot(options, session, args):
     order.sort()
     for nvra, rinfo in order:
         if options.verbose and rinfo.get('is_update'):
-            print nvra, "[update]"
+            print(nvra, "[update]")
         else:
-            print nvra
+            print(nvra)
 
 def anon_handle_list_untagged(options, session, args):
     "[info] List untagged builds"
@@ -2959,7 +2959,7 @@ def anon_handle_list_untagged(options, session, args):
 
     data = session.untaggedBuilds(**opts)
     if options.show_references:
-        print "(Showing build references)"
+        print("(Showing build references)")
         refs = {}
         refs2 = {} #reverse map
         for x in session.buildMap():
@@ -2985,13 +2985,13 @@ def anon_handle_list_untagged(options, session, args):
     output = [ fmt % x for x in data]
     output.sort()
     for line in output:
-        print line
+        print(line)
 
 def print_group_list_req_group(group):
-    print "  @%(name)s  [%(tag_name)s]" % group
+    print("  @%(name)s  [%(tag_name)s]" % group)
 
 def print_group_list_req_package(pkg):
-    print "  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg
+    print("  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg)
 
 def anon_handle_list_groups(options, session, args):
     "[info] Print the group listings"
@@ -3011,7 +3011,7 @@ def anon_handle_list_groups(options, session, args):
     if event:
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
     tags = dict([(x['id'], x['name']) for x in session.listTags()])
     tmp_list = [(x['name'], x) for x in session.getTagGroups(args[0], **opts)]
     tmp_list.sort()
@@ -3019,7 +3019,7 @@ def anon_handle_list_groups(options, session, args):
     for group in groups:
         if len(args) > 1 and group['name'] != args[1]:
             continue
-        print "%s  [%s]" % (group['name'], tags.get(group['tag_id'], group['tag_id']))
+        print("%s  [%s]" % (group['name'], tags.get(group['tag_id'], group['tag_id'])))
         groups = [(x['name'], x) for x in group['grouplist']]
         groups.sort()
         for x in [x[1] for x in groups]:
@@ -3172,9 +3172,9 @@ def anon_handle_list_hosts(options, session, args):
         host['arches'] = ','.join(host['arches'].split())
 
     if not options.quiet:
-        print "Hostname                     Enb Rdy Load/Cap Arches           Last Update"
+        print("Hostname                     Enb Rdy Load/Cap Arches           Last Update")
     for host in hosts:
-        print "%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host
+        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host)
 
 def anon_handle_list_pkgs(options, session, args):
     "[info] Print the package listing for tag or for owner"
@@ -3225,21 +3225,21 @@ def anon_handle_list_pkgs(options, session, args):
     if event:
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
     data = session.listPackages(**opts)
     if not data:
-        print "(no matching packages)"
+        print("(no matching packages)")
         return 1
     if not options.quiet:
         if allpkgs:
-            print "Package"
-            print '-'*23
+            print("Package")
+            print('-'*23)
         else:
-            print "%-23s %-23s %-16s %-15s" % ('Package','Tag','Extra Arches','Owner')
-            print "%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*15)
+            print("%-23s %-23s %-16s %-15s" % ('Package','Tag','Extra Arches','Owner'))
+            print("%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*15))
     for pkg in data:
         if allpkgs:
-            print pkg['package_name']
+            print(pkg['package_name'])
         else:
             if not options.show_blocked and pkg.get('blocked',False):
                 continue
@@ -3251,7 +3251,7 @@ def anon_handle_list_pkgs(options, session, args):
                     fmt += " [BLOCKED]"
             else:
                 fmt = "%(package_name)s"
-            print fmt % pkg
+            print(fmt % pkg)
 
 def anon_handle_rpminfo(options, session, args):
     "[info] Print basic information about an RPM"
@@ -3267,7 +3267,7 @@ def anon_handle_rpminfo(options, session, args):
     for rpm in args:
         info = session.getRPM(rpm)
         if info is None:
-            print "No such rpm: %s\n" % rpm
+            print("No such rpm: %s\n" % rpm)
             continue
         if info['epoch'] is None:
             info['epoch'] = ""
@@ -3281,42 +3281,42 @@ def anon_handle_rpminfo(options, session, args):
                 buildinfo['epoch'] = ""
             else:
                 buildinfo['epoch'] = str(buildinfo['epoch']) + ":"
-        print "RPM: %(epoch)s%(name)s-%(version)s-%(release)s.%(arch)s [%(id)d]" %info
+        print("RPM: %(epoch)s%(name)s-%(version)s-%(release)s.%(arch)s [%(id)d]" % info)
         if info.get('external_repo_id'):
             repo = session.getExternalRepo(info['external_repo_id'])
-            print "External Repository: %(name)s [%(id)i]" % repo
-            print "External Repository url: %(url)s" % repo
+            print("External Repository: %(name)s [%(id)i]" % repo)
+            print("External Repository url: %(url)s" % repo)
         else:
-            print "RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info))
-            print "SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo
-            print "SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo))
-            print "Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime']))
-        print "SIGMD5: %(payloadhash)s" % info
-        print "Size: %(size)s" % info
+            print("RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info)))
+            print("SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo)
+            print("SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo)))
+            print("Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime'])))
+        print("SIGMD5: %(payloadhash)s" % info)
+        print("Size: %(size)s" % info)
         if not info.get('external_repo_id', 0):
-            print "Build ID: %(build_id)s" % info
+            print("Build ID: %(build_id)s" % info)
         if info['buildroot_id'] is None:
-            print "No buildroot data available"
+            print("No buildroot data available")
         else:
             br_info = session.getBuildroot(info['buildroot_id'])
             if br_info['br_type'] == koji.BR_TYPES['STANDARD']:
-                print "Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info
-                print "Build Host: %(host_name)s" % br_info
-                print "Build Task: %(task_id)i" % br_info
+                print("Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info)
+                print("Build Host: %(host_name)s" % br_info)
+                print("Build Task: %(task_id)i" % br_info)
             else:
-                print "Content generator: %(cg_name)s" % br_info
-                print "Buildroot: %(id)i" % br_info
-                print "Build Host OS: %(host_os)s (%(host_arch)s)" % br_info
+                print("Content generator: %(cg_name)s" % br_info)
+                print("Buildroot: %(id)i" % br_info)
+                print("Build Host OS: %(host_os)s (%(host_arch)s)" % br_info)
         if info.get('extra'):
-            print "Extra: %(extra)r" % info
+            print("Extra: %(extra)r" % info)
         if options.buildroots:
             br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order':'buildroot.id'})
-            print "Used in %i buildroots:" % len(br_list)
+            print("Used in %i buildroots:" % len(br_list))
             if len(br_list):
-                print "  %8s %-28s %-8s %-29s" % ('id','build tag','arch','build host')
-                print "  %s %s %s %s" % ('-'*8, '-'*28, '-'*8, '-'*29)
+                print("  %8s %-28s %-8s %-29s" % ('id','build tag','arch','build host'))
+                print("  %s %s %s %s" % ('-'*8, '-'*28, '-'*8, '-'*29))
             for br_info in br_list:
-                print "  %(id)8i %(tag_name)-28s %(arch)-8s %(host_name)-29s" % br_info
+                print("  %(id)8i %(tag_name)-28s %(arch)-8s %(host_name)-29s" % br_info)
 
 
 def anon_handle_buildinfo(options, session, args):
@@ -3335,7 +3335,7 @@ def anon_handle_buildinfo(options, session, args):
             build = int(build)
         info = session.getBuild(build)
         if info is None:
-            print "No such build: %s\n" % build
+            print("No such build: %s\n" % build)
             continue
         task = None
         if info['task_id']:
@@ -3345,51 +3345,51 @@ def anon_handle_buildinfo(options, session, args):
             taglist.append(tag['name'])
         info['arch'] = 'src'
         info['state'] = koji.BUILD_STATES[info['state']]
-        print "BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info
-        print "State: %(state)s" % info
-        print "Built by: %(owner_name)s" % info
+        print("BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info)
+        print("State: %(state)s" % info)
+        print("Built by: %(owner_name)s" % info)
         source = info.get('source')
         if source is not None:
-            print "Source: %s" % source
+            print("Source: %s" % source)
         if 'volume_name' in info:
-            print "Volume: %(volume_name)s" % info
+            print("Volume: %(volume_name)s" % info)
         if task:
-            print "Task: %s %s" % (task['id'], koji.taskLabel(task))
+            print("Task: %s %s" % (task['id'], koji.taskLabel(task)))
         else:
-            print "Task: none"
-        print "Finished: %s" % koji.formatTimeLong(info['completion_time'])
+            print("Task: none")
+        print("Finished: %s" % koji.formatTimeLong(info['completion_time']))
         maven_info = session.getMavenBuild(info['id'])
         if maven_info:
-            print "Maven groupId: %s" % maven_info['group_id']
-            print "Maven artifactId: %s" % maven_info['artifact_id']
-            print "Maven version: %s" % maven_info['version']
+            print("Maven groupId: %s" % maven_info['group_id'])
+            print("Maven artifactId: %s" % maven_info['artifact_id'])
+            print("Maven version: %s" % maven_info['version'])
         win_info = session.getWinBuild(info['id'])
         if win_info:
-            print "Windows build platform: %s" % win_info['platform']
-        print "Tags: %s" % ' '.join(taglist)
+            print("Windows build platform: %s" % win_info['platform'])
+        print("Tags: %s" % ' '.join(taglist))
         if info.get('extra'):
-            print "Extra: %(extra)r" % info
+            print("Extra: %(extra)r" % info)
         archives_seen = {}
         maven_archives = session.listArchives(buildID=info['id'], type='maven')
         if maven_archives:
-            print "Maven archives:"
+            print("Maven archives:")
             for archive in maven_archives:
                 archives_seen.setdefault(archive['id'], 1)
-                print os.path.join(koji.pathinfo.mavenbuild(info), koji.pathinfo.mavenfile(archive))
+                print(os.path.join(koji.pathinfo.mavenbuild(info), koji.pathinfo.mavenfile(archive)))
         win_archives = session.listArchives(buildID=info['id'], type='win')
         if win_archives:
-            print "Windows archives:"
+            print("Windows archives:")
             for archive in win_archives:
                 archives_seen.setdefault(archive['id'], 1)
-                print os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive))
+                print(os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive)))
         rpms = session.listRPMs(buildID=info['id'])
         image_info = session.getImageBuild(info['id'])
         img_archives = session.listArchives(buildID=info['id'], type='image')
         if img_archives:
-            print 'Image archives:'
+            print('Image archives:')
             for archive in img_archives:
                 archives_seen.setdefault(archive['id'], 1)
-                print os.path.join(koji.pathinfo.imagebuild(info), archive['filename'])
+                print(os.path.join(koji.pathinfo.imagebuild(info), archive['filename']))
         archive_idx = {}
         for archive in session.listArchives(buildID=info['id']):
             if archive['id'] in archives_seen:
@@ -3397,18 +3397,18 @@ def anon_handle_buildinfo(options, session, args):
             archive_idx.setdefault(archive['btype'], []).append(archive)
         for btype in archive_idx:
             archives = archive_idx[btype]
-            print '%s Archives:' % btype.capitalize()
+            print('%s Archives:' % btype.capitalize())
             for archive in archives:
-                print os.path.join(koji.pathinfo.typedir(info, btype), archive['filename'])
+                print(os.path.join(koji.pathinfo.typedir(info, btype), archive['filename']))
         if rpms:
-            print "RPMs:"
+            print("RPMs:")
             for rpm in rpms:
-                print os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+                print(os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm)))
         if options.changelog:
             changelog = session.getChangelogEntries(info['id'])
             if changelog:
-                print "Changelog:"
-                print koji.util.formatChangelog(changelog)
+                print("Changelog:")
+                print(koji.util.formatChangelog(changelog))
 
 def handle_clone_tag(options, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
@@ -3788,19 +3788,19 @@ def handle_add_target(options, session, args):
         dest_tag = name
     activate_session(session)
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return 1
 
     chkbuildtag = session.getTag(build_tag)
     chkdesttag = session.getTag(dest_tag)
     if not chkbuildtag:
-        print "Build tag does not exist: %s" % build_tag
+        print("Build tag does not exist: %s" % build_tag)
         return 1
     if not chkbuildtag.get("arches", None):
-        print "Build tag has no arches: %s" % build_tag
+        print("Build tag has no arches: %s" % build_tag)
         return 1
     if not chkdesttag:
-        print "Destination tag does not exist: %s" % dest_tag
+        print("Destination tag does not exist: %s" % dest_tag)
         return 1
 
     session.createBuildTarget(name, build_tag, dest_tag)
@@ -3822,7 +3822,7 @@ def handle_edit_target(options, session, args):
     activate_session(session)
 
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return
 
     targetInfo = session.getBuildTarget(args[0])
@@ -3837,15 +3837,15 @@ def handle_edit_target(options, session, args):
         targetInfo['build_tag_name'] = options.build_tag
         chkbuildtag = session.getTag(options.build_tag)
         if not chkbuildtag:
-            print "Build tag does not exist: %s" % options.build_tag
+            print("Build tag does not exist: %s" % options.build_tag)
             return 1
         if not chkbuildtag.get("arches", None):
-            print "Build tag has no arches: %s" % options.build_tag
+            print("Build tag has no arches: %s" % options.build_tag)
             return 1
     if options.dest_tag:
         chkdesttag = session.getTag(options.dest_tag)
         if not chkdesttag:
-            print "Destination tag does not exist: %s" % options.dest_tag
+            print("Destination tag does not exist: %s" % options.dest_tag)
             return 1
         targetInfo['dest_tag_name'] = options.dest_tag
 
@@ -3864,13 +3864,13 @@ def handle_remove_target(options, session, args):
     activate_session(session)
 
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return
 
     target = args[0]
     target_info = session.getBuildTarget(target)
     if not target_info:
-        print "Build target %s does not exist" % target
+        print("Build target %s does not exist" % target)
         return 1
 
     session.deleteBuildTarget(target_info['id'])
@@ -3888,13 +3888,13 @@ def handle_remove_tag(options, session, args):
     activate_session(session)
 
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return
 
     tag = args[0]
     tag_info = session.getTag(tag)
     if not tag_info:
-        print "Tag %s does not exist" % tag
+        print("Tag %s does not exist" % tag)
         return 1
 
     session.deleteTag(tag_info['id'])
@@ -3914,13 +3914,13 @@ def anon_handle_list_targets(options, session, args):
 
     fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
     if not options.quiet:
-        print "%-30s %-30s %-30s" % ('Name','Buildroot','Destination')
-        print "-" * 93
+        print("%-30s %-30s %-30s" % ('Name','Buildroot','Destination'))
+        print("-" * 93)
     tmp_list = [(x['name'], x) for x in session.getBuildTargets(options.name)]
     tmp_list.sort()
     targets = [x[1] for x in tmp_list]
     for target in targets:
-        print fmt % target
+        print(fmt % target)
     #pprint.pprint(session.getBuildTargets())
 
 def _printInheritance(tags, sibdepths=None, reverse=False):
@@ -3982,7 +3982,7 @@ def anon_handle_list_tag_inheritance(options, session, args):
     event = koji.util.eventFromOpts(session, options)
     if event:
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
     if event:
         tag = session.getTag(args[0], event=event['id'])
     else:
@@ -4065,14 +4065,14 @@ def anon_handle_list_tags(options, session, args):
             if tag['locked'] or tag['perm']:
                 continue
         if not options.verbose:
-            print fmt % tag
+            print(fmt % tag)
         else:
-            print fmt % tag,
+            sys.stdout.write(fmt % tag)
             if tag['locked']:
-                print ' [LOCKED]',
+                sys.stdout.write(' [LOCKED]')
             if tag['perm']:
-                print ' [%(perm)s perm required]' % tag,
-            print ''
+                sys.stdout.write(' [%(perm)s perm required]' % tag)
+            print('')
 
 def anon_handle_list_tag_history(options, session, args):
     "[info] Print a history of tag operations"
@@ -4132,8 +4132,8 @@ def anon_handle_list_tag_history(options, session, args):
         return "%s: %s" % (time_str, fmt % x)
     for event_id, x in timeline:
         if options.debug:
-            print "%r" % x
-        print _histline(event_id, x)
+            print("%r" % x)
+        print(_histline(event_id, x))
 
 def _print_histline(entry, **kwargs):
     options = kwargs['options']
@@ -4152,7 +4152,7 @@ def _print_histline(entry, **kwargs):
         if event_id != other[0]:
             bad_edit = "non-matching"
         if bad_edit:
-            print "Warning: unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit)
+            print("Warning: unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit))
             #we'll simply treat them as separate events
             pprint.pprint(entry)
             pprint.pprint(edit)
@@ -4281,7 +4281,7 @@ def _print_histline(entry, **kwargs):
         parts.append(who % x)
     if create and x['active']:
         parts.append("[still active]")
-    print ' '.join(parts)
+    print(' '.join(parts))
     hidden_fields = ['active', 'create_event', 'revoke_event', 'creator_id', 'revoker_id',
                      'creator_name', 'revoker_name', 'create_ts', 'revoke_ts']
     def get_nkey(key):
@@ -4305,7 +4305,7 @@ def _print_histline(entry, **kwargs):
             nkey = get_nkey(key)
             if nkey in x and nkey in y:
                 continue
-            print "    %s: %s -> %s" % (key, x[key], y[key])
+            print("    %s: %s -> %s" % (key, x[key], y[key]))
     elif create and options.verbose and table != 'tag_listing':
         keys = x.keys()
         keys.sort()
@@ -4326,7 +4326,7 @@ def _print_histline(entry, **kwargs):
                 dkey = key[:-5]
             else:
                 dkey = key
-            print "    %s: %s" % (dkey, x[key])
+            print("    %s: %s" % (dkey, x[key]))
 
 _table_keys = {
     'user_perms' : ['user_id', 'perm_id'],
@@ -4465,7 +4465,7 @@ def anon_handle_list_history(options, session, args):
                 new_timeline.append(entry)
         for entry in new_timeline:
             if options.debug:
-                print "%r" % list(entry)
+                print("%r" % list(entry))
             _print_histline(entry, options=options)
         if not options.watch:
             break
@@ -4670,38 +4670,38 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
 
     owner = session.getUser(info['owner'])['name']
 
-    print "%sTask: %d" % (indent, task_id)
-    print "%sType: %s" % (indent, info['method'])
+    print("%sTask: %d" % (indent, task_id))
+    print("%sType: %s" % (indent, info['method']))
     if verbose:
-        print "%sRequest Parameters:" % indent
+        print("%sRequest Parameters:" % indent)
         for line in _parseTaskParams(session, info['method'], task_id):
-            print "%s  %s" % (indent, line)
-    print "%sOwner: %s" % (indent, owner)
-    print "%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower())
-    print "%sCreated: %s" % (indent, time.asctime(time.localtime(info['create_ts'])))
+            print("%s  %s" % (indent, line))
+    print("%sOwner: %s" % (indent, owner))
+    print("%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower()))
+    print("%sCreated: %s" % (indent, time.asctime(time.localtime(info['create_ts']))))
     if info.get('start_ts'):
-        print "%sStarted: %s" % (indent, time.asctime(time.localtime(info['start_ts'])))
+        print("%sStarted: %s" % (indent, time.asctime(time.localtime(info['start_ts']))))
     if info.get('completion_ts'):
-        print "%sFinished: %s" % (indent, time.asctime(time.localtime(info['completion_ts'])))
+        print("%sFinished: %s" % (indent, time.asctime(time.localtime(info['completion_ts']))))
     if host_info:
-        print "%sHost: %s" % (indent, host_info['name'])
+        print("%sHost: %s" % (indent, host_info['name']))
     if build_info:
-        print "%sBuild: %s (%d)" % (indent, build_info[0]['nvr'], build_info[0]['build_id'])
+        print("%sBuild: %s (%d)" % (indent, build_info[0]['nvr'], build_info[0]['build_id']))
     if buildroot_infos:
-        print "%sBuildroots:" % indent
+        print("%sBuildroots:" % indent)
         for root in buildroot_infos:
-            print "%s  %s/%s-%d-%d/" % (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id'])
+            print("%s  %s/%s-%d-%d/" % (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id']))
     if logs:
-        print "%sLog Files:" % indent
+        print("%sLog Files:" % indent)
         for log in logs:
-            print "%s  %s/%s" % (indent, files_dir, log)
+            print("%s  %s/%s" % (indent, files_dir, log))
     if output:
-        print "%sOutput:" % indent
+        print("%sOutput:" % indent)
         for filename in output:
-            print "%s  %s/%s" % (indent, files_dir, filename)
+            print("%s  %s/%s" % (indent, files_dir, filename))
 
     # white space
-    print
+    print('')
 
     if recurse:
         level += 1
@@ -4745,7 +4745,7 @@ def anon_handle_taginfo(options, session, args):
     event_opts = {}
     if event:
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
         event_opts['event'] = event['id']
     perms = dict([(p['id'], p['name']) for p in session.getAllPerms()])
 
@@ -4753,32 +4753,32 @@ def anon_handle_taginfo(options, session, args):
     for tag in args:
         info = session.getTag(tag, **event_opts)
         if info is None:
-            print "No such tag: %s" % tag
+            print("No such tag: %s" % tag)
             sys.exit(1)
         tags.append(info)
 
     for n, info in enumerate(tags):
         if n > 0:
-            print
-        print "Tag: %(name)s [%(id)d]" %info
-        print "Arches: %(arches)s" %info
+            print('')
+        print("Tag: %(name)s [%(id)d]" %info)
+        print("Arches: %(arches)s" %info)
         group_list = [x['name'] for x in session.getTagGroups(info['id'], **event_opts)]
         group_list.sort()
-        print "Groups: " + ', '.join(group_list)
+        print("Groups: " + ', '.join(group_list))
         if info.get('locked'):
-            print 'LOCKED'
+            print('LOCKED')
         if info.get('perm_id') is not None:
             perm_id = info['perm_id']
-            print "Required permission: %r" % perms.get(perm_id, perm_id)
+            print("Required permission: %r" % perms.get(perm_id, perm_id))
         if session.mavenEnabled():
-            print "Maven support?: %s" % (info['maven_support'] and 'yes' or 'no')
-            print "Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no')
+            print("Maven support?: %s" % (info['maven_support'] and 'yes' or 'no'))
+            print("Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no'))
         if 'extra' in info:
-            print "Tag options:"
+            print("Tag options:")
             keys = info['extra'].keys()
             keys.sort()
             for key in keys:
-                print "  %s : %s" % (key, pprint.pformat(info['extra'][key]))
+                print("  %s : %s" % (key, pprint.pformat(info['extra'][key])))
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
         repos = {}
@@ -4791,25 +4791,25 @@ def anon_handle_taginfo(options, session, args):
                     else:
                         repos[target['build_tag']] = "repo#%(id)i: %(creation_time)s" % repo
         if dest_targets:
-            print "Targets that build into this tag:"
+            print("Targets that build into this tag:")
             for target in dest_targets:
                 if event:
-                    print "  %s (%s)" % (target['name'], target['build_tag_name'])
+                    print("  %s (%s)" % (target['name'], target['build_tag_name']))
                 else:
-                    print "  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']])
+                    print("  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']]))
         if build_targets:
-            print "This tag is a buildroot for one or more targets"
+            print("This tag is a buildroot for one or more targets")
             if not event:
-                print "Current repo: %s" % repos[info['id']]
-            print "Targets that build from this tag:"
+                print("Current repo: %s" % repos[info['id']])
+            print("Targets that build from this tag:")
             for target in build_targets:
-                print "  %s" % target['name']
+                print("  %s" % target['name'])
         external_repos = session.getTagExternalRepos(tag_info=info['id'], **event_opts)
         if external_repos:
-            print "External repos:"
+            print("External repos:")
             for rinfo in external_repos:
-                print "  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo
-        print "Inheritance:"
+                print("  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo)
+        print("Inheritance:")
         for parent in session.getInheritanceData(tag, **event_opts):
             flags = ''
             for code,expr in (
@@ -4822,11 +4822,11 @@ def anon_handle_taginfo(options, session, args):
                 else:
                     flags += '.'
             parent['flags'] = flags
-            print "  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent
+            print("  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent)
             if parent['maxdepth'] is not None:
-                print "    maxdepth: %(maxdepth)s" % parent
+                print("    maxdepth: %(maxdepth)s" % parent)
             if parent['pkg_filter']:
-                print "    package filter: %(pkg_filter)s" % parent
+                print("    package filter: %(pkg_filter)s" % parent)
 
 
 def handle_add_tag(options, session, args):
@@ -4846,7 +4846,7 @@ def handle_add_tag(options, session, args):
         assert False  # pragma: no cover
     activate_session(session)
     if not session.hasPerm('admin'):
-        print "This action requires admin privileges"
+        print("This action requires admin privileges")
         return
     opts = {}
     if options.parent:
@@ -4948,25 +4948,25 @@ def handle_lock_tag(options, session, args):
                     selected.append(tag)
                     break
         if not selected:
-            print _("No tags matched")
+            print(_("No tags matched"))
     else:
         selected = [session.getTag(name) for name in args]
     for tag in selected:
         if options.master:
             #set the master lock
             if tag['locked']:
-                print _("Tag %s: master lock already set") % tag['name']
+                print(_("Tag %s: master lock already set") % tag['name'])
                 continue
             elif options.test:
-                print _("Would have set master lock for: %s") % tag['name']
+                print(_("Would have set master lock for: %s") % tag['name'])
                 continue
             session.editTag2(tag['id'], locked=True)
         else:
             if tag['perm_id'] == perm_id:
-                print _("Tag %s: %s permission already required") % (tag['name'], perm)
+                print(_("Tag %s: %s permission already required") % (tag['name'], perm))
                 continue
             elif options.test:
-                print _("Would have set permission requirement %s for tag %s") % (perm, tag['name'])
+                print(_("Would have set permission requirement %s for tag %s") % (perm, tag['name']))
                 continue
             session.editTag2(tag['id'], perm=perm_id)
 
@@ -4990,7 +4990,7 @@ def handle_unlock_tag(options, session, args):
                     selected.append(tag)
                     break
         if not selected:
-            print _("No tags matched")
+            print(_("No tags matched"))
     else:
         selected = []
         for name in args:
@@ -5007,10 +5007,10 @@ def handle_unlock_tag(options, session, args):
         if tag['perm_id']:
             opts['perm'] = None
         if not opts:
-            print "Tag %(name)s: not locked" % tag
+            print("Tag %(name)s: not locked" % tag)
             continue
         if options.test:
-            print "Tag %s: skipping changes: %r" % (tag['name'], opts)
+            print("Tag %s: skipping changes: %r" % (tag['name'], opts))
         else:
             session.editTag2(tag['id'], locked=False, perm_id=None)
 
@@ -5047,12 +5047,12 @@ def handle_add_tag_inheritance(options, session, args):
     samePriority = [datum for datum in inheritanceData if datum['priority'] == priority]
 
     if sameParents and not options.force:
-        print _("Error: You are attempting to add %s as %s's parent even though it already is %s's parent."
+        print(_("Error: You are attempting to add %s as %s's parent even though it already is %s's parent.")
                     % (parent['name'], tag['name'], tag['name']))
-        print _("Please use --force if this is what you really want to do.")
+        print(_("Please use --force if this is what you really want to do."))
         return
     if samePriority:
-        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name'])
+        print(_("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name']))
         return
 
     new_data = {}
@@ -5112,17 +5112,17 @@ def handle_edit_tag_inheritance(options, session, args):
         data = [datum for datum in data if datum['priority'] == priority]
 
     if len(data) == 0:
-        print _("No inheritance link found to remove.  Please check your arguments")
+        print(_("No inheritance link found to remove.  Please check your arguments"))
         return 1
     elif len(data) > 1:
-        print _("Multiple matches for tag.")
+        print(_("Multiple matches for tag."))
         if not parent:
-            print _("Please specify a parent on the command line.")
+            print(_("Please specify a parent on the command line."))
             return 1
         if not priority:
-            print _("Please specify a priority on the command line.")
+            print(_("Please specify a priority on the command line."))
             return 1
-        print _("Error: Key constraints may be broken.  Exiting.")
+        print(_("Error: Key constraints may be broken.  Exiting."))
         return 1
 
     # len(data) == 1
@@ -5131,7 +5131,7 @@ def handle_edit_tag_inheritance(options, session, args):
     inheritanceData = session.getInheritanceData(tag['id'])
     samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
     if samePriority:
-        print _("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority.") % tag['name']
+        print(_("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority.") % tag['name'])
         return 1
 
     new_data = data.copy()
@@ -5143,7 +5143,7 @@ def handle_edit_tag_inheritance(options, session, args):
         elif options.maxdepth.lower() == "none":
             new_data['maxdepth'] = None
         else:
-            print _("Invalid maxdepth: %s") % options.maxdepth
+            print(_("Invalid maxdepth: %s") % options.maxdepth)
             return 1
     if options.intransitive:
         new_data['intransitive'] = options.intransitive
@@ -5194,17 +5194,17 @@ def handle_remove_tag_inheritance(options, session, args):
         data = [datum for datum in data if datum['priority'] == priority]
 
     if len(data) == 0:
-        print _("No inheritance link found to remove.  Please check your arguments")
+        print(_("No inheritance link found to remove.  Please check your arguments"))
         return
     elif len(data) > 1:
-        print _("Multiple matches for tag.")
+        print(_("Multiple matches for tag."))
         if not parent:
-            print _("Please specify a parent on the command line.")
+            print(_("Please specify a parent on the command line."))
             return
         if not priority:
-            print _("Please specify a priority on the command line.")
+            print(_("Please specify a priority on the command line."))
             return
-        print _("Error: Key constrainsts may be broken.  Exiting.")
+        print(_("Error: Key constrainsts may be broken.  Exiting."))
         return
 
     # len(data) == 1
@@ -5237,9 +5237,9 @@ def anon_handle_show_groups(options, session, args):
     tag = args[0]
     groups = session.getTagGroups(tag)
     if options.comps:
-        print koji.generate_comps(groups, expand_groups=options.expand)
+        print(koji.generate_comps(groups, expand_groups=options.expand))
     elif options.spec:
-        print koji.make_groups_spec(groups,name='buildgroups',buildgroup='build')
+        print(koji.make_groups_spec(groups,name='buildgroups',buildgroup='build'))
     else:
         pprint.pprint(groups)
 
@@ -5270,7 +5270,7 @@ def anon_handle_list_external_repos(options, session, args):
     if event:
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
-        print "Querying at event %(id)i (%(timestr)s)" % event
+        print("Querying at event %(id)i (%(timestr)s)" % event)
     if options.tag:
         format = "tag"
         opts['tag_info'] = options.tag
@@ -5312,10 +5312,10 @@ def anon_handle_list_external_repos(options, session, args):
         header1 = "%-20s %-3s %s" % ("Tag", "Pri", "External repo name")
         header2 = "%s %s %s" % ("-"*20, "-"*3, "-"*25)
     if not options.quiet:
-        print header1
-        print header2
+        print(header1)
+        print(header2)
     for rinfo in data:
-        print format % rinfo
+        print(format % rinfo)
 
 def _pick_external_repo_priority(session, tag):
     """pick priority after current ones, leaving space for later insertions"""
@@ -5361,7 +5361,7 @@ def handle_add_external_repo(options, session, args):
     elif len(args) == 2:
         name, url = args
         rinfo = session.createExternalRepo(name, url)
-        print "Created external repo %(id)i" % rinfo
+        print("Created external repo %(id)i" % rinfo)
     else:
         parser.error(_("Incorrect number of arguments"))
         assert False  # pragma: no cover
@@ -5374,8 +5374,8 @@ def handle_add_external_repo(options, session, args):
                 else:
                     priority = _pick_external_repo_priority(session, tag)
             session.addExternalRepoToTag(tag, rinfo['name'], priority)
-            print "Added external repo %s to tag %s (priority %i)" \
-                    % (rinfo['name'], tag, priority)
+            print("Added external repo %s to tag %s (priority %i)" \
+                    % (rinfo['name'], tag, priority))
 
 def handle_edit_external_repo(options, session, args):
     "[admin] Edit data for an external repo"
@@ -5422,20 +5422,20 @@ def handle_remove_external_repo(options, session, args):
             parser.error(_("Do not specify tags when using --alltags"))
             assert False  # pragma: no cover
         if not current_tags:
-            print _("External repo %s not associated with any tags") % repo
+            print(_("External repo %s not associated with any tags") % repo)
             return 0
         tags = current_tags
     if delete:
         #removing entirely
         if current_tags and not options.force:
-            print _("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags))
-            print _("Use --force to remove anyway")
+            print(_("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags)))
+            print(_("Use --force to remove anyway"))
             return 1
         session.deleteExternalRepo(args[0])
     else:
         for tag in tags:
             if not tag in current_tags:
-                print _("External repo %s not associated with tag %s") % (repo, tag)
+                print(_("External repo %s not associated with tag %s") % (repo, tag))
                 continue
             session.removeExternalRepoFromTag(tag, repo)
 
@@ -5476,7 +5476,7 @@ def handle_spin_livecd(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
-    print 'spin-livecd is deprecated and will be replaced with spin-livemedia'
+    print('spin-livecd is deprecated and will be replaced with spin-livemedia')
     if len(args) != 5:
         parser.error(_("Five arguments are required: a name, a version, an" +
                        " architecture, a build target, and a relative path to" +
@@ -5581,7 +5581,7 @@ def handle_spin_appliance(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
-    print 'spin-appliance is deprecated and will be replaced with image-build'
+    print('spin-appliance is deprecated and will be replaced with image-build')
     if len(args) != 5:
         parser.error(_("Five arguments are required: a name, a version, " +
                        "an architecture, a build target, and a relative path" +
@@ -5664,10 +5664,7 @@ def _build_image_indirection(options, task_opts, session, args):
             missing.append(opt)
 
     if len(missing) > 0:
-        print "Missing the following required options:" ,
-        for opt in missing:
-            print "--" + opt.replace('_','-') ,
-        print
+        print("Missing the following required options: %s" % ' '.join(['--%s' % o.replace('_','-') for o in missing]))
         raise koji.GenericError, _("Missing required options specified above")
 
     activate_session(session)
@@ -5709,7 +5706,7 @@ def _build_image_indirection(options, task_opts, session, args):
         session.uploadWrapper(templatefile, serverdir, callback=callback)
         task_opts.indirection_template = os.path.join('work', serverdir,
             os.path.basename(templatefile))
-        print
+        print('')
 
     hub_opts = { }
     # Just pass everything in as opts.  No posiitonal arguments at all.  Why not?
@@ -5724,8 +5721,8 @@ def _build_image_indirection(options, task_opts, session, args):
                                             priority=priority)
 
     if not options.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     #if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
     #    session.logout()
     #    return watch_tasks(session, [task_id], quiet=options.quiet)
@@ -5904,7 +5901,7 @@ def _build_image(options, task_opts, session, args, img_type):
         serverdir = _unique_path('cli-' + img_type)
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
-        print
+        print('')
 
     hub_opts = {}
     if hasattr(task_opts, 'optional_arches'):
@@ -5924,8 +5921,8 @@ def _build_image(options, task_opts, session, args, img_type):
                                  img_type, opts=hub_opts, priority=priority)
 
     if not options.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
@@ -5977,7 +5974,7 @@ def _build_image_oz(options, task_opts, session, args):
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         task_opts.kickstart = os.path.join('work', serverdir,
             os.path.basename(ksfile))
-        print
+        print('')
 
     hub_opts = {}
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
@@ -5993,8 +5990,8 @@ def _build_image_oz(options, task_opts, session, args):
                                  opts=hub_opts, priority=priority)
 
     if not options.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
@@ -6070,8 +6067,8 @@ def handle_win_build(options, session, args):
         priority = 5
     task_id = session.winBuild(vm_name, scmurl, target, opts, priority=priority)
     if not build_opts.quiet:
-        print "Created task:", task_id
-        print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+        print("Created task: %s %d" % task_id)
+        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet)
@@ -6170,13 +6167,13 @@ def _list_tasks(options, session):
     if options.mine:
         user = session.getLoggedInUser()
         if not user:
-            print "Unable to determine user"
+            print("Unable to determine user")
             sys.exit(1)
         callopts['owner'] = user['id']
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            print "No such user: %s" % options.user
+            print("No such user: %s" % options.user)
             sys.exit(1)
         callopts['owner'] = user['id']
     if options.arch:
@@ -6186,13 +6183,13 @@ def _list_tasks(options, session):
     if options.channel:
         chan = session.getChannel(options.channel)
         if not chan:
-            print "No such channel: %s" % options.channel
+            print("No such channel: %s" % options.channel)
             sys.exit(1)
         callopts['channel_id'] = chan['id']
     if options.host:
         host = session.getHost(options.host)
         if not host:
-            print "No such host: %s" % options.host
+            print("No such host: %s" % options.host)
             sys.exit(1)
         callopts['host_id'] = host['id']
 
@@ -6232,7 +6229,7 @@ def handle_list_tasks(options, session, args):
     activate_session(session)
     tasklist = _list_tasks(options, session)
     if not tasklist:
-        print "(no tasks)"
+        print("(no tasks)")
         return
     if not options.quiet:
         print_task_headers()
@@ -6297,42 +6294,42 @@ def handle_set_pkg_owner_global(options, session, args):
     packages = args[1:]
     user = session.getUser(owner)
     if not user:
-        print "No such user: %s" % owner
+        print("No such user: %s" % owner)
         return 1
     opts = {'with_dups' : True}
     old_user = None
     if options.old_user:
         old_user = session.getUser(options.old_user)
         if not old_user:
-            print "No such user: %s" % options.old_user
+            print("No such user: %s" % options.old_user)
             return 1
         opts['userID'] = old_user['id']
     to_change = []
     for package in packages:
         entries = session.listPackages(pkgID=package, **opts)
         if not entries:
-            print "No data for package %s" % package
+            print("No data for package %s" % package)
             continue
         to_change.extend(entries)
     if not packages and options.old_user:
         entries = session.listPackages(**opts)
         if not entries:
-            print "No data for user %s" % old_user['name']
+            print("No data for user %s" % old_user['name'])
             return 1
         to_change.extend(entries)
     for entry in to_change:
         if user['id'] == entry['owner_id']:
             if options.verbose:
-                print "Preserving owner=%s for package %s in tag %s" \
-                        % (user['name'], package,  entry['tag_name'] )
+                print("Preserving owner=%s for package %s in tag %s" \
+                        % (user['name'], package,  entry['tag_name']))
         else:
             if options.test:
-                print "Would have changed owner for %s in tag %s: %s -> %s" \
-                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name'])
+                print("Would have changed owner for %s in tag %s: %s -> %s" \
+                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
                 continue
             if options.verbose:
-                print "Changing owner for %s in tag %s: %s -> %s" \
-                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name'])
+                print("Changing owner for %s in tag %s: %s -> %s" \
+                        % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
             session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 
 def anon_handle_watch_task(options, session, args):
@@ -6362,7 +6359,7 @@ def anon_handle_watch_task(options, session, args):
     if selection:
         tasks = [task['id'] for task in _list_tasks(options, session)]
         if not tasks:
-            print "(no tasks)"
+            print("(no tasks)")
             return
     else:
         tasks = []
@@ -6416,7 +6413,7 @@ def handle_make_task(opts, session, args):
     task_id = session.makeTask(method=args[0],
                                arglist=map(arg_filter,args[1:]),
                                **taskopts)
-    print "Created task id %d" % task_id
+    print("Created task id %d" % task_id)
     if _running_in_bg() or not options.watch:
         return
     else:
@@ -6440,7 +6437,7 @@ def handle_tag_build(opts, session, args):
         task_id = session.tagBuild(args[0], pkg, force=options.force)
         #XXX - wait on task
         tasks.append(task_id)
-        print "Created task %s" % task_id
+        print("Created task %d" % task_id)
     if _running_in_bg() or options.nowait:
         return
     else:
@@ -6470,7 +6467,7 @@ def handle_move_build(opts, session, args):
         for arg in args[2:]:
             pkg = session.getPackage(arg)
             if not pkg:
-                print _("Invalid package name %s, skipping." % arg)
+                print(_("Invalid package name %s, skipping." % arg))
                 continue
             tasklist = session.moveAllBuilds(args[0], args[1], arg, options.force)
             tasks.extend(tasklist)
@@ -6478,7 +6475,7 @@ def handle_move_build(opts, session, args):
         for arg in args[2:]:
             build = session.getBuild(arg)
             if not build:
-                print _("Invalid build %s, skipping." % arg)
+                print(_("Invalid build %s, skipping." % arg))
                 continue
             if not build in builds:
                 builds.append(build)
@@ -6486,7 +6483,7 @@ def handle_move_build(opts, session, args):
         for build in builds:
             task_id = session.moveBuild(args[0], args[1], build['id'], options.force)
             tasks.append(task_id)
-            print "Created task %s, moving %s" % (task_id, koji.buildLabel(build))
+            print("Created task %d, moving %s" % (task_id, koji.buildLabel(build)))
     if _running_in_bg() or options.nowait:
         return
     else:
@@ -6533,7 +6530,7 @@ def handle_untag_build(options, session, args):
             if not seen_pkg.has_key(binfo['name']):
                 #latest for this package
                 if options.verbose:
-                    print _("Leaving latest build for package %(name)s: %(nvr)s") % binfo
+                    print(_("Leaving latest build for package %(name)s: %(nvr)s") % binfo)
             else:
                 builds.append(binfo)
             seen_pkg[binfo['name']] = 1
@@ -6549,18 +6546,18 @@ def handle_untag_build(options, session, args):
                 # not in tag, see if it even exists
                 binfo = session.getBuild(nvr)
                 if not binfo:
-                    print _("No such build: %s") % nvr
+                    print(_("No such build: %s") % nvr)
                 else:
-                    print _("Build %s not in tag %s") % (nvr, tag['name'])
+                    print(_("Build %s not in tag %s") % (nvr, tag['name']))
                 if not options.force:
                     return 1
     builds.reverse()
     for binfo in builds:
         if options.test:
-            print _("would have untagged %(nvr)s") % binfo
+            print(_("would have untagged %(nvr)s") % binfo)
         else:
             if options.verbose:
-                print _("untagging %(nvr)s") % binfo
+                print(_("untagging %(nvr)s") % binfo)
             session.untagBuild(tag['name'], binfo['nvr'], force=options.force)
 
 def handle_unblock_pkg(options, session, args):
@@ -6608,13 +6605,13 @@ def anon_handle_download_build(options, session, args):
 
     if build.isdigit():
         if suboptions.latestfrom:
-            print "--latestfrom not compatible with build IDs, specify a package name."
+            print("--latestfrom not compatible with build IDs, specify a package name.")
             return 1
         build = int(build)
         if suboptions.task_id:
             builds = session.listBuilds(taskID=build)
             if not builds:
-                print "No associated builds for task %s" % build
+                print("No associated builds for task %s" % build)
                 return 1
             build = builds[0]['build_id']
 
@@ -6623,16 +6620,16 @@ def anon_handle_download_build(options, session, args):
         try:
             builds = session.listTagged(suboptions.latestfrom, latest=True, package=build, type=suboptions.type)
         except koji.GenericError, data:
-            print "Error finding latest build: %s" % data
+            print("Error finding latest build: %s" % data)
             return 1
         if not builds:
-            print "%s has no builds of %s" % (suboptions.latestfrom, build)
+            print("%s has no builds of %s" % (suboptions.latestfrom, build))
             return 1
         info = builds[0]
     elif suboptions.rpm:
         rpminfo = session.getRPM(build)
         if rpminfo is None:
-            print "No such rpm: %s" % build
+            print("No such rpm: %s" % build)
             return 1
         info = session.getBuild(rpminfo['build_id'])
     else:
@@ -6646,11 +6643,11 @@ def anon_handle_download_build(options, session, args):
         info = session.getBuild(build)
 
     if info is None:
-        print "No such build: %s" % build
+        print("No such build: %s" % build)
         return 1
 
     if not suboptions.topurl:
-        print "You must specify --topurl to download files"
+        print("You must specify --topurl to download files")
         return 1
     pathinfo = koji.PathInfo(topdir=suboptions.topurl)
 
@@ -6658,7 +6655,7 @@ def anon_handle_download_build(options, session, args):
     if suboptions.type:
         archives = session.listArchives(buildID=info['id'], type=suboptions.type)
         if not archives:
-            print "No %s archives available for %s" % (suboptions.type, koji.buildLabel(info))
+            print("No %s archives available for %s" % (suboptions.type, koji.buildLabel(info)))
             return 1
         if suboptions.type == 'maven':
             for archive in archives:
@@ -6670,7 +6667,7 @@ def anon_handle_download_build(options, session, args):
                 urls.append((url, pathinfo.winfile(archive)))
         elif suboptions.type == 'image':
             if not suboptions.topurl:
-                print "You must specify --topurl to download images"
+                print("You must specify --topurl to download images")
                 return 1
             pi = koji.PathInfo(topdir=suboptions.topurl)
             for archive in archives:
@@ -6689,9 +6686,9 @@ def anon_handle_download_build(options, session, args):
             rpms = session.listRPMs(buildID=info['id'], arches=arches)
         if not rpms:
             if arches:
-                print "No %s packages available for %s" % (" or ".join(arches), koji.buildLabel(info))
+                print("No %s packages available for %s" % (" or ".join(arches), koji.buildLabel(info)))
             else:
-                print "No packages available for %s" % koji.buildLabel(info)
+                print("No packages available for %s" % koji.buildLabel(info))
             return 1
         for rpm in rpms:
             if not suboptions.debuginfo and koji.is_debuginfo(rpm['name']):
@@ -6902,7 +6899,7 @@ def anon_handle_download_task(options, session, args):
     number = 0
     for (task, filename, new_filename) in downloads:
         number += 1
-        print _("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename)
+        print(_("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename))
         output_file = open(new_filename, "wb")
         output_file.write(session.downloadTaskOutput(task["id"], filename))
         output_file.close()
@@ -6941,13 +6938,13 @@ def anon_handle_wait_repo(options, session, args):
             parser.error("Invalid tag: %s" % tag)
         targets = session.getBuildTargets(buildTagID=tag_info['id'])
         if not targets:
-            print "%(name)s is not a build tag for any target" % tag_info
+            print("%(name)s is not a build tag for any target" % tag_info)
             targets = session.getBuildTargets(destTagID=tag_info['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
                 maybe = maybe.keys()
                 maybe.sort()
-                print "Suggested tags: %s" % ', '.join(maybe)
+                print("Suggested tags: %s" % ', '.join(maybe))
             return 1
         tag_id = tag_info['id']
 
@@ -6955,11 +6952,11 @@ def anon_handle_wait_repo(options, session, args):
     for nvr in builds:
         data = session.getLatestBuilds(tag_id, package=nvr["name"])
         if len(data) == 0:
-            print "Warning: package %s is not in tag %s" % (nvr["name"], tag)
+            print("Warning: package %s is not in tag %s" % (nvr["name"], tag))
         else:
             present_nvr = [x["nvr"] for x in data][0]
             if present_nvr != "%s-%s-%s" % (nvr["name"], nvr["version"], nvr["release"]):
-                print "Warning: nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" % (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr)
+                print("Warning: nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" % (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
 
     last_repo = None
     repo = session.getRepo(tag_id)
@@ -6968,15 +6965,15 @@ def anon_handle_wait_repo(options, session, args):
         if builds and repo and repo != last_repo:
             if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event'], latest=True):
                 if not suboptions.quiet:
-                    print "Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                    print("Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
                 return
 
         if (time.time() - start) >= (suboptions.timeout * 60.0):
             if not suboptions.quiet:
                 if builds:
-                    print "Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag)
+                    print("Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
                 else:
-                    print "Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+                    print("Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
             return 1
 
         time.sleep(60)
@@ -6986,7 +6983,7 @@ def anon_handle_wait_repo(options, session, args):
         if not builds:
             if repo != last_repo:
                 if not suboptions.quiet:
-                    print "Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag)
+                    print("Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
                 return
 
 _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'maven', 'win')
@@ -7028,17 +7025,17 @@ def handle_regen_repo(options, session, args):
         tag = info['name']
         targets = session.getBuildTargets(buildTagID=info['id'])
         if not targets:
-            print "Warning: %s is not a build tag" % tag
+            print("Warning: %s is not a build tag" % tag)
     if not info['arches']:
-        print "Warning: tag %s has an empty arch list" % info['name']
+        print("Warning: tag %s has an empty arch list" % info['name'])
     if suboptions.debuginfo:
         repo_opts['debuginfo'] = True
     if suboptions.source:
         repo_opts['src'] = True
     task_id = session.newRepo(tag, **repo_opts)
-    print "Regenerating repo for tag: %s" % tag
-    print "Created task:", task_id
-    print "Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id)
+    print("Regenerating repo for tag: %s" % tag)
+    print("Created task: %d" % task_id)
+    print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if _running_in_bg() or suboptions.nowait:
         return
     else:
@@ -7068,7 +7065,7 @@ def anon_handle_search(options, session, args):
         matchType = 'exact'
     data = session.search(pattern, type, matchType)
     for row in data:
-        print row['name']
+        print(row['name'])
 
 def handle_moshimoshi(options, session, args):
     "[misc] Introduce yourself"
@@ -7081,20 +7078,20 @@ def handle_moshimoshi(options, session, args):
     activate_session(session)
     u = session.getLoggedInUser()
     if not u:
-        print "Not authenticated"
+        print("Not authenticated")
         u = {'name' : 'anonymous user'}
-    print "%s, %s!" % (random.choice(greetings).encode('utf-8'), u["name"],)
-    print ""
-    print "You are using the hub at %s" % (session.baseurl,)
+    print("%s, %s!" % (random.choice(greetings).encode('utf-8'), u["name"]))
+    print("")
+    print("You are using the hub at %s" % session.baseurl)
     authtype = u.get('authtype', getattr(session, 'authtype', None))
     if authtype == koji.AUTHTYPE_NORMAL:
-        print "Authenticated via password"
+        print("Authenticated via password")
     elif authtype == koji.AUTHTYPE_GSSAPI:
-        print "Authenticated via GSSAPI"
+        print("Authenticated via GSSAPI")
     elif authtype == koji.AUTHTYPE_KERB:
-        print "Authenticated via Kerberos principal %s" % u["krb_principal"]
+        print("Authenticated via Kerberos principal %s" % u["krb_principal"])
     elif authtype == koji.AUTHTYPE_SSL:
-        print "Authenticated via client certificate %s" % options.cert
+        print("Authenticated via client certificate %s" % options.cert)
 
 def handle_runroot(options, session, args):
     "[admin] Run a command in a buildroot"
@@ -7143,11 +7140,11 @@ def handle_runroot(options, session, args):
         task_id = session.runroot(tag, arch, command, **kwargs)
     except koji.GenericError, e:
         if 'Invalid method' in str(e):
-            print "* The runroot plugin appears to not be installed on the",
-            print "koji hub.  Please contact the administrator."
+            print("* The runroot plugin appears to not be installed on the"
+                  " koji hub.  Please contact the administrator.")
         raise
     if opts.task_id:
-        print task_id
+        print(task_id)
 
     try:
         while True:
@@ -7157,7 +7154,7 @@ def handle_runroot(options, session, args):
             time.sleep(options.poll_interval)
     except KeyboardInterrupt:
         # this is probably the right thing to do here
-        print "User interrupt: canceling runroot task"
+        print("User interrupt: canceling runroot task")
         session.cancelTask(task_id)
         return
     output = None
@@ -7190,7 +7187,7 @@ def handle_help(options, session, args):
     avail = set(categories.keys() + ['all'])
     unavail = chosen - avail
     for arg in unavail:
-        print "No such help category: %s" % arg
+        print("No such help category: %s" % arg)
 
     if not chosen:
         list_commands()
@@ -7216,16 +7213,16 @@ def list_commands(categories_chosen=None):
             alias = alias.replace('_','-')
             handlers.append((alias,value))
     handlers.sort()
-    print _("Available commands:")
+    print(_("Available commands:"))
     for category in categories_chosen:
-        print _("\n%s:" % categories[category])
+        print(_("\n%s:" % categories[category]))
         for alias,handler in handlers:
             desc = handler.__doc__
             if desc.startswith('[%s] ' % category):
                 desc = desc[len('[%s] ' % category):]
             elif category != 'misc' or desc.startswith('['):
                 continue
-            print "        %-25s %s" % (alias, desc)
+            print("        %-25s %s" % (alias, desc))
 
     print("%s" % get_epilog_str().rstrip("\n"))
 
@@ -7279,7 +7276,7 @@ def activate_session(session):
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:
-        print "successfully connected to hub"
+        print("successfully connected to hub")
 
 if __name__ == "__main__":
     global options
@@ -7314,7 +7311,7 @@ if __name__ == "__main__":
         else:
             exctype, value = sys.exc_info()[:2]
             rv = 1
-            print "%s: %s" % (exctype.__name__, value)
+            print("%s: %s" % (exctype.__name__, value))
     try:
         session.logout()
     except:

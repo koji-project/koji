@@ -66,7 +66,7 @@ def _(args):
 
 def log(str):
     global logfile
-    print "%s" % str
+    print("%s" % str)
     if logfile is not None:
         os.write(logfile, "%s\n" % str)
 
@@ -519,7 +519,7 @@ class TrackedBuild(object):
             unpack.append(('br_info', br_id))
             #tags.setdefault(br_info['tag_name'], 0)
             #tags[br_info['tag_name']] += 1
-            #print "."
+            #print(".")
             remote.listRPMs(componentBuildrootID=br_id)
             unpack.append(('rpmlist', br_id))
             #for rinfo in remote.listRPMs(componentBuildrootID=br_id):

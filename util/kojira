@@ -823,7 +823,7 @@ if  __name__ == "__main__":
     if not session.logged_in:
         quit("Error: Unknown login error")
     if not session.logged_in:
-        print "Error: unable to log in"
+        print("Error: unable to log in")
         sys.exit(1)
     if options.skip_main:
         sys.exit()

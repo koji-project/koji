@@ -630,7 +630,10 @@ Here are some guidelines on producing preferable pull requests.
    While much of the older code in Koji does not, we try to stick to it
    with new code
 -  Please maintain backward-compatibility up to RHEL 5 (which means
-   Python 2.4)
+   Python 2.4). On the other hand we are looking to migration to python 3, so
+   please use compatible constructs such as:
+
+   -  Use ``print()`` function, not ``print`` statement
 - Check, that unit tests are not broken. Simply run ``make test`` in main
   directory of your branch.
 

@@ -612,19 +612,19 @@ class RawHeader(object):
                 ofs = 16 + i*16 + j*4
                 data = [ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
-            #print "Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry)
+            #print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
             index[entry[0]] = entry
         self.datalen = dl
         self.index = index
 
     def dump(self):
-        print "HEADER DUMP:"
+        print("HEADER DUMP:")
         #calculate start of store
         il = len(self.index)
         store = 16 + il * 16
-        #print "start is: %d" % start
-        #print "index length: %d" % il
-        print "Store at offset %d (%0x)" % (store, store)
+        #print("start is: %d" % start)
+        #print("index length: %d" % il)
+        print("Store at offset %d (%0x)" % (store, store))
         #sort entries by offset, dtype
         #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = [(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()]
@@ -641,21 +641,21 @@ class RawHeader(object):
             pos = store + offset
             if next is not None:
                 if pos > next:
-                    print "** HOLE between entries"
-                    print "Hex: %s" % hex_string(self.header[next:pos])
-                    print "Data: %r" % self.header[next:pos]
+                    print("** HOLE between entries")
+                    print("Hex: %s" % hex_string(self.header[next:pos]))
+                    print("Data: %r" % self.header[next:pos])
                 elif pos < next:
-                    print "** OVERLAPPING entries"
-            print "Tag: %d [%s], Type: %d, Offset: %x, Count: %d" \
-                    % (tag, tags.get(tag, '?'), dtype, offset, count)
+                    print("** OVERLAPPING entries")
+            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d" \
+                    % (tag, tags.get(tag, '?'), dtype, offset, count))
             if dtype == 0:
                 #null
-                print "[NULL entry]"
+                print("[NULL entry]")
                 next = pos
             elif dtype == 1:
                 #char
                 for i in xrange(count):
-                    print "Char: %r" % self.header[pos]
+                    print("Char: %r" % self.header[pos])
                     pos += 1
                 next = pos
             elif dtype >= 2 and dtype <= 5:
@@ -663,44 +663,44 @@ class RawHeader(object):
                 n = 1 << (dtype - 2)
                 for i in xrange(count):
                     data = [ord(x) for x in self.header[pos:pos+n]]
-                    print "%r" % data
+                    print("%r" % data)
                     num = multibyte(data)
-                    print "Int(%d): %d" % (n, num)
+                    print("Int(%d): %d" % (n, num))
                     pos += n
                 next = pos
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find('\0', pos)
-                print "String(%d): %r" % (end-pos, self.header[pos:end])
+                print("String(%d): %r" % (end-pos, self.header[pos:end]))
                 next = end + 1
             elif dtype == 7:
-                print "Data: %s" % hex_string(self.header[pos:pos+count])
+                print("Data: %s" % hex_string(self.header[pos:pos+count]))
                 next = pos+count
             elif dtype == 8:
                 # string array
                 for i in xrange(count):
                     end = self.header.find('\0', pos)
-                    print "String(%d): %r" % (end-pos, self.header[pos:end])
+                    print("String(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
                 for i in xrange(count):
                     end = self.header.find('\0', pos)
-                    print "i18n(%d): %r" % (end-pos, self.header[pos:end])
+                    print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             else:
-                print "Skipping data type %x" % dtype
+                print("Skipping data type %x" % dtype)
                 next = None
         if next is not None:
             pos = store + self.datalen
             if next < pos:
-                print "** HOLE at end of data block"
-                print "Hex: %s" % hex_string(self.header[next:pos])
-                print "Data: %r" % self.header[next:pos]
+                print("** HOLE at end of data block")
+                print("Hex: %s" % hex_string(self.header[next:pos]))
+                print("Data: %r" % self.header[next:pos])
             elif pos > next:
-                print "** OVERFLOW in data block"
+                print("** OVERFLOW in data block")
 
     def __getitem__(self, key):
         tag, dtype, offset, count = self.index[key]
@@ -2306,12 +2306,12 @@ class ClientSession(object):
         if timeout:
             callopts['timeout'] = timeout
         if self.opts.get('debug_xmlrpc', False):
-            print "url: %s" % handler
+            print("url: %s" % handler)
             for _key in callopts:
                 _val = callopts[_key]
                 if _key == 'data' and len(_val) > 1024:
                     _val = _val[:1024] + '...'
-                print "%s: %r" % (_key, _val)
+                print("%s: %r" % (_key, _val))
         catcher = None
         if hasattr(warnings, 'catch_warnings'):
             # TODO: convert to a with statement when we drop 2.4.3 support
@@ -2335,7 +2335,7 @@ class ClientSession(object):
         p, u = xmlrpclib.getparser()
         for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
-                print "body: %r" % chunk
+                print("body: %r" % chunk)
             p.feed(chunk)
         p.close()
         result = u.close()

@@ -212,12 +212,12 @@ class Rpmdiff:
         return result
 
 def _usage(exit=1):
-    print "Usage: %s [<options>] <old package> <new package>" % sys.argv[0]
-    print "Options:"
-    print "  -h, --help            Output this message and exit"
-    print "  -i, --ignore          Tag to ignore when calculating differences"
-    print "                          (may be used multiple times)"
-    print "                        Valid values are: SM5DNLVUGFT"
+    print("Usage: %s [<options>] <old package> <new package>" % sys.argv[0])
+    print("Options:")
+    print("  -h, --help            Output this message and exit")
+    print("  -i, --ignore          Tag to ignore when calculating differences")
+    print("                          (may be used multiple times)")
+    print("                        Valid values are: SM5DNLVUGFT")
     sys.exit(exit)
 
 def main():
@@ -226,7 +226,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
     except getopt.GetoptError, e:
-        print "Error: %s" % e
+        print("Error: %s" % e)
         _usage()
 
     for option, argument in opts:
@@ -239,7 +239,7 @@ def main():
         _usage()
 
     d = Rpmdiff(args[0], args[1], ignore=ignore_tags)
-    print d.textdiff()
+    print(d.textdiff())
     sys.exit(int(d.differs()))
 
 if __name__ == '__main__':

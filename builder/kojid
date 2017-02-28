@@ -432,8 +432,8 @@ class BuildRoot(object):
                 os.execvp(cmd[0],cmd)
             except:
                 #diediedie
-                print "Failed to exec mock"
-                print ''.join(traceback.format_exception(*sys.exc_info()))
+                print("Failed to exec mock")
+                print(''.join(traceback.format_exception(*sys.exc_info())))
                 os._exit(1)
 
     def getUploadPath(self):

@@ -12338,24 +12338,24 @@ def handle_upload(environ):
 
 if __name__ == "__main__":
     # XXX - testing defaults
-    print "Connecting to DB"
+    print("Connecting to DB")
     koji.db.setDBopts(database="test", user="test")
     context.cnx = koji.db.connect()
     context.req = {}
-    print "Creating a session"
+    print("Creating a session")
     context.session = koji.auth.Session(None, hostip="127.0.0.1")
-    print context.session
+    print(context.session)
     test_user = "host/1"
     pw = "foobar"
-    print "Logging in as %s" % test_user
+    print("Logging in as %s" % test_user)
     session_info = context.session.login(test_user, pw, {'hostip':'127.0.0.1'})
     for k in session_info.keys():
         session_info[k] = [session_info[k]]
     s2 = koji.auth.Session(session_info, '127.0.0.1')
-    print s2
-    print s2.getHostId()
+    print(s2)
+    print(s2.getHostId())
     context.session = s2
-    print "Associating host"
+    print("Associating host")
     Host()
     #context.cnx.commit()
     context.session.perms['admin'] = 1 #XXX

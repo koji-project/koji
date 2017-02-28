@@ -123,7 +123,7 @@ def get_options():
         if not os.access(cf, os.F_OK):
             cf = None
     if not cf:
-        print "no config file"
+        print("no config file")
         config = None
     else:
         config.read(cf)
@@ -160,7 +160,7 @@ def get_options():
                 alias = ('main', name)
             if config.has_option(*alias):
                 if options.debug:
-                    print "Using option %s from config file" % (alias,)
+                    print("Using option %s from config file" % (alias,))
                 if type == 'integer':
                     setattr(defaults, name, config.getint(*alias))
                 elif type == 'boolean':
@@ -197,7 +197,7 @@ def get_options():
                     continue
                 options.key_aliases[parts[0].upper()] = parts[1]
     except ValueError, e:
-        print e
+        print(e)
         parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
 
     #parse time intervals
@@ -207,7 +207,7 @@ def get_options():
             value = parse_duration(value)
             setattr(options, key, value)
             if options.debug:
-                print "%s: %s seconds" % (key, value)
+                print("%s: %s seconds" % (key, value))
         except ValueError:
             parser.error(_("Invalid time interval: %s") % value)
 
@@ -379,13 +379,13 @@ def activate_session(session):
         error(_("Error: unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:
-        print "successfully connected to hub"
+        print("successfully connected to hub")
 
 def send_warning_notice(owner_name, builds):
     if not options.mail:
         return
     if not builds:
-        print "Warning: empty build list. No notice sent"
+        print("Warning: empty build list. No notice sent")
         return
     head = """\
 The following build(s) are unreferenced and have been marked for
@@ -413,18 +413,18 @@ refer to the document linked above for instructions."""
     msg['X-Koji-Builder'] = owner_name
     if options.test:
         if options.debug:
-            print str(msg)
+            print(str(msg))
         else:
-            print "Would have sent warning notice to %s" % msg['To']
+            print("Would have sent warning notice to %s" % msg['To'])
     else:
         if options.debug:
-            print "Sending warning notice to %s" % msg['To']
+            print("Sending warning notice to %s" % msg['To'])
         try:
             s = smtplib.SMTP(options.smtp_host)
             s.sendmail(msg['From'], msg['To'], msg.as_string())
             s.quit()
         except:
-            print "FAILED: Sending warning notice to %s" % msg['To']
+            print("FAILED: Sending warning notice to %s" % msg['To'])
 
 
 def main(args):
@@ -434,9 +434,9 @@ def main(args):
 
 
 def handle_trash():
-    print "Getting untagged builds..."
+    print("Getting untagged builds...")
     untagged = session.untaggedBuilds()
-    print "...got %i builds" % len(untagged)
+    print("...got %i builds" % len(untagged))
     min_age = options.delay
     trashcan_tag = options.trashcan_tag
     #Step 1: place unreferenced builds into trashcan
@@ -448,27 +448,27 @@ def handle_trash():
         nvr = "%(name)s-%(version)s-%(release)s" % binfo
         if not check_package(binfo['name']):
             if options.debug:
-                print "[%i/%i] Skipping package: %s" % (i, N, nvr)
+                print("[%i/%i] Skipping package: %s" % (i, N, nvr))
             continue
         try:
             refs = session.buildReferences(binfo['id'], limit=10)
         except xmlrpclib.Fault:
-            print "[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr)
+            print("[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr))
             continue
         #XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
         if refs['tags']:
             # must have been tagged just now
-            print "[%i/%i] Build is tagged [?]: %s" % (i, N, nvr)
+            print("[%i/%i] Build is tagged [?]: %s" % (i, N, nvr))
             continue
         if refs['rpms']:
             if options.debug:
-                print "[%i/%i] Build has %i rpm references: %s" % (i, N, len(refs['rpms']), nvr)
+                print("[%i/%i] Build has %i rpm references: %s" % (i, N, len(refs['rpms']), nvr))
                 #pprint.pprint(refs['rpms'])
             continue
         if refs['archives']:
             if options.debug:
-                print "[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr)
+                print("[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr))
                 #pprint.pprint(refs['archives'])
             continue
         ts = refs['last_used']
@@ -478,8 +478,8 @@ def handle_trash():
                 ts = ts[0]
             #XXX - should really check time server side
             if options.debug:
-                print "[%i/%i] Build has been used in a buildroot: %s" % (i, N, nvr)
-                print "Last_used: %r" % ts
+                print("[%i/%i] Build has been used in a buildroot: %s" % (i, N, nvr))
+                print("Last_used: %r" % ts)
             age = time.time() - ts
             if age < min_age:
                 continue
@@ -506,26 +506,26 @@ def handle_trash():
             last = max(history)[1]
             if not last['revoke_event']:
                 #this might happen if the build was tagged just now
-                print "[%i/%i] Warning: build not untagged: %s" % (i, N, nvr)
+                print("[%i/%i] Warning: build not untagged: %s" % (i, N, nvr))
                 continue
             age = time.time() - last['revoke_ts']
         if age is not None and age < min_age:
             if options.debug:
-                print "[%i/%i] Build untagged only recently: %s" % (i, N, nvr)
+                print("[%i/%i] Build untagged only recently: %s" % (i, N, nvr))
             continue
         #check build signatures
         keys = get_build_sigs(binfo['id'], cache=True)
         if keys and options.debug:
-            print "Build: %s, Keys: %s" % (nvr, keys)
+            print("Build: %s, Keys: %s" % (nvr, keys))
         if protected_sig(keys):
-            print "Skipping build %s. Keys: %s" % (nvr, keys)
+            print("Skipping build %s. Keys: %s" % (nvr, keys))
             continue
 
         #ok, go ahead add it to the list
         if binfo2 is None:
             binfo2 = session.getBuild(binfo['id'])
         binfo2['nvr'] = nvr
-        print "[%i/%i] Adding build to trash list: %s" % (i, N, nvr)
+        print("[%i/%i] Adding build to trash list: %s" % (i, N, nvr))
         to_trash.append(binfo2)
 
     #process to_trash
@@ -541,17 +541,17 @@ def handle_trash():
         send_warning_notice(owner_name, [x[1] for x in builds])
         for nvr, binfo in builds:
             if options.test:
-                print "Would have moved to trashcan: %s" % nvr
+                print("Would have moved to trashcan: %s" % nvr)
             else:
                 if options.debug:
-                    print "Moving to trashcan: %s" % nvr
+                    print("Moving to trashcan: %s" % nvr)
                 #figure out package owner
                 count = {}
                 for pkg in session.listPackages(pkgID=binfo['name']):
                     count.setdefault(pkg['owner_id'], 0)
                     count[pkg['owner_id']] += 1
                 if not count:
-                    print "Warning: no owner for %s, using build owner" % nvr
+                    print("Warning: no owner for %s, using build owner" % nvr)
                     #best we can do currently
                     owner = binfo['owner_id']
                 else:
@@ -587,10 +587,10 @@ def handle_salvage():
 def salvage_build(binfo):
     """Removes trashcan tag from a build and prints a message"""
     if options.test:
-        print "Would have untagged from trashcan: %(nvr)s" % binfo
+        print("Would have untagged from trashcan: %(nvr)s" % binfo)
     else:
         if options.debug:
-            print "Untagging from trashcan: %(nvr)s" % binfo
+            print("Untagging from trashcan: %(nvr)s" % binfo)
         session.untagBuildBypass(options.trashcan_tag, binfo['id'], force=True)
 
 def handle_delete(just_salvage=False):
@@ -600,30 +600,30 @@ def handle_delete(just_salvage=False):
     reclaims referenced builds from the trashcan, it does not perform any
     deletes
     """
-    print "Getting list of builds in trash..."
+    print("Getting list of builds in trash...")
     trashcan_tag = options.trashcan_tag
     trash = [(b['nvr'], b) for b in session.listTagged(trashcan_tag)]
     trash.sort()
-    print "...got %i builds" % len(trash)
+    print("...got %i builds" % len(trash))
     #XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
     for nvr, binfo in trash:
         # see if build has been tagged elsewhere
         if not check_package(binfo['name']):
             if options.debug:
-                print "Skipping package: %s" % nvr
+                print("Skipping package: %s" % nvr)
             continue
         tags = [t['name'] for t in session.listTags(build=binfo['id']) if t['name'] != trashcan_tag]
         if tags:
-            print "Build %s tagged elsewhere: %s" % (nvr, tags)
+            print("Build %s tagged elsewhere: %s" % (nvr, tags))
             salvage_build(binfo)
             continue
         #check build signatures
         keys = get_build_sigs(binfo['id'], cache=False)
         if keys and options.debug:
-            print "Build: %s, Keys: %s" % (nvr, keys)
+            print("Build: %s, Keys: %s" % (nvr, keys))
         if protected_sig(keys):
-            print "Salvaging signed build %s. Keys: %s" % (nvr, keys)
+            print("Salvaging signed build %s. Keys: %s" % (nvr, keys))
             salvage_build(binfo)
             continue
         if just_salvage:
@@ -634,7 +634,7 @@ def handle_delete(just_salvage=False):
         current = [x for x in history if x['active']]
         if not current:
             #untagged just now?
-            print "Warning: history missing for %s" % nvr
+            print("Warning: history missing for %s" % nvr)
             pprint.pprint(binfo)
             pprint.pprint(history)
             continue
@@ -643,19 +643,19 @@ def handle_delete(just_salvage=False):
         age = time.time() - current['create_ts']
         if age < grace_period:
             if options.debug:
-                print "Skipping build %s, age=%i" % (nvr, age)
+                print("Skipping build %s, age=%i" % (nvr, age))
             continue
 
         # go ahead and delete
         if options.test:
-            print "Would have deleted build from trashcan: %s" % nvr
+            print("Would have deleted build from trashcan: %s" % nvr)
         else:
-            print "Deleting build: %s"  % nvr
+            print("Deleting build: %s"  % nvr)
             session.untagBuildBypass(trashcan_tag,  binfo['id'])
             try:
                 session.deleteBuild(binfo['id'])
             except (xmlrpclib.Fault, koji.GenericError), e:
-                print "Warning: deletion failed: %s" % e
+                print("Warning: deletion failed: %s" % e)
                 #server issue
                 pass
         #TODO - log details for delete failures
@@ -778,7 +778,7 @@ def handle_prune():
     """
     #read policy
     if not options.config or not options.config.has_option('prune', 'policy'):
-        print "Skipping prune step. No policies available."
+        print("Skipping prune step. No policies available.")
         return
     #policies = read_policies(options.policy_file)
     policies = scan_policies(options.config.get('prune', 'policy'))
@@ -795,11 +795,11 @@ def handle_prune():
         tagname = taginfo['name']
         if tagname == options.trashcan_tag:
             if options.debug:
-                print "Skipping trashcan tag: %s" % tagname
+                print("Skipping trashcan tag: %s" % tagname)
             continue
         if not check_tag(tagname):
             #if options.debug:
-            #    print "skipping tag due to filter: %s" % tagname
+            #    print("skipping tag due to filter: %s" % tagname)
             continue
         bypass = False
         if taginfo['locked']:
@@ -809,18 +809,18 @@ def handle_prune():
                         bypass = True
                         break
             if bypass:
-                print "Bypassing lock on tag: %s" % tagname
+                print("Bypassing lock on tag: %s" % tagname)
             else:
                 if options.debug:
-                    print "skipping locked tag: %s" % tagname
+                    print("skipping locked tag: %s" % tagname)
                 continue
         if options.debug:
-            print "Pruning tag: %s" % tagname
+            print("Pruning tag: %s" % tagname)
         #get builds
         history = session.tagHistory(tag=tagname, active=True, queryOpts={'order': '-create_ts'})
         if not history:
             if options.debug:
-                print "No history for %s" % tagname
+                print("No history for %s" % tagname)
             continue
         pkghist = {}
         for h in history:
@@ -833,10 +833,10 @@ def handle_prune():
         for pkg in pkgs:
             if not check_package(pkg):
                 #if options.debug:
-                #    print "skipping package due to filter: %s" % pkg
+                #    print("skipping package due to filter: %s" % pkg)
                 continue
             if options.debug:
-                print pkg
+                print(pkg)
             hist = pkghist[pkg]
             #these are the *active* history entries for tag/pkg
             skipped = 0
@@ -858,27 +858,27 @@ def handle_prune():
                 action = policies.apply(data)
                 if action is None:
                     if options.debug:
-                        print "No policy for %s (%s)" % (nvr, tagname)
+                        print("No policy for %s (%s)" % (nvr, tagname))
                 if action == 'skip':
                     skipped += 1
                 if options.debug:
-                    print policies.last_rule()
-                    print "%s: %s (%s, %i)" % (action, nvr, tagname, order)
+                    print(policies.last_rule())
+                    print("%s: %s (%s, %i)" % (action, nvr, tagname, order))
                 if action == 'untag':
                     if options.test:
-                        print "Would have untagged %s from %s" % (nvr, tagname)
+                        print("Would have untagged %s from %s" % (nvr, tagname))
                         untagged.setdefault(nvr, {})[tagname] = 1
                     else:
-                        print "Untagging build %s from %s"  % (nvr, tagname)
+                        print("Untagging build %s from %s"  % (nvr, tagname))
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
                         except (xmlrpclib.Fault, koji.GenericError), e:
-                            print "Warning: untag operation failed: %s" % e
+                            print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
     if options.purge and untagged:
-        print "Attempting to purge %i builds" % len(untagged)
+        print("Attempting to purge %i builds" % len(untagged))
         for nvr in untagged:
             build_id = build_ids[nvr]
             tags = [t['name'] for t in  session.listTags(build_id)]
@@ -887,28 +887,28 @@ def handle_prune():
                 tags = [t for t in tags if t not in untagged[nvr]]
             if tags:
                 #still tagged somewhere
-                print "Skipping %s, still tagged: %s" % (nvr, tags)
+                print("Skipping %s, still tagged: %s" % (nvr, tags))
                 continue
             #check cached sigs first to save a little time
             if build_id in build_sig_cache:
                 keys = build_sig_cache[build_id]
                 if protected_sig(keys):
-                    print "Skipping %s, signatures: %s" % (nvr, keys)
+                    print("Skipping %s, signatures: %s" % (nvr, keys))
                     continue
             #recheck signatures in case build was signed during run
             keys = get_build_sigs(build_id, cache=False)
             if protected_sig(keys):
-                print "Skipping %s, signatures: %s" % (nvr, keys)
+                print("Skipping %s, signatures: %s" % (nvr, keys))
                 continue
 
             if options.test:
-                print "Would have deleted build: %s" % nvr
+                print("Would have deleted build: %s" % nvr)
             else:
-                print "Deleting untagged build: %s"  % nvr
+                print("Deleting untagged build: %s"  % nvr)
                 try:
                     session.deleteBuild(build_id, strict=False)
                 except (xmlrpclib.Fault, koji.GenericError), e:
-                    print "Warning: deletion failed: %s" % e
+                    print("Warning: deletion failed: %s" % e)
                     #server issue
                     pass
 
@@ -934,7 +934,7 @@ if __name__ == "__main__":
     #    else:
     #        exctype, value = sys.exc_info()[:2]
     #        rv = 1
-    #        print "%s: %s" % (exctype, value)
+    #        print("%s: %s" % (exctype, value))
     try:
         session.logout()
     except:
