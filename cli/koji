@@ -1923,7 +1923,7 @@ def handle_import_sig(options, session, args):
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
             session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
-        print _("Writing signed copy")
+        print(_("Writing signed copy"))
         if not options.test:
             session.writeSignedRPM(rinfo['id'], sigkey)
 
@@ -1968,7 +1968,7 @@ def handle_write_signed_rpm(options, session, args):
             rpms.extend(session.listRPMs(buildID=build['id']))
     for i, rpminfo in enumerate(rpms):
         nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
-        print "[%d/%d] %s" % (i+1, len(rpms), nvra)
+        print("[%d/%d] %s" % (i+1, len(rpms), nvra))
         session.writeSignedRPM(rpminfo['id'], key)
 
 
@@ -7138,9 +7138,9 @@ def handle_signed_repo(options, session, args):
     if len(task_opts.delta_rpms) > 0:
         for path in task_opts.delta_rpms:
             if not os.path.exists(path):
-                print _("Warning: %s is not reachable locally. If this\n"
+                print(_("Warning: %s is not reachable locally. If this\n"
                         "  host does not have access to Koji's shared storage\n"
-                        "  this can be ignored.") % path
+                        "  this can be ignored.") % path)
     tag = args[0]
     keys = args[1:]
     taginfo = session.getTag(tag)
@@ -7153,7 +7153,7 @@ def handle_signed_repo(options, session, args):
     else:
         for a in task_opts.arch:
             if not taginfo['arches'] or a not in taginfo['arches']:
-                print _('Warning: %s is not in the list of tag arches') % a
+                print(_('Warning: %s is not in the list of tag arches') % a)
     if task_opts.multilib:
         if not os.path.exists(task_opts.multilib):
             parser.error(_('could not find %s') % task_opts.multilib)
@@ -7185,7 +7185,7 @@ def handle_signed_repo(options, session, args):
         'unsigned': task_opts.allow_unsigned
     }
     task_id = session.signedRepo(tag, keys, **opts)
-    print "Creating signed repo for tag " + tag
+    print("Creating signed repo for tag " + tag)
     if _running_in_bg() or task_opts.nowait:
         return
     else:
