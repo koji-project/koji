@@ -54,3 +54,21 @@ class TestSignedRepoInit(unittest.TestCase):
 
         # no comps option
         self.copyfile.assert_not_called()
+
+
+    def test_signed_repo_init_with_comps(self):
+
+        # simple case
+        kojihub.signed_repo_init('tag', ['key'], {'arch': ['x86_64'],
+                    'comps': 'COMPSFILE'})
+        self.InsertProcessor.assert_called_once()
+
+        ip = self.inserts[0]
+        self.assertEquals(ip.table, 'repo')
+        data = {'signed': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
+                    'state': koji.REPO_STATES['INIT']}
+        self.assertEquals(ip.data, data)
+        self.assertEquals(ip.rawdata, {})
+
+        # no comps option
+        self.copyfile.assert_called_once()
