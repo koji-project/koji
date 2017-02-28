@@ -424,7 +424,7 @@ refer to the document linked above for instructions."""
             s.sendmail(msg['From'], msg['To'], msg.as_string())
             s.quit()
         except:
-            print "FAILED: Sending warning notice to %s" % msg['To']
+            print("FAILED: Sending warning notice to %s" % msg['To'])
 
 
 def main(args):
