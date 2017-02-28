@@ -2453,8 +2453,8 @@ def signed_repo_init(tag, keys, task_opts):
             with_debuginfo=False, event=task_opts['event'], repo_id=None,
             signed=True, keys=keys, arches=arches, task_opts=task_opts)
     if not task_opts['event']:
-        task_opts['event'] = _singleValue("SELECT get_event()")
-    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
+        task_opts['event'] = get_event()
+    repo_id = nextval('repo_id_seq')
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=task_opts['event'], tag_id=tag_id,
         state=state, signed=True)
@@ -7379,6 +7379,12 @@ def get_event():
     event_id = _singleValue("SELECT get_event()")
     context.event_id = event_id
     return event_id
+
+
+def nextval(sequence):
+    """Get the next value for the given sequence"""
+    data = {'sequence': sequence}
+    return _singleValue("SELECT nextval(%(sequence)s)", data, strict=True)
 
 
 def parse_json(value, desc=None, errstr=None):
