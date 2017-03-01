@@ -6067,7 +6067,7 @@ def handle_win_build(options, session, args):
         priority = 5
     task_id = session.winBuild(vm_name, scmurl, target, opts, priority=priority)
     if not build_opts.quiet:
-        print("Created task: %s %d" % task_id)
+        print("Created task: %d" % task_id)
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
