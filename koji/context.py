@@ -37,7 +37,7 @@ class ThreadLocal(object):
     def __getattr__(self, key):
         id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
-        if not tdict.has_key(id):
+        if id not in tdict:
             raise AttributeError(key)
         data = tdict[id]
         return object.__getattribute__(data, key)
@@ -45,7 +45,7 @@ class ThreadLocal(object):
     def __setattr__(self, key, value):
         id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
-        if not tdict.has_key(id):
+        if id not in tdict:
             tdict[id] = _data()
         data = tdict[id]
         return object.__setattr__(data, key, value)
@@ -53,7 +53,7 @@ class ThreadLocal(object):
     def __delattr__(self, key):
         id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
-        if not tdict.has_key(id):
+        if id not in tdict:
             raise AttributeError(key)
         data = tdict[id]
         ret = object.__delattr__(data, key)
@@ -71,7 +71,7 @@ class ThreadLocal(object):
     def _threadclear(self):
         id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
-        if not tdict.has_key(id):
+        if id not in tdict:
             return
         del tdict[id]
 

@@ -123,17 +123,17 @@ def _genHTML(environ, fileName):
     else:
         environ['koji.values']['currentUser'] = None
     environ['koji.values']['authToken'] = _genToken(environ)
-    if not environ['koji.values'].has_key('mavenEnabled'):
+    if 'mavenEnabled' not in environ['koji.values']:
         if 'koji.session' in environ:
             environ['koji.values']['mavenEnabled'] = environ['koji.session'].mavenEnabled()
         else:
             environ['koji.values']['mavenEnabled'] = False
-    if not environ['koji.values'].has_key('winEnabled'):
+    if 'winEnabled' not in environ['koji.values']:
         if 'koji.session' in environ:
             environ['koji.values']['winEnabled'] = environ['koji.session'].winEnabled()
         else:
             environ['koji.values']['winEnabled'] = False
-    if not environ['koji.values'].has_key('LoginDisabled'):
+    if 'LoginDisabled' not in environ['koji.values']:
         if 'koji.options' in environ:
             environ['koji.values']['LoginDisabled'] = environ['koji.options']['LoginDisabled']
         else:

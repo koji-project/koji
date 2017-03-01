@@ -129,7 +129,7 @@ class RunRootTask(tasks.BaseTaskHandler):
             #pick the first suitable match from tag's archlist
             for br_arch in tag_arches.split():
                 br_arch = koji.canonArch(br_arch)
-                if host_arches.has_key(br_arch):
+                if br_arch in host_arches:
                     #we're done
                     break
             else:

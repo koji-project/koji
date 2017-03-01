@@ -1058,7 +1058,7 @@ class POMHandler(xml.sax.handler.ContentHandler):
             if self.tag_stack[-2] == 'parent':
                 # Only set a value from the "parent" tag if we don't already have
                 # that value set
-                if not self.values.has_key(self.tag_stack[-1]):
+                if self.tag_stack[-1] not in self.values:
                     self.values[self.tag_stack[-1]] = self.tag_content.strip()
             elif self.tag_stack[-2] == 'project':
                 self.values[self.tag_stack[-1]] = self.tag_content.strip()
@@ -1179,7 +1179,7 @@ BuildArch: noarch
     #index groups
     groups = dict([(g['name'], g) for g in grplist])
     for group_name in need:
-        if seen_grp.has_key(group_name):
+        if group_name in seen_grp:
             continue
         seen_grp[group_name] = 1
         group = groups.get(group_name)
@@ -1191,12 +1191,12 @@ BuildArch: noarch
         pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
         for pkg in pkglist:
             pkg_name = pkg['package']
-            if seen_pkg.has_key(pkg_name):
+            if pkg_name in seen_pkg:
                 continue
             data.append("Requires: %s\n" % pkg_name)
         for req in group['grouplist']:
             req_name = req['name']
-            if seen_grp.has_key(req_name):
+            if req_name in seen_grp:
                 continue
             need.append(req_name)
     data.append("""
@@ -1307,7 +1307,7 @@ def generate_comps(groups, expand_groups=False):
             for p in g['packagelist']:
                 seen_pkg[p['package']] = 1
             for group_name in need:
-                if seen_grp.has_key(group_name):
+                if group_name in seen_grp:
                     continue
                 seen_grp[group_name] = 1
                 group = group_idx.get(group_name)
@@ -1323,14 +1323,14 @@ def generate_comps(groups, expand_groups=False):
                 pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
                 for pkg in pkglist:
                     pkg_name = pkg['package']
-                    if seen_pkg.has_key(pkg_name):
+                    if pkg_name in seen_pkg:
                         continue
                     data.append(
 """      %s
 """ % package_entry(pkg))
                 for req in group['grouplist']:
                     req_name = req['name']
-                    if seen_grp.has_key(req_name):
+                    if req_name in seen_grp:
                         continue
                     need.append(req_name)
         data.append(
@@ -1640,7 +1640,7 @@ def read_config(profile_name, user_config=None):
                 #note the config_defaults dictionary also serves to indicate which
                 #options *can* be set via the config file. Such options should
                 #not have a default value set in the option parser.
-                if result.has_key(name):
+                if name in result:
                     if name in ('anon_retry', 'offline_retry', 'keepalive',
                                 'use_fast_upload', 'krb_rdns', 'use_old_ssl'):
                         result[name] = config.getboolean(profile_name, name)
@@ -2747,7 +2747,7 @@ def _taskLabel(taskInfo):
     arch = taskInfo['arch']
     extra = ''
     if method in ('build', 'maven'):
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             source, target = taskInfo['request'][:2]
             if '://' in source:
                 module_info = _module_info(source)
@@ -2755,20 +2755,20 @@ def _taskLabel(taskInfo):
                 module_info = os.path.basename(source)
             extra = '%s, %s' % (target, module_info)
     elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             url = taskInfo['request'][0]
             extra = _module_info(url)
     elif method == 'buildArch':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             srpm, tagID, arch = taskInfo['request'][:3]
             srpm = os.path.basename(srpm)
             extra = '%s, %s' % (srpm, arch)
     elif method == 'buildMaven':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             build_tag = taskInfo['request'][1]
             extra = build_tag['name']
     elif method == 'wrapperRPM':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             build_target = taskInfo['request'][1]
             build = taskInfo['request'][2]
             if build:
@@ -2776,49 +2776,49 @@ def _taskLabel(taskInfo):
             else:
                 extra = build_target['name']
     elif method == 'winbuild':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             #vm = taskInfo['request'][0]
             url = taskInfo['request'][1]
             target = taskInfo['request'][2]
             module_info = _module_info(url)
             extra = '%s, %s' % (target, module_info)
     elif method == 'vmExec':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             extra = taskInfo['request'][0]
     elif method == 'buildNotification':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             build = taskInfo['request'][1]
             extra = buildLabel(build)
     elif method == 'newRepo':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             extra = str(taskInfo['request'][0])
     elif method in ('tagBuild', 'tagNotification'):
         # There is no displayable information included in the request
         # for these methods
         pass
     elif method == 'prepRepo':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             tagInfo = taskInfo['request'][0]
             extra = tagInfo['name']
     elif method == 'createrepo':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             arch = taskInfo['request'][1]
             extra = arch
     elif method == 'dependantTask':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             extra = ', '.join([subtask[0] for subtask in taskInfo['request'][1]])
     elif method in ('chainbuild', 'chainmaven'):
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             extra = taskInfo['request'][1]
     elif method == 'waitrepo':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             extra = str(taskInfo['request'][0])
             if len(taskInfo['request']) >= 3:
                 nvrs = taskInfo['request'][2]
                 if isinstance(nvrs, list):
                     extra += ', ' + ', '.join(nvrs)
     elif method in ('livecd', 'appliance', 'image', 'livemedia'):
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             stuff = taskInfo['request']
             if method == 'image':
                 kickstart = os.path.basename(stuff[-1]['kickstart'])
@@ -2826,7 +2826,7 @@ def _taskLabel(taskInfo):
                 kickstart = os.path.basename(stuff[4])
             extra = '%s, %s-%s, %s' % (stuff[3], stuff[0], stuff[1], kickstart)
     elif method in ('createLiveCD', 'createAppliance', 'createImage', 'createLiveMedia'):
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             stuff = taskInfo['request']
             if method == 'createImage':
                 kickstart = os.path.basename(stuff[-1]['kickstart'])
@@ -2835,11 +2835,11 @@ def _taskLabel(taskInfo):
             extra = '%s, %s-%s-%s, %s, %s' % (stuff[4]['name'], stuff[0],
                 stuff[1], stuff[2], kickstart, stuff[3])
     elif method == 'restart':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             host = taskInfo['request'][0]
             extra = host['name']
     elif method == 'restartVerify':
-        if taskInfo.has_key('request'):
+        if 'request' in taskInfo:
             task_id, host = taskInfo['request'][:2]
             extra = host['name']
 

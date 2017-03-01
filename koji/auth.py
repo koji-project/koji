@@ -532,7 +532,7 @@ class Session(object):
     def hasPerm(self, name):
         if not self.logged_in:
             return False
-        return self.perms.has_key(name)
+        return name in self.perms
 
     def assertPerm(self, name):
         if not self.hasPerm(name) and not self.hasPerm('admin'):
@@ -546,7 +546,7 @@ class Session(object):
         if not self.logged_in:
             return False
         #groups indexed by id
-        return self.groups.has_key(group_id)
+        return group_id in self.groups
 
     def isUser(self, user_id):
         if not self.logged_in:

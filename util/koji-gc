@@ -343,7 +343,7 @@ def ensure_connection(session):
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
 
 def has_krb_creds():
-    if not sys.modules.has_key('krbV'):
+    if 'krbV' not in sys.modules:
         return False
     try:
         ctx = krbV.default_context()

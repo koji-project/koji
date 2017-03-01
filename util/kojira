@@ -354,7 +354,7 @@ class RepoManager(object):
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
                     continue
-                if self.repos.has_key(repo_id):
+                if repo_id in self.repos:
                     #we're already managing it, no need to deal with it here
                     continue
                 try:
@@ -538,7 +538,7 @@ class RepoManager(object):
                     break
             if covered:
                 continue
-            if self.tasks.has_key(tag_id):
+            if tag_id not in self.tasks:
                 #repo creation in progress
                 #TODO - implement a timeout
                 continue
@@ -596,7 +596,7 @@ class RepoManager(object):
         #some cleanup
         n_deletes = 0
         for tag_id, repolist in tag_repos.items():
-            if not tags.has_key(tag_id):
+            if tag_id not in tags:
                 #repos for these tags are no longer required
                 for repo in repolist:
                     if repo.ready():
@@ -813,7 +813,7 @@ if  __name__ == "__main__":
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif sys.modules.has_key('krbV') and options.principal and options.keytab:
+    elif 'krbV' in sys.modules and options.principal and options.keytab:
         session.krb_login(options.principal, options.keytab, options.ccache)
     #get an exclusive session
     try:

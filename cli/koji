@@ -223,11 +223,11 @@ def get_options():
     if cmd.lower() in greetings:
         cmd = "moshimoshi"
     cmd = cmd.replace('-', '_')
-    if globals().has_key('anon_handle_' + cmd):
+    if ('anon_handle_' + cmd) in globals():
         if not options.force_auth and '--mine' not in args:
             options.noauth = True
         cmd = 'anon_handle_' + cmd
-    elif globals().has_key('handle_' + cmd):
+    elif ('handle_' + cmd) in globals():
         cmd = 'handle_' + cmd
     else:
         list_commands()
@@ -520,7 +520,7 @@ def watch_logs(session, tasklist, opts):
                 for log in logs:
                     contents = 'placeholder'
                     while contents:
-                        if not taskoffsets.has_key(log):
+                        if log not in taskoffsets:
                             taskoffsets[log] = 0
 
                         contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
@@ -2026,9 +2026,9 @@ def handle_prune_signed_copies(options, session, args):
         return "%s: %s" % (time_str, fmt % x)
     for nvr, binfo in builds:
         #listBuilds returns slightly different data than normal
-        if not binfo.has_key('id'):
+        if 'id' not in binfo:
             binfo['id'] = binfo['build_id']
-        if not binfo.has_key('name'):
+        if 'name' not in binfo:
             binfo['name'] = binfo['package_name']
         if options.debug:
             print("DEBUG: %s" % nvr)
@@ -2149,7 +2149,7 @@ def handle_prune_signed_copies(options, session, args):
                     else:
                         #other build revoked
                         #see if our build has resurfaced
-                        if others.has_key(entry['build_id']):
+                        if entry['build_id'] in others:
                             del others[entry['build_id']]
                         if replaced_ts is not None and not others:
                             #we've become latest again
@@ -2873,7 +2873,7 @@ def anon_handle_list_tagged(options, session, args):
                 else:
                     rinfo['path'] = os.path.join(builddir, pathinfo.rpm(rinfo))
             fmt = "%(path)s"
-            data = [x for x in data if x.has_key('path')]
+            data = [x for x in data if 'path' in x]
         else:
             fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
             if options.sigs:
@@ -2972,7 +2972,7 @@ def anon_handle_list_untagged(options, session, args):
                 x['refs'] = "%s" % builds
             else:
                 x['refs'] = ''
-        #data = [x for x in data if not refs.has_key(x['id'])]
+        #data = [x for x in data if x['id'] not in refs)]
     if options.paths:
         for x in data:
             x['path'] = pathinfo.build(x)
@@ -3243,7 +3243,7 @@ def anon_handle_list_pkgs(options, session, args):
         else:
             if not options.show_blocked and pkg.get('blocked',False):
                 continue
-            if pkg.has_key('tag_id'):
+            if 'tag_id' in pkg:
                 if pkg['extra_arches'] is None:
                     pkg['extra_arches'] = ""
                 fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-15s"
@@ -3571,35 +3571,35 @@ def handle_clone_tag(options, session, args):
         #construct to-do lists.
         paddlist = [] # list containing new packages to be added from src tag
         for (package_name, pkg) in srcpkgs.iteritems():
-            if not dstpkgs.has_key(package_name):
+            if package_name not in dstpkgs:
                 paddlist.append(pkg)
         paddlist.sort(key = lambda x: x['package_name'])
         pdellist = [] # list containing packages no more present in dst tag
         for (package_name, pkg) in dstpkgs.iteritems():
-            if not srcpkgs.has_key(package_name):
+            if package_name not in srcpkgs:
                 pdellist.append(pkg)
         pdellist.sort(key = lambda x: x['package_name'])
         baddlist = [] # list containing new builds to be added from src tag
         for (nvr, lbld) in srclblds.iteritems():
-            if not dstlblds.has_key(nvr):
+            if nvr not in dstlblds:
                 baddlist.append(lbld)
         baddlist.sort(key = lambda x: x['package_name'])
         bdellist = [] # list containing new builds to be removed from src tag
         for (nvr, lbld) in dstlblds.iteritems():
-            if not srclblds.has_key(nvr):
+            if nvr not in srclblds:
                 bdellist.append(lbld)
         bdellist.sort(key = lambda x: x['package_name'])
         gaddlist = [] # list containing new groups to be added from src tag
         for (grpname, group) in srcgroups.iteritems():
-            if not dstgroups.has_key(grpname):
+            if grpname not in dstgroups:
                 gaddlist.append(group)
         gdellist = [] # list containing groups to be removed from src tag
         for (grpname, group) in dstgroups.iteritems():
-            if not srcgroups.has_key(grpname):
+            if grpname not in srcgroups:
                 gdellist.append(group)
         grpchanges = {} # dict of changes to make in shared groups
         for (grpname, group) in srcgroups.iteritems():
-            if dstgroups.has_key(grpname):
+            if grpname in dstgroups:
                 grpchanges[grpname] = {'adds':[], 'dels':[]}
                 # Store whether group is inherited or not
                 grpchanges[grpname]['inherited'] = False
@@ -4117,12 +4117,12 @@ def anon_handle_list_tag_history(options, session, args):
         if event_id == x['revoke_event']:
             ts = x['revoke_ts']
             fmt = "%(name)s-%(version)s-%(release)s untagged from %(tag_name)s"
-            if x.has_key('revoker_name'):
+            if 'revoker_name' in x:
                 fmt += " by %(revoker_name)s"
         elif event_id == x['create_event']:
             ts = x['create_ts']
             fmt = "%(name)s-%(version)s-%(release)s tagged into %(tag_name)s"
-            if x.has_key('creator_name'):
+            if 'creator_name' in x:
                 fmt += " by %(creator_name)s"
             if x['active']:
                 fmt += " [still active]"
@@ -4162,11 +4162,11 @@ def _print_histline(entry, **kwargs):
             return
     if create:
         ts = x['create_ts']
-        if x.has_key('creator_name'):
+        if 'creator_name' in x:
             who = "by %(creator_name)s"
     else:
         ts = x['revoke_ts']
-        if x.has_key('revoker_name'):
+        if 'revoker_name' in x:
             who = "by %(revoker_name)s"
     if table == 'tag_listing':
         if edit:
@@ -4784,7 +4784,7 @@ def anon_handle_taginfo(options, session, args):
         repos = {}
         if not event:
             for target in dest_targets + build_targets:
-                if not repos.has_key(target['build_tag']):
+                if target['build_tag'] not in repos:
                     repo = session.getRepo(target['build_tag'])
                     if repo is None:
                         repos[target['build_tag']] = "no active repo"
@@ -6527,7 +6527,7 @@ def handle_untag_build(options, session, args):
         seen_pkg = {}
         builds = []
         for binfo in tagged:
-            if not seen_pkg.has_key(binfo['name']):
+            if binfo['name'] not in seen_pkg:
                 #latest for this package
                 if options.verbose:
                     print(_("Leaving latest build for package %(name)s: %(nvr)s") % binfo)

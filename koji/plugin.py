@@ -59,7 +59,7 @@ class PluginTracker(object):
         self.plugins = {}
 
     def load(self, name, path=None, reload=False):
-        if self.plugins.has_key(name) and not reload:
+        if name in self.plugins and not reload:
             return self.plugins[name]
         mod_name = name
         if self.prefix:
@@ -67,7 +67,7 @@ class PluginTracker(object):
             #Using a prefix helps prevent overlap with other modules
             #(no '.' -- it causes problems)
             mod_name = self.prefix + name
-        if sys.modules.has_key(mod_name) and not reload:
+        if mod_name in sys.modules and not reload:
             raise koji.PluginError('module name conflict: %s' % mod_name)
         if path is None:
             path = self.searchpath
