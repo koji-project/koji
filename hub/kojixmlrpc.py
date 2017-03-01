@@ -178,7 +178,7 @@ class HandlerRegistry(object):
     def get(self, name):
         func = self.funcs.get(name, None)
         if func is None:
-            raise koji.GenericError, "Invalid method: %s" % name
+            raise koji.GenericError("Invalid method: %s" % name)
         return func
 
 
@@ -221,7 +221,7 @@ class ModXMLRPCRequestHandler(object):
                 break
             rlen += len(chunk)
             if maxlen and rlen > maxlen:
-                raise koji.GenericError, 'Request too long'
+                raise koji.GenericError('Request too long')
             parser.feed(chunk)
         parser.close()
         return unmarshaller.close(), unmarshaller.getmethodname()
@@ -292,7 +292,7 @@ class ModXMLRPCRequestHandler(object):
         if context.opts.get('LockOut') and \
             context.method not in ('login', 'krbLogin', 'sslLogin', 'logout') and \
             not context.session.hasPerm('admin'):
-            raise koji.ServerOffline, "Server disabled for maintenance"
+            raise koji.ServerOffline("Server disabled for maintenance")
 
     def _dispatch(self, method, params):
         func = self._get_handler(method)
@@ -639,7 +639,7 @@ def setup_logging2(opts):
             level = part
             default = level
         if level not in valid_levels:
-            raise koji.GenericError, "Invalid log level: %s" % level
+            raise koji.GenericError("Invalid log level: %s" % level)
         #all our loggers start with koji
         if name == '':
             name = 'koji'

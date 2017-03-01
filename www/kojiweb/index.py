@@ -49,7 +49,7 @@ def _setUserCookie(environ, user):
     # someone is not using an expired cookie
     value = user + ':' + str(int(time.time()))
     if not options['Secret'].value:
-        raise koji.AuthError, 'Unable to authenticate, server secret not configured'
+        raise koji.AuthError('Unable to authenticate, server secret not configured')
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     value = "%s:%s" % (shasum.hexdigest(), value)
@@ -86,7 +86,7 @@ def _getUserCookie(environ):
         return None
     sig, value = parts
     if not options['Secret'].value:
-        raise koji.AuthError, 'Unable to authenticate, server secret not configured'
+        raise koji.AuthError('Unable to authenticate, server secret not configured')
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     if shasum.hexdigest() != sig:
@@ -129,16 +129,16 @@ def _assertLogin(environ):
     session = environ['koji.session']
     options = environ['koji.options']
     if 'koji.currentLogin' not in environ or 'koji.currentUser' not in environ:
-        raise StandardError, '_getServer() must be called before _assertLogin()'
+        raise StandardError('_getServer() must be called before _assertLogin()')
     elif environ['koji.currentLogin'] and environ['koji.currentUser']:
         if options['WebCert']:
             if not _sslLogin(environ, session, environ['koji.currentLogin']):
-                raise koji.AuthError, 'could not login %s via SSL' % environ['koji.currentLogin']
+                raise koji.AuthError('could not login %s via SSL' % environ['koji.currentLogin'])
         elif options['WebPrincipal']:
             if not _krbLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
-                raise koji.AuthError, 'could not login using principal: %s' % environ['koji.currentLogin']
+                raise koji.AuthError('could not login using principal: %s' % environ['koji.currentLogin'])
         else:
-            raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
+            raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
 
         # verify a valid authToken was passed in to avoid CSRF
         authToken = environ['koji.form'].getfirst('a', '')
@@ -166,7 +166,7 @@ def _getServer(environ):
     if environ['koji.currentLogin']:
         environ['koji.currentUser'] = session.getUser(environ['koji.currentLogin'])
         if not environ['koji.currentUser']:
-            raise koji.AuthError, 'could not get user for principal: %s' % environ['koji.currentLogin']
+            raise koji.AuthError('could not get user for principal: %s' % environ['koji.currentLogin'])
         _setUserCookie(environ, environ['koji.currentLogin'])
     else:
         environ['koji.currentUser'] = None
@@ -229,30 +229,30 @@ def login(environ, page=None):
             return
 
         if environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-            raise koji.AuthError, 'could not verify client: %s' % environ.get('SSL_CLIENT_VERIFY')
+            raise koji.AuthError('could not verify client: %s' % environ.get('SSL_CLIENT_VERIFY'))
 
         # use the subject's common name as their username
         username = environ.get('SSL_CLIENT_S_DN_CN')
         if not username:
-            raise koji.AuthError, 'unable to get user information from client certificate'
+            raise koji.AuthError('unable to get user information from client certificate')
 
         if not _sslLogin(environ, session, username):
-            raise koji.AuthError, 'could not login %s using SSL certificates' % username
+            raise koji.AuthError('could not login %s using SSL certificates' % username)
 
         authlogger.info('Successful SSL authentication by %s', username)
 
     elif options['WebPrincipal']:
         principal = environ.get('REMOTE_USER')
         if not principal:
-            raise koji.AuthError, 'configuration error: mod_auth_kerb should have performed authentication before presenting this page'
+            raise koji.AuthError('configuration error: mod_auth_kerb should have performed authentication before presenting this page')
 
         if not _krbLogin(environ, session, principal):
-            raise koji.AuthError, 'could not login using principal: %s' % principal
+            raise koji.AuthError('could not login using principal: %s' % principal)
 
         username = principal
         authlogger.info('Successful Kerberos authentication by %s', username)
     else:
-        raise koji.AuthError, 'KojiWeb is incorrectly configured for authentication, contact the system administrator'
+        raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
 
     _setUserCookie(environ, username)
     # To protect the session cookie, we must forceSSL
@@ -321,7 +321,7 @@ def notificationedit(environ, notificationID):
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
     if notification == None:
-        raise koji.GenericError, 'no notification with ID: %i' % notificationID
+        raise koji.GenericError('no notification with ID: %i' % notificationID)
 
     form = environ['koji.form']
 
@@ -368,7 +368,7 @@ def notificationcreate(environ):
     if form.has_key('add'):
         user = environ['koji.currentUser']
         if not user:
-            raise koji.GenericError, 'not logged-in'
+            raise koji.GenericError('not logged-in')
 
         package_id = form.getfirst('package')
         if package_id == 'all':
@@ -410,7 +410,7 @@ def notificationdelete(environ, notificationID):
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
     if not notification:
-        raise koji.GenericError, 'no notification with ID: %i' % notificationID
+        raise koji.GenericError('no notification with ID: %i' % notificationID)
 
     server.deleteNotification(notification['id'])
 
@@ -558,7 +558,7 @@ def taskinfo(environ, taskID):
     taskID = int(taskID)
     task = server.getTaskInfo(taskID, request=True)
     if not task:
-        raise koji.GenericError, 'invalid task ID: %s' % taskID
+        raise koji.GenericError('invalid task ID: %s' % taskID)
 
     values['title'] = koji.taskLabel(task) + ' | Task Info'
 
@@ -728,7 +728,7 @@ def getfile(environ, taskID, name, offset=None, size=None):
     output = server.listTaskOutput(taskID, stat=True)
     file_info = output.get(name)
     if not file_info:
-        raise koji.GenericError, 'no file "%s" output by task %i' % (name, taskID)
+        raise koji.GenericError('no file "%s" output by task %i' % (name, taskID))
 
     mime_guess = mimetypes.guess_type(name, strict=False)[0]
     if mime_guess:
@@ -848,7 +848,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
         packageID = int(packageID)
     package = server.getPackage(packageID)
     if package == None:
-        raise koji.GenericError, 'invalid package ID: %s' % packageID
+        raise koji.GenericError('invalid package ID: %s' % packageID)
 
     values['title'] = package['name'] + ' | Package Info'
 
@@ -961,7 +961,7 @@ def tagedit(environ, tagID):
     tagID = int(tagID)
     tag = server.getTag(tagID)
     if tag == None:
-        raise koji.GenericError, 'no tag with ID: %i' % tagID
+        raise koji.GenericError('no tag with ID: %i' % tagID)
 
     form = environ['koji.form']
 
@@ -1001,7 +1001,7 @@ def tagdelete(environ, tagID):
     tagID = int(tagID)
     tag = server.getTag(tagID)
     if tag == None:
-        raise koji.GenericError, 'no tag with ID: %i' % tagID
+        raise koji.GenericError('no tag with ID: %i' % tagID)
 
     server.deleteTag(tag['id'])
 
@@ -1052,7 +1052,7 @@ def tagparent(environ, tagID, parentID, action):
             elif len(inheritanceData) == 1:
                 values['inheritanceData'] = inheritanceData[0]
             else:
-                raise koji.GenericError, 'tag %i has tag %i listed as a parent more than once' % (tag['id'], parent['id'])
+                raise koji.GenericError('tag %i has tag %i listed as a parent more than once' % (tag['id'], parent['id']))
 
             return _genHTML(environ, 'tagparent.chtml')
     elif action == 'remove':
@@ -1062,11 +1062,11 @@ def tagparent(environ, tagID, parentID, action):
                 datum['delete link'] = True
                 break
         else:
-            raise koji.GenericError, 'tag %i is not a parent of tag %i' % (parent['id'], tag['id'])
+            raise koji.GenericError('tag %i is not a parent of tag %i' % (parent['id'], tag['id']))
 
         server.setInheritanceData(tag['id'], data)
     else:
-        raise koji.GenericError, 'unknown action: %s' % action
+        raise koji.GenericError('unknown action: %s' % action)
 
     _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
 
@@ -1448,22 +1448,22 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
         rpmID = int(rpmID)
         rpm = server.getRPM(rpmID)
         if not rpm:
-            raise koji.GenericError, 'invalid RPM ID: %i' % rpmID
+            raise koji.GenericError('invalid RPM ID: %i' % rpmID)
         file = server.getRPMFile(rpm['id'], filename)
         if not file:
-            raise koji.GenericError, 'no file %s in RPM %i' % (filename, rpmID)
+            raise koji.GenericError('no file %s in RPM %i' % (filename, rpmID))
         values['rpm'] = rpm
     elif archiveID:
         archiveID = int(archiveID)
         archive = server.getArchive(archiveID)
         if not archive:
-            raise koji.GenericError, 'invalid archive ID: %i' % archiveID
+            raise koji.GenericError('invalid archive ID: %i' % archiveID)
         file = server.getArchiveFile(archive['id'], filename)
         if not file:
-            raise koji.GenericError, 'no file %s in archive %i' % (filename, archiveID)
+            raise koji.GenericError('no file %s in archive %i' % (filename, archiveID))
         values['archive'] = archive
     else:
-        raise koji.GenericError, 'either rpmID or archiveID must be specified'
+        raise koji.GenericError('either rpmID or archiveID must be specified')
 
     values['title'] = file['name'] + ' | File Info'
 
@@ -1478,11 +1478,11 @@ def cancelbuild(environ, buildID):
     buildID = int(buildID)
     build = server.getBuild(buildID)
     if build == None:
-        raise koji.GenericError, 'unknown build ID: %i' % buildID
+        raise koji.GenericError('unknown build ID: %i' % buildID)
 
     result = server.cancelBuild(build['id'])
     if not result:
-        raise koji.GenericError, 'unable to cancel build'
+        raise koji.GenericError('unable to cancel build')
 
     _redirect(environ, 'buildinfo?buildID=%i' % build['id'])
 
@@ -1525,7 +1525,7 @@ def hostinfo(environ, hostID=None, userID=None):
             hostID = int(hostID)
         host = server.getHost(hostID)
         if host == None:
-            raise koji.GenericError, 'invalid host ID: %s' % hostID
+            raise koji.GenericError('invalid host ID: %s' % hostID)
     elif userID:
         userID = int(userID)
         hosts = server.listHosts(userID=userID)
@@ -1533,9 +1533,9 @@ def hostinfo(environ, hostID=None, userID=None):
         if hosts:
             host = hosts[0]
         if host == None:
-            raise koji.GenericError, 'invalid host ID: %s' % userID
+            raise koji.GenericError('invalid host ID: %s' % userID)
     else:
-        raise koji.GenericError, 'hostID or userID must be provided'
+        raise koji.GenericError('hostID or userID must be provided')
 
     values['title'] = host['name'] + ' | Host Info'
 
@@ -1563,7 +1563,7 @@ def hostedit(environ, hostID):
     hostID = int(hostID)
     host = server.getHost(hostID)
     if host == None:
-        raise koji.GenericError, 'no host with ID: %i' % hostID
+        raise koji.GenericError('no host with ID: %i' % hostID)
 
     form = environ['koji.form']
 
@@ -1632,7 +1632,7 @@ def channelinfo(environ, channelID):
     channelID = int(channelID)
     channel = server.getChannel(channelID)
     if channel == None:
-        raise koji.GenericError, 'invalid channel ID: %i' % channelID
+        raise koji.GenericError('invalid channel ID: %i' % channelID)
 
     values['title'] = channel['name'] + ' | Channel Info'
 
@@ -1657,7 +1657,7 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
     buildroot = server.getBuildroot(buildrootID)
 
     if buildroot == None:
-        raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
+        raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
     elif buildroot['br_type'] == koji.BR_TYPES['STANDARD']:
         template = 'buildrootinfo.chtml'
@@ -1687,7 +1687,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         buildroot = server.getBuildroot(buildrootID)
         values['buildroot'] = buildroot
         if buildroot == None:
-            raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
+            raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
             kojiweb.util.paginateMethod(server, values, 'listRPMs',
@@ -1700,7 +1700,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
                                         start=start, dataName='rpms',
                                         prefix='rpm', order=order)
         else:
-            raise koji.GenericError, 'unrecognized type of rpmlist'
+            raise koji.GenericError('unrecognized type of rpmlist')
 
     elif imageID != None:
         imageID = int(imageID)
@@ -1712,11 +1712,11 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
                                         start=start, dataName='rpms',
                                         prefix='rpm', order=order)
         else:
-            raise koji.GenericError, 'unrecognized type of image rpmlist'
+            raise koji.GenericError('unrecognized type of image rpmlist')
 
     else:
         # It is an error if neither buildrootID and imageID are defined.
-        raise koji.GenericError, 'Both buildrootID and imageID are None'
+        raise koji.GenericError('Both buildrootID and imageID are None')
 
     values['type'] = type
     values['order'] = order
@@ -1730,7 +1730,7 @@ def archivelist(environ, buildrootID, type, start=None, order='filename'):
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
     if buildroot == None:
-        raise koji.GenericError, 'unknown buildroot ID: %i' % buildrootID
+        raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
     if type == 'component':
         kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
@@ -1739,7 +1739,7 @@ def archivelist(environ, buildrootID, type, start=None, order='filename'):
         kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
                                     start=start, dataName='archives', prefix='archive', order=order)
     else:
-        raise koji.GenericError, 'invalid type: %s' % type
+        raise koji.GenericError('invalid type: %s' % type)
 
     values['buildroot'] = buildroot
     values['type'] = type
@@ -1775,7 +1775,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
         target = server.getBuildTarget(name)
 
     if target == None:
-        raise koji.GenericError, 'invalid build target: %s' % (targetID or name)
+        raise koji.GenericError('invalid build target: %s' % (targetID or name))
 
     values['title'] = target['name'] + ' | Build Target Info'
 
@@ -1800,7 +1800,7 @@ def buildtargetedit(environ, targetID):
 
     target = server.getBuildTarget(targetID)
     if target == None:
-        raise koji.GenericError, 'invalid build target: %s' % targetID
+        raise koji.GenericError('invalid build target: %s' % targetID)
 
     form = environ['koji.form']
 
@@ -1809,12 +1809,12 @@ def buildtargetedit(environ, targetID):
         buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
         if buildTag == None:
-            raise koji.GenericError, 'invalid tag ID: %i' % buildTagID
+            raise koji.GenericError('invalid tag ID: %i' % buildTagID)
 
         destTagID = int(form.getfirst('destTag'))
         destTag = server.getTag(destTagID)
         if destTag == None:
-            raise koji.GenericError, 'invalid tag ID: %i' % destTagID
+            raise koji.GenericError('invalid tag ID: %i' % destTagID)
 
         server.editBuildTarget(target['id'], name, buildTag['id'], destTag['id'])
 
@@ -1849,7 +1849,7 @@ def buildtargetcreate(environ):
         target = server.getBuildTarget(name)
 
         if target == None:
-            raise koji.GenericError, 'error creating build target "%s"' % name
+            raise koji.GenericError('error creating build target "%s"' % name)
 
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
     elif form.has_key('cancel'):
@@ -1873,7 +1873,7 @@ def buildtargetdelete(environ, targetID):
 
     target = server.getBuildTarget(targetID)
     if target == None:
-        raise koji.GenericError, 'invalid build target: %i' % targetID
+        raise koji.GenericError('invalid build target: %i' % targetID)
 
     server.deleteBuildTarget(target['id'])
 
@@ -2246,7 +2246,7 @@ def search(environ, start=None, order=None):
 
         infoURL = _infoURLs.get(type)
         if not infoURL:
-            raise koji.GenericError, 'unknown search type: %s' % type
+            raise koji.GenericError('unknown search type: %s' % type)
         values['infoURL'] = infoURL
         order = order or _DEFAULT_SEARCH_ORDER.get(type, 'name')
         values['order'] = order

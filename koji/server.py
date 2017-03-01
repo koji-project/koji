@@ -118,12 +118,12 @@ class WSGIWrapper(object):
 
         we don't use the write() callable in koji, so it will raise an error if called
         """
-        raise RuntimeError, "wsgi write() callable not supported"
+        raise RuntimeError("wsgi write() callable not supported")
 
     def start_response(self, status, headers, exc_info=None):
         #XXX we don't deal with exc_info
         if self.set_headers:
-            raise RuntimeError, "start_response() already called"
+            raise RuntimeError("start_response() already called")
         self.req.status = int(status[:3])
         for key, val in headers:
             if key.lower() == 'content-length':
@@ -143,7 +143,7 @@ class WSGIWrapper(object):
         except:
             sys.stderr.write(''.join(traceback.format_exception(*sys.exc_info())))
             sys.stderr.flush()
-            raise apache.SERVER_RETURN, apache.HTTP_INTERNAL_SERVER_ERROR
+            raise apache.SERVER_RETURN(apache.HTTP_INTERNAL_SERVER_ERROR)
 
     def write_result(self, result):
         """called by run() to handle the application's result value"""
@@ -156,7 +156,7 @@ class WSGIWrapper(object):
             #slower version -- need to check for set_headers
             for chunk in result:
                 if chunk and not self.set_headers:
-                    raise RuntimeError, "write() called before start_response()"
+                    raise RuntimeError("write() called before start_response()")
                 write(chunk)
         if not req.bytes_sent:
             #application sent nothing back

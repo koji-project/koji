@@ -588,11 +588,11 @@ def handle_assign_task(options, session, args):
 
     taskinfo = session.getTaskInfo(task_id, request=False)
     if taskinfo is None:
-        raise koji.GenericError, "No such task: %s" % task_id
+        raise koji.GenericError("No such task: %s" % task_id)
 
     hostinfo = session.getHost(hostname)
     if hostinfo is None:
-        raise koji.GenericError, "No such host: %s" % hostname
+        raise koji.GenericError("No such host: %s" % hostname)
 
     force = False
     if options.force:
@@ -2021,7 +2021,7 @@ def handle_prune_signed_copies(options, session, args):
             if x['active']:
                 fmt += " [still active]"
         else:
-            raise koji.GenericError, "unknown event: (%r, %r)" % (event_id, x)
+            raise koji.GenericError("unknown event: (%r, %r)" % (event_id, x))
         time_str = time.asctime(time.localtime(ts))
         return "%s: %s" % (time_str, fmt % x)
     for nvr, binfo in builds:
@@ -2062,7 +2062,7 @@ def handle_prune_signed_copies(options, session, args):
             hist = session.tagHistory(tag=tag_name, package=binfo['name'])
             if not hist:
                 #really shouldn't happen
-                raise koji.GenericError, "No history found for %s in %s" % (nvr, tag_name)
+                raise koji.GenericError("No history found for %s in %s" % (nvr, tag_name))
             timeline = []
             for x in hist:
                 #note that for revoked entries, we're effectively splitting them into
@@ -2082,7 +2082,7 @@ def handle_prune_signed_copies(options, session, args):
                     break
             if not latest_ts:
                 #really shouldn't happen
-                raise koji.GenericError, "No creation event found for %s in %s" % (nvr, tag_name)
+                raise koji.GenericError("No creation event found for %s in %s" % (nvr, tag_name))
             our_entry = entry
             if options.debug:
                 print(_histline(event_id, our_entry))
@@ -2130,8 +2130,8 @@ def handle_prune_signed_copies(options, session, args):
                 if entry['build_id'] == binfo['id']:
                     if is_create:
                         #shouldn't happen
-                        raise koji.GenericError, "Duplicate creation event found for %s in %s" \
-                                                    % (nvr, tag_name)
+                        raise koji.GenericError("Duplicate creation event found for %s in %s" \
+                                                    % (nvr, tag_name))
                     else:
                         #we've been revoked
                         revoke_ts = entry['revoke_ts']
@@ -4127,7 +4127,7 @@ def anon_handle_list_tag_history(options, session, args):
             if x['active']:
                 fmt += " [still active]"
         else:
-            raise koji.GenericError, "unknown event: (%r, %r)" % (event_id, x)
+            raise koji.GenericError("unknown event: (%r, %r)" % (event_id, x))
         time_str = time.asctime(time.localtime(ts))
         return "%s: %s" % (time_str, fmt % x)
     for event_id, x in timeline:
@@ -4654,7 +4654,7 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     info = session.getTaskInfo(task_id)
 
     if info is None:
-        raise koji.GenericError, "No such task: %d" % task_id
+        raise koji.GenericError("No such task: %d" % task_id)
 
     if info['host_id']:
         host_info = session.getHost(info['host_id'])
@@ -5339,7 +5339,7 @@ def _parse_tagpri(tagpri):
         try:
             pri = int(parts[1])
         except ValueError:
-            raise koji.GenericError, "Invalid priority: %s" % parts[1]
+            raise koji.GenericError("Invalid priority: %s" % parts[1])
         return tag, pri
 
 def handle_add_external_repo(options, session, args):
@@ -5648,11 +5648,11 @@ def _build_image_indirection(options, task_opts, session, args):
     # Do some sanity checks before even attempting to create the session
     if not (bool(task_opts.utility_image_task) !=
             bool(task_opts.utility_image_build)):
-        raise koji.GenericError, _("You must specify either a utility-image task or build ID/NVR")
+        raise koji.GenericError(_("You must specify either a utility-image task or build ID/NVR"))
 
     if not (bool(task_opts.base_image_task) !=
             bool(task_opts.base_image_build)):
-        raise koji.GenericError, _("You must specify either a base-image task or build ID/NVR")
+        raise koji.GenericError(_("You must specify either a base-image task or build ID/NVR"))
 
     required_opts = [ 'name', 'version', 'arch', 'target', 'indirection_template', 'results_loc' ]
     optional_opts = [ 'indirection_template_url', 'scratch', 'utility_image_task', 'utility_image_build',
@@ -5665,7 +5665,7 @@ def _build_image_indirection(options, task_opts, session, args):
 
     if len(missing) > 0:
         print("Missing the following required options: %s" % ' '.join(['--%s' % o.replace('_','-') for o in missing]))
-        raise koji.GenericError, _("Missing required options specified above")
+        raise koji.GenericError(_("Missing required options specified above"))
 
     activate_session(session)
 
@@ -5685,11 +5685,11 @@ def _build_image_indirection(options, task_opts, session, args):
 
     tmp_target = session.getBuildTarget(task_opts.target)
     if not tmp_target:
-        raise koji.GenericError, _("Unknown build target: %s" % tmp_target)
+        raise koji.GenericError(_("Unknown build target: %s" % tmp_target))
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError, _("Unknown destination tag: %s" %
-                                   tmp_target['dest_tag_name'])
+        raise koji.GenericError(_("Unknown destination tag: %s" %
+                                   tmp_target['dest_tag_name']))
 
     # Set the architecture
     task_opts.arch = koji.canonArch(task_opts.arch)
@@ -5700,7 +5700,7 @@ def _build_image_indirection(options, task_opts, session, args):
     if not task_opts.indirection_template_url:
         if not task_opts.scratch:
             # only scratch builds can omit indirection_template_url
-            raise koji.GenericError, _("Non-scratch builds must provide a URL for the indirection template")
+            raise koji.GenericError(_("Non-scratch builds must provide a URL for the indirection template"))
         templatefile = task_opts.indirection_template
         serverdir = _unique_path('cli-image-indirection')
         session.uploadWrapper(templatefile, serverdir, callback=callback)
@@ -5861,7 +5861,7 @@ def _build_image(options, task_opts, session, args, img_type):
     """
 
     if img_type not in ('livecd', 'appliance', 'livemedia'):
-        raise koji.GenericError, 'Unrecognized image type: %s' % img_type
+        raise koji.GenericError('Unrecognized image type: %s' % img_type)
     activate_session(session)
 
     # Set the task's priority. Users can only lower it with --background.
@@ -5880,11 +5880,11 @@ def _build_image(options, task_opts, session, args, img_type):
     target = args[2]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
-        raise koji.GenericError, _("Unknown build target: %s" % target)
+        raise koji.GenericError(_("Unknown build target: %s" % target))
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError, _("Unknown destination tag: %s" %
-                                   tmp_target['dest_tag_name'])
+        raise koji.GenericError(_("Unknown destination tag: %s" %
+                                   tmp_target['dest_tag_name']))
 
     # Set the architecture
     if img_type == 'livemedia':
@@ -5952,11 +5952,11 @@ def _build_image_oz(options, task_opts, session, args):
     target = args[2]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
-        raise koji.GenericError, _("Unknown build target: %s" % target)
+        raise koji.GenericError(_("Unknown build target: %s" % target))
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError, _("Unknown destination tag: %s" %
-                                   tmp_target['dest_tag_name'])
+        raise koji.GenericError(_("Unknown destination tag: %s" %
+                                   tmp_target['dest_tag_name']))
 
     # Set the architectures
     arches = []
@@ -5968,7 +5968,7 @@ def _build_image_oz(options, task_opts, session, args):
     if not task_opts.ksurl:
         if not task_opts.scratch:
             # only scratch builds can omit ksurl
-            raise koji.GenericError, _("Non-scratch builds must provide ksurl")
+            raise koji.GenericError(_("Non-scratch builds must provide ksurl"))
         ksfile = task_opts.kickstart
         serverdir = _unique_path('cli-image')
         session.uploadWrapper(ksfile, serverdir, callback=callback)

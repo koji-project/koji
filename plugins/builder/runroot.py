@@ -120,10 +120,10 @@ class RunRootTask(tasks.BaseTaskHandler):
             #  c) is canonical
             host_arches = self.session.host.getHost()['arches']
             if not host_arches:
-                raise koji.BuildError, "No arch list for this host"
+                raise koji.BuildError("No arch list for this host")
             tag_arches = self.session.getBuildConfig(root)['arches']
             if not tag_arches:
-                raise koji.BuildError, "No arch list for tag: %s" % root
+                raise koji.BuildError("No arch list for tag: %s" % root)
             #index canonical host arches
             host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
             #pick the first suitable match from tag's archlist
@@ -134,15 +134,15 @@ class RunRootTask(tasks.BaseTaskHandler):
                     break
             else:
                 #no overlap
-                raise koji.BuildError, "host does not match tag arches: %s (%s)" % (root, tag_arches)
+                raise koji.BuildError("host does not match tag arches: %s (%s)" % (root, tag_arches))
         else:
             br_arch = arch
         if repo_id:
             repo_info = self.session.repoInfo(repo_id, strict=True)
             if repo_info['tag_name'] != root:
-                raise koji.BuildError, "build tag (%s) does not match repo tag (%s)" % (root, repo_info['tag_name'])
+                raise koji.BuildError("build tag (%s) does not match repo tag (%s)" % (root, repo_info['tag_name']))
             if repo_info['state'] not in (koji.REPO_STATES['READY'], koji.REPO_STATES['EXPIRED']):
-                raise koji.BuildError, "repos in the %s state may not be used by runroot" % koji.REPO_STATES[repo_info['state']]
+                raise koji.BuildError("repos in the %s state may not be used by runroot" % koji.REPO_STATES[repo_info['state']])
         else:
             repo_info = self.session.getRepo(root)
         if not repo_info:
@@ -169,7 +169,7 @@ class RunRootTask(tasks.BaseTaskHandler):
                 status = broot.mock(pkgcmd)
                 self.session.host.updateBuildRootList(broot.id, broot.getPackageList())
                 if not _isSuccess(status):
-                    raise koji.BuildrootError, _parseStatus(status, pkgcmd)
+                    raise koji.BuildrootError(_parseStatus(status, pkgcmd))
 
             if isinstance(command, str):
                 cmdstr = command
@@ -218,7 +218,7 @@ class RunRootTask(tasks.BaseTaskHandler):
         if _isSuccess(rv):
             return '%s completed successfully' % cmd
         else:
-            raise koji.BuildrootError, _parseStatus(rv, cmd)
+            raise koji.BuildrootError(_parseStatus(rv, cmd))
 
     def do_extra_mounts(self, rootdir, mounts):
         mnts = []
@@ -315,7 +315,7 @@ class RunRootTask(tasks.BaseTaskHandler):
             msg = "Unable to unmount: %s" % ', '.join(failed)
             self.logger.warn(msg)
             if fatal:
-                raise koji.GenericError, msg
+                raise koji.GenericError(msg)
         else:
             # remove the mount list when everything is unmounted
             try:

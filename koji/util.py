@@ -159,7 +159,7 @@ def call_with_argcheck(func, args, kwargs=None):
             # The stack is only one high, so the error occurred in this function.
             # Therefore, we assume the TypeError is due to a parameter mismatch
             # in the above function call.
-            raise koji.ParameterError, str(e)
+            raise koji.ParameterError(str(e))
         raise
 
 
@@ -275,7 +275,7 @@ class LazyRecord(object):
 
 def lazysetattr(object, name, func, args, kwargs=None, cache=False):
     if not isinstance(object, LazyRecord):
-        raise TypeError, 'object does not support lazy attributes'
+        raise TypeError('object does not support lazy attributes')
     value = LazyValue(func, args, kwargs=kwargs, cache=cache)
     setattr(object, name, value)
 
@@ -503,7 +503,7 @@ def tsort(parts):
         parts = dict([(name, deps - level) for name, deps in parts.iteritems()
                       if name not in level])
     if parts:
-        raise ValueError, 'total ordering not possible'
+        raise ValueError('total ordering not possible')
     return result
 
 class MavenConfigOptAdapter(object):
@@ -527,7 +527,7 @@ class MavenConfigOptAdapter(object):
             elif name in self.MULTILINE:
                 value = value.splitlines()
             return value
-        raise AttributeError, name
+        raise AttributeError(name)
 
 def maven_opts(values, chain=False, scratch=False):
     """
@@ -552,7 +552,7 @@ def maven_opts(values, chain=False, scratch=False):
     for env in getattr(values, 'envs', []):
         fields = env.split('=', 1)
         if len(fields) != 2:
-            raise ValueError, "Environment variables must be in NAME=VALUE format"
+            raise ValueError("Environment variables must be in NAME=VALUE format")
         envs[fields[0]] = fields[1]
     if envs:
         opts['envs'] = envs
@@ -601,14 +601,14 @@ def parse_maven_params(confs, chain=False, scratch=False):
         elif buildtype == 'wrapper':
             params = wrapper_params(config, package, chain=chain, scratch=scratch)
             if len(params.get('buildrequires')) != 1:
-                raise ValueError, "A wrapper-rpm must depend on exactly one package"
+                raise ValueError("A wrapper-rpm must depend on exactly one package")
         else:
-            raise ValueError, "Unsupported build type: %s" % buildtype
+            raise ValueError("Unsupported build type: %s" % buildtype)
         if not 'scmurl' in params:
-            raise ValueError, "%s is missing the scmurl parameter" % package
+            raise ValueError("%s is missing the scmurl parameter" % package)
         builds[package] = params
     if not builds:
-        raise ValueError, "No sections found in: %s" % ', '.join(confs)
+        raise ValueError("No sections found in: %s" % ', '.join(confs))
     return builds
 
 def parse_maven_param(confs, chain=False, scratch=False, section=None):
@@ -626,9 +626,9 @@ def parse_maven_param(confs, chain=False, scratch=False, section=None):
         if section in builds:
             builds = {section: builds[section]}
         else:
-            raise ValueError, "Section %s does not exist in: %s" % (section, ', '.join(confs))
+            raise ValueError("Section %s does not exist in: %s" % (section, ', '.join(confs)))
     elif len(builds) > 1:
-        raise ValueError, "Multiple sections in: %s, you must specify the section" % ', '.join(confs)
+        raise ValueError("Multiple sections in: %s, you must specify the section" % ', '.join(confs))
     return builds
 
 def parse_maven_chain(confs, scratch=False):
@@ -646,5 +646,5 @@ def parse_maven_chain(confs, scratch=False):
     try:
         tsort(depmap)
     except ValueError:
-        raise ValueError, 'No possible build order, missing/circular dependencies'
+        raise ValueError('No possible build order, missing/circular dependencies')
     return builds

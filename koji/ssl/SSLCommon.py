@@ -33,7 +33,7 @@ def CreateSSLContext(certs):
     peer_ca_cert = certs['peer_ca_cert']
     for f in key_and_cert, peer_ca_cert:
         if f and not os.access(f, os.R_OK):
-            raise StandardError, "%s does not exist or is not readable" % f
+            raise StandardError("%s does not exist or is not readable" % f)
 
     ctx = SSL.Context(SSL.SSLv23_METHOD)   # Use best possible TLS Method
     ctx.use_certificate_file(key_and_cert)
@@ -77,4 +77,4 @@ class PlgHTTPSConnection(httplib.HTTPConnection):
                 continue
             break
         else:
-            raise socket.error, "failed to connect"
+            raise socket.error("failed to connect")

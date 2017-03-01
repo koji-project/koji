@@ -309,7 +309,7 @@ class WinBuildTask(MultiPlatformTask):
         task_info = self.session.getTaskInfo(self.id)
         target_info = self.session.getBuildTarget(target)
         if not target_info:
-            raise koji.BuildError, 'unknown build target: %s' % target
+            raise koji.BuildError('unknown build target: %s' % target)
         dest_tag = self.session.getTag(target_info['dest_tag'], strict=True)
         build_tag = self.session.getTag(target_info['build_tag'], strict=True)
         repo_id = opts.get('repo_id')
@@ -317,7 +317,7 @@ class WinBuildTask(MultiPlatformTask):
             repo_info = session.repoInfo(repo_id)
             event_id = repo_info['create_event']
             if not repo_info:
-                raise koji.BuildError, 'invalid repo ID: %s' % repo_id
+                raise koji.BuildError('invalid repo ID: %s' % repo_id)
             policy_data = {
                 'user_id' : task_info['owner'],
                 'source' : source_url,
@@ -352,11 +352,11 @@ class WinBuildTask(MultiPlatformTask):
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
                 if pkg_cfg is None:
-                    raise koji.BuildError, "package %s not in list for tag %s" \
-                            % (build_info['name'], dest_tag['name'])
+                    raise koji.BuildError("package %s not in list for tag %s" \
+                            % (build_info['name'], dest_tag['name']))
                 elif pkg_cfg['blocked']:
-                    raise koji.BuildError, "package %s is blocked for tag %s" \
-                            % (build_info['name'], dest_tag['name'])
+                    raise koji.BuildError("package %s is blocked for tag %s" \
+                            % (build_info['name'], dest_tag['name']))
 
             build_info = self.session.host.initWinBuild(self.id, build_info,
                                                         koji.util.dslice(results, ['platform']))
@@ -424,8 +424,8 @@ class VMExecTask(BaseTaskHandler):
         output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            raise koji.BuildError, 'unable to create qcow2 image, "%s" returned %s; output was: %s' % \
-                  (' '.join(cmd), ret, output)
+            raise koji.BuildError('unable to create qcow2 image, "%s" returned %s; output was: %s' % \
+                  (' '.join(cmd), ret, output))
         vm_user = pwd.getpwnam(self.options.vmuser)
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
         return new_path
@@ -520,7 +520,7 @@ class VMExecTask(BaseTaskHandler):
         ctx = doc.xpathNewContext()
         nodelist = ctx.xpathEval('/domain/devices/interface[@type="network"]/mac')
         if not nodelist:
-            raise koji.BuildError, 'no network interfaces configured for %s' % vm.name()
+            raise koji.BuildError('no network interfaces configured for %s' % vm.name())
         addr = nodelist[0].prop('address')
         ctx.xpathFreeContext()
         doc.freeDoc()
@@ -567,7 +567,7 @@ class VMExecTask(BaseTaskHandler):
         builds = self.session.getLatestBuilds(tag, package=package,
                                               event=repo_info['create_event'])
         if not builds:
-            raise koji.BuildError, 'no build of package %s in tag %s' % (package, tag)
+            raise koji.BuildError('no build of package %s in tag %s' % (package, tag))
         build = builds[0]
         maven_build = self.session.getMavenBuild(build['id'])
         if maven_build:
@@ -663,7 +663,7 @@ class VMExecTask(BaseTaskHandler):
                 remote_url = remote_pi.winbuild(buildinfo) + '/' + \
                              fileinfo['localpath']
             else:
-                raise koji.BuildError, 'unsupported file type: %s' % type
+                raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
             urlgrabber.urlgrab(remote_url, filename=localpath)
 
@@ -689,21 +689,21 @@ class VMExecTask(BaseTaskHandler):
     def upload(self, path, offset, contents):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))
         if not local_path.startswith(self.output_dir):
-            raise koji.BuildError, 'invalid upload path: %s' % path
+            raise koji.BuildError('invalid upload path: %s' % path)
         koji.ensuredir(os.path.dirname(local_path))
         # accept offset as a str to avoid problems with files larger than 2**32
         offset = int(offset)
         if offset == 0:
             if os.path.exists(local_path):
-                raise koji.BuildError, 'cannot overwrite %s' % local_path
+                raise koji.BuildError('cannot overwrite %s' % local_path)
             fobj = file(local_path, 'w')
         else:
             if not os.path.isfile(local_path):
-                raise koji.BuildError, '% does not exist' % local_path
+                raise koji.BuildError('% does not exist' % local_path)
             size = os.path.getsize(local_path)
             if offset != size:
-                raise koji.BuildError, 'cannot write to %s at offset %s, size is %s' % \
-                      (local_path, offset, size)
+                raise koji.BuildError('cannot write to %s at offset %s, size is %s' % \
+                      (local_path, offset, size))
             fobj = file(local_path, 'r+')
             fobj.seek(offset)
         data = base64.b64decode(contents)
@@ -723,16 +723,16 @@ class VMExecTask(BaseTaskHandler):
     def verifyChecksum(self, path, checksum, algo='sha1'):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))
         if not local_path.startswith(self.output_dir):
-            raise koji.BuildError, 'invalid path: %s' % path
+            raise koji.BuildError('invalid path: %s' % path)
         if not os.path.isfile(local_path):
-            raise koji.BuildError, '%s does not exist' % local_path
+            raise koji.BuildError('%s does not exist' % local_path)
 
         if algo == 'sha1':
             sum = koji.util.sha1_constructor()
         elif algo == 'md5':
             sum = koji.util.md5_constructor()
         else:
-            raise koji.BuildError, 'unsupported checksum algorithm: %s' % algo
+            raise koji.BuildError('unsupported checksum algorithm: %s' % algo)
 
         fobj = file(local_path, 'r')
         while True:
@@ -744,8 +744,8 @@ class VMExecTask(BaseTaskHandler):
         if sum.hexdigest() == checksum:
             return True
         else:
-            raise koji.BuildError, '%s checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (algo, local_path, sum.hexdigest(), checksum)
+            raise koji.BuildError('%s checksum validation failed for %s, %s (computed) != %s (provided)' % \
+                  (algo, local_path, sum.hexdigest(), checksum))
 
     def closeTask(self, output):
         self.output = output
@@ -809,8 +809,8 @@ class VMExecTask(BaseTaskHandler):
             self.logger.info('Started VM %s', clone_name)
         except libvirt.libvirtError, e:
             self.logger.error('error starting VM %s', clone_name, exc_info=True)
-            raise koji.PreBuildError, 'error starting VM %s, error was: %s' % \
-                  (clone_name, e)
+            raise koji.PreBuildError('error starting VM %s, error was: %s' % \
+                  (clone_name, e))
 
         start = time.time()
         while True:
@@ -819,7 +819,7 @@ class VMExecTask(BaseTaskHandler):
             if info[0] in (libvirt.VIR_DOMAIN_CRASHED, libvirt.VIR_DOMAIN_SHUTOFF):
                 self.logger.warn('VM %s crashed', clone_name)
                 self.server.server_close()
-                raise koji.BuildError, 'VM %s crashed' % clone_name
+                raise koji.BuildError('VM %s crashed' % clone_name)
             if self.success is None:
                 # task is still running
                 # make sure it hasn't exceeded the timeout
@@ -827,8 +827,8 @@ class VMExecTask(BaseTaskHandler):
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
-                    raise koji.BuildError, 'Task did not complete after %.2f minutes, VM %s has been destroyed' % \
-                          (mins, clone_name)
+                    raise koji.BuildError('Task did not complete after %.2f minutes, VM %s has been destroyed' % \
+                          (mins, clone_name))
             else:
                 vm.destroy()
                 self.server.server_close()
@@ -836,7 +836,7 @@ class VMExecTask(BaseTaskHandler):
                 if self.success:
                     return self.output
                 else:
-                    raise koji.BuildError, self.output
+                    raise koji.BuildError(self.output)
 
 class VMTaskManager(TaskManager):
     def __init__(self, options, session):
@@ -858,7 +858,7 @@ class VMTaskManager(TaskManager):
             if port in ports:
                 return False
             if macaddr in self.macaddrs:
-                raise koji.PreBuildError, 'duplicate MAC address: %s' % macaddr
+                raise koji.PreBuildError('duplicate MAC address: %s' % macaddr)
             self.macaddrs[macaddr] = (vm_name, task_id, port)
             self.logger.info('registered MAC address %s for VM %s (task ID %s, port %s)', macaddr, vm_name, task_id, port)
             return True
@@ -876,7 +876,7 @@ class VMTaskManager(TaskManager):
             if data:
                 return data[2]
             else:
-                raise koji.PreBuildError, 'unknown MAC address: %s' % macaddr
+                raise koji.PreBuildError('unknown MAC address: %s' % macaddr)
         finally:
             self.macaddr_lock.release()
 
@@ -905,7 +905,7 @@ class VMTaskManager(TaskManager):
     def checkDisk(self):
         if not os.path.exists(self.options.imagedir):
             self.logger.error('No such directory: %s', self.options.imagedir)
-            raise IOError, 'No such directory: %s' % self.options.imagedir
+            raise IOError('No such directory: %s' % self.options.imagedir)
         fs_stat = os.statvfs(self.options.imagedir)
         available = fs_stat.f_bavail * fs_stat.f_bsize
         availableMB = available / 1024 / 1024

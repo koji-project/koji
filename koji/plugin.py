@@ -68,11 +68,11 @@ class PluginTracker(object):
             #(no '.' -- it causes problems)
             mod_name = self.prefix + name
         if sys.modules.has_key(mod_name) and not reload:
-            raise koji.PluginError, 'module name conflict: %s' % mod_name
+            raise koji.PluginError('module name conflict: %s' % mod_name)
         if path is None:
             path = self.searchpath
         if path is None:
-            raise koji.PluginError, "empty module search path"
+            raise koji.PluginError("empty module search path")
         file, pathname, description = imp.find_module(name, self.pathlist(path))
         try:
             plugin = imp.load_module(mod_name, file, pathname, description)
@@ -151,14 +151,14 @@ def ignore_error(f):
 
 def register_callback(cbtype, func):
     if not cbtype in callbacks:
-        raise koji.PluginError, '"%s" is not a valid callback type' % cbtype
+        raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     if not callable(func):
-        raise koji.PluginError, '%s is not callable' % getattr(func, '__name__', 'function')
+        raise koji.PluginError('%s is not callable' % getattr(func, '__name__', 'function'))
     callbacks[cbtype].append(func)
 
 def run_callbacks(cbtype, *args, **kws):
     if not cbtype in callbacks:
-        raise koji.PluginError, '"%s" is not a valid callback type' % cbtype
+        raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     for func in callbacks[cbtype]:
         try:
             func(cbtype, *args, **kws)
@@ -168,4 +168,4 @@ def run_callbacks(cbtype, *args, **kws):
                 logging.getLogger('koji.plugin').warn(msg, exc_info=True)
             else:
                 tb = ''.join(traceback.format_exception(*sys.exc_info()))
-                raise koji.CallbackError, '%s:\n%s' % (msg, tb)
+                raise koji.CallbackError('%s:\n%s' % (msg, tb))

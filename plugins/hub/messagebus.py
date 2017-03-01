@@ -103,7 +103,7 @@ def get_sender():
         keytab = krbV.Keytab(name='FILE:' + config.get('broker', 'keytab'), context=ctx)
         ccache.init_creds_keytab(principal=cprinc, keytab=keytab)
     else:
-        raise PluginError, 'unsupported auth type: %s' % auth
+        raise PluginError('unsupported auth type: %s' % auth)
 
     url += config.get('broker', 'host') + ':'
     url += config.get('broker', 'port')
@@ -223,7 +223,7 @@ def send_message(cbtype, *args, **kws):
         headers = get_message_headers(msgtype, *args, **kws)
         message = qpid.messaging.Message(properties=headers, content=data)
     else:
-        raise PluginError, 'unsupported exchange type: %s' % exchange_type
+        raise PluginError('unsupported exchange type: %s' % exchange_type)
 
     sender.send(message, sync=True, timeout=config.getfloat('broker', 'timeout'))
     sender.close(timeout=config.getfloat('broker', 'timeout'))

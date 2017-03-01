@@ -207,7 +207,7 @@ class SCM(object):
         self.logger = logging.getLogger('koji.build.SCM')
 
         if not SCM.is_scm_url(url):
-            raise koji.GenericError, 'Invalid SCM URL: %s' % url
+            raise koji.GenericError('Invalid SCM URL: %s' % url)
 
         self.url = url
         scheme, user, host, path, query, fragment = self._parse_url()
@@ -227,7 +227,7 @@ class SCM(object):
                 break
         else:
             # should never happen
-            raise koji.GenericError, 'Invalid SCM URL: %s' % url
+            raise koji.GenericError('Invalid SCM URL: %s' % url)
 
     def _parse_url(self):
         """
@@ -253,10 +253,10 @@ class SCM(object):
                 # Don't return an empty string
                 user = None
             elif ':' in user:
-                raise koji.GenericError, 'username:password format not supported: %s' % user
+                raise koji.GenericError('username:password format not supported: %s' % user)
             netloc = userhost[1]
         elif len(userhost) > 2:
-            raise koji.GenericError, 'Invalid username@hostname specified: %s' % netloc
+            raise koji.GenericError('Invalid username@hostname specified: %s' % netloc)
 
         # ensure that path and query do not end in /
         if path.endswith('/'):
@@ -266,15 +266,15 @@ class SCM(object):
 
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params:
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params)
+            raise koji.GenericError('Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params))
         if not scheme:
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
         if not netloc:
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
         if not path:
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the path element.' % self.url
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the path element.' % self.url)
         if not fragment:
-            raise koji.GenericError, 'Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url)
 
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
@@ -315,7 +315,7 @@ class SCM(object):
             else:
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
         else:
-            raise koji.BuildError, '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository)
+            raise koji.BuildError('%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
 
     def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
         """
@@ -344,8 +344,8 @@ class SCM(object):
                 _count[0] += 1
                 if log_output(session, cmd[0], cmd, logfile, uploadpath,
                               cwd=chdir, logerror=1, append=append, env=env):
-                    raise koji.BuildError, 'Error running %s command "%s", see %s for details' % \
-                        (self.scmtype, ' '.join(cmd), os.path.basename(logfile))
+                    raise koji.BuildError('Error running %s command "%s", see %s for details' % \
+                        (self.scmtype, ' '.join(cmd), os.path.basename(logfile)))
 
         if self.scmtype == 'CVS':
             pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
@@ -354,7 +354,7 @@ class SCM(object):
 
         elif self.scmtype == 'CVS+SSH':
             if not self.user:
-                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
 
             cvsserver = ':ext:%s@%s:%s' % (self.user, self.host, self.repository)
             module_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', '-r', self.revision, self.module]
@@ -392,7 +392,7 @@ class SCM(object):
 
         elif self.scmtype == 'GIT+SSH':
             if not self.user:
-                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
             gitrepo = 'git+ssh://%s@%s%s' % (self.user, self.host, self.repository)
             commonrepo = os.path.dirname(gitrepo) + '/common'
             checkout_path = os.path.basename(self.repository)
@@ -429,14 +429,14 @@ class SCM(object):
 
         elif self.scmtype == 'SVN+SSH':
             if not self.user:
-                raise koji.BuildError, 'No user specified for repository access scheme: %s' % self.scheme
+                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
 
             svnserver = 'svn+ssh://%s@%s%s' % (self.user, self.host, self.repository)
             module_checkout_cmd = ['svn', 'checkout', '-r', self.revision, '%s/%s' % (svnserver, self.module), self.module]
             common_checkout_cmd = ['svn', 'checkout', '%s/common' % svnserver]
 
         else:
-            raise koji.BuildError, 'Unknown SCM type: %s' % self.scmtype
+            raise koji.BuildError('Unknown SCM type: %s' % self.scmtype)
 
         # perform checkouts
         _run(module_checkout_cmd, chdir=scmdir, fatal=True)
@@ -719,7 +719,7 @@ class TaskManager(object):
                 #  - task is forcibly reassigned/unassigned
                 tinfo = self.session.getTaskInfo(id)
                 if tinfo is None:
-                    raise koji.GenericError, "Invalid task %r (pid %r)" % (id, pid)
+                    raise koji.GenericError("Invalid task %r (pid %r)" % (id, pid))
                 elif tinfo['state'] == koji.TASK_STATES['CANCELED']:
                     self.logger.info("Killing canceled task %r (pid %r)" % (id, pid))
                     if self.cleanupTask(id):
@@ -808,7 +808,7 @@ class TaskManager(object):
                     return True
             else:
                 #should not happen
-                raise Exception, "Invalid task state reported by server"
+                raise Exception("Invalid task state reported by server")
         return False
 
     def checkRelAvail(self, bin_avail, avail):
@@ -829,7 +829,7 @@ class TaskManager(object):
         if pid is None:
             pid = self.pids.get(task_id)
             if not pid:
-                raise koji.GenericError, "No pid for task %i" % task_id
+                raise koji.GenericError("No pid for task %i" % task_id)
         prefix = "Task %i (pid %i)" % (task_id, pid)
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
@@ -974,7 +974,7 @@ class TaskManager(object):
         """
         pid = self.pids.get(task_id)
         if not pid:
-            raise koji.GenericError, "No pid for task %i" % task_id
+            raise koji.GenericError("No pid for task %i" % task_id)
         children = self._childPIDs(pid)
         if children:
             # send SIGINT once to let mock mock try to clean up
@@ -1006,7 +1006,7 @@ class TaskManager(object):
         br_path = self.options.mockdir
         if not os.path.exists(br_path):
             self.logger.error("No such directory: %s" % br_path)
-            raise IOError, "No such directory: %s" % br_path
+            raise IOError("No such directory: %s" % br_path)
         fs_stat = os.statvfs(br_path)
         available = fs_stat.f_bavail * fs_stat.f_bsize
         availableMB = available / 1024 / 1024
@@ -1079,7 +1079,7 @@ class TaskManager(object):
         if self.handlers.has_key(method):
             handlerClass = self.handlers[method]
         else:
-            raise koji.GenericError, "No handler found for method '%s'" % method
+            raise koji.GenericError("No handler found for method '%s'" % method)
         task_info = self.session.getTaskInfo(task['id'], request=True)
         if task_info.get('request') is None:
             self.logger.warn("Task '%s' has no request" % task['id'])

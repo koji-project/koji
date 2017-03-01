@@ -443,7 +443,7 @@ def decode_args2(args, names, strict=True):
     "An alternate form of decode_args, returns a dictionary"
     args, opts = decode_args(*args)
     if strict and len(names) < len(args):
-        raise TypeError, "Expecting at most %i arguments" % len(names)
+        raise TypeError("Expecting at most %i arguments" % len(names))
     ret = dict(zip(names, args))
     ret.update(opts)
     return ret
@@ -480,13 +480,13 @@ def ensuredir(directory):
     """Create directory, if necessary."""
     if os.path.exists(directory):
         if not os.path.isdir(directory):
-            raise OSError, "Not a directory: %s" % directory
+            raise OSError("Not a directory: %s" % directory)
     else:
         head, tail = os.path.split(directory)
         if not tail and head == directory:
             # can only happen if directory == '/' or equivalent
             # (which obviously should not happen)
-            raise OSError, "root directory missing? %s" % directory
+            raise OSError("root directory missing? %s" % directory)
         if head:
             ensuredir(head)
         # note: if head is blank, then we've reached the top of a relative path
@@ -555,7 +555,7 @@ def rpm_hdr_size(f, ofs=None):
         fo.seek(ofs, 0)
     magic = fo.read(3)
     if magic != RPM_HEADER_MAGIC:
-        raise GenericError, "Invalid rpm: bad magic: %r" % magic
+        raise GenericError("Invalid rpm: bad magic: %r" % magic)
 
     # skip past section magic and such
     #   (3 bytes magic, 1 byte version number, 4 bytes reserved)
@@ -588,7 +588,7 @@ class RawHeader(object):
 
     def __init__(self, data):
         if data[0:3] != RPM_HEADER_MAGIC:
-            raise GenericError, "Invalid rpm header: bad magic: %r" % (data[0:3],)
+            raise GenericError("Invalid rpm header: bad magic: %r" % (data[0:3],))
         self.header = data
         self._index()
 
@@ -726,7 +726,7 @@ class RawHeader(object):
             return self.header[pos:pos+count]
         else:
             #XXX - not all valid data types are handled
-            raise GenericError, "Unable to read header data type: %x" % dtype
+            raise GenericError("Unable to read header data type: %x" % dtype)
 
     def get(self, key, default=None):
         entry = self.index.get(key)
@@ -760,7 +760,7 @@ def __parse_packet_header(pgp_packet):
     """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
     byte0 = ord(pgp_packet[0])
     if (byte0 & 0x80) == 0:
-        raise ValueError, 'Not an OpenPGP packet'
+        raise ValueError('Not an OpenPGP packet')
     if (byte0 & 0x40) == 0:
         tag = (byte0 & 0x3C) >> 2
         len_type = byte0 & 0x03
@@ -784,10 +784,10 @@ def __parse_packet_header(pgp_packet):
             offset = 6
         else:
             # Who the ... would use partial body lengths in a signature packet?
-            raise NotImplementedError, \
-                'OpenPGP packet with partial body lengths'
+            raise NotImplementedError(
+                'OpenPGP packet with partial body lengths')
     if len(pgp_packet) != offset + length:
-        raise ValueError, 'Invalid OpenPGP packet length'
+        raise ValueError('Invalid OpenPGP packet length')
     return (tag, pgp_packet[offset:])
 
 def __subpacket_key_ids(subs):
@@ -813,7 +813,7 @@ def get_sigpacket_key_id(sigpacket):
     """Return ID of the key used to create sigpacket as a hexadecimal string"""
     (tag, sigpacket) = __parse_packet_header(sigpacket)
     if tag != 2:
-        raise ValueError, 'Not a signature packet'
+        raise ValueError('Not a signature packet')
     if ord(sigpacket[0]) == 0x03:
         key_id = sigpacket[11:15]
     elif ord(sigpacket[0]) == 0x04:
@@ -824,12 +824,12 @@ def get_sigpacket_key_id(sigpacket):
         off += 2
         key_ids += __subpacket_key_ids(sigpacket[off : off+sub_len])
         if len(key_ids) != 1:
-            raise NotImplementedError, \
-                'Unexpected number of key IDs: %s' % len(key_ids)
+            raise NotImplementedError(
+                'Unexpected number of key IDs: %s' % len(key_ids))
         key_id = key_ids[0][-4:]
     else:
-        raise NotImplementedError, \
-            'Unknown PGP signature packet version %s' % ord(sigpacket[0])
+        raise NotImplementedError(
+            'Unknown PGP signature packet version %s' % ord(sigpacket[0]))
     return hex_string(key_id)
 
 def get_sighdr_key(sighdr):
@@ -886,7 +886,7 @@ def get_header_field(hdr, name):
         return []
     idx = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
     if idx is None:
-        raise GenericError, "No such rpm header field: %s" % name
+        raise GenericError("No such rpm header field: %s" % name)
     return hdr[idx]
 
 def get_header_fields(X, fields):
@@ -1091,7 +1091,7 @@ def parse_pom(path=None, contents=None):
         fd.close()
 
     if not contents:
-        raise GenericError, 'either a path to a pom file or the contents of a pom file must be specified'
+        raise GenericError('either a path to a pom file or the contents of a pom file must be specified')
 
     # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
 
@@ -1108,7 +1108,7 @@ def parse_pom(path=None, contents=None):
 
     for field in fields:
         if field not in values.keys():
-            raise GenericError, 'could not extract %s from POM: %s' % (field, (path or '<contents>'))
+            raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
 def pom_to_maven_info(pominfo):
@@ -1358,7 +1358,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         urls = [opts['url']]
     else:
         if not (repoid and tag_name):
-            raise GenericError, "please provide a repo and tag"
+            raise GenericError("please provide a repo and tag")
         topurls = opts.get('topurls')
         if not topurls:
             #cli command still passes plain topurl
@@ -1544,7 +1544,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)
     else:
-        raise GenericError, "No access method for remote file: %s" % relpath
+        raise GenericError("No access method for remote file: %s" % relpath)
     return fo
 
 
@@ -2072,7 +2072,7 @@ class ClientSession(object):
                 ccache.init(cprinc)
                 ccache.init_creds_keytab(principal=cprinc, keytab=keytab)
             else:
-                raise AuthError, 'cannot specify a principal without a keytab'
+                raise AuthError('cannot specify a principal without a keytab')
         else:
             # We're trying to log ourself in.  Connect using existing credentials.
             cprinc = ccache.principal()
@@ -2162,7 +2162,7 @@ class ClientSession(object):
         finally:
             self.opts = old_opts
         if not sinfo:
-            raise AuthError, 'unable to obtain a session'
+            raise AuthError('unable to obtain a session')
 
         self.setSession(sinfo)
 
@@ -2200,7 +2200,7 @@ class ClientSession(object):
         finally:
             self.opts = old_opts
         if not sinfo:
-            raise AuthError, 'unable to obtain a session'
+            raise AuthError('unable to obtain a session')
 
         self.opts['cert'] = cert
         self.opts['serverca'] = serverca
@@ -2427,7 +2427,7 @@ class ClientSession(object):
         method call, or a map containing "faultCode" and "faultString" keys, describing the
         error that occurred during the method call."""
         if not self.multicall:
-            raise GenericError, 'ClientSession.multicall must be set to True before calling multiCall()'
+            raise GenericError('ClientSession.multicall must be set to True before calling multiCall()')
         self.multicall = False
         if len(self._calls) == 0:
             return []
@@ -2446,7 +2446,7 @@ class ClientSession(object):
 
     def __getattr__(self, name):
         #if name[:1] == '_':
-        #    raise AttributeError, "no attribute %r" % name
+        #    raise AttributeError("no attribute %r" % name)
         return VirtualMethod(self._callMethod, name)
 
     def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False):
@@ -2454,7 +2454,7 @@ class ClientSession(object):
             blocksize = self.opts.get('upload_blocksize', 1048576)
 
         if not self.logged_in:
-            raise ActionNotAllowed, 'You must be logged in to upload files'
+            raise ActionNotAllowed('You must be logged in to upload files')
         if name is None:
             name = os.path.basename(localfile)
         self.logger.debug("Fast upload: %s to %s/%s", localfile, path, name)
@@ -2478,10 +2478,10 @@ class ClientSession(object):
             hexdigest = util.adler32_constructor(chunk).hexdigest()
             full_chksum.update(chunk)
             if result['size'] != len(chunk):
-                raise GenericError, "server returned wrong chunk size: %s != %s" % (result['size'], len(chunk))
+                raise GenericError("server returned wrong chunk size: %s != %s" % (result['size'], len(chunk)))
             if result['hexdigest'] != hexdigest:
-                raise GenericError, 'upload checksum failed: %s != %s' \
-                        % (result['hexdigest'], hexdigest)
+                raise GenericError('upload checksum failed: %s != %s' \
+                        % (result['hexdigest'], hexdigest))
             ofs += len(chunk)
             now = time.time()
             t1 = max(now - lap, 0.00001)
@@ -2496,17 +2496,17 @@ class ClientSession(object):
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
         if int(result['size']) != ofs:
-            raise GenericError, "Uploaded file is wrong length: %s/%s, %s != %s" \
-                    % (path, name, result['size'], ofs)
+            raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s" \
+                    % (path, name, result['size'], ofs))
         if problems and result['hexdigest'] != full_chksum.hexdigest():
-            raise GenericError, "Uploaded file has wrong checksum: %s/%s, %s != %s" \
-                    % (path, name, result['hexdigest'], full_chksum.hexdigest())
+            raise GenericError("Uploaded file has wrong checksum: %s/%s, %s != %s" \
+                    % (path, name, result['hexdigest'], full_chksum.hexdigest()))
         self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
 
     def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False):
         """prep a rawUpload call"""
         if not self.logged_in:
-            raise ActionNotAllowed, "you must be logged in to upload"
+            raise ActionNotAllowed("you must be logged in to upload")
         args = self.sinfo.copy()
         args['callnum'] = self.callnum
         args['filename'] = name
@@ -2584,7 +2584,7 @@ class ClientSession(object):
                     tries += 1
                     continue
                 else:
-                    raise GenericError, "Error uploading file %s, offset %d" %(path, offset)
+                    raise GenericError("Error uploading file %s, offset %d" %(path, offset))
             if size == 0:
                 break
             ofs += size
@@ -2610,7 +2610,7 @@ class ClientSession(object):
         Note: This method does not work with multicall.
         """
         if self.multicall:
-            raise GenericError, 'downloadTaskOutput() may not be called during a multicall'
+            raise GenericError('downloadTaskOutput() may not be called during a multicall')
         result = self.callMethod('downloadTaskOutput', taskID, fileName, offset, size)
         return base64.decodestring(result)
 
