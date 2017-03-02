@@ -4979,16 +4979,13 @@ class NewSignedRepoTask(BaseTaskHandler):
         for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
-            if task_opts['multilib']:
-                # we moved the 32-bit results before, do the 64-bit
-                if arch not in arch32s:
-                    upload, files, keypaths = results[subtasks[arch]]
-                    self.session.host.signedRepoMove(
-                        repo_id, upload, files, arch, keypaths)
-            else:
-                upload, files, keypaths = results[subtasks[arch]]
-                self.session.host.signedRepoMove(
-                    repo_id, upload, files, arch, keypaths)
+            if task_opts['multilib'] and arch in arch32s:
+                # already moved above
+                continue
+            #else
+            upload, files, keypaths = results[subtasks[arch]]
+            self.session.host.signedRepoMove(
+                repo_id, upload, files, arch, keypaths)
         self.session.host.repoDone(repo_id, data, expire=False)
         return 'Signed repository #%s successfully generated' % repo_id
 
