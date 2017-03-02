@@ -174,7 +174,7 @@ class TestSignedRepoMove(unittest.TestCase):
             path = os.path.join(repodir, relpath)
             basename = os.path.basename(path)
             if not os.path.exists(path):
-                raise Exception, "Missing file: %s" % path
+                raise Exception("Missing file: %s" % path)
             data = open(path).read()
             data.strip()
             self.assertEquals(data, basename)

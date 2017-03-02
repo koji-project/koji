@@ -5019,7 +5019,7 @@ class createSignedRepoTask(CreaterepoTask):
         #arch is the arch of the repo, not the task
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
-            raise koji.GenericError, "Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo
+            raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
         self.repo_id = self.rinfo['id']
         self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(

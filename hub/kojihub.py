@@ -12334,7 +12334,7 @@ class HostExports(object):
         repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
         archdir = "%s/%s" % (repodir, koji.canonArch(arch))
         if not os.path.isdir(archdir):
-            raise koji.GenericError, "Repo arch directory missing: %s" % archdir
+            raise koji.GenericError("Repo arch directory missing: %s" % archdir)
         datadir = "%s/repodata" % archdir
         koji.ensuredir(datadir)
         for fn in files:
@@ -12347,7 +12347,7 @@ class HostExports(object):
             else:
                 dst = "%s/%s" % (datadir, fn)
             if not os.path.exists(src):
-                raise koji.GenericError, "uploaded file missing: %s" % src
+                raise koji.GenericError("uploaded file missing: %s" % src)
             if fn.endswith('pkglist'):
                 # hardlink the found rpms into the final repodir
                 # TODO: properly consider split-volume functionality
