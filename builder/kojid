@@ -2460,7 +2460,7 @@ class BuildLiveMediaTask(BuildImageTask):
             # XXX - are these still required here?
             self.logger.error("Missing the following dependencies: "
                     "pykickstart, pycdio, and possibly python-hashlib")
-            raise koji.PreBuildError, 'Live Media functions not available'
+            raise koji.PreBuildError('Live Media functions not available')
 
         # build the image
         bld_info = None

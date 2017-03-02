@@ -10844,7 +10844,7 @@ class BuildRoot(object):
                     values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
         data = query.executeOne()
         if not data:
-            raise koji.GenericError, 'Not a standard buildroot: %i' % self.id
+            raise koji.GenericError('Not a standard buildroot: %i' % self.id)
         self.data.update(data)
         # arch for compat
         self.data['arch'] = self.data['container_arch']
@@ -10894,7 +10894,7 @@ class BuildRoot(object):
 
     def assertStandard(self):
         if self.id is None:
-            raise koji.GenericError, "buildroot not specified"
+            raise koji.GenericError("buildroot not specified")
         if not self.is_standard:
             raise koji.GenericError('Not a standard buildroot: %s' % self.id)
 
