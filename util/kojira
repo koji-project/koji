@@ -538,7 +538,7 @@ class RepoManager(object):
                     break
             if covered:
                 continue
-            if tag_id not in self.tasks:
+            if tag_id in self.tasks:
                 #repo creation in progress
                 #TODO - implement a timeout
                 continue
