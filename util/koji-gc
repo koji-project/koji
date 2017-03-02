@@ -307,7 +307,7 @@ def parse_duration(str):
                 if unit:
                     break
             else:
-                raise ValueError, "Invalid time interval: %s" % str
+                raise ValueError("Invalid time interval: %s" % str)
         if unit is None:
             x = x.lower()
             for names in time_unit_aliases:
@@ -318,7 +318,7 @@ def parse_duration(str):
                 if unit:
                     break
             else:
-                raise ValueError, "Invalid time interval: %s" % str
+                raise ValueError("Invalid time interval: %s" % str)
         ret += n * time_units[unit]
         n = None
         unit = None
@@ -720,7 +720,7 @@ class AgePruneTest(koji.policy.BaseSimpleTest):
         self.cmp, value = str.split(None, 2)[1:]
         self.func = self.cmp_idx.get(self.cmp, None)
         if self.func is None:
-            raise Exception, "Invalid comparison in test: %s" % str
+            raise Exception("Invalid comparison in test: %s" % str)
         self.span = parse_duration(value)
 
     def run(self, data):
@@ -784,7 +784,7 @@ def handle_prune():
     policies = scan_policies(options.config.get('prune', 'policy'))
     for action in policies.all_actions():
         if action not in ("keep", "untag", "skip"):
-            raise Exception, "Invalid action: %s" % action
+            raise Exception("Invalid action: %s" % action)
     if options.debug:
         pprint.pprint(policies.ruleset)
     #get tags

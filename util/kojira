@@ -92,7 +92,7 @@ class ManagedRepo(object):
         if self.state == koji.REPO_EXPIRED:
             return
         elif self.state == koji.REPO_DELETED:
-            raise koji.GenericError, "Repo already deleted"
+            raise koji.GenericError("Repo already deleted")
         self.logger.info("Expiring repo %s.." % self.repo_id)
         self.session.repoExpire(self.repo_id)
         self.state = koji.REPO_EXPIRED
@@ -157,7 +157,7 @@ class ManagedRepo(object):
                 return False
         self.logger.debug("Attempting to delete repo %s.." % self.repo_id)
         if self.state != koji.REPO_EXPIRED:
-            raise koji.GenericError, "Repo not expired"
+            raise koji.GenericError("Repo not expired")
         if self.session.repoDelete(self.repo_id) > 0:
             #cannot delete, we are referenced by a buildroot
             self.logger.debug("Cannot delete repo %s, still referenced" % self.repo_id)

@@ -40,7 +40,7 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
         #not all arches can generate a proper buildroot for all tags
         tag = kojihub.get_tag(tagInfo)
         if not tag['arches']:
-            raise koji.GenericError, 'no arches defined for tag %s' % tag['name']
+            raise koji.GenericError('no arches defined for tag %s' % tag['name'])
 
         #get all known arches for the system
         fullarches = kojihub.get_all_arches()
@@ -53,8 +53,8 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
             chanarches = get_channel_arches(taskopts['channel'])
             choices = [x for x in tagarches if x in chanarches]
             if not choices:
-                raise koji.GenericError, 'no common arches for tag/channel: %s/%s' \
-                            % (tagInfo, taskopts['channel'])
+                raise koji.GenericError('no common arches for tag/channel: %s/%s' \
+                            % (tagInfo, taskopts['channel']))
             taskopts['arch'] = koji.canonArch(random.choice(choices))
 
     args = koji.encode_args(tagInfo, arch, command,**opts)

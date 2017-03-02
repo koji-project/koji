@@ -73,7 +73,7 @@ class HasTest(BaseSimpleTest):
         try:
             self.field = str.split()[1]
         except IndexError:
-            raise koji.GenericError, "Invalid or missing field in policy test"
+            raise koji.GenericError("Invalid or missing field in policy test")
 
     def run(self, data):
         return self.field in data
@@ -161,7 +161,7 @@ class CompareTest(BaseSimpleTest):
             cmp, value = str.split(None, 2)[1:]
         self.func = self.operators.get(cmp, None)
         if self.func is None:
-            raise koji.GenericError, "Invalid comparison in test."
+            raise koji.GenericError("Invalid comparison in test.")
         try:
             self.value = int(value)
         except ValueError:
@@ -218,13 +218,13 @@ class SimpleRuleSet(object):
                 cursor = child
             elif action == '}':
                 if not stack:
-                    raise koji.GenericError, "nesting error in rule set"
+                    raise koji.GenericError("nesting error in rule set")
                 cursor = stack.pop()
             else:
                 cursor.append(rule)
         if stack:
             # unclosed {
-            raise koji.GenericError, "nesting error in rule set"
+            raise koji.GenericError("nesting error in rule set")
 
     def parse_line(self, line):
         """Parse line as a rule
@@ -259,7 +259,7 @@ class SimpleRuleSet(object):
         if pos == -1:
             pos = line.rfind('!!')
             if pos == -1:
-                raise Exception, "bad policy line: %s" % line
+                raise Exception("bad policy line: %s" % line)
             negate = True
         tests = line[:pos]
         action = line[pos+2:]
@@ -273,7 +273,7 @@ class SimpleRuleSet(object):
         try:
             return self.tests[name](str)
         except KeyError:
-            raise koji.GenericError, "missing test handler: %s" % name
+            raise koji.GenericError("missing test handler: %s" % name)
 
     def all_actions(self):
         """report a list of all actions in the ruleset

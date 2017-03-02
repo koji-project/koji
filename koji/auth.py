@@ -77,7 +77,7 @@ class Session(object):
             id = long(args['session-id'][0])
             key = args['session-key'][0]
         except KeyError, field:
-            raise koji.AuthError, '%s not specified in session args' % field
+            raise koji.AuthError('%s not specified in session args' % field)
         try:
             callnum = args['callnum'][0]
         except:
@@ -107,22 +107,22 @@ class Session(object):
         c.execute(q, locals())
         row = c.fetchone()
         if not row:
-            raise koji.AuthError, 'Invalid session or bad credentials'
+            raise koji.AuthError('Invalid session or bad credentials')
         session_data = dict(zip(aliases, row))
         #check for expiration
         if session_data['expired']:
-            raise koji.AuthExpired, 'session "%i" has expired' % id
+            raise koji.AuthExpired('session "%i" has expired' % id)
         #check for callnum sanity
         if callnum is not None:
             try:
                 callnum = int(callnum)
             except (ValueError, TypeError):
-                raise koji.AuthError, "Invalid callnum: %r" % callnum
+                raise koji.AuthError("Invalid callnum: %r" % callnum)
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
-                    raise koji.SequenceError, "%d > %d (session %d)" \
-                            % (lastcall, callnum, id)
+                    raise koji.SequenceError("%d > %d (session %d)" \
+                            % (lastcall, callnum, id))
                 elif lastcall == callnum:
                     #Some explanation:
                     #This function is one of the few that performs its own commit.
@@ -134,9 +134,9 @@ class Session(object):
                     #return. Data was changed, so we cannot simply try the call again.
                     method = getattr(context, 'method', 'UNKNOWN')
                     if method not in RetryWhitelist:
-                        raise koji.RetryError, \
+                        raise koji.RetryError(
                             "unable to retry call %d (method %s) for session %d" \
-                            % (callnum, method, id)
+                            % (callnum, method, id))
 
         # read user data
         #historical note:
@@ -149,7 +149,7 @@ class Session(object):
         user_data = dict(zip(fields, c.fetchone()))
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
-            raise koji.AuthError, 'logins by %s are not allowed' % user_data['name']
+            raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
         #check for exclusive sessions
         if session_data['exclusive']:
             #we are the exclusive session for this user
@@ -218,7 +218,7 @@ class Session(object):
                 self._host_id = self._getHostId()
             return self._host_id
         else:
-            raise AttributeError, "%s" % name
+            raise AttributeError("%s" % name)
 
     def __str__(self):
         # convenient display for debugging
@@ -232,7 +232,7 @@ class Session(object):
 
     def validate(self):
         if self.lockerror:
-            raise koji.AuthLockError, self.lockerror
+            raise koji.AuthLockError(self.lockerror)
         return True
 
     def get_remote_ip(self, override=None):
@@ -254,20 +254,20 @@ class Session(object):
         cursor.execute(query, locals())
         result = cursor.fetchone()
         if not result:
-            raise koji.AuthError, 'invalid user_id: %s' % user_id
+            raise koji.AuthError('invalid user_id: %s' % user_id)
         name, usertype, status = result
 
         if status != koji.USER_STATUS['NORMAL']:
-            raise koji.AuthError, 'logins by %s are not allowed' % name
+            raise koji.AuthError('logins by %s are not allowed' % name)
 
     def login(self, user, password, opts=None):
         """create a login session"""
         if opts is None:
             opts = {}
         if not isinstance(password, str) or len(password) == 0:
-            raise koji.AuthError, 'invalid username or password'
+            raise koji.AuthError('invalid username or password')
         if self.logged_in:
-            raise koji.GenericError, "Already logged in"
+            raise koji.GenericError("Already logged in")
         hostip = self.get_remote_ip(override=opts.get('hostip'))
 
         # check passwd
@@ -277,7 +277,7 @@ class Session(object):
         c.execute(q, locals())
         r = c.fetchone()
         if not r:
-            raise koji.AuthError, 'invalid username or password'
+            raise koji.AuthError('invalid username or password')
         user_id = r[0]
 
         self.checkLoginAllowed(user_id)
@@ -295,10 +295,10 @@ class Session(object):
         Kerberos principal.  The principal must be an authorized
         "proxy_principal" in the server config."""
         if self.logged_in:
-            raise koji.AuthError, "Already logged in"
+            raise koji.AuthError("Already logged in")
 
         if not (context.opts.get('AuthPrincipal') and context.opts.get('AuthKeytab')):
-            raise koji.AuthError, 'not configured for Kerberos authentication'
+            raise koji.AuthError('not configured for Kerberos authentication')
 
         ctx = krbV.default_context()
         srvprinc = krbV.Principal(name=context.opts.get('AuthPrincipal'), context=ctx)
@@ -322,8 +322,8 @@ class Session(object):
             if cprinc.name in proxyprincs:
                 login_principal = proxyuser
             else:
-                raise koji.AuthError, \
-                      'Kerberos principal %s is not authorized to log in other users' % cprinc.name
+                raise koji.AuthError(
+                      'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
         else:
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
@@ -331,7 +331,7 @@ class Session(object):
             if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUserFromKerberos(login_principal)
             else:
-                raise koji.AuthError, 'Unknown Kerberos principal: %s' % login_principal
+                raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
 
         self.checkLoginAllowed(user_id)
 
@@ -372,7 +372,7 @@ class Session(object):
 
     def sslLogin(self, proxyuser=None):
         if self.logged_in:
-            raise koji.AuthError, "Already logged in"
+            raise koji.AuthError("Already logged in")
 
         if context.environ.get('REMOTE_USER'):
             username = context.environ.get('REMOTE_USER')
@@ -380,12 +380,12 @@ class Session(object):
             authtype = koji.AUTHTYPE_GSSAPI
         else:
             if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-                raise koji.AuthError, 'could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY')
+                raise koji.AuthError('could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY'))
 
             name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
             username = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
             if not username:
-                raise koji.AuthError, 'unable to get user information (%s) from client certificate' % name_dn_component
+                raise koji.AuthError('unable to get user information (%s) from client certificate' % name_dn_component)
             client_dn = context.environ.get('SSL_CLIENT_S_DN')
             authtype = koji.AUTHTYPE_SSL
 
@@ -395,7 +395,7 @@ class Session(object):
                 # the SSL-authenticated user authorized to login other users
                 username = proxyuser
             else:
-                raise koji.AuthError, '%s is not authorized to login other users' % client_dn
+                raise koji.AuthError('%s is not authorized to login other users' % client_dn)
 
         cursor = context.cnx.cursor()
         query = """SELECT id FROM users
@@ -408,7 +408,7 @@ class Session(object):
             if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUser(username)
             else:
-                raise koji.AuthError, 'Unknown user: %s' % username
+                raise koji.AuthError('Unknown user: %s' % username)
 
         self.checkLoginAllowed(user_id)
 
@@ -421,10 +421,10 @@ class Session(object):
         """Make this session exclusive"""
         c = context.cnx.cursor()
         if self.master is not None:
-            raise koji.GenericError, "subsessions cannot become exclusive"
+            raise koji.GenericError("subsessions cannot become exclusive")
         if self.exclusive:
             #shouldn't happen
-            raise koji.GenericError, "session is already exclusive"
+            raise koji.GenericError("session is already exclusive")
         user_id = self.user_id
         session_id = self.id
         #acquire a row lock on the user entry
@@ -443,7 +443,7 @@ class Session(object):
                 q = """UPDATE sessions SET expired=TRUE,"exclusive"=NULL WHERE id=%(excl_id)s"""
                 c.execute(q, locals())
             else:
-                raise koji.AuthLockError, "Cannot get exclusive session"
+                raise koji.AuthLockError("Cannot get exclusive session")
         #mark this session exclusive
         q = """UPDATE sessions SET "exclusive"=TRUE WHERE id=%(session_id)s"""
         c.execute(q, locals())
@@ -461,7 +461,7 @@ class Session(object):
         """expire a login session"""
         if not self.logged_in:
             #XXX raise an error?
-            raise koji.AuthError, "Not logged in"
+            raise koji.AuthError("Not logged in")
         update = """UPDATE sessions
         SET expired=TRUE,exclusive=NULL
         WHERE id = %(id)i OR master = %(id)i"""
@@ -475,7 +475,7 @@ class Session(object):
         """expire a subsession"""
         if not self.logged_in:
             #XXX raise an error?
-            raise koji.AuthError, "Not logged in"
+            raise koji.AuthError("Not logged in")
         update = """UPDATE sessions
         SET expired=TRUE,exclusive=NULL
         WHERE id = %(session_id)i AND master = %(master)i"""
@@ -517,7 +517,7 @@ class Session(object):
     def subsession(self):
         "Create a subsession"
         if not self.logged_in:
-            raise koji.AuthError, "Not logged in"
+            raise koji.AuthError("Not logged in")
         master = self.master
         if master is None:
             master = self.id
@@ -536,11 +536,11 @@ class Session(object):
 
     def assertPerm(self, name):
         if not self.hasPerm(name) and not self.hasPerm('admin'):
-            raise koji.ActionNotAllowed, "%s permission required" % name
+            raise koji.ActionNotAllowed("%s permission required" % name)
 
     def assertLogin(self):
         if not self.logged_in:
-            raise koji.ActionNotAllowed, "you must be logged in for this operation"
+            raise koji.ActionNotAllowed("you must be logged in for this operation")
 
     def hasGroup(self, group_id):
         if not self.logged_in:
@@ -555,7 +555,7 @@ class Session(object):
 
     def assertUser(self, user_id):
         if not self.isUser(user_id) and not self.hasPerm('admin'):
-            raise koji.ActionNotAllowed, "not owner"
+            raise koji.ActionNotAllowed("not owner")
 
     def _getHostId(self):
         '''Using session data, find host id (if there is one)'''
@@ -594,17 +594,17 @@ class Session(object):
         Return the user_id of the newly-created user.
         """
         if not name:
-            raise koji.GenericError, 'a user must have a non-empty name'
+            raise koji.GenericError('a user must have a non-empty name')
 
         if usertype == None:
             usertype = koji.USERTYPES['NORMAL']
         elif not koji.USERTYPES.get(usertype):
-            raise koji.GenericError, 'invalid user type: %s' % usertype
+            raise koji.GenericError('invalid user type: %s' % usertype)
 
         if status == None:
             status = koji.USER_STATUS['NORMAL']
         elif not koji.USER_STATUS.get(status):
-            raise koji.GenericError, 'invalid status: %s' % status
+            raise koji.GenericError('invalid status: %s' % status)
 
         cursor = context.cnx.cursor()
         select = """SELECT nextval('users_id_seq')"""
@@ -627,7 +627,7 @@ class Session(object):
         r = cursor.fetchall()
         if len(r) != 1:
             context.cnx.rollback()
-            raise koji.AuthError, 'could not automatically associate Kerberos Principal with existing user %s' % (name,)
+            raise koji.AuthError('could not automatically associate Kerberos Principal with existing user %s' % name)
         else:
             context.cnx.commit()
             return r[0][0]
@@ -638,7 +638,7 @@ class Session(object):
         Return the ID of the newly created user."""
         atidx = krb_principal.find('@')
         if atidx == -1:
-            raise koji.AuthError, 'invalid Kerberos principal: %s' % krb_principal
+            raise koji.AuthError('invalid Kerberos principal: %s' % krb_principal)
         user_name = krb_principal[:atidx]
 
         # check if user already exists
@@ -652,7 +652,7 @@ class Session(object):
         else:
             existing_user_krb = r[0]
             if existing_user_krb is not None:
-                raise koji.AuthError, 'user %s already associated with other Kerberos principal: %s' % (user_name, existing_user_krb)
+                raise koji.AuthError('user %s already associated with other Kerberos principal: %s' % (user_name, existing_user_krb))
             return self.setKrbPrincipal(user_name, krb_principal)
 
 def get_user_groups(user_id):

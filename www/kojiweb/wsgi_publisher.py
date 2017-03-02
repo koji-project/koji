@@ -146,7 +146,7 @@ class Dispatcher(object):
             # presumably we are configured by modpy options
             config = None
         else:
-            raise koji.GenericError, "Configuration missing"
+            raise koji.GenericError("Configuration missing")
 
         opts = {}
         for name, dtype, default in self.cfgmap:
@@ -198,7 +198,7 @@ class Dispatcher(object):
                 level = part
                 default = level
             if level not in valid_levels:
-                raise koji.GenericError, "Invalid log level: %s" % level
+                raise koji.GenericError("Invalid log level: %s" % level)
             #all our loggers start with koji
             if name == '':
                 name = 'koji'

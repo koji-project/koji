@@ -55,11 +55,11 @@ def umount_all(topdir):
         cmd = ['umount', '-l', path]
         rv = os.spawnvp(os.P_WAIT, cmd[0], cmd)
         if rv != 0:
-            raise koji.GenericError, 'umount failed (exit code %r) for %s' % (rv, path)
+            raise koji.GenericError('umount failed (exit code %r) for %s' % (rv, path))
     #check mounts again
     remain = scan_mounts(topdir)
     if remain:
-        raise koji.GenericError, "Unmounting incomplete: %r" % remain
+        raise koji.GenericError("Unmounting incomplete: %r" % remain)
 
 def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
@@ -87,7 +87,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     if rv != 0:
         logger.warn(msg)
         if strict:
-            raise koji.GenericError, msg
+            raise koji.GenericError(msg)
         else:
             return rv
     #them rmdir directories
@@ -98,7 +98,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     if rv != 0:
         logger.warn(msg)
         if strict:
-            raise koji.GenericError, msg
+            raise koji.GenericError(msg)
     return rv
 
 class ServerExit(Exception):
@@ -125,7 +125,7 @@ class BaseTaskHandler(object):
     def __init__(self, id, method, params, session, options, workdir=None):
         self.id = id   #task id
         if method not in self.Methods:
-            raise koji.GenericError, 'method "%s" is not supported' % method
+            raise koji.GenericError('method "%s" is not supported' % method)
         self.method = method
         # handle named parameters
         self.params, self.opts = koji.decode_args(*params)
@@ -336,10 +336,10 @@ class BaseTaskHandler(object):
         #  c) is canonical
         host_arches = host['arches']
         if not host_arches:
-            raise koji.BuildError, "No arch list for this host: %s" % host['name']
+            raise koji.BuildError("No arch list for this host: %s" % host['name'])
         tag_arches = tag['arches']
         if not tag_arches:
-            raise koji.BuildError, "No arch list for tag: %s" % tag['name']
+            raise koji.BuildError("No arch list for tag: %s" % tag['name'])
         # index canonical host arches
         host_arches = set([koji.canonArch(a) for a in host_arches.split()])
         # index canonical tag arches
@@ -356,8 +356,8 @@ class BaseTaskHandler(object):
             return arch
         else:
             # no overlap
-            raise koji.BuildError, "host %s (%s) does not support any arches of tag %s (%s)" % \
-                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches))
+            raise koji.BuildError("host %s (%s) does not support any arches of tag %s (%s)" % \
+                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches)))
 
     def getRepo(self, tag):
         """
@@ -370,7 +370,7 @@ class BaseTaskHandler(object):
             taginfo = self.session.getTag(tag, strict=True)
             targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
             if not targets:
-                raise koji.BuildError, 'no repo (and no target) for tag %s' % taginfo['name']
+                raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
             #wait for it
             task_id = self.session.host.subtask(method='waitrepo',
                                                 arglist=[tag, None, None],
@@ -445,7 +445,7 @@ class DefaultTask(BaseTaskHandler):
     Methods = ['default']
     _taskWeight = 0.1
     def handler(self, *args, **opts):
-        raise koji.GenericError, "Invalid method: %s" % self.method
+        raise koji.GenericError("Invalid method: %s" % self.method)
 
 
 class ShutdownTask(BaseTaskHandler):
@@ -466,7 +466,7 @@ class RestartTask(BaseTaskHandler):
     def handler(self, host):
         #note: this is a foreground task
         if host['id'] != self.session.host.getID():
-            raise koji.GenericError, "Host mismatch"
+            raise koji.GenericError("Host mismatch")
         self.manager.restart_pending = True
         return "graceful restart initiated"
 
@@ -482,12 +482,12 @@ class RestartVerifyTask(BaseTaskHandler):
         tinfo = self.session.getTaskInfo(task_id)
         state = koji.TASK_STATES[tinfo['state']]
         if state != 'CLOSED':
-            raise koji.GenericError, "Stage one restart task is %s" % state
+            raise koji.GenericError("Stage one restart task is %s" % state)
         if host['id'] != self.session.host.getID():
-            raise koji.GenericError, "Host mismatch"
+            raise koji.GenericError("Host mismatch")
         if self.manager.start_time < tinfo['completion_ts']:
             start_time = time.asctime(time.localtime(self.manager.start_time))
-            raise koji.GenericError, "Restart failed - start time is %s" % start_time
+            raise koji.GenericError("Restart failed - start time is %s" % start_time)
 
 
 class RestartHostsTask(BaseTaskHandler):
@@ -498,7 +498,7 @@ class RestartHostsTask(BaseTaskHandler):
     def handler(self):
         hosts = self.session.listHosts(enabled=True)
         if not hosts:
-            raise koji.GenericError, "No hosts enabled"
+            raise koji.GenericError("No hosts enabled")
         this_host = self.session.host.getID()
         subtasks = []
         my_tasks = None
@@ -511,7 +511,7 @@ class RestartHostsTask(BaseTaskHandler):
             if host['id'] == this_host:
                 my_tasks = [task1, task2]
         if not my_tasks:
-            raise koji.GenericError, 'This host is not enabled'
+            raise koji.GenericError('This host is not enabled')
         self.wait(my_tasks[0])
         #see if we've restarted
         if not self.session.taskFinished(my_tasks[1]):
@@ -542,7 +542,7 @@ class DependantTask(BaseTaskHandler):
                 if self.session.taskFinished(task):
                     info = self.session.getTaskInfo(task)
                     if info and koji.TASK_STATES[info['state']] in ['CANCELED', 'FAILED']:
-                        raise koji.GenericError, "Dependency %s failed to complete." % info['id']
+                        raise koji.GenericError("Dependency %s failed to complete." % info['id'])
                     wait_list.remove(task)
             # let the system rest before polling again
             time.sleep(1)

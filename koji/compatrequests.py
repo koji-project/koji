@@ -90,7 +90,7 @@ class Session(object):
             cnxOpts = {}
             cnxClass = httplib.HTTPConnection
         else:
-            raise IOError, "unsupported protocol: %s" % scheme
+            raise IOError("unsupported protocol: %s" % scheme)
 
         timeout_compat = False
         if timeout:

@@ -266,7 +266,7 @@ def parse_duration(str):
                 if unit:
                     break
             else:
-                raise ValueError, "Invalid time interval: %s" % str
+                raise ValueError("Invalid time interval: %s" % str)
         if unit is None:
             x = x.lower()
             for names in time_unit_aliases:
@@ -277,7 +277,7 @@ def parse_duration(str):
                 if unit:
                     break
             else:
-                raise ValueError, "Invalid time interval: %s" % str
+                raise ValueError("Invalid time interval: %s" % str)
         ret += n * time_units[unit]
         n = None
         unit = None
@@ -631,7 +631,7 @@ class BuildTracker(object):
                     continue
                 data = line.split()
                 if len(data) != 2:
-                    raise Exception, "Bad substitution: %s" % line
+                    raise Exception("Bad substitution: %s" % line)
                 match, replace = data
                 self.substitutions[match] = replace
 
