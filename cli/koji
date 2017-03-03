@@ -2339,7 +2339,7 @@ def handle_list_volumes(options, session, args):
         print(volinfo['name'])
 
 def handle_list_permissions(options, session, args):
-    "[admin] List user permissions"
+    "[info] List user permissions"
     usage = _("usage: %prog list-permissions [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
