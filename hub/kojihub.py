@@ -12338,7 +12338,7 @@ class HostExports(object):
         uploadpath - where the uploaded files are
         files - a list of the uploaded file names
         arch - the arch of the repo
-        sigmap - a dictionary rpm_id -> sig
+        sigmap - a list of [rpm_id, sig] pairs
 
         The rpms from sigmap should match the contents of the uploaded pkglist
         file.
@@ -12377,8 +12377,7 @@ class HostExports(object):
         # get rpms
         build_dirs = {}
         rpmdata = {}
-        for rpm_id in sigmap:
-            sigkey = sigmap[rpm_id]
+        for rpm_id, sigkey in sigmap:
             rpminfo = get_rpm(rpm_id, strict=True)
             relpath = koji.pathinfo.signed(rpminfo, sigkey)
             rpminfo['_relpath'] = relpath

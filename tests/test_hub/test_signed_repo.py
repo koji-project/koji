@@ -135,7 +135,7 @@ class TestSignedRepoMove(unittest.TestCase):
         self.files.append('pkglist')
         plist = os.path.join(uploaddir, 'pkglist')
         nvrs = ['aaa-1.0-2', 'bbb-3.0-5', 'ccc-8.0-13','ddd-21.0-34']
-        self.sigmap = {}
+        self.sigmap = []
         self.rpms = {}
         self.builds ={}
         self.key = '4c8da725'
@@ -161,7 +161,7 @@ class TestSignedRepoMove(unittest.TestCase):
                 rpminfo['id'] = rpm_id
                 self.builds[build_id] = binfo
                 self.rpms[rpm_id] = rpminfo
-                self.sigmap[rpm_id] = self.key
+                self.sigmap.append([rpm_id, self.key])
 
         # mocks
         self.repo_info = mock.patch('kojihub.repo_info').start()

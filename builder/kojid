@@ -5072,7 +5072,7 @@ class createSignedRepoTask(CreaterepoTask):
                 files.append(f)
                 self.session.uploadWrapper('%s/%s' % (ddir, f),
                     self.uploadpath, f)
-        return [self.uploadpath, files, self.sigmap]
+        return [self.uploadpath, files, self.sigmap.items()]
 
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
