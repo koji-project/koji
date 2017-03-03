@@ -30,6 +30,10 @@ import koji.plugin
 import koji.util
 import koji.tasks
 import glob
+try:
+    import json
+except ImportError:  # pragma: no cover
+    import simplejson as json
 import logging
 import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM
@@ -4963,9 +4967,9 @@ class NewSignedRepoTask(BaseTaskHandler):
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
-                upload, files, keypaths = results[subtasks[arch]]
+                upload, files, sigmap = results[subtasks[arch]]
                 self.session.host.signedRepoMove(
-                    repo_id, upload, files, arch, keypaths)
+                    repo_id, upload, files, arch, sigmap)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
@@ -4983,9 +4987,9 @@ class NewSignedRepoTask(BaseTaskHandler):
                 # already moved above
                 continue
             #else
-            upload, files, keypaths = results[subtasks[arch]]
+            upload, files, sigmap = results[subtasks[arch]]
             self.session.host.signedRepoMove(
-                repo_id, upload, files, arch, keypaths)
+                repo_id, upload, files, arch, sigmap)
         self.session.host.repoDone(repo_id, data, expire=False)
         return 'Signed repository #%s successfully generated' % repo_id
 
@@ -5030,8 +5034,9 @@ class createSignedRepoTask(CreaterepoTask):
         koji.ensuredir(self.repodir)
         self.outdir = self.repodir # workaround create_local_repo use
         self.datadir = '%s/repodata' % self.repodir
-        self.keypaths = {}
+        self.sigmap = {}
         if len(opts['delta']) > 0:
+            # XXX raw path in options
             for path in opts['delta']:
                 if not os.path.exists(path):
                     raise koji.GenericError(
@@ -5040,6 +5045,7 @@ class createSignedRepoTask(CreaterepoTask):
         self.pkglist = self.make_pkglist(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
+        self.write_kojipkgs()
         self.logger.debug('package list is %s' % self.pkglist)
         self.session.uploadWrapper(self.pkglist, self.uploadpath,
             os.path.basename(self.pkglist))
@@ -5066,7 +5072,7 @@ class createSignedRepoTask(CreaterepoTask):
                 files.append(f)
                 self.session.uploadWrapper('%s/%s' % (ddir, f),
                     self.uploadpath, f)
-        return [self.uploadpath, files, self.keypaths]
+        return [self.uploadpath, files, self.sigmap]
 
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
@@ -5076,7 +5082,7 @@ class createSignedRepoTask(CreaterepoTask):
         ml_true = set() # multilib packages we need to include before depsolve
         ml_conf = os.path.join(self.pathinfo.work(), conf)
 
-        # step 1: figure out which packages are multlib (should already exist)
+        # step 1: figure out which packages are multilib (should already exist)
         mlm = multilib.DevelMultilibMethod(ml_conf)
         fs_missing = set()
         with open(self.pkglist) as pkglist:
@@ -5175,6 +5181,10 @@ enabled=1
             raise koji.GenericError('multilib packages missing:\n' +
                 '\n'.join(fs_missing))
 
+        # get rpm ids for ml pkgs
+        kpkgfile = os.path.join(mldir, 'kojipkgs')
+        kojipkgs = json.load(open(kpkgfile, 'r'))
+
         # step 5: add dependencies to our package list
         pkgwriter = open(self.pkglist, 'a')
         for dep_path in ml_needed:
@@ -5191,11 +5201,10 @@ enabled=1
             pkgwriter.write(bnplet + '/' + bnp + '\n')
             self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
             os.symlink(dep_path, dst)
-            self.keypaths[bnp] = dep_path
+            self.sigmap[bnp] = kojipkgs[bnp]['sigkey']
 
 
     def make_pkglist(self, tag_id, arch, keys, opts):
-
         rpms = []
         builddirs = {}
         for a in self.compat[arch] + ('noarch',):
@@ -5228,6 +5237,7 @@ enabled=1
             preferred[rpminfo['id']] = rpminfo
         seen = set()
         fs_missing = set()
+        kojipkgs = {}
         for rpminfo in preferred.values():
             if rpminfo['sigkey'] == '':
                 # we're taking an unsigned rpm (--allow-unsigned)
@@ -5239,16 +5249,19 @@ enabled=1
             seen.add(os.path.basename(pkgpath))
             if not os.path.exists(pkgpath):
                 fs_missing.add(pkgpath)
+                # we'll raise an error below
             else:
                 bnp = os.path.basename(pkgpath)
                 bnplet = bnp[0].lower()
                 pkglist.write(bnplet + '/' + bnp + '\n')
                 koji.ensuredir(os.path.join(self.repodir, bnplet))
-                self.keypaths[bnp] = pkgpath
+                self.sigmap[rpminfo['id']] = rpminfo['sigkey']
                 dst = os.path.join(self.repodir, bnplet, bnp)
                 self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
                 os.symlink(pkgpath, dst)
+                kojipkgs[bnp] = rpminfo
         pkglist.close()
+        self.kojipkgs = kojipkgs
         if len(fs_missing) > 0:
             raise koji.GenericError('Packages missing from the filesystem:\n' +
                 '\n'.join(fs_missing))
@@ -5259,6 +5272,13 @@ enabled=1
                 raise koji.GenericError('Unsigned packages found: ' +
                     '\n'.join(missing))
         return pkgfile
+
+
+    def write_kojipkgs(self):
+        datafile = file(os.path.join(self.repodir, 'kojipkgs'), 'w')
+        json.dump(self.kojipkgs, datafile, indent=4)
+        datafile.close()
+
 
 
 class WaitrepoTask(BaseTaskHandler):

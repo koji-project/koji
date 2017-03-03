@@ -12325,10 +12325,27 @@ class HostExports(object):
             log_error("Unable to create latest link for repo: %s" % repodir)
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
-    def signedRepoMove(self, repo_id, uploadpath, files, arch, fullpaths):
+
+    def signedRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
         """
-        Very similar to repoDone, except only the uploads are completed.
-        fullpaths is a dict like so: rpm file name -> sig"""
+        Move a signed repo into its final location
+
+
+        Unlike normal repos (which are moved into place by repoDone), signed
+        repos have all their content linked (or copied) into place.
+
+        repo_id - the repo to move
+        uploadpath - where the uploaded files are
+        files - a list of the uploaded file names
+        arch - the arch of the repo
+        sigmap - a dictionary rpm_id -> sig
+
+        The rpms from sigmap should match the contents of the uploaded pkglist
+        file.
+
+        In sigmap, use sig=None to use the primary copy of the rpm instead of a
+        signed copy.
+        """
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
         repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
@@ -12337,6 +12354,8 @@ class HostExports(object):
             raise koji.GenericError("Repo arch directory missing: %s" % archdir)
         datadir = "%s/repodata" % archdir
         koji.ensuredir(datadir)
+
+        pkglist = set()
         for fn in files:
             src = "%s/%s/%s" % (workdir, uploadpath, fn)
             if fn.endswith('.drpm'):
@@ -12349,29 +12368,59 @@ class HostExports(object):
             if not os.path.exists(src):
                 raise koji.GenericError("uploaded file missing: %s" % src)
             if fn.endswith('pkglist'):
-                # hardlink the found rpms into the final repodir
-                # TODO: properly consider split-volume functionality
                 with open(src) as pkgfile:
                     for pkg in pkgfile:
                         pkg = os.path.basename(pkg.strip())
-                        rpmpath = fullpaths[pkg]
-                        bnp = os.path.basename(rpmpath)
-                        bnplet = bnp[0].lower()
-                        koji.ensuredir(os.path.join(archdir, bnplet))
-                        l_dst = os.path.join(archdir, bnplet, bnp)
-                        if os.path.exists(l_dst):
-                            logger.warning("Path exists: %s", l_dst)
-                            continue
-                        logger.debug("os.link(%r, %r)", rpmpath, l_dst)
-                        try:
-                            os.link(rpmpath, l_dst)
-                        except OSError, ose:
-                            if ose.errno == 18:
-                                shutil.copy2(
-                                    rpmpath, os.path.join(archdir, bnplet, bnp))
-                            else:
-                                raise
+                        pkglist.add(pkg)
             safer_move(src, dst)
+
+        # get rpms
+        build_dirs = {}
+        rpmdata = {}
+        for rpm_id in sigmap:
+            sigkey = sigmap[rpm_id]
+            rpminfo = get_rpm(rpm_id, strict=True)
+            relpath = koji.pathinfo.signed(rpminfo, sigkey)
+            rpminfo['_relpath'] = relpath
+            if rpminfo['build_id'] in build_dirs:
+                builddir = build_dirs[rpminfo['build_id']]
+            else:
+                binfo = get_build(rpminfo['build_id'])
+                builddir = koji.pathinfo.build(binfo)
+                build_dirs[rpminfo['build_id']] = builddir
+            rpminfo['_fullpath'] = os.path.join(builddir, relpath)
+            basename = os.path.basename(relpath)
+            rpmdata[basename] = rpminfo
+
+        # sanity check
+        for fn in rpmdata:
+            if fn not in pkglist:
+                raise koji.GenericError("No signature data for: %s" % fn)
+        for fn in pkglist:
+            if fn  not in rpmdata:
+                raise koji.GenericError("RPM missing from pkglist: %s" % fn)
+
+        for fn in rpmdata:
+            # hardlink or copy the rpms into the final repodir
+            # TODO: properly consider split-volume functionality
+            rpminfo = rpmdata[fn]
+            rpmpath = rpminfo['_fullpath']
+            bnp = fn
+            bnplet = bnp[0].lower()
+            koji.ensuredir(os.path.join(archdir, bnplet))
+            l_dst = os.path.join(archdir, bnplet, bnp)
+            if os.path.exists(l_dst):
+                raise koji.GenericError("File already in repo: %s", l_dst)
+            logger.debug("os.link(%r, %r)", rpmpath, l_dst)
+            try:
+                os.link(rpmpath, l_dst)
+            except OSError, ose:
+                if ose.errno == 18:
+                    shutil.copy2(
+                        rpmpath, os.path.join(archdir, bnplet, bnp))
+                else:
+                    raise
+
 
     def isEnabled(self):
         host = Host()

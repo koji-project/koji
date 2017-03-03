@@ -131,19 +131,21 @@ class TestSignedRepoMove(unittest.TestCase):
             with open(path, 'w') as fo:
                 fo.write('%s' % fn)
 
-        # also a pkglist file
+        # generate pkglist file and sigmap
         self.files.append('pkglist')
         plist = os.path.join(uploaddir, 'pkglist')
-        # crap this is terrible -- code needs fixing
         nvrs = ['aaa-1.0-2', 'bbb-3.0-5', 'ccc-8.0-13','ddd-21.0-34']
-        self.fullpaths = {}  # XXX
+        self.sigmap = {}
+        self.rpms = {}
+        self.builds ={}
+        self.key = '4c8da725'
         with open(plist, 'w') as f_pkglist:
             for nvr in nvrs:
                 binfo = koji.parse_NVR(nvr)
                 rpminfo = binfo.copy()
                 rpminfo['arch'] = 'x86_64'
                 builddir = koji.pathinfo.build(binfo)
-                relpath = koji.pathinfo.rpm(rpminfo)
+                relpath = koji.pathinfo.signed(rpminfo, self.key)
                 path = os.path.join(builddir, relpath)
                 koji.ensuredir(os.path.dirname(path))
                 basename = os.path.basename(path)
@@ -152,11 +154,22 @@ class TestSignedRepoMove(unittest.TestCase):
                 f_pkglist.write(path)
                 f_pkglist.write('\n')
                 self.expected.append('x86_64/%s/%s' % (basename[0], basename))
-                self.fullpaths[basename] = path  # XXX
+                build_id = len(self.builds) + 10000
+                rpm_id = len(self.rpms) + 20000
+                binfo['id'] = build_id
+                rpminfo['build_id'] = build_id
+                rpminfo['id'] = rpm_id
+                self.builds[build_id] = binfo
+                self.rpms[rpm_id] = rpminfo
+                self.sigmap[rpm_id] = self.key
 
         # mocks
         self.repo_info = mock.patch('kojihub.repo_info').start()
         self.repo_info.return_value = self.rinfo.copy()
+        self.get_rpm = mock.patch('kojihub.get_rpm').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_rpm.side_effect = self.our_get_rpm
+        self.get_build.side_effect = self.our_get_build
 
 
     def tearDown(self):
@@ -164,10 +177,18 @@ class TestSignedRepoMove(unittest.TestCase):
         shutil.rmtree(self.topdir)
 
 
+    def our_get_rpm(self, rpminfo, strict=False, multi=False):
+        return self.rpms[rpminfo]
+
+
+    def our_get_build(self, buildInfo, strict=False):
+        return self.builds[buildInfo]
+
+
     def test_signedRepoMove(self):
         exports = kojihub.HostExports()
         exports.signedRepoMove(self.rinfo['id'], self.uploadpath,
-                list(self.files), self.arch, self.fullpaths)
+                list(self.files), self.arch, self.sigmap)
         # check result
         repodir = self.topdir + '/repos-signed/%(tag_name)s/%(id)s' % self.rinfo
         for relpath in self.expected:
