@@ -12361,7 +12361,7 @@ class HostExports(object):
             if fn.endswith('.drpm'):
                 koji.ensuredir(os.path.join(archdir, 'drpms'))
                 dst = "%s/drpms/%s" % (archdir, fn)
-            elif fn.endswith('pkglist'):
+            elif fn.endswith('pkglist') or fn.endswith('kojipkgs'):
                 dst = '%s/%s' % (archdir, fn)
             else:
                 dst = "%s/%s" % (datadir, fn)

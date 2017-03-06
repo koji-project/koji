@@ -5061,7 +5061,7 @@ class createSignedRepoTask(CreaterepoTask):
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
-        files = ['pkglist']
+        files = ['pkglist', 'kojipkgs']
         for f in os.listdir(self.datadir):
             files.append(f)
             self.session.uploadWrapper('%s/%s' % (self.datadir, f),
@@ -5201,7 +5201,8 @@ enabled=1
             pkgwriter.write(bnplet + '/' + bnp + '\n')
             self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
             os.symlink(dep_path, dst)
-            self.sigmap[bnp] = kojipkgs[bnp]['sigkey']
+            rpminfo = kojipkgs[bnp]
+            self.sigmap[rpminfo['id']] = rpminfo['sigkey']
 
 
     def make_pkglist(self, tag_id, arch, keys, opts):
@@ -5275,9 +5276,14 @@ enabled=1
 
 
     def write_kojipkgs(self):
-        datafile = file(os.path.join(self.repodir, 'kojipkgs'), 'w')
-        json.dump(self.kojipkgs, datafile, indent=4)
-        datafile.close()
+        filename = os.path.join(self.repodir, 'kojipkgs')
+        datafile = file(filename, 'w')
+        try:
+            json.dump(self.kojipkgs, datafile, indent=4)
+        finally:
+            datafile.close()
+        # and upload too
+        self.session.uploadWrapper(filename, self.uploadpath, 'kojipkgs')
 
 
 
