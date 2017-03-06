@@ -12379,7 +12379,10 @@ class HostExports(object):
         rpmdata = {}
         for rpm_id, sigkey in sigmap:
             rpminfo = get_rpm(rpm_id, strict=True)
-            relpath = koji.pathinfo.signed(rpminfo, sigkey)
+            if sigkey is None or sigkey == '':
+                relpath = koji.pathinfo.rpm(rpminfo)
+            else:
+                relpath = koji.pathinfo.signed(rpminfo, sigkey)
             rpminfo['_relpath'] = relpath
             if rpminfo['build_id'] in build_dirs:
                 builddir = build_dirs[rpminfo['build_id']]
