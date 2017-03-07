@@ -1265,8 +1265,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     values['order'] = order
 
-    btypes = [b['name'] for b in server.listBTypes()]
-    btypes.sort()
+    btypes = sorted([b['name'] for b in server.listBTypes()])
     if type in btypes:
         pass
     elif type == 'all':
@@ -1935,8 +1934,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
             maxRPMs = numRPMs
 
     values['hostArch'] = hostArch
-    hostArchList = server.getAllArches()
-    hostArchList.sort()
+    hostArchList = sorted(server.getAllArches())
     values['hostArchList'] = hostArchList
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
@@ -2005,8 +2003,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
             maxTasks = numTasks
 
     values['hostArch'] = hostArch
-    hostArchList = server.getAllArches()
-    hostArchList.sort()
+    hostArchList = sorted(server.getAllArches())
     values['hostArchList'] = hostArchList
 
     values['order'] = order

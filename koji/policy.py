@@ -358,7 +358,7 @@ def findSimpleTests(namespace):
                 # this module contains generic tests, so it is valid to include it
                 # in the namespace list
                 continue
-            if type(value) == type(BaseSimpleTest) and issubclass(value, BaseSimpleTest):
+            if isinstance(value, type(BaseSimpleTest)) and issubclass(value, BaseSimpleTest):
                 name = getattr(value, 'name', None)
                 if not name:
                     #use the class name

@@ -6464,8 +6464,7 @@ def query_history(tables=None, **kwargs):
         'req_id': ['groups', 'req'],
         }
     if tables is None:
-        tables = table_fields.keys()
-        tables.sort()
+        tables = sorted(table_fields.keys())
     else:
         for table in tables:
             if table not in table_fields:

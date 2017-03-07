@@ -381,7 +381,7 @@ def convertFault(fault):
     if code is None:
         return fault
     for v in globals().values():
-        if type(v) == type(Exception) and issubclass(v, GenericError) and \
+        if isinstance(v, type(Exception)) and issubclass(v, GenericError) and \
                 code == getattr(v, 'faultCode', None):
             ret = v(fault.faultString)
             ret.fromFault = True
@@ -399,7 +399,7 @@ def listFaults():
     """
     ret = []
     for n, v in globals().items():
-        if type(v) == type(Exception) and issubclass(v, GenericError):
+        if isinstance(v, type(Exception)) and issubclass(v, GenericError):
             code = getattr(v, 'faultCode', None)
             if code is None:
                 continue
@@ -433,7 +433,7 @@ def decode_args(*args):
     opts = {}
     if len(args) > 0:
         last = args[-1]
-        if type(last) == dict and last.get('__starstar', False):
+        if isinstance(last, dict) and last.get('__starstar', False):
             del last['__starstar']
             opts = last
             args = args[:-1]
@@ -627,8 +627,7 @@ class RawHeader(object):
         print("Store at offset %d (%0x)" % (store, store))
         #sort entries by offset, dtype
         #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
-        order = [(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()]
-        order.sort()
+        order = sorted([(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()])
         next = store
         #map some rpmtag codes
         tags = {}
@@ -894,7 +893,7 @@ def get_header_fields(X, fields):
 
     X may be either the rpm header or the rpm filename
     """
-    if type(X) == str:
+    if isinstance(X, str):
         hdr = get_rpm_header(X)
     else:
         hdr = X

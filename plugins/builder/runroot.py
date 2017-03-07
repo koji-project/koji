@@ -301,9 +301,8 @@ class RunRootTask(tasks.BaseTaskHandler):
         #also, check /proc/mounts just in case
         for dir in scan_mounts(rootdir):
             mounts.setdefault(dir, 1)
-        mounts = mounts.keys()
+        mounts = sorted(mounts.keys())
         # deeper directories first
-        mounts.sort()
         mounts.reverse()
         failed = []
         self.logger.info("Unmounting (runroot): %s" % mounts)
