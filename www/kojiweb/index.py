@@ -76,7 +76,7 @@ def _clearUserCookie(environ):
 
 def _getUserCookie(environ):
     options = environ['koji.options']
-    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE',''))
+    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE', ''))
     if 'user' not in cookies:
         return None
     value = cookies['user'].value
@@ -2205,14 +2205,14 @@ _VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
 _VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
 _DEFAULT_SEARCH_ORDER = {
     # For searches against large tables, use '-id' to show most recent first
-    'build' : '-id',
-    'rpm' : '-id',
-    'maven' : '-id',
-    'win' : '-id',
+    'build': '-id',
+    'rpm': '-id',
+    'maven': '-id',
+    'win': '-id',
     # for other tables, ordering by name makes much more sense
-    'tag' : 'name',
-    'target' : 'name',
-    'package' : 'name',
+    'tag': 'name',
+    'target': 'name',
+    'package': 'name',
     # any type not listed will default to 'name'
 }
 

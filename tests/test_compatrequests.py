@@ -140,7 +140,7 @@ class TestSessionConnection(unittest.TestCase):
             ret = session.get_connection(uri, None, None, None)
 
     @mock.patch('httplib.HTTPConnection')
-    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    @mock.patch('sys.version_info', new=(2, 7, 12, 'final', 0))
     def test_timeout(self, HTTPConnection):
         # no cert, no verify
         session = koji.compatrequests.Session()
@@ -199,7 +199,7 @@ class TestSessionConnection(unittest.TestCase):
 
     @mock.patch('ssl._create_unverified_context')
     @mock.patch('httplib.HTTPSConnection')
-    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    @mock.patch('sys.version_info', new=(2, 7, 12, 'final', 0))
     def test_unverified(self, HTTPSConnection, create_unverified_context):
         # no cert, verify=False, no timeout
         session = koji.compatrequests.Session()
@@ -230,7 +230,7 @@ class TestSessionConnection(unittest.TestCase):
     @mock.patch('ssl._create_unverified_context')
     @mock.patch('ssl.SSLContext')
     @mock.patch('httplib.HTTPSConnection')
-    @mock.patch('sys.version_info', new=(2,7,12,'final', 0))
+    @mock.patch('sys.version_info', new=(2, 7, 12, 'final', 0))
     def test_verify(self, HTTPSConnection, SSLContext, create_unverified_context):
         # no cert, no timeout
         session = koji.compatrequests.Session()

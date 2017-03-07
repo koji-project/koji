@@ -142,12 +142,12 @@ class CompareTest(BaseSimpleTest):
     allow_float = True
 
     operators = {
-        '<' : lambda a, b: a < b,
-        '>' : lambda a, b: a > b,
-        '<=' : lambda a, b: a <= b,
-        '>=' : lambda a, b: a >= b,
-        '=' : lambda a, b: a == b,
-        '!=' : lambda a, b: a != b,
+        '<': lambda a, b: a < b,
+        '>': lambda a, b: a > b,
+        '<=': lambda a, b: a <= b,
+        '>=': lambda a, b: a >= b,
+        '=': lambda a, b: a == b,
+        '!=': lambda a, b: a != b,
         }
 
     def __init__(self, str):

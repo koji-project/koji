@@ -411,7 +411,7 @@ class Dispatcher(object):
             start_response(status, headers)
             return result
         headers = {
-            'allow' : ('Allow', 'GET, POST, HEAD'),
+            'allow': ('Allow', 'GET, POST, HEAD'),
         }
         extra = []
         for name, value in environ.get('koji.headers', []):

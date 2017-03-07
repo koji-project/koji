@@ -281,7 +281,7 @@ has DEPTH :: {
 
         lines = policy.splitlines()
 
-        for depth in ['1','2','3','4']:
+        for depth in ['1', '2', '3', '4']:
             data = {'DEPTH': depth}
             obj = koji.policy.SimpleRuleSet(lines, tests)
             action = obj.apply(data)
