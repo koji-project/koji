@@ -109,7 +109,7 @@
       <td class="container">
         #if $len($rpmsByArch) > 0
         <table class="nested">
-          #if $rpmsByArch.has_key('src')
+          #if 'src' in $rpmsByArch
           <tr><th>src</th><th></th></tr>
           #for $rpm in $rpmsByArch['src']
           #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm

@@ -83,7 +83,7 @@ def parse_args(args):
 
     # expand arches
     for arch in opts.arches[:]:
-        if EXPAND_ARCHES.has_key(arch):
+        if arch in EXPAND_ARCHES:
             opts.arches.extend(EXPAND_ARCHES[arch])
 
     # support multilib repos
@@ -205,7 +205,7 @@ class RepoMerge(object):
                     continue
                 seen_srpms[pkg.sourcerpm] = 1
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
-                if include_srpms.has_key(srpm_name):
+                if srpm_name in include_srpms:
                     other_srpm, other_repoid = include_srpms[srpm_name]
                     if pkg.repoid != other_repoid:
                         # We found a rpm built from an srpm with the same name in a previous repo.
@@ -230,7 +230,7 @@ class RepoMerge(object):
                             sys.stderr.write('Ignoring older source nvr: '
                                     '%s < %s\n' % (pkg.sourcerpm, other_srpm))
                         # otherwise same, so we already have it
-                elif self.blocked.has_key(srpm_name):
+                elif srpm_name in self.blocked:
                     sys.stderr.write('Ignoring blocked package: %s\n\n' % \
                                      pkg.sourcerpm)
                     continue
@@ -246,7 +246,7 @@ class RepoMerge(object):
                 srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
                 incl_srpm, incl_repoid = include_srpms.get(srpm_name, (None, None))
                 pkg_nvra = str(pkg)
-                if seen_rpms.has_key(pkg_nvra):
+                if pkg_nvra in seen_rpms:
                     sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
                 elif incl_srpm is None:
                     sys.stderr.write('Excluding %s (%s is blocked)\n'

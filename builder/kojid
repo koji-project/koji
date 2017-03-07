@@ -380,7 +380,7 @@ class BuildRoot(object):
                     results = []
 
                 for fname in results:
-                    if fname.endswith('.log') and not logs.has_key(fname):
+                    if fname.endswith('.log') and fname not in logs:
                         fpath = os.path.join(resultdir, fname)
                         logs[fname] = (None, None, 0, fpath)
                 if workdir and mocklog not in logs:
@@ -2215,7 +2215,7 @@ class BuildBaseImageTask(BuildImageTask):
             # make sure we only import the user-submitted kickstart file one
             # time, otherwise we will have collisions. Remove it from exactly
             # 1 results hash from the subtasks
-            if opts.has_key('kickstart'):
+            if 'kickstart' in opts:
                 saw_ks = False
                 for arch in results.keys():
                     ks = os.path.basename(opts.get('kickstart'))
@@ -5201,7 +5201,7 @@ if __name__ == "__main__":
             quit("Error: Unable to log in. Bad credentials?")
         except xmlrpclib.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
-    elif sys.modules.has_key('krbV'):
+    elif 'krbV' in sys.modules:
         krb_principal = options.krb_principal
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()

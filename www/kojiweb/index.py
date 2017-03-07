@@ -325,7 +325,7 @@ def notificationedit(environ, notificationID):
 
     form = environ['koji.form']
 
-    if form.has_key('save'):
+    if 'save' in form:
         package_id = form.getfirst('package')
         if package_id == 'all':
             package_id = None
@@ -338,7 +338,7 @@ def notificationedit(environ, notificationID):
         else:
             tag_id = int(tag_id)
 
-        if form.has_key('success_only'):
+        if 'success_only' in form:
             success_only = True
         else:
             success_only = False
@@ -346,7 +346,7 @@ def notificationedit(environ, notificationID):
         server.updateNotification(notification['id'], package_id, tag_id, success_only)
 
         _redirect(environ, 'index')
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'index')
     else:
         values = _initValues(environ, 'Edit Notification')
@@ -365,7 +365,7 @@ def notificationcreate(environ):
 
     form = environ['koji.form']
 
-    if form.has_key('add'):
+    if 'add' in form:
         user = environ['koji.currentUser']
         if not user:
             raise koji.GenericError('not logged-in')
@@ -382,7 +382,7 @@ def notificationcreate(environ):
         else:
             tag_id = int(tag_id)
 
-        if form.has_key('success_only'):
+        if 'success_only' in form:
             success_only = True
         else:
             success_only = False
@@ -390,7 +390,7 @@ def notificationcreate(environ):
         server.createNotification(user['id'], package_id, tag_id, success_only)
 
         _redirect(environ, 'index')
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'index')
     else:
         values = _initValues(environ, 'Edit Notification')
@@ -883,7 +883,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     tagsByChild = {}
     for parent in inheritance:
         child_id = parent['child_id']
-        if not tagsByChild.has_key(child_id):
+        if child_id not in tagsByChild:
             tagsByChild[child_id] = []
         tagsByChild[child_id].append(child_id)
 
@@ -925,22 +925,22 @@ def tagcreate(environ):
 
     form = environ['koji.form']
 
-    if form.has_key('add'):
+    if 'add' in form:
         params = {}
         name = form['name'].value
         params['arches'] = form['arches'].value
-        params['locked'] = bool(form.has_key('locked'))
+        params['locked'] = 'locked' in form
         permission = form['permission'].value
         if permission != 'none':
             params['perm'] = int(permission)
         if mavenEnabled:
-            params['maven_support'] = bool(form.has_key('maven_support'))
-            params['maven_include_all'] = bool(form.has_key('maven_include_all'))
+            params['maven_support'] = bool('maven_support' in form)
+            params['maven_include_all'] = bool('maven_include_all' in form)
 
         tagID = server.createTag(name, **params)
 
         _redirect(environ, 'taginfo?tagID=%i' % tagID)
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'tags')
     else:
         values = _initValues(environ, 'Add Tag', 'tags')
@@ -965,24 +965,24 @@ def tagedit(environ, tagID):
 
     form = environ['koji.form']
 
-    if form.has_key('save'):
+    if 'save' in form:
         params = {}
         params['name'] = form['name'].value
         params['arches'] = form['arches'].value
-        params['locked'] = bool(form.has_key('locked'))
+        params['locked'] = bool('locked' in form)
         permission = form['permission'].value
         if permission == 'none':
             params['perm'] = None
         else:
             params['perm'] = int(permission)
         if mavenEnabled:
-            params['maven_support'] = bool(form.has_key('maven_support'))
-            params['maven_include_all'] = bool(form.has_key('maven_include_all'))
+            params['maven_support'] = bool('maven_support' in form)
+            params['maven_include_all'] = bool('maven_include_all' in form)
 
         server.editTag2(tag['id'], **params)
 
         _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
     else:
         values = _initValues(environ, 'Edit Tag', 'tags')
@@ -1017,22 +1017,22 @@ def tagparent(environ, tagID, parentID, action):
     if action in ('add', 'edit'):
         form = environ['koji.form']
 
-        if form.has_key('add') or form.has_key('save'):
+        if 'add' in form or 'save' in form:
             newDatum = {}
             newDatum['parent_id'] = parent['id']
             newDatum['priority'] = int(form.getfirst('priority'))
             maxdepth = form.getfirst('maxdepth')
             maxdepth = len(maxdepth) > 0 and int(maxdepth) or None
             newDatum['maxdepth'] = maxdepth
-            newDatum['intransitive'] = bool(form.has_key('intransitive'))
-            newDatum['noconfig'] = bool(form.has_key('noconfig'))
+            newDatum['intransitive'] = bool('intransitive' in form)
+            newDatum['noconfig'] = bool('noconfig' in form)
             newDatum['pkg_filter'] = form.getfirst('pkg_filter')
 
             data = server.getInheritanceData(tag['id'])
             data.append(newDatum)
 
             server.setInheritanceData(tag['id'], data)
-        elif form.has_key('cancel'):
+        elif 'cancel' in form:
             pass
         else:
             values = _initValues(environ, action.capitalize() + ' Parent Tag', 'tags')
@@ -1133,7 +1133,7 @@ def buildinfo(environ, buildID):
     for rpm in debuginfos:
         rpmsByArch.setdefault(rpm['arch'], []).append(rpm)
 
-    if rpmsByArch.has_key('src'):
+    if 'src' in rpmsByArch:
         srpm = rpmsByArch['src'][0]
         headers = server.getRPMHeaders(srpm['id'], headers=['summary', 'description'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
@@ -1143,7 +1143,7 @@ def buildinfo(environ, buildID):
     noarch_log_dest = 'noarch'
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
-        if rpmsByArch.has_key('noarch') and \
+        if 'noarch' in rpmsByArch and \
                 [a for a in rpmsByArch.keys() if a not in ('noarch', 'src')]:
             # This build has noarch and other-arch packages, indicating either
             # noarch in extra-arches (kernel) or noarch subpackages.
@@ -1197,7 +1197,7 @@ def buildinfo(environ, buildID):
     else:
         values['perms'] = []
     for field in ['summary', 'description', 'changelog']:
-        if not values.has_key(field):
+        if field not in values:
             values[field] = None
 
     values['start_time'] = build.get('start_time') or build['creation_time']
@@ -1567,12 +1567,12 @@ def hostedit(environ, hostID):
 
     form = environ['koji.form']
 
-    if form.has_key('save'):
+    if 'save' in form:
         arches = form['arches'].value
         capacity = float(form['capacity'].value)
         description = form['description'].value
         comment = form['comment'].value
-        enabled = bool(form.has_key('enabled'))
+        enabled = bool('enabled' in form)
         channels = form.getlist('channels')
 
         server.editHost(host['id'], arches=arches, capacity=capacity,
@@ -1592,7 +1592,7 @@ def hostedit(environ, hostID):
                 server.addHostToChannel(host['name'], channel)
 
         _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
     else:
         values = _initValues(environ, 'Edit Host', 'hosts')
@@ -1804,7 +1804,7 @@ def buildtargetedit(environ, targetID):
 
     form = environ['koji.form']
 
-    if form.has_key('save'):
+    if 'save' in form:
         name = form.getfirst('name')
         buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
@@ -1819,7 +1819,7 @@ def buildtargetedit(environ, targetID):
         server.editBuildTarget(target['id'], name, buildTag['id'], destTag['id'])
 
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
     else:
         values = _initValues(environ, 'Edit Build Target', 'buildtargets')
@@ -1837,7 +1837,7 @@ def buildtargetcreate(environ):
 
     form = environ['koji.form']
 
-    if form.has_key('add'):
+    if 'add' in form:
         # Use the str .value field of the StringField object,
         # since xmlrpclib doesn't know how to marshal the StringFields
         # returned by mod_python
@@ -1852,7 +1852,7 @@ def buildtargetcreate(environ):
             raise koji.GenericError('error creating build target "%s"' % name)
 
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
-    elif form.has_key('cancel'):
+    elif 'cancel' in form:
         _redirect(environ, 'buildtargets')
     else:
         values = _initValues(environ, 'Add Build Target', 'builtargets')
@@ -2222,7 +2222,7 @@ def search(environ, start=None, order=None):
     values['error'] = None
 
     form = environ['koji.form']
-    if form.has_key('terms') and form['terms']:
+    if 'terms' in form and form['terms']:
         terms = form['terms'].value
         terms = terms.strip()
         type = form['type'].value

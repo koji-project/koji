@@ -320,7 +320,7 @@ def activate_session(session):
     elif options.user:
         #authenticate using user/password
         session.login()
-    elif sys.modules.has_key('krbV'):
+    elif 'krbV' in sys.modules:
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
@@ -511,7 +511,7 @@ class TrackedBuild(object):
         remote.multicall = True
         unpack = []
         for br_id in buildroots:
-            if seen.has_key(br_id):
+            if br_id in seen:
                 continue
             seen[br_id] = 1
             #br_info = remote.getBuildroot(br_id, strict=True)
@@ -997,7 +997,7 @@ class BuildTracker(object):
         missing_pkgs = []
         for dep in deps:
             name = dep.info['name']
-            if not pkgs.has_key(name):
+            if name not in pkgs:
                 #guess owner
                 owners = {}
                 for pkg in session.listPackages(pkgID=name):
@@ -1051,8 +1051,8 @@ class BuildTracker(object):
             #fix build group package list based on base of build to shadow
             needed = dict([(n, 1) for n in build.base])
             current = dict([(p['package'], 1) for p in build_group['packagelist']])
-            add_pkgs = [n for n in needed if not current.has_key(n)]
-            drop_pkgs = [n for n in current if not needed.has_key(n)]
+            add_pkgs = [n for n in needed if n not in current]
+            drop_pkgs = [n for n in current if n not in needed]
             #no group deps needed/allowed
             drop_deps = [(g['name'], 1) for g in build_group['grouplist']]
             if drop_deps:

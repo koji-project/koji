@@ -369,7 +369,7 @@ class Task(object):
             #otherwise, find the top-level task and go from there
             seen = {task_id:1}
             while parent is not None:
-                if seen.has_key(parent):
+                if parent in seen:
                     raise koji.GenericError("Task LOOP at task %i" % task_id)
                 task_id = parent
                 seen[task_id] = 1
@@ -382,7 +382,7 @@ class Task(object):
         #query for use in loop
         q_children = """SELECT id FROM task WHERE parent = %(task_id)i"""
         for task_id in tasklist:
-            if seen.has_key(task_id):
+            if task_id in seen:
                 #shouldn't happen
                 raise koji.GenericError("Task LOOP at task %i" % task_id)
             seen[task_id] = 1
@@ -483,7 +483,7 @@ def make_task(method, arglist, **opts):
         priority: the priority of the task
         assign: a host_id to assign the task to
     """
-    if opts.has_key('parent'):
+    if 'parent' in opts:
         # for subtasks, we use some of the parent's options as defaults
         fields = ('state', 'owner', 'channel_id', 'priority', 'arch')
         q = """SELECT %s FROM task WHERE id = %%(parent)i""" % ','.join(fields)
@@ -647,7 +647,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
         if link.get('delete link'):
             check_fields = ('parent_id')
         for f in fields:
-            if not link.has_key(f):
+            if f not in link:
                 raise koji.GenericError("No value for %s" % f)
     # read current data and index
     data = dict([[link['parent_id'], link] for link in readInheritanceData(tag_id)])
@@ -741,16 +741,16 @@ def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdept
             id = link['tag_id']
         else:
             id = link['parent_id']
-        if jumps.has_key(id):
+        if id in jumps:
             id = jumps[id]
-        if top.has_key(id):
+        if id in top:
             #LOOP!
             if event is None:
                 # only log if the issue is current
                 log_error("Warning: INHERITANCE LOOP detected at %s -> %s, pruning" % (tag_id, id))
             #auto prune
             continue
-        if prunes.has_key(id):
+        if id in prunes:
             # ignore pruned tags
             continue
         if link['intransitive'] and len(top) > 1 and not reverse:
@@ -784,7 +784,7 @@ def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdept
             filter.append(pattern)
         link['filter'] = filter
         # check history to avoid redundant entries
-        if hist.has_key(id):
+        if id in hist:
             #already been there
             #BUT, options may have been different
             rescan = True
@@ -984,7 +984,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
         #it's possible this was the only entry in the inheritance or that the next entry
         #back is also a blocked entry. if so, we need to add it back as unblocked
         pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
-        if not pkglist.has_key(pkg_id) or pkglist[pkg_id]['blocked']:
+        if pkg_id not in pkglist or pkglist[pkg_id]['blocked']:
             _pkglist_add(tag_id, pkg_id, previous['owner_id'], False, previous['extra_arches'])
     koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
 
@@ -1064,7 +1064,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
         # same query as before, with different params
         for p in _multiRow(q, locals(), [pair[1] for pair in fields]):
             pkgid = p['package_id']
-            if not with_dups and packages.has_key(pkgid):
+            if not with_dups and pkgid in packages:
                 #previous data supercedes
                 continue
             # apply package filters
@@ -1240,7 +1240,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
                 # list should take priority
                 continue
             if latest:
-                if (latest is True and seen.has_key(pkgid)) or seen.get(pkgid, 0) >= latest:
+                if (latest is True and pkgid in seen) or seen.get(pkgid, 0) >= latest:
                     # only take the first N entries
                     # (note ordering in query above)
                     continue
@@ -1316,7 +1316,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
     tags_seen = {}
     def _iter_rpms():
         for tagid in taglist:
-            if tags_seen.has_key(tagid):
+            if tagid in tags_seen:
                 #certain inheritance trees can (legitimately) have the same tag
                 #appear more than once (perhaps once with a package filter and once
                 #without). The hard part of that was already done by readTaggedBuilds.
@@ -1411,7 +1411,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     archives = []
     tags_seen = {}
     for tagid in taglist:
-        if tags_seen.has_key(tagid):
+        if tagid in tags_seen:
             #certain inheritance trees can (legitimately) have the same tag
             #appear more than once (perhaps once with a package filter and once
             #without). The hard part of that was already done by readTaggedBuilds.
@@ -1598,7 +1598,7 @@ def _grplist_add(taginfo, grpinfo, block, force, **opts):
         changed = False
         for field in cfg_fields:
             old = previous[field]
-            if opts.has_key(field):
+            if field in opts:
                 if opts[field] != old:
                     changed = True
             else:
@@ -1724,7 +1724,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
         changed = False
         for field in cfg_fields:
             old = previous[field]
-            if opts.has_key(field):
+            if field in opts:
                 if opts[field] != old:
                     changed = True
             else:
@@ -1848,7 +1848,7 @@ def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
         changed = False
         for field in cfg_fields:
             old = previous[field]
-            if opts.has_key(field):
+            if field in opts:
                 if opts[field] != old:
                     changed = True
             else:
@@ -1978,7 +1978,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
         for tagid in taglist:
             for grp_pkg in _multiRow(q, locals(), fields):
                 grp_id = grp_pkg['group_id']
-                if not groups.has_key(grp_id):
+                if grp_id not in groups:
                     #tag does not have this group
                     continue
                 group = groups[grp_id]
@@ -1999,7 +1999,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
         for tagid in taglist:
             for grp_req in _multiRow(q, locals(), fields):
                 grp_id = grp_req['group_id']
-                if not groups.has_key(grp_id):
+                if grp_id not in groups:
                     #tag does not have this group
                     continue
                 group = groups[grp_id]
@@ -2007,7 +2007,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
                     #ignore blocked groups
                     continue
                 req_id = grp_req['req_id']
-                if not groups.has_key(req_id):
+                if req_id not in groups:
                     #tag does not have this group
                     continue
                 elif groups[req_id]['blocked']:
@@ -2990,7 +2990,7 @@ def _edit_tag(tagInfo, **kwargs):
         raise koji.GenericError("Maven support not enabled")
 
     tag = get_tag(tagInfo, strict=True)
-    if kwargs.has_key('perm'):
+    if 'perm' in kwargs:
         if kwargs['perm'] is None:
             kwargs['perm_id'] = None
         else:
@@ -3022,7 +3022,7 @@ def _edit_tag(tagInfo, **kwargs):
     data = tag.copy()
     changed = False
     for key in ('perm_id', 'arches', 'locked', 'maven_support', 'maven_include_all'):
-        if kwargs.has_key(key) and data[key] != kwargs[key]:
+        if key in kwargs and data[key] != kwargs[key]:
             changed = True
             data[key] = kwargs[key]
     if changed:
@@ -3336,7 +3336,7 @@ def get_external_repo_list(tag_info, event=None):
     repos = []
     for tag_id in tag_list:
         for tag_repo in get_tag_external_repos(tag_info=tag_id, event=event):
-            if not seen_repos.has_key(tag_repo['external_repo_id']):
+            if tag_repo['external_repo_id'] not in seen_repos:
                 repos.append(tag_repo)
                 seen_repos[tag_repo['external_repo_id']] = 1
     return repos
@@ -3386,8 +3386,7 @@ def find_build_id(X, strict=False):
     else:
         raise koji.GenericError("Invalid argument: %r" % X)
 
-    if not (data.has_key('name') and data.has_key('version') and
-            data.has_key('release')):
+    if not ('name' in data and 'version' in data and 'release' in data):
         raise koji.GenericError('did not provide name, version, and release')
 
     c = context.cnx.cursor()
@@ -3586,13 +3585,13 @@ def get_rpm(rpminfo, strict=False, multi=False):
     else:
         raise koji.GenericError("Invalid argument: %r" % rpminfo)
     clauses = []
-    if data.has_key('id'):
+    if 'id' in data:
         clauses.append("rpminfo.id=%(id)s")
     else:
         clauses.append("""rpminfo.name=%(name)s AND version=%(version)s
         AND release=%(release)s AND arch=%(arch)s""")
     retry = False
-    if data.has_key('location'):
+    if 'location' in data:
         data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
         clauses.append("""external_repo_id = %(external_repo_id)i""")
     elif not multi:
@@ -3982,7 +3981,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
 
         if typeInfo:
             for key in ('group_id', 'artifact_id', 'version'):
-                if typeInfo.has_key(key):
+                if key in typeInfo:
                     clauses.append('maven_archives.%s = %%(%s)s' % (key, key))
                     values[key] = typeInfo[key]
     elif type == 'win':
@@ -4674,7 +4673,7 @@ def new_build(data):
             raise koji.GenericError("No name or package id provided for build")
         data['pkg_id'] = new_package(name, strict=False)
     for f in ('version', 'release', 'epoch'):
-        if not data.has_key(f):
+        if f not in data:
             raise koji.GenericError("No %s value for build" % f)
     if 'extra' in data:
         try:
@@ -4788,7 +4787,7 @@ def check_noarch_rpms(basepath, rpms):
     for relpath in rpms:
         if relpath.endswith('.noarch.rpm'):
             filename = os.path.basename(relpath)
-            if noarch_rpms.has_key(filename):
+            if filename in noarch_rpms:
                 # duplicate found, add it to the duplicate list
                 # but not the result list
                 noarch_rpms[filename].append(relpath)
@@ -4830,7 +4829,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     #verify buildroot ids from brmap
     found = {}
     for br_id in brmap.values():
-        if found.has_key(br_id):
+        if br_id in found:
             continue
         found[br_id] = 1
         #this will raise an exception if the buildroot id is invalid
@@ -5447,7 +5446,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         ('size', int),
         ('buildtime', (int, long)))
     for field, allowed in dtypes:
-        if not rpminfo.has_key(field):
+        if field not in rpminfo:
             raise koji.GenericError("%s field missing: %r" % (field, rpminfo))
         if not isinstance(rpminfo[field], allowed):
             #this will catch unwanted NULLs
@@ -7345,7 +7344,7 @@ class InsertProcessor(object):
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
-            if self.data.has_key(key):
+            if key in self.data:
                 values.append("%%(%s)s" % key)
             else:
                 values.append("(%s)" % self.rawdata[key])
@@ -7746,7 +7745,7 @@ class OperationTest(koji.policy.MatchTest):
 
 def policy_get_user(data):
     """Determine user from policy data (default to logged-in user)"""
-    if data.has_key('user_id'):
+    if 'user_id' in data:
         return get_user(data['user_id'])
     elif context.session.logged_in:
         return get_user(context.session.user_id)
@@ -7758,7 +7757,7 @@ def policy_get_pkg(data):
     returns dict as lookup_package
     if package does not exist yet, the id field will be None
     """
-    if data.has_key('package'):
+    if 'package' in data:
         pkginfo = lookup_package(data['package'], strict=False)
         if not pkginfo:
             #for some operations (e.g. adding a new package), the package
@@ -7768,7 +7767,7 @@ def policy_get_pkg(data):
             else:
                 raise koji.GenericError("Invalid package: %s" % data['package'])
         return pkginfo
-    if data.has_key('build'):
+    if 'build' in data:
         binfo = get_build(data['build'], strict=True)
         return {'id' : binfo['package_id'], 'name' : binfo['name']}
     #else
@@ -7778,7 +7777,7 @@ def policy_get_pkg(data):
 def policy_get_cgs(data):
     """Determine content generators from policy data"""
 
-    if not data.has_key('build'):
+    if 'build' not in data:
         raise koji.GenericError("policy requires build data")
     binfo = get_build(data['build'], strict=True)
 
@@ -7940,14 +7939,14 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     name = 'buildtag'
     def run(self, data):
         args = self.str.split()[1:]
-        if data.has_key('build_tag'):
+        if 'build_tag' in data:
             tagname = get_tag(data['build_tag'], strict=True)['name']
             for pattern in args:
                 if fnmatch.fnmatch(tagname, pattern):
                     return True
             #else
             return False
-        elif data.has_key('build'):
+        elif 'build' in data:
             #determine build tag from buildroots
             #in theory, we should find only one unique build tag
             #it is possible that some rpms could have been imported later and hence
@@ -8081,9 +8080,9 @@ class SourceTest(koji.policy.MatchTest):
     name = "source"
     field = '_source'
     def run(self, data):
-        if data.has_key('source'):
+        if 'source' in data:
             data[self.field] = data['source']
-        elif data.has_key('build'):
+        elif 'build' in data:
             build = get_build(data['build'])
             if build['source'] is not None:
                 data[self.field] = build['source']
@@ -8538,7 +8537,7 @@ class RootExports(object):
                                'only admins may create high-priority tasks')
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
-        if not opts.has_key('scratch') and not opts.has_key('indirection_template_url'):
+        if 'scratch' not in opts and 'indirection_template_url' not in opts:
             raise koji.ActionNotAllowed('Non-scratch builds must provide url for the indirection template')
 
         return make_task('indirectionimage', [opts], **taskOpts)
@@ -8558,7 +8557,7 @@ class RootExports(object):
                                'only admins may create high-priority tasks')
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
-        if not opts.has_key('scratch') and not opts.has_key('ksurl'):
+        if 'scratch' not in opts and 'ksurl' not in opts:
             raise koji.ActionNotAllowed('Non-scratch builds must provide ksurl')
 
         return make_task('image', [name, version, arches, target, inst_tree, opts], **taskOpts)
@@ -9059,7 +9058,7 @@ class RootExports(object):
         # package list check
         pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
         pkg_error = None
-        if not pkgs.has_key(pkg_id):
+        if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for %s" % (build['name'], tag['name'])
         elif pkgs[pkg_id]['blocked']:
             pkg_error = "Package %s blocked in %s" % (build['name'], tag['name'])
@@ -9134,7 +9133,7 @@ class RootExports(object):
         # Make sure package is on the list for the tag we're adding it to
         pkgs = readPackageList(tagID=tag2_id, pkgID=pkg_id, inherit=True)
         pkg_error = None
-        if not pkgs.has_key(pkg_id):
+        if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for tag %s" % (package, tag2)
         elif pkgs[pkg_id]['blocked']:
             pkg_error = "Package %s blocked in tag %s" % (package, tag2)
@@ -9482,13 +9481,13 @@ class RootExports(object):
                            ('maven_builds.artifact_id', 'maven_artifact_id'),
                            ('maven_builds.version', 'maven_version')])
             if typeInfo:
-                if typeInfo.has_key('group_id'):
+                if 'group_id' in typeInfo:
                     clauses.append('maven_builds.group_id = %(group_id)s')
                     group_id = typeInfo['group_id']
-                if typeInfo.has_key('artifact_id'):
+                if 'artifact_id' in typeInfo:
                     clauses.append('maven_builds.artifact_id = %(artifact_id)s')
                     artifact_id = typeInfo['artifact_id']
-                if typeInfo.has_key('version'):
+                if 'version' in typeInfo:
                     clauses.append('maven_builds.version = %(version)s')
                     version = typeInfo['version']
         elif type == 'win':
@@ -9905,7 +9904,7 @@ class RootExports(object):
         if pkg_id is None or tag_id is None:
             return False
         pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
-        if not pkgs.has_key(pkg_id):
+        if pkg_id not in pkgs:
             return False
         else:
             #still might be blocked
@@ -10200,15 +10199,15 @@ class RootExports(object):
 
         for f in ['arch', 'state']:
             # Include list types
-            if opts.has_key(f):
+            if f in opts:
                 conditions.append('%s IN %%(%s)s' % (f, f))
             # Exclude list types
-            if opts.has_key('not_' + f):
+            if ('not_' + f) in opts:
                 conditions.append('%s NOT IN %%(not_%s)s' % (f, f))
 
         for f in ['owner', 'host_id', 'channel_id', 'parent']:
             # Include int types
-            if opts.has_key(f):
+            if f in opts:
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
                 elif isinstance(opts[f], types.ListType):
@@ -10216,7 +10215,7 @@ class RootExports(object):
                 else:
                     conditions.append('%s = %%(%s)i' % (f, f))
             # Exclude int types
-            if opts.has_key('not_' + f):
+            if ('not_' + f) in opts:
                 if opts['not_' + f] is None:
                     conditions.append('%s IS NOT NULL' % f)
                 elif isinstance(opts['not_' + f], types.ListType):
@@ -10224,7 +10223,7 @@ class RootExports(object):
                 else:
                     conditions.append('%s != %%(not_%s)i' % (f, f))
 
-        if opts.has_key('method'):
+        if 'method' in opts:
             conditions.append('method = %(method)s')
 
         time_opts = [
@@ -11387,7 +11386,7 @@ class HostExports(object):
         ptask = Task(parent)
         ptask.assertHost(host.id)
         opts['parent'] = parent
-        if opts.has_key('label'):
+        if 'label' in opts:
             # first check for existing task with this parent/label
             q = """SELECT id FROM task
             WHERE parent=%(parent)s AND label=%(label)s"""
@@ -11395,7 +11394,7 @@ class HostExports(object):
             if row:
                 #return task id
                 return row[0]
-        if opts.has_key('kwargs'):
+        if 'kwargs' in opts:
             arglist = koji.encode_args(*arglist, **opts['kwargs'])
             del opts['kwargs']
         return make_task(method, arglist, **opts)
@@ -11535,7 +11534,7 @@ class HostExports(object):
                 logger.debug('renaming %s to %s' % (src, dest))
                 safer_move(src, dest)
                 os.symlink(dest, src)
-            if sub_results.has_key('rpmresults'):
+            if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                         rpm_results['logs']:
@@ -11907,7 +11906,7 @@ class HostExports(object):
                 logger.warning('Task %s failed, no image available' % task_id)
                 continue
             importImageInternal(task_id, build_id, sub_results)
-            if sub_results.has_key('rpmresults'):
+            if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 _import_wrapper(rpm_results['task_id'],
                     get_build(build_id, strict=True), rpm_results)
@@ -12066,7 +12065,7 @@ class HostExports(object):
         for entry in ignore:
             ignore_info = entry['maven_info']
             ignore_label = koji.mavenLabel(ignore_info)
-            if not ignore_by_label.has_key(ignore_label):
+            if ignore_label not in ignore_by_label:
                 ignore_by_label[ignore_label] = {}
             for fileinfo in entry['files']:
                 filename = fileinfo['filename']

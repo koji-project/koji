@@ -523,7 +523,7 @@ class TaskManager(object):
                 # this makes no sense now, but may in the future
                 self.logger.warn("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
                 self.session.host.setBuildRootState(id, st_expired)
-            elif not self.tasks.has_key(task_id):
+            elif task_id not in self.tasks:
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
@@ -534,7 +534,7 @@ class TaskManager(object):
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in local_br.iterkeys() if not db_br.has_key(id)]
+        local_only = [id for id in local_br.iterkeys() if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -681,7 +681,7 @@ class TaskManager(object):
             # the tasks returned are those that are open and locked
             # by this host.
             id = task['id']
-            if not self.pids.has_key(id):
+            if id not in self.pids:
                 #We don't have a process for this
                 #Expected to happen after a restart, otherwise this is an error
                 stale.append(id)
@@ -707,10 +707,10 @@ class TaskManager(object):
                 # the subprocess handles most everything, we just need to clear things out
                 if self.cleanupTask(id, wait=False):
                     del self.pids[id]
-                if self.tasks.has_key(id):
+                if id in self.tasks:
                     del self.tasks[id]
         for id, pid in self.pids.items():
-            if not tasks.has_key(id):
+            if id not in tasks:
                 # expected to happen when:
                 #  - we are in the narrow gap between the time the task
                 #    records its result and the time the process actually
@@ -776,7 +776,7 @@ class TaskManager(object):
             if task['method'] not in self.handlers:
                 self.logger.warn("Skipping task %(id)i, no handler for method %(method)s", task)
                 continue
-            if self.tasks.has_key(task['id']):
+            if task['id'] in self.tasks:
                 # we were running this task, but it apparently has been
                 # freed or reassigned. We can't do anything with it until
                 # updateTasks notices this and cleans up.
@@ -791,7 +791,7 @@ class TaskManager(object):
             elif task['state'] == koji.TASK_STATES['FREE']:
                 bin = "%(channel_id)s:%(arch)s" % task
                 self.logger.debug("task is free, bin=%r" % bin)
-                if not bins.has_key(bin):
+                if bin not in bins:
                     continue
                 #see where our available capacity is compared to other hosts for this bin
                 #(note: the hosts in this bin are exactly those that could
@@ -1076,7 +1076,7 @@ class TaskManager(object):
         """
         self.logger.info("Attempting to take task %s" % task['id'])
         method = task['method']
-        if self.handlers.has_key(method):
+        if method in self.handlers:
             handlerClass = self.handlers[method]
         else:
             raise koji.GenericError("No handler found for method '%s'" % method)
