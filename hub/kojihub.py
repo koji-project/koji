@@ -7520,7 +7520,7 @@ class QueryProcessor(object):
         self.aliases = aliases
         if columns and aliases:
             if len(columns) != len(aliases):
-                raise StandardError('column and alias lists must be the same length')
+                raise Exception('column and alias lists must be the same length')
             self.colsByAlias = dict(zip(aliases, columns))
         else:
             self.colsByAlias = {}
@@ -7626,7 +7626,7 @@ SELECT %(col_str)s
                 elif order in self.columns:
                     orderCol = order
                 else:
-                    raise StandardError('invalid order: ' + order)
+                    raise Exception('invalid order: ' + order)
                 order_exprs.append(orderCol + direction)
             return 'ORDER BY ' + ', '.join(order_exprs)
         else:

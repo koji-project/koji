@@ -129,7 +129,7 @@ def _assertLogin(environ):
     session = environ['koji.session']
     options = environ['koji.options']
     if 'koji.currentLogin' not in environ or 'koji.currentUser' not in environ:
-        raise StandardError('_getServer() must be called before _assertLogin()')
+        raise Exception('_getServer() must be called before _assertLogin()')
     elif environ['koji.currentLogin'] and environ['koji.currentUser']:
         if options['WebCert']:
             if not _sslLogin(environ, session, environ['koji.currentLogin']):

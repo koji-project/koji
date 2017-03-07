@@ -57,19 +57,19 @@ class DBWrapper:
 
     def __getattr__(self, key):
         if not self.cnx:
-            raise StandardError('connection is closed')
+            raise Exception('connection is closed')
         return getattr(self.cnx, key)
 
     def cursor(self, *args, **kw):
         if not self.cnx:
-            raise StandardError('connection is closed')
+            raise Exception('connection is closed')
         return CursorWrapper(self.cnx.cursor(*args, **kw))
 
     def close(self):
         # Rollback any uncommitted changes and clear the connection so
         # this DBWrapper is no longer usable after close()
         if not self.cnx:
-            raise StandardError('connection is closed')
+            raise Exception('connection is closed')
         self.cnx.cursor().execute('ROLLBACK')
         #We do this rather than cnx.rollback to avoid opening a new transaction
         #If our connection gets recycled cnx.rollback will be called then.
