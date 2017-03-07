@@ -110,7 +110,7 @@ class HandlerRegistry(object):
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
         for v in vars(plugin).itervalues():
-            if isinstance(v, (types.ClassType, types.TypeType)):
+            if isinstance(v, type):
                 #skip classes
                 continue
             if callable(v):

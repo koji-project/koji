@@ -5459,7 +5459,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         ('name', basestring),
         ('version', basestring),
         ('release', basestring),
-        ('epoch', (int, types.NoneType)),
+        ('epoch', (int, type(None))),
         ('arch', basestring),
         ('payloadhash', str),
         ('size', int),
@@ -10229,7 +10229,7 @@ class RootExports(object):
             if f in opts:
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
-                elif isinstance(opts[f], types.ListType):
+                elif isinstance(opts[f], list):
                     conditions.append('%s IN %%(%s)s' % (f, f))
                 else:
                     conditions.append('%s = %%(%s)i' % (f, f))
@@ -10237,7 +10237,7 @@ class RootExports(object):
             if ('not_' + f) in opts:
                 if opts['not_' + f] is None:
                     conditions.append('%s IS NOT NULL' % f)
-                elif isinstance(opts['not_' + f], types.ListType):
+                elif isinstance(opts['not_' + f], list):
                     conditions.append('%s NOT IN %%(not_%s)s' % (f, f))
                 else:
                     conditions.append('%s != %%(not_%s)i' % (f, f))
