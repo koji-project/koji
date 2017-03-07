@@ -2458,7 +2458,6 @@ class ClientSession(object):
         if name is None:
             name = os.path.basename(localfile)
         self.logger.debug("Fast upload: %s to %s/%s", localfile, path, name)
-        size = os.stat(localfile).st_size
         fo = file(localfile, 'rb')
         ofs = 0
         size = os.path.getsize(localfile)
@@ -2467,11 +2466,14 @@ class ClientSession(object):
             callback(0, size, 0, 0, 0)
         problems = False
         full_chksum = util.adler32_constructor()
+        # cycle is need to run at least once (for empty files)
+        first_cycle = True
         while True:
             lap = time.time()
             chunk = fo.read(blocksize)
-            if not chunk:
+            if not chunk and not first_cycle:
                 break
+            first_cycle = False
             result = self._callMethod('rawUpload', (chunk, ofs, path, name), {'overwrite':overwrite})
             if self.retries > 1:
                 problems = True
@@ -2495,6 +2497,8 @@ class ClientSession(object):
         if problems:
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
+        if result is None:
+            raise GenericError("File upload failed: %s/%s" % (path, name))
         if int(result['size']) != ofs:
             raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s" \
                     % (path, name, result['size'], ofs))
