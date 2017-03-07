@@ -2026,13 +2026,11 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True)
     for group in groups.values():
         #filter blocked entries and collapse to a list
         if 'packagelist' in group:
-            group['packagelist'] = filter(lambda x: not x['blocked'],
-                                          group['packagelist'].values())
+            group['packagelist'] = [x for x in group['packagelist'].values() if not x['blocked']]
         if 'grouplist' in group:
-            group['grouplist'] = filter(lambda x: not x['blocked'],
-                                        group['grouplist'].values())
+            group['grouplist'] = [x for x in group['grouplist'].values() if not x['blocked']]
     #filter blocked entries and collapse to a list
-    return filter(lambda x: not x['blocked'], groups.values())
+    return [x for x in groups.values() if not x['blocked']]
 
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')

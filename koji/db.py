@@ -145,7 +145,7 @@ class CursorWrapper:
 def provideDBopts(**opts):
     global _DBopts
     if _DBopts is None:
-        _DBopts = dict(filter(lambda i: i[1] is not None, opts.items()))
+        _DBopts = dict([i for i in opts.items() if i[1] is not None])
 
 def setDBopts(**opts):
     global _DBopts
