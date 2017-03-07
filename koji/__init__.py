@@ -1503,7 +1503,7 @@ def format_exc_plus():
     """ Format the usual traceback information, followed by a listing of
         all the local variables in each frame.
     """
-    tb = sys.exc_info()[2]
+    exc_type, exc_value, tb = sys.exc_info()
     while tb.tb_next:
         tb = tb.tb_next
     stack = []
@@ -1512,7 +1512,7 @@ def format_exc_plus():
         stack.append(f)
         f = f.f_back
     stack.reverse()
-    rv = ''.join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
+    rv = ''.join(traceback.format_exception(exc_type, exc_value, tb))
     rv += "Locals by frame, innermost last\n"
     for frame in stack:
         rv += "Frame %s in %s at line %s\n" % (frame.f_code.co_name,
