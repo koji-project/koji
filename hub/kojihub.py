@@ -2976,7 +2976,8 @@ def edit_tag(tagInfo, **kwargs):
         maven_support: whether Maven repos should be generated for the tag
         maven_include_all: include every build in this tag (including multiple
                            versions of the same package) in the Maven repo
-        extra: extra tag parameters (dictionary)
+        extra: add or update extra tag parameters (dictionary)
+        remove_extra: remove extra tag parameters (list)
     """
 
     context.session.assertPerm('admin')
@@ -3014,8 +3015,8 @@ def _edit_tag(tagInfo, **kwargs):
             #new name is taken
             raise koji.GenericError("Name %s already taken by tag %s" % (name, id))
         update = """UPDATE tag
-        SET name = %(name)s
-        WHERE id = %(tagID)i"""
+SET name = %(name)s
+WHERE id = %(tagID)i"""
         _dml(update, values)
 
     #check for changes
@@ -3038,13 +3039,18 @@ def _edit_tag(tagInfo, **kwargs):
 
     # handle extra data
     if 'extra' in kwargs:
+        # check whether one key is both in extra and remove_extra
+        if 'remove_extra' in kwargs:
+            for removed in kwargs['remove_extra']:
+                if removed in kwargs['extra']:
+                    raise koji.GenericError("Can not both add/update and remove tag-extra: '%s'" % removed)
         for key in kwargs['extra']:
             value = kwargs['extra'][key]
-            if key not in tag['extra'] or tag['extra'] != value:
+            if key not in tag['extra'] or tag['extra'][key] != value:
                 data = {
-                    'tag_id' : tag['id'],
-                    'key' : key,
-                    'value' : json.dumps(kwargs['extra'][key]),
+                    'tag_id': tag['id'],
+                    'key': key,
+                    'value': json.dumps(kwargs['extra'][key]),
                 }
                 # revoke old entry, if any
                 update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i', 'key=%(key)s'])
@@ -3054,6 +3060,21 @@ def _edit_tag(tagInfo, **kwargs):
                 insert = InsertProcessor('tag_extra', data=data)
                 insert.make_create()
                 insert.execute()
+
+    # handle remove_extra data
+    if 'remove_extra' in kwargs:
+        ne = [e for e in kwargs['remove_extra'] if e not in tag['extra']]
+        if ne:
+            raise koji.GenericError("Tag: %s doesn't have extra: %s" % (tag['name'], ', '.join(ne)))
+        for key in kwargs['remove_extra']:
+            data = {
+                'tag_id': tag['id'],
+                'key': key,
+            }
+            # revoke old entry
+            update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i', 'key=%(key)s'])
+            update.make_revoke()
+            update.execute()
 
 
 def old_edit_tag(tagInfo, name, arches, locked, permissionID, extra=None):
