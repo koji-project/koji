@@ -905,7 +905,10 @@ def _format_secs(t):
     return "%02d:%02d:%02d" % (h, m, s)
 
 def _progress_callback(uploaded, total, piece, time, total_time):
-    percent_done = float(uploaded)/float(total)
+    if total == 0:
+        percent_done = 0.0
+    else:
+        percent_done = float(uploaded)/float(total)
     percent_done_str = "%02d%%" % (percent_done * 100)
     data_done = _format_size(uploaded)
     elapsed = _format_secs(total_time)
