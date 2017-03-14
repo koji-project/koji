@@ -24,13 +24,13 @@
 import logging
 import sys
 import psycopg2
-import psycopg2.extensions
-# don't convert timestamp fields to DateTime objects
-del psycopg2.extensions.string_types[1114]
-del psycopg2.extensions.string_types[1184]
-del psycopg2.extensions.string_types[1082]
-del psycopg2.extensions.string_types[1083]
-del psycopg2.extensions.string_types[1266]
+# import psycopg2.extensions
+# # don't convert timestamp fields to DateTime objects
+# del psycopg2.extensions.string_types[1114]
+# del psycopg2.extensions.string_types[1184]
+# del psycopg2.extensions.string_types[1082]
+# del psycopg2.extensions.string_types[1083]
+# del psycopg2.extensions.string_types[1266]
 import time
 import traceback
 import context
