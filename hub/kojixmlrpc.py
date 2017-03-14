@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from ConfigParser import RawConfigParser
+import datetime
 import inspect
 import logging
 import os
@@ -53,6 +54,12 @@ class Marshaller(xmlrpclib.Marshaller):
             dump(v, write)
         write("</data></array></value>\n")
     dispatch[types.GeneratorType] = dump_generator
+
+    def dump_datetime(self, value, write):
+        # For backwards compatibility, we return datetime objects as strings
+        value = value.isoformat(' ')
+        self.dump_string(value, write)
+    dispatch[datetime.datetime] = dump_datetime
 
 xmlrpclib.Marshaller = Marshaller
 
