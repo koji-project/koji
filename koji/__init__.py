@@ -2673,15 +2673,6 @@ class DBHandler(logging.Handler):
         except:
             self.handleError(record)
 
-#used by parse_timestamp
-TIMESTAMP_RE = re.compile("(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)")
-
-def parse_timestamp(ts):
-    """Parse a timestamp returned from a query"""
-    m = TIMESTAMP_RE.search(ts)
-    t = tuple([int(x) for x in m.groups()]) + (0, 0, 0)
-    return time.mktime(t)
-
 def formatTime(value):
     """Format a timestamp so it looks nicer"""
     if not value:
