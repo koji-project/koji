@@ -182,9 +182,9 @@ def get_options():
     parser.add_option("--force-auth", action="store_true", default=False,
                       help=_("authenticate even for read-only operations"))
     parser.add_option("--authtype", help=_("force use of a type of authentication, options: noauth, ssl, password, or kerberos"))
-    parser.add_option("-d", "--debug", action="store_true", default=False,
+    parser.add_option("-d", "--debug", action="store_true",
                       help=_("show debug output"))
-    parser.add_option("--debug-xmlrpc", action="store_true", default=False,
+    parser.add_option("--debug-xmlrpc", action="store_true",
                       help=_("show xmlrpc debug output"))
     parser.add_option("-q", "--quiet", action="store_true", default=False,
                       help=_("run quietly"))
