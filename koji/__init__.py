@@ -1590,8 +1590,8 @@ def read_config(profile_name, user_config=None):
         'serverca': None,
         'no_ssl_verify': False,
         'authtype': None,
-        'debug': None,
-        'debug_xmlrpc': None,
+        'debug': False,
+        'debug_xmlrpc': False,
     }
 
     result = config_defaults.copy()
