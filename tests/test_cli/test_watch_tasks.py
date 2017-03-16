@@ -214,7 +214,10 @@ class TestWatchTasks(unittest.TestCase):
 
         twClzMock.side_effect = side_effect
 
-        cli.watch_tasks(self.session, range(2), quiet=False)
+        try:
+            cli.watch_tasks(self.session, range(2), quiet=False)
+        except KeyboardInterrupt:
+            self.fail('KeyboardInterrupt was uncaught')
 
         actual = stdout.getvalue()
         self.assertMultiLineEqual(
