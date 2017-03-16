@@ -4886,6 +4886,8 @@ def handle_edit_tag(options, session, args):
     parser.add_option("--no-include-all", action="store_true", help=_("Do not include all packages in this tag when generating Maven repos"))
     parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
                       help=_("Set tag extra option"))
+    parser.add_option("-r", "--remove-extra", action="append", default=[], metavar="key",
+                      help=_("Remove tag extra option"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -4920,8 +4922,10 @@ def handle_edit_tag(options, session, args):
             value = arg_filter(value)
             extra[key] = value
         opts['extra'] = extra
+    if options.remove_extra:
+        opts['remove_extra'] = options.remove_extra
     #XXX change callname
-    session.editTag2(tag,**opts)
+    session.editTag2(tag, **opts)
 
 def handle_lock_tag(options, session, args):
     "[admin] Lock a tag"
