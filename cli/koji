@@ -1627,6 +1627,9 @@ def handle_import(options, session, args):
                 print(_("RPM already imported: %s") % path)
             else:
                 print(_("WARNING: md5sum mismatch for %s") % path)
+                print(_("  A different rpm with the same name has already been imported"))
+                print(_("  Existing sigmd5 is %r, your import has %r") % (
+                        prev['payloadhash'], koji.hex_string(data['sigmd5'])))
             print(_("Skipping import"))
             return
         if options.test:
@@ -1908,6 +1911,8 @@ def handle_import_sig(options, session, args):
                 continue
             else:
                 print(_("Warning: signature mismatch: %s") % path)
+                print(_("  The system already has a signature for this rpm with key %s") % sigkey)
+                print(_("  The two signature headers are not the same"))
                 continue
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
