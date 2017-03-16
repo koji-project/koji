@@ -126,7 +126,8 @@ class Response(object):
             raise httplib.HTTPException("HTTP %s: %s" % (self.response.status,
                     self.response.reason))
 
-    def iter_content(self, blocksize=8192):
+
+    def iter_content(self, blocksize=1):
         # should we check this in Session.post()?
         # should we even check this here?
         if self.response.status != 200:
