@@ -299,7 +299,7 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
     if not start or start < 0:
         start = 0
     if not dataName:
-        raise StandardError('dataName must be specified')
+        raise Exception('dataName must be specified')
 
     kw['queryOpts'] = {'countOnly': True}
     totalRows = getattr(server, methodName)(*args, **kw)
@@ -329,7 +329,7 @@ def paginateResults(server, values, methodName, args=None, kw=None,
     if not start or start < 0:
         start = 0
     if not dataName:
-        raise StandardError('dataName must be specified')
+        raise Exception('dataName must be specified')
 
     kw['filterOpts'] = {'order': order,
                         'offset': start,

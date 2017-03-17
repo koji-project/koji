@@ -57,6 +57,6 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
                             % (tagInfo, taskopts['channel']))
             taskopts['arch'] = koji.canonArch(random.choice(choices))
 
-    args = koji.encode_args(tagInfo, arch, command,**opts)
+    args = koji.encode_args(tagInfo, arch, command, **opts)
     return kojihub.make_task('runroot', args, **taskopts)
 

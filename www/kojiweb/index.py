@@ -76,7 +76,7 @@ def _clearUserCookie(environ):
 
 def _getUserCookie(environ):
     options = environ['koji.options']
-    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE',''))
+    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE', ''))
     if 'user' not in cookies:
         return None
     value = cookies['user'].value
@@ -129,7 +129,7 @@ def _assertLogin(environ):
     session = environ['koji.session']
     options = environ['koji.options']
     if 'koji.currentLogin' not in environ or 'koji.currentUser' not in environ:
-        raise StandardError('_getServer() must be called before _assertLogin()')
+        raise Exception('_getServer() must be called before _assertLogin()')
     elif environ['koji.currentLogin'] and environ['koji.currentUser']:
         if options['WebCert']:
             if not _sslLogin(environ, session, environ['koji.currentLogin']):
@@ -1265,8 +1265,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     values['order'] = order
 
-    btypes = [b['name'] for b in server.listBTypes()]
-    btypes.sort()
+    btypes = sorted([b['name'] for b in server.listBTypes()])
     if type in btypes:
         pass
     elif type == 'all':
@@ -1935,8 +1934,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
             maxRPMs = numRPMs
 
     values['hostArch'] = hostArch
-    hostArchList = server.getAllArches()
-    hostArchList.sort()
+    hostArchList = sorted(server.getAllArches())
     values['hostArchList'] = hostArchList
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
@@ -2005,8 +2003,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
             maxTasks = numTasks
 
     values['hostArch'] = hostArch
-    hostArchList = server.getAllArches()
-    hostArchList.sort()
+    hostArchList = sorted(server.getAllArches())
     values['hostArchList'] = hostArchList
 
     values['order'] = order
@@ -2205,14 +2202,14 @@ _VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
 _VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
 _DEFAULT_SEARCH_ORDER = {
     # For searches against large tables, use '-id' to show most recent first
-    'build' : '-id',
-    'rpm' : '-id',
-    'maven' : '-id',
-    'win' : '-id',
+    'build': '-id',
+    'rpm': '-id',
+    'maven': '-id',
+    'win': '-id',
     # for other tables, ordering by name makes much more sense
-    'tag' : 'name',
-    'target' : 'name',
-    'package' : 'name',
+    'tag': 'name',
+    'target': 'name',
+    'package': 'name',
     # any type not listed will default to 'name'
 }
 

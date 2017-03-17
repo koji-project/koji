@@ -48,21 +48,21 @@ class WSGIWrapper(object):
         self._env = None
         host, port = req.connection.remote_addr
         environ = {
-            'REMOTE_ADDR' : req.connection.remote_ip,
+            'REMOTE_ADDR': req.connection.remote_ip,
             # or remote_addr[0]?
             # or req.get_remote_host(apache.REMOTE_NOLOOKUP)?
-            'REMOTE_PORT' : str(req.connection.remote_addr[1]),
-            'REMOTE_USER' : req.user,
-            'REQUEST_METHOD' : req.method,
-            'REQUEST_URI' : req.uri,
-            'PATH_INFO' : req.path_info,
-            'SCRIPT_FILENAME' : req.filename,
-            'QUERY_STRING' : req.args or '',
-            'SERVER_NAME' : req.hostname,
-            'SERVER_PORT' : str(req.connection.local_addr[1]),
-            'wsgi.version' : (1, 0),
-            'wsgi.input' : InputWrapper(req),
-            'wsgi.errors' : sys.stderr,
+            'REMOTE_PORT': str(req.connection.remote_addr[1]),
+            'REMOTE_USER': req.user,
+            'REQUEST_METHOD': req.method,
+            'REQUEST_URI': req.uri,
+            'PATH_INFO': req.path_info,
+            'SCRIPT_FILENAME': req.filename,
+            'QUERY_STRING': req.args or '',
+            'SERVER_NAME': req.hostname,
+            'SERVER_PORT': str(req.connection.local_addr[1]),
+            'wsgi.version': (1, 0),
+            'wsgi.input': InputWrapper(req),
+            'wsgi.errors': sys.stderr,
             #TODO - file_wrapper support
         }
         environ = LazyDict(environ)

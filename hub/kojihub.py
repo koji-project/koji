@@ -2026,13 +2026,11 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True)
     for group in groups.values():
         #filter blocked entries and collapse to a list
         if 'packagelist' in group:
-            group['packagelist'] = filter(lambda x: not x['blocked'],
-                                          group['packagelist'].values())
+            group['packagelist'] = [x for x in group['packagelist'].values() if not x['blocked']]
         if 'grouplist' in group:
-            group['grouplist'] = filter(lambda x: not x['blocked'],
-                                        group['grouplist'].values())
+            group['grouplist'] = [x for x in group['grouplist'].values() if not x['blocked']]
     #filter blocked entries and collapse to a list
-    return filter(lambda x: not x['blocked'], groups.values())
+    return [x for x in groups.values() if not x['blocked']]
 
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')
@@ -5094,7 +5092,7 @@ class CG_Importer(object):
             'package': self.buildinfo['name'],
             'source': self.buildinfo.get('source'),
             'metadata_only': self.metadata_only,
-            'cg_list' : list(self.cgs),
+            'cg_list': list(self.cgs),
             # TODO: provide more data
         }
         assert_policy('cg_import', policy_data)
@@ -5214,20 +5212,20 @@ class CG_Importer(object):
     def prep_buildroot(self, brdata):
         ret = {}
         brinfo = {
-            'cg_id' : brdata['cg_id'],
-            'cg_version' : brdata['content_generator']['version'],
-            'container_type' : brdata['container']['type'],
-            'container_arch' : brdata['container']['arch'],
-            'host_os' : brdata['host']['os'],
-            'host_arch' : brdata['host']['arch'],
-            'extra' : brdata.get('extra'),
+            'cg_id': brdata['cg_id'],
+            'cg_version': brdata['content_generator']['version'],
+            'container_type': brdata['container']['type'],
+            'container_arch': brdata['container']['arch'],
+            'host_os': brdata['host']['os'],
+            'host_arch': brdata['host']['arch'],
+            'extra': brdata.get('extra'),
         }
         rpmlist, archives = self.match_components(brdata['components'])
         ret = {
-            'brinfo' : brinfo,
-            'rpmlist' : rpmlist,
-            'archives' : archives,
-            'tools' : brdata['tools'],
+            'brinfo': brinfo,
+            'rpmlist': rpmlist,
+            'archives': archives,
+            'tools': brdata['tools'],
         }
         return ret
 
@@ -5461,7 +5459,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         ('name', basestring),
         ('version', basestring),
         ('release', basestring),
-        ('epoch', (int, types.NoneType)),
+        ('epoch', (int, type(None))),
         ('arch', basestring),
         ('payloadhash', str),
         ('size', int),
@@ -6412,11 +6410,11 @@ def query_history(tables=None, **kwargs):
     """
     common_fields = {
         #fields:aliases common to all versioned tables
-        'active' : 'active',
-        'create_event' : 'create_event',
-        'revoke_event' : 'revoke_event',
-        'creator_id' : 'creator_id',
-        'revoker_id' : 'revoker_id',
+        'active': 'active',
+        'create_event': 'create_event',
+        'revoke_event': 'revoke_event',
+        'creator_id': 'creator_id',
+        'revoker_id': 'revoker_id',
         }
     common_joins = [
         "events AS ev1 ON ev1.id = create_event",
@@ -6425,49 +6423,48 @@ def query_history(tables=None, **kwargs):
         "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
         ]
     common_joined_fields = {
-        'creator.name' : 'creator_name',
-        'revoker.name' : 'revoker_name',
-        'EXTRACT(EPOCH FROM ev1.time) AS create_ts' : 'create_ts',
-        'EXTRACT(EPOCH FROM ev2.time) AS revoke_ts' : 'revoke_ts',
+        'creator.name': 'creator_name',
+        'revoker.name': 'revoker_name',
+        'EXTRACT(EPOCH FROM ev1.time) AS create_ts': 'create_ts',
+        'EXTRACT(EPOCH FROM ev2.time) AS revoke_ts': 'revoke_ts',
         }
     table_fields = {
-        'user_perms' : ['user_id', 'perm_id'],
-        'user_groups' : ['user_id', 'group_id'],
-        'cg_users' : ['user_id', 'cg_id'],
-        'tag_inheritance' : ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
-        'tag_config' : ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
-        'tag_extra' : ['tag_id', 'key', 'value'],
-        'build_target_config' : ['build_target_id', 'build_tag', 'dest_tag'],
-        'external_repo_config' : ['external_repo_id', 'url'],
-        'tag_external_repos' : ['tag_id', 'external_repo_id', 'priority'],
-        'tag_listing' : ['build_id', 'tag_id'],
-        'tag_packages' : ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
-        'group_config' : ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
+        'user_perms': ['user_id', 'perm_id'],
+        'user_groups': ['user_id', 'group_id'],
+        'cg_users': ['user_id', 'cg_id'],
+        'tag_inheritance': ['tag_id', 'parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter'],
+        'tag_config': ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
+        'tag_extra': ['tag_id', 'key', 'value'],
+        'build_target_config': ['build_target_id', 'build_tag', 'dest_tag'],
+        'external_repo_config': ['external_repo_id', 'url'],
+        'tag_external_repos': ['tag_id', 'external_repo_id', 'priority'],
+        'tag_listing': ['build_id', 'tag_id'],
+        'tag_packages': ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
+        'group_config': ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
                             'description', 'langonly', 'biarchonly'],
-        'group_req_listing' : ['group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg'],
-        'group_package_listing' : ['group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires'],
+        'group_req_listing': ['group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg'],
+        'group_package_listing': ['group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires'],
         }
     name_joins = {
         #joins triggered by table fields for name lookup
         #field : [table, join-alias, alias]
-        'user_id' : ['users', 'users', 'user'],
-        'perm_id' : ['permissions', 'permission'],
-        'cg_id' : ['content_generator'],
+        'user_id': ['users', 'users', 'user'],
+        'perm_id': ['permissions', 'permission'],
+        'cg_id': ['content_generator'],
         #group_id is overloaded (special case below)
-        'tag_id' : ['tag'],
-        'parent_id' : ['tag', 'parent'],
-        'build_target_id' : ['build_target'],
-        'build_tag' : ['tag', 'build_tag'],
-        'dest_tag' : ['tag', 'dest_tag'],
-        'external_repo_id' : ['external_repo'],
+        'tag_id': ['tag'],
+        'parent_id': ['tag', 'parent'],
+        'build_target_id': ['build_target'],
+        'build_tag': ['tag', 'build_tag'],
+        'dest_tag': ['tag', 'dest_tag'],
+        'external_repo_id': ['external_repo'],
         # build_id is special cased
-        'package_id' : ['package'],
-        'owner' : ['users', 'owner'],
-        'req_id' : ['groups', 'req'],
+        'package_id': ['package'],
+        'owner': ['users', 'owner'],
+        'req_id': ['groups', 'req'],
         }
     if tables is None:
-        tables = table_fields.keys()
-        tables.sort()
+        tables = sorted(table_fields.keys())
     else:
         for table in tables:
             if table not in table_fields:
@@ -6503,11 +6500,11 @@ def query_history(tables=None, **kwargs):
             elif field == 'build_id':
                 #special case
                 fields.update({
-                    'package.name' : 'name', #XXX?
-                    'build.version' : 'version',
-                    'build.release' : 'release',
-                    'build.epoch' : 'epoch',
-                    'build.state' : 'build.state',
+                    'package.name': 'name', #XXX?
+                    'build.version': 'version',
+                    'build.release': 'release',
+                    'build.epoch': 'epoch',
+                    'build.state': 'build.state',
                 })
                 joins.extend([
                     'build ON build_id = build.id',
@@ -7522,7 +7519,7 @@ class QueryProcessor(object):
         self.aliases = aliases
         if columns and aliases:
             if len(columns) != len(aliases):
-                raise StandardError('column and alias lists must be the same length')
+                raise Exception('column and alias lists must be the same length')
             self.colsByAlias = dict(zip(aliases, columns))
         else:
             self.colsByAlias = {}
@@ -7628,7 +7625,7 @@ SELECT %(col_str)s
                 elif order in self.columns:
                     orderCol = order
                 else:
-                    raise StandardError('invalid order: ' + order)
+                    raise Exception('invalid order: ' + order)
                 order_exprs.append(orderCol + direction)
             return 'ORDER BY ' + ', '.join(order_exprs)
         else:
@@ -9918,7 +9915,7 @@ class RootExports(object):
         return query.execute()
 
 
-    def checkTagPackage(self,tag,pkg):
+    def checkTagPackage(self, tag, pkg):
         """Check that pkg is in the list for tag. Returns true/false"""
         tag_id = get_tag_id(tag, strict=False)
         pkg_id = get_package_id(pkg, strict=False)
@@ -10231,7 +10228,7 @@ class RootExports(object):
             if f in opts:
                 if opts[f] is None:
                     conditions.append('%s IS NULL' % f)
-                elif isinstance(opts[f], types.ListType):
+                elif isinstance(opts[f], list):
                     conditions.append('%s IN %%(%s)s' % (f, f))
                 else:
                     conditions.append('%s = %%(%s)i' % (f, f))
@@ -10239,7 +10236,7 @@ class RootExports(object):
             if ('not_' + f) in opts:
                 if opts['not_' + f] is None:
                     conditions.append('%s IS NOT NULL' % f)
-                elif isinstance(opts['not_' + f], types.ListType):
+                elif isinstance(opts['not_' + f], list):
                     conditions.append('%s NOT IN %%(not_%s)s' % (f, f))
                 else:
                     conditions.append('%s != %%(not_%s)i' % (f, f))
@@ -12341,9 +12338,9 @@ def handle_upload(environ):
         # this will also remove our lock
         os.close(fd)
     ret = {
-        'size' : koji.encode_int(size),
-        'fileverify' : verify,
-        'offset' : koji.encode_int(offset),
+        'size': koji.encode_int(size),
+        'fileverify': verify,
+        'offset': koji.encode_int(offset),
     }
     if verify:
         # unsigned 32bit - could be too big for xmlrpc

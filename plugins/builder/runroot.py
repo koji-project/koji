@@ -125,7 +125,7 @@ class RunRootTask(tasks.BaseTaskHandler):
             if not tag_arches:
                 raise koji.BuildError("No arch list for tag: %s" % root)
             #index canonical host arches
-            host_arches = dict([(koji.canonArch(a),1) for a in host_arches.split()])
+            host_arches = dict([(koji.canonArch(a), 1) for a in host_arches.split()])
             #pick the first suitable match from tag's archlist
             for br_arch in tag_arches.split():
                 br_arch = koji.canonArch(br_arch)
@@ -250,10 +250,10 @@ class RunRootTask(tasks.BaseTaskHandler):
         logfile = "%s/do_mounts.log" % self.workdir
         uploadpath = self.getUploadDir()
         error = None
-        for dev,path,type,opts in mounts:
+        for dev, path, type, opts in mounts:
             if not path.startswith('/'):
                 raise koji.GenericError("invalid mount point: %s" % path)
-            mpoint = "%s%s" % (rootdir,path)
+            mpoint = "%s%s" % (rootdir, path)
             if opts is None:
                 opts = []
             else:
@@ -294,16 +294,15 @@ class RunRootTask(tasks.BaseTaskHandler):
         mounts = {}
         fn = '%s/tmp/runroot_mounts' % rootdir
         if os.path.exists(fn):
-            fslog = file(fn,'r')
+            fslog = file(fn, 'r')
             for line in fslog:
                 mounts.setdefault(line.strip(), 1)
             fslog.close()
         #also, check /proc/mounts just in case
         for dir in scan_mounts(rootdir):
             mounts.setdefault(dir, 1)
-        mounts = mounts.keys()
+        mounts = sorted(mounts.keys())
         # deeper directories first
-        mounts.sort()
         mounts.reverse()
         failed = []
         self.logger.info("Unmounting (runroot): %s" % mounts)

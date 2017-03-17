@@ -110,7 +110,7 @@ class HandlerRegistry(object):
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
         for v in vars(plugin).itervalues():
-            if isinstance(v, (types.ClassType, types.TypeType)):
+            if isinstance(v, type):
                 #skip classes
                 continue
             if callable(v):
@@ -539,28 +539,28 @@ def load_plugins(opts):
     return tracker
 
 _default_policies = {
-    'build_from_srpm' : '''
+    'build_from_srpm': '''
             has_perm admin :: allow
             all :: deny
             ''',
-    'build_from_repo_id' : '''
+    'build_from_repo_id': '''
             has_perm admin :: allow
             all :: deny
             ''',
-    'package_list' : '''
+    'package_list': '''
             has_perm admin :: allow
             all :: deny
             ''',
-    'channel' : '''
+    'channel': '''
             has req_channel :: req
             is_child_task :: parent
             all :: use default
             ''',
-    'vm' : '''
+    'vm': '''
             has_perm admin win-admin :: allow
             all :: deny
            ''',
-    'cg_import' :'''
+    'cg_import': '''
             all :: allow
             ''',
 }

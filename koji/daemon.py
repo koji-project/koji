@@ -484,7 +484,7 @@ class TaskManager(object):
     def findHandlers(self, vars):
         """Find and index task handlers"""
         for v in vars.values():
-            if type(v) == type(koji.tasks.BaseTaskHandler) and issubclass(v, koji.tasks.BaseTaskHandler):
+            if isinstance(v, type(koji.tasks.BaseTaskHandler)) and issubclass(v, koji.tasks.BaseTaskHandler):
                 for method in v.Methods:
                     self.handlers[method] = v
 
