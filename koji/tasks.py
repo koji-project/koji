@@ -31,7 +31,6 @@ import random
 import time
 import pprint
 import six.moves.urllib.request
-import inspect
 
 def scan_mounts(topdir):
     """Search path for mountpoints"""
