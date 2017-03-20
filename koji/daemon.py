@@ -229,7 +229,7 @@ class SCM(object):
             # should never happen
             raise koji.GenericError('Invalid SCM URL: %s' % url)
 
-    def contextData(self, keys=None):
+    def get_info(self, keys=None):
         if keys is None:
             keys = ["url", "scheme", "user", "host", "path", "query", "revision", "scmtype"]
         return dict([(k, vars(self)[k]) for k in keys if vars(self).has_key(k)])

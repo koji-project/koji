@@ -383,44 +383,16 @@ class BaseTaskHandler(object):
             repo_info = self.wait(task_id)[task_id]
         return repo_info
 
-    @classmethod
-    def request_keys(cls, method_name='handler', filter=None):
-        try:
-            keys = cls.requestKeys
-        except AttributeError:
-            pass
-        else:
-            return keys
 
-        if filter is None:
-            filter = (lambda name, obj:
-                      inspect.ismethod(obj) and name == method_name)
-        methods = [(name, obj) for name, obj in inspect.getmembers(cls)
-                   if filter(name, obj)]
-        _, method = methods[0]
-        keys, args, kwargs, default_vals = tuple(inspect.getargspec(method))
-        keys = keys + [item for item in args, kwargs if item is not None]
-        return keys[1:]
-
-    def parsed_request(self, request=None, keys=None):
-        if request is None:
-            request = self.session.getTaskRequest(self.id)
-        if keys is None:
-            keys = self.request_keys()
-
-        return zip(keys, request)
-
-    def contextData(self):
-        taskinfo = self.session.getTaskInfo(self.id, request=True)
-        request = self.parsed_request(taskinfo['request'])
-        return taskinfo.update(request)
-
-    def run_plugin(self, plugin, scminfo=None, extra_keys=None):
-        taskinfo = self.contextData()
-        if extra_keys:
-            scminfo.update(extra_keys)
-
-        koji.plugin.run_callbacks(plugin, taskinfo=taskinfo, scminfo=scminfo)
+    def run_plugin(self, plugin, *args, **kwargs):
+        if 'taskinfo' not in kwargs:
+            try:
+                taskinfo = self.taskinfo
+            except AttributeError:
+                self.taskinfo = self.session.getTaskInfo(self.id, request=True)
+                taskinfo = self.taskinfo
+            kwargs['taskinfo'] = taskinfo
+        koji.plugin.run_callbacks(plugin, *args, **kwargs)
 
 
 class FakeTask(BaseTaskHandler):
