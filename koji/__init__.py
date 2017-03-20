@@ -2521,6 +2521,8 @@ class ClientSession(object):
         args['offset'] = str(offset)
         if overwrite:
             args['overwrite'] = "1"
+        if volume is not None:
+            args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
         handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
@@ -2545,7 +2547,7 @@ class ClientSession(object):
 
         # check if server supports fast upload
         try:
-            self._callMethod('checkUpload', (path, name))
+            self._callMethod('checkUpload', (path, name), {'volume': volume})
             # fast upload was introduced in 1.7.1, earlier servers will not
             # recognise this call and return an error
         except GenericError:

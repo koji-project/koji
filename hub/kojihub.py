@@ -8814,9 +8814,9 @@ class RootExports(object):
             os.close(fd)
         return True
 
-    def checkUpload(self, path, name, verify=None, tail=None):
+    def checkUpload(self, path, name, verify=None, tail=None, volume=None):
         """Return basic information about an uploaded file"""
-        fn = get_upload_path(path, name)
+        fn = get_upload_path(path, name, volume=volume)
         data = {}
         try:
             fd = os.open(fn, os.O_RDONLY)
@@ -12347,7 +12347,8 @@ def handle_upload(environ):
     overwrite = args.get('overwrite', ('',))[0]
     offset = args.get('offset', ('0',))[0]
     offset = int(offset)
-    fn = get_upload_path(path, name, create=True)
+    volume = args.get('volume', ('DEFAULT',))[0]
+    fn = get_upload_path(path, name, create=True, volume=volume)
     if os.path.exists(fn):
         if not os.path.isfile(fn):
             raise koji.GenericError("destination not a file: %s" % fn)
