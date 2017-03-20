@@ -1589,7 +1589,9 @@ def read_config(profile_name, user_config=None):
         'ca': '',  # FIXME: remove in next major release
         'serverca': None,
         'no_ssl_verify': False,
-        'authtype': None
+        'authtype': None,
+        'debug': False,
+        'debug_xmlrpc': False,
     }
 
     result = config_defaults.copy()
@@ -1641,7 +1643,8 @@ def read_config(profile_name, user_config=None):
                 #not have a default value set in the option parser.
                 if name in result:
                     if name in ('anon_retry', 'offline_retry', 'keepalive',
-                                'use_fast_upload', 'krb_rdns', 'use_old_ssl'):
+                                'use_fast_upload', 'krb_rdns', 'use_old_ssl',
+                                'debug', 'debug_xmlrpc'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
                                   'offline_retry_interval', 'poll_interval', 'timeout',
