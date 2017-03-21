@@ -246,7 +246,7 @@ class RunRootTask(tasks.BaseTaskHandler):
         self.logger.info('New runroot')
         self.logger.info("Runroot mounts: %s" % mounts)
         fn = '%s/tmp/runroot_mounts' % rootdir
-        fslog = file(fn, 'a')
+        fslog = open(fn, 'a')
         logfile = "%s/do_mounts.log" % self.workdir
         uploadpath = self.getUploadDir()
         error = None
@@ -264,9 +264,6 @@ class RunRootTask(tasks.BaseTaskHandler):
                     error = koji.GenericError("No such directory or mount: %s" % dev)
                     break
                 type = 'none'
-                if path is None:
-                    #shorthand for "same path"
-                    path = dev
             if 'bg' in opts:
                 error = koji.GenericError("bad config: background mount not allowed")
                 break
@@ -294,8 +291,8 @@ class RunRootTask(tasks.BaseTaskHandler):
         mounts = {}
         fn = '%s/tmp/runroot_mounts' % rootdir
         if os.path.exists(fn):
-            fslog = file(fn, 'r')
-            for line in fslog:
+            fslog = open(fn, 'r')
+            for line in fslog.readlines():
                 mounts.setdefault(line.strip(), 1)
             fslog.close()
         #also, check /proc/mounts just in case
