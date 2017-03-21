@@ -67,9 +67,9 @@ class WindowsBuild(object):
         """Get task info and setup build directory"""
         self.logger = logging.getLogger('koji.vm')
         self.server = server
-        self.taskinfo = server.getTaskInfo()
-        self.source_url = info[0]
-        self.build_tag = info[1]
+        self.task_info = server.getTaskInfo()
+        self.source_url = self.task_info[0]
+        self.build_tag = self.task_info[1]
         if len(info) > 2:
             self.task_opts = info[2]
         else:
@@ -166,17 +166,17 @@ class WindowsBuild(object):
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
-        koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.taskinfo, scminfo=src_scm.get_info())
+        koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=src_scm.get_info())
         self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
-        koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.taskinfo,
+        koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
                                   scminfo=src_scm.get_info(),
                                   srcdir=self.source_dir)
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
             spec_scm = SCM(self.task_opts['winspec'])
-            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.taskinfo, scminfo=spec_scm.get_info())
+            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=spec_scm.get_info())
             self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
-            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.taskinfo,
+            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
                                       scminfo=spec_scm.get_info(),
                                       srcdir=self.spec_dir)
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
@@ -184,9 +184,9 @@ class WindowsBuild(object):
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])
-            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.taskinfo, scminfo=patch_scm.get_info())
+            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=patch_scm.get_info())
             self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
-            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.taskinfo,
+            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
                                       scminfo=patch_scm.get_info(),
                                       srcdir=self.patch_dir)
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
