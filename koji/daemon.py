@@ -23,7 +23,7 @@
 import koji
 import koji.tasks
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, adler32_constructor, parseStatus
+from koji.util import md5_constructor, adler32_constructor, parseStatus, dslice
 import os
 import signal
 import logging
@@ -232,7 +232,7 @@ class SCM(object):
     def get_info(self, keys=None):
         if keys is None:
             keys = ["url", "scheme", "user", "host", "path", "query", "revision", "scmtype"]
-        return dict([(k, vars(self)[k]) for k in keys if vars(self).has_key(k)])
+        return dslice(vars(self), keys)
 
     def _parse_url(self):
         """
