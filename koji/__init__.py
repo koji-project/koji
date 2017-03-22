@@ -2495,7 +2495,7 @@ class ClientSession(object):
                 callback(ofs, size, len(chunk), t1, t2)
         if ofs != size:
             self.logger.error("Local file changed size: %s, %s -> %s", localfile, size, ofs)
-        chk_opts = {}
+        chk_opts = {'volume': volume}
         if problems:
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
