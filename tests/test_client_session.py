@@ -158,3 +158,21 @@ class TestFastUpload(unittest.TestCase):
         ]
         with self.assertRaises(koji.GenericError):
             self.ksession.fastUpload('file', 'target', blocksize=1024)
+
+    def test_fastUpload_nondefault_volume(self):
+        # upload regular file (success)
+        fileobj = mock.MagicMock()
+        fileobj.read.side_effect = ['123123', '']
+        self.file_mock.return_value = fileobj
+        self.ksession._callMethod.side_effect = [
+            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
+            {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
+        ]
+        self.ksession.fastUpload('file', 'target', blocksize=1024, volume='foobar')
+        for call in self.ksession._callMethod.call_args_list:
+            # both calls should pass volume as a named arg to the method
+            # (note: not literally a named arg to _callMethod)
+            # _callMethod args are: method, method_args, method_kwargs
+            kwargs = call[0][2]
+            self.assertTrue('volume' in kwargs)
+            self.assertEqual(kwargs['volume'], 'foobar')
