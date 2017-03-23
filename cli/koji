@@ -7134,12 +7134,21 @@ def handle_signed_repo(options, session, args):
         print
         task_opts.comps = os.path.join(stuffdir,
             os.path.basename(task_opts.comps))
+    old_repos = []
     if len(task_opts.delta_rpms) > 0:
-        for path in task_opts.delta_rpms:
-            if not os.path.exists(path):
-                print(_("Warning: %s is not reachable locally. If this\n"
-                        "  host does not have access to Koji's shared storage\n"
-                        "  this can be ignored.") % path)
+        for repo in task_opts.delta_rpms:
+            if repo.isdigit():
+                rinfo = session.repoInfo(int(repo), strict=True)
+            else:
+                # get signed repo for tag
+                rinfo = session.getRepo(repo, signed=True)
+                if not rinfo:
+                    # maybe there is an expired one
+                    rinfo = session.getRepo(repo,
+                            state=koji.REPO_STATES['EXPIRED'], signed=True)
+                if not rinfo:
+                    parser.errpr(_("Can't find repo for tag: %s") % repo)
+            old_repos.append(rinfo['id'])
     tag = args[0]
     keys = args[1:]
     taginfo = session.getTag(tag)
@@ -7175,7 +7184,7 @@ def handle_signed_repo(options, session, args):
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
-        'delta': task_opts.delta_rpms,
+        'delta': old_repos,
         'event': task_opts.event,
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
