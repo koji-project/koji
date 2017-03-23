@@ -4081,7 +4081,6 @@ class BuildIndirectionImageTask(OzImageTask):
                 raise koji.BuildError("Input task method must be 'createImage' - actual method (%s)" %
                                       (taskmethod))
             result = self.session.getTaskResult(task_id)
-            files = self.session.listTaskOutput(task_id)
 
             # This approach works for both scratch and saved/formal images
             # The downside is that we depend on the output file naming convention
