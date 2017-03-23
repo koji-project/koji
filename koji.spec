@@ -117,6 +117,7 @@ Requires: python-cheetah
 Requires: createrepo >= 0.4.11-2
 Requires: python-hashlib
 Requires: python-createrepo
+Requires: python-simplejson
 %endif
 %if 0%{?fedora} >= 9
 Requires: createrepo >= 0.9.2
