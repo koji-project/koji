@@ -767,10 +767,10 @@ def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
             size = file_size - offset
 
     #environ['koji.headers'].append(['Content-Length', str(size)])
-    return _chunk_file(server, environ, taskID, name, offset, size)
+    return _chunk_file(server, environ, taskID, name, offset, size, volume)
 
 
-def _chunk_file(server, environ, taskID, name, offset, size):
+def _chunk_file(server, environ, taskID, name, offset, size, volume):
     remaining = size
     encode_int = koji.encode_int
     while True:
@@ -779,7 +779,7 @@ def _chunk_file(server, environ, taskID, name, offset, size):
         chunk_size = 1048576
         if remaining < chunk_size:
             chunk_size = remaining
-        content = server.downloadTaskOutput(taskID, name, offset=encode_int(offset), size=chunk_size)
+        content = server.downloadTaskOutput(taskID, name, offset=encode_int(offset), size=chunk_size, volume=volume)
         if not content:
             break
         yield content

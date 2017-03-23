@@ -508,24 +508,28 @@ def watch_logs(session, tasklist, opts):
             if _isDone(session, task_id):
                 tasklist.remove(task_id)
 
-            output = session.listTaskOutput(task_id)
+            output = session.listTaskOutput(task_id, all_volumes=True)
+            # convert to list of (file, volume)
+            files = []
+            for filename, volumes in output.iteritems():
+                files += [(filename, volume) for volume in volumes]
 
             if opts.log:
-                logs = [filename for filename in output if filename == opts.log]
+                logs = [file_volume for file_volume in files if file_volume[0] == opts.log]
             else:
-                logs = [filename for filename in output if filename.endswith('.log')]
+                logs = [file_volume for file_volume in files if file_volume[0].endswith('log')]
 
             taskoffsets = offsets[task_id]
-            for log in logs:
+            for log, volume in logs:
                 contents = 'placeholder'
                 while contents:
-                    if log not in taskoffsets:
-                        taskoffsets[log] = 0
+                    if (log, volume) not in taskoffsets:
+                        taskoffsets[(log, volume)] = 0
 
-                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[log], 16384)
-                    taskoffsets[log] += len(contents)
+                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[(log, volume)], 16384, volume=volume)
+                    taskoffsets[(log, volume)] += len(contents)
                     if contents:
-                        currlog = "%d:%s:" % (task_id, log)
+                        currlog = "%d:%s:%s:" % (task_id, volume, log)
                         if currlog != lastlog:
                             if lastlog:
                                 sys.stdout.write("\n")
@@ -6761,9 +6765,13 @@ def anon_handle_download_logs(options, session, args):
         sys.stdout.write("Writing: %s\n" % full_filename)
         file(full_filename, 'w').write(content)
 
-    def download_log(task_log_dir, task_id, filename, blocksize=102400):
-        #Create directories only if there is any log file to write to
-        full_filename = os.path.normpath(os.path.join(task_log_dir, filename))
+    def download_log(task_log_dir, task_id, filename, blocksize=102400, volume=None):
+        # Create directories only if there is any log file to write to
+        # For each non-default volume create special sub-directory
+        if volume not in (None, 'DEFAULT'):
+            full_filename = os.path.normpath(os.path.join(task_log_dir, volume, filename))
+        else:
+            full_filename = os.path.normpath(os.path.join(task_log_dir, filename))
         koji.ensuredir(os.path.dirname(full_filename))
         contents = 'IGNORE ME!'
         if suboptions.cont and os.path.exists(full_filename):
@@ -6776,7 +6784,7 @@ def anon_handle_download_logs(options, session, args):
             offset = 0
         try:
             while contents:
-                contents = session.downloadTaskOutput(task_id, filename, offset, blocksize)
+                contents = session.downloadTaskOutput(task_id, filename, offset=offset, size=blocksize, volume=volume)
                 offset += len(contents)
                 if contents:
                     fd.write(contents)
@@ -6788,14 +6796,14 @@ def anon_handle_download_logs(options, session, args):
         task_info = session.getTaskInfo(task_id)
         if task_info is None:
             error(_("No such task id: %i" % task_id))
-        files = session.listTaskOutput(task_id)
-        logs = []
+        files = session.listTaskOutput(task_id, all_volumes=True)
+        logs = [] # list of tuples (filename, volume)
         for filename in files:
             if not filename.endswith(".log"):
                 continue
             if match and not koji.util.multi_fnmatch(filename, match):
                 continue
-            logs.append(filename)
+            logs += [(filename, volume) for volume in files[filename]]
 
         task_log_dir = os.path.join(parent_dir,
                                     "%s-%s" % (task_info["arch"], task_id))
@@ -6809,8 +6817,8 @@ def anon_handle_download_logs(options, session, args):
         elif state not in ['CLOSED', 'CANCELED']:
             sys.stderr.write(_("Warning: task %s is %s\n") % (task_id, state))
 
-        for log_filename in logs:
-            download_log(task_log_dir, task_id, log_filename)
+        for log_filename, log_volume in logs:
+            download_log(task_log_dir, task_id, log_filename, volume=log_volume)
             count += 1
 
         if count == 0 and not recurse:
@@ -6876,25 +6884,27 @@ def anon_handle_download_task(options, session, args):
     downloads = []
 
     for task in downloadable_tasks:
-        files = session.listTaskOutput(task["id"])
+        files = session.listTaskOutput(task["id"], all_volumes=True)
         for filename in files:
             if filename.endswith(".log") and suboptions.logs:
-                # rename logs, they would conflict
-                new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
-                downloads.append((task, filename, new_filename))
-                continue
+                for volume in files[filename]:
+                    # rename logs, they would conflict
+                    new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
+                    downloads.append((task, filename, volume, new_filename))
+                    continue
 
             if filename.endswith(".rpm"):
-                filearch = filename.split(".")[-2]
-                if len(suboptions.arches) == 0 or filearch in suboptions.arches:
-                    downloads.append((task, filename, filename))
-                continue
+                for volume in files[filename]:
+                    filearch = filename.split(".")[-2]
+                    if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                        downloads.append((task, filename, volume, filename))
+                    continue
 
     if len(downloads) == 0:
         error(_("No files for download found."))
 
     required_tasks = {}
-    for (task, nop, nop) in downloads:
+    for (task, nop, nop, nop) in downloads:
         if task["id"] not in required_tasks:
             required_tasks[task["id"]] = task
 
@@ -6908,11 +6918,14 @@ def anon_handle_download_task(options, session, args):
     # perform the download
 
     number = 0
-    for (task, filename, new_filename) in downloads:
+    for (task, filename, volume, new_filename) in downloads:
         number += 1
+        if volume not in (None, 'DEFAULT'):
+            koji.ensuredir(volume)
+            new_filename = os.path.join(volume, new_filename)
         print(_("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename))
         output_file = open(new_filename, "wb")
-        output_file.write(session.downloadTaskOutput(task["id"], filename))
+        output_file.write(session.downloadTaskOutput(task["id"], filename, volume=volume))
         output_file.close()
 
 def anon_handle_wait_repo(options, session, args):
@@ -7168,11 +7181,11 @@ def handle_runroot(options, session, args):
         print("User interrupt: canceling runroot task")
         session.cancelTask(task_id)
         raise
-    output = None
-    if "runroot.log" in session.listTaskOutput(task_id):
-        output = session.downloadTaskOutput(task_id, "runroot.log")
-    if output:
-        sys.stdout.write(output)
+    output = session.listTaskOutput(task_id, all_volumes=True)
+    if 'runroot.log' in output:
+        for volume in output['runroot.log']:
+            log = session.downloadTaskOutput(task_id, 'runroot.log', volume=volume)
+            sys.stdout.write(log)
     info = session.getTaskInfo(task_id)
     if info is None:
         sys.exit(1)
