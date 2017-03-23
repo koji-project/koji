@@ -7104,15 +7104,16 @@ def handle_signed_repo(options, session, args):
     parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='REPO',default=[],
         action='append',
-        help=_('Create delta-rpms. REPO can be the id of another signed repo '
+        help=_('Create delta rpms. REPO can be the id of another signed repo '
             'or the name of a tag that has a signed repo. May be specified '
             'multiple times.'))
     parser.add_option('--event', type='int',
         help=_('create a signed repository based on a Brew event'))
     parser.add_option('--non-latest', dest='latest', default=True,
         action='store_false', help='Include older builds, not just the latest')
-    parser.add_option('--multilib', default=None,
-        help=_('Include multilib packages in the repository using a config'))
+    parser.add_option('--multilib', default=None, metavar="CONFIG",
+        help=_('Include multilib packages in the repository using the given '
+            'config file'))
     parser.add_option("--noinherit", action='store_true', default=False,
         help=_('Do not consider tag inheritance'))
     parser.add_option("--nowait", action='store_true', default=False,
