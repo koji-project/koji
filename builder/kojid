@@ -4855,7 +4855,7 @@ class CreaterepoTask(BaseTaskHandler):
             self.session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
         return [uploadpath, files]
 
-    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo, drpms=False):
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo, oldpkgs=None):
         koji.ensuredir(self.outdir)
         if self.options.use_createrepo_c:
             cmd = ['/usr/bin/createrepo_c']
@@ -4867,9 +4867,7 @@ class CreaterepoTask(BaseTaskHandler):
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
-        if pkglist and oldrepo and self.options.createrepo_update and not drpms:
-            # signed repos overload the use of "oldrepo", so the conditional
-            # explicitly make sure this does not get executed with that on
+        if pkglist and oldrepo and self.options.createrepo_update:
             oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
             olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
@@ -4884,11 +4882,11 @@ class CreaterepoTask(BaseTaskHandler):
                 cmd.append('--update')
                 if self.options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
-        if drpms:
+        if oldpkgs is not None:
             # generate delta-rpms
             cmd.append('--deltas')
-            for repo in oldrepo:
-                cmd.extend(['--oldpackagedirs', repo])
+            for op_dir in oldpkgs:
+                cmd.extend(['--oldpackagedirs', op_dir])
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -5035,12 +5033,18 @@ class createSignedRepoTask(CreaterepoTask):
         self.outdir = self.repodir # workaround create_local_repo use
         self.datadir = '%s/repodata' % self.repodir
         self.sigmap = {}
-        if len(opts['delta']) > 0:
-            # XXX raw path in options
-            for path in opts['delta']:
+        oldpkgs = []
+        if opts.get('delta'):
+            # should be a list of repo ids to delta against
+            for repo_id in opts['delta']:
+                oldrepo = self.session.repoInfo(repo_id, strict=True)
+                if not oldrepo['signed']:
+                    raise koji.GenericError("Base repo for deltas must be signed")
+                    # regular repos don't actually have rpms, just pkglist
+                path = koji.pathinfo.signedrepo(repo_id, oldrepo['tag_name'])
                 if not os.path.exists(path):
-                    raise koji.GenericError(
-                        'drpm path %s does not exist!' % path)
+                    raise koji.GenericError('Base drpm repo missing: %s' % path)
+                oldpkgs.append(path)
         self.uploadpath = self.getUploadDir()
         self.pkglist = self.make_pkglist(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
@@ -5051,12 +5055,7 @@ class createSignedRepoTask(CreaterepoTask):
             os.path.basename(self.pkglist))
         if os.path.getsize(self.pkglist) == 0:
             self.pkglist = None
-        if len(opts['delta']) > 0:
-            do_drpms = True
-        else:
-            do_drpms = False
-        self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata,
-            opts['delta'], drpms=do_drpms)
+        self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
         if self.pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
