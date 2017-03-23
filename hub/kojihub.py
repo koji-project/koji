@@ -12278,11 +12278,6 @@ class HostExports(object):
 
 
 def get_upload_path(reldir, name, create=False, volume=None):
-    if volume is not None:
-        volinfo = lookup_name('volume', volume, strict=True)
-        pathinfo = koji.PathInfo(topdir=koji.pathinfo.volumedir(volinfo['name']))
-    else:
-        pathinfo = koji.pathinfo
     orig_reldir = reldir
     orig_name = name
     # lots of sanity checks
@@ -12306,7 +12301,7 @@ def get_upload_path(reldir, name, create=False, volume=None):
         host.verify()
         Task(task_id).assertHost(host.id)
         check_user = False
-    udir = os.path.join(pathinfo.work(), reldir)
+    udir = os.path.join(koji.pathinfo.work(volume=volume), reldir)
     if create:
         koji.ensuredir(udir)
         if check_user:
