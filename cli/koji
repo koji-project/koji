@@ -4674,10 +4674,18 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     buildroot_infos = session.listBuildroots(taskID=task_id)
     build_info = session.listBuilds(taskID=task_id)
 
-    files = session.listTaskOutput(task_id)
-    logs = [filename for filename in files if filename.endswith('.log')]
-    output = [filename for filename in files if not filename.endswith('.log')]
-    files_dir = '%s/%s' % (koji.pathinfo.work(), koji.pathinfo.taskrelpath(task_id))
+    files = session.listTaskOutput(task_id, all_volumes=True)
+    logs = []
+    output = []
+    for filename in files:
+        if filename.endswith('.log'):
+            logs += [os.path.join(koji.pathinfo.work(volume=volume),
+                     koji.pathinfo.taskrelpath(task_id),
+                     filename) for volume in files[filename]]
+        else:
+            output += [os.path.join(koji.pathinfo.work(volume=volume),
+                       koji.pathinfo.taskrelpath(task_id),
+                       filename) for volume in files[filename]]
 
     owner = session.getUser(info['owner'])['name']
 
@@ -4704,12 +4712,12 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
             print("%s  %s/%s-%d-%d/" % (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id']))
     if logs:
         print("%sLog Files:" % indent)
-        for log in logs:
-            print("%s  %s/%s" % (indent, files_dir, log))
+        for log_path in logs:
+            print("%s  %s" % (indent, log_path))
     if output:
         print("%sOutput:" % indent)
-        for filename in output:
-            print("%s  %s/%s" % (indent, files_dir, filename))
+        for file_path in output:
+            print("%s  %s" % (indent, file_path))
 
     # white space
     print('')
