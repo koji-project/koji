@@ -12,7 +12,7 @@ from koji.util import dslice_ex
 IP = kojihub.InsertProcessor
 
 
-class TestSignedRepoInit(unittest.TestCase):
+class TestDistRepoInit(unittest.TestCase):
 
 
     def getInsert(self, *args, **kwargs):
@@ -42,10 +42,10 @@ class TestSignedRepoInit(unittest.TestCase):
         mock.patch.stopall()
 
 
-    def test_simple_signed_repo_init(self):
+    def test_simple_dist_repo_init(self):
 
         # simple case
-        kojihub.signed_repo_init('tag', ['key'], {'arch': ['x86_64']})
+        kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64']})
         self.InsertProcessor.assert_called_once()
 
         ip = self.inserts[0]
@@ -59,10 +59,10 @@ class TestSignedRepoInit(unittest.TestCase):
         self.copyfile.assert_not_called()
 
 
-    def test_signed_repo_init_with_comps(self):
+    def test_dist_repo_init_with_comps(self):
 
         # simple case
-        kojihub.signed_repo_init('tag', ['key'], {'arch': ['x86_64'],
+        kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'],
                     'comps': 'COMPSFILE'})
         self.InsertProcessor.assert_called_once()
 
@@ -77,27 +77,27 @@ class TestSignedRepoInit(unittest.TestCase):
         self.copyfile.assert_called_once()
 
 
-class TestSignedRepo(unittest.TestCase):
+class TestDistRepo(unittest.TestCase):
 
-    @mock.patch('kojihub.signed_repo_init')
+    @mock.patch('kojihub.dist_repo_init')
     @mock.patch('kojihub.make_task')
-    def test_SignedRepo(self, make_task, signed_repo_init):
+    def test_DistRepo(self, make_task, dist_repo_init):
         session = kojihub.context.session = mock.MagicMock()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         session.assertPerm = mock.MagicMock()
-        signed_repo_init.return_value = ('repo_id', 'event_id')
+        dist_repo_init.return_value = ('repo_id', 'event_id')
         make_task.return_value = 'task_id'
 
         exports = kojihub.RootExports()
-        ret = exports.signedRepo('tag', 'keys')
-        session.assertPerm.assert_called_once_with('signed-repo')
-        signed_repo_init.assert_called_once()
+        ret = exports.distRepo('tag', 'keys')
+        session.assertPerm.assert_called_once_with('dist-repo')
+        dist_repo_init.assert_called_once()
         make_task.assert_called_once()
         self.assertEquals(ret, make_task.return_value)
 
 
-class TestSignedRepoMove(unittest.TestCase):
+class TestDistRepoMove(unittest.TestCase):
 
     def setUp(self):
         self.topdir = tempfile.mkdtemp()
@@ -114,7 +114,7 @@ class TestSignedRepoMove(unittest.TestCase):
         # set up a fake koji topdir
         # koji.pathinfo._topdir = self.topdir
         mock.patch('koji.pathinfo._topdir', new=self.topdir).start()
-        repodir = koji.pathinfo.signedrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         archdir = "%s/%s" % (repodir, koji.canonArch(self.arch))
         os.makedirs(archdir)
         self.uploadpath = 'UNITTEST'
@@ -185,9 +185,9 @@ class TestSignedRepoMove(unittest.TestCase):
         return self.builds[buildInfo]
 
 
-    def test_signedRepoMove(self):
+    def test_distRepoMove(self):
         exports = kojihub.HostExports()
-        exports.signedRepoMove(self.rinfo['id'], self.uploadpath,
+        exports.distRepoMove(self.rinfo['id'], self.uploadpath,
                 list(self.files), self.arch, self.sigmap)
         # check result
         repodir = self.topdir + '/repos-signed/%(tag_name)s/%(id)s' % self.rinfo

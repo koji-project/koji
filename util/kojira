@@ -136,8 +136,8 @@ class ManagedRepo(object):
         tag_name = tag_info['name']
         rinfo = self.session.repoInfo(self.repo_id, strict=True)
         if rinfo['signed']:
-            path = pathinfo.signedrepo(self.repo_id, tag_name)
-            lifetime = self.options.signed_repo_lifetime
+            path = pathinfo.distrepo(self.repo_id, tag_name)
+            lifetime = self.options.dist_repo_lifetime
         else:
             path = pathinfo.repo(self.repo_id, tag_name)
             lifetime = self.options.deleted_repo_lifetime
@@ -642,14 +642,14 @@ def main(options, session):
     # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
     repodir = "%s/repos" % pathinfo.topdir
-    signedrepodir = "%s/repos-signed" % pathinfo.topdir
+    distrepodir = "%s/repos-signed" % pathinfo.topdir
     while True:
         try:
             repomgr.updateRepos()
             repomgr.checkQueue()
             repomgr.printState()
             repomgr.pruneLocalRepos(repodir, 'deleted_repo_lifetime')
-            repomgr.pruneLocalRepos(signedrepodir, 'signed_repo_lifetime')
+            repomgr.pruneLocalRepos(distrepodir, 'dist_repo_lifetime')
             if not curr_chk_thread.isAlive():
                 logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
@@ -745,7 +745,7 @@ def get_options():
                 'delete_batch_size' : 3,
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
-                'signed_repo_lifetime': 7*24*3600,
+                'dist_repo_lifetime': 7*24*3600,
                 'sleeptime' : 15,
                 'cert': None,
                 'ca': '',  # FIXME: unused, remove in next major release
@@ -755,7 +755,7 @@ def get_options():
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'max_repo_tasks_maven',
-                    'delete_batch_size', 'signed_repo_lifetime')
+                    'delete_batch_size', 'dist_repo_lifetime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',

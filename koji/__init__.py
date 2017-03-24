@@ -1815,8 +1815,8 @@ class PathInfo(object):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/%(repo_id)s" % locals())
 
-    def signedrepo(self, repo_id, tag):
-        """Return the directory with a signed repo lives"""
+    def distrepo(self, repo_id, tag):
+        """Return the directory with a dist repo lives"""
         return os.path.join(self.topdir, 'repos-signed', tag, str(repo_id))
 
     def repocache(self, tag_str):
@@ -2792,7 +2792,7 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             build = taskInfo['request'][1]
             extra = buildLabel(build)
-    elif method in ('newRepo', 'signedRepo'):
+    elif method in ('newRepo', 'distRepo'):
         if 'request' in taskInfo:
             extra = str(taskInfo['request'][0])
     elif method in ('tagBuild', 'tagNotification'):
@@ -2807,7 +2807,7 @@ def _taskLabel(taskInfo):
         if 'request' in taskInfo:
             arch = taskInfo['request'][1]
             extra = arch
-    elif method == 'createsignedrepo':
+    elif method == 'createdistrepo':
         if 'request' in taskInfo:
             repo_id = taskInfo['request'][1]
             arch = taskInfo['request'][2]

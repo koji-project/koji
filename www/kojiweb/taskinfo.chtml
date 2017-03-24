@@ -223,7 +223,7 @@ $value
         #if $len($params) > 1
           $printOpts($params[1])
         #end if
-        #elif $task.method == 'signedRepo'
+        #elif $task.method == 'distRepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         <strong>Repo ID:</strong> $params[1]<br/>
         <strong>Keys:</strong> $printValue(0, $params[2])<br/>
@@ -241,7 +241,7 @@ $value
         #if $len($params) > 4 and $params[4]
             <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
         #end if
-        #elif $task.method == 'createsignedrepo'
+        #elif $task.method == 'createdistrepo'
         <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
         <strong>Repo ID:</strong> $params[1]<br/>
         <strong>Arch:</strong> $printValue(0, $params[2])<br/>

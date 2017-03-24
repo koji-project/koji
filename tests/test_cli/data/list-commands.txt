@@ -119,7 +119,7 @@ miscellaneous commands:
         import-comps              Import group/package information from a comps file
         moshimoshi                Introduce yourself
         save-failed-tree          Create tarball with whole buildtree
-        signed-repo               create a yum repo of GPG signed RPMs
+        dist-repo               create a yum repo of GPG signed RPMs
 
 monitor commands:
         wait-repo                 Wait for a repo to be regenerated

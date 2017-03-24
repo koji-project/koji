@@ -4933,13 +4933,13 @@ class CreaterepoTask(BaseTaskHandler):
                 % parseStatus(status, ' '.join(cmd)))
 
 
-class NewSignedRepoTask(BaseTaskHandler):
-    Methods = ['signedRepo']
+class NewDistRepoTask(BaseTaskHandler):
+    Methods = ['distRepo']
     _taskWeight = 0.1
 
     def handler(self, tag, repo_id, keys, task_opts):
         tinfo = self.session.getTag(tag, strict=True, event=task_opts['event'])
-        path = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
+        path = koji.pathinfo.distrepo(repo_id, tinfo['name'])
         if len(task_opts['arch']) == 0:
              task_opts['arch'] = tinfo['arches'].split()
         if len(task_opts['arch']) == 0:
@@ -4958,7 +4958,7 @@ class NewSignedRepoTask(BaseTaskHandler):
             # get a task ID and wait for them to complete
             arglist = [tag, repo_id, arch, keys, task_opts]
             subtasks[arch] = self.session.host.subtask(
-                method='createsignedrepo', arglist=arglist, label=arch,
+                method='createdistrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
         if len(subtasks) > 0 and task_opts['multilib']:
             results = self.wait(subtasks.values(), all=True, failany=True)
@@ -4966,14 +4966,14 @@ class NewSignedRepoTask(BaseTaskHandler):
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
                 upload, files, sigmap = results[subtasks[arch]]
-                self.session.host.signedRepoMove(
+                self.session.host.distRepoMove(
                     repo_id, upload, files, arch, sigmap)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
                 arglist = [tag, repo_id, arch, keys, task_opts]
                 subtasks[arch] = self.session.host.subtask(
-                    method='createsignedrepo', arglist=arglist, label=arch,
+                    method='createdistrepo', arglist=arglist, label=arch,
                     parent=self.id, arch='noarch')
         # wait for 64-bit subtasks to finish
         data = {}
@@ -4986,14 +4986,14 @@ class NewSignedRepoTask(BaseTaskHandler):
                 continue
             #else
             upload, files, sigmap = results[subtasks[arch]]
-            self.session.host.signedRepoMove(
+            self.session.host.distRepoMove(
                 repo_id, upload, files, arch, sigmap)
         self.session.host.repoDone(repo_id, data, expire=False)
-        return 'Signed repository #%s successfully generated' % repo_id
+        return 'Dist repository #%s successfully generated' % repo_id
 
 
-class createSignedRepoTask(CreaterepoTask):
-    Methods = ['createsignedrepo']
+class createDistRepoTask(CreaterepoTask):
+    Methods = ['createdistrepo']
     _taskWeight = 1.5
 
     archmap = {'s390x': 's390', 'ppc64': 'ppc', 'x86_64': 'i686'}
@@ -5025,7 +5025,7 @@ class createSignedRepoTask(CreaterepoTask):
         self.repo_id = self.rinfo['id']
         self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(
-            self.pathinfo.signedrepo(repo_id, self.rinfo['tag_name']),
+            self.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
             'groups', 'comps.xml')
         #set up our output dir
         self.repodir = '%s/repo' % self.workdir
@@ -5041,7 +5041,7 @@ class createSignedRepoTask(CreaterepoTask):
                 if not oldrepo['signed']:
                     raise koji.GenericError("Base repo for deltas must be signed")
                     # regular repos don't actually have rpms, just pkglist
-                path = koji.pathinfo.signedrepo(repo_id, oldrepo['tag_name'])
+                path = koji.pathinfo.distrepo(repo_id, oldrepo['tag_name'])
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
                 oldpkgs.append(path)
@@ -5076,7 +5076,7 @@ class createSignedRepoTask(CreaterepoTask):
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
         pathinfo = koji.PathInfo(self.options.topdir)
-        repodir = pathinfo.signedrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        repodir = pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
         ml_true = set() # multilib packages we need to include before depsolve
         ml_conf = os.path.join(self.pathinfo.work(), conf)

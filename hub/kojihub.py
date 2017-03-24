@@ -2442,7 +2442,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
     mdfile.close()
     _generate_maven_metadata(destdir)
 
-def signed_repo_init(tag, keys, task_opts):
+def dist_repo_init(tag, keys, task_opts):
     """Create a new repo entry in the INIT state, return full repo data"""
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True)
@@ -2460,7 +2460,7 @@ def signed_repo_init(tag, keys, task_opts):
     insert.set(id=repo_id, create_event=event, tag_id=tag_id,
         state=state, signed=True)
     insert.execute()
-    repodir = koji.pathinfo.signedrepo(repo_id, tinfo['name'])
+    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
     for arch in arches:
         koji.ensuredir(os.path.join(repodir, arch))
     # handle comps
@@ -10140,12 +10140,12 @@ class RootExports(object):
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
 
-    def signedRepo(self, tag, keys, **task_opts):
-        """Create a signed-repo task. returns task id"""
-        context.session.assertPerm('signed-repo')
-        repo_id, event_id = signed_repo_init(tag, keys, task_opts)
+    def distRepo(self, tag, keys, **task_opts):
+        """Create a dist-repo task. returns task id"""
+        context.session.assertPerm('dist-repo')
+        repo_id, event_id = dist_repo_init(tag, keys, task_opts)
         task_opts['event'] = event_id
-        return make_task('signedRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
+        return make_task('distRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
@@ -12277,7 +12277,7 @@ class HostExports(object):
         data: a dictionary of the form { arch: (uploadpath, files), ...}
         expire(optional): if set to true, mark the repo expired immediately*
 
-        If this is a signed repo, also hardlink signed rpms in the final
+        If this is a dist repo, also hardlink signed rpms in the final
         directory.
 
         * This is used when a repo from an older event is generated
@@ -12326,9 +12326,9 @@ class HostExports(object):
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
 
-    def signedRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
+    def distRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
         """
-        Move a signed repo into its final location
+        Move a dist repo into its final location
 
 
         Unlike normal repos (which are moved into place by repoDone), signed
@@ -12348,7 +12348,7 @@ class HostExports(object):
         """
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
-        repodir = koji.pathinfo.signedrepo(repo_id, rinfo['tag_name'])
+        repodir = koji.pathinfo.distrepo(repo_id, rinfo['tag_name'])
         archdir = "%s/%s" % (repodir, koji.canonArch(arch))
         if not os.path.isdir(archdir):
             raise koji.GenericError("Repo arch directory missing: %s" % archdir)

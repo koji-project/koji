@@ -7090,9 +7090,9 @@ def handle_regen_repo(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
 
-def handle_signed_repo(options, session, args):
+def handle_dist_repo(options, session, args):
     """create a yum repo of GPG signed RPMs"""
-    usage = _("usage: %prog signed-repo [options] tag keyID [keyID...]")
+    usage = _("usage: %prog dist-repo [options] tag keyID [keyID...]")
     usage += _("\n(Specify the --help option for a list of other options)")
     parser = OptionParser(usage=usage)
     parser.add_option('--allow-unsigned', action='store_true', default=False,
@@ -7104,11 +7104,11 @@ def handle_signed_repo(options, session, args):
     parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='REPO',default=[],
         action='append',
-        help=_('Create delta rpms. REPO can be the id of another signed repo '
-            'or the name of a tag that has a signed repo. May be specified '
+        help=_('Create delta rpms. REPO can be the id of another dist repo '
+            'or the name of a tag that has a dist repo. May be specified '
             'multiple times.'))
     parser.add_option('--event', type='int',
-        help=_('create a signed repository based on a Brew event'))
+        help=_('create a dist repository based on a Brew event'))
     parser.add_option('--non-latest', dest='latest', default=True,
         action='store_false', help='Include older builds, not just the latest')
     parser.add_option('--multilib', default=None, metavar="CONFIG",
@@ -7141,7 +7141,7 @@ def handle_signed_repo(options, session, args):
             if repo.isdigit():
                 rinfo = session.repoInfo(int(repo), strict=True)
             else:
-                # get signed repo for tag
+                # get dist repo for tag
                 rinfo = session.getRepo(repo, signed=True)
                 if not rinfo:
                     # maybe there is an expired one
@@ -7193,8 +7193,8 @@ def handle_signed_repo(options, session, args):
         'skip': task_opts.skip_unsigned,
         'unsigned': task_opts.allow_unsigned
     }
-    task_id = session.signedRepo(tag, keys, **opts)
-    print("Creating signed repo for tag " + tag)
+    task_id = session.distRepo(tag, keys, **opts)
+    print("Creating dist repo for tag " + tag)
     if _running_in_bg() or task_opts.nowait:
         return
     else:
