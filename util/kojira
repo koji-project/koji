@@ -135,7 +135,7 @@ class ManagedRepo(object):
             return False
         tag_name = tag_info['name']
         rinfo = self.session.repoInfo(self.repo_id, strict=True)
-        if rinfo['signed']:
+        if rinfo['dist']:
             path = pathinfo.distrepo(self.repo_id, tag_name)
             lifetime = self.options.dist_repo_lifetime
         else:
@@ -642,7 +642,7 @@ def main(options, session):
     # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
     repodir = "%s/repos" % pathinfo.topdir
-    distrepodir = "%s/repos-signed" % pathinfo.topdir
+    distrepodir = "%s/repos-dist" % pathinfo.topdir
     while True:
         try:
             repomgr.updateRepos()

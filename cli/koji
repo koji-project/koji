@@ -7091,7 +7091,7 @@ def handle_regen_repo(options, session, args):
         return watch_tasks(session, [task_id], quiet=options.quiet)
 
 def handle_dist_repo(options, session, args):
-    """create a yum repo of GPG signed RPMs"""
+    """Create a yum repo with distribution options"""
     usage = _("usage: %prog dist-repo [options] tag keyID [keyID...]")
     usage += _("\n(Specify the --help option for a list of other options)")
     parser = OptionParser(usage=usage)
@@ -7126,7 +7126,7 @@ def handle_dist_repo(options, session, args):
     if task_opts.allow_unsigned and task_opts.skip_unsigned:
         parser.error(_('allow_unsigned and skip_unsigned are mutually exclusive'))
     activate_session(session)
-    stuffdir = _unique_path('cli-signed')
+    stuffdir = _unique_path('cli-dist-repo')
     if task_opts.comps:
         if not os.path.exists(task_opts.comps):
             parser.error(_('could not find %s') % task_opts.comps)
@@ -7142,11 +7142,11 @@ def handle_dist_repo(options, session, args):
                 rinfo = session.repoInfo(int(repo), strict=True)
             else:
                 # get dist repo for tag
-                rinfo = session.getRepo(repo, signed=True)
+                rinfo = session.getRepo(repo, dist=True)
                 if not rinfo:
                     # maybe there is an expired one
                     rinfo = session.getRepo(repo,
-                            state=koji.REPO_STATES['EXPIRED'], signed=True)
+                            state=koji.REPO_STATES['EXPIRED'], dist=True)
                 if not rinfo:
                     parser.errpr(_("Can't find repo for tag: %s") % repo)
             old_repos.append(rinfo['id'])

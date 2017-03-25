@@ -3,5 +3,5 @@
 
 INSERT INTO permissions (name) VALUES ('image');
 
-ALTER TABLE repo ADD COLUMN signed BOOLEAN DEFAULT 'false';
+ALTER TABLE repo ADD COLUMN dist BOOLEAN DEFAULT 'false';
 

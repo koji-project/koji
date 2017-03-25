@@ -2452,13 +2452,13 @@ def dist_repo_init(tag, keys, task_opts):
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
             with_debuginfo=False, event=event, repo_id=None,
-            signed=True, keys=keys, arches=arches, task_opts=task_opts)
+            dist=True, keys=keys, arches=arches, task_opts=task_opts)
     if not event:
         event = get_event()
     repo_id = nextval('repo_id_seq')
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=event, tag_id=tag_id,
-        state=state, signed=True)
+        state=state, dist=True)
     insert.execute()
     repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
     for arch in arches:
@@ -10109,20 +10109,20 @@ class RootExports(object):
                     taginfo['extra'][key] = ancestor['extra'][key]
         return taginfo
 
-    def getRepo(self, tag, state=None, event=None, signed=False):
+    def getRepo(self, tag, state=None, event=None, dist=False):
         if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
 
-        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)', 'repo.signed']
-        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts', 'signed']
+        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)', 'repo.dist']
+        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts', 'dist']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
-        if signed:
-            clauses.append('repo.signed is true')
+        if dist:
+            clauses.append('repo.dist is true')
         else:
-            clauses.append('repo.signed is false')
+            clauses.append('repo.dist is false')
         if event:
             # the repo table doesn't have all the fields of a _config table, just create_event
             clauses.append('create_event <= %(event)i')
@@ -12277,7 +12277,7 @@ class HostExports(object):
         data: a dictionary of the form { arch: (uploadpath, files), ...}
         expire(optional): if set to true, mark the repo expired immediately*
 
-        If this is a dist repo, also hardlink signed rpms in the final
+        If this is a dist repo, also hardlink the rpms in the final
         directory.
 
         * This is used when a repo from an older event is generated
@@ -12290,7 +12290,7 @@ class HostExports(object):
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
-        if not rinfo['signed']:
+        if not rinfo['dist']:
             for arch, (uploadpath, files) in data.iteritems():
                 archdir = "%s/%s" % (repodir, koji.canonArch(arch))
                 if not os.path.isdir(archdir):
@@ -12331,7 +12331,7 @@ class HostExports(object):
         Move a dist repo into its final location
 
 
-        Unlike normal repos (which are moved into place by repoDone), signed
+        Unlike normal repos (which are moved into place by repoDone), dist
         repos have all their content linked (or copied) into place.
 
         repo_id - the repo to move
