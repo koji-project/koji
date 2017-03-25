@@ -2496,7 +2496,7 @@ def repo_info(repo_id, strict=False):
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
-        ('repo.signed', 'signed'),
+        ('repo.dist', 'dist'),
     )
     q = """SELECT %s FROM repo
     JOIN tag ON tag_id=tag.id

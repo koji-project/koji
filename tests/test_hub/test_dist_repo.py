@@ -50,7 +50,7 @@ class TestDistRepoInit(unittest.TestCase):
 
         ip = self.inserts[0]
         self.assertEquals(ip.table, 'repo')
-        data = {'signed': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
+        data = {'dist': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
                     'state': koji.REPO_STATES['INIT']}
         self.assertEquals(ip.data, data)
         self.assertEquals(ip.rawdata, {})
@@ -68,7 +68,7 @@ class TestDistRepoInit(unittest.TestCase):
 
         ip = self.inserts[0]
         self.assertEquals(ip.table, 'repo')
-        data = {'signed': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
+        data = {'dist': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
                     'state': koji.REPO_STATES['INIT']}
         self.assertEquals(ip.data, data)
         self.assertEquals(ip.rawdata, {})
@@ -190,7 +190,7 @@ class TestDistRepoMove(unittest.TestCase):
         exports.distRepoMove(self.rinfo['id'], self.uploadpath,
                 list(self.files), self.arch, self.sigmap)
         # check result
-        repodir = self.topdir + '/repos-signed/%(tag_name)s/%(id)s' % self.rinfo
+        repodir = self.topdir + '/repos-dist/%(tag_name)s/%(id)s' % self.rinfo
         for relpath in self.expected:
             path = os.path.join(repodir, relpath)
             basename = os.path.basename(path)
