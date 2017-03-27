@@ -105,7 +105,7 @@ Configuration
   # which are required by other packages. Not working in one transaction
   pip install pip packaging --upgrade --ignore-installed
   pip install setuptools --upgrade --ignore-installed
-  pip install nose psycopg2 python-qpid-proton mock coverage --upgrade --ignore-installed
+  pip install nose psycopg2 python-qpid-proton mock coverage python-multilib --upgrade --ignore-installed
   # rehash package to be sure updated versions are used
   hash -r
 
@@ -122,7 +122,7 @@ Configuration
 
   # remove possible coverage output and run tests
   coverage erase
-  PYTHONPATH=hub/.:cli/.:plugins/hub/.:plugins/cli/. nosetests --with-coverage --cover-package .
+  PYTHONPATH=hub/.:cli/.:plugins/hub/.:plugins/cli/.:plugins/builder/. nosetests --with-coverage --cover-package .
   coverage xml
 
   # run additional tests if configured
