@@ -5281,11 +5281,11 @@ enabled=1
             raise koji.GenericError('Packages missing from the filesystem:\n' +
                 '\n'.join(fs_missing))
         missing = need - seen
-        if not opts['skip'] and missing:
-            # log missing signatures and error
+        if missing:
+            # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
             outfile = open(missing_log, 'w')
-            outfile.write('Some rpms were missing required signatures.\n')
+            outfile.write('Some rpms were missing requested signatures.\n')
             outfile.write('Acceptable keys: %r\n\n' % keys)
             outfile.write('# RPM name: available keys\n')
             for fname in sorted(missing):
@@ -5293,8 +5293,9 @@ enabled=1
                 outfile.write('%s: %r\n' % (fname, avail))
             outfile.close()
             self.session.uploadWrapper(missing_log, self.uploadpath)
-            raise koji.GenericError('Unsigned packages found. See '
-                    'missing_signatures.log')
+            if not opts['skip']:
+                raise koji.GenericError('Unsigned packages found. See '
+                        'missing_signatures.log')
         return pkgfile
 
 
