@@ -4941,7 +4941,8 @@ class NewDistRepoTask(BaseTaskHandler):
         tinfo = self.session.getTag(tag, strict=True, event=task_opts['event'])
         path = koji.pathinfo.distrepo(repo_id, tinfo['name'])
         if len(task_opts['arch']) == 0:
-             task_opts['arch'] = tinfo['arches'].split()
+             arches = tinfo['arches'] or ''
+             task_opts['arch'] = arches.split()
         if len(task_opts['arch']) == 0:
             raise koji.GenericError('No arches specified nor for the tag!')
         subtasks = {}
