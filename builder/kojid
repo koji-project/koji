@@ -5097,10 +5097,12 @@ class createDistRepoTask(CreaterepoTask):
                     pl_path = pkg.replace(arch, self.archmap[arch]).strip()
                     # assume this exists in the task results for the ml arch
                     real_path = os.path.join(mldir, pl_path)
-                    ml_true.add(real_path)
                     if not os.path.exists(real_path):
                         self.logger.error('%s (multilib) is not on the filesystem' % real_path)
                         fs_missing.add(real_path)
+                        # we defer failure so can report all the missing deps
+                        continue
+                    ml_true.add(real_path)
 
         # step 2: set up architectures for yum configuration
         self.logger.info("Resolving multilib for %s using method devel" % arch)
