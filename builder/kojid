@@ -1587,19 +1587,21 @@ class WrapperRPMTask(BaseBuildTask):
 
         if task:
             # called as a subtask of a build
-            artifact_paths = self.session.listTaskOutput(task['id'])
+            artifact_data = self.session.listTaskOutput(task['id'], all_volume=True)
 
-            for artifact_path in artifact_paths:
+            for artifact_path in artifact_data:
                 artifact_name = os.path.basename(artifact_path)
                 base, ext = os.path.splitext(artifact_name)
                 if ext == '.log':
                     # Exclude log files for consistency with the output of listArchives() used below
                     continue
                 relpath = os.path.join(self.pathinfo.task(task['id']), artifact_path)[1:]
-                artifact_relpaths.append(relpath)
-                artifacts.setdefault(ext, []).append(artifact_name)
-                all_artifacts.append(artifact_name)
-                all_artifacts_with_path.append(artifact_path)
+                for volume in artifact_data[artifact_path]:
+                    volume_path = os.path.join(self.pathinfo.volumedir(volume), relpath)
+                    artifact_relpaths.append(volume_path)
+                    artifacts.setdefault(ext, []).append(artifact_name)
+                    all_artifacts.append(artifact_name)
+                    all_artifacts_with_path.append(volume_path)
         else:
             # called as a top-level task to create wrapper rpms for an existing build
             # verify that the build is complete
