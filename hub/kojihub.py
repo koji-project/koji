@@ -12283,6 +12283,9 @@ def get_upload_path(reldir, name, create=False, volume=None):
     reldir = os.path.normpath(reldir)
     if not reldir or reldir.startswith('..'):
         raise koji.GenericError("Invalid upload directory: %s" % orig_reldir)
+    if volume is not None:
+        # make sure the volume is valid
+        lookup_name('volume', volume, strict=True)
     parts = reldir.split('/')
     check_user = True
     if create and parts[0] == "tasks":
