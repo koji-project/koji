@@ -5181,8 +5181,16 @@ enabled=1
             self.logger.error('yum depsolve was unsuccessful')
             raise koji.GenericError(errors)
         if len(fs_missing) > 0:
-            raise koji.GenericError('multilib packages missing:\n' +
-                '\n'.join(fs_missing))
+            missing_log = os.path.join(self.workdir, 'missing_multilib.log')
+            outfile = open(missing_log, 'w')
+            outfile.write('The following multilib files were missing:\n')
+            for ml_path in fs_missing:
+                outfile.write(ml_path)
+                outfile.write('\n')
+            outfile.close()
+            self.session.uploadWrapper(missing_log, self.uploadpath)
+            raise koji.GenericError('multilib packages missing. '
+                    'See missing_multilib.log')
 
         # get rpm ids for ml pkgs
         kpkgfile = os.path.join(mldir, 'kojipkgs')
