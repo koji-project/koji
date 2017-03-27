@@ -5089,7 +5089,7 @@ class createDistRepoTask(CreaterepoTask):
             for pkg in pkglist:
                 ppath = os.path.join(self.repodir, pkg.strip())
                 po = yum.packages.YumLocalPackage(filename=ppath)
-                if mlm.select(po) and self.archmap.has_key(arch):
+                if mlm.select(po) and arch in self.archmap:
                     # we need a multilib package to be included
                     # we assume the same signature level is available
                     # XXX: what is a subarchitecture is the right answer?
@@ -5231,7 +5231,7 @@ enabled=1
                 # skip, not a key we are looking for
                 continue
             idx = keys.index(rpminfo['sigkey'])
-            if preferred.has_key(rpminfo['id']):
+            if rpminfo['id'] in preferred:
                 if keys.index(preferred[rpminfo['id']]['sigkey']) <= idx:
                     # key for this is not as preferable as what has been seen
                     continue
