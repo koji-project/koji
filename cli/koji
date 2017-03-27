@@ -7191,7 +7191,7 @@ def handle_dist_repo(options, session, args):
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
         'multilib': task_opts.multilib,
-        'skip': task_opts.skip_unsigned,
+        'skip_unsigned': task_opts.skip_unsigned,
         'unsigned': task_opts.allow_unsigned
     }
     task_id = session.distRepo(tag, keys, **opts)
