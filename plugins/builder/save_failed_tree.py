@@ -22,9 +22,12 @@ def read_config():
     cp.read(CONFIG_FILE)
     config = {
         'path_filters': [],
+        'volume': None,
     }
     if cp.has_option('filters', 'paths'):
         config['path_filters'] = cp.get('filters', 'paths').split(':')
+    if cp.has_option('general', 'volume'):
+        config['volume'] = cp.get('general', 'volume').strip()
 
 class SaveFailedTreeTask(tasks.BaseTaskHandler):
     Methods = ['saveFailedTree']
@@ -46,6 +49,6 @@ class SaveFailedTreeTask(tasks.BaseTaskHandler):
             f.add(path, filter=omit_paths)
         f.close()
         self.logger.debug("Uploading %s to hub." % tar_path)
-        self.uploadFile(tar_path)
+        self.uploadFile(tar_path, volume=config['volume'])
         os.unlink(tar_path)
         self.logger.debug("Finished saving buildroots for task %d" % taskID)
