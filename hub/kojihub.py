@@ -12313,9 +12313,13 @@ class HostExports(object):
         #else:
         repo_ready(repo_id)
         repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+
         #make a latest link
-        latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
-        #XXX - this is a slight abuse of pathinfo
+        if rinfo['dist']:
+            latestrepolink = koji.pathinfo.distrepo('latest', rinfo['tag_name'])
+        else:
+            latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
+            #XXX - this is a slight abuse of pathinfo
         try:
             if os.path.lexists(latestrepolink):
                 os.unlink(latestrepolink)
