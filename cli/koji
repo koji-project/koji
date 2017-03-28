@@ -7121,8 +7121,10 @@ def handle_dist_repo(options, session, args):
     parser.add_option('--skip-unsigned', action='store_true', default=False,
         help=_('Skip RPMs not signed with the desired key(s)'))
     task_opts, args = parser.parse_args(args)
-    if len(args) < 2:
-        parser.error(_('You must provide a tag and 1 or more GPG key IDs'))
+    if len(args) < 1:
+        parser.error(_('You must provide a tag to generate the repo from'))
+    if not task_opts.allow_unsigned:
+        parser.error(_('Please specify one or more GPG key IDs (or --allow-unsigned)'))
     if task_opts.allow_unsigned and task_opts.skip_unsigned:
         parser.error(_('allow_unsigned and skip_unsigned are mutually exclusive'))
     activate_session(session)
