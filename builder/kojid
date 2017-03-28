@@ -1587,19 +1587,21 @@ class WrapperRPMTask(BaseBuildTask):
 
         if task:
             # called as a subtask of a build
-            artifact_paths = self.session.listTaskOutput(task['id'])
+            artifact_data = self.session.listTaskOutput(task['id'], all_volume=True)
 
-            for artifact_path in artifact_paths:
+            for artifact_path in artifact_data:
                 artifact_name = os.path.basename(artifact_path)
                 base, ext = os.path.splitext(artifact_name)
                 if ext == '.log':
                     # Exclude log files for consistency with the output of listArchives() used below
                     continue
                 relpath = os.path.join(self.pathinfo.task(task['id']), artifact_path)[1:]
-                artifact_relpaths.append(relpath)
-                artifacts.setdefault(ext, []).append(artifact_name)
-                all_artifacts.append(artifact_name)
-                all_artifacts_with_path.append(artifact_path)
+                for volume in artifact_data[artifact_path]:
+                    volume_path = os.path.join(self.pathinfo.volumedir(volume), relpath)
+                    artifact_relpaths.append(volume_path)
+                    artifacts.setdefault(ext, []).append(artifact_name)
+                    all_artifacts.append(artifact_name)
+                    all_artifacts_with_path.append(volume_path)
         else:
             # called as a top-level task to create wrapper rpms for an existing build
             # verify that the build is complete
@@ -4081,7 +4083,6 @@ class BuildIndirectionImageTask(OzImageTask):
                 raise koji.BuildError("Input task method must be 'createImage' - actual method (%s)" %
                                       (taskmethod))
             result = self.session.getTaskResult(task_id)
-            files = self.session.listTaskOutput(task_id)
 
             # This approach works for both scratch and saved/formal images
             # The downside is that we depend on the output file naming convention
@@ -4600,15 +4601,25 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         if not result:
             result = 'Unknown'
 
-        files = self.session.listTaskOutput(task_id)
-        logs = [filename for filename in files if filename.endswith('.log')]
-        rpms = [filename for filename in files if filename.endswith('.rpm') and not filename.endswith('.src.rpm')]
-        srpms = [filename for filename in files if filename.endswith('.src.rpm')]
-        misc = [filename for filename in files if filename not in logs + rpms + srpms]
+        logs, rpms, srpms, misc = [], [], [], []
+        files_data = self.session.listTaskOutput(task_id)
+        for filename in files_data:
+            if filename.endswith('.log'):
+                logs += [(filename, volume) for volume in files_data[filename]]
+            # all rpms + srpms are expected to be in builddir
+            elif filename.endswith('.src.rpm'):
+                srpms.append(filename)
+            elif filename.endswith('.rpm'):
+                rpms.append(filename)
+            else:
+                misc += [(filename, volume) for volume in files_data[filename]]
 
-        logs.sort()
+        # sort by volumes and filenames
+        logs.sort(key=lambda x: x[1])
+        misc.sort(key=lambda x: x[1])
+        logs.sort(key=lambda x: x[0])
+        misc.sort(key=lambda x: x[0])
         rpms.sort()
-        misc.sort()
 
         data[task_id] = {}
         data[task_id]['id'] = taskinfo['id']
@@ -4704,16 +4715,16 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                     for filetype in ['logs', 'rpms', 'misc']:
                         if task[filetype]:
                             output += "%s:\r\n" % filetype
-                            for file in task[filetype]:
+                            for (file, volume) in task[filetype]:
                                 if filetype == 'rpms':
                                     output += " %s\r\n" % '/'.join([buildurl, task['build_arch'], file])
                                 elif filetype == 'logs':
                                     if tasks[task_state] != 'closed':
-                                        output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
+                                        output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file, volume)
                                     else:
                                         output += " %s\r\n" % '/'.join([buildurl, 'data', 'logs', task['build_arch'], file])
                                 elif task[filetype] == 'misc':
-                                    output += "  %s/getfile?taskID=%s&name=%s\r\n" % (weburl, task['id'], file)
+                                    output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file, volume)
                     output += "\r\n"
                 output += "\r\n"
 

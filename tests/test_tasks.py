@@ -380,7 +380,7 @@ class TasksTestCase(TestCase):
         obj = TestTask(123, 'some_method', ['random_arg'], None, None, temp_path)
         obj.session = Mock()
         self.assertEquals(obj.uploadFile(temp_file), None)
-        obj.session.uploadWrapper.assert_called_once_with(temp_file, 'tasks/123/123', None)
+        obj.session.uploadWrapper.assert_called_once_with(temp_file, 'tasks/123/123', None, volume=None)
 
     # This patch removes the dependence on getUploadDir functioning
     @patch('{0}.TestTask.getUploadDir'.format(__name__), return_value='tasks/123/123')
@@ -421,7 +421,7 @@ class TasksTestCase(TestCase):
         obj.uploadFile = Mock()
         obj.uploadFile.return_value = None
         self.assertEquals(obj.uploadTree(temp_path), None)
-        obj.uploadFile.assert_has_calls([call(dummy_file, ''), call(dummy_file2, 'some_directory')])
+        obj.uploadFile.assert_has_calls([call(dummy_file, '', volume=None), call(dummy_file2, 'some_directory', volume=None)])
 
     @patch('os.lchown', return_value=None)
     def test_BaseTaskHandler_chownTree(self, mock_lchown):

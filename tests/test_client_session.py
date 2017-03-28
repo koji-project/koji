@@ -64,95 +64,115 @@ class TestClientSession(unittest.TestCase):
         my_rsession.close.assert_called()
         self.assertNotEqual(ksession.rsession, my_rsession)
 
+
 class TestFastUpload(unittest.TestCase):
-    @mock.patch('koji.compatrequests.Session')
-    @mock.patch('requests.Session')
-    @mock.patch('__builtin__.file')
-    @mock.patch('os.path.getsize')
-    def test_fastUpload(self, getsize_mock, file_mock, rsession, compat_session):
-        ksession = koji.ClientSession('http://koji.example.com/kojihub', {})
 
+    def setUp(self):
+        self.ksession = koji.ClientSession('http://koji.example.com/kojihub', {})
+        self.do_fake_login()
+        # mocks
+        self.ksession._callMethod = mock.MagicMock()
+        self.compat_session = mock.patch('koji.compatrequests.Session').start()
+        self.rsession = mock.patch('requests.Session').start()
+        self.file_mock = mock.patch('__builtin__.file').start()
+        self.getsize_mock = mock.patch('os.path.getsize').start()
+
+    def tearDown(self):
+        del self.ksession
+        mock.patch.stopall()
+
+    def do_fake_login(self):
+        self.ksession.logged_in = True
+        self.ksession.sinfo = {}
+        self.ksession.callnum = 1
+
+    def test_fastUpload_nologin(self):
         # without login (ActionNotAllowed)
-        ksession.logged_in = False
+        self.ksession.logged_in = False
         with self.assertRaises(koji.ActionNotAllowed):
-            ksession.fastUpload('nonexistent_file', 'target')
+            self.ksession.fastUpload('nonexistent_file', 'target')
 
-        # fake login
-        ksession.logged_in = True
-        ksession.sinfo = {}
-        ksession.callnum = 1
-        ksession._callMethod = mock.MagicMock()
+    def test_fastUpload_nofile(self):
 
         # fail with nonexistent file (IOError)
-        file_mock.side_effect = IOError('mocked exception')
+        self.file_mock.side_effect = IOError('mocked exception')
         with self.assertRaises(IOError):
-            ksession.fastUpload('file', 'target')
+            self.ksession.fastUpload('file', 'target')
 
-        # inaccessible file, permissions (IOError)
-        file_mock.side_effect = IOError('mocked exception')
-        with self.assertRaises(IOError):
-            ksession.fastUpload('file', 'target')
-
+    def test_fastUpload_empty_file(self):
         # upload empty file (success)
-        file_mock.side_effect = None
         fileobj = mock.MagicMock()
         fileobj.read.return_value = ''
-        file_mock.return_value = fileobj
-        ksession._callMethod.return_value = {
+        self.file_mock.return_value = fileobj
+        self.ksession._callMethod.return_value = {
             'size': 0,
             'hexdigest': koji.util.adler32_constructor().hexdigest()
         }
-        ksession.fastUpload('file', 'target')
+        self.ksession.fastUpload('file', 'target')
 
+    def test_fastUpload_regular_file(self):
         # upload regular file (success)
-        file_mock.side_effect = None
         fileobj = mock.MagicMock()
         fileobj.read.side_effect = ['123123', '']
-        file_mock.return_value = fileobj
-        ksession._callMethod.reset_mock()
-        ksession._callMethod.side_effect = [
+        self.file_mock.return_value = fileobj
+        self.ksession._callMethod.side_effect = [
             {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
             {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
         ]
-        ksession.fastUpload('file', 'target', blocksize=1024)
+        self.ksession.fastUpload('file', 'target', blocksize=1024)
 
+    def test_fastUpload_size_change(self):
         # change file size during upload (success)
-        file_mock.side_effect = None
         fileobj = mock.MagicMock()
         fileobj.read.side_effect = ['123123', '']
-        file_mock.return_value = fileobj
-        getsize_mock.return_value = 123456
-        ksession._callMethod.reset_mock()
-        ksession._callMethod.side_effect = [
+        self.file_mock.return_value = fileobj
+        self.getsize_mock.return_value = 123456
+        self.ksession._callMethod.side_effect = [
             {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
             {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
         ]
-        ksession.fastUpload('file', 'target', blocksize=1024)
+        self.ksession.fastUpload('file', 'target', blocksize=1024)
 
+    def test_fastUpload_wrong_length(self):
         # uploaded file is corrupted (length) (GenericError)
-        file_mock.side_effect = None
         fileobj = mock.MagicMock()
         fileobj.read.side_effect = ['123123', '']
-        file_mock.return_value = fileobj
-        getsize_mock.return_value = 123456
-        ksession._callMethod.reset_mock()
-        ksession._callMethod.side_effect = [
+        self.file_mock.return_value = fileobj
+        self.getsize_mock.return_value = 123456
+        self.ksession._callMethod.side_effect = [
             {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
             {'size': 3, 'hexdigest': '041c012d'}, # checkUpload
         ]
         with self.assertRaises(koji.GenericError):
-            ksession.fastUpload('file', 'target', blocksize=1024)
+            self.ksession.fastUpload('file', 'target', blocksize=1024)
 
+    def test_fastUpload_wrong_checksum(self):
         # uploaded file is corrupted (checksum) (GenericError)
-        file_mock.side_effect = None
         fileobj = mock.MagicMock()
         fileobj.read.side_effect = ['123123', '']
-        file_mock.return_value = fileobj
-        getsize_mock.return_value = 123456
-        ksession._callMethod.reset_mock()
-        ksession._callMethod.side_effect = [
+        self.file_mock.return_value = fileobj
+        self.getsize_mock.return_value = 123456
+        self.ksession._callMethod.side_effect = [
             {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
             {'size': 3, 'hexdigest': 'deadbeef'}, # checkUpload
         ]
         with self.assertRaises(koji.GenericError):
-            ksession.fastUpload('file', 'target', blocksize=1024)
+            self.ksession.fastUpload('file', 'target', blocksize=1024)
+
+    def test_fastUpload_nondefault_volume(self):
+        # upload regular file (success)
+        fileobj = mock.MagicMock()
+        fileobj.read.side_effect = ['123123', '']
+        self.file_mock.return_value = fileobj
+        self.ksession._callMethod.side_effect = [
+            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
+            {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
+        ]
+        self.ksession.fastUpload('file', 'target', blocksize=1024, volume='foobar')
+        for call in self.ksession._callMethod.call_args_list:
+            # both calls should pass volume as a named arg to the method
+            # (note: not literally a named arg to _callMethod)
+            # _callMethod args are: method, method_args, method_kwargs
+            kwargs = call[0][2]
+            self.assertTrue('volume' in kwargs)
+            self.assertEqual(kwargs['volume'], 'foobar')

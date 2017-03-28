@@ -672,16 +672,18 @@ def taskinfo(environ, taskID):
     values['full_result_text'] = full_result_text
     values['abbr_result_text'] = abbr_result_text
 
-    output = server.listTaskOutput(task['id'])
-    output.sort(_sortByExtAndName)
-    values['output'] = output
+    topurl = environ['koji.options']['KojiFilesURL']
+    pathinfo = koji.PathInfo(topdir=topurl)
+    values['pathinfo'] = pathinfo
+
+    paths = [] # (volume, relpath) tuples
+    for relname, volumes in server.listTaskOutput(task['id'], all_volumes=True).iteritems():
+        paths += [(volume, relname) for volume in volumes]
+    values['output'] = sorted(paths, cmp = _sortByExtAndName)
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
         values['perms'] = []
-
-    topurl = environ['koji.options']['KojiFilesURL']
-    values['pathinfo'] = koji.PathInfo(topdir=topurl)
 
     return _genHTML(environ, 'taskinfo.chtml')
 
@@ -692,11 +694,11 @@ def taskstatus(environ, taskID):
     task = server.getTaskInfo(taskID)
     if not task:
         return ''
-    files = server.listTaskOutput(taskID, stat=True)
+    files = server.listTaskOutput(taskID, stat=True, all_volumes=True)
     output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
-    for filename, file_stats in files.items():
-        output += '%s:%s\n' % (filename, file_stats['st_size'])
-
+    for filename, volumes_data in files.iteritems():
+        for volume, file_stats in volumes_data.iteritems():
+            output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 
 def resubmittask(environ, taskID):
@@ -716,18 +718,19 @@ def canceltask(environ, taskID):
     _redirect(environ, 'taskinfo?taskID=%i' % taskID)
 
 def _sortByExtAndName(a, b):
-    """Sort two filenames, first by extension, and then by name."""
-    aRoot, aExt = os.path.splitext(a)
-    bRoot, bExt = os.path.splitext(b)
+    """Sort two filename tuples, first by extension, and then by name."""
+    aRoot, aExt = os.path.splitext(os.path.basename(a[1]))
+    bRoot, bExt = os.path.splitext(os.path.basename(b[1]))
     return cmp(aExt, bExt) or cmp(aRoot, bRoot)
 
-def getfile(environ, taskID, name, offset=None, size=None):
+def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
     server = _getServer(environ)
     taskID = int(taskID)
 
-    output = server.listTaskOutput(taskID, stat=True)
-    file_info = output.get(name)
-    if not file_info:
+    output = server.listTaskOutput(taskID, stat=True, all_volumes=True)
+    try:
+        file_info = output[name][volume]
+    except KeyError:
         raise koji.GenericError('no file "%s" output by task %i' % (name, taskID))
 
     mime_guess = mimetypes.guess_type(name, strict=False)[0]
@@ -764,10 +767,10 @@ def getfile(environ, taskID, name, offset=None, size=None):
             size = file_size - offset
 
     #environ['koji.headers'].append(['Content-Length', str(size)])
-    return _chunk_file(server, environ, taskID, name, offset, size)
+    return _chunk_file(server, environ, taskID, name, offset, size, volume)
 
 
-def _chunk_file(server, environ, taskID, name, offset, size):
+def _chunk_file(server, environ, taskID, name, offset, size, volume):
     remaining = size
     encode_int = koji.encode_int
     while True:
@@ -776,7 +779,7 @@ def _chunk_file(server, environ, taskID, name, offset, size):
         chunk_size = 1048576
         if remaining < chunk_size:
             chunk_size = remaining
-        content = server.downloadTaskOutput(taskID, name, offset=encode_int(offset), size=chunk_size)
+        content = server.downloadTaskOutput(taskID, name, offset=encode_int(offset), size=chunk_size, volume=volume)
         if not content:
             break
         yield content

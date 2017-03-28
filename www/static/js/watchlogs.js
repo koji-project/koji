@@ -51,8 +51,8 @@ function handleStatus(event) {
 	    var logs = {};
 	    for (var i = 1; i < lines.length; i++) {
 		data = lines[i].split(":");
-		var filename = data[0];
-		var filesize = parseInt(data[1]);
+		var filename = data[0] + ":" + data[1];
+		var filesize = parseInt(data[2]);
 		if (filename.indexOf(".log") != -1) {
 		    logs[filename] = filesize;
 		}
@@ -140,8 +140,11 @@ function outputLog() {
 	    chunkSize = currentSize - currentOffset;
 	}
 	var req = new XMLHttpRequest();
-	req.open("GET", baseURL + "/getfile?taskID=" + currentTaskID + "&name=" + currentLog +
-		 "&offset=" + currentOffset + "&size=" + chunkSize, true);
+	var data = currentLog.split(':');
+	var volume = data[0];
+	var filename = data[1];
+	req.open("GET", baseURL + "/getfile?taskID=" + currentTaskID + "&name=" + filename +
+                 "&volume=" + volume + "&offset=" + currentOffset + "&size=" + chunkSize, true);
 	req.onreadystatechange = handleLog;
 	req.send(null);
 	if (headerElement != null) {
