@@ -27,7 +27,7 @@ def read_config():
         'volume': None,
     }
     if cp.has_option('filters', 'paths'):
-        config['path_filters'] = cp.get('filters', 'paths').split(':')
+        config['path_filters'] = cp.get('filters', 'paths').split()
     if cp.has_option('general', 'volume'):
         config['volume'] = cp.get('general', 'volume').strip()
 

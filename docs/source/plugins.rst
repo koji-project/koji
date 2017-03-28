@@ -21,12 +21,12 @@ Additional feature is that some paths from buildroot can be left out from
 tarball. Feature can be configured via
 `/etc/kojid/plugins/save_failed_tree.conf` file. Currently only field
 filters.paths is used and it consists of globs (standard python's fnmatch is
-used) separated by ':'.
+used) separated by whitespaces.
 
 .. code-block:: ini
 
   [filters]
-  paths = /etc/*.keytab:/tmp/secret_data
+  paths = /etc/*.keytab /tmp/secret_data
 
 .. warning::
   For security reasons, currently all ``/tmp/krb5cc*`` and ``/etc/*.keytab``
