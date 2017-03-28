@@ -2,6 +2,8 @@ import fnmatch
 import os
 import tarfile
 import ConfigParser
+
+import koji
 import koji.tasks as tasks
 from __main__ import BuildRoot
 
@@ -38,7 +40,10 @@ class SaveFailedTreeTask(tasks.BaseTaskHandler):
         read_config()
         tar_path = os.path.join(self.workdir, 'broots-task-%s.tar.gz' % taskID)
         f = tarfile.open(tar_path, "w:gz")
+        host_id = self.session.host.getHost()['id']
         for broot in self.session.listBuildroots(taskID=taskID):
+            if broot['host_id'] != host_id:
+                raise koji.GenericError("Task is run on wrong builder.")
             broot = BuildRoot(self.session, self.options, broot['id'])
             path = broot.rootdir()
             if full:
