@@ -7237,9 +7237,8 @@ def handle_save_failed_tree(options, session, args):
         elif 'Invalid method' in m:
             print(_("* The save_failed_tree plugin appears to not be installed" \
                     " on the koji hub.  Please contact the administrator."))
-        if logger.isEnabledFor(logging.DEBUG):
-            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
-            logger.debug(tb_str)
+        else:
+            raise
         return 1
     except koji.ActionNotAllowed:
         print(_("Only task owner or admin can run this task."))
