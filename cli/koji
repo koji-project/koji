@@ -7132,7 +7132,7 @@ def handle_dist_repo(options, session, args):
             parser.error(_('could not find %s') % task_opts.comps)
         session.uploadWrapper(task_opts.comps, stuffdir,
             callback=_progress_callback)
-        print()
+        print('')
         task_opts.comps = os.path.join(stuffdir,
             os.path.basename(task_opts.comps))
     old_repos = []
@@ -7177,7 +7177,7 @@ def handle_dist_repo(options, session, args):
             callback=_progress_callback)
         task_opts.multilib = os.path.join(stuffdir,
             os.path.basename(task_opts.multilib))
-        print()
+        print('')
     try:
         task_opts.arch.remove('noarch') # handled specifically
         task_opts.arch.remove('src') # ditto
