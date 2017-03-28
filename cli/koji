@@ -7207,7 +7207,6 @@ def handle_save_failed_tree(options, session, args):
     usage = _("usage: %prog save-failed-tree [options] taskID")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.disable_interspersed_args()
     parser.add_option("-f", "--full", action="store_true", default=False,
             help=_("Download whole tree, if not specified, only builddir will be downloaded"))
     parser.add_option("--quiet", action="store_true",
