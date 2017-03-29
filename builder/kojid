@@ -5273,9 +5273,9 @@ enabled=1
         for rpm_id in selected:
             rpminfo = selected[rpm_id]
             if rpminfo['sigkey'] is None:
+                sig_missing.append(rpm_id)
                 if opts['skip_missing_signatures']:
                     continue
-                sig_missing.append(rpm_id)
                 # use the primary copy, if allowed (checked below)
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
                     self.pathinfo.rpm(rpminfo))
