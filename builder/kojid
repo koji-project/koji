@@ -5273,7 +5273,7 @@ enabled=1
         for rpm_id in selected:
             rpminfo = selected[rpm_id]
             if rpminfo['sigkey'] is None:
-                if opts['skip_unsigned']:
+                if opts['skip_missing_signatures']:
                     continue
                 sig_missing.append(rpm_id)
                 # use the primary copy, if allowed (checked below)
@@ -5318,8 +5318,8 @@ enabled=1
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
             outfile = open(missing_log, 'w')
             outfile.write('Some rpms were missing requested signatures.\n')
-            if opts['skip_unsigned']:
-                outfile.write('The skip_unsigned option was specified, so '
+            if opts['skip_missing_signatures']:
+                outfile.write('The skip_missing_signatures option was specified, so '
                         'these files were excluded.\n')
             outfile.write('Acceptable keys: %r\n\n' % keys)
             outfile.write('# RPM name: available keys\n')
@@ -5330,7 +5330,8 @@ enabled=1
                 outfile.write('%s: %r\n' % (fname, avail))
             outfile.close()
             self.session.uploadWrapper(missing_log, self.uploadpath)
-            if not opts['skip_unsigned'] and not opts['unsigned']:
+            if (not opts['skip_missing_signatures']
+                        and not opts['allow_missing_signatures']):
                 raise koji.GenericError('Unsigned packages found. See '
                         'missing_signatures.log')
         return pkgfile

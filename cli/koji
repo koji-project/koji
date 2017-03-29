@@ -7095,8 +7095,10 @@ def handle_dist_repo(options, session, args):
     usage = _("usage: %prog dist-repo [options] tag keyID [keyID...]")
     usage += _("\n(Specify the --help option for a list of other options)")
     parser = OptionParser(usage=usage)
-    parser.add_option('--allow-unsigned', action='store_true', default=False,
-        help=_('Use unsigned RPMs if none are available with the right key'))
+    parser.add_option('--allow-missing-signatures', action='store_true',
+        default=False,
+        help=_('For RPMs not signed with a desired key, fall back to the '
+            'primary copy'))
     parser.add_option("--arch", action='append', default=[],
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
@@ -7118,15 +7120,17 @@ def handle_dist_repo(options, session, args):
         help=_('Do not consider tag inheritance'))
     parser.add_option("--nowait", action='store_true', default=False,
         help=_('Do not wait for the task to complete'))
-    parser.add_option('--skip-unsigned', action='store_true', default=False,
+    parser.add_option('--skip-missing-signatures', action='store_true', default=False,
         help=_('Skip RPMs not signed with the desired key(s)'))
     task_opts, args = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_('You must provide a tag to generate the repo from'))
-    if len(args) < 2 and not task_opts.allow_unsigned:
-        parser.error(_('Please specify one or more GPG key IDs (or --allow-unsigned)'))
-    if task_opts.allow_unsigned and task_opts.skip_unsigned:
-        parser.error(_('allow_unsigned and skip_unsigned are mutually exclusive'))
+    if len(args) < 2 and not task_opts.allow_missing_signatures:
+        parser.error(_('Please specify one or more GPG key IDs (or '
+                '--allow-missing-signatures)'))
+    if task_opts.allow_missing_signatures and task_opts.skip_missing_signatures:
+        parser.error(_('allow_missing_signatures and skip_missing_signatures '
+                'are mutually exclusive'))
     activate_session(session)
     stuffdir = _unique_path('cli-dist-repo')
     if task_opts.comps:
@@ -7193,8 +7197,8 @@ def handle_dist_repo(options, session, args):
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
         'multilib': task_opts.multilib,
-        'skip_unsigned': task_opts.skip_unsigned,
-        'unsigned': task_opts.allow_unsigned
+        'skip_missing_signatures': task_opts.skip_missing_signatures,
+        'allow_missing_signatures': task_opts.allow_missing_signatures
     }
     task_id = session.distRepo(tag, keys, **opts)
     print("Creating dist repo for tag " + tag)
