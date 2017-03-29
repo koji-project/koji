@@ -5216,7 +5216,23 @@ enabled=1
             self.sigmap[rpminfo['id']] = rpminfo['sigkey']
 
 
+    def pick_key(self, keys, avail_keys):
+        best = None
+        best_idx = None
+        for sigkey in avail_keys:
+            if sigkey not in keys:
+                # skip, not a key we are looking for
+                continue
+            idx = keys.index(sigkey)
+            # lower idx (earlier in list) is more preferrable
+            if best is None or best_idx > idx:
+                best = sigkey
+                best_idx = idx
+        return best
+
+
     def make_pkglist(self, tag_id, arch, keys, opts):
+        # get the rpm data
         rpms = []
         builddirs = {}
         for a in self.compat[arch] + ('noarch',):
@@ -5226,44 +5242,49 @@ enabled=1
             for build in builds:
                 builddirs[build['id']] = self.pathinfo.build(build)
             rpms += list(rpm_iter)
-        #get build dirs
-        need = set(['%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % r for r in rpms])
+
+        # index by id and key
+        preferred = {}
+        rpm_idx = {}
+        for rpminfo in rpms:
+            sigidx = rpm_idx.setdefault(rpminfo['id'], {})
+            sigidx[rpminfo['sigkey']] = rpminfo
+
+        # select our rpms
+        selected = {}
+        for rpm_id in rpm_idx:
+            avail_keys = rpm_idx[rpm_id].keys()
+            best_key = self.pick_key(keys, avail_keys)
+            if best_key is None:
+                # we lack a matching key for this rpm
+                fallback = avail_keys[0]
+                rpminfo = rpm_idx[rpm_id][fallback].copy()
+                rpminfo['sigkey'] = None
+                selected[rpm_id] = rpminfo
+            else:
+                selected[rpm_id] = rpm_idx[rpm_id][best_key]
+
         #generate pkglist files
         pkgfile = os.path.join(self.repodir, 'pkglist')
         pkglist = file(pkgfile, 'w')
-        preferred = {}
-        rpm_keys = {}
-        if opts['unsigned']:
-            keys.append('') # make unsigned rpms the least preferred
-        for rpminfo in rpms:
-            if rpminfo['sigkey'] == '' and not opts['unsigned']:
-                # skip, this is the unsigned rpminfo
-                continue
-            fname = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % rpminfo
-            rpm_keys.setdefault(fname, []).append(rpminfo['sigkey'])
-            if rpminfo['sigkey'] not in keys:
-                # skip, not a key we are looking for
-                continue
-            idx = keys.index(rpminfo['sigkey'])
-            if rpminfo['id'] in preferred:
-                if keys.index(preferred[rpminfo['id']]['sigkey']) <= idx:
-                    # key for this is not as preferable as what has been seen
-                    continue
-            preferred[rpminfo['id']] = rpminfo
-        seen = set()
-        fs_missing = set()
+        fs_missing = []
+        sig_missing = []
         kojipkgs = {}
-        for rpminfo in preferred.values():
-            if rpminfo['sigkey'] == '':
-                # we're taking an unsigned rpm (--allow-unsigned)
+        for rpm_id in selected:
+            rpminfo = selected[rpm_id]
+            if rpminfo['sigkey'] is None:
+                if opts['skip_unsigned']:
+                    continue
+                sig_missing.append(rpm_id)
+                # use the primary copy, if allowed (checked below)
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
                     self.pathinfo.rpm(rpminfo))
             else:
+                # use the signed copy
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
                     self.pathinfo.signed(rpminfo, rpminfo['sigkey']))
-            seen.add(os.path.basename(pkgpath))
             if not os.path.exists(pkgpath):
-                fs_missing.add(pkgpath)
+                fs_missing.append(pkgpath)
                 # we'll raise an error below
             else:
                 bnp = os.path.basename(pkgpath)
@@ -5277,6 +5298,8 @@ enabled=1
                 kojipkgs[bnp] = rpminfo
         pkglist.close()
         self.kojipkgs = kojipkgs
+
+        # report problems
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_files.log')
             outfile = open(missing_log, 'w')
@@ -5290,8 +5313,7 @@ enabled=1
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('Packages missing from the filesystem. '
                     'See missing_files.log.')
-        missing = need - seen
-        if missing:
+        if sig_missing:
             # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
             outfile = open(missing_log, 'w')
@@ -5301,12 +5323,14 @@ enabled=1
                         'these files were excluded.\n')
             outfile.write('Acceptable keys: %r\n\n' % keys)
             outfile.write('# RPM name: available keys\n')
-            for fname in sorted(missing):
-                avail = rpm_keys.get(fname, [])
+            fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
+            filenames = [[fmt % selected[r], r] for r in sig_missing]
+            for fname, rpm_id in sorted(filenames):
+                avail = rpm_idx.get(rpm_id, {}).keys()
                 outfile.write('%s: %r\n' % (fname, avail))
             outfile.close()
             self.session.uploadWrapper(missing_log, self.uploadpath)
-            if not opts['skip_unsigned']:
+            if not opts['skip_unsigned'] and not opts['unsigned']:
                 raise koji.GenericError('Unsigned packages found. See '
                         'missing_signatures.log')
         return pkgfile
