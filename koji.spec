@@ -15,7 +15,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.11.0
+Version: 1.12.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -352,6 +352,79 @@ fi
 %endif
 
 %changelog
+* Thu Mar 30 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
+- PR#359 Add koji-tools link to docs
+- PR#318 Signed repos, take two [dist repos]
+- PR#200 Saving failed build trees
+- PR#354 more runroot tests
+- PR#232 Allow uploading files to non-default volumes
+- PR#350 cli: clarify some "mismatch" warnings
+- PR#351 cli: check # of args in handle_set_build_volume()
+- PR#358 jenkins configuration update
+- PR#260 Add debug and debug_xmlrpc to default koji config
+- PR#304 unify KeyboardInterrupt behaviour for watch commands
+- PR#341 Some more 2to3 python2.4 safe results
+- PR#345 support removing extra values from tags
+- PR#295 Set compatrequests defaults same as requests
+- PR#348 remove unused function parse_timestamp
+- PR#347 Return datetime objects in iso string format
+- PR#343 Handle empty file upload
+- PR#337 cli: move list-permissions to info category
+- PR#332 remove has_key (not working in python3)
+- PR#336 use alabaster theme for docs
+- PR#333 Fix README link to mash project
+- PR#331 use new exception syntax
+- PR#330 formatting typo
+- PR#226 print statement -> print function
+- PR#319 Added support for CG provided owner
+- PR#324 jenkins' docs
+- PR#326 use multicall for clone tag
+- PR#283 wrap sending email in try except
+- PR#323 Honor excludearch and exclusivearch for noarch builds
+- PR#322 fix encoding when parsing json data on the hub
+- PR#278 mock_output.log not included with logs when importing rpm builds
+- PR#321 hub: enforce strict in get_user()
+- PR#309 Make --can-fail option working for make-image
+- PR#243 add TrustForwardedIP and CheckClientIP for hubs behind proxies
+- PR#307 Fix options.force in import_comps
+- PR#308 fix a syntax error introduced by commit 6f4c576
+- PR#303 check http request status before attempting to decode response
+- PR#317 docs update - krbV configuration
+- PR#310 Fix koji-devel mailing list address
+- PR#311 Add indirectionimage to pull-down menu in webui
+- PR#313 docs typo
+- PR#316 update test requirements docs
+- PR#281 web.conf options for specifying which methods will appear in filter
+- PR#291 Missing --can-fail option for spin-appliance
+- PR#209 add disttag handling to get_next_release
+- PR#262 koji-shadow: allow use without certs
+- PR#297 Fixed minor typo in writing koji code doc
+- PR#289 Don't fail on unimported krbV
+- PR#287 Update content generator metadata documentation
+- PR#223 convert the packages page to use paginateMethod()
+- PR#240 Convert from pygresql to psycopg2
+- PR#239 Allow principal and keytab in cli config
+- PR#263 Error message for missing certificates
+- PR#274 Fix kojiweb error using getfile to download non-text files
+- PR#177 allow tasks to fail on some arches for images/lives/appliances
+- PR#264 unify CLI parsing of multiple architectures
+- PR#265 fix poll_interval ref in list-history cmd
+- PR#272 fix default values for buildroot.container_type
+- PR#242 Make tests compatible with rhel7/centos7
+- PR#267 more direct tag functions for the hub
+- PR#256 update url and source in spec
+- PR#257 Clarify purpose of cfgmap
+- PR#245 Rewrite koji.util.rmtree to avoid forming long paths
+- PR#244 Add krb_rdns to koji-shadow
+- PR#246 Revert "default krb_rdns to True"
+- PR#248 Make koji-gc also work with principal and keytab
+- PR#253 Updated links in docs/code
+- PR#254 Extended clone-tag
+- PR#83 add support for putting scripts just before the closing </body> tag
+- PR#141 Don't hide results in kojiweb
+- PR#225 Also set WSGIApplicationGroup to %{GLOBAL} for the web
+- PR#238 make the tlstimeout class compatible with newer versions of qpid
+
 * Thu Dec  8 2016 Mike McLean <mikem at redhat.com> - 1.11.0-1
 - content generator support
 - generic build type support (btypes)
