@@ -4,7 +4,7 @@ Migrating to Koji 1.12
 ..
   reStructured Text formatted
 
-The 1.11 release of Koji includes a several changes that you should consider when
+The 1.12 release of Koji includes a several changes that you should consider when
 migrating.
 
 DB Updates
@@ -53,6 +53,7 @@ and builder). Each has its own configuration file. See :doc:`plugins`
 The hub accepts a new ``CheckClientIP`` option (default True) to indicate
 whether authentication credentials should be tied to the client's IP address.
 (For some proxy setups, this may need to be set to False).
+
 
 RPC API Changes
 ---------------
