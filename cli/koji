@@ -7202,50 +7202,63 @@ def handle_runroot(options, session, args):
         sys.exit(1)
     return
 
+
 def handle_save_failed_tree(options, session, args):
     "Create tarball with whole buildtree"
-    usage = _("usage: %prog save-failed-tree [options] taskID")
+    usage = _("usage: %prog save-failed-tree [options] ID")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("-f", "--full", action="store_true", default=False,
             help=_("Download whole tree, if not specified, only builddir will be downloaded"))
-    parser.add_option("--quiet", action="store_true",
-                      help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("-t", "--task", action="store_const", dest="mode",
+            const="task", default="task",
+            help=_("Treat ID as a task ID (the default)"))
+    parser.add_option("-r", "--buildroot", action="store_const", dest="mode",
+            const="buildroot",
+            help=_("Treat ID as a buildroot ID"))
+    parser.add_option("--quiet", action="store_true", default=options.quiet,
+                      help=_("Do not print the task information"))
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
 
     (opts, args) = parser.parse_args(args)
 
     if len(args) != 1:
-        parser.error(_("List exactly one taskID"))
+        parser.error(_("List exactly one task or buildroot ID"))
 
     try:
-        taskID = int(args[0])
+        id_val = int(args[0])
     except ValueError:
-        parser.error(_("Task ID must be an integer."))
+        parser.error(_("ID must be an integer"))
 
     activate_session(session)
+
+    if opts.mode == "buildroot":
+        br_id = id_val
+    else:
+        brs = [b['id'] for b in session.listBuildroots(taskID=id_val)]
+        if not brs:
+            print(_("No buildroots for task %s") % id_val)
+            return 1
+        br_id = max(brs)
+        if len(brs) > 1:
+            print(_("Multiple buildroots for task. Choosing last one (%s)") % br_id)
+
     try:
-        task_id = session.saveFailedTree(taskID, opts.full)
+        task_id = session.saveFailedTree(br_id, opts.full)
     except koji.GenericError as e:
         m = str(e)
-        if 'Only failed tasks can upload their buildroots.' in m:
-            print(_("Only failed tasks can upload their buildroots."))
-        elif 'tasks can upload their buildroots (Task' in m:
-            print(_("Task of this type has disabled support for uploading" \
-                    " buildroot. (configurable on hub)"))
-        elif 'Invalid method' in m:
-            print(_("* The save_failed_tree plugin appears to not be installed" \
-                    " on the koji hub.  Please contact the administrator."))
-        else:
-            raise
-        return 1
-    except koji.ActionNotAllowed:
-        print(_("Only task owner or admin can run this task."))
-        return 1
+        if 'Invalid method' in m:
+            print(_("* The save_failed_tree plugin appears to not be "
+                    "installed on the koji hub.  Please contact the "
+                    "administrator."))
+            return 1
+        raise
+
     if not opts.quiet:
-        print("Created task:", task_id)
-        print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
+        print(_("Created task %s for buildroot %s") % (task_id, br_id))
+        print("Task info: %s/taskinfo?taskID=%s"
+                % (options.weburl, task_id))
 
     if opts.nowait:
         return
