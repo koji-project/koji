@@ -43,6 +43,8 @@ class SaveFailedTreeTask(tasks.BaseTaskHandler):
         read_config()
 
         brinfo = self.session.getBuildroot(buildrootID)
+        if brinfo is None:
+            raise koji.GenericError("Nonexistent buildroot: %s" % buildrootID)
         host_id = self.session.host.getHost()['id']
         if brinfo['host_id'] != host_id:
             raise koji.GenericError("Task is run on wrong builder")

@@ -27,12 +27,14 @@ class TestSaveFailedTree(unittest.TestCase):
     def test_handle_save_failed_tree_simple(self, activate_session_mock):
         # koji save-failed-tree 123456
         task_id = 123456
+        broot_id = 321
         arguments = [task_id]
         options = mock.MagicMock()
         options.full = False
         options.nowait = True
         self.parser.parse_args.return_value = [options, arguments]
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.session.listBuildroots.return_value = [{'id': 321}]
 
         # Mock out the xmlrpc server
         self.session.saveFailedTree.return_value = 123
@@ -42,18 +44,46 @@ class TestSaveFailedTree(unittest.TestCase):
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session)
-        self.session.saveFailedTree.assert_called_once_with(task_id, options.full)
+        self.session.listBuildroots.assert_called_once_with(taskID=task_id)
+        self.session.saveFailedTree.assert_called_once_with(broot_id, options.full)
+
+    @mock.patch('koji_cli.activate_session')
+    def test_handle_save_failed_tree_buildroots(self, activate_session_mock):
+        # koji save-failed-tree --buildroot 123456
+        broot_id = 321
+        arguments = [broot_id]
+        options = mock.MagicMock()
+        options.full = False
+        options.nowait = True
+        options.mode = "buildroot"
+        self.parser.parse_args.return_value = [options, arguments]
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.session.listBuildroots.return_value = [{'id': 321}]
+
+        # Mock out the xmlrpc server
+        self.session.saveFailedTree.return_value = 123
+
+        # Run it and check immediate output
+        cli.handle_save_failed_tree(self.options, self.session, self.args)
+
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_called_once_with(self.session)
+        self.session.listBuildroots.assert_not_called()
+        self.session.saveFailedTree.assert_called_once_with(broot_id, options.full)
+
 
     @mock.patch('koji_cli.activate_session')
     def test_handle_save_failed_tree_full(self, activate_session_mock):
         # koji save-failed-tree 123456 --full
         task_id = 123456
+        broot_id = 321
         arguments = [task_id]
         options = mock.MagicMock()
         options.full = True
         options.nowait = True
         self.parser.parse_args.return_value = [options, arguments]
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.session.listBuildroots.return_value = [{'id': 321}]
 
         # Mock out the xmlrpc server
         self.session.saveFailedTree.return_value = 123
@@ -63,13 +93,15 @@ class TestSaveFailedTree(unittest.TestCase):
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session)
-        self.session.saveFailedTree.assert_called_once_with(task_id, options.full)
+        self.session.listBuildroots.assert_called_once_with(taskID=task_id)
+        self.session.saveFailedTree.assert_called_once_with(broot_id, options.full)
 
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli.watch_tasks')
     def test_handle_save_failed_tree_wait(self, watch_tasks_mock, activate_session_mock):
         # koji save-failed-tree 123456 --full
         task_id = 123456
+        broot_id = 321
         arguments = [task_id]
         options = mock.MagicMock()
         options.full = True
@@ -77,6 +109,7 @@ class TestSaveFailedTree(unittest.TestCase):
         options.quiet = False
         self.parser.parse_args.return_value = [options, arguments]
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.session.listBuildroots.return_value = [{'id': 321}]
 
         # Mock out the xmlrpc server
         spawned_id = 123
@@ -86,7 +119,8 @@ class TestSaveFailedTree(unittest.TestCase):
         cli.handle_save_failed_tree(self.options, self.session, self.args)
 
         # Finally, assert that things were called as we expected.
-        self.session.saveFailedTree.assert_called_once_with(task_id, options.full)
+        self.session.listBuildroots.assert_called_once_with(taskID=task_id)
+        self.session.saveFailedTree.assert_called_once_with(broot_id, options.full)
         activate_session_mock.assert_called_once_with(self.session)
         self.session.logout.assert_called_once_with()
         watch_tasks_mock.assert_called_once_with(self.session, [spawned_id],
@@ -102,6 +136,7 @@ class TestSaveFailedTree(unittest.TestCase):
         self.parser.parse_args.return_value = [options, arguments]
         self.parser.error.side_effect = Exception()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.session.listBuildroots.return_value = [{'id': 321}]
 
         self.assertRaises(Exception, cli.handle_save_failed_tree,
                           self.options, self.session, self.args)
@@ -120,18 +155,9 @@ class TestSaveFailedTree(unittest.TestCase):
         actual = stdout.getvalue()
         self.assertTrue('The save_failed_tree plugin appears to not be installed' in actual)
 
-        # Task which is not FAILED
-        stdout.seek(0)
-        stdout.truncate()
-        self.session.saveFailedTree.side_effect = koji.PreBuildError('Only failed tasks can upload their buildroots.')
-        cli.handle_save_failed_tree(self.options, self.session, self.args)
-        actual = stdout.getvalue()
-        self.assertTrue('Only failed tasks can upload their buildroots.' in actual)
-
-        # Disabled/unsupported task
-        stdout.seek(0)
-        stdout.truncate()
-        self.session.saveFailedTree.side_effect = koji.PreBuildError('tasks can upload their buildroots (Task')
-        cli.handle_save_failed_tree(self.options, self.session, self.args)
-        actual = stdout.getvalue()
-        self.assertTrue('Task of this type has disabled support for uploading' in actual)
+        # Task which is not FAILED, disabled in config, wrong owner
+        self.session.saveFailedTree.side_effect = koji.PreBuildError('placeholder')
+        with self.assertRaises(koji.PreBuildError) as cm:
+            cli.handle_save_failed_tree(self.options, self.session, self.args)
+        e = cm.exception
+        self.assertEqual(e, self.session.saveFailedTree.side_effect)
