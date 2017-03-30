@@ -2442,6 +2442,39 @@ def _write_maven_repo_metadata(destdir, artifacts):
     mdfile.close()
     _generate_maven_metadata(destdir)
 
+def dist_repo_init(tag, keys, task_opts):
+    """Create a new repo entry in the INIT state, return full repo data"""
+    state = koji.REPO_INIT
+    tinfo = get_tag(tag, strict=True)
+    tag_id = tinfo['id']
+    event = task_opts.get('event')
+    arches = set([koji.canonArch(a) for a in task_opts['arch']])
+    # note: we need to match args from the other preRepoInit callback
+    koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
+            with_debuginfo=False, event=event, repo_id=None,
+            dist=True, keys=keys, arches=arches, task_opts=task_opts)
+    if not event:
+        event = get_event()
+    repo_id = nextval('repo_id_seq')
+    insert = InsertProcessor('repo')
+    insert.set(id=repo_id, create_event=event, tag_id=tag_id,
+        state=state, dist=True)
+    insert.execute()
+    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
+    for arch in arches:
+        koji.ensuredir(os.path.join(repodir, arch))
+    # handle comps
+    if task_opts.get('comps'):
+        groupsdir = os.path.join(repodir, 'groups')
+        koji.ensuredir(groupsdir)
+        shutil.copyfile(os.path.join(koji.pathinfo.work(),
+            task_opts['comps']), groupsdir + '/comps.xml')
+    # note: we need to match args from the other postRepoInit callback
+    koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
+            with_debuginfo=False, event=event, repo_id=repo_id)
+    return repo_id, event
+
+
 def repo_set_state(repo_id, state, check=True):
     """Set repo state"""
     if check:
@@ -2463,6 +2496,7 @@ def repo_info(repo_id, strict=False):
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
+        ('repo.dist', 'dist'),
     )
     q = """SELECT %s FROM repo
     JOIN tag ON tag_id=tag.id
@@ -7348,6 +7382,12 @@ def get_event():
     return event_id
 
 
+def nextval(sequence):
+    """Get the next value for the given sequence"""
+    data = {'sequence': sequence}
+    return _singleValue("SELECT nextval(%(sequence)s)", data, strict=True)
+
+
 def parse_json(value, desc=None, errstr=None):
     if value is None:
         return value
@@ -10069,16 +10109,20 @@ class RootExports(object):
                     taginfo['extra'][key] = ancestor['extra'][key]
         return taginfo
 
-    def getRepo(self, tag, state=None, event=None):
+    def getRepo(self, tag, state=None, event=None, dist=False):
         if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
 
-        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)']
-        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts']
+        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time', 'EXTRACT(EPOCH FROM events.time)', 'repo.dist']
+        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts', 'dist']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
+        if dist:
+            clauses.append('repo.dist is true')
+        else:
+            clauses.append('repo.dist is false')
         if event:
             # the repo table doesn't have all the fields of a _config table, just create_event
             clauses.append('create_event <= %(event)i')
@@ -10095,6 +10139,13 @@ class RootExports(object):
 
     repoInfo = staticmethod(repo_info)
     getActiveRepos = staticmethod(get_active_repos)
+
+    def distRepo(self, tag, keys, **task_opts):
+        """Create a dist-repo task. returns task id"""
+        context.session.assertPerm('dist-repo')
+        repo_id, event_id = dist_repo_init(tag, keys, task_opts)
+        task_opts['event'] = event_id
+        return make_task('distRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False):
         """Create a newRepo task. returns task id"""
@@ -12226,6 +12277,9 @@ class HostExports(object):
         data: a dictionary of the form { arch: (uploadpath, files), ...}
         expire(optional): if set to true, mark the repo expired immediately*
 
+        If this is a dist repo, also hardlink the rpms in the final
+        directory.
+
         * This is used when a repo from an older event is generated
         """
         host = Host()
@@ -12236,18 +12290,22 @@ class HostExports(object):
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
-        for arch, (uploadpath, files) in data.iteritems():
-            archdir = "%s/%s" % (repodir, arch)
-            if not os.path.isdir(archdir):
-                raise koji.GenericError("Repo arch directory missing: %s" % archdir)
-            datadir = "%s/repodata" % archdir
-            koji.ensuredir(datadir)
-            for fn in files:
-                src = "%s/%s/%s" % (workdir, uploadpath, fn)
-                dst = "%s/%s" % (datadir, fn)
-                if not os.path.exists(src):
-                    raise koji.GenericError("uploaded file missing: %s" % src)
-                safer_move(src, dst)
+        if not rinfo['dist']:
+            for arch, (uploadpath, files) in data.iteritems():
+                archdir = "%s/%s" % (repodir, koji.canonArch(arch))
+                if not os.path.isdir(archdir):
+                    raise koji.GenericError("Repo arch directory missing: %s" % archdir)
+                datadir = "%s/repodata" % archdir
+                koji.ensuredir(datadir)
+                for fn in files:
+                    src = "%s/%s/%s" % (workdir, uploadpath, fn)
+                    if fn.endswith('pkglist'):
+                        dst = '%s/%s' % (archdir, fn)
+                    else:
+                        dst = "%s/%s" % (datadir, fn)
+                    if not os.path.exists(src):
+                        raise koji.GenericError("uploaded file missing: %s" % src)
+                    safer_move(src, dst)
         if expire:
             repo_expire(repo_id)
             koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
@@ -12255,9 +12313,13 @@ class HostExports(object):
         #else:
         repo_ready(repo_id)
         repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+
         #make a latest link
-        latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
-        #XXX - this is a slight abuse of pathinfo
+        if rinfo['dist']:
+            latestrepolink = koji.pathinfo.distrepo('latest', rinfo['tag_name'])
+        else:
+            latestrepolink = koji.pathinfo.repo('latest', rinfo['tag_name'])
+            #XXX - this is a slight abuse of pathinfo
         try:
             if os.path.lexists(latestrepolink):
                 os.unlink(latestrepolink)
@@ -12266,6 +12328,105 @@ class HostExports(object):
             #making this link is nonessential
             log_error("Unable to create latest link for repo: %s" % repodir)
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
+
+
+    def distRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
+        """
+        Move a dist repo into its final location
+
+
+        Unlike normal repos (which are moved into place by repoDone), dist
+        repos have all their content linked (or copied) into place.
+
+        repo_id - the repo to move
+        uploadpath - where the uploaded files are
+        files - a list of the uploaded file names
+        arch - the arch of the repo
+        sigmap - a list of [rpm_id, sig] pairs
+
+        The rpms from sigmap should match the contents of the uploaded pkglist
+        file.
+
+        In sigmap, use sig=None to use the primary copy of the rpm instead of a
+        signed copy.
+        """
+        workdir = koji.pathinfo.work()
+        rinfo = repo_info(repo_id, strict=True)
+        repodir = koji.pathinfo.distrepo(repo_id, rinfo['tag_name'])
+        archdir = "%s/%s" % (repodir, koji.canonArch(arch))
+        if not os.path.isdir(archdir):
+            raise koji.GenericError("Repo arch directory missing: %s" % archdir)
+        datadir = "%s/repodata" % archdir
+        koji.ensuredir(datadir)
+
+        pkglist = set()
+        for fn in files:
+            src = "%s/%s/%s" % (workdir, uploadpath, fn)
+            if fn.endswith('.drpm'):
+                koji.ensuredir(os.path.join(archdir, 'drpms'))
+                dst = "%s/drpms/%s" % (archdir, fn)
+            elif fn.endswith('pkglist') or fn.endswith('kojipkgs'):
+                dst = '%s/%s' % (archdir, fn)
+            else:
+                dst = "%s/%s" % (datadir, fn)
+            if not os.path.exists(src):
+                raise koji.GenericError("uploaded file missing: %s" % src)
+            if fn.endswith('pkglist'):
+                with open(src) as pkgfile:
+                    for pkg in pkgfile:
+                        pkg = os.path.basename(pkg.strip())
+                        pkglist.add(pkg)
+            safer_move(src, dst)
+
+        # get rpms
+        build_dirs = {}
+        rpmdata = {}
+        for rpm_id, sigkey in sigmap:
+            rpminfo = get_rpm(rpm_id, strict=True)
+            if sigkey is None or sigkey == '':
+                relpath = koji.pathinfo.rpm(rpminfo)
+            else:
+                relpath = koji.pathinfo.signed(rpminfo, sigkey)
+            rpminfo['_relpath'] = relpath
+            if rpminfo['build_id'] in build_dirs:
+                builddir = build_dirs[rpminfo['build_id']]
+            else:
+                binfo = get_build(rpminfo['build_id'])
+                builddir = koji.pathinfo.build(binfo)
+                build_dirs[rpminfo['build_id']] = builddir
+            rpminfo['_fullpath'] = os.path.join(builddir, relpath)
+            basename = os.path.basename(relpath)
+            rpmdata[basename] = rpminfo
+
+        # sanity check
+        for fn in rpmdata:
+            if fn not in pkglist:
+                raise koji.GenericError("No signature data for: %s" % fn)
+        for fn in pkglist:
+            if fn  not in rpmdata:
+                raise koji.GenericError("RPM missing from pkglist: %s" % fn)
+
+        for fn in rpmdata:
+            # hardlink or copy the rpms into the final repodir
+            # TODO: properly consider split-volume functionality
+            rpminfo = rpmdata[fn]
+            rpmpath = rpminfo['_fullpath']
+            bnp = fn
+            bnplet = bnp[0].lower()
+            koji.ensuredir(os.path.join(archdir, bnplet))
+            l_dst = os.path.join(archdir, bnplet, bnp)
+            if os.path.exists(l_dst):
+                raise koji.GenericError("File already in repo: %s", l_dst)
+            logger.debug("os.link(%r, %r)", rpmpath, l_dst)
+            try:
+                os.link(rpmpath, l_dst)
+            except OSError, ose:
+                if ose.errno == 18:
+                    shutil.copy2(
+                        rpmpath, os.path.join(archdir, bnplet, bnp))
+                else:
+                    raise
+
 
     def isEnabled(self):
         host = Host()

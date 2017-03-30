@@ -116,6 +116,7 @@ info commands:
 
 miscellaneous commands:
         call                      Execute an arbitrary XML-RPC call
+        dist-repo                 Create a yum repo with distribution options
         import-comps              Import group/package information from a comps file
         moshimoshi                Introduce yourself
         save-failed-tree          Create tarball with whole buildtree

@@ -1872,6 +1872,8 @@ def handle_import_sig(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--with-unsigned", action="store_true",
                       help=_("Also import unsigned sig headers"))
+    parser.add_option("--write", action="store_true",
+                      help=_("Also write the signed copies"))
     parser.add_option("--test", action="store_true",
                       help=_("Test mode -- don't actually import"))
     (options, args) = parser.parse_args(args)
@@ -1921,6 +1923,10 @@ def handle_import_sig(options, session, args):
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
             session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
+        print(_("Writing signed copy"))
+        if not options.test:
+            session.writeSignedRPM(rinfo['id'], sigkey)
+
 
 def handle_write_signed_rpm(options, session, args):
     "[admin] Write signed RPMs to disk"
@@ -1940,21 +1946,31 @@ def handle_write_signed_rpm(options, session, args):
     activate_session(session)
     if options.all:
         rpms = session.queryRPMSigs(sigkey=key)
-        count = 1
-        for rpm in rpms:
-            print("%d/%d" % (count, len(rpms)))
-            count += 1
-            session.writeSignedRPM(rpm['rpm_id'], key)
+        rpms = [session.getRPM(r['rpm_id']) for r in rpms]
     elif options.buildid:
         rpms = session.listRPMs(int(options.buildid))
-        for rpm in rpms:
-            session.writeSignedRPM(rpm['id'], key)
     else:
-        for nvr in args:
+        rpms = []
+        bad = []
+        for nvra in args:
+            try:
+                koji.parse_NVRA(nvra)
+                rinfo = session.getRPM(nvra, strict=True)
+                if rinfo:
+                    rpms.append(rinfo)
+            except koji.GenericError:
+                bad.append(nvra)
+        # for historical reasons, we also accept nvrs
+        for nvr in bad:
             build = session.getBuild(nvr)
-            rpms = session.listRPMs(buildID=build['id'])
-            for rpm in rpms:
-                session.writeSignedRPM(rpm['id'], key)
+            if not build:
+                raise koji.GenericError("No such rpm or build: %s" % nvr)
+            rpms.extend(session.listRPMs(buildID=build['id']))
+    for i, rpminfo in enumerate(rpms):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
+        print("[%d/%d] %s" % (i+1, len(rpms), nvra))
+        session.writeSignedRPM(rpminfo['id'], key)
+
 
 def handle_prune_signed_copies(options, session, args):
     "[admin] Prune signed copies"
@@ -7073,6 +7089,125 @@ def handle_regen_repo(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet)
+
+def handle_dist_repo(options, session, args):
+    """Create a yum repo with distribution options"""
+    usage = _("usage: %prog dist-repo [options] tag keyID [keyID...]")
+    usage += _("\n(Specify the --help option for a list of other options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option('--allow-missing-signatures', action='store_true',
+        default=False,
+        help=_('For RPMs not signed with a desired key, fall back to the '
+            'primary copy'))
+    parser.add_option("--arch", action='append', default=[],
+        help=_("Indicate an architecture to consider. The default is all " +
+            "architectures associated with the given tag. This option may " +
+            "be specified multiple times."))
+    parser.add_option('--comps', help='Include a comps file in the repodata')
+    parser.add_option('--delta-rpms', metavar='REPO',default=[],
+        action='append',
+        help=_('Create delta rpms. REPO can be the id of another dist repo '
+            'or the name of a tag that has a dist repo. May be specified '
+            'multiple times.'))
+    parser.add_option('--event', type='int',
+        help=_('create a dist repository based on a Brew event'))
+    parser.add_option('--non-latest', dest='latest', default=True,
+        action='store_false', help='Include older builds, not just the latest')
+    parser.add_option('--multilib', default=None, metavar="CONFIG",
+        help=_('Include multilib packages in the repository using the given '
+            'config file'))
+    parser.add_option("--noinherit", action='store_true', default=False,
+        help=_('Do not consider tag inheritance'))
+    parser.add_option("--nowait", action='store_true', default=False,
+        help=_('Do not wait for the task to complete'))
+    parser.add_option('--skip-missing-signatures', action='store_true', default=False,
+        help=_('Skip RPMs not signed with the desired key(s)'))
+    task_opts, args = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_('You must provide a tag to generate the repo from'))
+    if len(args) < 2 and not task_opts.allow_missing_signatures:
+        parser.error(_('Please specify one or more GPG key IDs (or '
+                '--allow-missing-signatures)'))
+    if task_opts.allow_missing_signatures and task_opts.skip_missing_signatures:
+        parser.error(_('allow_missing_signatures and skip_missing_signatures '
+                'are mutually exclusive'))
+    activate_session(session)
+    stuffdir = _unique_path('cli-dist-repo')
+    if task_opts.comps:
+        if not os.path.exists(task_opts.comps):
+            parser.error(_('could not find %s') % task_opts.comps)
+        session.uploadWrapper(task_opts.comps, stuffdir,
+            callback=_progress_callback)
+        print('')
+        task_opts.comps = os.path.join(stuffdir,
+            os.path.basename(task_opts.comps))
+    old_repos = []
+    if len(task_opts.delta_rpms) > 0:
+        for repo in task_opts.delta_rpms:
+            if repo.isdigit():
+                rinfo = session.repoInfo(int(repo), strict=True)
+            else:
+                # get dist repo for tag
+                rinfo = session.getRepo(repo, dist=True)
+                if not rinfo:
+                    # maybe there is an expired one
+                    rinfo = session.getRepo(repo,
+                            state=koji.REPO_STATES['EXPIRED'], dist=True)
+                if not rinfo:
+                    parser.errpr(_("Can't find repo for tag: %s") % repo)
+            old_repos.append(rinfo['id'])
+    tag = args[0]
+    keys = args[1:]
+    taginfo = session.getTag(tag)
+    if not taginfo:
+        parser.error(_('unknown tag %s') % tag)
+    if len(task_opts.arch) == 0:
+        arches = taginfo['arches'] or ''
+        task_opts.arch = arches.split()
+        if task_opts.arch == None:
+            parser.error(_('No arches given and no arches associated with tag'))
+    else:
+        for a in task_opts.arch:
+            if not taginfo['arches'] or a not in taginfo['arches']:
+                print(_('Warning: %s is not in the list of tag arches') % a)
+    if task_opts.multilib:
+        if not os.path.exists(task_opts.multilib):
+            parser.error(_('could not find %s') % task_opts.multilib)
+        if 'x86_64' in task_opts.arch and not 'i686' in task_opts.arch:
+            parser.error(_('The multilib arch (i686) must be included'))
+        if 's390x' in task_opts.arch and not 's390' in task_opts.arch:
+            parser.error(_('The multilib arch (s390) must be included'))
+        if 'ppc64' in task_opts.arch and not 'ppc' in task_opts.arch:
+            parser.error(_('The multilib arch (ppc) must be included'))
+        session.uploadWrapper(task_opts.multilib, stuffdir,
+            callback=_progress_callback)
+        task_opts.multilib = os.path.join(stuffdir,
+            os.path.basename(task_opts.multilib))
+        print('')
+    try:
+        task_opts.arch.remove('noarch') # handled specifically
+        task_opts.arch.remove('src') # ditto
+    except ValueError:
+        pass
+    opts = {
+        'arch': task_opts.arch,
+        'comps': task_opts.comps,
+        'delta': old_repos,
+        'event': task_opts.event,
+        'inherit': not task_opts.noinherit,
+        'latest': task_opts.latest,
+        'multilib': task_opts.multilib,
+        'skip_missing_signatures': task_opts.skip_missing_signatures,
+        'allow_missing_signatures': task_opts.allow_missing_signatures
+    }
+    task_id = session.distRepo(tag, keys, **opts)
+    print("Creating dist repo for tag " + tag)
+    if _running_in_bg() or task_opts.nowait:
+        return
+    else:
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
+
 
 def anon_handle_search(options, session, args):
     "[search] Search the system"

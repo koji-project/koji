@@ -64,7 +64,7 @@ Warning to the reader:
 - refactor uploads
 - more flexible gc
 - introduce an ORM to do away with raw SQL queries.
-- know how to manage signed repositories of RPMs
+- know how to manage dist repositories of RPMs
 - know how to build installation media
 - more granular access control/groups
   - things like Read, Execute, Execute scratch, Delete, Tag, so we can delegate

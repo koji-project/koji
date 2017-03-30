@@ -98,6 +98,7 @@ Requires: %{name} = %{version}-%{release}
 Requires: mock >= 0.9.14
 Requires(pre): /usr/sbin/useradd
 Requires: squashfs-tools
+Requires: python2-multilib
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -116,6 +117,7 @@ Requires: python-cheetah
 Requires: createrepo >= 0.4.11-2
 Requires: python-hashlib
 Requires: python-createrepo
+Requires: python-simplejson
 %endif
 %if 0%{?fedora} >= 9
 Requires: createrepo >= 0.9.2
