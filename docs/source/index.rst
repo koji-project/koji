@@ -31,6 +31,7 @@ Contents
     server_bootstrap
     server_howto
     using_the_koji_build_system
+    plugins
     writing_a_plugin
     writing_koji_code
     content_generators
