@@ -59,19 +59,23 @@ RPC API Changes
 ---------------
 
 New rpc calls:
-    * ``listPackagesSimple`` : handles a limited subset of the
-    functionality provided by the ``listPackages`` call
-    * ``distRepo`` : triggers generation of a distribution repo
 
-Changes to calls
+``listPackagesSimple``
+    handles a limited subset of the
+    functionality provided by the ``listPackages`` call
+
+``distRepo``
+    triggers generation of a distribution repo
+
+Changes to calls:
     * repo related calls (e.g. ``repoInfo`` now include a boolean ``dist``
-    field
+      field
     * the ``editTag2`` call can now remove tag_extra data if the
-    ``remove_extra`` keywarg argument is used
+      ``remove_extra`` keywarg argument is used
     * the listTaskOutput call supports a new ``all_volumes`` keyword argument.
-    If true, the results are extended to deal with files in same relative paths
-    on different volumes.
+      If true, the results are extended to deal with files in same relative paths
+      on different volumes.
     * the ``getTaskResult`` call takes an optional boolean ``raise_fault``
-    argument
+      argument
     * the ``taskWaitResults`` call takes an optional ``canfail`` argument
-    to indicate subtasks which can fail without raising an exception
+      to indicate subtasks which can fail without raising an exception
