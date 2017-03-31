@@ -54,7 +54,7 @@ copyright = u'2017, Mike McLean, Mike B, Dennis Gilmore, Mathieu Bridon, Ian McL
 # built documents.
 #
 # The short X.Y version.
-version = '1.12.0'
+version = '1.12'
 # The full version, including alpha/beta/rc tags.
 release = '1.12.0'
 
