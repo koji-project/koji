@@ -21,7 +21,7 @@ database.
 
 ::
 
-    # psql koji koji  </usr/share/doc/koji-1.12.0/docs/schema-upgrade-1.11-1.12.sql
+    # psql koji koji  </usr/share/doc/koji/docs/schema-upgrade-1.11-1.12.sql
 
 
 Command line changes
