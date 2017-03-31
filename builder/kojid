@@ -705,7 +705,7 @@ class BuildRoot(object):
             rpm_info['external_repo'] = erepo
             rpm_info['location'] = erepo['external_repo_id']
 
-    def relpath(self, path):
+    def path_without_to_within(self, path):
         """
         :param path:
             A reference within the BuildRoot but as an absolute path from
@@ -3101,7 +3101,7 @@ class LiveMediaTask(ImageTask):
         logfile = os.path.join(self.workdir, 'lorax-templates-checkout.log')
         checkout_dir = scm.checkout(os.path.join(build_root.rootdir(), 'tmp'),
                                     self.session, self.getUploadDir(), logfile)
-        return os.path.join(build_root.relpath(checkout_dir),
+        return os.path.join(build_root.path_without_to_within(checkout_dir),
                             self.opts['lorax_dir'])
 
     def genISOManifest(self, image, manifile):
