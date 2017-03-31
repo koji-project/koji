@@ -718,7 +718,7 @@ class BuildRoot(object):
             raise ValueError(
                 'path %r is not within the BuildRoot at %r' % (path, root)
             )
-        return os.path.join('/', os.path.relpath(path, root))
+        return os.path.join('/', koji.util.relpath(path, root))
 
     def resultdir(self):
         return "%s/%s/result" % (self.options.mockdir, self.name)
