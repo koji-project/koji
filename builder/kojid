@@ -707,6 +707,12 @@ class BuildRoot(object):
 
     def path_without_to_within(self, path):
         """
+        Convert an absolute path from without the BuildRoot to one within.
+
+        For example, if the BuildRoot is located at '/tmp/my/build/root',
+        calling path_without_to_within('/tmp/my/build/root/foo/bar') would
+        return '/foo/bar').
+
         :param path:
             A reference within the BuildRoot but as an absolute path from
             without a chroot.
@@ -3083,9 +3089,11 @@ class LiveMediaTask(ImageTask):
 
     def fetch_lorax_templates_from_scm(self, build_root):
         """
-        Make a checkout of the lorax templates from SCM so that they may be
-        passed to livemedia-creator.  Here we are operating outside the chroot
-        of the BuildRoot.  The following options are essential:
+        Checkout the lorax templates from SCM for use by livemedia-creator.
+
+        This will make a checkout of the lorax templates from SCM so that they
+        may be passed to livemedia-creator.  Here we are operating outside the
+        chroot of the BuildRoot.  The following options are essential:
             - lorax_url points to the SCM containing the templates.
             - lorax_dir provides a relative reference to the templates within
             the checkout.
