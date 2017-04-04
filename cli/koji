@@ -6921,7 +6921,7 @@ def anon_handle_download_task(options, session, args):
     downloads = []
 
     for task in downloadable_tasks:
-        files = session.listTaskOutput(task["id"], all_volumes=True)
+        files = list_task_output_all_volumes(session, task["id"])
         for filename in files:
             if filename.endswith(".log") and suboptions.logs:
                 for volume in files[filename]:
