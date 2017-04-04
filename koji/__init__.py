@@ -2623,7 +2623,10 @@ class ClientSession(object):
         """
         if self.multicall:
             raise GenericError('downloadTaskOutput() may not be called during a multicall')
-        result = self.callMethod('downloadTaskOutput', taskID, fileName, offset=offset, size=size, volume=volume)
+        dlopts = {'offset': offset, 'size': size}
+        if volume and volume != 'DEFAULT':
+            dlopts['volume'] = volume
+        result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.decodestring(result)
 
 class DBHandler(logging.Handler):
