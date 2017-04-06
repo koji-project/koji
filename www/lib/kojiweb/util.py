@@ -379,6 +379,8 @@ def stateImage(stateID):
 
 def brStateName(stateID):
     """Convert a numeric buildroot state into a readable name."""
+    if stateID is None:
+        return '-'
     return koji.BR_STATES[stateID].lower()
 
 
