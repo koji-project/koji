@@ -508,7 +508,7 @@ def watch_logs(session, tasklist, opts):
             if _isDone(session, task_id):
                 tasklist.remove(task_id)
 
-            output = session.listTaskOutput(task_id, all_volumes=True)
+            output = list_task_output_all_volumes(session, task_id)
             # convert to list of (file, volume)
             files = []
             for filename, volumes in output.iteritems():
@@ -541,6 +541,19 @@ def watch_logs(session, tasklist, opts):
             break
 
         time.sleep(options.poll_interval)
+
+
+def list_task_output_all_volumes(session, task_id):
+    """List task output with all volumes, or fake it"""
+    try:
+        return session.listTaskOutput(task_id, all_volumes=True)
+    except koji.GenericError, e:
+        if 'got an unexpected keyword argument' not in str(e):
+            raise
+    # otherwise leave off the option and fake it
+    output = session.listTaskOutput(task_id)
+    return dict([fn, ['DEFAULT']] for fn in output)
+
 
 def handle_add_group(options, session, args):
     "[admin] Add a group to a tag"
@@ -4690,7 +4703,7 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     buildroot_infos = session.listBuildroots(taskID=task_id)
     build_info = session.listBuilds(taskID=task_id)
 
-    files = session.listTaskOutput(task_id, all_volumes=True)
+    files = list_task_output_all_volumes(session, task_id)
     logs = []
     output = []
     for filename in files:
@@ -6820,7 +6833,7 @@ def anon_handle_download_logs(options, session, args):
         task_info = session.getTaskInfo(task_id)
         if task_info is None:
             error(_("No such task id: %i" % task_id))
-        files = session.listTaskOutput(task_id, all_volumes=True)
+        files = list_task_output_all_volumes(session, task_id)
         logs = [] # list of tuples (filename, volume)
         for filename in files:
             if not filename.endswith(".log"):
@@ -6908,7 +6921,7 @@ def anon_handle_download_task(options, session, args):
     downloads = []
 
     for task in downloadable_tasks:
-        files = session.listTaskOutput(task["id"], all_volumes=True)
+        files = list_task_output_all_volumes(session, task["id"])
         for filename in files:
             if filename.endswith(".log") and suboptions.logs:
                 for volume in files[filename]:
@@ -7324,7 +7337,7 @@ def handle_runroot(options, session, args):
         print("User interrupt: canceling runroot task")
         session.cancelTask(task_id)
         raise
-    output = session.listTaskOutput(task_id, all_volumes=True)
+    output = list_task_output_all_volumes(session, task_id)
     if 'runroot.log' in output:
         for volume in output['runroot.log']:
             log = session.downloadTaskOutput(task_id, 'runroot.log', volume=volume)

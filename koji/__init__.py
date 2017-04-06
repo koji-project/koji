@@ -2474,13 +2474,16 @@ class ClientSession(object):
         full_chksum = util.adler32_constructor()
         # cycle is need to run at least once (for empty files)
         first_cycle = True
+        callopts = {'overwrite': overwrite}
+        if volume and volume != 'DEFAULT':
+            callopts['volume'] = volume
         while True:
             lap = time.time()
             chunk = fo.read(blocksize)
             if not chunk and not first_cycle:
                 break
             first_cycle = False
-            result = self._callMethod('rawUpload', (chunk, ofs, path, name), {'overwrite':overwrite, 'volume': volume})
+            result = self._callMethod('rawUpload', (chunk, ofs, path, name), callopts)
             if self.retries > 1:
                 problems = True
             hexdigest = util.adler32_constructor(chunk).hexdigest()
@@ -2499,7 +2502,9 @@ class ClientSession(object):
                 callback(ofs, size, len(chunk), t1, t2)
         if ofs != size:
             self.logger.error("Local file changed size: %s, %s -> %s", localfile, size, ofs)
-        chk_opts = {'volume': volume}
+        chk_opts = {}
+        if volume and volume != 'DEFAULT':
+            chk_opts['volume'] = volume
         if problems:
             chk_opts['verify'] = 'adler32'
         result = self._callMethod('checkUpload', (path, name), chk_opts)
@@ -2549,9 +2554,13 @@ class ClientSession(object):
         if name is None:
             name = os.path.basename(localfile)
 
+        volopts = {}
+        if volume and volume != 'DEFAULT':
+            volopts['volume'] = volume
+
         # check if server supports fast upload
         try:
-            self._callMethod('checkUpload', (path, name), {'volume': volume})
+            self._callMethod('checkUpload', (path, name), volopts)
             # fast upload was introduced in 1.7.1, earlier servers will not
             # recognise this call and return an error
         except GenericError:
@@ -2590,7 +2599,7 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
-                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data, volume=volume):
+                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1
@@ -2623,7 +2632,10 @@ class ClientSession(object):
         """
         if self.multicall:
             raise GenericError('downloadTaskOutput() may not be called during a multicall')
-        result = self.callMethod('downloadTaskOutput', taskID, fileName, offset=offset, size=size, volume=volume)
+        dlopts = {'offset': offset, 'size': size}
+        if volume and volume != 'DEFAULT':
+            dlopts['volume'] = volume
+        result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.decodestring(result)
 
 class DBHandler(logging.Handler):
