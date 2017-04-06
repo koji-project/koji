@@ -352,7 +352,9 @@ fi
 %endif
 
 %changelog
-* Thu Mar 30 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
+* Thu Apr  6 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
+- PR#365 handle buildroots with state=None
+- PR#367 play nice with older hubs and new volume options
 - PR#359 Add koji-tools link to docs
 - PR#318 Signed repos, take two [dist repos]
 - PR#200 Saving failed build trees
