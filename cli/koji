@@ -7394,7 +7394,7 @@ def handle_save_failed_tree(options, session, args):
 
     try:
         task_id = session.saveFailedTree(br_id, opts.full)
-    except koji.GenericError as e:
+    except koji.GenericError, e:
         m = str(e)
         if 'Invalid method' in m:
             print(_("* The save_failed_tree plugin appears to not be "
