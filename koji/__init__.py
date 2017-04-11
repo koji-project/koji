@@ -1685,8 +1685,7 @@ def read_config(profile_name, user_config=None):
 
     # Check if the specified profile had a config specified
     if configs and not got_conf:
-        sys.stderr.write("Warning: no configuration for profile name: %s\n" % profile_name)
-        sys.stderr.flush()
+        raise ConfigurationError("no configuration for profile name: %s" % profile_name)
 
     # special handling for cert defaults
     cert_defaults = {
