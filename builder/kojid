@@ -3698,7 +3698,7 @@ class BaseImageTask(OzImageTask):
             'xz-cp-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
             logerror=1)
-        cmd = ['/usr/bin/xz', '-z', rawimg]
+        cmd = ['/usr/bin/xz', '-z9fT0', rawimg]
         conlog = os.path.join(self.workdir,
             'xz-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
