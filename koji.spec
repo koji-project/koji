@@ -352,7 +352,8 @@ fi
 %endif
 
 %changelog
-* Thu Apr  6 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
+* Tue Apr 18 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
+- PR#373 backward-compatible try/except
 - PR#365 handle buildroots with state=None
 - PR#367 play nice with older hubs and new volume options
 - PR#359 Add koji-tools link to docs
