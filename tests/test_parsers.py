@@ -113,6 +113,7 @@ class INITTestCase(unittest.TestCase):
 
 class HeaderTestCase(unittest.TestCase):
     rpm_path = os.path.join(os.path.dirname(__file__), 'data/rpms/test-deps-1-1.fc24.x86_64.rpm')
+    rpmdir = os.path.join(os.path.dirname(__file__), 'data/rpms')
 
     def setUp(self):
         self.fd = open(self.rpm_path)
@@ -139,6 +140,34 @@ class HeaderTestCase(unittest.TestCase):
         self.assertEqual(['PROVIDES', 'REQUIRES'], sorted(koji.get_header_fields(self.rpm_path, ['REQUIRES', 'PROVIDES'])))
         hdr = koji.get_rpm_header(self.rpm_path)
         self.assertEqual(['REQUIRES'], koji.get_header_fields(hdr, ['REQUIRES']).keys())
+
+
+    def test_get_header_field_src(self):
+        srpm = os.path.join(self.rpmdir, 'test-src-1-1.fc24.src.rpm')
+
+        # without src_arch, should return the build arch (x86_64)
+        data =  koji.get_header_fields(srpm, ['arch'])
+        self.assertEqual(data['arch'], 'x86_64')
+
+        # eith src_arch, should return src
+        data =  koji.get_header_fields(srpm, ['arch'], src_arch=True)
+        self.assertEqual(data['arch'], 'src')
+
+
+    def test_get_header_field_nosrc(self):
+        srpm1 = os.path.join(self.rpmdir, 'test-nosrc-1-1.fc24.nosrc.rpm')
+        srpm2 = os.path.join(self.rpmdir, 'test-nopatch-1-1.fc24.nosrc.rpm')
+
+        # without src_arch, should return the build arch (x86_64)
+        for srpm in srpm1, srpm2:
+            data =  koji.get_header_fields(srpm, ['arch'])
+            self.assertEqual(data['arch'], 'x86_64')
+
+        # eith src_arch, should return nosrc
+        for srpm in srpm1, srpm2:
+            data =  koji.get_header_fields(srpm, ['arch'], src_arch=True)
+            self.assertEqual(data['arch'], 'nosrc')
+
 
 
 if __name__ == '__main__':
