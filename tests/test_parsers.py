@@ -2,6 +2,7 @@
 
 """Test the __init__.py module"""
 
+import mock
 import os
 import rpm
 import unittest
@@ -149,7 +150,7 @@ class HeaderTestCase(unittest.TestCase):
         data =  koji.get_header_fields(srpm, ['arch'])
         self.assertEqual(data['arch'], 'x86_64')
 
-        # eith src_arch, should return src
+        # with src_arch, should return src
         data =  koji.get_header_fields(srpm, ['arch'], src_arch=True)
         self.assertEqual(data['arch'], 'src')
 
@@ -163,11 +164,26 @@ class HeaderTestCase(unittest.TestCase):
             data =  koji.get_header_fields(srpm, ['arch'])
             self.assertEqual(data['arch'], 'x86_64')
 
-        # eith src_arch, should return nosrc
+        # with src_arch, should return nosrc
         for srpm in srpm1, srpm2:
             data =  koji.get_header_fields(srpm, ['arch'], src_arch=True)
             self.assertEqual(data['arch'], 'nosrc')
 
+
+    @mock.patch('rpm.RPMTAG_NOSOURCE', new=None)
+    @mock.patch('rpm.RPMTAG_NOPATCH', new=None)
+    @mock.patch('koji.RPM_SUPPORTS_OPTIONAL_DEPS', new=False)
+    def test_get_header_field_workarounds(self):
+        srpm0 = os.path.join(self.rpmdir, 'test-src-1-1.fc24.src.rpm')
+        srpm1 = os.path.join(self.rpmdir, 'test-nosrc-1-1.fc24.nosrc.rpm')
+        srpm2 = os.path.join(self.rpmdir, 'test-nopatch-1-1.fc24.nosrc.rpm')
+
+        # should still work even with rpm constants set to None
+        self.assertEqual([0], koji.get_header_fields(srpm1, ['nosource'])['nosource'])
+        self.assertEqual([0], koji.get_header_fields(srpm2, ['nopatch'])['nopatch'])
+
+        # should return [] with optional dep support off
+        self.assertEqual([], koji.get_header_fields(srpm0, ['suggestname'])['suggestname'])
 
 
 if __name__ == '__main__':

@@ -879,10 +879,12 @@ def get_rpm_header(f, ts=None):
 
 def get_header_field(hdr, name, src_arch=False):
     """Extract named field from an rpm header"""
-    if not RPM_SUPPORTS_OPTIONAL_DEPS and name in ('SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
-                                                   'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
-                                                   'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
-                                                   'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
+    opt_dep_hdrs = (
+            'SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
+            'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
+            'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
+            'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS')
+    if not RPM_SUPPORTS_OPTIONAL_DEPS and name.upper() in opt_dep_hdrs:
         return []
 
     if (src_arch and name.lower() == "arch"
