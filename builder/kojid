@@ -5624,7 +5624,7 @@ if __name__ == "__main__":
     #start a session and login
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
-    if os.path.isfile(options.cert):
+    if options.cert and os.path.isfile(options.cert):
         try:
             # authenticate using SSL client certificates
             session.ssl_login(options.cert, None,
