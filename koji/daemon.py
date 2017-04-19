@@ -231,7 +231,7 @@ class SCM(object):
 
     def get_info(self, keys=None):
         if keys is None:
-            keys = ["url", "scheme", "user", "host", "path", "query", "revision", "scmtype"]
+            keys = ["url", "scheme", "user", "host", "repository", "module", "revision", "scmtype"]
         return dslice(vars(self), keys)
 
     def _parse_url(self):
