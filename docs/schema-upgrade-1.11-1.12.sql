@@ -4,6 +4,8 @@ BEGIN;
 
 INSERT INTO permissions (name) VALUES ('image');
 
-ALTER TABLE repo ADD COLUMN dist BOOLEAN DEFAULT 'false';
+ALTER TABLE repo ADD COLUMN dist BOOLEAN;
+ALTER TABLE repo ALTER COLUMN dist SET DEFAULT 'false';
+UPDATE repo SET dist = 'false';
 
 COMMIT;
