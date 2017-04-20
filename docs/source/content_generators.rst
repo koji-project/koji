@@ -36,7 +36,7 @@ that those policies are followed before the content generator is granted
 authorization in their Koji system.
 
 Below are some examples of the sorts of policies that one might require.
-Content Generators should be designed and implemented with the
+Content Generators should be designed and implemented with these
 requirements in mind. Please note that the list below is not complete.
 
 Avoid Using the Host's Software

@@ -21,7 +21,7 @@ The map has four top-level entries:
 -  buildroots: A list of maps, one for each environment in which build
    output was generated, containing information about that environment.
 -  output: A list of maps, one map for each file that will be imported
-   and managed by Brew.
+   and managed by Koji.
 
 metadata\_version
 -----------------
