@@ -123,7 +123,7 @@ Configuration
   # remove possible coverage output and run tests
   coverage erase
   PYTHONPATH=hub/.:cli/.:plugins/hub/.:plugins/cli/.:plugins/builder/. nosetests --with-coverage --cover-package .
-  coverage xml
+  coverage xml --omit 'kojienv/*'
 
   # run additional tests if configured
   #pylint . > pylint_report.txt
