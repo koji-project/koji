@@ -876,19 +876,46 @@ def get_rpm_header(f, ts=None):
         fo.close()
     return hdr
 
-def get_header_field(hdr, name):
-    """Extract named field from an rpm header"""
-    if not RPM_SUPPORTS_OPTIONAL_DEPS and name in ('SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
-                                                   'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
-                                                   'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
-                                                   'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
-        return []
-    idx = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
-    if idx is None:
-        raise GenericError("No such rpm header field: %s" % name)
-    return hdr[idx]
 
-def get_header_fields(X, fields):
+def get_header_field(hdr, name, src_arch=False):
+    """Extract named field from an rpm header"""
+    opt_dep_hdrs = (
+            'SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
+            'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
+            'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
+            'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS')
+    if not RPM_SUPPORTS_OPTIONAL_DEPS and name.upper() in opt_dep_hdrs:
+        return []
+
+    if (src_arch and name.lower() == "arch"
+                and get_header_field(hdr, "sourcepackage")):
+        # return "src" or "nosrc" arch instead of build arch for src packages
+        if (get_header_field(hdr, "nosource")
+                    or get_header_field(hdr, "nopatch")):
+            return "nosrc"
+        return "src"
+
+    hdr_key = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
+    if hdr_key is None:
+        # HACK: nosource and nopatch may not be in exported rpm tags
+        if name == "nosource":
+            hdr_key = 1051
+        elif name == "nopatch":
+            hdr_key = 1052
+        else:
+            raise GenericError("No such rpm header field: %s" % name)
+
+    result = hdr[hdr_key]
+    if name in ("nosource", "nopatch"):
+        # HACK: workaround for https://bugzilla.redhat.com/show_bug.cgi?id=991329
+        if result is None:
+            result = []
+        elif isinstance(result, (int, long)):
+            result = [result]
+    return result
+
+
+def get_header_fields(X, fields, src_arch=False):
     """Extract named fields from an rpm header and return as a dictionary
 
     X may be either the rpm header or the rpm filename
@@ -899,7 +926,7 @@ def get_header_fields(X, fields):
         hdr = X
     ret = {}
     for f in fields:
-        ret[f] = get_header_field(hdr, f)
+        ret[f] = get_header_field(hdr, f, src_arch=src_arch)
     return ret
 
 def parse_NVR(nvr):
