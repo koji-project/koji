@@ -2878,6 +2878,11 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
 def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag, without access check"""
 
+    max_name_length = 256
+    if len(name) > max_name_length:
+        raise koji.GenericError("Tag name %s is too long. Max length is %s characters",
+                                name, max_name_length)
+
     if not context.opts.get('EnableMaven') and (maven_support or maven_include_all):
         raise koji.GenericError("Maven support not enabled")
 
