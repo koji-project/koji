@@ -1345,6 +1345,7 @@ def handle_call(options, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
     parser.add_option("--kwargs", help=_("Specify keyword arguments as a dictionary (implies --python)"))
+    parser.add_option("--json-output", action="store_true", help=_("Use JSON syntax for output"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify the name of the XML-RPC method"))
@@ -1353,6 +1354,8 @@ def handle_call(options, session, args):
         options.python = True
     if options.python and ast is None:
         parser.error(_("The ast module is required to read python syntax"))
+    if options.json_output and json is None:
+        parser.error(_("The json module is required to output JSON syntax"))
     activate_session(session)
     name = args[0]
     non_kw = []
@@ -1368,7 +1371,11 @@ def handle_call(options, session, args):
                 kw[key] = arg_filter(value)
             else:
                 non_kw.append(arg_filter(arg))
-    pprint.pprint(getattr(session, name).__call__(*non_kw, **kw))
+    response = getattr(session, name).__call__(*non_kw, **kw)
+    if options.json_output:
+        print(json.dumps(response, indent=2, separators=(',', ': ')))
+    else:
+        pprint.pprint(response)
 
 def anon_handle_mock_config(options, session, args):
     "[info] Create a mock config"
