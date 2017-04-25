@@ -2297,7 +2297,7 @@ class ClientSession(object):
         request = dumps(args, name, allow_none=1)
         headers = [
             # connection class handles Host
-            ('User-Agent', 'koji/1.7'),  #XXX
+            ('User-Agent', 'koji/1'),
             ('Content-Type', 'text/xml'),
             ('Content-Length', str(len(request))),
         ]
@@ -2562,7 +2562,7 @@ class ClientSession(object):
         self.callnum += 1
         handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
         headers = [
-            ('User-Agent', 'koji/1.7'),  #XXX
+            ('User-Agent', 'koji/1'),
             ("Content-Type", "application/octet-stream"),
             ("Content-length", str(size)),
         ]
