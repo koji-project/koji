@@ -53,3 +53,4 @@ Related Software
 * [Yum](http://yum.baseurl.org/)
 * [Mash](https://pagure.io/mash)
 * [Koji Tools](https://pagure.io/koji-tools): Various utilities for Koji
+* [Kojiji](https://github.com/release-engineering/kojiji): Koji Java Interface
