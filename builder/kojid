@@ -1595,7 +1595,7 @@ class WrapperRPMTask(BaseBuildTask):
 
         if task:
             # called as a subtask of a build
-            artifact_data = self.session.listTaskOutput(task['id'], all_volume=True)
+            artifact_data = self.session.listTaskOutput(task['id'], all_volumes=True)
 
             for artifact_path in artifact_data:
                 artifact_name = os.path.basename(artifact_path)
@@ -4610,7 +4610,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
             result = 'Unknown'
 
         logs, rpms, srpms, misc = [], [], [], []
-        files_data = self.session.listTaskOutput(task_id, all_volume=True)
+        files_data = self.session.listTaskOutput(task_id, all_volumes=True)
         for filename in files_data:
             if filename.endswith('.log'):
                 logs += [(filename, volume) for volume in files_data[filename]]
