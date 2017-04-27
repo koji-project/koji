@@ -91,6 +91,7 @@ download commands:
 info commands:
         buildinfo                 Print basic information about a build
         help                      List available commands
+        hostinfo                  Print basic information about a host
         latest-build              Print the latest builds for a tag
         list-api                  Print the list of XML-RPC APIs
         list-buildroot            List the rpms used in or built in a buildroot

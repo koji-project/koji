@@ -3457,6 +3457,60 @@ def anon_handle_buildinfo(options, session, args):
                 print("Changelog:")
                 print(koji.util.formatChangelog(changelog))
 
+def anon_handle_hostinfo(options, session, args):
+    "[info] Print basic information about a host"
+    usage = _("usage: %prog hostinfo [options] <hostname> [<hostname> ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify a host"))
+        assert False  # pragma: no cover
+    activate_session(session)
+    for host in args:
+        if host.isdigit():
+            host = int(host)
+        info = session.getHost(host)
+        if info is None:
+            print("No such host: %s\n" % host)
+            continue
+        print("Name: %(name)s" % info)
+        print("ID: %(id)d" % info)
+        print("Arches: %(arches)s" % info)
+        print("Capacity: %(capacity)s" % info)
+        print("Task Load: %(task_load).2f" % info)
+        if info['description']:
+            description = info['description'].splitlines()
+            print("Description: %s" % description[0])
+            for line in description[1:]:
+                print("%s%s" % (" "*13, line))
+        else:
+            print("Description:")
+        if info['comment']:
+            comment = info['comment'].splitlines()
+            print("Comment: %s" % comment[0])
+            for line in comment[1:]:
+                print("%s%s" % (" "*9, line))
+        else:
+            print("Comment:")
+        print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
+        print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
+        update = session.getLastHostUpdate(info['id'])
+        print("Last Update: %s" % update[:update.find('.')])
+        print("Channels: %s" % ' '.join([c['name'] for c in session.listChannels(hostID=info['id'])]))
+        print("Active Buildroots:")
+        states = {0:"INIT", 1:"WAITING", 2:"BUILDING"}
+        rows = [('NAME', 'STATE', 'CREATION TIME')]
+        for s in range(0,3):
+            for b in session.listBuildroots(hostID=info['id'], state=s):
+                rows.append((("%s-%s-%s" % (b['tag_name'], b['id'], b['repo_id'])), states[s],
+                             b['create_event_time'][:b['create_event_time'].find('.')]))
+        if len(rows) > 1:
+            for row in rows:
+                print("%-50s %-10s %-20s" % row)
+        else:
+            print("None")
+
 def handle_clone_tag(options, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
     usage = _("usage: %prog clone-tag [options] <src-tag> <dst-tag>")
