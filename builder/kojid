@@ -4610,7 +4610,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
             result = 'Unknown'
 
         logs, rpms, srpms, misc = [], [], [], []
-        files_data = self.session.listTaskOutput(task_id)
+        files_data = self.session.listTaskOutput(task_id, all_volume=True)
         for filename in files_data:
             if filename.endswith('.log'):
                 logs += [(filename, volume) for volume in files_data[filename]]
