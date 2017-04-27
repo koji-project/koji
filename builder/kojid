@@ -4623,10 +4623,8 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                 misc += [(filename, volume) for volume in files_data[filename]]
 
         # sort by volumes and filenames
-        logs.sort(key=lambda x: x[1])
-        misc.sort(key=lambda x: x[1])
-        logs.sort(key=lambda x: x[0])
-        misc.sort(key=lambda x: x[0])
+        logs.sort(key=lambda x: (x[1], x[0]))
+        misc.sort(key=lambda x: (x[1], x[0]))
         rpms.sort()
 
         data[task_id] = {}
@@ -4720,19 +4718,21 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                     else:
                         output += "\r\n"
                     output += "Task Type: %s\r\n" % koji.taskLabel(task)
-                    for filetype in ['logs', 'rpms', 'misc']:
-                        if task[filetype]:
-                            output += "%s:\r\n" % filetype
-                            for (file, volume) in task[filetype]:
-                                if filetype == 'rpms':
-                                    output += " %s\r\n" % '/'.join([buildurl, task['build_arch'], file])
-                                elif filetype == 'logs':
-                                    if tasks[task_state] != 'closed':
-                                        output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file, volume)
-                                    else:
-                                        output += " %s\r\n" % '/'.join([buildurl, 'data', 'logs', task['build_arch'], file])
-                                elif task[filetype] == 'misc':
-                                    output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file, volume)
+                    if task['logs']:
+                        output += "logs:\r\n"
+                        for (file_, volume) in task['logs']:
+                            if tasks[task_state] != 'closed':
+                                output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file_, volume)
+                            else:
+                                output += " %s\r\n" % '/'.join([buildurl, 'data', 'logs', task['build_arch'], file_])
+                    if task['rpms']:
+                        output += "rpms:\r\n"
+                        for file_ in task['rpms']:
+                            output += " %s\r\n" % '/'.join([buildurl, task['build_arch'], file_])
+                    if task['misc']:
+                        output += "misc:\r\n"
+                        for (file_, volume) in task['misc']:
+                            output += " %s/getfile?taskID=%s&name=%s&volume=%s\r\n" % (weburl, task['id'], file_, volume)
                     output += "\r\n"
                 output += "\r\n"
 
