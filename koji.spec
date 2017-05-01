@@ -197,8 +197,8 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_bindir}/*
 %{python_sitelib}/%{name}
-%config(noreplace) %{_sysconfdir}/koji.conf
-%dir %{_sysconfdir}/koji.conf.d
+%config(noreplace) /etc/koji.conf
+%dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
 
 %files hub
@@ -206,22 +206,22 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/koji-hub
 %dir %{_libexecdir}/koji-hub
 %{_libexecdir}/koji-hub/rpmdiff
-%config(noreplace) %{_sysconfdir}/httpd/conf.d/kojihub.conf
-%dir %{_sysconfdir}/koji-hub
-%config(noreplace) %{_sysconfdir}/koji-hub/hub.conf
-%dir %{_sysconfdir}/koji-hub/hub.conf.d
+%config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%dir /etc/koji-hub
+%config(noreplace) /etc/koji-hub/hub.conf
+%dir /etc/koji-hub/hub.conf.d
 
 %files hub-plugins
 %defattr(-,root,root)
 %dir %{_prefix}/lib/koji-hub-plugins
 %{_prefix}/lib/koji-hub-plugins/*.py*
-%dir %{_sysconfdir}/koji-hub/plugins
-%config(noreplace) %{_sysconfdir}/koji-hub/plugins/*.conf
+%dir /etc/koji-hub/plugins
+%config(noreplace) /etc/koji-hub/plugins/*.conf
 
 %files builder-plugins
 %defattr(-,root,root)
-%dir %{_sysconfdir}/kojid/plugins
-%config(noreplace) %{_sysconfdir}/kojid/plugins/*.conf
+%dir /etc/kojid/plugins
+%config(noreplace) /etc/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
 %{_prefix}/lib/koji-builder-plugins/*.py*
 
@@ -232,24 +232,24 @@ rm -rf $RPM_BUILD_ROOT
 %{_unitdir}/kojira.service
 %else
 %{_initrddir}/kojira
-%config(noreplace) %{_sysconfdir}/sysconfig/kojira
+%config(noreplace) /etc/sysconfig/kojira
 %endif
-%dir %{_sysconfdir}/kojira
-%config(noreplace) %{_sysconfdir}/kojira/kojira.conf
+%dir /etc/kojira
+%config(noreplace) /etc/kojira/kojira.conf
 %{_sbindir}/koji-gc
-%dir %{_sysconfdir}/koji-gc
-%config(noreplace) %{_sysconfdir}/koji-gc/koji-gc.conf
+%dir /etc/koji-gc
+%config(noreplace) /etc/koji-gc/koji-gc.conf
 %{_sbindir}/koji-shadow
-%dir %{_sysconfdir}/koji-shadow
-%config(noreplace) %{_sysconfdir}/koji-shadow/koji-shadow.conf
+%dir /etc/koji-shadow
+%config(noreplace) /etc/koji-shadow/koji-shadow.conf
 
 %files web
 %defattr(-,root,root)
 %{_datadir}/koji-web
-%dir %{_sysconfdir}/kojiweb
-%config(noreplace) %{_sysconfdir}/kojiweb/web.conf
-%config(noreplace) %{_sysconfdir}/httpd/conf.d/kojiweb.conf
-%dir %{_sysconfdir}/kojiweb/web.conf.d
+%dir /etc/kojiweb
+%config(noreplace) /etc/kojiweb/web.conf
+%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
+%dir /etc/kojiweb/web.conf.d
 
 %files builder
 %defattr(-,root,root)
@@ -260,11 +260,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_unitdir}/kojid.service
 %else
 %{_initrddir}/kojid
-%config(noreplace) %{_sysconfdir}/sysconfig/kojid
+%config(noreplace) /etc/sysconfig/kojid
 %endif
-%dir %{_sysconfdir}/kojid
-%config(noreplace) %{_sysconfdir}/kojid/kojid.conf
-%attr(-,kojibuilder,kojibuilder) %{_sysconfdir}/mock/koji
+%dir /etc/kojid
+%config(noreplace) /etc/kojid/kojid.conf
+%attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder
 /usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
@@ -301,10 +301,10 @@ fi
 %{_unitdir}/kojivmd.service
 %else
 %{_initrddir}/kojivmd
-%config(noreplace) %{_sysconfdir}/sysconfig/kojivmd
+%config(noreplace) /etc/sysconfig/kojivmd
 %endif
-%dir %{_sysconfdir}/kojivmd
-%config(noreplace) %{_sysconfdir}/kojivmd/kojivmd.conf
+%dir /etc/kojivmd
+%config(noreplace) /etc/kojivmd/kojivmd.conf
 
 %if %{use_systemd}
 
