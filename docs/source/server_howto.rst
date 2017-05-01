@@ -132,6 +132,7 @@ koji components.
     [req] 
     default_bits            = 1024
     default_keyfile         = privkey.pem
+    default_md              = sha256
     distinguished_name      = req_distinguished_name
     attributes              = req_attributes
     x509_extensions         = v3_ca # The extentions to add to the self signed cert
