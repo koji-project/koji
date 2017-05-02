@@ -2894,7 +2894,12 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
-def fixEncoding(value, fallback='iso8859-15'):
+NONPRINTABLE = ''.join([chr(x) for x in range(10) + range(11, 13) + range(14, 32) + [127]])
+def removeNonprintable(value):
+    # expects raw-encoded string, not unicode
+    return value.translate(None, NONPRINTABLE)
+
+def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=True):
     """
     Convert value to a 'str' object encoded as UTF-8.
     If value is not valid UTF-8 to begin with, assume it is
@@ -2906,18 +2911,22 @@ def fixEncoding(value, fallback='iso8859-15'):
     if isinstance(value, unicode):
         # value is already unicode, so just convert it
         # to a utf8-encoded str
-        return value.encode('utf8')
+        s = value.encode('utf8')
     else:
         # value is a str, but may be encoded in utf8 or some
         # other non-ascii charset.  Try to verify it's utf8, and if not,
         # decode it using the fallback encoding.
         try:
-            return value.decode('utf8').encode('utf8')
+            s = value.decode('utf8').encode('utf8')
         except UnicodeDecodeError:
-            return value.decode(fallback).encode('utf8')
+            s = value.decode(fallback).encode('utf8')
+    if remove_nonprintable:
+        return removeNonprintable(s)
+    else:
+        return s
 
 
-def fixEncodingRecurse(value, fallback='iso8859-15'):
+def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=True):
     """Recursively fix string encoding in an object
 
     Similar behavior to fixEncoding, but recursive
@@ -2934,15 +2943,22 @@ def fixEncodingRecurse(value, fallback='iso8859-15'):
             ret[k] = v
         return ret
     elif isinstance(value, unicode):
-        return value.encode('utf8')
+        if remove_nonprintable:
+            return removeNonprintable(value.encode('utf8'))
+        else:
+            return value.encode('utf8')
     elif isinstance(value, str):
         # value is a str, but may be encoded in utf8 or some
         # other non-ascii charset.  Try to verify it's utf8, and if not,
         # decode it using the fallback encoding.
         try:
-            return value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError, err:
-            return value.decode(fallback).encode('utf8')
+            s = value.decode('utf8').encode('utf8')
+        except UnicodeDecodeError:
+            s = value.decode(fallback).encode('utf8')
+        if remove_nonprintable:
+            return removeNonprintable(s)
+        else:
+            return s
     else:
         return value
 

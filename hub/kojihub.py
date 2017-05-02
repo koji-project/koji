@@ -9376,7 +9376,8 @@ class RootExports(object):
             else:
                 results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
 
-        return _applyQueryOpts(results, queryOpts)
+        results = _applyQueryOpts(results, queryOpts)
+        return koji.fixEncodingRecurse(results)
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
