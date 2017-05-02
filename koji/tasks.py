@@ -37,9 +37,13 @@ def scan_mounts(topdir):
     mplist = []
     topdir = os.path.normpath(topdir)
     fo = open('/proc/mounts', 'r')
+    logger = logging.getLogger("koji.build")
     for line in fo.readlines():
         path = line.split()[1]
         if path.startswith(topdir):
+            if path.endswith('\040(deleted)'):
+                path = path[:-10]
+                logger.warning('Found deleted mountpoint: %s' % path)
             mplist.append(path)
     fo.close()
     #reverse sort so deeper dirs come first
