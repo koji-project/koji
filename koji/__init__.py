@@ -2894,10 +2894,11 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
-NONPRINTABLE = ''.join([chr(x) for x in range(10) + range(11, 13) + range(14, 32) + [127]])
+CONTROL_CHARS = [chr(i) for i in range(32)]
+NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
-    return value.translate(None, NONPRINTABLE)
+    return value.translate(None, NONPRINTABLE_CHARS)
 
 def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=True):
     """
