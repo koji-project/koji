@@ -90,8 +90,9 @@ class MiscFunctionTestCase(unittest.TestCase):
         """Test openRemoteFile function"""
 
         if six.PY2:
-            __builtins__.open = mock.MagicMock()
-            m_open = __builtins__.open
+            import __builtin__
+            __builtin__.open = mock.MagicMock()
+            m_open = __builtin__.open
         else:
             import builtins
             builtins.open = mock.MagicMock()

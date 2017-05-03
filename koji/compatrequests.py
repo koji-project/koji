@@ -45,7 +45,11 @@ class Session(object):
 
     def get_connection(self, uri, cert, verify, timeout):
         scheme = uri[0]
-        host, port = six.moves.urllib.splitport(uri[1])
+        # TODO: unnecessary remerging of values
+        parsed = six.moves.urllib.parse.urlparse('%s://%s' % (uri[0], uri[1]))
+        host = parsed.hostname
+        port = parsed.port
+        #host, port = six.moves.urllib.splitport(uri[1])
         key = (scheme, host, cert, verify, timeout)
         #if self.connection and self.opts.get('keepalive'):
         if self.connection:   # XXX honor keepalive
