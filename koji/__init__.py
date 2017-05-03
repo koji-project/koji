@@ -552,7 +552,7 @@ def rpm_hdr_size(f, ofs=None):
     ofs = offset of the header
     """
     if isinstance(f, (str, six.text_type)):
-        fo = file(f, 'rb')
+        fo = open(f, 'rb')
     else:
         fo = f
     if ofs != None:
@@ -742,7 +742,7 @@ class RawHeader(object):
 def rip_rpm_sighdr(src):
     """Rip the signature header out of an rpm"""
     (start, size) = find_rpm_sighdr(src)
-    fo = file(src, 'rb')
+    fo = open(src, 'rb')
     fo.seek(start, 0)
     sighdr = fo.read(size)
     fo.close()
@@ -753,7 +753,7 @@ def rip_rpm_hdr(src):
     (start, size) = find_rpm_sighdr(src)
     start += size
     size = rpm_hdr_size(src, start)
-    fo = file(src, 'rb')
+    fo = open(src, 'rb')
     fo.seek(start, 0)
     hdr = fo.read(size)
     fo.close()
@@ -852,8 +852,8 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     if dst is None:
         (fd, dst) = tempfile.mkstemp()
         os.close(fd)
-    src_fo = file(src, 'rb')
-    dst_fo = file(dst, 'wb')
+    src_fo = open(src, 'rb')
+    dst_fo = open(dst, 'wb')
     dst_fo.write(src_fo.read(start))
     dst_fo.write(sighdr)
     src_fo.seek(size, 1)
@@ -872,7 +872,7 @@ def get_rpm_header(f, ts=None):
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, (str, six.text_type)):
-        fo = file(f, "r")
+        fo = open(f, "r")
     else:
         fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
@@ -1116,7 +1116,7 @@ def parse_pom(path=None, contents=None):
     values = {}
     handler = POMHandler(values, fields)
     if path:
-        fd = file(path)
+        fd = open(path)
         contents = fd.read()
         fd.close()
 
@@ -1431,7 +1431,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
         # if we're setting up DNS,
         # also copy /etc/hosts from the host
-        etc_hosts = file('/etc/hosts')
+        etc_hosts = open('/etc/hosts')
         files['etc/hosts'] = etc_hosts.read()
         etc_hosts.close()
     mavenrc = ''
@@ -2494,7 +2494,7 @@ class ClientSession(object):
         if name is None:
             name = os.path.basename(localfile)
         self.logger.debug("Fast upload: %s to %s/%s", localfile, path, name)
-        fo = file(localfile, 'rb')
+        fo = open(localfile, 'rb')
         ofs = 0
         size = os.path.getsize(localfile)
         start = time.time()
@@ -2602,7 +2602,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = file(localfile, "r")  #specify bufsize?
+        fo = open(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = md5_constructor()

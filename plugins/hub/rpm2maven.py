@@ -51,7 +51,7 @@ def maven_import(cbtype, *args, **kws):
             shutil.rmtree(tmpdir)
 
 def expand_rpm(filepath, tmpdir):
-    devnull = file('/dev/null', 'r+')
+    devnull = open('/dev/null', 'r+')
     rpm2cpio = subprocess.Popen(['/usr/bin/rpm2cpio', filepath],
                                 stdout=subprocess.PIPE,
                                 stdin=devnull, stderr=devnull,

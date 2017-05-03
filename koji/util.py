@@ -591,7 +591,7 @@ def parse_maven_params(confs, chain=False, scratch=False):
         confs = [confs]
     config = six.moves.configparser.ConfigParser()
     for conf in confs:
-        conf_fd = file(conf)
+        conf_fd = open(conf)
         config.readfp(conf_fd)
         conf_fd.close()
     builds = {}

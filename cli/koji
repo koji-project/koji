@@ -1496,7 +1496,7 @@ def anon_handle_mock_config(options, session, args):
         name = "%(tag_name)s-repo_%(repoid)s" % opts
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
-        fo = file(options.ofile, 'w')
+        fo = open(options.ofile, 'w')
         fo.write(output)
         fo.close()
     else:
@@ -1764,7 +1764,7 @@ def handle_import_cg(options, session, args):
         parser.error(_("Unable to find json module"))
         assert False  # pragma: no cover
     activate_session(session)
-    metadata = json.load(file(args[0], 'r'))
+    metadata = json.load(open(args[0], 'r'))
     if 'output' not in metadata:
         print(_("Metadata contains no output"))
         sys.exit(1)
@@ -2029,11 +2029,11 @@ def handle_prune_signed_copies(options, session, args):
     #(with the modification that we check to see if the build was latest within
     #the last N days)
     if options.ignore_tag_file:
-        fo = file(options.ignore_tag_file)
+        fo = open(options.ignore_tag_file)
         options.ignore_tag.extend([line.strip() for line in fo.readlines()])
         fo.close()
     if options.protect_tag_file:
-        fo = file(options.protect_tag_file)
+        fo = open(options.protect_tag_file)
         options.protect_tag.extend([line.strip() for line in fo.readlines()])
         fo.close()
     if options.debug:
@@ -6866,7 +6866,7 @@ def anon_handle_download_logs(options, session, args):
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
         koji.ensuredir(os.path.dirname(full_filename))
         sys.stdout.write("Writing: %s\n" % full_filename)
-        file(full_filename, 'w').write(content)
+        open(full_filename, 'w').write(content)
 
     def download_log(task_log_dir, task_id, filename, blocksize=102400, volume=None):
         # Create directories only if there is any log file to write to
@@ -6879,11 +6879,11 @@ def anon_handle_download_logs(options, session, args):
         contents = 'IGNORE ME!'
         if suboptions.cont and os.path.exists(full_filename):
             sys.stdout.write("Continuing: %s\n" % full_filename)
-            fd = file(full_filename, 'ab')
+            fd = open(full_filename, 'ab')
             offset = fd.tell()
         else:
             sys.stdout.write("Downloading: %s\n" % full_filename)
-            fd = file(full_filename, 'wb')
+            fd = open(full_filename, 'wb')
             offset = 0
         try:
             while contents:

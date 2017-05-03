@@ -256,7 +256,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
-        fo = file(configfile,'w')
+        fo = open(configfile,'w')
         fo.write(output)
         fo.close()
 
@@ -356,7 +356,7 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        fo = file(self.rootdir() + destfile, 'w')
+        fo = open(self.rootdir() + destfile, 'w')
         fo.write(settings)
         fo.close()
 
@@ -410,7 +410,7 @@ class BuildRoot(object):
                                 self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
                                                  (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
-                            fd = file(fpath, 'r')
+                            fd = open(fpath, 'r')
                         logs[fname] = (fd, stat_info.st_ino, stat_info.st_size, fpath)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
@@ -1746,7 +1746,7 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        specfd = file(specfile, 'w')
+        specfd = open(specfile, 'w')
         specfd.write(contents)
         specfd.close()
 
@@ -4849,7 +4849,7 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
 
@@ -5064,7 +5064,7 @@ class createDistRepoTask(CreaterepoTask):
             self.pkglist = None
         self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
         if self.pkglist is None:
-            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
         files = ['pkglist', 'kojipkgs']
@@ -5271,7 +5271,7 @@ enabled=1
 
         #generate pkglist files
         pkgfile = os.path.join(self.repodir, 'pkglist')
-        pkglist = file(pkgfile, 'w')
+        pkglist = open(pkgfile, 'w')
         fs_missing = []
         sig_missing = []
         kojipkgs = {}
@@ -5344,7 +5344,7 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        datafile = file(filename, 'w')
+        datafile = open(filename, 'w')
         try:
             json.dump(self.kojipkgs, datafile, indent=4)
         finally:
