@@ -365,7 +365,7 @@ class BaseTaskHandler(object):
         else:
             # no overlap
             raise koji.BuildError("host %s (%s) does not support any arches of tag %s (%s)" % \
-                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches)))
+                (host['name'], ', '.join(sorted(host_arches)), tag['name'], ', '.join(sorted(tag_arches))))
 
     def getRepo(self, tag):
         """
