@@ -1976,7 +1976,7 @@ class ChainMavenTask(MultiPlatformTask):
                 del todo[package]
             try:
                 results = self.wait(running.keys())
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
+            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
                 self.wait(all=True)
@@ -2113,7 +2113,7 @@ class TagBuildTask(BaseTaskHandler):
             #XXX - add more post tests
             self.session.host.tagBuild(self.id,tag_id,build_id,force=force,fromtag=fromtag)
             self.session.host.tagNotification(True, tag_id, fromtag, build_id, user_id, ignore_success)
-        except Exception, e:
+        except Exception as e:
             exctype, value = sys.exc_info()[:2]
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
@@ -2676,10 +2676,10 @@ class ImageTask(BaseTaskHandler):
         self.ks = ksparser.KickstartParser(version)
         try:
             self.ks.readKickstart(kspath)
-        except IOError, e:
+        except IOError as e:
             raise koji.LiveCDError("Failed to read kickstart file "
                                    "'%s' : %s" % (kspath, e))
-        except kserrors.KickstartError, e:
+        except kserrors.KickstartError as e:
             raise koji.LiveCDError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
 
@@ -3291,10 +3291,10 @@ class OzImageTask(BaseTaskHandler):
         self.logger.debug('attempting to read kickstart: %s' % kspath)
         try:
             ks.readKickstart(kspath)
-        except IOError, e:
+        except IOError as e:
             raise koji.BuildError("Failed to read kickstart file "
                                    "'%s' : %s" % (kspath, e))
-        except kserrors.KickstartError, e:
+        except kserrors.KickstartError as e:
             raise koji.BuildError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
         return ks
@@ -4228,7 +4228,7 @@ class BuildIndirectionImageTask(OzImageTask):
                 base_factory_image = _nvr_to_image(opts['base_image_build'], opts['arch'])
             else:
                 base_factory_image = _task_to_image(int(opts['base_image_task']))
-        except Exception, e:
+        except Exception as e:
             self.logger.exception(e)
             raise
 
@@ -4290,7 +4290,7 @@ class BuildIndirectionImageTask(OzImageTask):
                         image_id=base_factory_image.identifier,
                         parameters=params)
                     target.target_thread.join()
-            except Exception, e:
+            except Exception as e:
                 self.logger.debug("Exception encountered during target build")
                 self.logger.exception(e)
         finally:
@@ -5633,7 +5633,7 @@ if __name__ == "__main__":
             # authenticate using SSL client certificates
             session.ssl_login(options.cert, None,
                               options.serverca)
-        except koji.AuthError, e:
+        except koji.AuthError as e:
             quit("Error: Unable to log in: %s" % e)
         except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
@@ -5653,9 +5653,9 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
         quit("No username/password supplied and Kerberos missing or not configured")

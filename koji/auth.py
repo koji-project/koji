@@ -79,7 +79,7 @@ class Session(object):
         try:
             id = long(args['session-id'][0])
             key = args['session-key'][0]
-        except KeyError, field:
+        except KeyError as field:
             raise koji.AuthError('%s not specified in session args' % field)
         try:
             callnum = args['callnum'][0]

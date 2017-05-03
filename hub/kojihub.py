@@ -421,7 +421,7 @@ class Task(object):
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
             result, method = six.moves.xmlrpc_client.loads(xml_result)
-        except six.moves.xmlrpc_client.Fault, fault:
+        except six.moves.xmlrpc_client.Fault as fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -8800,7 +8800,7 @@ class RootExports(object):
         fn = get_upload_path(path, name, create=True, volume=volume)
         try:
             st = os.lstat(fn)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 pass
             else:
@@ -8869,7 +8869,7 @@ class RootExports(object):
         data = {}
         try:
             fd = os.open(fn, os.O_RDONLY)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 return None
             else:
@@ -8877,7 +8877,7 @@ class RootExports(object):
         try:
             try:
                 fcntl.lockf(fd, fcntl.LOCK_SH|fcntl.LOCK_NB)
-            except IOError, e:
+            except IOError as e:
                 raise koji.LockError(e)
             st = os.fstat(fd)
             if not stat.S_ISREG(st.st_mode):
@@ -10387,7 +10387,7 @@ class RootExports(object):
                             #handle older base64 encoded data
                             val = base64.decodestring(val)
                         data, method = six.moves.xmlrpc_client.loads(val)
-                    except six.moves.xmlrpc_client.Fault, fault:
+                    except six.moves.xmlrpc_client.Fault as fault:
                         data = fault
                     task[f] = data
             yield task
@@ -12430,7 +12430,7 @@ class HostExports(object):
             logger.debug("os.link(%r, %r)", rpmpath, l_dst)
             try:
                 os.link(rpmpath, l_dst)
-            except OSError, ose:
+            except OSError as ose:
                 if ose.errno == 18:
                     shutil.copy2(
                         rpmpath, os.path.join(archdir, bnplet, bnp))
@@ -12527,7 +12527,7 @@ def handle_upload(environ):
     try:
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except IOError, e:
+        except IOError as e:
             raise koji.LockError(e)
         if offset == -1:
             offset = os.lseek(fd, 0, 2)

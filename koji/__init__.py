@@ -475,7 +475,7 @@ def safe_xmlrpc_loads(s):
     """Load xmlrpc data from a string, but catch faults"""
     try:
         return loads(s)
-    except Fault, f:
+    except Fault as f:
         return f
 
 ## BEGIN kojikamid dup
@@ -1582,7 +1582,7 @@ def config_directory_contents(dir_name):
     configs = []
     try:
         conf_dir_contents = os.listdir(dir_name)
-    except OSError, exception:
+    except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
     else:
@@ -2312,7 +2312,7 @@ class ClientSession(object):
         for i in (0, 1):
             try:
                 return self._sendOneCall(handler, headers, request)
-            except Exception, e:
+            except Exception as e:
                 if i or not is_conn_error(e):
                     raise
                 self.logger.debug("Connection Error: %s", e)
@@ -2405,7 +2405,7 @@ class ClientSession(object):
                 # note that, for logged-in sessions the server should tell us (via a RetryError fault)
                 # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
                 # and hence retryable.
-                except Fault, fault:
+                except Fault as fault:
                     #try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
@@ -2421,7 +2421,7 @@ class ClientSession(object):
                 except (SystemExit, KeyboardInterrupt):
                     #(depending on the python version, these may or may not be subclasses of Exception)
                     raise
-                except Exception, e:
+                except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self.new_session()
 

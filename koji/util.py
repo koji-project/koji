@@ -156,7 +156,7 @@ def call_with_argcheck(func, args, kwargs=None):
         kwargs = {}
     try:
         return func(*args, **kwargs)
-    except TypeError, e:
+    except TypeError as e:
         if sys.exc_info()[2].tb_next is None:
             # The stack is only one high, so the error occurred in this function.
             # Therefore, we assume the TypeError is due to a parameter mismatch
@@ -459,7 +459,7 @@ def setup_rlimits(opts, logger=None):
         logger.warn('Setting resource limit: %s = %r', key, limits)
         try:
             resource.setrlimit(rcode, tuple(limits))
-        except ValueError, e:
+        except ValueError as e:
             logger.error("Unable to set %s: %s", key, e)
 
 class adler32_constructor(object):

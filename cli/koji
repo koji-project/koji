@@ -240,7 +240,7 @@ def get_options():
     # load local config
     try:
         result = koji.read_config(options.profile, user_config=options.configFile)
-    except koji.ConfigurationError, e:
+    except koji.ConfigurationError as e:
         parser.error(e.args[0])
         assert False  # pragma: no cover
 
@@ -342,7 +342,7 @@ class TaskWatcher(object):
         error = None
         try:
             result = self.session.getTaskResult(self.id)
-        except (six.moves.xmlrpc_client.Fault,koji.GenericError),e:
+        except (six.moves.xmlrpc_client.Fault,koji.GenericError) as e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -550,7 +550,7 @@ def list_task_output_all_volumes(session, task_id):
     """List task output with all volumes, or fake it"""
     try:
         return session.listTaskOutput(task_id, all_volumes=True)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         if 'got an unexpected keyword argument' not in str(e):
             raise
     # otherwise leave off the option and fake it
@@ -944,7 +944,7 @@ def _progress_callback(uploaded, total, piece, time, total_time):
 def _running_in_bg():
     try:
         return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
-    except OSError, e:
+    except OSError as e:
         return True
 
 def handle_build(options, session, args):
@@ -1167,7 +1167,7 @@ def handle_maven_build(options, session, args):
         try:
             params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
                                                  section=build_opts.section)
-        except ValueError, e:
+        except ValueError as e:
             parser.error(e.args[0])
         opts = params.values()[0]
         if opts.pop('type', 'maven') != 'maven':
@@ -1226,7 +1226,7 @@ def handle_wrapper_rpm(options, session, args):
         try:
             params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
                                                  section=build_opts.section)
-        except ValueError, e:
+        except ValueError as e:
             parser.error(e.args[0])
         opts = params.values()[0]
         if opts.get('type') != 'wrapper':
@@ -1300,7 +1300,7 @@ def handle_maven_chain(options, session, args):
             opts[key] = val
     try:
         builds = koji.util.parse_maven_chain(args[1:], scratch=opts.get('scratch'))
-    except ValueError, e:
+    except ValueError as e:
         parser.error(e.args[0])
     priority = None
     if build_opts.background:
@@ -1675,7 +1675,7 @@ def handle_import(options, session, args):
         sys.stdout.flush()
         try:
             session.importRPM(serverdir, os.path.basename(path))
-        except koji.GenericError, e:
+        except koji.GenericError as e:
             print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
@@ -2284,7 +2284,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Unlinking: %s" % signedpath)
                     try:
                         os.unlink(signedpath)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
                         print("This script needs write access to %s" % koji.BASEDIR)
                         continue
@@ -2304,7 +2304,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             if len(sigdirs) == 1:
                 dir = sigdirs.keys()[0]
@@ -2315,7 +2315,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             elif len(sigdirs) > 1:
                 print("Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs))
@@ -2549,7 +2549,7 @@ def handle_import_in_place(options, session, args):
         sys.stdout.write(_("importing %s... ") % nvr)
         try:
             session.importBuildInPlace(data)
-        except koji.GenericError, e:
+        except koji.GenericError as e:
             print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
@@ -6735,7 +6735,7 @@ def anon_handle_download_build(options, session, args):
         # We want the latest build, not a specific build
         try:
             builds = session.listTagged(suboptions.latestfrom, latest=True, package=build, type=suboptions.type)
-        except koji.GenericError, data:
+        except koji.GenericError as data:
             print("Error finding latest build: %s" % data)
             return 1
         if not builds:
@@ -7382,7 +7382,7 @@ def handle_runroot(options, session, args):
             kwargs['new_chroot'] = True
 
         task_id = session.runroot(tag, arch, command, **kwargs)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         if 'Invalid method' in str(e):
             print("* The runroot plugin appears to not be installed on the"
                   " koji hub.  Please contact the administrator.")
@@ -7458,7 +7458,7 @@ def handle_save_failed_tree(options, session, args):
 
     try:
         task_id = session.saveFailedTree(br_id, opts.full)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         m = str(e)
         if 'Invalid method' in m:
             print(_("* The save_failed_tree plugin appears to not be "
@@ -7573,9 +7573,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except socket.error, e:
+        except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
-        except Exception, e:
+        except Exception as e:
             if krbV is not None and isinstance(e, krbV.Krb5Error):
                 error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
             else:
