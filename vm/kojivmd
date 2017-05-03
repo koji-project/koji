@@ -40,7 +40,7 @@ import SimpleXMLRPCServer
 import threading
 import base64
 import pwd
-import urlgrabber
+import pycurl
 import fnmatch
 from ConfigParser import ConfigParser
 from optparse import OptionParser
@@ -665,7 +665,10 @@ class VMExecTask(BaseTaskHandler):
             else:
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
-            urlgrabber.urlgrab(remote_url, filename=localpath)
+            c = pycurl.Curl()
+            c.setopt(c.URL, remote_url)
+            c.setopt(c.WRITEDATA, open(localpath, 'wb'))
+            c.perform()
 
         return file(localpath, 'r')
 

@@ -667,8 +667,8 @@ You will need to install the following packages to actually run the tests.
  * ``python-krbV``
  * ``python-mock``
  * ``python-simplejson``
- * ``python-urlgrabber``
  * ``python-psycopg2``
+ * ``python-pycurl``
  * ``python-requests``
  * ``python-qpid-proton``
 

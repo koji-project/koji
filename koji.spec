@@ -30,7 +30,7 @@ Requires: rpm-python
 Requires: pyOpenSSL
 Requires: python-requests
 Requires: python-requests-kerberos
-Requires: python-urlgrabber
+Requires: python-pycurl
 Requires: python-dateutil
 BuildRequires: python
 %if %{use_systemd}
