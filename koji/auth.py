@@ -24,7 +24,10 @@ import socket
 import string
 import random
 import base64
-import krbV
+try:
+    import krbV
+except ImportError:
+    krbV = None
 import koji
 import cgi      #for parse_qs
 from .context import context
@@ -300,6 +303,10 @@ class Session(object):
         "proxy_principal" in the server config."""
         if self.logged_in:
             raise koji.AuthError("Already logged in")
+
+        if krbV is None:
+            # python3 is not supported
+            raise koji.AuthError("krbV module not installed")
 
         if not (context.opts.get('AuthPrincipal') and context.opts.get('AuthKeytab')):
             raise koji.AuthError('not configured for Kerberos authentication')
