@@ -20,6 +20,8 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -85,7 +87,7 @@ class ManagedRepo(object):
             tags = {self.tag_id : 1}
             for x in order:
                 tags[x['parent_id']] = 1
-            self.taglist = tags.keys()
+            self.taglist = list(tags.keys())
 
     def expire(self):
         """Mark the repo expired"""
@@ -198,9 +200,9 @@ class RepoManager(object):
 
     def printState(self):
         self.logger.debug('Tracking %i repos, %i child processes', len(self.repos), len(self.delete_pids))
-        for tag_id, task_id in self.tasks.iteritems():
+        for tag_id, task_id in six.iteritems(self.tasks):
             self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
-        for pid, desc in self.delete_pids.iteritems():
+        for pid, desc in six.iteritems(self.delete_pids):
             self.logger.debug("Delete job %s: %r", pid, desc)
 
     def rmtree(self, path):
@@ -296,7 +298,7 @@ class RepoManager(object):
         if session is None:
             session = self.session
         to_check = []
-        repo_ids = self.repos.keys()
+        repo_ids = list(self.repos.keys())
         for repo_id in repo_ids:
             repo = self.repos.get(repo_id)
             if repo is None:
@@ -531,8 +533,8 @@ class RepoManager(object):
         tag_repos = {}
         for repo in self.repos.values():
             tag_repos.setdefault(repo.tag_id, []).append(repo)
-        self.logger.debug("Needed tags: %r" % tags.keys())
-        self.logger.debug("Current tags: %r" % tag_repos.keys())
+        self.logger.debug("Needed tags: %r" % list(tags.keys()))
+        self.logger.debug("Current tags: %r" % list(tag_repos.keys()))
 
         #we need to determine:
         #  - which tags need a new repo
@@ -540,7 +542,7 @@ class RepoManager(object):
         #self.checkCurrentRepos now runs continually in a separate thread
         regen = []
         expire_times = {}
-        for tag_id in tags.iterkeys():
+        for tag_id in six.iterkeys(tags):
             covered = False
             for repo in tag_repos.get(tag_id,[]):
                 if repo.current:

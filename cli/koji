@@ -29,6 +29,7 @@ from __future__ import division
 import sys
 from six.moves import range
 from six.moves import zip
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -146,7 +147,7 @@ categories = {
 def get_epilog_str(progname=None):
     if progname is None:
         progname = os.path.basename(sys.argv[0]) or 'koji'
-    categories_ordered=', '.join(sorted(['all'] + categories.keys()))
+    categories_ordered=', '.join(sorted(['all'] + list(categories.keys())))
     epilog_str = '''
 Try "%(progname)s --help" for help about global options
 Try "%(progname)s help" to get all available commands
@@ -246,7 +247,7 @@ def get_options():
         assert False  # pragma: no cover
 
     # update options according to local config
-    for name, value in result.iteritems():
+    for name, value in six.iteritems(result):
         if getattr(options, name, None) is None:
             setattr(options, name, value)
 
@@ -465,7 +466,7 @@ def watch_tasks(session,tasklist,quiet=False):
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
-                    if not child_id in tasks.keys():
+                    if not child_id in list(tasks.keys()):
                         tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
@@ -515,7 +516,7 @@ def watch_logs(session, tasklist, opts):
             output = list_task_output_all_volumes(session, task_id)
             # convert to list of (file, volume)
             files = []
-            for filename, volumes in output.iteritems():
+            for filename, volumes in six.iteritems(output):
                 files += [(filename, volume) for volume in volumes]
 
             if opts.log:
@@ -1170,9 +1171,9 @@ def handle_maven_build(options, session, args):
                                                  section=build_opts.section)
         except ValueError as e:
             parser.error(e.args[0])
-        opts = params.values()[0]
+        opts = list(params.values())[0]
         if opts.pop('type', 'maven') != 'maven':
-            parser.error(_("Section %s does not contain a maven-build config") % params.keys()[0])
+            parser.error(_("Section %s does not contain a maven-build config") % list(params.keys())[0])
         source = opts.pop('scmurl')
     else:
         source = args[1]
@@ -1229,9 +1230,9 @@ def handle_wrapper_rpm(options, session, args):
                                                  section=build_opts.section)
         except ValueError as e:
             parser.error(e.args[0])
-        opts = params.values()[0]
+        opts = list(params.values())[0]
         if opts.get('type') != 'wrapper':
-            parser.error(_("Section %s does not contain a wrapper-rpm config") % params.keys()[0])
+            parser.error(_("Section %s does not contain a wrapper-rpm config") % list(params.keys())[0])
         url = opts['scmurl']
         package = opts['buildrequires'][0]
         target_info = session.getBuildTarget(target, strict=True)
@@ -1629,7 +1630,7 @@ def handle_import(options, session, args):
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
         to_import.setdefault(nvr,[]).append((path,data))
     builds_missing = False
-    nvrs = to_import.keys()
+    nvrs = list(to_import.keys())
     nvrs.sort()
     for nvr in nvrs:
         to_import[nvr].sort()
@@ -2091,7 +2092,7 @@ def handle_prune_signed_copies(options, session, args):
             #that the build was recently untagged from
             tags.setdefault(entry['tag_name'], 1)
         if options.debug:
-            print("Tags: %s" % tags.keys())
+            print("Tags: %s" % list(tags.keys()))
         for tag_name in tags:
             if tag_name == options.trashcan_tag:
                 if options.debug:
@@ -2261,7 +2262,7 @@ def handle_prune_signed_copies(options, session, args):
         build_space = 0
         if not by_sig and options.debug:
             print("(build has no signatures)")
-        for sigkey, rpms in by_sig.iteritems():
+        for sigkey, rpms in six.iteritems(by_sig):
             mycount = 0
             archdirs = {}
             sigdirs = {}
@@ -2308,7 +2309,7 @@ def handle_prune_signed_copies(options, session, args):
                     except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             if len(sigdirs) == 1:
-                dir = sigdirs.keys()[0]
+                dir = list(sigdirs.keys())[0]
                 if options.test:
                     print("Would have removed dir: %s" % dir)
                 else:
@@ -3675,35 +3676,35 @@ def handle_clone_tag(options, session, args):
                 dstgroups[group['name']] = group
         #construct to-do lists.
         paddlist = [] # list containing new packages to be added from src tag
-        for (package_name, pkg) in srcpkgs.iteritems():
+        for (package_name, pkg) in six.iteritems(srcpkgs):
             if package_name not in dstpkgs:
                 paddlist.append(pkg)
         paddlist.sort(key = lambda x: x['package_name'])
         pdellist = [] # list containing packages no more present in dst tag
-        for (package_name, pkg) in dstpkgs.iteritems():
+        for (package_name, pkg) in six.iteritems(dstpkgs):
             if package_name not in srcpkgs:
                 pdellist.append(pkg)
         pdellist.sort(key = lambda x: x['package_name'])
         baddlist = [] # list containing new builds to be added from src tag
-        for (nvr, lbld) in srclblds.iteritems():
+        for (nvr, lbld) in six.iteritems(srclblds):
             if nvr not in dstlblds:
                 baddlist.append(lbld)
         baddlist.sort(key = lambda x: x['package_name'])
         bdellist = [] # list containing new builds to be removed from src tag
-        for (nvr, lbld) in dstlblds.iteritems():
+        for (nvr, lbld) in six.iteritems(dstlblds):
             if nvr not in srclblds:
                 bdellist.append(lbld)
         bdellist.sort(key = lambda x: x['package_name'])
         gaddlist = [] # list containing new groups to be added from src tag
-        for (grpname, group) in srcgroups.iteritems():
+        for (grpname, group) in six.iteritems(srcgroups):
             if grpname not in dstgroups:
                 gaddlist.append(group)
         gdellist = [] # list containing groups to be removed from src tag
-        for (grpname, group) in dstgroups.iteritems():
+        for (grpname, group) in six.iteritems(dstgroups):
             if grpname not in srcgroups:
                 gdellist.append(group)
         grpchanges = {} # dict of changes to make in shared groups
-        for (grpname, group) in srcgroups.iteritems():
+        for (grpname, group) in six.iteritems(srcgroups):
             if grpname in dstgroups:
                 grpchanges[grpname] = {'adds':[], 'dels':[]}
                 # Store whether group is inherited or not
@@ -4397,7 +4398,7 @@ def _print_histline(entry, **kwargs):
         else:
             return '%s.name' % key
     if edit:
-        keys = x.keys()
+        keys = list(x.keys())
         keys.sort()
         y = other[-1]
         for key in keys:
@@ -4412,7 +4413,7 @@ def _print_histline(entry, **kwargs):
                 continue
             print("    %s: %s -> %s" % (key, x[key], y[key]))
     elif create and options.verbose and table != 'tag_listing':
-        keys = x.keys()
+        keys = list(x.keys())
         keys.sort()
         # the table keys have already been represented in the base format string
         also_hidden = list(_table_keys[table])
@@ -4888,7 +4889,7 @@ def anon_handle_taginfo(options, session, args):
             print("Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no'))
         if 'extra' in info:
             print("Tag options:")
-            keys = info['extra'].keys()
+            keys = list(info['extra'].keys())
             keys.sort()
             for key in keys:
                 print("  %s : %s" % (key, pprint.pformat(info['extra'][key])))
@@ -7068,7 +7069,7 @@ def anon_handle_wait_repo(options, session, args):
             targets = session.getBuildTargets(destTagID=tag_info['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
-                maybe = maybe.keys()
+                maybe = list(maybe.keys())
                 maybe.sort()
                 print("Suggested tags: %s" % ', '.join(maybe))
             return 1
@@ -7493,7 +7494,7 @@ def handle_help(options, session, args):
     chosen = set(args)
     if options.admin:
         chosen.add('admin')
-    avail = set(categories.keys() + ['all'])
+    avail = set(list(categories.keys()) + ['all'])
     unavail = chosen - avail
     for arg in unavail:
         print("No such help category: %s" % arg)
@@ -7506,7 +7507,7 @@ def handle_help(options, session, args):
 
 def list_commands(categories_chosen=None):
     if categories_chosen is None or "all" in categories_chosen:
-        categories_chosen = categories.keys()
+        categories_chosen = list(categories.keys())
     else:
         # copy list since we're about to modify it
         categories_chosen = list(categories_chosen)

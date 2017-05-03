@@ -30,6 +30,7 @@ import cgi      #for parse_qs
 from .context import context
 from six.moves import range
 from six.moves import zip
+import six
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -99,7 +100,7 @@ class Session(object):
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
             }
-        fields, aliases = list(zip(*fields.items()))
+        fields, aliases = list(zip(*list(fields.items())))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -528,7 +529,7 @@ class Session(object):
     def getPerms(self):
         if not self.logged_in:
             return []
-        return self.perms.keys()
+        return list(self.perms.keys())
 
     def hasPerm(self, name):
         if not self.logged_in:
@@ -741,7 +742,7 @@ if __name__ == '__main__':
     print("logging in with session 1")
     session_info = sess.login('host/1', 'foobar', {'hostip':'127.0.0.1'})
     #wrap values in lists
-    session_info = dict([[k, [v]] for k, v in session_info.iteritems()])
+    session_info = dict([[k, [v]] for k, v in six.iteritems(session_info)])
     print("Session 1: %s" % sess)
     print("Session 1 info: %r" % session_info)
     print("Creating session 2")

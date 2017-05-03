@@ -137,10 +137,10 @@ class HeaderTestCase(unittest.TestCase):
         self.assertEqual(koji.get_header_fields(self.rpm_path, []), {})
 
         # correct
-        self.assertEqual(['REQUIRES'], koji.get_header_fields(self.rpm_path, ['REQUIRES']).keys())
+        self.assertEqual(['REQUIRES'], list(koji.get_header_fields(self.rpm_path, ['REQUIRES']).keys()))
         self.assertEqual(['PROVIDES', 'REQUIRES'], sorted(koji.get_header_fields(self.rpm_path, ['REQUIRES', 'PROVIDES'])))
         hdr = koji.get_rpm_header(self.rpm_path)
-        self.assertEqual(['REQUIRES'], koji.get_header_fields(hdr, ['REQUIRES']).keys())
+        self.assertEqual(['REQUIRES'], list(koji.get_header_fields(hdr, ['REQUIRES']).keys()))
 
 
     def test_get_header_field_src(self):

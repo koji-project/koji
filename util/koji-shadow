@@ -25,6 +25,7 @@
 from __future__ import absolute_import
 from six.moves import range
 from six.moves import zip
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -498,7 +499,7 @@ class TrackedBuild(object):
             log("Warning: some rpms for %s lacked buildroots:" % self.nvr)
             for rinfo in bad:
                 log("    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo)
-        return brs.keys()
+        return list(brs.keys())
 
     def getDeps(self):
         buildroots = self.getBuildroots()
@@ -547,7 +548,7 @@ class TrackedBuild(object):
         #        changes happened during the build startup and some subtasks got the old
         #        repo and others the new one.
         base = []
-        for name, brlist in bases.iteritems():
+        for name, brlist in six.iteritems(bases):
             #We want to determine for each name if that package was present
             #in /all/ the buildroots or just some.
             #Because brlist is constructed only from elements of buildroots, we
@@ -557,12 +558,12 @@ class TrackedBuild(object):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, tags.keys()))
-            counts = [(n, tag) for tag, n in tags.iteritems()]
+            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, list(tags.keys())))
+            counts = [(n, tag) for tag, n in six.iteritems(tags)]
             sort(counts)
             tag = counts[-1][1]
         else:
-            tag = tags.keys()[0]
+            tag = list(tags.keys())[0]
         # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
         if len(builds) == 0:
             self.setState("noroot")
@@ -1008,7 +1009,7 @@ class BuildTracker(object):
                 for pkg in session.listPackages(pkgID=name):
                     owners.setdefault(pkg['owner_id'], []).append(pkg)
                 if owners:
-                    order = [(len(v), k) for k, v in owners.iteritems()]
+                    order = [(len(v), k) for k, v in six.iteritems(owners)]
                     order.sort()
                     owner = order[-1][1]
                 else:
@@ -1124,7 +1125,7 @@ class BuildTracker(object):
         log("-- %s --" % time.asctime())
         self.report_brief()
         for state in ('broken', 'noroot', 'blocked'):
-            builds = self.state_idx[state].values()
+            builds = list(self.state_idx[state].values())
             not_replaced = [b for b in builds if not b.substitute]
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
@@ -1154,7 +1155,7 @@ class BuildTracker(object):
                     nvr = dep.substitute
                 problem_counts.setdefault(nvr, 0)
                 problem_counts[nvr] += 1
-        order = [(c, nvr) for (nvr, c) in problem_counts.iteritems()]
+        order = [(c, nvr) for (nvr, c) in six.iteritems(problem_counts)]
         if order:
             order.sort()
             order.reverse()
@@ -1165,7 +1166,7 @@ class BuildTracker(object):
 
     def report_brief(self):
         N = len(self.builds)
-        states = self.state_idx.keys()
+        states = list(self.state_idx.keys())
         states.sort()
         parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
         parts.append("total: %i" % N)
@@ -1237,7 +1238,7 @@ class BuildTracker(object):
         ret = False
         if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
             return ret
-        missing = [(b.order, b.id, b) for b in self.state_idx['missing'].itervalues()]
+        missing = [(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])]
         missing.sort()
         for order, build_id, build in missing:
             if not self.checkBuildDeps(build):

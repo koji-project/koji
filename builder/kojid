@@ -967,7 +967,7 @@ class BuildTask(BaseTaskHandler):
                 archdict[a] = 1
         if not archdict:
             raise koji.BuildError("No matching arches were found")
-        return archdict.keys()
+        return list(archdict.keys())
 
 
     def choose_taskarch(self, arch, srpm, build_tag):
@@ -1029,7 +1029,7 @@ class BuildTask(BaseTaskHandler):
 
         # wait for subtasks to finish
         failany = not getattr(self.options, 'build_arch_can_fail', False)
-        results = self.wait(subtasks.values(), all=True, failany=failany)
+        results = self.wait(list(subtasks.values()), all=True, failany=failany)
 
         # finalize import
         # merge data into needed args for completeBuild call
@@ -1037,7 +1037,7 @@ class BuildTask(BaseTaskHandler):
         brmap = {}
         logs = {}
         built_srpm = None
-        for (arch, task_id) in subtasks.iteritems():
+        for (arch, task_id) in six.iteritems(subtasks):
             result = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch,result,))
             brootid = result['brootid']
@@ -1516,7 +1516,7 @@ class BuildMavenTask(BaseBuildTask):
         for filepath in logs:
             self.uploadFile(os.path.join(outputdir, filepath),
                             relPath=os.path.dirname(filepath))
-        for relpath, files in output_files.iteritems():
+        for relpath, files in six.iteritems(output_files):
             for filename in files:
                 self.uploadFile(os.path.join(outputdir, relpath, filename),
                                 relPath=relpath)
@@ -1976,7 +1976,7 @@ class ChainMavenTask(MultiPlatformTask):
                 running[task_id] = package
                 del todo[package]
             try:
-                results = self.wait(running.keys())
+                results = self.wait(list(running.keys()))
             except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
@@ -2029,8 +2029,8 @@ class ChainMavenTask(MultiPlatformTask):
         have the same keys and those keys have the same values.  If a value is
         list, it will be considered equal to a list with the same values in
         a different order."""
-        akeys = a.keys()
-        bkeys = b.keys()
+        akeys = list(a.keys())
+        bkeys = list(b.keys())
         if sorted(akeys) != sorted(bkeys):
             return False
         for key in akeys:
@@ -2191,7 +2191,7 @@ class BuildBaseImageTask(BuildImageTask):
                     canfail.append(subtasks[arch])
             self.logger.debug("Got image subtasks: %r" % (subtasks))
             self.logger.debug("Waiting on image subtasks (%s can fail)..." % canfail)
-            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
+            results = self.wait(list(subtasks.values()), all=True, failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.debug('subtask results: %r', results)
@@ -2500,7 +2500,7 @@ class BuildLiveMediaTask(BuildImageTask):
 
             self.logger.debug("Got image subtasks: %r", subtasks)
             self.logger.debug("Waiting on livemedia subtasks...")
-            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
+            results = self.wait(list(subtasks.values()), all=True, failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.debug('subtask results: %r', results)
@@ -2536,7 +2536,7 @@ class BuildLiveMediaTask(BuildImageTask):
                     wrapper_tasks[arch] = self.subtask('wrapperRPM', arglist,
                                 label='wrapper %s' % arch, arch='noarch')
 
-                results2 = self.wait(wrapper_tasks.values(), all=True, failany=True)
+                results2 = self.wait(list(wrapper_tasks.values()), all=True, failany=True)
                 self.logger.debug('wrapper results: %r', results2)
 
                 # add wrapper rpm results into main results
@@ -2781,7 +2781,7 @@ class ImageTask(BaseTaskHandler):
             'TC': 'T',
         }
 
-        for k, v in substitutions.iteritems():
+        for k, v in six.iteritems(substitutions):
             if k in name:
                 name = name.replace(k, v)
             if k in version:
@@ -3538,7 +3538,7 @@ class BaseImageTask(OzImageTask):
         if len(formats) == 0:
             # we only want a raw disk image (no format option given)
             f_dict['raw'] = True
-        elif 'raw' not in f_dict.keys():
+        elif 'raw' not in list(f_dict.keys()):
             f_dict['raw'] = False
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
@@ -4762,7 +4762,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
     def uniq(self, items):
         """Remove duplicates from the list of items, and sort the list."""
         m = dict(list(zip(items, [1] * len(items))))
-        l = m.keys()
+        l = list(m.keys())
         l.sort()
         return l
 
@@ -4807,8 +4807,8 @@ class NewRepoTask(BaseTaskHandler):
         # gather subtask results
         data = {}
         if subtasks:
-            results = self.wait(subtasks.values(), all=True, failany=True)
-            for (arch, task_id) in subtasks.iteritems():
+            results = self.wait(list(subtasks.values()), all=True, failany=True)
+            for (arch, task_id) in six.iteritems(subtasks):
                 data[arch] = results[task_id]
                 self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
 
@@ -4967,7 +4967,7 @@ class NewDistRepoTask(BaseTaskHandler):
                 method='createdistrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
         if len(subtasks) > 0 and task_opts['multilib']:
-            results = self.wait(subtasks.values(), all=True, failany=True)
+            results = self.wait(list(subtasks.values()), all=True, failany=True)
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
@@ -4983,8 +4983,8 @@ class NewDistRepoTask(BaseTaskHandler):
                     parent=self.id, arch='noarch')
         # wait for 64-bit subtasks to finish
         data = {}
-        results = self.wait(subtasks.values(), all=True, failany=True)
-        for (arch, task_id) in subtasks.iteritems():
+        results = self.wait(list(subtasks.values()), all=True, failany=True)
+        for (arch, task_id) in six.iteritems(subtasks):
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
             if task_opts['multilib'] and arch in arch32s:
@@ -5078,7 +5078,7 @@ class createDistRepoTask(CreaterepoTask):
                 files.append(f)
                 self.session.uploadWrapper('%s/%s' % (ddir, f),
                     self.uploadpath, f)
-        return [self.uploadpath, files, self.sigmap.items()]
+        return [self.uploadpath, files, list(self.sigmap.items())]
 
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
@@ -5258,7 +5258,7 @@ enabled=1
         # select our rpms
         selected = {}
         for rpm_id in rpm_idx:
-            avail_keys = rpm_idx[rpm_id].keys()
+            avail_keys = list(rpm_idx[rpm_id].keys())
             best_key = self.pick_key(keys, avail_keys)
             if best_key is None:
                 # we lack a matching key for this rpm
@@ -5331,7 +5331,7 @@ enabled=1
             fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
             filenames = [[fmt % selected[r], r] for r in sig_missing]
             for fname, rpm_id in sorted(filenames):
-                avail = rpm_idx.get(rpm_id, {}).keys()
+                avail = list(rpm_idx.get(rpm_id, {}).keys())
                 outfile.write('%s: %r\n' % (fname, avail))
             outfile.close()
             self.session.uploadWrapper(missing_log, self.uploadpath)
@@ -5546,7 +5546,7 @@ def get_options():
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
-            elif name in defaults.keys():
+            elif name in list(defaults.keys()):
                 defaults[name] = value
             elif name.upper().startswith('RLIMIT_'):
                 defaults[name.upper()] = value

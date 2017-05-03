@@ -631,11 +631,11 @@ class RawHeader(object):
         print("Store at offset %d (%0x)" % (store, store))
         #sort entries by offset, dtype
         #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
-        order = sorted([(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()])
+        order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
         next = store
         #map some rpmtag codes
         tags = {}
-        for name, code in rpm.__dict__.iteritems():
+        for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
         for entry in order:
@@ -1137,7 +1137,7 @@ def parse_pom(path=None, contents=None):
         xml.sax.parseString(contents, handler)
 
     for field in fields:
-        if field not in values.keys():
+        if field not in list(values.keys()):
             raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
@@ -1438,7 +1438,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('maven_opts'):
         mavenrc = 'export MAVEN_OPTS="%s"\n' % ' '.join(opts['maven_opts'])
     if opts.get('maven_envs'):
-        for name, val in opts['maven_envs'].iteritems():
+        for name, val in six.iteritems(opts['maven_envs']):
             mavenrc += 'export %s="%s"\n' % (name, val)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
@@ -1501,10 +1501,10 @@ name=build
 """ % locals())
 
     parts.append("\n")
-    for key, value in config_opts.iteritems():
+    for key, value in six.iteritems(config_opts):
         parts.append("config_opts[%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in plugin_conf.iteritems():
+    for key, value in six.iteritems(plugin_conf):
         parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
 
@@ -1512,14 +1512,14 @@ name=build
         # This line is REQUIRED for mock to work if bind_opts defined.
         parts.append("config_opts['internal_dev_setup'] = False\n")
         for key in bind_opts.keys():
-            for mnt_src, mnt_dest in bind_opts.get(key).iteritems():
+            for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
                 parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
         parts.append("\n")
 
-    for key, value in macros.iteritems():
+    for key, value in six.iteritems(macros):
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in files.iteritems():
+    for key, value in six.iteritems(files):
         parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)
@@ -2699,7 +2699,7 @@ class DBHandler(logging.Handler):
             values = []
             data = {}
             record.message = record.getMessage()
-            for key, value in self.mapping.iteritems():
+            for key, value in six.iteritems(self.mapping):
                 value = str(value)
                 if value.find("%(asctime)") >= 0:
                     if self.formatter:

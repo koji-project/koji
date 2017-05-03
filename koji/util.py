@@ -241,11 +241,11 @@ class LazyDict(dict):
         return [(key, lazy_eval(val)) for key, val in super(LazyDict, self).items()]
 
     def itervalues(self):
-        for val in super(LazyDict, self).itervalues():
+        for val in six.itervalues(super(LazyDict, self)):
             yield lazy_eval(val)
 
     def iteritems(self):
-        for key, val in super(LazyDict, self).iteritems():
+        for key, val in six.iteritems(super(LazyDict, self)):
             yield key, lazy_eval(val)
 
     def pop(self, key, *args, **kwargs):
@@ -499,11 +499,11 @@ def tsort(parts):
     parts = parts.copy()
     result = []
     while True:
-        level = set([name for name, deps in parts.iteritems() if not deps])
+        level = set([name for name, deps in six.iteritems(parts) if not deps])
         if not level:
             break
         result.append(level)
-        parts = dict([(name, deps - level) for name, deps in parts.iteritems()
+        parts = dict([(name, deps - level) for name, deps in six.iteritems(parts)
                       if name not in level])
     if parts:
         raise ValueError('total ordering not possible')

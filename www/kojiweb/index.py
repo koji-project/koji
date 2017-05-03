@@ -39,6 +39,7 @@ from kojiweb.util import _getValidTokens
 from koji.util import sha1_constructor
 from six.moves import range
 from six.moves import zip
+import six
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = kojiweb.util.sortByKeyFunc('name')
@@ -682,7 +683,7 @@ def taskinfo(environ, taskID):
     values['pathinfo'] = pathinfo
 
     paths = [] # (volume, relpath) tuples
-    for relname, volumes in server.listTaskOutput(task['id'], all_volumes=True).iteritems():
+    for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
         paths += [(volume, relname) for volume in volumes]
     values['output'] = sorted(paths, cmp = _sortByExtAndName)
     if environ['koji.currentUser']:
@@ -701,8 +702,8 @@ def taskstatus(environ, taskID):
         return ''
     files = server.listTaskOutput(taskID, stat=True, all_volumes=True)
     output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
-    for filename, volumes_data in files.iteritems():
-        for volume, file_stats in volumes_data.iteritems():
+    for filename, volumes_data in six.iteritems(files):
+        for volume, file_stats in six.iteritems(volumes_data):
             output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 
@@ -2115,7 +2116,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
         if builds > maxBuilds:
             maxBuilds = builds
 
-    kojiweb.util.paginateList(values, targets.values(), start, 'targets', 'target', order)
+    kojiweb.util.paginateList(values, list(targets.values()), start, 'targets', 'target', order)
 
     values['order'] = order
 

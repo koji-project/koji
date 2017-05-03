@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 
 import StringIO as stringio
@@ -11,6 +12,7 @@ import mock
 from mock import call
 
 import loadcli
+import six
 
 cli = loadcli.cli
 
@@ -40,7 +42,7 @@ class TestEditTag(unittest.TestCase):
         args.append('--rename=' + rename)
         args.append('--maven-support')
         args.append('--include-all')
-        for k, x in extra.iteritems():
+        for k, x in six.iteritems(extra):
             args.append('-x')
             args.append(k + '=' + str(x))
         for r in remove_extra:

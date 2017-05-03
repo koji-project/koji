@@ -112,7 +112,7 @@ class HandlerRegistry(object):
 
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
-        for v in vars(plugin).itervalues():
+        for v in six.itervalues(vars(plugin)):
             if isinstance(v, type):
                 #skip classes
                 continue
@@ -169,7 +169,7 @@ class HandlerRegistry(object):
         return args
 
     def system_listMethods(self):
-        return self.funcs.keys()
+        return list(self.funcs.keys())
 
     def system_methodSignature(self, method):
         #it is not possible to autogenerate this data
@@ -515,7 +515,7 @@ def load_config(environ):
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
-    for pname, text in _default_policies.iteritems():
+    for pname, text in six.iteritems(_default_policies):
         opts['policy'].setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
@@ -577,12 +577,12 @@ def get_policy(opts, plugins):
     for plugin_name in opts.get('Plugins', '').split():
         alltests.append(koji.policy.findSimpleTests(vars(plugins.get(plugin_name))))
     policy = {}
-    for pname, text in opts['policy'].iteritems():
+    for pname, text in six.iteritems(opts['policy']):
         #filter/merge tests
         merged = {}
         for tests in alltests:
             # tests can be limited to certain policies by setting a class variable
-            for name, test in tests.iteritems():
+            for name, test in six.iteritems(tests):
                 if hasattr(test, 'policy'):
                     if isinstance(test.policy, six.string_types):
                         if pname != test.policy:

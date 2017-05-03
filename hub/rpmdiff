@@ -27,6 +27,7 @@ import itertools
 
 import sys, getopt
 from six.moves import zip
+import six
 
 
 class Rpmdiff:
@@ -113,8 +114,8 @@ class Rpmdiff:
 
         old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
         new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
-        files = list(set(itertools.chain(old_files_dict.iterkeys(),
-                                         new_files_dict.iterkeys())))
+        files = list(set(itertools.chain(six.iterkeys(old_files_dict),
+                                         six.iterkeys(new_files_dict))))
         files.sort()
 
         for f in files:

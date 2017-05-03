@@ -27,6 +27,7 @@
 from __future__ import absolute_import
 import six.moves._thread
 from six.moves import range
+import six
 
 class _data(object):
     pass
@@ -67,7 +68,7 @@ class ThreadLocal(object):
         id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         return "(current thread: %s) {" % id  + \
-            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in tdict.iteritems()]) + \
+            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
             "}"
 
     def _threadclear(self):
