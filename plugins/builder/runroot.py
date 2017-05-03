@@ -1,5 +1,6 @@
 # kojid plugin
 
+from __future__ import absolute_import
 import commands
 import koji
 import six.moves.configparser

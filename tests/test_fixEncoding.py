@@ -3,6 +3,7 @@
 
 """Test the __init__.py module"""
 
+from __future__ import absolute_import
 import koji
 import unittest
 

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import sys
 import unittest
@@ -6,7 +7,7 @@ import StringIO as stringio
 
 import mock
 
-import loadcli
+from . import loadcli
 cli = loadcli.cli
 
 

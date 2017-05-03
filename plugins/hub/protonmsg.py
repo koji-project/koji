@@ -5,6 +5,7 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import koji
 from koji.plugin import callback, ignore_error
 from koji.context import context

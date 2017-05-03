@@ -6,6 +6,7 @@
 # Modifications by Dan Williams <dcbw@redhat.com>
 
 
+from __future__ import absolute_import
 from OpenSSL import SSL
 import time, socket, select
 

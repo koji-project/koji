@@ -14,9 +14,10 @@
 #
 # Copyright 2005 Dan Williams <dcbw@redhat.com> and Red Hat, Inc.
 
+from __future__ import absolute_import
 import os, sys
 from OpenSSL import SSL
-import SSLConnection
+from . import SSLConnection
 import six.moves.http_client
 import socket
 

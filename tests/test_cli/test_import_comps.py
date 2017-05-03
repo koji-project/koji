@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 import json
 import unittest
 import StringIO as stringio
 import os
 import sys
 import mock
-import loadcli
+from . import loadcli
 
 try:
     import libcomps

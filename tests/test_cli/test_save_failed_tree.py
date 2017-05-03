@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 import StringIO
 import unittest
 import koji
 import mock
 
-import loadcli
+from . import loadcli
 cli = loadcli.cli
 
 

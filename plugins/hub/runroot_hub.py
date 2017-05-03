@@ -3,6 +3,7 @@
 # plugin has a config file.  This hub plugin has no config file.
 
 
+from __future__ import absolute_import
 from koji.context import context
 from koji.plugin import export
 import koji

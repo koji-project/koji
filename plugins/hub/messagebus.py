@@ -4,6 +4,7 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 from koji import PluginError
 from koji.plugin import callbacks, callback, ignore_error
 import six.moves.configparser

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 
 # This is python-mock, not the rpm mock tool we know and love
