@@ -69,9 +69,11 @@ class TestInsertProcessor(unittest.TestCase):
         proc.dup_check()
         args = cursor.execute.call_args
         actual = ' '.join(args[0][0].split())
-        expected = 'SELECT active, foo FROM sometable WHERE ' + \
+        expected1 = 'SELECT foo, active FROM sometable WHERE ' + \
+            '(foo = %(foo)s) AND (active = %(active)s)'
+        expected2 = 'SELECT active, foo FROM sometable WHERE ' + \
             '(active = %(active)s) AND (foo = %(foo)s)'
-        self.assertEquals(actual, expected)
+        self.assertIn(actual, (expected1, expected2))
 
         proc.set(onething='another')
         proc.rawset(something='something else')

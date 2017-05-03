@@ -454,7 +454,7 @@ def watch_tasks(session,tasklist,quiet=False):
             tasks[task_id] = TaskWatcher(task_id,session,quiet=quiet)
         while True:
             all_done = True
-            for task_id,task in tasks.items():
+            for task_id, task in list(tasks.items()):
                 changed = task.update()
                 if not task.is_done():
                     all_done = False
@@ -1856,7 +1856,11 @@ def _import_comps(session, filename, tag, options):
                         }
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
-            print("  Package: %s: %r" % (pkg.name, pkgopts))
+            for k in pkgopts.keys():
+                if isinstance(pkgopts[k], unicode):
+                    pkgopts[k] = str(pkgopts[k])
+            s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+            print("  Package: %s: {%s}" % (pkg.name, s_opts))
             session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
         # libcomps does not support group dependencies
         # libcomps does not support metapkgs
@@ -1881,11 +1885,15 @@ def _import_comps_alt(session, filename, tag, options):
                              ('optional', group.optional_packages),
                              ('conditional', group.conditional_packages)]:
             for pkg in pdata:
+                #yum.comps does not support basearchonly
                 pkgopts = {'type' : ptype}
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
-                #yum.comps does not support basearchonly
-                print("  Package: %s: %r" % (pkg, pkgopts))
+                for k in pkgopts.keys():
+                    if isinstance(pkgopts[k], unicode):
+                        pkgopts[k] = str(pkgopts[k])
+                s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+                print("  Package: %s: {%s}" % (pkg, s_opts))
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
         #yum.comps does not support group dependencies
         #yum.comps does not support metapkgs

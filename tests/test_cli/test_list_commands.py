@@ -28,7 +28,10 @@ class TestListCommands(unittest.TestCase):
     def test_list_commands(self, stdout):
         cli.list_commands()
         actual = stdout.getvalue()
-        actual = actual.replace('nosetests', 'koji')
+        if six.PY2:
+            actual = actual.replace('nosetests', 'koji')
+        else:
+            actual = actual.replace('python3 -m nose', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands.txt'
         with open(filename, 'rb') as f:
             expected = f.read().decode('ascii')
@@ -41,7 +44,10 @@ class TestListCommands(unittest.TestCase):
         self.parser.parse_args.return_value = [options, arguments]
         cli.handle_help(self.options, self.session, self.args)
         actual = stdout.getvalue()
-        actual = actual.replace('nosetests', 'koji')
+        if six.PY2:
+            actual = actual.replace('nosetests', 'koji')
+        else:
+            actual = actual.replace('python3 -m nose', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands-admin.txt'
         with open(filename, 'rb') as f:
             expected = f.read().decode('ascii')
