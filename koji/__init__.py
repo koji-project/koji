@@ -1688,16 +1688,30 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
         fo = open(fn)
     else:
         raise GenericError("No access method for remote file: %s" % relpath)
-    if relpath.endswith('.rpm'):
-        # Do a initial sanity check on any RPM we opened.
-        # This is basically to detect issues with RPMs before they break builds
-        # in unknown ways.
-        # Note that this does not always catch every possible issue, but it
-        # will at least catch issues like when an RPM is only partly downloaded
-        # (see issue #290).
-        rpm.TransactionSet().hdrCheck(fo.read())
-        fo.seek(0)
     return fo
+
+
+def check_rpm_file(rpmfile):
+    "Do a initial sanity check on an RPM
+
+    rpmfile can either be a file name or a file object
+
+    This check is used to detect issues with RPMs before they break builds
+    See: https://pagure.io/koji/issue/290
+    "
+    if isinstance(rpmfile, basestring):
+        with open(rpmfile, 'rb') as fo:
+            return _check_rpm_file(fo)
+    else:
+        return _check_rpm_file(rpmfile)
+
+
+def _check_rpm_file(fo):
+    """Check that the open file appears to be an rpm"""
+    # TODO: trap exception and raise something with more infomation
+    rpm.TransactionSet().hdrCheck(fo.read())
+    fo.seek(0)
+
 
 
 def config_directory_contents(dir_name, strict=False):
