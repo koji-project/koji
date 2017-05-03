@@ -24,7 +24,9 @@
 #    - request data
 #    - auth data
 
+from __future__ import absolute_import
 import thread
+from six.moves import range
 
 class _data(object):
     pass
@@ -97,7 +99,7 @@ if __name__ == '__main__':
         context._threadclear()
         print(context)
 
-    for x in xrange(1, 10):
+    for x in range(1, 10):
         thread.start_new_thread(test, ())
 
     time.sleep(4)

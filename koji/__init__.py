@@ -21,7 +21,9 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import sys
+from six.moves import range
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -528,7 +530,7 @@ def multibyte(data):
     """Convert a list of bytes to an integer (network byte order)"""
     sum = 0
     n = len(data)
-    for i in xrange(n):
+    for i in range(n):
         sum += data[i] << (8 * (n - i - 1))
     return sum
 
@@ -606,9 +608,9 @@ class RawHeader(object):
 
         #read the index (starts at offset 16)
         index = {}
-        for i in xrange(il):
+        for i in range(il):
             entry = []
-            for j in xrange(4):
+            for j in range(4):
                 ofs = 16 + i*16 + j*4
                 data = [ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
@@ -653,14 +655,14 @@ class RawHeader(object):
                 next = pos
             elif dtype == 1:
                 #char
-                for i in xrange(count):
+                for i in range(count):
                     print("Char: %r" % self.header[pos])
                     pos += 1
                 next = pos
             elif dtype >= 2 and dtype <= 5:
                 #integer
                 n = 1 << (dtype - 2)
-                for i in xrange(count):
+                for i in range(count):
                     data = [ord(x) for x in self.header[pos:pos+n]]
                     print("%r" % data)
                     num = multibyte(data)
@@ -677,14 +679,14 @@ class RawHeader(object):
                 next = pos+count
             elif dtype == 8:
                 # string array
-                for i in xrange(count):
+                for i in range(count):
                     end = self.header.find('\0', pos)
                     print("String(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
-                for i in xrange(count):
+                for i in range(count):
                     end = self.header.find('\0', pos)
                     print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
@@ -1754,7 +1756,7 @@ def get_profile_module(profile_name, config=None):
 
 class PathInfo(object):
     # ASCII numbers and upper- and lower-case letter for use in tmpdir()
-    ASCII_CHARS = [chr(i) for i in range(48, 58) + range(65, 91) + range(97, 123)]
+    ASCII_CHARS = [chr(i) for i in list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))]
 
     def __init__(self, topdir=None):
         self._topdir = topdir

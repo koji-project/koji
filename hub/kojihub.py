@@ -22,6 +22,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
+from __future__ import absolute_import
 import base64
 import calendar
 import cgi
@@ -56,6 +57,7 @@ import types
 import xmlrpclib
 import zipfile
 from koji.context import context
+from six.moves import range
 
 try:
     import json

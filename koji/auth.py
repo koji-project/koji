@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import socket
 import string
 import random
@@ -27,6 +28,7 @@ import krbV
 import koji
 import cgi      #for parse_qs
 from context import context
+from six.moves import range
 
 # 1 - load session if provided
 #       - check uri for session id

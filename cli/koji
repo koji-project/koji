@@ -24,7 +24,9 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
+from __future__ import absolute_import
 import sys
+from six.moves import range
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -2119,7 +2121,7 @@ def handle_prune_signed_copies(options, session, args):
             timeline.sort()
             #find most recent creation entry for our build and crop there
             latest_ts = None
-            for i in xrange(len(timeline)-1, -1, -1):
+            for i in range(len(timeline)-1, -1, -1):
                 #searching in reverse cronological order
                 event_id, is_create, entry = timeline[i]
                 if entry['build_id'] == binfo['id'] and is_create:

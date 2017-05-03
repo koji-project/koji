@@ -18,6 +18,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 from ConfigParser import RawConfigParser
 import datetime
 import inspect
@@ -40,6 +41,7 @@ import koji.plugin
 import koji.policy
 import koji.util
 from koji.context import context
+from six.moves import range
 
 
 # Workaround to allow xmlrpclib deal with iterators

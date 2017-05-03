@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 
 import os
@@ -9,6 +10,7 @@ import mock
 from mock import call
 
 import loadcli
+from six.moves import range
 
 cli = loadcli.cli
 
@@ -64,7 +66,7 @@ class TestWatchTasks(unittest.TestCase):
 
         def side_effect(*args, **kwargs):
             rt = None
-            if args[0] not in range(2):
+            if args[0] not in list(range(2)):
                 rt = mock.MagicMock()
                 rt.level = args[2]
                 rt.is_done.return_value = True
@@ -76,7 +78,7 @@ class TestWatchTasks(unittest.TestCase):
             return rt
 
         twClzMock.side_effect = side_effect
-        rv = cli.watch_tasks(self.session, range(2), quiet=False)
+        rv = cli.watch_tasks(self.session, list(range(2)), quiet=False)
         actual = stdout.getvalue()
         self.assertMultiLineEqual(
             actual, "Watching tasks (this may be safely interrupted)...\n\n")
@@ -201,7 +203,7 @@ class TestWatchTasks(unittest.TestCase):
 
         def side_effect(*args, **kwargs):
             rt = None
-            if args[0] not in range(2):
+            if args[0] not in list(range(2)):
                 rt = mock.MagicMock()
                 rt.level = args[2]
                 rt.is_done.return_value = True
@@ -215,7 +217,7 @@ class TestWatchTasks(unittest.TestCase):
         twClzMock.side_effect = side_effect
 
         with self.assertRaises(KeyboardInterrupt):
-            cli.watch_tasks(self.session, range(2), quiet=False)
+            cli.watch_tasks(self.session, list(range(2)), quiet=False)
 
         actual = stdout.getvalue()
         self.assertMultiLineEqual(

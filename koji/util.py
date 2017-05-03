@@ -18,6 +18,7 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import calendar
 from fnmatch import fnmatch
 import koji
@@ -32,6 +33,7 @@ import sys
 import time
 import ConfigParser
 from zlib import adler32
+from six.moves import range
 
 # imported from kojiweb and kojihub
 try:
