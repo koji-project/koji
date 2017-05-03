@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import mock
 import unittest
+import six
 
 import koji
 
@@ -31,31 +32,30 @@ class TestClientSession(unittest.TestCase):
         self.assertEqual(princ, 'host/koji.example.com@REALM')
         getfqdn.assert_not_called()
 
-    @mock.patch('koji.compatrequests.Session')
     @mock.patch('requests.Session')
-    def test_new_session(self, rsession, compat_session):
+    def test_new_session(self, rsession):
         opts = {'use_old_ssl': False}
         ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
 
         # init should have called new_session for us
 
         rsession.assert_called_once()
-        compat_session.assert_not_called()
 
-    @mock.patch('koji.compatrequests.Session')
     @mock.patch('requests.Session')
-    def test_new_session_old(self, rsession, compat_session):
+    def test_new_session_old(self, rsession):
+        if six.PY3:
+            return
         opts = {'use_old_ssl': True}
         ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
 
         # init should have called new_session for us
 
         rsession.assert_not_called()
-        compat_session.assert_called_once()
 
-    @mock.patch('koji.compatrequests.Session')
     @mock.patch('requests.Session')
-    def test_new_session_close(self, rsession, compat_session):
+    def test_new_session_close(self, rsession):
+        if six.PY3:
+            return
         opts = {'use_old_ssl': True}
         ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
         my_rsession = mock.MagicMock()
@@ -73,9 +73,12 @@ class TestFastUpload(unittest.TestCase):
         self.do_fake_login()
         # mocks
         self.ksession._callMethod = mock.MagicMock()
-        self.compat_session = mock.patch('koji.compatrequests.Session').start()
+        self.ksession.retries = 1
         self.rsession = mock.patch('requests.Session').start()
-        self.file_mock = mock.patch('__builtin__.file').start()
+        if six.PY2:
+            self.file_mock = mock.patch('__builtin__.open').start()
+        else:
+            self.file_mock = mock.patch('builtins.open').start()
         self.getsize_mock = mock.patch('os.path.getsize').start()
 
     def tearDown(self):

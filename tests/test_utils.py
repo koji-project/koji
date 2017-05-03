@@ -85,11 +85,17 @@ class MiscFunctionTestCase(unittest.TestCase):
     @mock.patch('six.moves.urllib.request.urlopen')
     @mock.patch('tempfile.TemporaryFile')
     @mock.patch('shutil.copyfileobj')
-    @mock.patch('__builtin__.open')
-    def test_openRemoteFile(self, m_open, m_copyfileobj, m_TemporaryFile,
+    def test_openRemoteFile(self, m_copyfileobj, m_TemporaryFile,
                             m_urlopen):
         """Test openRemoteFile function"""
 
+        if six.PY2:
+            __builtins__.open = mock.MagicMock()
+            m_open = __builtins__.open
+        else:
+            import builtins
+            builtins.open = mock.MagicMock()
+            m_open = builtins.open
         mocks = [m_open, m_copyfileobj, m_TemporaryFile, m_urlopen]
 
         topurl = 'http://example.com/koji'
