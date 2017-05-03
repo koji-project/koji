@@ -25,6 +25,7 @@
 #       Cristian Balint <cbalint@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import sys
 from six.moves import range
 from six.moves import zip
@@ -5440,7 +5441,7 @@ def _pick_external_repo_priority(session, tag):
     if not repolist:
         priority = 5
     else:
-        priority = (repolist[-1]['priority'] + 7) / 5 * 5
+        priority = (repolist[-1]['priority'] + 7) // 5 * 5
         #at least 3 higher than current max and a multiple of 5
     return priority
 

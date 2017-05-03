@@ -21,6 +21,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import koji
 import koji.tasks
 from koji.tasks import safe_rmtree
@@ -829,7 +830,7 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail)-1)/2]
+                median = bin_avail[(len(bin_avail)-1)//2]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     #decline for now and give the upper half a chance
@@ -847,7 +848,7 @@ class TaskManager(object):
         Check our available capacity against the capacity of other hosts in this bin.
         Return True if we should take a task, False otherwise.
         """
-        median = bin_avail[(len(bin_avail)-1)/2]
+        median = bin_avail[(len(bin_avail)-1)//2]
         self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
         if avail >= median:
             return True
@@ -1040,7 +1041,7 @@ class TaskManager(object):
             raise IOError("No such directory: %s" % br_path)
         fs_stat = os.statvfs(br_path)
         available = fs_stat.f_bavail * fs_stat.f_bsize
-        availableMB = available / 1024 / 1024
+        availableMB = available // 1024**2
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < self.options.minspace:
             self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, self.options.minspace)

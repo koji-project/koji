@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 from six.moves.configparser import RawConfigParser
 import datetime
 import inspect
@@ -689,7 +690,7 @@ def handler(req):
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
-    statm = [pagesize*int(y)/1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    statm = [pagesize*int(y)//1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 
