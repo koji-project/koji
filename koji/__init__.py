@@ -35,7 +35,6 @@ import base64
 import datetime
 import six.moves.configparser
 import errno
-import exceptions
 from fnmatch import fnmatch
 import six.moves.http_client
 import imp
@@ -265,6 +264,8 @@ PRIO_DEFAULT = 20
 ## BEGIN kojikamid dup
 
 #Exceptions
+PythonImportError = ImportError # will be masked by koji's one
+
 class GenericError(Exception):
     """Base class for our custom exceptions"""
     faultCode = 1000
@@ -2090,7 +2091,7 @@ class ClientSession(object):
                 pass
 
         if not krbV:
-            raise exceptions.ImportError(
+            raise PythonImportError(
                 "Please install python-krbV to use kerberos."
             )
 
@@ -2168,7 +2169,7 @@ class ClientSession(object):
 
     def gssapi_login(self, proxyuser=None):
         if not HTTPKerberosAuth:
-            raise exceptions.ImportError(
+            raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
 
