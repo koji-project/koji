@@ -38,6 +38,7 @@ from kojiweb.util import _genHTML
 from kojiweb.util import _getValidTokens
 from koji.util import sha1_constructor
 from six.moves import range
+from six.moves import zip
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = kojiweb.util.sortByKeyFunc('name')

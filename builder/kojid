@@ -21,6 +21,8 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
+from six.moves import zip
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -4758,7 +4760,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
 
     def uniq(self, items):
         """Remove duplicates from the list of items, and sort the list."""
-        m = dict(zip(items, [1] * len(items)))
+        m = dict(list(zip(items, [1] * len(items))))
         l = m.keys()
         l.sort()
         return l

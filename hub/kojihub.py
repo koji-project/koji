@@ -58,6 +58,7 @@ import xmlrpclib
 import zipfile
 from koji.context import context
 from six.moves import range
+from six.moves import zip
 
 try:
     import json
@@ -492,7 +493,7 @@ def make_task(method, arglist, **opts):
         r = _fetchSingle(q, opts)
         if not r:
             raise koji.GenericError("Invalid parent task: %(parent)s" % opts)
-        pdata = dict(zip(fields, r))
+        pdata = dict(list(zip(fields, r)))
         if pdata['state'] != koji.TASK_STATES['OPEN']:
             raise koji.GenericError("Parent task (id %(parent)s) is not open" % opts)
         #default to a higher priority than parent
@@ -603,7 +604,7 @@ def readGlobalInheritance(event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    return [dict(zip(fields, x)) for x in c.fetchall()]
+    return [dict(list(zip(fields, x))) for x in c.fetchall()]
 
 def readInheritanceData(tag_id, event=None):
     c = context.cnx.cursor()
@@ -614,7 +615,7 @@ def readInheritanceData(tag_id, event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    data = [dict(zip(fields, x)) for x in c.fetchall()]
+    data = [dict(list(zip(fields, x))) for x in c.fetchall()]
     # include the current tag_id as child_id, so we can retrace the inheritance chain later
     for datum in data:
         datum['child_id'] = tag_id
@@ -629,7 +630,7 @@ def readDescendantsData(tag_id, event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    data = [dict(zip(fields, x)) for x in c.fetchall()]
+    data = [dict(list(zip(fields, x))) for x in c.fetchall()]
     return data
 
 
@@ -1308,7 +1309,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         else:
             raise koji.GenericError('invalid arch option: %s' % arch)
 
-    fields, aliases = zip(*fields)
+    fields, aliases = list(zip(*fields))
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
                            columns=fields, aliases=aliases, values=data, transform=_fix_rpm_row)
 
@@ -2141,7 +2142,7 @@ def get_ready_hosts():
     """ % ','.join(fields)
     # XXX - magic number in query
     c.execute(q)
-    hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
+    hosts = [dict(list(zip(aliases, row))) for row in c.fetchall()]
     for host in hosts:
         q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s"""
         c.execute(q, host)
@@ -2420,7 +2421,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
     artifacts = sorted(artifacts, cmp=lambda a, b: rpm.labelCompare(a, b))
-    artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
+    artifactinfo = dict(list(zip(['group_id', 'artifact_id', 'version'], artifacts[-1])))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
 <metadata>
@@ -2547,7 +2548,7 @@ def repo_references(repo_id):
         'host_id': 'host_id',
         'create_event': 'create_event',
         'state': 'state'}
-    fields, aliases = zip(*fields.items())
+    fields, aliases = list(zip(*fields.items()))
     values = {'repo_id': repo_id}
     clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
     query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
@@ -2977,7 +2978,7 @@ def get_tag(tagInfo, strict=False, event=None):
         raise koji.GenericError('invalid type for tagInfo: %s' % type(tagInfo))
 
     data = {'tagInfo': tagInfo}
-    fields, aliases = zip(*fields.items())
+    fields, aliases = list(zip(*fields.items()))
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=data)
     result = query.executeOne()
@@ -3519,7 +3520,7 @@ def get_build(buildInfo, strict=False):
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('build.source', 'source'),
               ('build.extra', 'extra'))
-    fields, aliases = zip(*fields)
+    fields, aliases = list(zip(*fields))
     joins = ['events ON build.create_event = events.id',
              'package on build.pkg_id = package.id',
              'volume on build.volume_id = volume.id',
@@ -3754,7 +3755,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         else:
             raise koji.GenericError('invalid type for "arches" parameter: %s' % type(arches))
 
-    fields, aliases = zip(*fields)
+    fields, aliases = list(zip(*fields))
     query = QueryProcessor(columns=fields, aliases=aliases,
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=locals(), transform=_fix_rpm_row, opts=queryOpts)
@@ -4079,7 +4080,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         clauses.append('archiveinfo.btype_id = %(btype_id)s')
         values['btype_id'] = btype['id']
 
-    columns, aliases = zip(*fields)
+    columns, aliases = list(zip(*fields))
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           transform=_fix_archive_row,
                           clauses=clauses, values=values, opts=queryOpts).execute()
@@ -4398,7 +4399,7 @@ def _multiRow(query, values, fields):
     as a list of maps.  Each map in the list will have a key for each
     element in the "fields" list.  If there are no results, an empty
     list will be returned."""
-    return [dict(zip(fields, row)) for row in _fetchMulti(query, values)]
+    return [dict(list(zip(fields, row))) for row in _fetchMulti(query, values)]
 
 def _singleRow(query, values, fields, strict=False):
     """Return a single row from "query".  Named parameters can be
@@ -4410,7 +4411,7 @@ def _singleRow(query, values, fields, strict=False):
     returned."""
     row = _fetchSingle(query, values, strict)
     if row:
-        return dict(zip(fields, row))
+        return dict(list(zip(fields, row)))
     else:
         #strict enforced by _fetchSingle
         return None
@@ -6706,7 +6707,7 @@ def query_history(tables=None, **kwargs):
                 fields[r_test] = '_revoked_before_event'
         if skip:
             continue
-        fields, aliases = zip(*fields.items())
+        fields, aliases = list(zip(*fields.items()))
         query = QueryProcessor(columns=fields, aliases=aliases, tables=[table],
                                joins=joins, clauses=clauses, values=data)
         ret[table] = query.iterate()
@@ -7600,7 +7601,7 @@ class QueryProcessor(object):
         if columns and aliases:
             if len(columns) != len(aliases):
                 raise Exception('column and alias lists must be the same length')
-            self.colsByAlias = dict(zip(aliases, columns))
+            self.colsByAlias = dict(list(zip(aliases, columns)))
         else:
             self.colsByAlias = {}
         self.tables = tables
@@ -10432,7 +10433,7 @@ class RootExports(object):
         #XXX hard-coded interval
         c = context.cnx.cursor()
         c.execute(q, koji.TASK_STATES)
-        return [dict(zip([f[1] for f in fields], row)) for row in c.fetchall()]
+        return [dict(list(zip([f[1] for f in fields], row))) for row in c.fetchall()]
 
     def resubmitTask(self, taskID):
         """Retry a canceled or failed task, using the same parameter as the original task.
@@ -11138,7 +11139,7 @@ class BuildRoot(object):
                   ('checksum_type', 'checksum_type'),
                   ('project_dep', 'project_dep'),
                  ]
-        columns, aliases = zip(*fields)
+        columns, aliases = list(zip(*fields))
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
                                values=self.data,
@@ -11316,7 +11317,7 @@ class Host(object):
         WHERE host_id = %%(host_id)s AND state = %%(st_open)s
         """  % (",".join(fields))
         c.execute(q, locals())
-        tasks = [dict(zip(fields, x)) for x in c.fetchall()]
+        tasks = [dict(list(zip(fields, x))) for x in c.fetchall()]
         for task in tasks:
             id = task['id']
             if task['waiting']:
@@ -11378,7 +11379,7 @@ class Host(object):
         """  % (",".join(fields))
         c.execute(q, locals())
         for data in c.fetchall():
-            data = dict(zip(fields, data))
+            data = dict(list(zip(fields, data)))
             # XXX - we should do some pruning here, but for now...
             # check arch
             if data['arch'] not in arches:

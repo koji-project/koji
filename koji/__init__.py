@@ -24,6 +24,7 @@
 from __future__ import absolute_import
 import sys
 from six.moves import range
+from six.moves import zip
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -446,7 +447,7 @@ def decode_args2(args, names, strict=True):
     args, opts = decode_args(*args)
     if strict and len(names) < len(args):
         raise TypeError("Expecting at most %i arguments" % len(names))
-    ret = dict(zip(names, args))
+    ret = dict(list(zip(names, args)))
     ret.update(opts)
     return ret
 
@@ -2139,7 +2140,7 @@ class ClientSession(object):
         # decode and decrypt the login info
         sinfo_priv = base64.decodestring(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
-        sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
+        sinfo = dict(list(zip(['session-id', 'session-key'], sinfo_str.split())))
 
         if not sinfo:
             self.logger.warn('No session info received')

@@ -29,6 +29,7 @@ import koji
 import cgi      #for parse_qs
 from context import context
 from six.moves import range
+from six.moves import zip
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -98,7 +99,7 @@ class Session(object):
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
             }
-        fields, aliases = zip(*fields.items())
+        fields, aliases = list(zip(*fields.items()))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -110,7 +111,7 @@ class Session(object):
         row = c.fetchone()
         if not row:
             raise koji.AuthError('Invalid session or bad credentials')
-        session_data = dict(zip(aliases, row))
+        session_data = dict(list(zip(aliases, row)))
         #check for expiration
         if session_data['expired']:
             raise koji.AuthExpired('session "%i" has expired' % id)
@@ -148,7 +149,7 @@ class Session(object):
         fields = ('name', 'status', 'usertype')
         q = """SELECT %s FROM users WHERE id=%%(user_id)s""" % ','.join(fields)
         c.execute(q, session_data)
-        user_data = dict(zip(fields, c.fetchone()))
+        user_data = dict(list(zip(fields, c.fetchone())))
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
@@ -699,7 +700,7 @@ def get_user_data(user_id):
     row = c.fetchone()
     if not row:
         return None
-    return dict(zip(fields, row))
+    return dict(list(zip(fields, row)))
 
 def login(*args, **opts):
     return context.session.login(*args, **opts)
