@@ -158,13 +158,13 @@ class HandlerRegistry(object):
 
     def _getFuncArgs(self, func):
         args = []
-        for x in range(0, func.func_code.co_argcount):
-            if x == 0 and func.func_code.co_varnames[x] == "self":
+        for x in range(0, func.__code__.co_argcount):
+            if x == 0 and func.__code__.co_varnames[x] == "self":
                 continue
-            if func.func_defaults and func.func_code.co_argcount - x <= len(func.func_defaults):
-                args.append((func.func_code.co_varnames[x], func.func_defaults[x - func.func_code.co_argcount + len(func.func_defaults)]))
+            if func.__defaults__ and func.__code__.co_argcount - x <= len(func.__defaults__):
+                args.append((func.__code__.co_varnames[x], func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
             else:
-                args.append(func.func_code.co_varnames[x])
+                args.append(func.__code__.co_varnames[x])
         return args
 
     def system_listMethods(self):
