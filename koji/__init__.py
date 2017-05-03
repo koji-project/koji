@@ -915,6 +915,8 @@ def get_header_field(hdr, name, src_arch=False):
             result = []
         elif isinstance(result, six.integer_types):
             result = [result]
+    if isinstance(result, bytes):
+        result = result.decode('utf-8')
     return result
 
 
