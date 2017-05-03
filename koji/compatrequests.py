@@ -12,10 +12,10 @@ import six.moves.http_client
 import urlparse
 import urllib
 import sys
-import ssl.SSLCommon
+from .ssl import SSLCommon
 import six
 try:
-    from ssl import ssl as pyssl
+    from .ssl import ssl as pyssl
 except ImportError:  # pragma: no cover
     pass
 
@@ -61,9 +61,9 @@ class Session(object):
             certs['peer_ca_cert'] = verify
         if cert:
             certs['key_and_cert'] = cert
-            ctx = ssl.SSLCommon.CreateSSLContext(certs)
+            ctx = SSLCommon.CreateSSLContext(certs)
             cnxOpts = {'ssl_context' : ctx}
-            cnxClass = ssl.SSLCommon.PlgHTTPSConnection
+            cnxClass = SSLCommon.PlgHTTPSConnection
             default_port = 443
         elif scheme == 'https':
             cnxOpts = {}

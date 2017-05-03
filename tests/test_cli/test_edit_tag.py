@@ -11,7 +11,7 @@ import mock
 
 from mock import call
 
-import loadcli
+from . import loadcli
 import six
 
 cli = loadcli.cli
