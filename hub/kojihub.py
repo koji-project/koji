@@ -59,6 +59,7 @@ import zipfile
 from koji.context import context
 from six.moves import range
 from six.moves import zip
+import six
 
 try:
     import json
@@ -2795,7 +2796,7 @@ def lookup_name(table, info, strict=False, create=False):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
-    elif isinstance(info, unicode):
+    elif isinstance(info, six.text_type):
         info = koji.fixEncoding(info)
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
@@ -5132,7 +5133,7 @@ class CG_Importer(object):
         if metadata is None:
             #default to looking for uploaded file
             metadata = 'metadata.json'
-        if not isinstance(metadata, (str, unicode)):
+        if not isinstance(metadata, (str, six.text_type)):
             raise koji.GenericError("Invalid metadata value: %r" % metadata)
         if metadata.endswith('.json'):
             # handle uploaded metadata
@@ -9341,7 +9342,7 @@ class RootExports(object):
         if before:
             if isinstance(before, datetime.datetime):
                 before = calendar.timegm(before.utctimetuple())
-            elif isinstance(before, (str, unicode)):
+            elif isinstance(before, (str, six.text_type)):
                 before = koji.util.parseTime(before)
             elif isinstance(before, (int, long)):
                 pass
@@ -9351,7 +9352,7 @@ class RootExports(object):
         if after:
             if isinstance(after, datetime.datetime):
                 after = calendar.timegm(after.utctimetuple())
-            elif isinstance(after, (str, unicode)):
+            elif isinstance(after, (str, six.text_type)):
                 after = koji.util.parseTime(after)
             elif isinstance(after, (int, long)):
                 pass

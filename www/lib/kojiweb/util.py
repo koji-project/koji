@@ -34,6 +34,7 @@ from xmlrpclib import ProtocolError
 from xml.parsers.expat import ExpatError
 import cgi
 from six.moves import range
+import six
 
 class NoSuchException(Exception):
     pass
@@ -96,7 +97,7 @@ class DecodeUTF8(Cheetah.Filters.Filter):
     def filter(self, *args, **kw):
         """Convert all strs to unicode objects"""
         result = super(DecodeUTF8, self).filter(*args, **kw)
-        if isinstance(result, unicode):
+        if isinstance(result, six.text_type):
             pass
         else:
             result = result.decode('utf-8', 'replace')

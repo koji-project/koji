@@ -25,6 +25,7 @@ from __future__ import absolute_import
 import sys
 from six.moves import range
 from six.moves import zip
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -550,7 +551,7 @@ def rpm_hdr_size(f, ofs=None):
     f = filename or file object
     ofs = offset of the header
     """
-    if isinstance(f, (str, unicode)):
+    if isinstance(f, (str, six.text_type)):
         fo = file(f, 'rb')
     else:
         fo = f
@@ -580,7 +581,7 @@ def rpm_hdr_size(f, ofs=None):
     # add eight bytes for section header
     hdrsize = hdrsize + 8
 
-    if not isinstance(f, (str, unicode)):
+    if not isinstance(f, (str, six.text_type)):
         fo.close()
     return hdrsize
 
@@ -870,7 +871,7 @@ def get_rpm_header(f, ts=None):
     if ts is None:
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
-    if isinstance(f, (str, unicode)):
+    if isinstance(f, (str, six.text_type)):
         fo = file(f, "r")
     else:
         fo = f
@@ -2912,7 +2913,7 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     if not value:
         return ''
 
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
         # value is already unicode, so just convert it
         # to a utf8-encoded str
         s = value.encode('utf8')
@@ -2946,7 +2947,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
             k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
-    elif isinstance(value, unicode):
+    elif isinstance(value, six.text_type):
         if remove_nonprintable:
             return removeNonprintable(value.encode('utf8'))
         else:
