@@ -583,7 +583,7 @@ def get_policy(opts, plugins):
             # tests can be limited to certain policies by setting a class variable
             for name, test in tests.iteritems():
                 if hasattr(test, 'policy'):
-                    if isinstance(test.policy, basestring):
+                    if isinstance(test.policy, six.string_types):
                         if pname != test.policy:
                             continue
                     elif pname not in test.policy:

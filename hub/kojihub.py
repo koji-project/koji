@@ -862,7 +862,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     tag_id = tag['id']
     pkg = lookup_package(pkginfo, strict=False)
     if not pkg:
-        if not isinstance(pkginfo, basestring):
+        if not isinstance(pkginfo, six.string_types):
             raise koji.GenericError("Invalid package: %s" % pkginfo)
     if owner is not None:
         owner = get_user(owner, strict=True)['id']
@@ -1303,7 +1303,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         joins.append('LEFT OUTER JOIN rpmsigs on rpminfo.id = rpmsigs.rpm_id')
     if arch:
         data['arch'] = arch
-        if isinstance(arch, basestring):
+        if isinstance(arch, six.string_types):
             clauses.append('rpminfo.arch = %(arch)s')
         elif isinstance(arch, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arch)s')
@@ -2089,7 +2089,7 @@ def remove_host_from_channel(hostname, channel_name):
 def rename_channel(old, new):
     """Rename a channel"""
     context.session.assertPerm('admin')
-    if not isinstance(new, basestring):
+    if not isinstance(new, six.string_types):
         raise koji.GenericError("new channel name must be a string")
     cinfo = get_channel(old, strict=True)
     dup_check = get_channel(new, strict=False)
@@ -2973,7 +2973,7 @@ def get_tag(tagInfo, strict=False, event=None):
     clauses = [eventCondition(event, table='tag_config')]
     if isinstance(tagInfo, (int, long)):
         clauses.append("tag.id = %(tagInfo)i")
-    elif isinstance(tagInfo, basestring):
+    elif isinstance(tagInfo, six.string_types):
         clauses.append("tag.name = %(tagInfo)s")
     else:
         raise koji.GenericError('invalid type for tagInfo: %s' % type(tagInfo))
@@ -5191,7 +5191,7 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
             owner = metadata['build'].get('owner', None)
             if owner:
-                if not isinstance(owner, basestring):
+                if not isinstance(owner, six.string_types):
                     raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
                 buildinfo['owner'] = get_user(owner, strict=True)['id']
         self.buildinfo = buildinfo
@@ -5532,11 +5532,11 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
 
     #sanity check rpminfo
     dtypes = (
-        ('name', basestring),
-        ('version', basestring),
-        ('release', basestring),
+        ('name', six.string_types),
+        ('version', six.string_types),
+        ('release', six.string_types),
         ('epoch', (int, type(None))),
-        ('arch', basestring),
+        ('arch', six.string_types),
         ('payloadhash', str),
         ('size', int),
         ('buildtime', (int, long)))
@@ -6677,7 +6677,7 @@ def query_history(tables=None, **kwargs):
                 fields['creator.id = %(editor)i'] = '_created_by'
                 fields['revoker.id = %(editor)i'] = '_revoked_by'
             elif arg == 'after':
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['after'] = value
                 clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
@@ -6692,7 +6692,7 @@ def query_history(tables=None, **kwargs):
                 fields[c_test] = '_created_after_event'
                 fields[r_test] = '_revoked_after_event'
             elif arg == 'before':
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['before'] = value
                 clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
@@ -7862,7 +7862,7 @@ def policy_get_pkg(data):
         if not pkginfo:
             #for some operations (e.g. adding a new package), the package
             #entry may not exist yet
-            if isinstance(data['package'], basestring):
+            if isinstance(data['package'], six.string_types):
                 return {'id' : None, 'name' : data['package']}
             else:
                 raise koji.GenericError("Invalid package: %s" % data['package'])
@@ -8782,7 +8782,7 @@ class RootExports(object):
         # we will accept offset and size as strings to work around xmlrpc limits
         offset = koji.decode_int(offset)
         size = koji.decode_int(size)
-        if isinstance(md5sum, basestring):
+        if isinstance(md5sum, six.string_types):
             # this case is for backwards compatibility
             verify = "md5"
             digest = md5sum
@@ -9888,7 +9888,7 @@ class RootExports(object):
 
         headers = koji.get_header_fields(rpm_path, headers)
         for key, value in headers.items():
-            if isinstance(value, basestring):
+            if isinstance(value, six.string_types):
                 headers[key] = koji.fixEncoding(value, remove_nonprintable=True)
         return headers
 

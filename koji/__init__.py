@@ -997,7 +997,7 @@ def check_NVR(nvr, strict=False):
             return False
 
 def _check_NVR(nvr):
-    if isinstance(nvr, basestring):
+    if isinstance(nvr, six.string_types):
         nvr = parse_NVR(nvr)
     if '-' in nvr['version']:
         raise GenericError('The "-" character not allowed in version field')
@@ -1026,7 +1026,7 @@ def check_NVRA(nvra, strict=False):
 
 
 def _check_NVRA(nvra):
-    if isinstance(nvra, basestring):
+    if isinstance(nvra, six.string_types):
             nvra = parse_NVRA(nvra)
     if '-' in nvra['version']:
         raise GenericError('The "-" character not allowed in version field')

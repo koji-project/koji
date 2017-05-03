@@ -34,6 +34,7 @@ import time
 import six.moves.configparser
 from zlib import adler32
 from six.moves import range
+import six
 
 # imported from kojiweb and kojihub
 try:
@@ -126,7 +127,7 @@ def multi_fnmatch(s, patterns):
 
     If patterns is a string, it will be split() first
     """
-    if isinstance(patterns, basestring):
+    if isinstance(patterns, six.string_types):
         patterns = patterns.split()
     for pat in patterns:
         if fnmatch(s, pat):

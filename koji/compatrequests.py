@@ -7,11 +7,13 @@ module that is based on the older codepaths in koji. It only provides
 the bits that koji needs.
 """
 
+from __future__ import absolute_import
 import six.moves.http_client
 import urlparse
 import urllib
 import sys
 import ssl.SSLCommon
+import six
 try:
     from ssl import ssl as pyssl
 except ImportError:  # pragma: no cover
@@ -55,7 +57,7 @@ class Session(object):
         # Otherwise we make a new one
         default_port = 80
         certs = {}
-        if isinstance(verify, basestring):
+        if isinstance(verify, six.string_types):
             certs['peer_ca_cert'] = verify
         if cert:
             certs['key_and_cert'] = cert
