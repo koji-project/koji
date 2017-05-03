@@ -401,14 +401,8 @@ class Session(object):
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
 
-        cursor = context.cnx.cursor()
-        query = """SELECT id FROM users
-        WHERE name = %(username)s"""
-        cursor.execute(query, locals())
-        result = cursor.fetchone()
-        if result:
-            user_id = result[0]
-        else:
+        user_id = self.getUserId(username)
+        if not user_id:
             if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUser(username)
             else:
