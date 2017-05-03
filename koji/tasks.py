@@ -234,13 +234,15 @@ class BaseTaskHandler(object):
                 if all:
                     if failany:
                         failed = False
+                        task_error = None
                         for task in finished:
                             if task in canfail:
                                 # no point in checking
                                 continue
                             try:
                                 self.session.getTaskResult(task)
-                            except (koji.GenericError, six.moves.xmlrpc_client.Fault) as task_error:
+                            except (koji.GenericError, six.moves.xmlrpc_client.Fault) as te:
+                                task_error = te
                                 self.logger.info("task %s failed or was canceled" % task)
                                 failed = True
                                 break
