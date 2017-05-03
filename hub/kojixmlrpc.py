@@ -19,7 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
-from ConfigParser import RawConfigParser
+from six.moves.configparser import RawConfigParser
 import datetime
 import inspect
 import logging
@@ -30,8 +30,8 @@ import traceback
 import types
 import pprint
 import resource
-import xmlrpclib
-from xmlrpclib import getparser, dumps, Fault
+import six.moves.xmlrpc_client
+from six.moves.xmlrpc_client import getparser, dumps, Fault
 from koji.server import WSGIWrapper
 
 import koji
@@ -45,9 +45,9 @@ from six.moves import range
 
 
 # Workaround to allow xmlrpclib deal with iterators
-class Marshaller(xmlrpclib.Marshaller):
+class Marshaller(six.moves.xmlrpc_client.Marshaller):
 
-    dispatch = xmlrpclib.Marshaller.dispatch.copy()
+    dispatch = six.moves.xmlrpc_client.Marshaller.dispatch.copy()
 
     def dump_generator(self, value, write):
         dump = self.__dump
@@ -63,7 +63,7 @@ class Marshaller(xmlrpclib.Marshaller):
         self.dump_string(value, write)
     dispatch[datetime.datetime] = dump_datetime
 
-xmlrpclib.Marshaller = Marshaller
+six.moves.xmlrpc_client.Marshaller = Marshaller
 
 
 class HandlerRegistry(object):

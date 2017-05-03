@@ -4,7 +4,7 @@ from mock import call
 
 import os
 import optparse
-import ConfigParser
+import six.moves.configparser
 import koji
 import koji.util
 
@@ -473,7 +473,7 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertEqual(cm.exception.args[0], 'total ordering not possible')
 
     def _read_conf(self, cfile):
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         path = os.path.dirname(__file__)
         with open(path + cfile, 'r') as conf_file:
             config.readfp(conf_file)

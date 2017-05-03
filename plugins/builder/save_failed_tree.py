@@ -2,7 +2,7 @@ import fnmatch
 import os
 import sys
 import tarfile
-import ConfigParser
+import six.moves.configparser
 
 import koji
 import koji.tasks as tasks
@@ -27,7 +27,7 @@ def omit_paths3(tarinfo):
 
 def read_config():
     global config
-    cp = ConfigParser.SafeConfigParser()
+    cp = six.moves.configparser.SafeConfigParser()
     cp.read(CONFIG_FILE)
     config = {
         'path_filters': [],

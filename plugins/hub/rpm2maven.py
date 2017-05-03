@@ -8,7 +8,7 @@
 import koji
 from koji.context import context
 from koji.plugin import callback
-import ConfigParser
+import six.moves.configparser
 import fnmatch
 import os
 import shutil
@@ -30,7 +30,7 @@ def maven_import(cbtype, *args, **kws):
     filepath = kws['filepath']
 
     if not config:
-        config = ConfigParser.SafeConfigParser()
+        config = six.moves.configparser.SafeConfigParser()
         config.read(CONFIG_FILE)
     name_patterns = config.get('patterns', 'rpm_names').split()
     for pattern in name_patterns:

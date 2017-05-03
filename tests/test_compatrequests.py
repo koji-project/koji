@@ -1,4 +1,4 @@
-import httplib
+import six.moves.http_client
 import mock
 import unittest
 import urlparse
@@ -59,7 +59,7 @@ class TestResponse(unittest.TestCase):
         self.response.response.status = 404
         self.response.response.reason = 'Not Found'
         self.response.response.getheader.return_value = 42
-        with self.assertRaises(httplib.HTTPException):
+        with self.assertRaises(six.moves.http_client.HTTPException):
             self.response.raise_for_status()
 
 

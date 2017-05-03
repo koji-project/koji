@@ -57,11 +57,11 @@ import sys
 import time
 import traceback
 import xml.dom.minidom
-import xmlrpclib
+import six.moves.xmlrpc_client
 import zipfile
 import copy
 import Cheetah.Template
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
@@ -1976,7 +1976,7 @@ class ChainMavenTask(MultiPlatformTask):
                 del todo[package]
             try:
                 results = self.wait(running.keys())
-            except (xmlrpclib.Fault, koji.GenericError), e:
+            except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
                 self.wait(all=True)
@@ -5635,7 +5635,7 @@ if __name__ == "__main__":
                               options.serverca)
         except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
@@ -5643,7 +5643,7 @@ if __name__ == "__main__":
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif 'krbV' in sys.modules:
         krb_principal = options.krb_principal
@@ -5669,7 +5669,7 @@ if __name__ == "__main__":
     #make sure it works
     try:
         ret = session.echo("OK")
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
         quit("Error: incorrect server response: %r" % (ret))

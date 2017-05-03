@@ -29,7 +29,7 @@ import pprint
 import sys
 import traceback
 
-from ConfigParser import RawConfigParser
+from six.moves.configparser import RawConfigParser
 from koji.server import WSGIWrapper, ServerError, ServerRedirect
 from koji.util import dslice
 

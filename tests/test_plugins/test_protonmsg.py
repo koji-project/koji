@@ -4,7 +4,7 @@ import protonmsg
 from koji.context import context
 import tempfile
 from StringIO import StringIO
-from ConfigParser import SafeConfigParser
+from six.moves.configparser import SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):
     def tearDown(self):

@@ -43,7 +43,7 @@ except ImportError:  # pragma: no cover
         import simplejson as json
     except ImportError:
         json = None
-import ConfigParser
+import six.moves.configparser
 import base64
 import dateutil.parser
 import errno
@@ -63,7 +63,7 @@ import time
 import traceback
 import urlgrabber.grabber as grabber
 import urlgrabber.progress as progress
-import xmlrpclib
+import six.moves.xmlrpc_client
 try:
     import libcomps
 except ImportError:  # pragma: no cover
@@ -278,7 +278,7 @@ def get_options():
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
@@ -342,7 +342,7 @@ class TaskWatcher(object):
         error = None
         try:
             result = self.session.getTaskResult(self.id)
-        except (xmlrpclib.Fault,koji.GenericError),e:
+        except (six.moves.xmlrpc_client.Fault,koji.GenericError),e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -5917,7 +5917,7 @@ def handle_image_build(options, session, args):
         if not os.path.exists(task_options.config):
             parser.error(_("%s not found!" % task_options.config))
         section = 'image-build'
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         conf_fd = open(task_options.config)
         config.readfp(conf_fd)
         conf_fd.close()

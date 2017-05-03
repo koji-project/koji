@@ -33,11 +33,11 @@ except ImportError:  # pragma: no cover
     sys.stderr.flush()
 import base64
 import datetime
-import ConfigParser
+import six.moves.configparser
 import errno
 import exceptions
 from fnmatch import fnmatch
-import httplib
+import six.moves.http_client
 import imp
 import logging
 import logging.handlers
@@ -78,10 +78,10 @@ import urllib2
 import urlparse
 from . import util
 import warnings
-import xmlrpclib
+import six.moves.xmlrpc_client
 import xml.sax
 import xml.sax.handler
-from xmlrpclib import loads, dumps, Fault
+from six.moves.xmlrpc_client import loads, dumps, Fault
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
@@ -1663,7 +1663,7 @@ def read_config(profile_name, user_config=None):
     got_conf = False
     for configFile in configs:
         f = open(configFile)
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         config.readfp(f)
         f.close()
         if config.has_section(profile_name):
@@ -1946,7 +1946,7 @@ def is_conn_error(e):
             return True
         # else
         return False
-    if isinstance(e, httplib.BadStatusLine):
+    if isinstance(e, six.moves.http_client.BadStatusLine):
         return True
     if requests is not None:
         try:
@@ -1956,7 +1956,7 @@ def is_conn_error(e):
                 e2 = getattr(e, 'args', [None])[0]
                 if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
                     e3 = getattr(e2, 'args', [None, None])[1]
-                    if isinstance(e3, httplib.BadStatusLine):
+                    if isinstance(e3, six.moves.http_client.BadStatusLine):
                         return True
                 if isinstance(e2, socket.error):
                     # same check as unwrapped socket error
@@ -2368,7 +2368,7 @@ class ClientSession(object):
         return ret
 
     def _read_xmlrpc_response(self, response):
-        p, u = xmlrpclib.getparser()
+        p, u = six.moves.xmlrpc_client.getparser()
         for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
                 print("body: %r" % chunk)

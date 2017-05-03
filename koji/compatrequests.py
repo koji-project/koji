@@ -7,7 +7,7 @@ module that is based on the older codepaths in koji. It only provides
 the bits that koji needs.
 """
 
-import httplib
+import six.moves.http_client
 import urlparse
 import urllib
 import sys
@@ -84,11 +84,11 @@ class Session(object):
                 # no verify
                 ctx = pyssl._create_unverified_context()
                 cnxOpts['context'] = ctx
-            cnxClass = httplib.HTTPSConnection
+            cnxClass = six.moves.http_client.HTTPSConnection
             default_port = 443
         elif scheme == 'http':
             cnxOpts = {}
-            cnxClass = httplib.HTTPConnection
+            cnxClass = six.moves.http_client.HTTPConnection
         else:
             raise IOError("unsupported protocol: %s" % scheme)
 
@@ -123,7 +123,7 @@ class Response(object):
 
     def raise_for_status(self):
         if self.response.status >= 400:
-            raise httplib.HTTPException("HTTP %s: %s" % (self.response.status,
+            raise six.moves.http_client.HTTPException("HTTP %s: %s" % (self.response.status,
                     self.response.reason))
 
 

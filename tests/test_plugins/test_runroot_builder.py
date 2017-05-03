@@ -1,6 +1,6 @@
 import unittest
 import mock
-import ConfigParser
+import six.moves.configparser
 
 # inject builder data
 from tests.test_builder.loadkojid import kojid
@@ -40,7 +40,7 @@ class FakeConfigParser(object):
         try:
             return self.CONFIG[section][key]
         except KeyError:
-            raise ConfigParser.NoOptionError(section, key)
+            raise six.moves.configparser.NoOptionError(section, key)
 
 
 class TestRunrootConfig(unittest.TestCase):

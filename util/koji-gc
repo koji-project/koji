@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import LazyDict, LazyValue
 import koji.policy
-import ConfigParser
+import six.moves.configparser
 from email.MIMEText import MIMEText
 import fnmatch
 import optparse
@@ -25,7 +25,7 @@ import smtplib
 import socket   # for socket.error
 import sys
 import time
-import xmlrpclib  # for ProtocolError and Fault
+import six.moves.xmlrpc_client  # for ProtocolError and Fault
 
 
 OptionParser = optparse.OptionParser
@@ -114,7 +114,7 @@ def get_options():
 
     defaults = parser.get_default_values()
 
-    config = ConfigParser.ConfigParser()
+    config = six.moves.configparser.ConfigParser()
     cf = getattr(options, 'config_file', None)
     if cf:
         if not os.access(cf, os.F_OK):
@@ -339,7 +339,7 @@ def warn(msg):
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
@@ -454,7 +454,7 @@ def handle_trash():
             continue
         try:
             refs = session.buildReferences(binfo['id'], limit=10)
-        except xmlrpclib.Fault:
+        except six.moves.xmlrpc_client.Fault:
             print("[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr))
             continue
         #XXX - this is more data than we need
@@ -656,7 +656,7 @@ def handle_delete(just_salvage=False):
             session.untagBuildBypass(trashcan_tag,  binfo['id'])
             try:
                 session.deleteBuild(binfo['id'])
-            except (xmlrpclib.Fault, koji.GenericError), e:
+            except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
                 print("Warning: deletion failed: %s" % e)
                 #server issue
                 pass
@@ -875,7 +875,7 @@ def handle_prune():
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
-                        except (xmlrpclib.Fault, koji.GenericError), e:
+                        except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
                             print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
@@ -909,7 +909,7 @@ def handle_prune():
                 print("Deleting untagged build: %s"  % nvr)
                 try:
                     session.deleteBuild(build_id, strict=False)
-                except (xmlrpclib.Fault, koji.GenericError), e:
+                except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
                     print("Warning: deletion failed: %s" % e)
                     #server issue
                     pass

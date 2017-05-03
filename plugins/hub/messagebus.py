@@ -6,7 +6,7 @@
 
 from koji import PluginError
 from koji.plugin import callbacks, callback, ignore_error
-import ConfigParser
+import six.moves.configparser
 import logging
 import qpid.messaging
 import qpid.messaging.transports
@@ -78,7 +78,7 @@ def get_sender():
             session = None
             target = None
 
-    config = ConfigParser.SafeConfigParser()
+    config = six.moves.configparser.SafeConfigParser()
     config.read(CONFIG_FILE)
     if not config.has_option('broker', 'timeout'):
         config.set('broker', 'timeout', '60')

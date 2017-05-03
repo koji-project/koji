@@ -17,7 +17,7 @@
 import os, sys
 from OpenSSL import SSL
 import SSLConnection
-import httplib
+import six.moves.http_client
 import socket
 
 def our_verify(connection, x509, errNum, errDepth, preverifyOK):
@@ -46,13 +46,13 @@ def CreateSSLContext(certs):
     return ctx
 
 
-class PlgHTTPSConnection(httplib.HTTPConnection):
+class PlgHTTPSConnection(six.moves.http_client.HTTPConnection):
     "This class allows communication via SSL."
 
-    response_class = httplib.HTTPResponse
+    response_class = six.moves.http_client.HTTPResponse
 
     def __init__(self, host, port=None, ssl_context=None, strict=None, timeout=None):
-        httplib.HTTPConnection.__init__(self, host, port, strict)
+        six.moves.http_client.HTTPConnection.__init__(self, host, port, strict)
         self.ssl_ctx = ssl_context
         self._timeout = timeout
 

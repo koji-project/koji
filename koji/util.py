@@ -31,7 +31,7 @@ import shutil
 import stat
 import sys
 import time
-import ConfigParser
+import six.moves.configparser
 from zlib import adler32
 from six.moves import range
 
@@ -588,7 +588,7 @@ def parse_maven_params(confs, chain=False, scratch=False):
     """
     if not isinstance(confs, (list, tuple)):
         confs = [confs]
-    config = ConfigParser.ConfigParser()
+    config = six.moves.configparser.ConfigParser()
     for conf in confs:
         conf_fd = file(conf)
         config.readfp(conf_fd)
