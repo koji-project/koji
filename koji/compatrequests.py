@@ -9,8 +9,7 @@ the bits that koji needs.
 
 from __future__ import absolute_import
 import six.moves.http_client
-import urlparse
-import urllib
+import six.moves.urllib
 import sys
 from .ssl import SSLCommon
 import six
@@ -27,7 +26,7 @@ class Session(object):
 
     def post(self, url, data=None, headers=None, stream=None, verify=None,
                 cert=None, timeout=None):
-        uri = urlparse.urlsplit(url)
+        uri = six.moves.urllib.parse.urlsplit(url)
         if uri[3]:
             handler = "%s?%s" % (uri[2], uri[3])
         else:
@@ -46,7 +45,7 @@ class Session(object):
 
     def get_connection(self, uri, cert, verify, timeout):
         scheme = uri[0]
-        host, port = urllib.splitport(uri[1])
+        host, port = six.moves.urllib.splitport(uri[1])
         key = (scheme, host, cert, verify, timeout)
         #if self.connection and self.opts.get('keepalive'):
         if self.connection:   # XXX honor keepalive

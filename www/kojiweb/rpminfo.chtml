@@ -2,7 +2,7 @@
 #from kojiweb import util
 #from pprint import pformat
 #import time
-#import urllib
+#import six.moves.urllib
 
 #attr _PASSTHROUGH = ['rpmID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
@@ -237,7 +237,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$util.escapeHTML($file.name)</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$six.moves.urllib.parse.quote($file.name)">$util.escapeHTML($file.name)</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>

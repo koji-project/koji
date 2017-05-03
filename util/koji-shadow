@@ -42,9 +42,8 @@ import socket   # for socket.error and socket.setdefaulttimeout
 import string
 import sys
 import time
-import urllib2
-import urlgrabber.grabber as grabber
 import six.moves.xmlrpc_client  # for ProtocolError and Fault
+import six.moves.urllib
 import rpm
 
 # koji.fp.o keeps stalling, probably network errors...
@@ -449,7 +448,7 @@ class TrackedBuild(object):
             url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
             log("Downloading %s" % url)
             #XXX - this is not really the right place for this
-            fsrc = urllib2.urlopen(url)
+            fsrc = six.moves.urllib.request.urlopen(url)
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
             fdst = open(fn, 'w')
@@ -891,7 +890,7 @@ class BuildTracker(object):
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
                 log ("Downloading %s to %s" % (url, dst))
-                fsrc = urllib2.urlopen(url)
+                fsrc = six.moves.urllib.request.urlopen(url)
                 fdst = open(fn, 'w')
                 shutil.copyfileobj(fsrc, fdst)
                 fsrc.close()
@@ -904,7 +903,7 @@ class BuildTracker(object):
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
             log ("Downloading %s to %s..." % (url, dst))
-            fsrc = urllib2.urlopen(url)
+            fsrc = six.moves.urllib.request.urlopen(url)
             fdst = open(dst, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()

@@ -27,12 +27,12 @@ import os
 import logging
 import six.moves.xmlrpc_client
 import signal
-import urllib2
 import shutil
 import random
 import time
 import pprint
 from six.moves import range
+import six.moves.urllib
 
 def scan_mounts(topdir):
     """Search path for mountpoints"""
@@ -311,7 +311,7 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
-            fsrc = urllib2.urlopen(url)
+            fsrc = six.moves.urllib.request.urlopen(url)
             if not os.path.exists(os.path.dirname(fn)):
                 os.makedirs(os.path.dirname(fn))
             fdst = open(fn, 'w')

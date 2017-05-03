@@ -462,7 +462,7 @@ class TasksTestCase(TestCase):
         obj = TestTask(123, 'some_method', ['random_arg'], None, options, temp_path)
         self.assertEquals(obj.localPath('test.txt'), dummy_file)
 
-    @patch('urllib2.urlopen', return_value=StringIO(six.text_type('Important things\nSome more important things\n')))
+    @patch('six.moves.urllib.request.urlopen', return_value=StringIO(six.text_type('Important things\nSome more important things\n')))
     def test_BaseTaskHandler_localPath_no_file(self, mock_urlopen):
         """
         """

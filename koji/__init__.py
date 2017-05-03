@@ -72,15 +72,13 @@ import struct
 import tempfile
 import time
 import traceback
-import urllib
-import urllib2
-import urlparse
 from . import util
 import warnings
 import six.moves.xmlrpc_client
 import xml.sax
 import xml.sax.handler
 from six.moves.xmlrpc_client import loads, dumps, Fault
+import six.moves.urllib
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
@@ -1566,7 +1564,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     on options"""
     if topurl:
         url = "%s/%s" % (topurl, relpath)
-        src = urllib2.urlopen(url)
+        src = six.moves.urllib.request.urlopen(url)
         fo = tempfile.TemporaryFile(dir=tempdir)
         shutil.copyfileobj(src, fo)
         src.close()
@@ -2156,8 +2154,7 @@ class ClientSession(object):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
 
-        uri = urlparse.urlsplit(self.baseurl)
-        host, port = urllib.splitport(uri[1])
+        host = six.moves.urllib.parse.urlparse(self.baseurl).hostname
         if self.opts.get('krb_rdns', True):
             servername = socket.getfqdn(host)
         else:
@@ -2175,7 +2172,7 @@ class ClientSession(object):
 
         # force https
         old_baseurl = self.baseurl
-        uri = urlparse.urlsplit(self.baseurl)
+        uri = six.moves.urllib.parse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
 
@@ -2219,7 +2216,7 @@ class ClientSession(object):
         # when API is changed
 
         # force https
-        uri = urlparse.urlsplit(self.baseurl)
+        uri = six.moves.urllib.parse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
 
@@ -2294,7 +2291,7 @@ class ClientSession(object):
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = "%s?%s" % (self.baseurl, urllib.urlencode(sinfo))
+            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
@@ -2565,7 +2562,7 @@ class ClientSession(object):
             args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
-        handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
+        handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(args))
         headers = [
             ('User-Agent', 'koji/1'),
             ("Content-Type", "application/octet-stream"),

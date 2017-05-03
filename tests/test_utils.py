@@ -82,7 +82,7 @@ class MiscFunctionTestCase(unittest.TestCase):
         islink.assert_called_once_with(dst)
         move.assert_not_called()
 
-    @mock.patch('urllib2.urlopen')
+    @mock.patch('six.moves.urllib.request.urlopen')
     @mock.patch('tempfile.TemporaryFile')
     @mock.patch('shutil.copyfileobj')
     @mock.patch('__builtin__.open')

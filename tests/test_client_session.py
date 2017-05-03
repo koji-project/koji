@@ -10,7 +10,7 @@ class TestClientSession(unittest.TestCase):
     @mock.patch('socket.getfqdn')
     def test_server_principal_rdns(self, getfqdn):
         opts = {'krb_rdns': True}
-        session = koji.ClientSession('http://koji.example.com/kojihub', opts)
+        session = koji.ClientSession('http://koji.example.com:30/kojihub', opts)
         cprinc = mock.MagicMock()
         cprinc.realm = "REALM"
         getfqdn.return_value = 'koji02.example.com'
