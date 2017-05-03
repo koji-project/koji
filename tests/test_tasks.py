@@ -112,7 +112,7 @@ class TasksTestCase(TestCase):
             umount_all('/dev')
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
-            self.assertEquals(e.message,
+            self.assertEquals(e.args[0],
                               'umount failed (exit code 1) for /dev/shm')
 
     # Patching the scan_mounts function instead of the built-in open function because this is only testing umount_all
@@ -126,7 +126,7 @@ class TasksTestCase(TestCase):
             umount_all('/dev')
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
-            self.assertEquals(e.message, 'Unmounting incomplete: [\'/dev/shm\', \'/dev/mqueue\']')
+            self.assertEquals(e.args[0], 'Unmounting incomplete: [\'/dev/shm\', \'/dev/mqueue\']')
 
     @patch('os.path.isfile', return_value=True)
     @patch('os.remove')
@@ -172,7 +172,7 @@ class TasksTestCase(TestCase):
             safe_rmtree('/mnt/folder', False, True)
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
-            self.assertEquals(e.message, 'file removal failed (code 1) for /mnt/folder')
+            self.assertEquals(e.args[0], 'file removal failed (code 1) for /mnt/folder')
 
     @patch('os.path.isfile', return_value=False)
     @patch('os.path.islink', return_value=False)
@@ -186,7 +186,7 @@ class TasksTestCase(TestCase):
             safe_rmtree('/mnt/folder', False, True)
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
-            self.assertEquals(e.message, 'dir removal failed (code 1) for /mnt/folder')
+            self.assertEquals(e.args[0], 'dir removal failed (code 1) for /mnt/folder')
 
     def test_BaseTaskHandler_handler_not_set(self):
         """ Tests that an exception is thrown when the handler function is not overwritten by the child class.
@@ -357,7 +357,7 @@ class TasksTestCase(TestCase):
             obj.wait([1551234, 1591234], all=True, failany=True)
             raise Exception('A GeneralError was not raised.')
         except koji.GenericError as e:
-            self.assertEquals(e.message, 'Uh oh, we\'ve got a problem here!')
+            self.assertEquals(e.args[0], 'Uh oh, we\'ve got a problem here!')
             obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
 
     def test_BaseTaskHandler_getUploadDir(self):
@@ -514,7 +514,7 @@ class TasksTestCase(TestCase):
             obj.find_arch('noarch', host, None)
             raise Exception('The BuildError Exception was not raised')
         except koji.BuildError as e:
-            self.assertEquals(e.message, 'No arch list for this host: test.domain.local')
+            self.assertEquals(e.args[0], 'No arch list for this host: test.domain.local')
 
     def test_BaseTaskHandler_find_arch_noarch_bad_tag(self):
         """ Tests that the find_arch function raises an exception when the tag parameter doesn't contain a
@@ -529,7 +529,7 @@ class TasksTestCase(TestCase):
             obj.find_arch('noarch', host, tag)
             raise Exception('The BuildError Exception was not raised')
         except koji.BuildError as e:
-            self.assertEquals(e.message, 'No arch list for tag: some_package-1.2-build')
+            self.assertEquals(e.args[0], 'No arch list for tag: some_package-1.2-build')
 
     def test_BaseTaskHandler_find_arch_noarch(self):
         """ Tests that the find_arch function finds a match of x86_64 when the host only supports x86_64
@@ -555,7 +555,7 @@ class TasksTestCase(TestCase):
             obj.find_arch('noarch', host, tag)
             raise Exception('The BuildError Exception was not raised')
         except koji.BuildError as e:
-            self.assertEquals(e.message, ('host test.domain.local (i386) does not support '
+            self.assertEquals(e.args[0], ('host test.domain.local (i386) does not support '
                                           'any arches of tag some_package-1.2-build (aarch64, x86_64)'))
 
     def test_getRepo_tied_to_session(self):
@@ -652,7 +652,7 @@ class TasksTestCase(TestCase):
             raise Exception('The BuildError Exception was not raised')
         except koji.BuildError as e:
             obj.session.getRepo.assert_called_once_with(8472)
-            self.assertEquals(e.message, 'no repo (and no target) for tag rhel-7.3-build')
+            self.assertEquals(e.args[0], 'no repo (and no target) for tag rhel-7.3-build')
 
     def test_FakeTask_handler(self):
         """ Tests that the FakeTest handler can be instantiated and returns 42 when run
