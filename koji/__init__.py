@@ -464,7 +464,7 @@ def encode_int(n):
 
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
-    if isinstance(n, (int, long)):
+    if isinstance(n, six.integer_types):
         return n
     #else
     return int(n)
@@ -914,7 +914,7 @@ def get_header_field(hdr, name, src_arch=False):
         # HACK: workaround for https://bugzilla.redhat.com/show_bug.cgi?id=991329
         if result is None:
             result = []
-        elif isinstance(result, (int, long)):
+        elif isinstance(result, six.integer_types):
             result = [result]
     return result
 
