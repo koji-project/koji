@@ -1579,7 +1579,7 @@ def handle_restart_hosts(options, session, args):
 
 def linked_upload(localfile, path, name=None):
     """Link a file into the (locally writable) workdir, bypassing upload"""
-    old_umask = os.umask(002)
+    old_umask = os.umask(0o02)
     try:
         if name is None:
             name = os.path.basename(localfile)

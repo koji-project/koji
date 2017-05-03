@@ -466,12 +466,12 @@ class adler32_constructor(object):
 
     #mimicing the hashlib constructors
     def __init__(self, arg=''):
-        self._value = adler32(arg) & 0xffffffffL
+        self._value = adler32(arg) & 0xffffffff
         #the bitwise and works around a bug in some versions of python
         #see: https://bugs.python.org/issue1202
 
     def update(self, arg):
-        self._value = adler32(arg, self._value) & 0xffffffffL
+        self._value = adler32(arg, self._value) & 0xffffffff
 
     def digest(self):
         return self._value

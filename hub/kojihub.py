@@ -8814,7 +8814,7 @@ class RootExports(object):
                     # but we allow .log files to be uploaded multiple times to support
                     # realtime log-file viewing
                     raise koji.GenericError("file already exists: %s" % fn)
-        fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
+        fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
         # log_error("fd=%r" %fd)
         try:
             if offset == 0 or (offset == -1 and size == len(contents)):
@@ -12523,7 +12523,7 @@ def handle_upload(environ):
     size = 0
     chksum = sum_cls()
     inf = environ['wsgi.input']
-    fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
+    fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
     try:
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX|fcntl.LOCK_NB)

@@ -430,7 +430,7 @@ class BuildRoot(object):
                 if workdir:
                     outfile = os.path.join(workdir, mocklog)
                     flags = os.O_CREAT | os.O_WRONLY | os.O_APPEND
-                    fd = os.open(outfile, flags, 0666)
+                    fd = os.open(outfile, flags, 0o666)
                     os.dup2(fd, 1)
                     os.dup2(fd, 2)
                 if os.getuid() == 0 and hasattr(self.options,"mockuser"):
@@ -1347,7 +1347,7 @@ class BuildMavenTask(BaseBuildTask):
                     st = os.lstat(filepath)
                     mtime = time.localtime(st.st_mtime)
                     info = zipfile.ZipInfo(filepath[roottrim:])
-                    info.external_attr |= 0120000 << 16L # symlink file type
+                    info.external_attr |= 0o120000 << 16 # symlink file type
                     info.compress_type = zipfile.ZIP_STORED
                     info.date_time = mtime[:6]
                     zfo.writestr(info, content)
