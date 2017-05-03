@@ -31,6 +31,7 @@ from six.moves import range
 from six.moves import zip
 import six
 from six.moves import filter
+from six.moves import map
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -6530,7 +6531,7 @@ def handle_make_task(opts, session, args):
         if value is not None:
             taskopts[key] = value
     task_id = session.makeTask(method=args[0],
-                               arglist=map(arg_filter,args[1:]),
+                               arglist=list(map(arg_filter,args[1:])),
                                **taskopts)
     print("Created task id %d" % task_id)
     if _running_in_bg() or not options.watch:
