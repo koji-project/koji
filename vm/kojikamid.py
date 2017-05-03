@@ -47,19 +47,20 @@ MANAGER_PORT = 7000
 
 KOJIKAMID = True
 
+
 ## INSERT kojikamid dup
 
 class fakemodule(object):
     pass
 
-#make parts of the above insert accessible as koji.X
+
+# make parts of the above insert accessible as koji.X
 koji = fakemodule()
 koji.GenericError = GenericError
 koji.BuildError = BuildError
 
 
 class WindowsBuild(object):
-
     LEADING_CHAR = re.compile('^[^A-Za-z_]')
     VAR_CHARS = re.compile('[^A-Za-z0-9_]')
 
@@ -67,9 +68,9 @@ class WindowsBuild(object):
         """Get task info and setup build directory"""
         self.logger = logging.getLogger('koji.vm')
         self.server = server
-        self.task_info = server.getTaskInfo()
-        self.source_url = self.task_info[0]
-        self.build_tag = self.task_info[1]
+        self.info = server.getTaskInfo()
+        self.source_url = self.info[0]
+        self.build_tag = self.info[1]
         if len(info) > 2:
             self.task_opts = info[2]
         else:
@@ -136,7 +137,7 @@ class WindowsBuild(object):
                     self.logger.info('file %s exists', entry)
         if errors:
             raise BuildError('error validating build environment: %s' % \
-                  ', '.join(errors))
+                             ', '.join(errors))
 
     def updateClam(self):
         """update ClamAV virus definitions"""
@@ -166,17 +167,17 @@ class WindowsBuild(object):
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
-        koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=src_scm.get_info())
+        self.server.runCallBacks('preSCMCheckout', scminfo=src_scm.get_info())
         self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
-        koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
+        self.server.runCallBacks('postSCMCheckout',
                                   scminfo=src_scm.get_info(),
                                   srcdir=self.source_dir)
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
             spec_scm = SCM(self.task_opts['winspec'])
-            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=spec_scm.get_info())
+            self.server.runCallBacks('preSCMCheckout', scminfo=spec_scm.get_info())
             self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
-            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
+            self.server.runCallBacks('postSCMCheckout',
                                       scminfo=spec_scm.get_info(),
                                       srcdir=self.spec_dir)
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
@@ -184,9 +185,9 @@ class WindowsBuild(object):
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])
-            koji.plugin.run_callbacks('preSCMCheckout', taskinfo=self.task_info, scminfo=patch_scm.get_info())
+            self.server.runCallBacks('preSCMCheckout', scminfo=patch_scm.get_info())
             self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
-            koji.plugin.run_callbacks('postSCMCheckout', taskinfo=self.task_info,
+            self.server.runCallBacks('postSCMCheckout',
                                       scminfo=patch_scm.get_info(),
                                       srcdir=self.patch_dir)
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
@@ -330,7 +331,7 @@ class WindowsBuild(object):
         # rpms don't have a md5sum in the fileinfo, but check it for everything else
         if ('md5sum' in fileinfo) and (digest != fileinfo['md5sum']):
             raise BuildError('md5 checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (destpath, digest, fileinfo['md5sum']))
+                             (destpath, digest, fileinfo['md5sum']))
         self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
@@ -480,7 +481,7 @@ class WindowsBuild(object):
         self.virusCheck(self.workdir)
         if errors:
             raise BuildError('error validating build output: %s' % \
-                  ', '.join(errors))
+                             ', '.join(errors))
 
     def virusCheck(self, path):
         """ensure a path is virus free with ClamAV. path should be absolute"""
@@ -511,6 +512,7 @@ class WindowsBuild(object):
         self.expireBuildroot()
         return self.gatherResults()
 
+
 def run(cmd, chdir=None, fatal=False, log=True):
     global logfd
     output = ''
@@ -540,6 +542,7 @@ def run(cmd, chdir=None, fatal=False, log=True):
         raise BuildError(msg)
     return ret, output
 
+
 def find_net_info():
     """
     Find the network gateway configured for this VM.
@@ -568,6 +571,7 @@ def find_net_info():
         gateway = None
     return macaddr, gateway
 
+
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
@@ -588,6 +592,7 @@ def upload_file(server, prefix, path):
     server.verifyChecksum(path, digest, 'md5')
     logger.info('Uploaded %s (%s bytes, md5: %s)', destpath, offset, digest)
 
+
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
     logger = logging.getLogger('koji.vm')
@@ -606,6 +611,7 @@ def get_mgmt_server():
     logger.debug('found task-specific port %s', task_port)
     return xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
+
 def get_options():
     """handle usage and parse options"""
     usage = """%prog [options]
@@ -615,9 +621,11 @@ def get_options():
     parser = OptionParser(usage=usage)
     parser.add_option('-d', '--debug', action='store_true', help='Log debug statements')
     parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
-    parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
+    parser.add_option('-u', '--uninstall', action='store_true',
+                      help='Uninstall this daemon if it was installed previously as a service', default=False)
     (options, args) = parser.parse_args()
     return options
+
 
 def setup_logging(opts):
     global logfile, logfd
@@ -633,10 +641,12 @@ def setup_logging(opts):
     logger.addHandler(handler)
     return handler
 
+
 def log_local(msg):
     tb = ''.join(traceback.format_exception(*sys.exc_info()))
     sys.stderr.write('%s: %s\n' % (time.ctime(), msg))
     sys.stderr.write(tb)
+
 
 def stream_logs(server, handler, builds):
     """Stream logs incrementally to the server.
@@ -675,6 +685,7 @@ def stream_logs(server, handler, builds):
                     log_local('error uploading %s' % relpath)
         time.sleep(1)
 
+
 def fail(server, handler):
     """do the right thing when a build fails"""
     global logfile, logfd
@@ -700,6 +711,7 @@ def fail(server, handler):
 
 logfile = '/tmp/build.log'
 logfd = None
+
 
 def main():
     prog = os.path.basename(sys.argv[0])

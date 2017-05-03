@@ -391,6 +391,7 @@ class BaseTaskHandler(object):
                 self.taskinfo = self.session.getTaskInfo(self.id, request=True)
                 taskinfo = self.taskinfo
             kwargs['taskinfo'] = taskinfo
+        kwargs['session'] = self.session
         koji.plugin.run_callbacks(plugin, *args, **kwargs)
 
 

@@ -298,7 +298,7 @@ class WinBuildTask(MultiPlatformTask):
         if not opts:
             opts = {}
 
-        subopts = koji.util.dslice(opts, ['winspec', 'patches'],
+        subopts = koji.util.dslice(opts, ['winspec', 'patches', 'scratch'],
                                    strict=False)
         # winspec and patches options are urls
         # verify the urls before passing them to the VM
@@ -530,6 +530,20 @@ class VMExecTask(BaseTaskHandler):
         Get the command-line to run in the VM.
         """
         return self.task_info
+
+    def runCallbacks(self, method, **opts):
+        """
+        Run callback plugins.
+        """
+        taskinfo = self.session.getTaskInfo(self.id, request=True)
+        opts['taskinfo'] = taskinfo
+        opts['session'] = self.session
+        if method == 'preSCMCheckout':
+            opts['build_tag'] = self.task_info.get('build_tag')
+        elif method == 'postSCMCheckout':
+            opts['scratch'] = self.task_info.get('scratch')
+        koji.plugin.run_callbacks(method, **opts)
+
 
     def initBuildroot(self, repo_id, platform):
         """
