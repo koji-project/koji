@@ -5141,7 +5141,7 @@ class CG_Importer(object):
             path = os.path.join(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            fo = open(path, 'rb')
+            fo = open(path, 'rt')
             metadata = fo.read()
             fo.close()
         self.raw_metadata = metadata
