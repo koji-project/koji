@@ -76,7 +76,7 @@ import traceback
 import urllib
 import urllib2
 import urlparse
-import util
+from . import util
 import warnings
 import xmlrpclib
 import xml.sax

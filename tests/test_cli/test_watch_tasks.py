@@ -9,7 +9,7 @@ import mock
 
 from mock import call
 
-import loadcli
+from . import loadcli
 from six.moves import range
 
 cli = loadcli.cli

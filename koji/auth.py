@@ -27,7 +27,7 @@ import base64
 import krbV
 import koji
 import cgi      #for parse_qs
-from context import context
+from .context import context
 from six.moves import range
 from six.moves import zip
 

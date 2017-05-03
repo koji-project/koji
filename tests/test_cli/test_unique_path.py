@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import unittest
 
-import loadcli
+from . import loadcli
 from six.moves import range
 
 cli = loadcli.cli
