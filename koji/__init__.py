@@ -2900,7 +2900,7 @@ def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     return value.translate(None, NONPRINTABLE_CHARS)
 
-def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=True):
+def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
     Convert value to a 'str' object encoded as UTF-8.
     If value is not valid UTF-8 to begin with, assume it is
@@ -2927,7 +2927,7 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=True):
         return s
 
 
-def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=True):
+def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
     Similar behavior to fixEncoding, but recursive
