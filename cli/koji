@@ -30,6 +30,7 @@ import sys
 from six.moves import range
 from six.moves import zip
 import six
+from six.moves import filter
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -6980,7 +6981,7 @@ def anon_handle_download_task(options, session, args):
         downloadable_tasks.append(base_task)
     else:
         subtasks = session.getTaskChildren(base_task_id)
-        downloadable_tasks.extend(filter(check_downloadable, subtasks))
+        downloadable_tasks.extend(list(filter(check_downloadable, subtasks)))
 
     # get files for download
 
