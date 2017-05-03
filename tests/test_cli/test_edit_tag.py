@@ -1,18 +1,13 @@
 from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
-from mock import call
 
 from . import loadcli
-import six
 
 cli = loadcli.cli
 
@@ -23,7 +18,7 @@ class TestEditTag(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_tag(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -100,8 +95,8 @@ class TestEditTag(unittest.TestCase):
         session.editTag2.assert_called_once_with(tag, **opts)
         self.assertEqual(rv, None)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_tag_help(self, activate_session_mock, stderr, stdout):
         args = ['--help']
@@ -147,8 +142,8 @@ Options:
         session.editTag2.assert_not_called()
         self.assertEqual(cm.exception.code, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_tag_no_arg(self, activate_session_mock, stderr, stdout):
         args = []

@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import random
-from io import StringIO
 from os import path, makedirs
 from shutil import rmtree
 from tempfile import gettempdir
@@ -17,7 +16,7 @@ import six
 def get_fake_mounts_file():
     """ Returns contents of /prc/mounts in a file-like object
     """
-    return StringIO(six.text_type((
+    return six.StringIO(six.text_type((
         'sysfs /sys sysfs rw,seclabel,nosuid,nodev,noexec,relatime 0 0\n'
         'proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n'
         'devtmpfs /dev devtmpfs rw,seclabel,nosuid,size=238836k,nr_inodes=59709,mode=755 0 0\n'
@@ -462,7 +461,7 @@ class TasksTestCase(TestCase):
         obj = TestTask(123, 'some_method', ['random_arg'], None, options, temp_path)
         self.assertEquals(obj.localPath('test.txt'), dummy_file)
 
-    @patch('six.moves.urllib.request.urlopen', return_value=StringIO(six.text_type('Important things\nSome more important things\n')))
+    @patch('six.moves.urllib.request.urlopen', return_value=six.StringIO(six.text_type('Important things\nSome more important things\n')))
     def test_BaseTaskHandler_localPath_no_file(self, mock_urlopen):
         """
         """

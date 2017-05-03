@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
 from . import loadcli
 
@@ -19,7 +16,7 @@ class TestRemoveHostFromChannel(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_remove_host_from_channel(
             self, activate_session_mock, stdout):
@@ -49,7 +46,7 @@ class TestRemoveHostFromChannel(unittest.TestCase):
         session.removeHostFromChannel.assert_called_once_with(host, channel)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_remove_host_from_channel_no_host(
             self, activate_session_mock, stdout):
@@ -77,7 +74,7 @@ class TestRemoveHostFromChannel(unittest.TestCase):
         session.removeHostFromChannel.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_remove_host_from_channel_not_a_member(
             self, activate_session_mock, stdout):
@@ -108,8 +105,8 @@ class TestRemoveHostFromChannel(unittest.TestCase):
         session.removeHostFromChannel.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_remove_host_from_channel_help(
             self, activate_session_mock, stderr, stdout):

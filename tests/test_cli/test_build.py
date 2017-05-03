@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
 from . import loadcli
 
@@ -26,7 +23,7 @@ class TestBuild(unittest.TestCase):
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -77,7 +74,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -125,8 +122,8 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -168,8 +165,8 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -222,8 +219,8 @@ Options:
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -268,7 +265,7 @@ Options:
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -313,7 +310,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -357,7 +354,7 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -405,7 +402,7 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -453,7 +450,7 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -508,7 +505,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -556,7 +553,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=True)
@@ -607,7 +604,7 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -659,7 +656,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -708,7 +705,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
@@ -761,7 +758,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._unique_path', return_value='random_path')
     @mock.patch('koji_cli._running_in_bg', return_value=False)

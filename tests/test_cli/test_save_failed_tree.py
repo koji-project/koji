@@ -1,8 +1,8 @@
 from __future__ import absolute_import
-import StringIO
 import unittest
 import koji
 import mock
+import six
 
 from . import loadcli
 cli = loadcli.cli
@@ -127,7 +127,7 @@ class TestSaveFailedTree(unittest.TestCase):
         watch_tasks_mock.assert_called_once_with(self.session, [spawned_id],
                                                  quiet=options.quiet)
 
-    @mock.patch('sys.stdout', new_callable=StringIO.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli.watch_tasks')
     def test_handle_save_failed_tree_errors(self, watch_tasks_mock, activate_session_mock, stdout):

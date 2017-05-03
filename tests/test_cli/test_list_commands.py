@@ -1,11 +1,8 @@
 from __future__ import absolute_import
-import os
-import sys
-import unittest
-
-import StringIO as stringio
-
 import mock
+import os
+import unittest
+import six
 
 from . import loadcli
 cli = loadcli.cli
@@ -27,7 +24,7 @@ class TestListCommands(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_list_commands(self, stdout):
         cli.list_commands()
         actual = stdout.getvalue()
@@ -37,7 +34,7 @@ class TestListCommands(unittest.TestCase):
             expected = f.read().decode('ascii')
         self.assertMultiLineEqual(actual, expected)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_admin_help(self, stdout):
         options, arguments = mock.MagicMock(), mock.MagicMock()
         options.admin = True

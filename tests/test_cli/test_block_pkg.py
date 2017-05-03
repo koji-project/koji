@@ -1,14 +1,10 @@
 from __future__ import absolute_import
 import unittest
 
-
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
 from mock import call
 
@@ -22,7 +18,7 @@ class TestBlockPkg(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_block_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -54,7 +50,7 @@ class TestBlockPkg(unittest.TestCase):
         session.multiCall.assert_called_once_with(strict=True)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_block_pkg_multi_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -92,7 +88,7 @@ class TestBlockPkg(unittest.TestCase):
                             strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_block_pkg_no_package(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -125,7 +121,7 @@ class TestBlockPkg(unittest.TestCase):
         session.multiCall.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_block_pkg_tag_no_exists(
             self, activate_session_mock, stdout):
@@ -153,8 +149,8 @@ class TestBlockPkg(unittest.TestCase):
         session.packageListBlock.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_block_pkg_help(
             self, activate_session_mock, stderr, stdout):

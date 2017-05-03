@@ -29,7 +29,6 @@ from koji.util import md5_constructor, adler32_constructor, parseStatus
 import os
 import signal
 import logging
-import urlparse
 from fnmatch import fnmatch
 import base64
 import time
@@ -38,6 +37,7 @@ import traceback
 import errno
 import six.moves.xmlrpc_client
 from six.moves import range
+import six.moves.urllib
 import six
 
 
@@ -247,7 +247,7 @@ class SCM(object):
 
         # replace the scheme with http:// so that the urlparse works in all cases
         dummyurl = self.url.replace(scheme, 'http://', 1)
-        dummyscheme, netloc, path, params, query, fragment = urlparse.urlparse(dummyurl)
+        dummyscheme, netloc, path, params, query, fragment = six.moves.urllib.parse.urlparse(dummyurl)
 
         user = None
         userhost = netloc.split('@')

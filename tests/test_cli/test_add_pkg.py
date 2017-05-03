@@ -1,14 +1,10 @@
 from __future__ import absolute_import
 import unittest
 
-
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
 from mock import call
 
@@ -22,7 +18,7 @@ class TestAddPkg(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -67,7 +63,7 @@ class TestAddPkg(unittest.TestCase):
         session.multiCall.assert_called_once_with(strict=True)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg_multi_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -111,7 +107,7 @@ class TestAddPkg(unittest.TestCase):
                           call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg_owner_no_exists(
             self, activate_session_mock, stdout):
@@ -144,7 +140,7 @@ class TestAddPkg(unittest.TestCase):
                          [call.getUser(owner)])
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg_tag_no_exists(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -180,8 +176,8 @@ class TestAddPkg(unittest.TestCase):
                           call.getTag(tag)])
         self.assertEqual(cm.exception.code, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg_no_owner(
             self, activate_session_mock, stderr, stdout):
@@ -218,8 +214,8 @@ class TestAddPkg(unittest.TestCase):
         session.packageListAdd.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_pkg_no_arg(
             self, activate_session_mock, stderr, stdout):

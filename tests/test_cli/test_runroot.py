@@ -3,8 +3,7 @@ import os
 import sys
 import unittest
 import koji
-
-import StringIO as stringio
+import six
 
 import mock
 
@@ -30,7 +29,7 @@ class TestListCommands(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_runroot(self, stdout):
         tag = 'tag'
         arch = 'arch'

@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
 from . import loadcli
 
@@ -26,7 +23,7 @@ class TestChainBuild(unittest.TestCase):
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -85,8 +82,8 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -125,8 +122,8 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -169,7 +166,7 @@ Options:
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 0)
 
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -218,7 +215,7 @@ Options:
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -277,7 +274,7 @@ Options:
         watch_tasks_mock.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -364,7 +361,7 @@ Target target is not usable for a chain-build
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         self.session.getFullInheritance.return_value = tag_tree
-        with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
             # Run it and check immediate output
             # args: target badnvr : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed, src is neither scm nor good n-v-r
@@ -385,7 +382,7 @@ Target target is not usable for a chain-build
             watch_tasks_mock.assert_not_called()
             self.assertEqual(rv, 1)
 
-        with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
             source_args = [
                 'path/n-v-r',
                 ':',
@@ -403,7 +400,7 @@ Target target is not usable for a chain-build
             expected = '"path/n-v-r" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
-        with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
             source_args = [
                 'badn-vr',
                 ':',
@@ -421,7 +418,7 @@ Target target is not usable for a chain-build
             expected = '"badn-vr" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
-        with mock.patch('sys.stdout', new_callable=stringio.StringIO) as stdout:
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
             source_args = [
                 'badn-v-r.rpm',
                 ':',
@@ -439,7 +436,7 @@ Target target is not usable for a chain-build
             expected = '"badn-v-r.rpm" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
-        with mock.patch('sys.stderr', new_callable=stringio.StringIO) as stderr:
+        with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             source_args = ['http://scm']
             args = [target] + source_args
 
@@ -459,7 +456,7 @@ If there are no dependencies, use the build command instead
             self.assertMultiLineEqual(actual, expected)
             self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -522,7 +519,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -584,7 +581,7 @@ Task info: weburl/taskinfo?taskID=1
             self.session, [task_id], quiet=self.options.quiet)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=True)
     @mock.patch('koji_cli.watch_tasks', return_value=0)
@@ -646,7 +643,7 @@ Task info: weburl/taskinfo?taskID=1
         watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._running_in_bg', return_value=False)
     @mock.patch('koji_cli.watch_tasks', return_value=0)

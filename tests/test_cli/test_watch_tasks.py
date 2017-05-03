@@ -3,7 +3,6 @@ import unittest
 
 import os
 import sys
-import StringIO as stringio
 
 import mock
 
@@ -11,6 +10,7 @@ from mock import call
 
 from . import loadcli
 from six.moves import range
+import six
 
 cli = loadcli.cli
 
@@ -32,7 +32,7 @@ class TestWatchTasks(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_watch_tasks_no_tasklist(self, stdout):
         returned = cli.watch_tasks(self.session, [])
         actual = stdout.getvalue()
@@ -40,7 +40,7 @@ class TestWatchTasks(unittest.TestCase):
         self.assertIsNone(returned)
         self.assertEqual(actual, expected)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
     @mock.patch('koji_cli.display_tasklist_status')
     @mock.patch('koji_cli.display_task_results')
@@ -170,7 +170,7 @@ class TestWatchTasks(unittest.TestCase):
                           call.display_task_results_mock({0: tw1, 1: tw2, 11: manager.tw11, 12: manager.tw12})
                           ])
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
     @mock.patch('koji_cli.display_tasklist_status')
     @mock.patch('koji_cli.display_task_results')
