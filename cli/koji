@@ -116,6 +116,12 @@ def _(args):
     """Stub function for translation"""
     return args
 
+def _printable_unicode(s):
+    if six.PY2:
+        return s.encode('utf-8')
+    else:
+        return s
+
 ARGMAP = {'None': None,
           'True': True,
           'False': False}
@@ -4055,15 +4061,15 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
         if depth < currtag['currdepth']:
             outspacing = depth - outdepth
             sys.stdout.write(' ' * (outspacing * 3 - 1))
-            sys.stdout.write(u'\u2502'.encode('UTF-8'))
+            sys.stdout.write(_printable_unicode(u'\u2502'))
             outdepth = depth
 
     sys.stdout.write(' ' * ((currtag['currdepth'] - outdepth) * 3 - 1))
     if siblings:
-        sys.stdout.write(u'\u251c'.encode('UTF-8'))
+        sys.stdout.write(_printable_unicode(u'\u251c'))
     else:
-        sys.stdout.write(u'\u2514'.encode('UTF-8'))
-    sys.stdout.write(u'\u2500'.encode('UTF-8'))
+        sys.stdout.write(_printable_unicode(u'\u2514'))
+    sys.stdout.write(_printable_unicode(u'\u2500'))
     if reverse:
         sys.stdout.write('%(name)s (%(tag_id)i)\n' % currtag)
     else:
@@ -7349,7 +7355,7 @@ def handle_moshimoshi(options, session, args):
     if not u:
         print("Not authenticated")
         u = {'name' : 'anonymous user'}
-    print("%s, %s!" % (random.choice(greetings).encode('utf-8'), u["name"]))
+    print("%s, %s!" % (_printable_unicode(random.choice(greetings)), u["name"]))
     print("")
     print("You are using the hub at %s" % session.baseurl)
     authtype = u.get('authtype', getattr(session, 'authtype', None))
