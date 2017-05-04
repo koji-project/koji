@@ -2933,14 +2933,14 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     Similar behavior to fixEncoding, but recursive
     """
     if isinstance(value, tuple):
-        return tuple([fixEncodingRecurse(x) for x in value])
+        return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, list):
-        return list([fixEncodingRecurse(x) for x in value])
+        return list([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, dict):
         ret = {}
         for k in value:
-            v = fixEncodingRecurse(value[k])
-            k = fixEncodingRecurse(k)
+            v = fixEncodingRecurse(value[k], fallback=fallback, remove_nonprintable=remove_nonprintable)
+            k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
     elif isinstance(value, unicode):
