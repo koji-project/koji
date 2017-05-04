@@ -328,10 +328,14 @@ class Session(object):
             login_principal = cprinc.name
         user_id = self.getUserIdFromKerberos(login_principal)
         if not user_id:
-            if context.opts.get('LoginCreatesUser'):
-                user_id = self.createUserFromKerberos(login_principal)
-            else:
-                raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
+            user_id = self.getUserId(login_principal)
+            if not user_id:
+                # Only do autocreate if we also couldn't find by username AND the proxyuser
+                # looks like a krb5 principal
+                if context.opts.get('LoginCreatesUser') and '@' in login_principal:
+                    user_id = self.createUserFromKerberos(login_principal)
+                else:
+                    raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
 
         self.checkLoginAllowed(user_id)
 
@@ -397,14 +401,8 @@ class Session(object):
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
 
-        cursor = context.cnx.cursor()
-        query = """SELECT id FROM users
-        WHERE name = %(username)s"""
-        cursor.execute(query, locals())
-        result = cursor.fetchone()
-        if result:
-            user_id = result[0]
-        else:
+        user_id = self.getUserId(username)
+        if not user_id:
             if context.opts.get('LoginCreatesUser'):
                 user_id = self.createUser(username)
             else:
@@ -574,6 +572,19 @@ class Session(object):
     def getHostId(self):
         #for compatibility
         return self.host_id
+
+    def getUserId(self, username):
+        """Return the user ID associated with a particular username. If no user
+        with the given username if found, return None."""
+        c = context.cnx.cursor()
+        q = """SELECT id FROM users WHERE name = %(username)s"""
+        c.execute(q, locals())
+        r = c.fetchone()
+        c.close()
+        if r:
+            return r[0]
+        else:
+            return None
 
     def getUserIdFromKerberos(self, krb_principal):
         """Return the user ID associated with a particular Kerberos principal.
