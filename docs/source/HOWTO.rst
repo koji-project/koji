@@ -92,13 +92,13 @@ syntax is:
 
 ::
 
-    $ koji build <build target> <cvs URL>
+    $ koji build <build target> <git URL>
 
 For example:
 
 ::
 
-    $ koji build dist-fc7-scratch 'cvs://cvs.example.com/cvs/dist?rpms/kernel/FC-7#kernel-2_6_20-1_2925_fc7'
+    $ koji build f25 git://pkgs.fedoraproject.org/rpms/eclipse-jgit?#00ca55985303b1ce19c632922ebcca283ab6e296
 
 The ``koji build`` command creates a build task in Koji. By default the
 tool will wait and print status updates until the build completes. You
