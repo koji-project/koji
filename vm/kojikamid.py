@@ -68,9 +68,9 @@ class WindowsBuild(object):
         """Get task info and setup build directory"""
         self.logger = logging.getLogger('koji.vm')
         self.server = server
-        self.info = server.getTaskInfo()
-        self.source_url = self.info[0]
-        self.build_tag = self.info[1]
+        info = server.getTaskInfo()
+        self.source_url = info[0]
+        self.build_tag = info[1]
         if len(info) > 2:
             self.task_opts = info[2]
         else:
@@ -167,29 +167,17 @@ class WindowsBuild(object):
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)
-        self.server.runCallBacks('preSCMCheckout', scminfo=src_scm.get_info())
         self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
-        self.server.runCallBacks('postSCMCheckout',
-                                  scminfo=src_scm.get_info(),
-                                  srcdir=self.source_dir)
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
             spec_scm = SCM(self.task_opts['winspec'])
-            self.server.runCallBacks('preSCMCheckout', scminfo=spec_scm.get_info())
             self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
-            self.server.runCallBacks('postSCMCheckout',
-                                      scminfo=spec_scm.get_info(),
-                                      srcdir=self.spec_dir)
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])
-            self.server.runCallBacks('preSCMCheckout', scminfo=patch_scm.get_info())
             self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
-            self.server.runCallBacks('postSCMCheckout',
-                                      scminfo=patch_scm.get_info(),
-                                      srcdir=self.patch_dir)
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
             self.applyPatches(self.source_dir, self.patches_dir)
         self.virusCheck(self.workdir)
