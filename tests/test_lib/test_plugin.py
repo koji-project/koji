@@ -175,6 +175,12 @@ class TestPluginTracker(unittest.TestCase):
         tracker.load('hello', reload=True)
         self.assertEqual(tracker.get('hello'), 'DUPLICATE!')
 
+        # should throw exception if not reloading and duplicate in sys.modules
+        module_mock = mock.MagicMock()
+        with mock.patch.dict('sys.modules', _koji_plugin__dup_module=module_mock):
+            with self.assertRaises(koji.PluginError):
+                tracker.load('dup_module')
+
     def test_no_plugin_path(self):
         tracker = koji.plugin.PluginTracker()
         with self.assertRaises(koji.PluginError):
@@ -188,6 +194,11 @@ class TestPluginTracker(unittest.TestCase):
         tracker.load('hello', path=['/PATH1', '/PATH2'])
         self.assertEqual(tracker.get('hello'), 'MODULE!')
         self.find_module.assert_called_once_with('hello', ['/PATH1', '/PATH2'])
+
+        self.find_module.reset_mock()
+        tracker.load('hey', path='/PATH1')
+        self.assertEqual(tracker.get('hey'), 'MODULE!')
+        self.find_module.assert_called_once_with('hey', ['/PATH1'])
 
     @mock.patch('logging.getLogger')
     def test_bad_plugin(self, getLogger):
