@@ -2,7 +2,13 @@ import mock
 import unittest
 
 import logging
+import shutil
+import tempfile
+
+from pprint import pprint
+
 import koji
+import koji.daemon
 
 from koji.daemon import SCM
 
@@ -101,6 +107,7 @@ class TestSCM(unittest.TestCase):
             default:*
             nocommon:*:no
             srccmd:*:no:fedpkg,sources
+            nosrc:*:no:
             mixed:/foo/*:no
             mixed:/bar/*:yes
             mixed:/baz/*:no:fedpkg,sources
@@ -124,6 +131,12 @@ class TestSCM(unittest.TestCase):
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
+        url = "git://nosrc/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed(allowed)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, None)
+
         url = "git://mixed/foo/koji.git#1234"
         scm = SCM(url)
         scm.assert_allowed(allowed)
@@ -146,4 +159,71 @@ class TestSCM(unittest.TestCase):
         scm = SCM(url)
         with self.assertRaises(koji.BuildError):
             scm.assert_allowed(allowed)
+
+        url = "git://mixed/foo/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed(allowed)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/bar/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed(allowed)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/baz/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed(allowed)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/koji.git#1234"
+        scm = SCM(url)
+        with self.assertRaises(koji.BuildError):
+            scm.assert_allowed(allowed)
+
+
+class TestSCMCheckouts(unittest.TestCase):
+
+    def setUp(self):
+        self.symlink = mock.patch('os.symlink').start()
+        self.getLogger = mock.patch('logging.getLogger').start()
+        self.log_output = mock.patch('koji.daemon.log_output').start()
+        self.log_output.return_value = None
+        self.tempdir = tempfile.mkdtemp()
+        self.session = mock.MagicMock()
+        self.uploadpath = mock.MagicMock()
+        self.logfile = mock.MagicMock()
+
+    def tearDown(self):
+        mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
+
+    def test_checkout_nocommon(self):
+        allowed = '''
+            default:*
+            nocommon:*:no
+            srccmd:*:no:fedpkg,sources
+            nosrc:*:no:
+            '''
+
+        url = "git://nocommon/koji.git#asdasd"
+        scm = SCM(url)
+        scm.assert_allowed(allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['git', 'clone', '-n', 'git://nocommon/koji.git',
+                self.tempdir + '/koji']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        cmd = ['git', 'reset', '--hard', 'asdasd']
+        call2 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir + '/koji',
+                        logerror=1, append=True, env=None)
+        self.log_output.assert_has_calls([call1, call2])
 
