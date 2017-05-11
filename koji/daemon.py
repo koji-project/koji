@@ -267,7 +267,8 @@ class SCM(object):
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params:
             raise koji.GenericError('Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params))
-        if not scheme:
+        if not scheme:  #pragma: no cover
+            # should not happen because of is_scm_url check earlier
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
         if not netloc:
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
@@ -313,7 +314,7 @@ class SCM(object):
             host_pat = scm_tuple[0]
             repo_pat = scm_tuple[1]
             invert = False
-            if host_pat.startwith('!'):
+            if host_pat.startswith('!'):
                 invert = True
                 host_pat = host_pat[1:]
             if fnmatch(self.host, host_pat) and fnmatch(self.repository, repo_pat):
@@ -333,7 +334,7 @@ class SCM(object):
                         # there was nothing after the trailing :, so they don't want to run a source_cmd at all
                         self.source_cmd = None
                 break
-        if not allowed:
+        if not is_allowed:
             raise koji.BuildError('%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
 
     def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
