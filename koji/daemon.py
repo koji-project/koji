@@ -225,7 +225,7 @@ class SCM(object):
             if self.scheme in schemes:
                 self.scmtype = scmtype
                 break
-        else:
+        else:   # pragma: no cover
             # should never happen
             raise koji.GenericError('Invalid SCM URL: %s' % url)
 
