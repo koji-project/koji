@@ -32,6 +32,7 @@ Requires: python-requests
 Requires: python-requests-kerberos
 Requires: python-pycurl
 Requires: python-dateutil
+Requires: python-six
 BuildRequires: python
 %if %{use_systemd}
 BuildRequires: systemd
