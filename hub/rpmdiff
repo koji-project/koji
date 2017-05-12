@@ -20,14 +20,11 @@
 # This library and program is heavily based on rpmdiff from the rpmlint package
 # It was modified to be used as standalone library for the Koji project.
 
-from __future__ import absolute_import
 import rpm
 import os
 import itertools
 
 import sys, getopt
-from six.moves import zip
-import six
 
 
 class Rpmdiff:
@@ -114,8 +111,8 @@ class Rpmdiff:
 
         old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
         new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
-        files = list(set(itertools.chain(six.iterkeys(old_files_dict),
-                                         six.iterkeys(new_files_dict))))
+        files = list(set(itertools.chain(old_files_dict.iterkeys(),
+                                         new_files_dict.iterkeys())))
         files.sort()
 
         for f in files:
@@ -178,8 +175,8 @@ class Rpmdiff:
         if not isinstance(oldflags, list): oldflags = [ oldflags ]
         if not isinstance(newflags, list): newflags = [ newflags ]
 
-        o = list(zip(old[name], oldflags, old[name[:-1]+'VERSION']))
-        n = list(zip(new[name], newflags, new[name[:-1]+'VERSION']))
+        o = zip(old[name], oldflags, old[name[:-1]+'VERSION'])
+        n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
 
         if name == 'PROVIDES': # filter our self provide
             oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
@@ -228,7 +225,7 @@ def main():
     ignore_tags = []
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
-    except getopt.GetoptError as e:
+    except getopt.GetoptError, e:
         print("Error: %s" % e)
         _usage()
 

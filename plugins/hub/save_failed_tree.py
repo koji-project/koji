@@ -1,6 +1,5 @@
-from __future__ import absolute_import
 import sys
-import six.moves.configparser
+import ConfigParser
 import koji
 from koji.context import context
 from koji.plugin import export
@@ -29,7 +28,7 @@ def saveFailedTree(buildrootID, full=False, **opts):
 
     # read configuration only once
     if config is None:
-        config = six.moves.configparser.SafeConfigParser()
+        config = ConfigParser.SafeConfigParser()
         config.read(CONFIG_FILE)
         allowed_methods = config.get('permissions', 'allowed_methods').split()
         if len(allowed_methods) == 1 and allowed_methods[0] == '*':

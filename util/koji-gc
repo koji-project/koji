@@ -6,9 +6,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import
-from six.moves import zip
-import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -16,7 +13,7 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import LazyDict, LazyValue
 import koji.policy
-import six.moves.configparser
+import ConfigParser
 from email.MIMEText import MIMEText
 import fnmatch
 import optparse
@@ -26,7 +23,7 @@ import smtplib
 import socket   # for socket.error
 import sys
 import time
-import six.moves.xmlrpc_client  # for ProtocolError and Fault
+import xmlrpclib  # for ProtocolError and Fault
 
 
 OptionParser = optparse.OptionParser
@@ -115,7 +112,7 @@ def get_options():
 
     defaults = parser.get_default_values()
 
-    config = six.moves.configparser.ConfigParser()
+    config = ConfigParser.ConfigParser()
     cf = getattr(options, 'config_file', None)
     if cf:
         if not os.access(cf, os.F_OK):
@@ -199,7 +196,7 @@ def get_options():
                 if len(parts) < 2:
                     continue
                 options.key_aliases[parts[0].upper()] = parts[1]
-    except ValueError as e:
+    except ValueError, e:
         print(e)
         parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
 
@@ -340,7 +337,7 @@ def warn(msg):
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except six.moves.xmlrpc_client.ProtocolError:
+    except xmlrpclib.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
@@ -374,9 +371,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error as e:
+        except krbV.Krb5Error, e:
             error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
-        except socket.error as e:
+        except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in, no authentication methods available"))
@@ -455,7 +452,7 @@ def handle_trash():
             continue
         try:
             refs = session.buildReferences(binfo['id'], limit=10)
-        except six.moves.xmlrpc_client.Fault:
+        except xmlrpclib.Fault:
             print("[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr))
             continue
         #XXX - this is more data than we need
@@ -536,7 +533,7 @@ def handle_trash():
     by_owner = {}
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
-    owners = list(by_owner.keys())
+    owners = by_owner.keys()
     owners.sort()
     for owner_name in owners:
         builds = [(b['nvr'], b) for b in by_owner[owner_name]]
@@ -558,7 +555,7 @@ def handle_trash():
                     #best we can do currently
                     owner = binfo['owner_id']
                 else:
-                    owner = max([(n, k) for k, n in six.iteritems(count)])[1]
+                    owner = max([(n, k) for k, n in count.iteritems()])[1]
                 session.packageListAdd(trashcan_tag, binfo['name'], owner)
                 session.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
 
@@ -657,7 +654,7 @@ def handle_delete(just_salvage=False):
             session.untagBuildBypass(trashcan_tag,  binfo['id'])
             try:
                 session.deleteBuild(binfo['id'])
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+            except (xmlrpclib.Fault, koji.GenericError), e:
                 print("Warning: deletion failed: %s" % e)
                 #server issue
                 pass
@@ -736,7 +733,7 @@ def read_policies(fn=None):
     The expected format as follows
         test [params] [&& test [params] ...] :: (keep|untag|skip)
     """
-    fo = open(fn, 'r')
+    fo = file(fn, 'r')
     tests = koji.policy.findSimpleTests(globals())
     ret = koji.policy.SimpleRuleSet(fo, tests)
     fo.close()
@@ -771,7 +768,7 @@ def get_build_sigs(build, cache=False):
             for sig in sigs:
                 if sig['sigkey']:
                     keys.setdefault(sig['sigkey'], 1)
-    ret = build_sig_cache[build] = list(keys.keys())
+    ret = build_sig_cache[build] = keys.keys()
     return ret
 
 def handle_prune():
@@ -831,7 +828,7 @@ def handle_prune():
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
-        pkgs = list(pkghist.keys())
+        pkgs = pkghist.keys()
         pkgs.sort()
         for pkg in pkgs:
             if not check_package(pkg):
@@ -876,7 +873,7 @@ def handle_prune():
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
-                        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+                        except (xmlrpclib.Fault, koji.GenericError), e:
                             print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
@@ -910,7 +907,7 @@ def handle_prune():
                 print("Deleting untagged build: %s"  % nvr)
                 try:
                     session.deleteBuild(build_id, strict=False)
-                except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+                except (xmlrpclib.Fault, koji.GenericError), e:
                     print("Warning: deletion failed: %s" % e)
                     #server issue
                     pass

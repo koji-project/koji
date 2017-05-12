@@ -24,10 +24,7 @@
 #    - request data
 #    - auth data
 
-from __future__ import absolute_import
-import six.moves._thread
-from six.moves import range
-import six
+import thread
 
 class _data(object):
     pass
@@ -38,7 +35,7 @@ class ThreadLocal(object):
 
     # should probably be getattribute, but easier to debug this way
     def __getattr__(self, key):
-        id = six.moves._thread.get_ident()
+        id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             raise AttributeError(key)
@@ -46,7 +43,7 @@ class ThreadLocal(object):
         return object.__getattribute__(data, key)
 
     def __setattr__(self, key, value):
-        id = six.moves._thread.get_ident()
+        id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             tdict[id] = _data()
@@ -54,7 +51,7 @@ class ThreadLocal(object):
         return object.__setattr__(data, key, value)
 
     def __delattr__(self, key):
-        id = six.moves._thread.get_ident()
+        id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             raise AttributeError(key)
@@ -65,14 +62,14 @@ class ThreadLocal(object):
         return ret
 
     def __str__(self):
-        id = six.moves._thread.get_ident()
+        id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         return "(current thread: %s) {" % id  + \
-            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
+            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in tdict.iteritems()]) + \
             "}"
 
     def _threadclear(self):
-        id = six.moves._thread.get_ident()
+        id = thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             return
@@ -100,8 +97,8 @@ if __name__ == '__main__':
         context._threadclear()
         print(context)
 
-    for x in range(1, 10):
-        six.moves._thread.start_new_thread(test, ())
+    for x in xrange(1, 10):
+        thread.start_new_thread(test, ())
 
     time.sleep(4)
     print('')

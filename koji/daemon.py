@@ -20,8 +20,6 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
 import koji
 import koji.tasks
 from koji.tasks import safe_rmtree
@@ -29,16 +27,14 @@ from koji.util import md5_constructor, adler32_constructor, parseStatus
 import os
 import signal
 import logging
+import urlparse
 from fnmatch import fnmatch
 import base64
 import time
 import sys
 import traceback
 import errno
-import six.moves.xmlrpc_client
-from six.moves import range
-import six.moves.urllib
-import six
+import xmlrpclib
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -115,7 +111,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             flags = os.O_CREAT | os.O_WRONLY
             if append:
                 flags |= os.O_APPEND
-            fd = os.open(outfile, flags, 0o666)
+            fd = os.open(outfile, flags, 0666)
             os.dup2(fd, 1)
             if logerror:
                 os.dup2(fd, 2)
@@ -146,7 +142,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 
             if not outfd:
                 try:
-                    outfd = open(outfile, 'r')
+                    outfd = file(outfile, 'r')
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue
@@ -247,7 +243,7 @@ class SCM(object):
 
         # replace the scheme with http:// so that the urlparse works in all cases
         dummyurl = self.url.replace(scheme, 'http://', 1)
-        dummyscheme, netloc, path, params, query, fragment = six.moves.urllib.parse.urlparse(dummyurl)
+        dummyscheme, netloc, path, params, query, fragment = urlparse.urlparse(dummyurl)
 
         user = None
         userhost = netloc.split('@')
@@ -529,7 +525,7 @@ class TaskManager(object):
         """Attempt to shut down cleanly"""
         for task_id in self.pids.keys():
             self.cleanupTask(task_id)
-        self.session.host.freeTasks(list(self.tasks.keys()))
+        self.session.host.freeTasks(self.tasks.keys())
         self.session.host.updateHost(task_load=0.0, ready=False)
 
     def updateBuildroots(self, nolocal=False):
@@ -560,14 +556,14 @@ class TaskManager(object):
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, list(self.tasks.keys())))
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, self.tasks.keys()))
                 self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in six.iterkeys(local_br) if id not in db_br]
+        local_only = [id for id in local_br.iterkeys() if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -611,7 +607,7 @@ class TaskManager(object):
                     rootdir = "%s/root" % topdir
                     try:
                         st = os.lstat(rootdir)
-                    except OSError as e:
+                    except OSError, e:
                         if e.errno == errno.ENOENT:
                             rootdir = None
                         else:
@@ -632,13 +628,13 @@ class TaskManager(object):
                     #also remove the config
                     try:
                         os.unlink(data['cfg'])
-                    except OSError as e:
+                    except OSError, e:
                         self.logger.warn("%s: can't remove config: %s" % (desc, e))
                 elif age > 120:
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
-                        except OSError as e:
+                        except OSError, e:
                             self.logger.warn("%s: can't list rootdir: %s" % (desc, e))
                             continue
                         if flist:
@@ -665,10 +661,10 @@ class TaskManager(object):
             fn = "%s/%s" % (configdir, f)
             if not os.path.isfile(fn):
                 continue
-            fo = open(fn, 'r')
+            fo = file(fn, 'r')
             id = None
             name = None
-            for n in range(10):
+            for n in xrange(10):
                 # data should be in first few lines
                 line = fo.readline()
                 if line.startswith('# Koji buildroot id:'):
@@ -799,7 +795,7 @@ class TaskManager(object):
             # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
-        for bin in six.iterkeys(bins):
+        for bin in bins.iterkeys():
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
             avail[bin].sort()
             avail[bin].reverse()
@@ -831,7 +827,7 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail)-1)//2]
+                median = bin_avail[(len(bin_avail)-1)/2]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     #decline for now and give the upper half a chance
@@ -849,7 +845,7 @@ class TaskManager(object):
         Check our available capacity against the capacity of other hosts in this bin.
         Return True if we should take a task, False otherwise.
         """
-        median = bin_avail[(len(bin_avail)-1)//2]
+        median = bin_avail[(len(bin_avail)-1)/2]
         self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
         if avail >= median:
             return True
@@ -866,7 +862,7 @@ class TaskManager(object):
         prefix = "Task %i (pid %i)" % (task_id, pid)
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
-        except OSError as e:
+        except OSError, e:
             #check errno
             if e.errno != errno.ECHILD:
                 #should not happen
@@ -907,7 +903,7 @@ class TaskManager(object):
 
             try:
                 os.kill(pid, sig)
-            except OSError as e:
+            except OSError, e:
                 # process probably went away, we'll find out on the next iteration
                 self.logger.info('Error sending signal %i to %s (pid %i, taskID %i): %s' %
                                  (sig, execname, pid, task_id, e))
@@ -931,14 +927,14 @@ class TaskManager(object):
             proc_path = '/proc/%i/stat' % pid
             if not os.path.isfile(proc_path):
                 return None
-            proc_file = open(proc_path)
+            proc_file = file(proc_path)
             procstats = [not field.isdigit() and field or int(field) for field in proc_file.read().split()]
             proc_file.close()
 
             cmd_path = '/proc/%i/cmdline' % pid
             if not os.path.isfile(cmd_path):
                 return None
-            cmd_file = open(cmd_path)
+            cmd_file = file(cmd_path)
             procstats[1] = cmd_file.read().replace('\0', ' ').strip()
             cmd_file.close()
             if not procstats[1]:
@@ -1042,7 +1038,7 @@ class TaskManager(object):
             raise IOError("No such directory: %s" % br_path)
         fs_stat = os.statvfs(br_path)
         available = fs_stat.f_bavail * fs_stat.f_bsize
-        availableMB = available // 1024**2
+        availableMB = available / 1024 / 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < self.options.minspace:
             self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, self.options.minspace)
@@ -1192,12 +1188,12 @@ class TaskManager(object):
         try:
             response = (handler.run(),)
             # note that we wrap response in a singleton tuple
-            response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=1)
+            response = xmlrpclib.dumps(response, methodresponse=1, allow_none=1)
             self.logger.info("RESPONSE: %r" % response)
             self.session.host.closeTask(handler.id, response)
             return
-        except six.moves.xmlrpc_client.Fault as fault:
-            response = six.moves.xmlrpc_client.dumps(fault)
+        except xmlrpclib.Fault, fault:
+            response = xmlrpclib.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
@@ -1216,7 +1212,7 @@ class TaskManager(object):
             if issubclass(e_class, koji.GenericError):
                 #just pass it through
                 tb = str(e)
-            response = six.moves.xmlrpc_client.dumps(six.moves.xmlrpc_client.Fault(faultCode, tb))
+            response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
 
         # if we get here, then we're handling an exception, so fail the task
         self.session.host.failTask(handler.id, response)

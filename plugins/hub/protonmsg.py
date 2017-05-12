@@ -5,11 +5,10 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
 import koji
 from koji.plugin import callback, ignore_error
 from koji.context import context
-import six.moves.configparser
+import ConfigParser
 import logging
 import json
 import random
@@ -247,7 +246,7 @@ def send_queued_msgs(cbtype, *args, **kws):
     log = logging.getLogger('koji.plugin.protonmsg')
     global CONFIG
     if not CONFIG:
-        conf = six.moves.configparser.SafeConfigParser()
+        conf = ConfigParser.SafeConfigParser()
         with open(CONFIG_FILE) as conffile:
             conf.readfp(conffile)
         CONFIG = conf

@@ -1,6 +1,6 @@
 #import koji
 #from kojiweb import util
-#import six.moves.urllib
+#import urllib
 #import cgi
 
 #def printValue($key, $value, $sep=', ')
@@ -424,9 +424,9 @@ $value
       <th>Output</th>
       <td>
         #for $volume, $filename in $output
-        <a href="$pathinfo.task($task.id, volume=$volume)/$six.moves.urllib.parse.quote($filename)">$filename</a>
+        <a href="$pathinfo.task($task.id, volume=$volume)/$urllib.quote($filename)">$filename</a>
            #if $filename.endswith('.log')
-           (<a href="getfile?taskID=$task.id&volume=$volume&name=$six.moves.urllib.parse.quote($filename)&offset=-4000">tail</a>)
+           (<a href="getfile?taskID=$task.id&volume=$volume&name=$urllib.quote($filename)&offset=-4000">tail</a>)
            #end if
         <br/>
         #end for

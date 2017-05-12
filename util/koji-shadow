@@ -22,16 +22,12 @@
 #       Dennis Gilmore <dennis@ausil.us>
 #       Karsten Hopp <karsten@redhat.com>
 
-from __future__ import absolute_import
-from six.moves import range
-from six.moves import zip
-import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
     pass
 import koji
-import six.moves.configparser
+import ConfigParser
 import fnmatch
 import optparse
 import os
@@ -42,8 +38,9 @@ import socket   # for socket.error and socket.setdefaulttimeout
 import string
 import sys
 import time
-import six.moves.xmlrpc_client  # for ProtocolError and Fault
-import six.moves.urllib
+import urllib2
+import urlgrabber.grabber as grabber
+import xmlrpclib  # for ProtocolError and Fault
 import rpm
 
 # koji.fp.o keeps stalling, probably network errors...
@@ -163,7 +160,7 @@ def get_options():
     (options, args) = parser.parse_args()
 
     defaults = parser.get_default_values()
-    config = six.moves.configparser.ConfigParser()
+    config = ConfigParser.ConfigParser()
     cf = getattr(options, 'config_file', None)
     if cf:
         if not os.access(cf, os.F_OK):
@@ -299,7 +296,7 @@ def warn(msg):
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except six.moves.xmlrpc_client.ProtocolError:
+    except xmlrpclib.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at "
@@ -329,9 +326,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error as e:
+        except krbV.Krb5Error, e:
             error(_("Kerberos authentication failed: '%s' (%s)") % (e.args[1], e.args[0]))
-        except socket.error as e:
+        except socket.error, e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in"))
@@ -448,10 +445,10 @@ class TrackedBuild(object):
             url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
             log("Downloading %s" % url)
             #XXX - this is not really the right place for this
-            fsrc = six.moves.urllib.request.urlopen(url)
+            fsrc = urllib2.urlopen(url)
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
-            fdst = open(fn, 'w')
+            fdst = file(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
@@ -498,7 +495,7 @@ class TrackedBuild(object):
             log("Warning: some rpms for %s lacked buildroots:" % self.nvr)
             for rinfo in bad:
                 log("    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo)
-        return list(brs.keys())
+        return brs.keys()
 
     def getDeps(self):
         buildroots = self.getBuildroots()
@@ -547,7 +544,7 @@ class TrackedBuild(object):
         #        changes happened during the build startup and some subtasks got the old
         #        repo and others the new one.
         base = []
-        for name, brlist in six.iteritems(bases):
+        for name, brlist in bases.iteritems():
             #We want to determine for each name if that package was present
             #in /all/ the buildroots or just some.
             #Because brlist is constructed only from elements of buildroots, we
@@ -557,12 +554,12 @@ class TrackedBuild(object):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, list(tags.keys())))
-            counts = [(n, tag) for tag, n in six.iteritems(tags)]
+            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, tags.keys()))
+            counts = [(n, tag) for tag, n in tags.iteritems()]
             sort(counts)
             tag = counts[-1][1]
         else:
-            tag = list(tags.keys())[0]
+            tag = tags.keys()[0]
         # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
         if len(builds) == 0:
             self.setState("noroot")
@@ -662,10 +659,8 @@ class BuildTracker(object):
                     return grey
         return default
 
-    def rpmvercmp(self, evr1, evr2):
+    def rpmvercmp(self, (e1, v1, r1), (e2, v2, r2)):
         """find out which build is newer"""
-        (e1, v1, r1) = evr1
-        (e2, v2, r2) = evr2
         rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
         if rc == 1:
             #first evr wins
@@ -866,7 +861,7 @@ class BuildTracker(object):
         taginfo = remote.getTag(tag)
         builds = remote.listTagged(taginfo['id'], latest=True)
         for build in builds:
-            for retry in range(10):
+            for retry in xrange(10):
                 try:
                     self.scanBuild(build['id'], tag=tag)
                     if options.first_one:
@@ -885,13 +880,13 @@ class BuildTracker(object):
         if options.link_imports:
             #bit of a hack, but faster than uploading
             dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, fn)
-            old_umask = os.umask(0o02)
+            old_umask = os.umask(002)
             try:
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
                 log ("Downloading %s to %s" % (url, dst))
-                fsrc = six.moves.urllib.request.urlopen(url)
-                fdst = open(fn, 'w')
+                fsrc = urllib2.urlopen(url)
+                fdst = file(fn, 'w')
                 shutil.copyfileobj(fsrc, fdst)
                 fsrc.close()
                 fdst.close()
@@ -903,8 +898,8 @@ class BuildTracker(object):
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
             log ("Downloading %s to %s..." % (url, dst))
-            fsrc = six.moves.urllib.request.urlopen(url)
-            fdst = open(dst, 'w')
+            fsrc = urllib2.urlopen(url)
+            fdst = file(dst, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
@@ -1008,7 +1003,7 @@ class BuildTracker(object):
                 for pkg in session.listPackages(pkgID=name):
                     owners.setdefault(pkg['owner_id'], []).append(pkg)
                 if owners:
-                    order = [(len(v), k) for k, v in six.iteritems(owners)]
+                    order = [(len(v), k) for k, v in owners.iteritems()]
                     order.sort()
                     owner = order[-1][1]
                 else:
@@ -1124,7 +1119,7 @@ class BuildTracker(object):
         log("-- %s --" % time.asctime())
         self.report_brief()
         for state in ('broken', 'noroot', 'blocked'):
-            builds = list(self.state_idx[state].values())
+            builds = self.state_idx[state].values()
             not_replaced = [b for b in builds if not b.substitute]
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
@@ -1154,7 +1149,7 @@ class BuildTracker(object):
                     nvr = dep.substitute
                 problem_counts.setdefault(nvr, 0)
                 problem_counts[nvr] += 1
-        order = [(c, nvr) for (nvr, c) in six.iteritems(problem_counts)]
+        order = [(c, nvr) for (nvr, c) in problem_counts.iteritems()]
         if order:
             order.sort()
             order.reverse()
@@ -1165,7 +1160,7 @@ class BuildTracker(object):
 
     def report_brief(self):
         N = len(self.builds)
-        states = list(self.state_idx.keys())
+        states = self.state_idx.keys()
         states.sort()
         parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
         parts.append("total: %i" % N)
@@ -1237,7 +1232,7 @@ class BuildTracker(object):
         ret = False
         if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
             return ret
-        missing = [(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])]
+        missing = [(b.order, b.id, b) for b in self.state_idx['missing'].itervalues()]
         missing.sort()
         for order, build_id, build in missing:
             if not self.checkBuildDeps(build):
@@ -1305,7 +1300,7 @@ def main(args):
     if options.logfile:
         filename = options.logfile
         try:
-            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0o777)
+            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0777)
         except:
             logfile = None
     if logfile is not None:

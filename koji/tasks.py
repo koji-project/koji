@@ -20,19 +20,17 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
 import koji
 import koji.util
 import os
 import logging
-import six.moves.xmlrpc_client
+import xmlrpclib
 import signal
+import urllib2
 import shutil
 import random
 import time
 import pprint
-from six.moves import range
-import six.moves.urllib
 
 def scan_mounts(topdir):
     """Search path for mountpoints"""
@@ -234,15 +232,13 @@ class BaseTaskHandler(object):
                 if all:
                     if failany:
                         failed = False
-                        task_error = None
                         for task in finished:
                             if task in canfail:
                                 # no point in checking
                                 continue
                             try:
                                 self.session.getTaskResult(task)
-                            except (koji.GenericError, six.moves.xmlrpc_client.Fault) as te:
-                                task_error = te
+                            except (koji.GenericError, xmlrpclib.Fault), task_error:
                                 self.logger.info("task %s failed or was canceled" % task)
                                 failed = True
                                 break
@@ -313,10 +309,10 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
-            fsrc = six.moves.urllib.request.urlopen(url)
+            fsrc = urllib2.urlopen(url)
             if not os.path.exists(os.path.dirname(fn)):
                 os.makedirs(os.path.dirname(fn))
-            fdst = open(fn, 'w')
+            fdst = file(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
@@ -365,7 +361,7 @@ class BaseTaskHandler(object):
         else:
             # no overlap
             raise koji.BuildError("host %s (%s) does not support any arches of tag %s (%s)" % \
-                (host['name'], ', '.join(sorted(host_arches)), tag['name'], ', '.join(sorted(tag_arches))))
+                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches)))
 
     def getRepo(self, tag):
         """
@@ -406,7 +402,7 @@ class SleepTask(BaseTaskHandler):
 class ForkTask(BaseTaskHandler):
     Methods = ['fork']
     def handler(self, n=5, m=37):
-        for i in range(n):
+        for i in xrange(n):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
 
 class WaitTestTask(BaseTaskHandler):
@@ -421,7 +417,7 @@ class WaitTestTask(BaseTaskHandler):
     _taskWeight = 0.1
     def handler(self, count, seconds=10):
         tasks = []
-        for i in range(count):
+        for i in xrange(count):
             task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i), parent=self.id)
             tasks.append(task_id)
         bad_task = self.subtask('sleep', ['BAD_ARG'], label='bad')

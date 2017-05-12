@@ -21,7 +21,6 @@
 # Largely borrowed from the mergerepo script included in createrepo and
 # written by Seth Vidal
 
-from __future__ import absolute_import
 import createrepo
 import os.path
 import rpmUtils.miscutils
@@ -239,7 +238,7 @@ class RepoMerge(object):
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = open(pkgorigins, 'w')
+        origins = file(pkgorigins, 'w')
 
         seen_rpms = {}
         for repo in repos:
@@ -284,7 +283,7 @@ def main(args):
     opts = parse_args(args)
 
     if opts.blocked:
-        blocked_fo = open(opts.blocked)
+        blocked_fo = file(opts.blocked)
         blocked_list = blocked_fo.readlines()
         blocked_fo.close()
         blocked = dict([(b.strip(), 1) for b in blocked_list])

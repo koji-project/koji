@@ -18,9 +18,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
-from six.moves.configparser import RawConfigParser
+from ConfigParser import RawConfigParser
 import datetime
 import inspect
 import logging
@@ -31,8 +29,8 @@ import traceback
 import types
 import pprint
 import resource
-import six.moves.xmlrpc_client
-from six.moves.xmlrpc_client import getparser, dumps, Fault
+import xmlrpclib
+from xmlrpclib import getparser, dumps, Fault
 from koji.server import WSGIWrapper
 
 import koji
@@ -42,13 +40,12 @@ import koji.plugin
 import koji.policy
 import koji.util
 from koji.context import context
-from six.moves import range
 
 
 # Workaround to allow xmlrpclib deal with iterators
-class Marshaller(six.moves.xmlrpc_client.Marshaller):
+class Marshaller(xmlrpclib.Marshaller):
 
-    dispatch = six.moves.xmlrpc_client.Marshaller.dispatch.copy()
+    dispatch = xmlrpclib.Marshaller.dispatch.copy()
 
     def dump_generator(self, value, write):
         dump = self.__dump
@@ -64,7 +61,7 @@ class Marshaller(six.moves.xmlrpc_client.Marshaller):
         self.dump_string(value, write)
     dispatch[datetime.datetime] = dump_datetime
 
-six.moves.xmlrpc_client.Marshaller = Marshaller
+xmlrpclib.Marshaller = Marshaller
 
 
 class HandlerRegistry(object):
@@ -112,7 +109,7 @@ class HandlerRegistry(object):
 
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
-        for v in six.itervalues(vars(plugin)):
+        for v in vars(plugin).itervalues():
             if isinstance(v, type):
                 #skip classes
                 continue
@@ -132,7 +129,7 @@ class HandlerRegistry(object):
         if ret:
             return ret
         ret = tuple(inspect.getargspec(func))
-        if inspect.ismethod(func) and func.__self__:
+        if inspect.ismethod(func) and func.im_self:
             # bound method, remove first arg
             args, varargs, varkw, defaults = ret
             if args:
@@ -159,17 +156,17 @@ class HandlerRegistry(object):
 
     def _getFuncArgs(self, func):
         args = []
-        for x in range(0, func.__code__.co_argcount):
-            if x == 0 and func.__code__.co_varnames[x] == "self":
+        for x in range(0, func.func_code.co_argcount):
+            if x == 0 and func.func_code.co_varnames[x] == "self":
                 continue
-            if func.__defaults__ and func.__code__.co_argcount - x <= len(func.__defaults__):
-                args.append((func.__code__.co_varnames[x], func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
+            if func.func_defaults and func.func_code.co_argcount - x <= len(func.func_defaults):
+                args.append((func.func_code.co_varnames[x], func.func_defaults[x - func.func_code.co_argcount + len(func.func_defaults)]))
             else:
-                args.append(func.__code__.co_varnames[x])
+                args.append(func.func_code.co_varnames[x])
         return args
 
     def system_listMethods(self):
-        return list(self.funcs.keys())
+        return self.funcs.keys()
 
     def system_methodSignature(self, method):
         #it is not possible to autogenerate this data
@@ -245,7 +242,7 @@ class ModXMLRPCRequestHandler(object):
             # wrap response in a singleton tuple
             response = (response,)
             response = dumps(response, methodresponse=1, allow_none=1)
-        except Fault as fault:
+        except Fault, fault:
             self.traceback = True
             response = dumps(fault)
         except:
@@ -339,7 +336,7 @@ class ModXMLRPCRequestHandler(object):
         for call in calls:
             try:
                 result = self._dispatch(call['methodName'], call['params'])
-            except Fault as fault:
+            except Fault, fault:
                 results.append({'faultCode': fault.faultCode, 'faultString': fault.faultString})
             except:
                 # transform unknown exceptions into XML-RPC Faults
@@ -515,7 +512,7 @@ def load_config(environ):
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
-    for pname, text in six.iteritems(_default_policies):
+    for pname, text in _default_policies.iteritems():
         opts['policy'].setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
@@ -577,14 +574,14 @@ def get_policy(opts, plugins):
     for plugin_name in opts.get('Plugins', '').split():
         alltests.append(koji.policy.findSimpleTests(vars(plugins.get(plugin_name))))
     policy = {}
-    for pname, text in six.iteritems(opts['policy']):
+    for pname, text in opts['policy'].iteritems():
         #filter/merge tests
         merged = {}
         for tests in alltests:
             # tests can be limited to certain policies by setting a class variable
-            for name, test in six.iteritems(tests):
+            for name, test in tests.iteritems():
                 if hasattr(test, 'policy'):
-                    if isinstance(test.policy, six.string_types):
+                    if isinstance(test.policy, basestring):
                         if pname != test.policy:
                             continue
                     elif pname not in test.policy:
@@ -690,7 +687,7 @@ def handler(req):
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
-    statm = [pagesize*int(y)//1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    statm = [pagesize*int(y)/1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 

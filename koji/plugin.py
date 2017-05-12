@@ -19,13 +19,11 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
 import imp
 import koji
 import logging
 import sys
 import traceback
-import six
 
 # the available callback hooks and a list
 # of functions to be called for each event
@@ -87,7 +85,7 @@ class PluginTracker(object):
         return self.plugins.get(name)
 
     def pathlist(self, path):
-        if isinstance(path, six.string_types):
+        if isinstance(path, basestring):
             return [path]
         else:
             return path

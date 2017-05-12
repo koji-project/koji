@@ -21,7 +21,6 @@
 #       Mike McLean <mikem@redhat.com>
 
 
-from __future__ import absolute_import
 import logging
 import sys
 import psycopg2
@@ -34,7 +33,7 @@ import psycopg2
 # del psycopg2.extensions.string_types[1266]
 import time
 import traceback
-from . import context
+import context
 import re
 
 POSITIONAL_RE = re.compile(r'%[a-z]')

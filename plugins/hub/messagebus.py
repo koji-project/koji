@@ -4,10 +4,9 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
 from koji import PluginError
 from koji.plugin import callbacks, callback, ignore_error
-import six.moves.configparser
+import ConfigParser
 import logging
 import qpid.messaging
 import qpid.messaging.transports
@@ -79,7 +78,7 @@ def get_sender():
             session = None
             target = None
 
-    config = six.moves.configparser.SafeConfigParser()
+    config = ConfigParser.SafeConfigParser()
     config.read(CONFIG_FILE)
     if not config.has_option('broker', 'timeout'):
         config.set('broker', 'timeout', '60')

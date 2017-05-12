@@ -1,7 +1,7 @@
 #import koji
 #from kojiweb import util
 #from pprint import pformat
-#import six.moves.urllib
+#import urllib
 
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
@@ -97,7 +97,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?archiveID=$archive.id&filename=$six.moves.urllib.parse.quote($file.name)">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?archiveID=$archive.id&filename=$urllib.quote($file.name)">$file.name</a></td><td>$file.size</td>
           </tr>
           #end for
         </table>

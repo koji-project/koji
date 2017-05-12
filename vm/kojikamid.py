@@ -26,15 +26,14 @@
 #   kojiwind --install
 # in a cygwin shell.
 
-from __future__ import absolute_import
 from optparse import OptionParser
-from six.moves.configparser import ConfigParser
+from ConfigParser import ConfigParser
 import os
 import subprocess
 import sys
 import tempfile
 import time
-import six.moves.xmlrpc_client
+import xmlrpclib
 import base64
 import hashlib
 import logging
@@ -43,7 +42,6 @@ import threading
 import re
 import glob
 import zipfile
-import six
 
 MANAGER_PORT = 7000
 
@@ -303,7 +301,7 @@ class WindowsBuild(object):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))
-        destfile = open(destpath, 'w')
+        destfile = file(destpath, 'w')
         offset = 0
         checksum = hashlib.md5()
         while True:
@@ -562,7 +560,7 @@ def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
     destpath = os.path.join(prefix, path)
-    fobj = open(destpath, 'r')
+    fobj = file(destpath, 'r')
     offset = 0
     sum = hashlib.md5()
     while True:
@@ -588,13 +586,13 @@ def get_mgmt_server():
         macaddr, gateway = find_net_info()
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
-    server = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' %
+    server = xmlrpclib.ServerProxy('http://%s:%s/' %
                                    (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)
-    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
+    return xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
 def get_options():
     """handle usage and parse options"""
@@ -616,7 +614,7 @@ def setup_logging(opts):
     if opts.debug:
         level = logging.DEBUG
     logger.setLevel(level)
-    logfd = open(logfile, 'w')
+    logfd = file(logfile, 'w')
     handler = logging.StreamHandler(logfd)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
@@ -641,11 +639,11 @@ def stream_logs(server, handler, builds):
                 logpath = os.path.join(build.source_dir, relpath)
                 if logpath not in logs:
                     logs[logpath] = (relpath, None)
-        for log, (relpath, fd) in six.iteritems(logs):
+        for log, (relpath, fd) in logs.iteritems():
             if not fd:
                 if os.path.isfile(log):
                     try:
-                        fd = open(log, 'r')
+                        fd = file(log, 'r')
                         logs[log] = (relpath, fd)
                     except:
                         log_local('Error opening %s' % log)

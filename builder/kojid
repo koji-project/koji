@@ -21,9 +21,6 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-from six.moves import zip
-import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -58,11 +55,11 @@ import sys
 import time
 import traceback
 import xml.dom.minidom
-import six.moves.xmlrpc_client
+import xmlrpclib
 import zipfile
 import copy
 import Cheetah.Template
-from six.moves.configparser import ConfigParser
+from ConfigParser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
@@ -256,7 +253,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
-        fo = open(configfile,'w')
+        fo = file(configfile,'w')
         fo.write(output)
         fo.close()
 
@@ -269,7 +266,7 @@ class BuildRoot(object):
         id_suffix = 'repo'
         name_prefix = 'Repository for Koji'
         for dep in self.deps:
-            if isinstance(dep, six.integer_types):
+            if isinstance(dep, (int, long)):
                 # dep is a task ID, the url points to the task output directory
                 repo_type = 'task'
                 dep_url = pi.task(dep)
@@ -356,7 +353,7 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        fo = open(self.rootdir() + destfile, 'w')
+        fo = file(self.rootdir() + destfile, 'w')
         fo.write(settings)
         fo.close()
 
@@ -410,7 +407,7 @@ class BuildRoot(object):
                                 self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
                                                  (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
-                            fd = open(fpath, 'r')
+                            fd = file(fpath, 'r')
                         logs[fname] = (fd, stat_info.st_ino, stat_info.st_size, fpath)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
@@ -431,7 +428,7 @@ class BuildRoot(object):
                 if workdir:
                     outfile = os.path.join(workdir, mocklog)
                     flags = os.O_CREAT | os.O_WRONLY | os.O_APPEND
-                    fd = os.open(outfile, flags, 0o666)
+                    fd = os.open(outfile, flags, 0666)
                     os.dup2(fd, 1)
                     os.dup2(fd, 2)
                 if os.getuid() == 0 and hasattr(self.options,"mockuser"):
@@ -659,7 +656,7 @@ class BuildRoot(object):
         repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
 
-        opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+        opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
         opts['tempdir'] = self.options.workdir
         fo = koji.openRemoteFile(repomdpath, **opts)
         try:
@@ -914,7 +911,7 @@ class BuildTask(BaseTaskHandler):
         #srpm arg should be a path relative to <BASEDIR>/work
         self.logger.debug("Reading SRPM")
         relpath = "work/%s" % srpm
-        opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+        opts = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
         opts['tempdir'] = self.workdir
         fo = koji.openRemoteFile(relpath, **opts)
         h = koji.get_rpm_header(fo)
@@ -967,7 +964,7 @@ class BuildTask(BaseTaskHandler):
                 archdict[a] = 1
         if not archdict:
             raise koji.BuildError("No matching arches were found")
-        return list(archdict.keys())
+        return archdict.keys()
 
 
     def choose_taskarch(self, arch, srpm, build_tag):
@@ -1029,7 +1026,7 @@ class BuildTask(BaseTaskHandler):
 
         # wait for subtasks to finish
         failany = not getattr(self.options, 'build_arch_can_fail', False)
-        results = self.wait(list(subtasks.values()), all=True, failany=failany)
+        results = self.wait(subtasks.values(), all=True, failany=failany)
 
         # finalize import
         # merge data into needed args for completeBuild call
@@ -1037,7 +1034,7 @@ class BuildTask(BaseTaskHandler):
         brmap = {}
         logs = {}
         built_srpm = None
-        for (arch, task_id) in six.iteritems(subtasks):
+        for (arch, task_id) in subtasks.iteritems():
             result = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch,result,))
             brootid = result['brootid']
@@ -1348,7 +1345,7 @@ class BuildMavenTask(BaseBuildTask):
                     st = os.lstat(filepath)
                     mtime = time.localtime(st.st_mtime)
                     info = zipfile.ZipInfo(filepath[roottrim:])
-                    info.external_attr |= 0o120000 << 16 # symlink file type
+                    info.external_attr |= 0120000 << 16L # symlink file type
                     info.compress_type = zipfile.ZIP_STORED
                     info.date_time = mtime[:6]
                     zfo.writestr(info, content)
@@ -1516,7 +1513,7 @@ class BuildMavenTask(BaseBuildTask):
         for filepath in logs:
             self.uploadFile(os.path.join(outputdir, filepath),
                             relPath=os.path.dirname(filepath))
-        for relpath, files in six.iteritems(output_files):
+        for relpath, files in output_files.iteritems():
             for filename in files:
                 self.uploadFile(os.path.join(outputdir, relpath, filename),
                                 relPath=relpath)
@@ -1746,7 +1743,7 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        specfd = open(specfile, 'w')
+        specfd = file(specfile, 'w')
         specfd.write(contents)
         specfd.close()
 
@@ -1957,7 +1954,7 @@ class ChainMavenTask(MultiPlatformTask):
                     pkg_to_wrap = params['buildrequires'][0]
                     to_wrap = self.done[pkg_to_wrap]
 
-                    if isinstance(to_wrap, six.integer_types):
+                    if isinstance(to_wrap, (int, long)):
                         task_to_wrap = self.session.getTaskInfo(to_wrap, request=True)
                         build_to_wrap = None
                     else:
@@ -1976,8 +1973,8 @@ class ChainMavenTask(MultiPlatformTask):
                 running[task_id] = package
                 del todo[package]
             try:
-                results = self.wait(list(running.keys()))
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+                results = self.wait(running.keys())
+            except (xmlrpclib.Fault, koji.GenericError), e:
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
                 self.wait(all=True)
@@ -2029,8 +2026,8 @@ class ChainMavenTask(MultiPlatformTask):
         have the same keys and those keys have the same values.  If a value is
         list, it will be considered equal to a list with the same values in
         a different order."""
-        akeys = list(a.keys())
-        bkeys = list(b.keys())
+        akeys = a.keys()
+        bkeys = b.keys()
         if sorted(akeys) != sorted(bkeys):
             return False
         for key in akeys:
@@ -2114,7 +2111,7 @@ class TagBuildTask(BaseTaskHandler):
             #XXX - add more post tests
             self.session.host.tagBuild(self.id,tag_id,build_id,force=force,fromtag=fromtag)
             self.session.host.tagNotification(True, tag_id, fromtag, build_id, user_id, ignore_success)
-        except Exception as e:
+        except Exception, e:
             exctype, value = sys.exc_info()[:2]
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
@@ -2191,7 +2188,7 @@ class BuildBaseImageTask(BuildImageTask):
                     canfail.append(subtasks[arch])
             self.logger.debug("Got image subtasks: %r" % (subtasks))
             self.logger.debug("Waiting on image subtasks (%s can fail)..." % canfail)
-            results = self.wait(list(subtasks.values()), all=True, failany=True, canfail=canfail)
+            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.debug('subtask results: %r', results)
@@ -2500,7 +2497,7 @@ class BuildLiveMediaTask(BuildImageTask):
 
             self.logger.debug("Got image subtasks: %r", subtasks)
             self.logger.debug("Waiting on livemedia subtasks...")
-            results = self.wait(list(subtasks.values()), all=True, failany=True, canfail=canfail)
+            results = self.wait(subtasks.values(), all=True, failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.debug('subtask results: %r', results)
@@ -2536,7 +2533,7 @@ class BuildLiveMediaTask(BuildImageTask):
                     wrapper_tasks[arch] = self.subtask('wrapperRPM', arglist,
                                 label='wrapper %s' % arch, arch='noarch')
 
-                results2 = self.wait(list(wrapper_tasks.values()), all=True, failany=True)
+                results2 = self.wait(wrapper_tasks.values(), all=True, failany=True)
                 self.logger.debug('wrapper results: %r', results2)
 
                 # add wrapper rpm results into main results
@@ -2677,10 +2674,10 @@ class ImageTask(BaseTaskHandler):
         self.ks = ksparser.KickstartParser(version)
         try:
             self.ks.readKickstart(kspath)
-        except IOError as e:
+        except IOError, e:
             raise koji.LiveCDError("Failed to read kickstart file "
                                    "'%s' : %s" % (kspath, e))
-        except kserrors.KickstartError as e:
+        except kserrors.KickstartError, e:
             raise koji.LiveCDError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
 
@@ -2707,7 +2704,7 @@ class ImageTask(BaseTaskHandler):
         self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
         if opts.get('repo'):
             user_repos = opts['repo']
-            if isinstance(user_repos, six.string_types):
+            if isinstance(user_repos, basestring):
                 user_repos = user_repos.split(',')
             index = 0
             for user_repo in user_repos:
@@ -2781,7 +2778,7 @@ class ImageTask(BaseTaskHandler):
             'TC': 'T',
         }
 
-        for k, v in six.iteritems(substitutions):
+        for k, v in substitutions.iteritems():
             if k in name:
                 name = name.replace(k, v)
             if k in version:
@@ -3261,7 +3258,7 @@ class OzImageTask(BaseTaskHandler):
                 self.getUploadDir(), logfile)
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
         else:
-            tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+            tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
             tops['tempdir'] = self.workdir
             ks_src = koji.openRemoteFile(ksfile, **tops)
             kspath = os.path.join(self.workdir, os.path.basename(ksfile))
@@ -3292,10 +3289,10 @@ class OzImageTask(BaseTaskHandler):
         self.logger.debug('attempting to read kickstart: %s' % kspath)
         try:
             ks.readKickstart(kspath)
-        except IOError as e:
+        except IOError, e:
             raise koji.BuildError("Failed to read kickstart file "
                                    "'%s' : %s" % (kspath, e))
-        except kserrors.KickstartError as e:
+        except kserrors.KickstartError, e:
             raise koji.BuildError("Failed to parse kickstart file "
                                     "'%s' : %s" % (kspath, e))
         return ks
@@ -3538,7 +3535,7 @@ class BaseImageTask(OzImageTask):
         if len(formats) == 0:
             # we only want a raw disk image (no format option given)
             f_dict['raw'] = True
-        elif 'raw' not in list(f_dict.keys()):
+        elif 'raw' not in f_dict.keys():
             f_dict['raw'] = False
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
@@ -4068,7 +4065,7 @@ class BuildIndirectionImageTask(OzImageTask):
                 self.getUploadDir(), logfile)
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
         else:
-            tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+            tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
             tops['tempdir'] = self.workdir
             remote_fileobj = koji.openRemoteFile(filepath, **tops)
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
@@ -4229,7 +4226,7 @@ class BuildIndirectionImageTask(OzImageTask):
                 base_factory_image = _nvr_to_image(opts['base_image_build'], opts['arch'])
             else:
                 base_factory_image = _task_to_image(int(opts['base_image_task']))
-        except Exception as e:
+        except Exception, e:
             self.logger.exception(e)
             raise
 
@@ -4291,7 +4288,7 @@ class BuildIndirectionImageTask(OzImageTask):
                         image_id=base_factory_image.identifier,
                         parameters=params)
                     target.target_thread.join()
-            except Exception as e:
+            except Exception, e:
                 self.logger.debug("Exception encountered during target build")
                 self.logger.exception(e)
         finally:
@@ -4761,8 +4758,8 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
 
     def uniq(self, items):
         """Remove duplicates from the list of items, and sort the list."""
-        m = dict(list(zip(items, [1] * len(items))))
-        l = list(m.keys())
+        m = dict(zip(items, [1] * len(items)))
+        l = m.keys()
         l.sort()
         return l
 
@@ -4807,8 +4804,8 @@ class NewRepoTask(BaseTaskHandler):
         # gather subtask results
         data = {}
         if subtasks:
-            results = self.wait(list(subtasks.values()), all=True, failany=True)
-            for (arch, task_id) in six.iteritems(subtasks):
+            results = self.wait(subtasks.values(), all=True, failany=True)
+            for (arch, task_id) in subtasks.iteritems():
                 data[arch] = results[task_id]
                 self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
 
@@ -4849,7 +4846,7 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
 
@@ -4967,7 +4964,7 @@ class NewDistRepoTask(BaseTaskHandler):
                 method='createdistrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
         if len(subtasks) > 0 and task_opts['multilib']:
-            results = self.wait(list(subtasks.values()), all=True, failany=True)
+            results = self.wait(subtasks.values(), all=True, failany=True)
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
@@ -4983,8 +4980,8 @@ class NewDistRepoTask(BaseTaskHandler):
                     parent=self.id, arch='noarch')
         # wait for 64-bit subtasks to finish
         data = {}
-        results = self.wait(list(subtasks.values()), all=True, failany=True)
-        for (arch, task_id) in six.iteritems(subtasks):
+        results = self.wait(subtasks.values(), all=True, failany=True)
+        for (arch, task_id) in subtasks.iteritems():
             data[arch] = results[task_id]
             self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
             if task_opts['multilib'] and arch in arch32s:
@@ -5064,7 +5061,7 @@ class createDistRepoTask(CreaterepoTask):
             self.pkglist = None
         self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
         if self.pkglist is None:
-            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
         files = ['pkglist', 'kojipkgs']
@@ -5078,7 +5075,7 @@ class createDistRepoTask(CreaterepoTask):
                 files.append(f)
                 self.session.uploadWrapper('%s/%s' % (ddir, f),
                     self.uploadpath, f)
-        return [self.uploadpath, files, list(self.sigmap.items())]
+        return [self.uploadpath, files, self.sigmap.items()]
 
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
@@ -5258,7 +5255,7 @@ enabled=1
         # select our rpms
         selected = {}
         for rpm_id in rpm_idx:
-            avail_keys = list(rpm_idx[rpm_id].keys())
+            avail_keys = rpm_idx[rpm_id].keys()
             best_key = self.pick_key(keys, avail_keys)
             if best_key is None:
                 # we lack a matching key for this rpm
@@ -5271,7 +5268,7 @@ enabled=1
 
         #generate pkglist files
         pkgfile = os.path.join(self.repodir, 'pkglist')
-        pkglist = open(pkgfile, 'w')
+        pkglist = file(pkgfile, 'w')
         fs_missing = []
         sig_missing = []
         kojipkgs = {}
@@ -5331,7 +5328,7 @@ enabled=1
             fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
             filenames = [[fmt % selected[r], r] for r in sig_missing]
             for fname, rpm_id in sorted(filenames):
-                avail = list(rpm_idx.get(rpm_id, {}).keys())
+                avail = rpm_idx.get(rpm_id, {}).keys()
                 outfile.write('%s: %r\n' % (fname, avail))
             outfile.close()
             self.session.uploadWrapper(missing_log, self.uploadpath)
@@ -5344,7 +5341,7 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        datafile = open(filename, 'w')
+        datafile = file(filename, 'w')
         try:
             json.dump(self.kojipkgs, datafile, indent=4)
         finally:
@@ -5383,7 +5380,7 @@ class WaitrepoTask(BaseTaskHandler):
         if not targets:
             raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
 
-        if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
+        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
             newer_than = start
         if not isinstance(newer_than, (type(None), int, long, float)):
             raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
@@ -5546,7 +5543,7 @@ def get_options():
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
-            elif name in list(defaults.keys()):
+            elif name in defaults.keys():
                 defaults[name] = value
             elif name.upper().startswith('RLIMIT_'):
                 defaults[name.upper()] = value
@@ -5634,9 +5631,9 @@ if __name__ == "__main__":
             # authenticate using SSL client certificates
             session.ssl_login(options.cert, None,
                               options.serverca)
-        except koji.AuthError as e:
+        except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)
-        except six.moves.xmlrpc_client.ProtocolError:
+        except xmlrpclib.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
@@ -5644,7 +5641,7 @@ if __name__ == "__main__":
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
-        except six.moves.xmlrpc_client.ProtocolError:
+        except xmlrpclib.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif 'krbV' in sys.modules:
         krb_principal = options.krb_principal
@@ -5654,9 +5651,9 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error as e:
+        except krbV.Krb5Error, e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
-        except socket.error as e:
+        except socket.error, e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
         quit("No username/password supplied and Kerberos missing or not configured")
@@ -5670,7 +5667,7 @@ if __name__ == "__main__":
     #make sure it works
     try:
         ret = session.echo("OK")
-    except six.moves.xmlrpc_client.ProtocolError:
+    except xmlrpclib.ProtocolError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
         quit("Error: incorrect server response: %r" % (ret))

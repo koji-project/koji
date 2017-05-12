@@ -5,11 +5,10 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
 import koji
 from koji.context import context
 from koji.plugin import callback
-import six.moves.configparser
+import ConfigParser
 import fnmatch
 import os
 import shutil
@@ -31,7 +30,7 @@ def maven_import(cbtype, *args, **kws):
     filepath = kws['filepath']
 
     if not config:
-        config = six.moves.configparser.SafeConfigParser()
+        config = ConfigParser.SafeConfigParser()
         config.read(CONFIG_FILE)
     name_patterns = config.get('patterns', 'rpm_names').split()
     for pattern in name_patterns:
@@ -52,7 +51,7 @@ def maven_import(cbtype, *args, **kws):
             shutil.rmtree(tmpdir)
 
 def expand_rpm(filepath, tmpdir):
-    devnull = open('/dev/null', 'r+')
+    devnull = file('/dev/null', 'r+')
     rpm2cpio = subprocess.Popen(['/usr/bin/rpm2cpio', filepath],
                                 stdout=subprocess.PIPE,
                                 stdin=devnull, stderr=devnull,

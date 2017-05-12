@@ -1,9 +1,8 @@
 # kojid plugin
 
-from __future__ import absolute_import
 import commands
 import koji
-import six.moves.configparser
+import ConfigParser
 import os
 import platform
 compat_mode = False
@@ -57,7 +56,7 @@ class RunRootTask(tasks.BaseTaskHandler):
         return res
 
     def _read_config(self):
-        cp = six.moves.configparser.SafeConfigParser()
+        cp = ConfigParser.SafeConfigParser()
         cp.read(CONFIG_FILE)
         self.config = {
            'default_mounts': [],
@@ -85,7 +84,7 @@ class RunRootTask(tasks.BaseTaskHandler):
                     'fstype': cp.get(section_name, 'fstype'),
                     'options': cp.get(section_name, 'options'),
                 })
-            except six.moves.configparser.NoOptionError:
+            except ConfigParser.NoOptionError:
                 raise koji.GenericError("bad config: missing options in %s section" % section_name)
             count += 1
 

@@ -22,7 +22,6 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
-from __future__ import absolute_import
 import base64
 import calendar
 import cgi
@@ -54,12 +53,9 @@ import tarfile
 import tempfile
 import time
 import types
-import six.moves.xmlrpc_client
+import xmlrpclib
 import zipfile
 from koji.context import context
-from six.moves import range
-from six.moves import zip
-import six
 
 try:
     import json
@@ -401,7 +397,7 @@ class Task(object):
         if xml_request.find('<?xml', 0, 10) == -1:
             #handle older base64 encoded data
             xml_request = base64.decodestring(xml_request)
-        params, method = six.moves.xmlrpc_client.loads(xml_request)
+        params, method = xmlrpclib.loads(xml_request)
         return params
 
     def getResult(self, raise_fault=True):
@@ -420,8 +416,8 @@ class Task(object):
         try:
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
-            result, method = six.moves.xmlrpc_client.loads(xml_result)
-        except six.moves.xmlrpc_client.Fault as fault:
+            result, method = xmlrpclib.loads(xml_result)
+        except xmlrpclib.Fault, fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -452,7 +448,7 @@ class Task(object):
                 if task['request'].find('<?xml', 0, 10) == -1:
                     #handle older base64 encoded data
                     task['request'] = base64.decodestring(task['request'])
-                task['request'] = six.moves.xmlrpc_client.loads(task['request'])[0]
+                task['request'] = xmlrpclib.loads(task['request'])[0]
         return results
 
     def runCallbacks(self, cbtype, old_info, attr, new_val):
@@ -494,7 +490,7 @@ def make_task(method, arglist, **opts):
         r = _fetchSingle(q, opts)
         if not r:
             raise koji.GenericError("Invalid parent task: %(parent)s" % opts)
-        pdata = dict(list(zip(fields, r)))
+        pdata = dict(zip(fields, r))
         if pdata['state'] != koji.TASK_STATES['OPEN']:
             raise koji.GenericError("Parent task (id %(parent)s) is not open" % opts)
         #default to a higher priority than parent
@@ -563,7 +559,7 @@ def make_task(method, arglist, **opts):
             raise koji.GenericError("invalid channel policy")
 
     # encode xmlrpc request
-    opts['request'] = six.moves.xmlrpc_client.dumps(tuple(arglist), methodname=method,
+    opts['request'] = xmlrpclib.dumps(tuple(arglist), methodname=method,
                                       allow_none=1)
     opts['state'] = koji.TASK_STATES['FREE']
     opts['method'] = method
@@ -605,7 +601,7 @@ def readGlobalInheritance(event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    return [dict(list(zip(fields, x))) for x in c.fetchall()]
+    return [dict(zip(fields, x)) for x in c.fetchall()]
 
 def readInheritanceData(tag_id, event=None):
     c = context.cnx.cursor()
@@ -616,7 +612,7 @@ def readInheritanceData(tag_id, event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    data = [dict(list(zip(fields, x))) for x in c.fetchall()]
+    data = [dict(zip(fields, x)) for x in c.fetchall()]
     # include the current tag_id as child_id, so we can retrace the inheritance chain later
     for datum in data:
         datum['child_id'] = tag_id
@@ -631,7 +627,7 @@ def readDescendantsData(tag_id, event=None):
     """ % (",".join(fields), eventCondition(event))
     c.execute(q, locals())
     #convert list of lists into a list of dictionaries
-    data = [dict(list(zip(fields, x))) for x in c.fetchall()]
+    data = [dict(zip(fields, x)) for x in c.fetchall()]
     return data
 
 
@@ -671,12 +667,12 @@ def _writeInheritanceData(tag_id, changes, clear=False):
                     data[parent_id] = link
                     break
     if clear:
-        for link in six.itervalues(data):
+        for link in data.itervalues():
             if not link.get('is_update'):
                 link['delete link'] = True
                 link['is_update'] = True
     changed = False
-    for link in six.itervalues(data):
+    for link in data.itervalues():
         if link.get('is_update'):
             changed = True
             break
@@ -686,17 +682,17 @@ def _writeInheritanceData(tag_id, changes, clear=False):
         return
     #check for duplicate priorities
     pri_index = {}
-    for link in six.itervalues(data):
+    for link in data.itervalues():
         if link.get('delete link'):
             continue
         pri_index.setdefault(link['priority'], []).append(link)
-    for pri, dups in six.iteritems(pri_index):
+    for pri, dups in pri_index.iteritems():
         if len(dups) <= 1:
             continue
         #oops, duplicate entries for a single priority
         dup_ids = [link['parent_id'] for link in dups]
         raise koji.GenericError("Inheritance priorities must be unique (pri %s: %r )" % (pri, dup_ids))
-    for parent_id, link in six.iteritems(data):
+    for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
         # revoke old values
@@ -704,7 +700,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
                     clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
         update.make_revoke()
         update.execute()
-    for parent_id, link in six.iteritems(data):
+    for parent_id, link in data.iteritems():
         if not link.get('is_update'):
             continue
         # skip rest if we are just deleting
@@ -862,7 +858,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     tag_id = tag['id']
     pkg = lookup_package(pkginfo, strict=False)
     if not pkg:
-        if not isinstance(pkginfo, six.string_types):
+        if not isinstance(pkginfo, basestring):
             raise koji.GenericError("Invalid package: %s" % pkginfo)
     if owner is not None:
         owner = get_user(owner, strict=True)['id']
@@ -1303,14 +1299,14 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         joins.append('LEFT OUTER JOIN rpmsigs on rpminfo.id = rpmsigs.rpm_id')
     if arch:
         data['arch'] = arch
-        if isinstance(arch, six.string_types):
+        if isinstance(arch, basestring):
             clauses.append('rpminfo.arch = %(arch)s')
         elif isinstance(arch, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arch)s')
         else:
             raise koji.GenericError('invalid arch option: %s' % arch)
 
-    fields, aliases = list(zip(*fields))
+    fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
                            columns=fields, aliases=aliases, values=data, transform=_fix_rpm_row)
 
@@ -1972,7 +1968,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
             groups.setdefault(grp_id, group)
 
     if incl_pkgs:
-        for group in six.itervalues(groups):
+        for group in groups.itervalues():
             group['packagelist'] = {}
         fields = ('group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires')
         q = """
@@ -1994,7 +1990,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
 
     if incl_reqs:
         # and now the group reqs
-        for group in six.itervalues(groups):
+        for group in groups.itervalues():
             group['grouplist'] = {}
         fields = ('group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg', 'name')
         q = """SELECT %s FROM group_req_listing JOIN groups on req_id = id
@@ -2089,7 +2085,7 @@ def remove_host_from_channel(hostname, channel_name):
 def rename_channel(old, new):
     """Rename a channel"""
     context.session.assertPerm('admin')
-    if not isinstance(new, six.string_types):
+    if not isinstance(new, basestring):
         raise koji.GenericError("new channel name must be a string")
     cinfo = get_channel(old, strict=True)
     dup_check = get_channel(new, strict=False)
@@ -2143,7 +2139,7 @@ def get_ready_hosts():
     """ % ','.join(fields)
     # XXX - magic number in query
     c.execute(q)
-    hosts = [dict(list(zip(aliases, row))) for row in c.fetchall()]
+    hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
     for host in hosts:
         q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s"""
         c.execute(q, host)
@@ -2160,7 +2156,7 @@ def get_all_arches():
             #in a perfect world, this list would only include canonical
             #arches, but not all admins will undertand that.
             ret[koji.canonArch(arch)] = 1
-    return list(ret.keys())
+    return ret.keys()
 
 def get_active_tasks(host=None):
     """Return data on tasks that are yet to be run"""
@@ -2330,7 +2326,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
     comps = koji.generate_comps(groups, expand_groups=True)
-    fo = open("%s/comps.xml" % groupsdir, 'w')
+    fo = file("%s/comps.xml" % groupsdir, 'w')
     fo.write(comps)
     fo.close()
 
@@ -2349,7 +2345,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist[repoarch] = open(os.path.join(archdir, 'pkglist'), 'w')
+        pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
     #NOTE - rpms is now an iterator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
@@ -2374,7 +2370,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     #write blocked package lists
     for repoarch in repo_arches:
-        blocklist = open(os.path.join(repodir, repoarch, 'blocklist'), 'w')
+        blocklist = file(os.path.join(repodir, repoarch, 'blocklist'), 'w')
         for pkg in blocks:
             blocklist.write(pkg['package_name'])
             blocklist.write('\n')
@@ -2410,7 +2406,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                 os.symlink(relpath, destlink)
             except:
                 log_error('Error linking %s to %s' % (destlink, relpath))
-        for artifact_dir, artifacts in six.iteritems(artifact_dirs):
+        for artifact_dir, artifacts in artifact_dirs.iteritems():
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
@@ -2422,7 +2418,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
     artifacts = sorted(artifacts, cmp=lambda a, b: rpm.labelCompare(a, b))
-    artifactinfo = dict(list(zip(['group_id', 'artifact_id', 'version'], artifacts[-1])))
+    artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
 <metadata>
@@ -2441,7 +2437,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    mdfile = open(os.path.join(destdir, 'maven-metadata.xml'), 'w')
+    mdfile = file(os.path.join(destdir, 'maven-metadata.xml'), 'w')
     mdfile.write(contents)
     mdfile.close()
     _generate_maven_metadata(destdir)
@@ -2549,7 +2545,7 @@ def repo_references(repo_id):
         'host_id': 'host_id',
         'create_event': 'create_event',
         'state': 'state'}
-    fields, aliases = list(zip(*list(fields.items())))
+    fields, aliases = zip(*fields.items())
     values = {'repo_id': repo_id}
     clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
     query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
@@ -2796,7 +2792,7 @@ def lookup_name(table, info, strict=False, create=False):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
-    elif isinstance(info, six.text_type):
+    elif isinstance(info, unicode):
         info = koji.fixEncoding(info)
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
@@ -2914,7 +2910,7 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
 
     # add extra data
     if extra is not None:
-        for key, value in six.iteritems(extra):
+        for key, value in extra.iteritems():
             data = {
                 'tag_id': tag_id,
                 'key': key,
@@ -2971,15 +2967,15 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_include_all': 'maven_include_all'
              }
     clauses = [eventCondition(event, table='tag_config')]
-    if isinstance(tagInfo, six.integer_types):
+    if isinstance(tagInfo, (int, long)):
         clauses.append("tag.id = %(tagInfo)i")
-    elif isinstance(tagInfo, six.string_types):
+    elif isinstance(tagInfo, basestring):
         clauses.append("tag.name = %(tagInfo)s")
     else:
         raise koji.GenericError('invalid type for tagInfo: %s' % type(tagInfo))
 
     data = {'tagInfo': tagInfo}
-    fields, aliases = list(zip(*list(fields.items())))
+    fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=data)
     result = query.executeOne()
@@ -3199,7 +3195,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     if info is not None:
         if isinstance(info, str):
             clauses.append('name = %(info)s')
-        elif isinstance(info, six.integer_types):
+        elif isinstance(info, (int, long)):
             clauses.append('id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
@@ -3521,7 +3517,7 @@ def get_build(buildInfo, strict=False):
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('build.source', 'source'),
               ('build.extra', 'extra'))
-    fields, aliases = list(zip(*fields))
+    fields, aliases = zip(*fields)
     joins = ['events ON build.create_event = events.id',
              'package on build.pkg_id = package.id',
              'volume on build.volume_id = volume.id',
@@ -3638,7 +3634,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         )
     # we can look up by id or NVRA
     data = None
-    if isinstance(rpminfo, six.integer_types):
+    if isinstance(rpminfo, (int, long)):
         data = {'id': rpminfo}
     elif isinstance(rpminfo, str):
         data = koji.parse_NVRA(rpminfo)
@@ -3756,7 +3752,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         else:
             raise koji.GenericError('invalid type for "arches" parameter: %s' % type(arches))
 
-    fields, aliases = list(zip(*fields))
+    fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=locals(), transform=_fix_rpm_row, opts=queryOpts)
@@ -4081,7 +4077,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         clauses.append('archiveinfo.btype_id = %(btype_id)s')
         values['btype_id'] = btype['id']
 
-    columns, aliases = list(zip(*fields))
+    columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           transform=_fix_archive_row,
                           clauses=clauses, values=values, opts=queryOpts).execute()
@@ -4400,7 +4396,7 @@ def _multiRow(query, values, fields):
     as a list of maps.  Each map in the list will have a key for each
     element in the "fields" list.  If there are no results, an empty
     list will be returned."""
-    return [dict(list(zip(fields, row))) for row in _fetchMulti(query, values)]
+    return [dict(zip(fields, row)) for row in _fetchMulti(query, values)]
 
 def _singleRow(query, values, fields, strict=False):
     """Return a single row from "query".  Named parameters can be
@@ -4412,7 +4408,7 @@ def _singleRow(query, values, fields, strict=False):
     returned."""
     row = _fetchSingle(query, values, strict)
     if row:
-        return dict(list(zip(fields, row)))
+        return dict(zip(fields, row))
     else:
         #strict enforced by _fetchSingle
         return None
@@ -4964,7 +4960,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
-        for key, files in six.iteritems(logs):
+        for key, files in logs.iteritems():
             if not key:
                 key = None
             for relpath in files:
@@ -5133,7 +5129,7 @@ class CG_Importer(object):
         if metadata is None:
             #default to looking for uploaded file
             metadata = 'metadata.json'
-        if not isinstance(metadata, (str, six.text_type)):
+        if not isinstance(metadata, (str, unicode)):
             raise koji.GenericError("Invalid metadata value: %r" % metadata)
         if metadata.endswith('.json'):
             # handle uploaded metadata
@@ -5141,7 +5137,7 @@ class CG_Importer(object):
             path = os.path.join(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            fo = open(path, 'rt')
+            fo = open(path, 'rb')
             metadata = fo.read()
             fo.close()
         self.raw_metadata = metadata
@@ -5191,7 +5187,7 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
             owner = metadata['build'].get('owner', None)
             if owner:
-                if not isinstance(owner, six.string_types):
+                if not isinstance(owner, basestring):
                     raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
                 buildinfo['owner'] = get_user(owner, strict=True)['id']
         self.buildinfo = buildinfo
@@ -5532,14 +5528,14 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
 
     #sanity check rpminfo
     dtypes = (
-        ('name', six.string_types),
-        ('version', six.string_types),
-        ('release', six.string_types),
+        ('name', basestring),
+        ('version', basestring),
+        ('release', basestring),
         ('epoch', (int, type(None))),
-        ('arch', six.string_types),
+        ('arch', basestring),
         ('payloadhash', str),
         ('size', int),
-        ('buildtime', six.integer_types))
+        ('buildtime', (int, long)))
     for field, allowed in dtypes:
         if field not in rpminfo:
             raise koji.GenericError("%s field missing: %r" % (field, rpminfo))
@@ -5973,7 +5969,7 @@ def check_old_image_files(old):
                     (img_path, img_size, old['filesize']))
     # old images always used sha256 hashes
     sha256sum = hashlib.sha256()
-    image_fo = open(img_path, 'r')
+    image_fo = file(img_path, 'r')
     while True:
         data = image_fo.read(1048576)
         sha256sum.update(data)
@@ -6125,7 +6121,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
-        archivefp = open(filepath)
+        archivefp = file(filepath)
         m = md5_constructor()
         while True:
             contents = archivefp.read(8192)
@@ -6265,14 +6261,14 @@ def _generate_maven_metadata(mavendir):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
                 sum = sum_constr()
-                fobj = open('%s/%s' % (mavendir, mavenfile))
+                fobj = file('%s/%s' % (mavendir, mavenfile))
                 while True:
                     content = fobj.read(8192)
                     if not content:
                         break
                     sum.update(content)
                 fobj.close()
-                sumobj = open('%s/%s' % (mavendir, sumfile), 'w')
+                sumobj = file('%s/%s' % (mavendir, sumfile), 'w')
                 sumobj.write(sum.hexdigest())
                 sumobj.close()
 
@@ -6328,7 +6324,7 @@ def add_rpm_sig(an_rpm, sighdr):
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
-    fo = open(sigpath, 'wb')
+    fo = file(sigpath, 'wb')
     fo.write(sighdr)
     fo.close()
     koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
@@ -6344,7 +6340,7 @@ def _scan_sighdr(sighdr, fn):
     sig_start, sigsize = koji.find_rpm_sighdr(fn)
     hdr_start = sig_start + sigsize
     hdrsize = koji.rpm_hdr_size(fn, hdr_start)
-    inp = open(fn, 'rb')
+    inp = file(fn, 'rb')
     outp = tempfile.TemporaryFile(mode='w+b')
     #before signature
     outp.write(inp.read(sig_start))
@@ -6381,7 +6377,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         koji.splice_rpm_sighdr(sighdr, rpm_path, temp)
         ts = rpm.TransactionSet()
         ts.setVSFlags(0)  #full verify
-        fo = open(temp, 'rb')
+        fo = file(temp, 'rb')
         hdr = ts.hdrFromFdno(fo.fileno())
         fo.close()
     except:
@@ -6444,7 +6440,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
         else:
             os.unlink(signedpath)
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
-    fo = open(sigpath, 'rb')
+    fo = file(sigpath, 'rb')
     sighdr = fo.read()
     fo.close()
     koji.ensuredir(os.path.dirname(signedpath))
@@ -6677,7 +6673,7 @@ def query_history(tables=None, **kwargs):
                 fields['creator.id = %(editor)i'] = '_created_by'
                 fields['revoker.id = %(editor)i'] = '_revoked_by'
             elif arg == 'after':
-                if not isinstance(value, six.string_types):
+                if not isinstance(value, basestring):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['after'] = value
                 clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
@@ -6692,7 +6688,7 @@ def query_history(tables=None, **kwargs):
                 fields[c_test] = '_created_after_event'
                 fields[r_test] = '_revoked_after_event'
             elif arg == 'before':
-                if not isinstance(value, six.string_types):
+                if not isinstance(value, basestring):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['before'] = value
                 clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
@@ -6708,7 +6704,7 @@ def query_history(tables=None, **kwargs):
                 fields[r_test] = '_revoked_before_event'
         if skip:
             continue
-        fields, aliases = list(zip(*list(fields.items())))
+        fields, aliases = zip(*fields.items())
         query = QueryProcessor(columns=fields, aliases=aliases, tables=[table],
                                joins=joins, clauses=clauses, values=data)
         ret[table] = query.iterate()
@@ -6847,7 +6843,7 @@ def build_references(build_id, limit=None):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['rpms'] = list(idx.values())
+    ret['rpms'] = idx.values()
 
     ret['component_of'] = []
     # find images/archives that contain the build rpms
@@ -6878,7 +6874,7 @@ def build_references(build_id, limit=None):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['archives'] = list(idx.values())
+    ret['archives'] = idx.values()
 
     # find images/archives that contain the build archives
     fields = ['archive_id']
@@ -7202,7 +7198,7 @@ def get_notification_recipients(build, tag_id, state):
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
-    emails_uniq = list(dict([(x, 1) for x in emails]).keys())
+    emails_uniq = dict([(x, 1) for x in emails]).keys()
     return emails_uniq
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
@@ -7225,7 +7221,7 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         from_tag = get_tag(from_id)
         for email in get_notification_recipients(build, from_tag['id'], state):
             recipients[email] = 1
-    recipients_uniq = list(recipients.keys())
+    recipients_uniq = recipients.keys()
     if len(recipients_uniq) > 0 and not (is_successful and ignore_success):
         task_id = make_task('tagNotification', [recipients_uniq, is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg])
         return task_id
@@ -7439,8 +7435,8 @@ class InsertProcessor(object):
         if not self.data and not self.rawdata:
             return "-- incomplete update: no assigns"
         parts = ['INSERT INTO %s ' % self.table]
-        columns = list(self.data.keys())
-        columns.extend(list(self.rawdata.keys()))
+        columns = self.data.keys()
+        columns.extend(self.rawdata.keys())
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
@@ -7483,7 +7479,7 @@ class InsertProcessor(object):
             del data['create_event']
             del data['creator_id']
         clauses = ["%s = %%(%s)s" % (k, k) for k in data]
-        query = QueryProcessor(columns=list(data.keys()), tables=[self.table],
+        query = QueryProcessor(columns=data.keys(), tables=[self.table],
                                clauses=clauses, values=data)
         if query.execute():
             return True
@@ -7602,7 +7598,7 @@ class QueryProcessor(object):
         if columns and aliases:
             if len(columns) != len(aliases):
                 raise Exception('column and alias lists must be the same length')
-            self.colsByAlias = dict(list(zip(aliases, columns)))
+            self.colsByAlias = dict(zip(aliases, columns))
         else:
             self.colsByAlias = {}
         self.tables = tables
@@ -7862,7 +7858,7 @@ def policy_get_pkg(data):
         if not pkginfo:
             #for some operations (e.g. adding a new package), the package
             #entry may not exist yet
-            if isinstance(data['package'], six.string_types):
+            if isinstance(data['package'], basestring):
                 return {'id' : None, 'name' : data['package']}
             else:
                 raise koji.GenericError("Invalid package: %s" % data['package'])
@@ -8144,7 +8140,7 @@ class UserInGroupTest(koji.policy.BaseSimpleTest):
             return False
         groups = koji.auth.get_user_groups(user['id'])
         args = self.str.split()[1:]
-        for group_id, group in six.iteritems(groups):
+        for group_id, group in groups.iteritems():
             for pattern in args:
                 if fnmatch.fnmatch(group, pattern):
                     return True
@@ -8782,7 +8778,7 @@ class RootExports(object):
         # we will accept offset and size as strings to work around xmlrpc limits
         offset = koji.decode_int(offset)
         size = koji.decode_int(size)
-        if isinstance(md5sum, six.string_types):
+        if isinstance(md5sum, basestring):
             # this case is for backwards compatibility
             verify = "md5"
             digest = md5sum
@@ -8800,7 +8796,7 @@ class RootExports(object):
         fn = get_upload_path(path, name, create=True, volume=volume)
         try:
             st = os.lstat(fn)
-        except OSError as e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 pass
             else:
@@ -8814,7 +8810,7 @@ class RootExports(object):
                     # but we allow .log files to be uploaded multiple times to support
                     # realtime log-file viewing
                     raise koji.GenericError("file already exists: %s" % fn)
-        fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
+        fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
         # log_error("fd=%r" %fd)
         try:
             if offset == 0 or (offset == -1 and size == len(contents)):
@@ -8869,7 +8865,7 @@ class RootExports(object):
         data = {}
         try:
             fd = os.open(fn, os.O_RDONLY)
-        except OSError as e:
+        except OSError, e:
             if e.errno == errno.ENOENT:
                 return None
             else:
@@ -8877,7 +8873,7 @@ class RootExports(object):
         try:
             try:
                 fcntl.lockf(fd, fcntl.LOCK_SH|fcntl.LOCK_NB)
-            except IOError as e:
+            except IOError, e:
                 raise koji.LockError(e)
             st = os.fstat(fd)
             if not stat.S_ISREG(st.st_mode):
@@ -8916,7 +8912,7 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        f = open(filePath, 'r')
+        f = file(filePath, 'r')
         if isinstance(offset, str):
             offset = int(offset)
         if offset != None and offset > 0:
@@ -9342,9 +9338,9 @@ class RootExports(object):
         if before:
             if isinstance(before, datetime.datetime):
                 before = calendar.timegm(before.utctimetuple())
-            elif isinstance(before, (str, six.text_type)):
+            elif isinstance(before, (str, unicode)):
                 before = koji.util.parseTime(before)
-            elif isinstance(before, six.integer_types):
+            elif isinstance(before, (int, long)):
                 pass
             else:
                 raise koji.GenericError('invalid type for before: %s' % type(before))
@@ -9352,9 +9348,9 @@ class RootExports(object):
         if after:
             if isinstance(after, datetime.datetime):
                 after = calendar.timegm(after.utctimetuple())
-            elif isinstance(after, (str, six.text_type)):
+            elif isinstance(after, (str, unicode)):
                 after = koji.util.parseTime(after)
-            elif isinstance(after, six.integer_types):
+            elif isinstance(after, (int, long)):
                 pass
             else:
                 raise koji.GenericError('invalid type for after: %s' % type(after))
@@ -9443,7 +9439,7 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
@@ -9454,14 +9450,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             tag = get_tag_id(tag, strict=True)
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
@@ -9618,14 +9614,14 @@ class RootExports(object):
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
         """List latest builds for tag (inheritance enabled)"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
@@ -9685,13 +9681,13 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
@@ -9702,7 +9698,7 @@ class RootExports(object):
             stops = {}
         if jumps is None:
             jumps = {}
-        if not isinstance(tag, six.integer_types):
+        if not isinstance(tag, (int, long)):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
@@ -9729,7 +9725,7 @@ class RootExports(object):
         - buildroot_id
 
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
-        if not isinstance(build, six.integer_types):
+        if not isinstance(build, (int, long)):
             #lookup build id
             build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
@@ -9953,9 +9949,9 @@ class RootExports(object):
                 userID = get_user(userID, strict=True)['id']
             if pkgID is not None:
                 pkgID = get_package_id(pkgID, strict=True)
-            result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
+            result_list = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
                                           inherit=inherited, with_dups=with_dups,
-                                          event=event).values())
+                                          event=event).values()
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -10120,7 +10116,7 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None, dist=False):
-        if isinstance(tag, six.integer_types):
+        if isinstance(tag, (int, long)):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
@@ -10386,8 +10382,8 @@ class RootExports(object):
                         if val.find('<?xml', 0, 10) == -1:
                             #handle older base64 encoded data
                             val = base64.decodestring(val)
-                        data, method = six.moves.xmlrpc_client.loads(val)
-                    except six.moves.xmlrpc_client.Fault as fault:
+                        data, method = xmlrpclib.loads(val)
+                    except xmlrpclib.Fault, fault:
                         data = fault
                     task[f] = data
             yield task
@@ -10434,7 +10430,7 @@ class RootExports(object):
         #XXX hard-coded interval
         c = context.cnx.cursor()
         c.execute(q, koji.TASK_STATES)
-        return [dict(list(zip([f[1] for f in fields], row))) for row in c.fetchall()]
+        return [dict(zip([f[1] for f in fields], row)) for row in c.fetchall()]
 
     def resubmitTask(self, taskID):
         """Retry a canceled or failed task, using the same parameter as the original task.
@@ -10622,7 +10618,7 @@ class RootExports(object):
         buildinfo = get_build(build)
         if not buildinfo:
             raise koji.GenericError('build does not exist: %s' % build)
-        elif isinstance(ts, six.moves.xmlrpc_client.DateTime):
+        elif isinstance(ts, xmlrpclib.DateTime):
             #not recommended
             #the xmlrpclib.DateTime class is almost useless
             try:
@@ -11140,7 +11136,7 @@ class BuildRoot(object):
                   ('checksum_type', 'checksum_type'),
                   ('project_dep', 'project_dep'),
                  ]
-        columns, aliases = list(zip(*fields))
+        columns, aliases = zip(*fields)
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
                                values=self.data,
@@ -11318,7 +11314,7 @@ class Host(object):
         WHERE host_id = %%(host_id)s AND state = %%(st_open)s
         """  % (",".join(fields))
         c.execute(q, locals())
-        tasks = [dict(list(zip(fields, x))) for x in c.fetchall()]
+        tasks = [dict(zip(fields, x)) for x in c.fetchall()]
         for task in tasks:
             id = task['id']
             if task['waiting']:
@@ -11380,7 +11376,7 @@ class Host(object):
         """  % (",".join(fields))
         c.execute(q, locals())
         for data in c.fetchall():
-            data = dict(list(zip(fields, data)))
+            data = dict(zip(fields, data))
             # XXX - we should do some pruning here, but for now...
             # check arch
             if data['arch'] not in arches:
@@ -11552,7 +11548,7 @@ class HostExports(object):
             safer_move(fn, dest)
             os.symlink(dest, fn)
         if logs:
-            for key, files in six.iteritems(logs):
+            for key, files in logs.iteritems():
                 if key:
                     logdir = "%s/logs/%s" % (dir, key)
                 else:
@@ -11575,7 +11571,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
-        for reldir, files in list(results['files'].items()) + [('', results['logs'])]:
+        for reldir, files in results['files'].items() + [('', results['logs'])]:
             for filename in files:
                 if reldir:
                     relpath = os.path.join(reldir, filename)
@@ -11607,7 +11603,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
-        for relpath in list(results['output'].keys()) + results['logs']:
+        for relpath in results['output'].keys() + results['logs']:
             filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
             dest = os.path.join(destdir, relpath)
             koji.ensuredir(os.path.dirname(dest))
@@ -11763,7 +11759,7 @@ class HostExports(object):
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
         # import the build output
-        for relpath, files in six.iteritems(maven_results['files']):
+        for relpath, files in maven_results['files'].iteritems():
             dir_maven_info = maven_info
             poms = [f for f in files if f.endswith('.pom')]
             if len(poms) == 0:
@@ -11911,7 +11907,7 @@ class HostExports(object):
 
         task_dir = koji.pathinfo.task(results['task_id'])
         # import the build output
-        for relpath, metadata in six.iteritems(results['output']):
+        for relpath, metadata in results['output'].iteritems():
             archivetype = get_archive_type(relpath)
             if not archivetype:
                 # Unknown archive type, fail the build
@@ -12135,9 +12131,9 @@ class HostExports(object):
             extra_deps = []
         task_deps = {}
         for dep in extra_deps:
-            if isinstance(dep, six.integer_types):
+            if isinstance(dep, (int, long)):
                 task_output = list_task_output(dep, stat=True)
-                for filepath, filestats in six.iteritems(task_output):
+                for filepath, filestats in task_output.iteritems():
                     if os.path.splitext(filepath)[1] in ['.log', '.md5', '.sha1']:
                         continue
                     tokens = filepath.split('/')
@@ -12170,7 +12166,7 @@ class HostExports(object):
                         logger.error("Current build is %s, new build is %s.", idx_build, archive['build_id'])
                         maven_build_index[archive['group_id']][archive['artifact_id']][archive['version']] = archive['build_id']
 
-        ignore.extend(list(task_deps.values()))
+        ignore.extend(task_deps.values())
 
         SNAPSHOT_RE = re.compile(r'-\d{8}\.\d{6}-\d+')
         ignore_by_label = {}
@@ -12223,7 +12219,7 @@ class HostExports(object):
                         if build_id:
                             build = get_build(build_id)
                             logger.error("g:a:v supplied by build %(nvr)s", build)
-                            logger.error("Build supplies %i archives: %r", len(build_archives), list(build_archives.keys()))
+                            logger.error("Build supplies %i archives: %r", len(build_archives), build_archives.keys())
                         if tag_archive:
                             logger.error("Size mismatch, br: %i, db: %i", fileinfo['size'], tag_archive['size'])
                         raise koji.BuildrootError('Unknown file in build environment: %s, size: %s' % \
@@ -12301,7 +12297,7 @@ class HostExports(object):
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
         if not rinfo['dist']:
-            for arch, (uploadpath, files) in six.iteritems(data):
+            for arch, (uploadpath, files) in data.iteritems():
                 archdir = "%s/%s" % (repodir, koji.canonArch(arch))
                 if not os.path.isdir(archdir):
                     raise koji.GenericError("Repo arch directory missing: %s" % archdir)
@@ -12430,7 +12426,7 @@ class HostExports(object):
             logger.debug("os.link(%r, %r)", rpmpath, l_dst)
             try:
                 os.link(rpmpath, l_dst)
-            except OSError as ose:
+            except OSError, ose:
                 if ose.errno == 18:
                     shutil.copy2(
                         rpmpath, os.path.join(archdir, bnplet, bnp))
@@ -12478,11 +12474,11 @@ def get_upload_path(reldir, name, create=False, volume=None):
             # assuming login was asserted earlier
             u_fn = os.path.join(udir, '.user')
             if os.path.exists(u_fn):
-                user_id = int(open(u_fn, 'r').read())
+                user_id = int(file(u_fn, 'r').read())
                 if context.session.user_id != user_id:
                     raise koji.GenericError("Invalid upload directory, not owner: %s" % orig_reldir)
             else:
-                fo = open(u_fn, 'w')
+                fo = file(u_fn, 'w')
                 fo.write(str(context.session.user_id))
                 fo.close()
     return os.path.join(udir, name)
@@ -12523,11 +12519,11 @@ def handle_upload(environ):
     size = 0
     chksum = sum_cls()
     inf = environ['wsgi.input']
-    fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
+    fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0666)
     try:
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except IOError as e:
+        except IOError, e:
             raise koji.LockError(e)
         if offset == -1:
             offset = os.lseek(fd, 0, 2)
