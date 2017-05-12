@@ -195,22 +195,22 @@ class TestSCMCheckouts(unittest.TestCase):
         self.session = mock.MagicMock()
         self.uploadpath = mock.MagicMock()
         self.logfile = mock.MagicMock()
-
-    def tearDown(self):
-        mock.patch.stopall()
-        shutil.rmtree(self.tempdir)
-
-    def test_checkout_nocommon(self):
-        allowed = '''
+        self.allowed = '''
             default:*
             nocommon:*:no
             srccmd:*:no:fedpkg,sources
             nosrc:*:no:
             '''
 
+    def tearDown(self):
+        mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
+
+    def test_checkout_git_nocommon(self):
+
         url = "git://nocommon/koji.git#asdasd"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(self.allowed)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
@@ -227,3 +227,23 @@ class TestSCMCheckouts(unittest.TestCase):
                         logerror=1, append=True, env=None)
         self.log_output.assert_has_calls([call1, call2])
 
+    def test_checkout_gitssh_nocommon(self):
+
+        url = "git+ssh://user@nocommon/koji.git#asdasd"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['git', 'clone', '-n', 'git+ssh://user@nocommon/koji.git',
+                self.tempdir + '/koji']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        cmd = ['git', 'reset', '--hard', 'asdasd']
+        call2 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir + '/koji',
+                        logerror=1, append=True, env=None)
+        self.log_output.assert_has_calls([call1, call2])
