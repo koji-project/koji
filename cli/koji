@@ -4168,7 +4168,7 @@ def anon_handle_list_tags(options, session, args):
             assert False  # pragma: no cover
 
     tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
-    tags.sort(lambda a,b: cmp(a['name'],b['name']))
+    tags.sort(key=lambda x: x['name'])
     #if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
     if options.show_id:

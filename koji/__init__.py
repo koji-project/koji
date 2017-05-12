@@ -411,7 +411,7 @@ def listFaults():
             info['name'] = n
             info['desc'] = getattr(v, '__doc__', None)
             ret.append(info)
-    ret.sort(lambda a, b: cmp(a['faultCode'], b['faultCode']))
+    ret.sort(key=lambda x: x['faultCode'])
     return ret
 
 #functions for encoding/decoding optional arguments
@@ -1219,7 +1219,7 @@ BuildArch: noarch
             continue
         data.append("#Group: %s\n" % group_name)
         pkglist = list(group['packagelist'])
-        pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
+        pkglist.sort(key=lambda x: x['package'])
         for pkg in pkglist:
             pkg_name = pkg['package']
             if pkg_name in seen_pkg:
@@ -1261,7 +1261,7 @@ def generate_comps(groups, expand_groups=False):
 """]
     groups = list(groups)
     group_idx = dict([(g['name'], g) for g in groups])
-    groups.sort(lambda a, b: cmp(a['name'], b['name']))
+    groups.sort(key=lambda x: x['name'])
     for g in groups:
         group_id = g['name']
         name = g['display_name']
@@ -1288,7 +1288,7 @@ def generate_comps(groups, expand_groups=False):
 """    <grouplist>
 """)
             grouplist = list(g['grouplist'])
-            grouplist.sort(lambda a, b: cmp(a['name'], b['name']))
+            grouplist.sort(key=lambda x: x['name'])
             for x in grouplist:
                 #['req_id','type','is_metapkg','name']
                 name = x['name']
@@ -1324,7 +1324,7 @@ def generate_comps(groups, expand_groups=False):
 """)
         if g['packagelist']:
             packagelist = list(g['packagelist'])
-            packagelist.sort(lambda a, b: cmp(a['package'], b['package']))
+            packagelist.sort(key=lambda x: x['package'])
             for p in packagelist:
                 data.append(
 """      %s
@@ -1351,7 +1351,7 @@ def generate_comps(groups, expand_groups=False):
 """      <!-- Expanding Group: %s -->
 """ % group_name)
                 pkglist = list(group['packagelist'])
-                pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
+                pkglist.sort(key=lambda x: x['package'])
                 for pkg in pkglist:
                     pkg_name = pkg['package']
                     if pkg_name in seen_pkg:
