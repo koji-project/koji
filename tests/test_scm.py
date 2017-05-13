@@ -81,14 +81,19 @@ class TestSCM(unittest.TestCase):
         bad = [
             "cvs://badserver/projects/42#ref",
             "svn://badserver/projects/42#ref",
+            "git://maybeserver/badpath/project#1234",
             ]
         for url in good:
             scm = SCM(url)
             scm.assert_allowed(allowed)
         for url in bad:
             scm = SCM(url)
-            with self.assertRaises(koji.BuildError):
+            try:
                 scm.assert_allowed(allowed)
+            except koji.BuildError:
+                pass
+            else:
+                raise AssertionError("allowed bad url: %s" % url)
 
     @mock.patch('logging.getLogger')
     def test_badrule(self, getLogger):
