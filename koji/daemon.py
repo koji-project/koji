@@ -282,28 +282,37 @@ class SCM(object):
 
     def assert_allowed(self, allowed):
         """
-        Verify that the host and repository of this SCM is in the provided list of
-        allowed repositories.
+        Check this scm against allowed list and apply options
 
-        allowed is a space-separated list entries in one of the following forms:
+        allowed is a space-separated list of entries in one of the following
+        forms:
 
             host:repository[:use_common[:source_cmd]]
             !host:repository
 
         Incorrectly-formatted entries will be ignored.
 
-        The first form allows a specific host:repository and optionally sets a
+        The first form allows a host:repository pattern and optionally sets a
         few options for it.
 
-        The second form explicitly blocks a specific host:repository  TODO
+        The second form explicitly blocks a host:repository pattern
 
-        If use_common is not present, kojid will attempt to checkout a common/ directory from the
-        repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
-        directory.
+        Both host and repository are treated as glob patterns
 
-        source_cmd is a shell command (args separated with commas instead of spaces) to run before building the srpm.
-        It is generally used to retrieve source files from a remote location.  If no source_cmd is specified,
-        "make sources" is run by default.
+        If there is a matching entry, then the optional fields, if given, will
+        be applied to the instance.
+
+        If there is no matching entry, or if the host:repository is blocked
+        then BuildError is raised.
+
+        The use_common option defaults to on.  If it is set to no, off, false
+        or 0, it will be disabled.  If the option is on, then kojid will
+        attempt to checkout a common/ directory from the repository.
+
+        The source_command is a shell command to be run before building the
+        srpm.  It defaults to "make sources".  This can be overridden by the
+        matching allowed entry.  The command must be encoded with commas
+        instead of spaces (e.g. "make,sources").
         """
         is_allowed = False
         for allowed_scm in allowed.split():
