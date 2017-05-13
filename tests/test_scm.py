@@ -272,3 +272,96 @@ class TestSCMCheckouts(unittest.TestCase):
                         self.uploadpath, cwd=self.tempdir,
                         logerror=1, append=True, env=None)
         self.log_output.assert_has_calls([call1, call2, call3])
+
+    def test_checkout_error_in_command(self):
+
+        url = "git://nocommon/koji.git#asdasd"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        self.log_output.return_value = 1
+        with self.assertRaises(koji.BuildError):
+            scm.checkout(self.tempdir, session=self.session,
+                    uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['git', 'clone', '-n', 'git://nocommon/koji.git',
+                self.tempdir + '/koji']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        # should have errored after first command
+        self.log_output.assert_has_calls([call1])
+
+    def test_checkout_cvs_common(self):
+
+        url = "cvs://default/cvsisdead?rpms/foo/EL3#sometag"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, True)
+        self.symlink.assert_called_once()
+        # expected commands
+        cmd = ['cvs', '-d', ':pserver:anonymous@default:/cvsisdead', 'checkout',
+                '-r', 'sometag', 'rpms/foo/EL3']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        cmd = ['cvs', '-d', ':pserver:anonymous@default:/cvsisdead', 'checkout',
+                'common']
+        call2 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=True, env=None)
+        self.log_output.assert_has_calls([call1, call2])
+
+    def test_checkout_cvs_ssh(self):
+
+        url = "cvs+ssh://user@nocommon/cvsisdead?rpms/foo/EL3#sometag"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['cvs', '-d', ':ext:user@nocommon:/cvsisdead', 'checkout', '-r',
+                'sometag', 'rpms/foo/EL3']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env={'CVS_RSH': 'ssh'})
+        self.log_output.assert_has_calls([call1])
+
+    def test_checkout_svn(self):
+
+        url = "svn://nocommon/dist?rpms/foo/EL3#revision"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['svn', 'checkout', '-r', 'revision',
+                'svn://nocommon/dist/rpms/foo/EL3', 'rpms/foo/EL3']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        self.log_output.assert_has_calls([call1])
+
+    def test_checkout_svn_ssh(self):
+
+        url = "svn+ssh://user@nocommon/dist?rpms/foo/EL3#revision"
+        scm = SCM(url)
+        scm.assert_allowed(self.allowed)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+        self.assertEqual(scm.use_common, False)
+        self.symlink.assert_not_called()
+        # expected commands
+        cmd = ['svn', 'checkout', '-r', 'revision',
+                'svn+ssh://user@nocommon/dist/rpms/foo/EL3', 'rpms/foo/EL3']
+        call1 = mock.call(self.session, cmd[0], cmd, self.logfile,
+                        self.uploadpath, cwd=self.tempdir, logerror=1,
+                        append=False, env=None)
+        self.log_output.assert_has_calls([call1])
