@@ -88,7 +88,7 @@ def _(args):
 
 ## Constants ##
 
-RPM_HEADER_MAGIC = '\x8e\xad\xe8'
+RPM_HEADER_MAGIC = six.b('\x8e\xad\xe8')
 RPM_TAG_HEADERSIGNATURES = 62
 RPM_TAG_FILEDIGESTALGO = 5011
 RPM_SIGTAG_PGP = 1002
