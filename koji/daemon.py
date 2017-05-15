@@ -290,7 +290,7 @@ class SCM(object):
             host:repository[:use_common[:source_cmd]]
             !host:repository
 
-        Incorrectly-formatted entries will be ignored.
+        Incorrectly-formatted entries will be skipped with a warning.
 
         The first form allows a host:repository pattern and optionally sets a
         few options for it.

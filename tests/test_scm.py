@@ -65,10 +65,9 @@ class TestSCM(unittest.TestCase):
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
         self.assertEqual(scm.scmtype, 'GIT')
 
-
     @mock.patch('logging.getLogger')
     def test_allowed(self, getLogger):
-        allowed = '''
+        config = '''
             goodserver:*:no
             !badserver:*
             !maybeserver:/badpath/*
@@ -85,11 +84,11 @@ class TestSCM(unittest.TestCase):
             ]
         for url in good:
             scm = SCM(url)
-            scm.assert_allowed(allowed)
+            scm.assert_allowed(config)
         for url in bad:
             scm = SCM(url)
             try:
-                scm.assert_allowed(allowed)
+                scm.assert_allowed(config)
             except koji.BuildError:
                 pass
             else:
@@ -97,18 +96,18 @@ class TestSCM(unittest.TestCase):
 
     @mock.patch('logging.getLogger')
     def test_badrule(self, getLogger):
-        allowed = '''
+        config = '''
             bogus-entry-should-be-ignored
             goodserver:*:no
             !badserver:*
             '''
         url = "git://goodserver/path1#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
 
     @mock.patch('logging.getLogger')
     def test_opts(self, getLogger):
-        allowed = '''
+        config = '''
             default:*
             nocommon:*:no
             srccmd:*:no:fedpkg,sources
@@ -120,73 +119,73 @@ class TestSCM(unittest.TestCase):
 
         url = "git://default/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://nocommon/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://srccmd/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
         url = "git://nosrc/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, None)
 
         url = "git://mixed/foo/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/bar/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/baz/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
         url = "git://mixed/koji.git#1234"
         scm = SCM(url)
         with self.assertRaises(koji.BuildError):
-            scm.assert_allowed(allowed)
+            scm.assert_allowed(config)
 
         url = "git://mixed/foo/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/bar/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/baz/koji.git#1234"
         scm = SCM(url)
-        scm.assert_allowed(allowed)
+        scm.assert_allowed(config)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
         url = "git://mixed/koji.git#1234"
         scm = SCM(url)
         with self.assertRaises(koji.BuildError):
-            scm.assert_allowed(allowed)
+            scm.assert_allowed(config)
 
 
 class TestSCMCheckouts(unittest.TestCase):
@@ -200,7 +199,7 @@ class TestSCMCheckouts(unittest.TestCase):
         self.session = mock.MagicMock()
         self.uploadpath = mock.MagicMock()
         self.logfile = mock.MagicMock()
-        self.allowed = '''
+        self.config = '''
             default:*
             nocommon:*:no
             srccmd:*:no:fedpkg,sources
@@ -215,7 +214,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "git://nocommon/koji.git#asdasd"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
@@ -236,7 +235,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "git+ssh://user@nocommon/koji.git#asdasd"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
@@ -257,7 +256,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "git://default/koji.git#asdasd"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, True)
@@ -282,7 +281,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "git://nocommon/koji.git#asdasd"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         self.log_output.return_value = 1
         with self.assertRaises(koji.BuildError):
             scm.checkout(self.tempdir, session=self.session,
@@ -302,7 +301,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "cvs://default/cvsisdead?rpms/foo/EL3#sometag"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, True)
@@ -324,7 +323,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "cvs+ssh://user@nocommon/cvsisdead?rpms/foo/EL3#sometag"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
@@ -341,7 +340,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "svn://nocommon/dist?rpms/foo/EL3#revision"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
@@ -358,7 +357,7 @@ class TestSCMCheckouts(unittest.TestCase):
 
         url = "svn+ssh://user@nocommon/dist?rpms/foo/EL3#revision"
         scm = SCM(url)
-        scm.assert_allowed(self.allowed)
+        scm.assert_allowed(self.config)
         scm.checkout(self.tempdir, session=self.session,
                 uploadpath=self.uploadpath, logfile=self.logfile)
         self.assertEqual(scm.use_common, False)
