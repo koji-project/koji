@@ -567,7 +567,7 @@ def rpm_hdr_size(f, ofs=None):
     # now read two 4-byte integers which tell us
     #  - # of index entries
     #  - bytes of data in header
-    data = [__ord(x) for x in fo.read(8)]
+    data = [_ord(x) for x in fo.read(8)]
     il = multibyte(data[0:4])
     dl = multibyte(data[4:8])
 
@@ -597,13 +597,13 @@ class RawHeader(object):
 
     def version(self):
         #fourth byte is the version
-        return __ord(self.header[3])
+        return _ord(self.header[3])
 
     def _index(self):
         # read two 4-byte integers which tell us
         #  - # of index entries  (each 16 bytes long)
         #  - bytes of data in header
-        data = [__ord(x) for x in self.header[8:12]]
+        data = [_ord(x) for x in self.header[8:12]]
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
 
@@ -613,7 +613,7 @@ class RawHeader(object):
             entry = []
             for j in range(4):
                 ofs = 16 + i*16 + j*4
-                data = [__ord(x) for x in self.header[ofs:ofs+4]]
+                data = [_ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
             #print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
             index[entry[0]] = entry
@@ -664,7 +664,7 @@ class RawHeader(object):
                 #integer
                 n = 1 << (dtype - 2)
                 for i in range(count):
-                    data = [__ord(x) for x in self.header[pos:pos+n]]
+                    data = [_ord(x) for x in self.header[pos:pos+n]]
                     print("%r" % data)
                     num = multibyte(data)
                     print("Int(%d): %d" % (n, num))
@@ -717,7 +717,7 @@ class RawHeader(object):
         if dtype >= 2 and dtype <= 5:
             n = 1 << (dtype - 2)
             # n-byte integer
-            data = [__ord(x) for x in self.header[pos:pos+n]]
+            data = [_ord(x) for x in self.header[pos:pos+n]]
             return multibyte(data)
         elif dtype == 6:
             # string (null terminated)
@@ -758,7 +758,7 @@ def rip_rpm_hdr(src):
     fo.close()
     return hdr
 
-def __ord(s):
+def _ord(s):
     # in python2 it is char/str, while in py3 it is already int/bytes
     if isinstance(s, int):
         return s
@@ -767,7 +767,7 @@ def __ord(s):
 
 def __parse_packet_header(pgp_packet):
     """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
-    byte0 = __ord(pgp_packet[0])
+    byte0 = _ord(pgp_packet[0])
     if (byte0 & 0x80) == 0:
         raise ValueError('Not an OpenPGP packet')
     if (byte0 & 0x40) == 0:
@@ -781,12 +781,12 @@ def __parse_packet_header(pgp_packet):
             length = struct.unpack(fmt, pgp_packet[1:offset])[0]
     else:
         tag = byte0 & 0x3F
-        byte1 = __ord(pgp_packet[1])
+        byte1 = _ord(pgp_packet[1])
         if byte1 < 192:
             length = byte1
             offset = 2
         elif byte1 < 224:
-            length = ((byte1 - 192) << 8) + __ord(pgp_packet[2]) + 192
+            length = ((byte1 - 192) << 8) + _ord(pgp_packet[2]) + 192
             offset = 3
         elif byte1 == 255:
             length = struct.unpack('>I', pgp_packet[2:6])[0]
@@ -803,17 +803,17 @@ def __subpacket_key_ids(subs):
     """Parse v4 signature subpackets and return a list of issuer key IDs"""
     res = []
     while len(subs) > 0:
-        byte0 = __ord(subs[0])
+        byte0 = _ord(subs[0])
         if byte0 < 192:
             length = byte0
             off = 1
         elif byte0 < 255:
-            length = ((byte0 - 192) << 8) + __ord(subs[1]) + 192
+            length = ((byte0 - 192) << 8) + _ord(subs[1]) + 192
             off = 2
         else:
             length = struct.unpack('>I', subs[1:5])[0]
             off = 5
-        if __ord(subs[off]) == 16:
+        if _ord(subs[off]) == 16:
             res.append(subs[off+1 : off+length])
         subs = subs[off+length:]
     return res
@@ -823,9 +823,9 @@ def get_sigpacket_key_id(sigpacket):
     (tag, sigpacket) = __parse_packet_header(sigpacket)
     if tag != 2:
         raise ValueError('Not a signature packet')
-    if __ord(sigpacket[0]) == 0x03:
+    if _ord(sigpacket[0]) == 0x03:
         key_id = sigpacket[11:15]
-    elif __ord(sigpacket[0]) == 0x04:
+    elif _ord(sigpacket[0]) == 0x04:
         sub_len = struct.unpack('>H', sigpacket[4:6])[0]
         off = 6 + sub_len
         key_ids = __subpacket_key_ids(sigpacket[6:off])
@@ -838,7 +838,7 @@ def get_sigpacket_key_id(sigpacket):
         key_id = key_ids[0][-4:]
     else:
         raise NotImplementedError(
-            'Unknown PGP signature packet version %s' % __ord(sigpacket[0]))
+            'Unknown PGP signature packet version %s' % _ord(sigpacket[0]))
     return hex_string(key_id)
 
 def get_sighdr_key(sighdr):
@@ -1190,7 +1190,7 @@ def mavenLabel(maveninfo):
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""
-    return ''.join(['%02x' % __ord(x) for x in s])
+    return ''.join(['%02x' % _ord(x) for x in s])
 
 
 def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
