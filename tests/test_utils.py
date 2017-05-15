@@ -40,6 +40,14 @@ class EnumTestCase(unittest.TestCase):
         self.assertEquals(test[1:], ('two', 'three'))
 
 
+def mock_open():
+    """Return the right patch decorator for open"""
+    if six.PY2:
+        return mock.patch('__builtin__.open')
+    else:
+        return mock.patch('builtins.open')
+
+
 class MiscFunctionTestCase(unittest.TestCase):
 
     @mock.patch('os.path.exists')
@@ -82,21 +90,14 @@ class MiscFunctionTestCase(unittest.TestCase):
         islink.assert_called_once_with(dst)
         move.assert_not_called()
 
+    @mock_open()
     @mock.patch('six.moves.urllib.request.urlopen')
     @mock.patch('tempfile.TemporaryFile')
     @mock.patch('shutil.copyfileobj')
     def test_openRemoteFile(self, m_copyfileobj, m_TemporaryFile,
-                            m_urlopen):
+                            m_urlopen, m_open):
         """Test openRemoteFile function"""
 
-        if six.PY2:
-            import __builtin__
-            __builtin__.open = mock.MagicMock()
-            m_open = __builtin__.open
-        else:
-            import builtins
-            builtins.open = mock.MagicMock()
-            m_open = builtins.open
         mocks = [m_open, m_copyfileobj, m_TemporaryFile, m_urlopen]
 
         topurl = 'http://example.com/koji'
