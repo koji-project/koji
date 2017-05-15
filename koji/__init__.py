@@ -915,8 +915,12 @@ def get_header_field(hdr, name, src_arch=False):
             result = []
         elif isinstance(result, six.integer_types):
             result = [result]
-    if isinstance(result, bytes):
-        result = result.decode('utf-8')
+    if six.PY3 and isinstance(result, bytes):
+        try:
+            result = result.decode('utf-8')
+        except UnicodeDecodeError:
+            # typically signatures
+            pass
     return result
 
 
