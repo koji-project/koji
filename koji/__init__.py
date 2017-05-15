@@ -672,7 +672,7 @@ class RawHeader(object):
                 next = pos
             elif dtype == 6:
                 # string (null terminated)
-                end = self.header.find('\0', pos)
+                end = self.header.find(six.b('\0'), pos)
                 print("String(%d): %r" % (end-pos, self.header[pos:end]))
                 next = end + 1
             elif dtype == 7:
@@ -681,14 +681,14 @@ class RawHeader(object):
             elif dtype == 8:
                 # string array
                 for i in range(count):
-                    end = self.header.find('\0', pos)
+                    end = self.header.find(six.b('\0'), pos)
                     print("String(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
                 for i in range(count):
-                    end = self.header.find('\0', pos)
+                    end = self.header.find(six.b('\0'), pos)
                     print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
