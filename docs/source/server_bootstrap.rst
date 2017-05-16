@@ -48,7 +48,7 @@ you just imported.
     $ koji list-pkgs --quiet | xargs koji add-pkg --owner <kojiuser> dist-foo
     $ koji list-untagged | xargs -n 1 koji call tagBuildBypass dist-foo
 
-We call the *tagBuildBypass* method instead of using ``koji tag-pkg``
+We call the *tagBuildBypass* method instead of using ``koji tag-build``
 because it doesn't require the builders to process *tagBuild* tasks one
 at a time, but does the tagging directly. This will save a significant
 amount of time, especially when tagging a large number of packages.
@@ -76,7 +76,7 @@ amount of time, especially when tagging a large number of packages.
    the minimal buildroot
 
 You can find out what the current build group for Fedora is by running
-``koji -s <nowiki>https://$ARCH.koji.fedoraproject.org/kojihub</nowiki> list-groups f17-build``
+``koji -s https://$ARCH.koji.fedoraproject.org/kojihub list-groups f17-build``
 against the Fedora Koji instance for your $ARCH. This is probably a good
 starting point for your minimal buildroot.
 

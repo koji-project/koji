@@ -118,7 +118,7 @@ detailed explanations of them:
 ``--skip-tag``
     Normally the package is tagged after the build completes. This
     option causes the tagging step to be skipped. The package will be in
-    the system, but untagged (you can later tag it with the tag-pkg
+    the system, but untagged (you can later tag it with the tag-build
     command)
 ``--scratch``
     This makes the build into a scratch build. The build will not be
