@@ -71,8 +71,13 @@ test:
 	@echo Coverage report in htmlcov/index.html
 
 test3:
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. python3 -m nose tests/test_lib tests/test_cli
-	@echo Coverage not working for py3 tests yet
+	coverage erase
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. nosetests-3 \
+	    --with-coverage --cover-package . tests/test_lib tests/test_cli
+	@echo Sleeping to work around an issue
+	sleep 10
+	coverage html
+	@echo Coverage report in htmlcov/index.html
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done

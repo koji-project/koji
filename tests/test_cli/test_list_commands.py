@@ -31,7 +31,7 @@ class TestListCommands(unittest.TestCase):
         if six.PY2:
             actual = actual.replace('nosetests', 'koji')
         else:
-            actual = actual.replace('python3 -m nose', 'koji')
+            actual = actual.replace('nosetests-3', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands.txt'
         with open(filename, 'rb') as f:
             expected = f.read().decode('ascii')
@@ -47,7 +47,7 @@ class TestListCommands(unittest.TestCase):
         if six.PY2:
             actual = actual.replace('nosetests', 'koji')
         else:
-            actual = actual.replace('python3 -m nose', 'koji')
+            actual = actual.replace('nosetests-3', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands-admin.txt'
         with open(filename, 'rb') as f:
             expected = f.read().decode('ascii')
