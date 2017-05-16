@@ -71,7 +71,7 @@ test:
 	@echo Coverage report in htmlcov/index.html
 
 test3:
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. nosetests-3 tests/test_lib tests/test_cli
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. python3 -m nose tests/test_lib tests/test_cli
 	@echo Coverage not working for py3 tests yet
 
 subdirs:
