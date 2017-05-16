@@ -48,7 +48,7 @@ you just imported.
     $ koji list-pkgs --quiet | xargs koji add-pkg --owner <kojiuser> dist-foo
     $ koji list-untagged | xargs -n 1 koji call tagBuildBypass dist-foo
 
-We call the *tagBuildBypass* method instead of using ``koji tag-pkg``
+We call the *tagBuildBypass* method instead of using ``koji tag-build``
 because it doesn't require the builders to process *tagBuild* tasks one
 at a time, but does the tagging directly. This will save a significant
 amount of time, especially when tagging a large number of packages.
