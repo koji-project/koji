@@ -6855,7 +6855,7 @@ def anon_handle_download_logs(options, session, args):
             # with current code, failed task results should always be faults,
             # but that could change in the future
             content = pprint.pformat(result)
-        except koji.GenericError:
+        except (xmlrpclib.Fault, koji.GenericError):
             etype, e = sys.exc_info()[:2]
             content = ''.join(traceback.format_exception_only(etype, e))
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
