@@ -7,14 +7,13 @@ module that is based on the older codepaths in koji. It only provides
 the bits that koji needs.
 """
 
-from __future__ import absolute_import
-import six.moves.http_client
-import six.moves.urllib
+import httplib
+import urlparse
+import urllib
 import sys
-from .ssl import SSLCommon
-import six
+import ssl.SSLCommon
 try:
-    from .ssl import ssl as pyssl
+    from ssl import ssl as pyssl
 except ImportError:  # pragma: no cover
     pass
 
@@ -26,7 +25,7 @@ class Session(object):
 
     def post(self, url, data=None, headers=None, stream=None, verify=None,
                 cert=None, timeout=None):
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         if uri[3]:
             handler = "%s?%s" % (uri[2], uri[3])
         else:
@@ -45,11 +44,7 @@ class Session(object):
 
     def get_connection(self, uri, cert, verify, timeout):
         scheme = uri[0]
-        # TODO: unnecessary remerging of values
-        parsed = six.moves.urllib.parse.urlparse('%s://%s' % (uri[0], uri[1]))
-        host = parsed.hostname
-        port = parsed.port
-        #host, port = six.moves.urllib.splitport(uri[1])
+        host, port = urllib.splitport(uri[1])
         key = (scheme, host, cert, verify, timeout)
         #if self.connection and self.opts.get('keepalive'):
         if self.connection:   # XXX honor keepalive
@@ -60,13 +55,13 @@ class Session(object):
         # Otherwise we make a new one
         default_port = 80
         certs = {}
-        if isinstance(verify, six.string_types):
+        if isinstance(verify, basestring):
             certs['peer_ca_cert'] = verify
         if cert:
             certs['key_and_cert'] = cert
-            ctx = SSLCommon.CreateSSLContext(certs)
+            ctx = ssl.SSLCommon.CreateSSLContext(certs)
             cnxOpts = {'ssl_context' : ctx}
-            cnxClass = SSLCommon.PlgHTTPSConnection
+            cnxClass = ssl.SSLCommon.PlgHTTPSConnection
             default_port = 443
         elif scheme == 'https':
             cnxOpts = {}
@@ -89,11 +84,11 @@ class Session(object):
                 # no verify
                 ctx = pyssl._create_unverified_context()
                 cnxOpts['context'] = ctx
-            cnxClass = six.moves.http_client.HTTPSConnection
+            cnxClass = httplib.HTTPSConnection
             default_port = 443
         elif scheme == 'http':
             cnxOpts = {}
-            cnxClass = six.moves.http_client.HTTPConnection
+            cnxClass = httplib.HTTPConnection
         else:
             raise IOError("unsupported protocol: %s" % scheme)
 
@@ -128,7 +123,7 @@ class Response(object):
 
     def raise_for_status(self):
         if self.response.status >= 400:
-            raise six.moves.http_client.HTTPException("HTTP %s: %s" % (self.response.status,
+            raise httplib.HTTPException("HTTP %s: %s" % (self.response.status,
                     self.response.reason))
 
 

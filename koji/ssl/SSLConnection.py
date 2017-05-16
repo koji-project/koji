@@ -6,7 +6,6 @@
 # Modifications by Dan Williams <dcbw@redhat.com>
 
 
-from __future__ import absolute_import
 from OpenSSL import SSL
 import time, socket, select
 
@@ -107,7 +106,7 @@ class SSLConnection:
 
             try:
                 sent = con.send(data, flags)
-            except SSL.SysCallError as e:
+            except SSL.SysCallError, e:
                 if e[0] == 32:      # Broken Pipe
                     self.close()
                     sent = 0
@@ -143,7 +142,7 @@ class SSLConnection:
                 return None
             except SSL.WantReadError:
                 time.sleep(0.2)
-            except SSL.SysCallError as e:
+            except SSL.SysCallError, e:
                 if e.args == (-1, 'Unexpected EOF'):
                     break
                 raise

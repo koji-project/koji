@@ -14,11 +14,10 @@
 #
 # Copyright 2005 Dan Williams <dcbw@redhat.com> and Red Hat, Inc.
 
-from __future__ import absolute_import
 import os, sys
 from OpenSSL import SSL
-from . import SSLConnection
-import six.moves.http_client
+import SSLConnection
+import httplib
 import socket
 
 def our_verify(connection, x509, errNum, errDepth, preverifyOK):
@@ -47,13 +46,13 @@ def CreateSSLContext(certs):
     return ctx
 
 
-class PlgHTTPSConnection(six.moves.http_client.HTTPConnection):
+class PlgHTTPSConnection(httplib.HTTPConnection):
     "This class allows communication via SSL."
 
-    response_class = six.moves.http_client.HTTPResponse
+    response_class = httplib.HTTPResponse
 
     def __init__(self, host, port=None, ssl_context=None, strict=None, timeout=None):
-        six.moves.http_client.HTTPConnection.__init__(self, host, port, strict)
+        httplib.HTTPConnection.__init__(self, host, port, strict)
         self.ssl_ctx = ssl_context
         self._timeout = timeout
 

@@ -1,8 +1,7 @@
-from __future__ import absolute_import
-import six.moves.http_client
+import httplib
 import mock
 import unittest
-import six.moves.urllib
+import urlparse
 
 import koji.compatrequests
 
@@ -60,7 +59,7 @@ class TestResponse(unittest.TestCase):
         self.response.response.status = 404
         self.response.response.reason = 'Not Found'
         self.response.response.getheader.return_value = 42
-        with self.assertRaises(six.moves.http_client.HTTPException):
+        with self.assertRaises(httplib.HTTPException):
             self.response.raise_for_status()
 
 
@@ -106,7 +105,7 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, no verify, no timeout
         session = koji.compatrequests.Session()
         url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
 
         cnx = session.get_connection(uri, None, None, None)
         HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80)
@@ -124,7 +123,7 @@ class TestSessionConnection(unittest.TestCase):
     def test_cached(self):
         session = koji.compatrequests.Session()
         url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         key = ('http', 'www.fakedomain234234.org', None, None, None)
         cnx = mock.MagicMock()
         session.connection = (key, cnx)
@@ -135,10 +134,10 @@ class TestSessionConnection(unittest.TestCase):
     def test_badproto(self):
         session = koji.compatrequests.Session()
         url = 'nosuchproto://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
 
         with self.assertRaises(IOError):
-            session.get_connection(uri, None, None, None)
+            ret = session.get_connection(uri, None, None, None)
 
     @mock.patch('httplib.HTTPConnection')
     @mock.patch('sys.version_info', new=(2, 7, 12, 'final', 0))
@@ -146,12 +145,12 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, no verify
         session = koji.compatrequests.Session()
         url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         timeout = 1701
 
-        cnx = session.get_connection(uri, None, None, timeout)
-        HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80, timeout=timeout)
-        key = ('http', 'www.fakedomain234234.org', None, None, timeout)
+        cnx = session.get_connection(uri, None, None, 1701)
+        HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80, timeout=1701)
+        key = ('http', 'www.fakedomain234234.org', None, None, 1701)
         self.assertEqual(session.connection, (key, cnx))
 
     @mock.patch('httplib.HTTPConnection')
@@ -160,22 +159,22 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, no verify
         session = koji.compatrequests.Session()
         url = 'http://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         timeout = 1701
 
-        cnx = session.get_connection(uri, None, None, timeout)
+        cnx = session.get_connection(uri, None, None, 1701)
         HTTPConnection.assert_called_once_with('www.fakedomain234234.org', 80)
-        key = ('http', 'www.fakedomain234234.org', None, None, timeout)
+        key = ('http', 'www.fakedomain234234.org', None, None, 1701)
         self.assertEqual(session.connection, (key, cnx))
         cnx.connect.assert_called_once()
-        cnx.sock.settimeout.assert_called_with(timeout)
+        cnx.sock.settimeout.assert_called_with(1701)
 
     @mock.patch('httplib.HTTPSConnection')
     def test_https(self, HTTPSConnection):
         # no cert, no verify, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
 
         cnx = session.get_connection(uri, None, None, None)
         HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443)
@@ -188,7 +187,7 @@ class TestSessionConnection(unittest.TestCase):
         # no verify, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         cert = '/path/to/cert/file'
         context = mock.MagicMock()
         CreateSSLContext.return_value = context
@@ -205,7 +204,7 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, verify=False, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         context = mock.MagicMock()
         create_unverified_context.return_value = context
 
@@ -221,7 +220,7 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, verify=False, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
 
         cnx = session.get_connection(uri, None, False, None)
         HTTPSConnection.assert_called_once_with('www.fakedomain234234.org', 443)
@@ -236,7 +235,7 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         context = mock.MagicMock()
         SSLContext.return_value = context
         verify = '/path/to/verify/cert'
@@ -257,7 +256,7 @@ class TestSessionConnection(unittest.TestCase):
         # no cert, no timeout
         session = koji.compatrequests.Session()
         url = 'https://www.fakedomain234234.org/KOJIHUB?a=1&b=2'
-        uri = six.moves.urllib.parse.urlsplit(url)
+        uri = urlparse.urlsplit(url)
         verify = '/path/to/verify/cert'
 
         cnx = session.get_connection(uri, None, verify, None)
