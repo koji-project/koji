@@ -12,7 +12,7 @@ class TestGetRPMDeps(unittest.TestCase):
     @mock.patch('kojihub.get_build')
     @mock.patch('koji.pathinfo')
     def test_getRPMDeps(self, pi, build, rpm):
-        pi.build.return_value = os.path.join(os.path.dirname(__file__), '../data/rpms')
+        pi.build.return_value = os.path.join(os.path.dirname(__file__), '../test_lib/data/rpms')
         pi.rpm.return_value = 'test-deps-1-1.fc24.x86_64.rpm'
         getRPMDeps = kojihub.RootExports().getRPMDeps
         res = getRPMDeps('')
