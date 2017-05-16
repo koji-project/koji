@@ -2051,6 +2051,8 @@ class ClientSession(object):
         if self.rsession:
             self.rsession.close()
         if self.opts.get('use_old_ssl', False) or requests is None:
+            if not six.PY2:
+                raise GenericError('use_old_ssl is only supported on python2')
             import koji.compatrequests
             self.rsession = koji.compatrequests.Session()
         else:
