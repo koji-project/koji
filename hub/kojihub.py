@@ -9376,7 +9376,8 @@ class RootExports(object):
             else:
                 results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
 
-        return _applyQueryOpts(results, queryOpts)
+        results = _applyQueryOpts(results, queryOpts)
+        return koji.fixEncodingRecurse(results, remove_nonprintable=True)
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
@@ -9884,7 +9885,7 @@ class RootExports(object):
         headers = koji.get_header_fields(rpm_path, headers)
         for key, value in headers.items():
             if isinstance(value, basestring):
-                headers[key] = koji.fixEncoding(value)
+                headers[key] = koji.fixEncoding(value, remove_nonprintable=True)
         return headers
 
     queryRPMSigs = staticmethod(query_rpm_sigs)

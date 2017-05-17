@@ -2894,7 +2894,13 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
-def fixEncoding(value, fallback='iso8859-15'):
+CONTROL_CHARS = [chr(i) for i in range(32)]
+NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
+def removeNonprintable(value):
+    # expects raw-encoded string, not unicode
+    return value.translate(None, NONPRINTABLE_CHARS)
+
+def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
     Convert value to a 'str' object encoded as UTF-8.
     If value is not valid UTF-8 to begin with, assume it is
@@ -2906,43 +2912,54 @@ def fixEncoding(value, fallback='iso8859-15'):
     if isinstance(value, unicode):
         # value is already unicode, so just convert it
         # to a utf8-encoded str
-        return value.encode('utf8')
+        s = value.encode('utf8')
     else:
         # value is a str, but may be encoded in utf8 or some
         # other non-ascii charset.  Try to verify it's utf8, and if not,
         # decode it using the fallback encoding.
         try:
-            return value.decode('utf8').encode('utf8')
+            s = value.decode('utf8').encode('utf8')
         except UnicodeDecodeError:
-            return value.decode(fallback).encode('utf8')
+            s = value.decode(fallback).encode('utf8')
+    if remove_nonprintable:
+        return removeNonprintable(s)
+    else:
+        return s
 
 
-def fixEncodingRecurse(value, fallback='iso8859-15'):
+def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
     Similar behavior to fixEncoding, but recursive
     """
     if isinstance(value, tuple):
-        return tuple([fixEncodingRecurse(x) for x in value])
+        return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, list):
-        return list([fixEncodingRecurse(x) for x in value])
+        return list([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, dict):
         ret = {}
         for k in value:
-            v = fixEncodingRecurse(value[k])
-            k = fixEncodingRecurse(k)
+            v = fixEncodingRecurse(value[k], fallback=fallback, remove_nonprintable=remove_nonprintable)
+            k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
     elif isinstance(value, unicode):
-        return value.encode('utf8')
+        if remove_nonprintable:
+            return removeNonprintable(value.encode('utf8'))
+        else:
+            return value.encode('utf8')
     elif isinstance(value, str):
         # value is a str, but may be encoded in utf8 or some
         # other non-ascii charset.  Try to verify it's utf8, and if not,
         # decode it using the fallback encoding.
         try:
-            return value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError, err:
-            return value.decode(fallback).encode('utf8')
+            s = value.decode('utf8').encode('utf8')
+        except UnicodeDecodeError:
+            s = value.decode(fallback).encode('utf8')
+        if remove_nonprintable:
+            return removeNonprintable(s)
+        else:
+            return s
     else:
         return value
 
