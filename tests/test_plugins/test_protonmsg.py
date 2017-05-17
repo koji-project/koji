@@ -1,11 +1,10 @@
-from __future__ import absolute_import
 import unittest
 from mock import patch, MagicMock
 import protonmsg
 from koji.context import context
 import tempfile
-from six.moves.configparser import SafeConfigParser
-import six
+from StringIO import StringIO
+from ConfigParser import SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):
     def tearDown(self):
@@ -205,7 +204,7 @@ send_timeout = 60
 
 class TestTimeoutHandler(unittest.TestCase):
     def setUp(self):
-        confdata = six.StringIO("""[broker]
+        confdata = StringIO("""[broker]
 urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
 cert = /etc/koji-hub/plugins/client.pem
 cacert = /etc/koji-hub/plugins/ca.pem
@@ -228,7 +227,7 @@ send_timeout = 60
 
     @patch('protonmsg.SSLDomain')
     def test_on_start_no_ssl(self, SSLDomain):
-        confdata = six.StringIO("""[broker]
+        confdata = StringIO("""[broker]
 urls = amqp://broker1.example.com:5672 amqp://broker2.example.com:5672
 topic_prefix = koji
 connect_timeout = 10
