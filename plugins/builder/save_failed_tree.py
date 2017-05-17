@@ -1,5 +1,6 @@
 import fnmatch
 import os
+import sys
 import tarfile
 import ConfigParser
 
@@ -13,8 +14,12 @@ CONFIG_FILE = '/etc/kojid/plugins/save_failed_tree.conf'
 config = None
 
 
-def omit_paths(tarinfo):
-    if any([fnmatch.fnmatch(tarinfo.name, f) for f in config['path_filters']]):
+def omit_paths2(path):
+    return any([fnmatch.fnmatch(path, f) for f in config['path_filters']])
+
+
+def omit_paths3(tarinfo):
+    if omit_paths2(tarinfo.name):
         return None
     else:
         return tarinfo
@@ -62,7 +67,10 @@ class SaveFailedTreeTask(tasks.BaseTaskHandler):
         tar_path = os.path.join(self.workdir, 'broot-%s.tar.gz' % buildrootID)
         self.logger.debug("Creating buildroot archive %s", tar_path)
         f = tarfile.open(tar_path, "w:gz")
-        f.add(path, filter=omit_paths)
+        if sys.version_info[0] < 3:
+            f.add(path, exclude=omit_paths2)
+        else:
+            f.add(path, filter=omit_paths3)
         f.close()
 
         self.logger.debug("Uploading %s to hub", tar_path)
