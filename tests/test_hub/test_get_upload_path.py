@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import os
 import mock
 import shutil
@@ -37,7 +36,7 @@ class TestGetUploadPath(unittest.TestCase):
         fullpath = '{0}/{1}'.format(work.return_value, reldir)
         os.makedirs(fullpath)
 
-        with open('{0}/.user'.format(fullpath), 'wb') as f:
+        with file('{0}/.user'.format(fullpath), 'wb') as f:
             f.write('1')
 
         with self.assertRaises(GenericError):

@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import unittest
 import mock
 
@@ -69,11 +68,9 @@ class TestInsertProcessor(unittest.TestCase):
         proc.dup_check()
         args = cursor.execute.call_args
         actual = ' '.join(args[0][0].split())
-        expected1 = 'SELECT foo, active FROM sometable WHERE ' + \
-            '(foo = %(foo)s) AND (active = %(active)s)'
-        expected2 = 'SELECT active, foo FROM sometable WHERE ' + \
+        expected = 'SELECT active, foo FROM sometable WHERE ' + \
             '(active = %(active)s) AND (foo = %(foo)s)'
-        self.assertIn(actual, (expected1, expected2))
+        self.assertEquals(actual, expected)
 
         proc.set(onething='another')
         proc.rawset(something='something else')
