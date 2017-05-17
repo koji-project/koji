@@ -20,7 +20,7 @@ def get_fake_mounts_file():
         'proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n'
         'devtmpfs /dev devtmpfs rw,seclabel,nosuid,size=238836k,nr_inodes=59709,mode=755 0 0\n'
         'securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0\n'
-        'tmpfs /dev/shm tmpfs rw,seclabel,nosuid,nodev 0 0\n'
+        'tmpfs /dev/shm\040(deleted) tmpfs rw,seclabel,nosuid,nodev 0 0\n'
         'devpts /dev/pts devpts rw,seclabel,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0\n'
         'tmpfs /run tmpfs rw,seclabel,nosuid,nodev,mode=755 0 0\n'
         'tmpfs /sys/fs/cgroup tmpfs ro,seclabel,nosuid,nodev,noexec,mode=755 0 0\n'
