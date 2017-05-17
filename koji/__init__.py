@@ -26,11 +26,11 @@ import sys
 from six.moves import range
 from six.moves import zip
 import six
+krbV = None
 try:
     import krbV
 except ImportError:  # pragma: no cover
-    sys.stderr.write("Warning: Could not install krbV module. Kerberos support will be disabled.\n")
-    sys.stderr.flush()
+    pass
 import base64
 import datetime
 import six.moves.configparser
