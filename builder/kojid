@@ -5139,10 +5139,9 @@ class NewDistRepoTask(BaseTaskHandler):
 
     def handler(self, tag, repo_id, keys, task_opts):
         tinfo = self.session.getTag(tag, strict=True, event=task_opts['event'])
-        path = koji.pathinfo.distrepo(repo_id, tinfo['name'])
         if len(task_opts['arch']) == 0:
-             arches = tinfo['arches'] or ''
-             task_opts['arch'] = arches.split()
+            arches = tinfo['arches'] or ''
+            task_opts['arch'] = arches.split()
         if len(task_opts['arch']) == 0:
             raise koji.GenericError('No arches specified nor for the tag!')
         subtasks = {}
@@ -5231,7 +5230,7 @@ class createDistRepoTask(CreaterepoTask):
         #set up our output dir
         self.repodir = '%s/repo' % self.workdir
         koji.ensuredir(self.repodir)
-        self.outdir = self.repodir # workaround create_local_repo use
+        self.outdir = self.repodir  # workaround create_local_repo use
         self.datadir = '%s/repodata' % self.repodir
         self.sigmap = {}
         oldpkgs = []
@@ -5280,7 +5279,7 @@ class createDistRepoTask(CreaterepoTask):
         pathinfo = koji.PathInfo(self.options.topdir)
         repodir = pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
-        ml_true = set() # multilib packages we need to include before depsolve
+        ml_true = set()  # multilib packages we need to include before depsolve
         ml_conf = os.path.join(self.pathinfo.work(), conf)
 
         # step 1: figure out which packages are multilib (should already exist)
@@ -5444,7 +5443,6 @@ enabled=1
             rpms += list(rpm_iter)
 
         # index by id and key
-        preferred = {}
         rpm_idx = {}
         for rpminfo in rpms:
             sigidx = rpm_idx.setdefault(rpminfo['id'], {})
