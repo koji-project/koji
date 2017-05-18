@@ -383,7 +383,7 @@ class BaseTaskHandler(object):
         return repo_info
 
 
-    def run_plugin(self, plugin, *args, **kwargs):
+    def run_callbacks(self, plugin, *args, **kwargs):
         if 'taskinfo' not in kwargs:
             try:
                 taskinfo = self.taskinfo

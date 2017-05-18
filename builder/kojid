@@ -1415,13 +1415,13 @@ class BuildMavenTask(BaseBuildTask):
         uploadpath = self.getUploadDir()
 
 
-        self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
-        self.run_plugin("postSCMCheckout",
-                        scminfo=scm.get_info(),
-                        scratch=opts.get('scratch'),
-                        srcdir=sourcedir)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=opts.get('scratch'),
+                           srcdir=sourcedir)
 
         # zip up pristine sources for auditing purposes
         self._zip_dir(sourcedir, os.path.join(outputdir, 'scm-sources.zip'))
@@ -1431,14 +1431,14 @@ class BuildMavenTask(BaseBuildTask):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(self.options.allowed_scms)
-            self.run_plugin('preSCMCheckout', scminfo=patch_scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(), build_tag=build_tag)
             # never try to check out a common/ dir when checking out patches
             patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
-            self.run_plugin("postSCMCheckout",
-                            scminfo=patch_scm.get_info(),
-                            scratch=opts.get('scratch'),
-                            srcdir=patchcheckoutdir)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=patch_scm.get_info(),
+                               scratch=opts.get('scratch'),
+                               srcdir=patchcheckoutdir)
             self._zip_dir(patchcheckoutdir, os.path.join(outputdir, 'patches.zip'))
 
         # Apply patches, if present
@@ -1719,12 +1719,12 @@ class WrapperRPMTask(BaseBuildTask):
         logfile = os.path.join(self.workdir, 'checkout.log')
         scmdir = buildroot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
-        self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
         specdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
-        self.run_plugin("postSCMCheckout",
-                        scminfo=scm.get_info(),
-                        scratch=opts.get('scratch'),
-                        srcdir=specdir)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=opts.get('scratch'),
+                           srcdir=specdir)
 
         spec_template = None
         for path, dir, files in os.walk(specdir):
@@ -2658,12 +2658,12 @@ class ImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout.log')
-            self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
             scmsrcdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
-            self.run_plugin("postSCMCheckout",
-                            scminfo=scm.get_info(),
-                            scratch=self.opts.get('scratch'),
-                            srcdir=scmsrcdir)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, ksfile)
         else:
             kspath = self.localPath("work/%s" % ksfile)
@@ -3276,13 +3276,13 @@ class OzImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout-%s.log' % self.arch)
-            self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
-            self.run_plugin("postSCMCheckout",
-                            scminfo=scm.get_info(),
-                            scratch=self.opts.get('scratch'),
-                            srcdir=scmsrcdir)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
@@ -4087,14 +4087,14 @@ class BuildIndirectionImageTask(OzImageTask):
         if fileurl:
             scm = SCM(fileurl)
             scm.assert_allowed(self.options.allowed_scms)
-            self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
             logfile = os.path.join(self.workdir, 'checkout.log')
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
-            self.run_plugin("postSCMCheckout",
-                            scminfo=scm.get_info(),
-                            scratch=self.opts.get('scratch'),
-                            srcdir=scmsrcdir)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
@@ -4436,13 +4436,13 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
-        self.run_plugin('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
-        self.run_plugin("postSCMCheckout",
-                        scminfo=scm.get_info(),
-                        scratch=self.opts.get('scratch'),
-                        srcdir=sourcedir)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=self.opts.get('scratch'),
+                           srcdir=sourcedir)
         # chown the sourcedir and everything under it to the mockuser
         # so we can build the srpm as non-root
         uid = pwd.getpwnam(self.options.mockuser)[2]
