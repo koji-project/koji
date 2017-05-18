@@ -74,8 +74,6 @@ test3:
 	coverage erase
 	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. nosetests-3 \
 	    --with-coverage --cover-package . tests/test_lib tests/test_cli
-	@echo Sleeping to work around an issue
-	sleep 10
 	coverage html
 	@echo Coverage report in htmlcov/index.html
 
