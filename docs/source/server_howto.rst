@@ -1104,29 +1104,46 @@ By default it will look for the Kerberos keytab in ``/etc/kojid/kojid.keytab``
     Kojid will not attempt kerberos authentication to the koji-hub unless the
     username field is commented out
 
-Optional Configuration SourceCodeManagement
--------------------------------------------
+Source Control Configuration
+----------------------------
 
 /etc/kojid/kojid.conf
 ^^^^^^^^^^^^^^^^^^^^^
 
-The pattern is as follows:
-    hostname:/path/match:checkout /common?, hostname2:/path/match:checkout /common?
-
-``checkout /common? is 'true' unless set to false``
-
-::
-
-    allowed_scms=scm-server.example.com:/repo/base/repos*/:false
-
-Once the code is checked out kojid will run the following:
+The *allowed_scms* setting controls which source control systems the builder
+will accept. It is a space-separated list of entries in one of the following
+forms:
 
 ::
 
-    make sources
-    mv *.spec <rpmbuild>/SPECS
-    mv * <rpmbuild>/SOURCES
-    rpmbuild -bs <rpmbuild>/SPECS/*.spec
+    hostname:path[:use_common[:source_cmd]]
+    !hostname:path
+
+where
+
+    *hostname* is a glob pattern matched against SCM hosts.
+
+    *path* is a glob pattern matched against the SCM path.
+
+    *use_common* is boolean setting (yes/no, on/off, true/false) that indicates
+    whether koji should also check out /common from the SCM host. The default
+    is on.
+
+    *source_cmd* is a shell command to be run before building the
+    srpm, with commas instead of spaces. It defaults to ``make,sources``.
+
+The second form (``!hostname:path``) is used to explicitly block a host:path
+pattern. In particular, it provides the option to block specific subtrees of
+a host, but allow from it otherwise
+
+
+::
+
+    allowed_scms=
+        !scm-server.example.com:/blocked/path/*
+        scm-server.example.com:/repo/base/repos*/:no
+        alt-server.example.com:/repo/dist/repos*/:no:fedpkg,sources
+
 
 Add the host to the createrepo channel
 --------------------------------------
@@ -1174,7 +1191,7 @@ You can check this by pointing your web browser to the web interface and
 clicking on the hosts tab. This will show you a list of builders in the
 database and the status of each builder.
 
-Kojira - Dnd|Yum repository creation and maintenance
+Kojira - Dnf|Yum repository creation and maintenance
 ====================================================
 
 Configuration Files
