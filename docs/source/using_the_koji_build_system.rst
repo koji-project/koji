@@ -558,3 +558,11 @@ The output gives you not only the latest builds, but which tag they have
 been inherited from and who built them.
 
 `Category:Package Maintainers <Category:Package Maintainers>`__
+
+Koji XMLRPC API
+===============
+
+All features supported by command-line client are also accessible by XMLRPC
+API. You can get listing of all available calls, arguments and basic help via
+calling `koji list-api` command. This call will also provide you API
+extensions provided by plugins in that particular koji instance.
