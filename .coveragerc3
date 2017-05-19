@@ -1,0 +1,12 @@
+[run]
+
+; extra omissions for py3 for now
+
+omit =
+    /usr/*
+    tests/*
+    hub/*
+    util/*
+    koji/ssl/*
+    koji/daemon.py
+    koji/tasks.py
