@@ -891,7 +891,8 @@ class BuildTask(BaseTaskHandler):
         #(initBuild raises an exception if there is a conflict)
         try:
             self.extra_information = { "src": src, "data": data, "target": target }
-            srpm,rpms,brmap,logs = self.runBuilds(srpm, build_tag, archlist, repo_info['id'])
+            srpm,rpms,brmap,logs = self.runBuilds(srpm, build_tag, archlist,
+                    repo_info['id'], fail_fast=self.opts.get('fail_fast'))
 
             if opts.get('scratch'):
                 #scratch builds do not get imported
@@ -1034,7 +1035,7 @@ class BuildTask(BaseTaskHandler):
         return 'noarch'
 
 
-    def runBuilds(self, srpm, build_tag, archlist, repo_id):
+    def runBuilds(self, srpm, build_tag, archlist, repo_id, fail_fast=False):
         self.logger.debug("Spawning jobs for arches: %r" % (archlist))
         subtasks = {}
         keep_srpm = True
@@ -1051,7 +1052,7 @@ class BuildTask(BaseTaskHandler):
         self.logger.debug("Waiting on subtasks...")
 
         # wait for subtasks to finish
-        failany = not getattr(self.options, 'build_arch_can_fail', False)
+        failany = fail_fast or not getattr(self.options, 'build_arch_can_fail', False)
         results = self.wait(subtasks.values(), all=True, failany=failany)
 
         # finalize import
