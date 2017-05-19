@@ -2228,6 +2228,8 @@ class BuildBaseImageTask(BuildImageTask):
             if 'kickstart' in opts:
                 saw_ks = False
                 for arch in results.keys():
+                    if arch in ignored_arches:
+                        continue
                     ks = os.path.basename(opts.get('kickstart'))
                     if ks in results[arch]['files']:
                         if saw_ks:
