@@ -2912,7 +2912,7 @@ def _taskLabel(taskInfo):
         return '%s (%s)' % (method, arch)
 
 CONTROL_CHARS = [chr(i) for i in range(32)]
-NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
+NONPRINTABLE_CHARS = six.b(''.join([c for c in CONTROL_CHARS if c not in '\r\n\t']))
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     return value.translate(None, NONPRINTABLE_CHARS)
@@ -2924,7 +2924,7 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     encoded in the 'fallback' charset.
     """
     if not value:
-        return ''
+        return six.b('')
 
     if isinstance(value, six.text_type):
         # value is already unicode, so just convert it

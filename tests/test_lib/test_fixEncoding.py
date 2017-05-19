@@ -13,8 +13,8 @@ class FixEncodingTestCase(unittest.TestCase):
 
     simple_values = [
         # [ value, fixed ]
-        ['', ''],
-        [u'', ''],
+        ['', six.b('')],
+        [u'', six.b('')],
         [u'góðan daginn', six.b('g\xc3\xb3\xc3\xb0an daginn')],
         [u'hej', six.b('hej')],
         [u'zdravstvuite', six.b('zdravstvuite')],
@@ -51,17 +51,17 @@ class FixEncodingTestCase(unittest.TestCase):
         [None, None],
         [[], []],
         [{u'a': 'a' , 'b' : {'c': u'c\x00'}},
-         { 'a': 'a' , 'b' : {'c':  'c\x00'}}],
+         {six.b('a'): six.b('a') , six.b('b') : {six.b('c'):  six.b('c\x00')}}],
         # iso8859-15 fallback
-        ['g\xf3\xf0an daginn', 'g\xc3\xb3\xc3\xb0an daginn'],
+        ['g\xf3\xf0an daginn', six.b('g\xc3\xb3\xc3\xb0an daginn')],
     ]
 
     nonprint = [
-        ['hello\0world\0', 'helloworld'],
-        [u'hello\0world\0', 'helloworld'],
-        [[u'hello\0world\0'], ['helloworld']],
-        [{0: u'hello\0world\0'}, {0: 'helloworld'}],
-        [[{0: u'hello\0world\0'}], [{0: 'helloworld'}]],
+        ['hello\0world\0', six.b('helloworld')],
+        [u'hello\0world\0', six.b('helloworld')],
+        [[u'hello\0world\0'], [six.b('helloworld')]],
+        [{0: u'hello\0world\0'}, {0: six.b('helloworld')}],
+        [[{0: u'hello\0world\0'}], [{0: six.b('helloworld')}]],
     ]
 
     def test_fixEncodingRecurse(self):
