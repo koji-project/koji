@@ -225,7 +225,7 @@ class SCM(object):
             if self.scheme in schemes:
                 self.scmtype = scmtype
                 break
-        else:
+        else:   # pragma: no cover
             # should never happen
             raise koji.GenericError('Invalid SCM URL: %s' % url)
 
@@ -267,7 +267,8 @@ class SCM(object):
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params:
             raise koji.GenericError('Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params))
-        if not scheme:
+        if not scheme:  #pragma: no cover
+            # should not happen because of is_scm_url check earlier
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
         if not netloc:
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
@@ -281,40 +282,68 @@ class SCM(object):
 
     def assert_allowed(self, allowed):
         """
-        Verify that the host and repository of this SCM is in the provided list of
-        allowed repositories.
+        Check this scm against allowed list and apply options
 
-        allowed is a space-separated list of host:repository[:use_common[:source_cmd]] tuples.  Incorrectly-formatted
-        tuples will be ignored.
+        allowed is a space-separated list of entries in one of the following
+        forms:
 
-        If use_common is not present, kojid will attempt to checkout a common/ directory from the
-        repository.  If use_common is set to no, off, false, or 0, it will not attempt to checkout a common/
-        directory.
+            host:repository[:use_common[:source_cmd]]
+            !host:repository
 
-        source_cmd is a shell command (args separated with commas instead of spaces) to run before building the srpm.
-        It is generally used to retrieve source files from a remote location.  If no source_cmd is specified,
-        "make sources" is run by default.
+        Incorrectly-formatted entries will be skipped with a warning.
+
+        The first form allows a host:repository pattern and optionally sets a
+        few options for it.
+
+        The second form explicitly blocks a host:repository pattern
+
+        Both host and repository are treated as glob patterns
+
+        If there is a matching entry, then the optional fields, if given, will
+        be applied to the instance.
+
+        If there is no matching entry, or if the host:repository is blocked
+        then BuildError is raised.
+
+        The use_common option defaults to on.  If it is set to no, off, false
+        or 0, it will be disabled.  If the option is on, then kojid will
+        attempt to checkout a common/ directory from the repository.
+
+        The source_command is a shell command to be run before building the
+        srpm.  It defaults to "make sources".  This can be overridden by the
+        matching allowed entry.  The command must be encoded with commas
+        instead of spaces (e.g. "make,sources").
         """
+        is_allowed = False
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
-            if len(scm_tuple) >= 2:
-                if fnmatch(self.host, scm_tuple[0]) and fnmatch(self.repository, scm_tuple[1]):
-                    # SCM host:repository is in the allowed list
-                    # check if we specify a value for use_common
-                    if len(scm_tuple) >= 3:
-                        if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
-                            self.use_common = False
-                    # check if we specify a custom source_cmd
-                    if len(scm_tuple) >= 4:
-                        if scm_tuple[3]:
-                            self.source_cmd = scm_tuple[3].split(',')
-                        else:
-                            # there was nothing after the trailing :, so they don't want to run a source_cmd at all
-                            self.source_cmd = None
-                    break
-            else:
+            if len(scm_tuple) < 2:
                 self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
-        else:
+                continue
+            host_pat = scm_tuple[0]
+            repo_pat = scm_tuple[1]
+            invert = False
+            if host_pat.startswith('!'):
+                invert = True
+                host_pat = host_pat[1:]
+            if fnmatch(self.host, host_pat) and fnmatch(self.repository, repo_pat):
+                # match
+                if invert:
+                    break
+                is_allowed = True
+                # check if we specify a value for use_common
+                if len(scm_tuple) >= 3:
+                    if scm_tuple[2].lower() in ('no', 'off', 'false', '0'):
+                        self.use_common = False
+                # check if we specify a custom source_cmd
+                if len(scm_tuple) >= 4:
+                    if scm_tuple[3]:
+                        self.source_cmd = scm_tuple[3].split(',')
+                    else:
+                        # there was nothing after the trailing :, so they don't want to run a source_cmd at all
+                        self.source_cmd = None
+                break
+        if not is_allowed:
             raise koji.BuildError('%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
 
     def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
