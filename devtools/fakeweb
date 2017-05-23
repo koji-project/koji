@@ -2,6 +2,7 @@
 
 import ast
 import logging
+import mimetypes
 import os
 import os.path
 import pprint
@@ -61,16 +62,26 @@ def do_static(environ, start_response):
     path = path.lstrip('/')
     fn = os.path.join(CWD, 'www/static', path)
     if not os.path.exists(fn):
-        print "CWD: %s" % os.getcwd()
         print "No such file: %s" % fn
-        return do_404()
+        return do_404(environ, start_response)
     size = os.path.getsize(fn)
+    ctype, encoding = mimetypes.guess_type(fn)
     headers = [
             ('Content-Length', str(size)),
-            ('Content-Type', "text/plain"),  #XXX
+            ('Content-Type', ctype),
             ]
     start_response('200 OK', headers)
     return iter_file(fn)
+
+
+def do_404(environ, start_response):
+    content = 'URL not found\n'
+    headers = [
+            ('Content-Length', str(len(content))),
+            ('Content-Type', 'text/plain'),
+            ]
+    start_response('404 Not Found', headers)
+    return [content]
 
 
 def iter_file(fn):
