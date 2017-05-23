@@ -32,7 +32,7 @@ If neither is, then the code will fall back to the default (system) config.
 fakeweb
 -------
 
-This tool is similar to the fakehub tool, instead of a single pass it starts
+This tool is similar to the fakehub tool, but instead of a single pass it starts
 a web server on port 8000 and starts serving.
 
 As with the fakehub tool, fakeweb runs in the foreground in a single thread, making
