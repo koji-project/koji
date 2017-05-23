@@ -1,9 +1,15 @@
-SUBDIRS = ssl
-
 PYTHON=python
 PACKAGE = $(shell basename `pwd`)
-PYFILES = $(wildcard *.py)
-PYSCRIPTS = context.py
+ifeq ($(PYTHON), python3)
+    # for python3 we fully support only basic library + CLI
+    PYFILES = __init__.py util.py
+    PYSCRIPTS =
+    SUBDIRS =
+else
+    PYFILES = $(wildcard *.py)
+    PYSCRIPTS = context.py
+    SUBDIRS = ssl
+endif
 PYVER := $(shell $(PYTHON) -c 'import sys; print("%.3s" % (sys.version))')
 PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print(sys.prefix)')
 PYLIBDIR = $(PYSYSDIR)/lib/python$(PYVER)
