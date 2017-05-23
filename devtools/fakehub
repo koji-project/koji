@@ -76,6 +76,14 @@ def parse_response(data):
     return result
 
 
+def set_config(environ):
+    lconfig = "%s/devtools/fakehub.conf" % os.getcwd()
+    lconfigd = "%s/devtools/fakehub.conf.d" % os.getcwd()
+    if os.path.exists(lconfig) or os.path.exists(lconfigd):
+        environ['koji.hub.ConfigFile'] = lconfig
+        environ['koji.hub.ConfigDir'] = lconfigd
+
+
 def main():
     environ = {}
     environ['SCRIPT_FILENAME'] = kojixmlrpc.__file__
@@ -86,8 +94,7 @@ def main():
     environ['wsgi.input'] = cStringIO.StringIO(get_request())
     environ['REQUEST_METHOD'] = 'POST'
     environ['CONTENT_TYPE'] = 'text/xml'
-    environ['koji.hub.ConfigFile'] = "%s/devtools/fakehub.conf" % os.getcwd()
-    environ['koji.hub.ConfigDir'] = "%s/devtools/fakehub.conf.d" % os.getcwd()
+    set_config(environ)
     print('RESULT:')
     data = kojixmlrpc.application(environ, start_response)
     result = parse_response(data)

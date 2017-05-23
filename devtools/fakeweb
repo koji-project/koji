@@ -95,14 +95,21 @@ def redirect_static(environ, start_response):
     return [response]
 
 
+def set_config(environ):
+    lconfig = "%s/devtools/fakeweb.conf" % os.getcwd()
+    lconfigd = "%s/devtools/fakeweb.conf.d" % os.getcwd()
+    if os.path.exists(lconfig) or os.path.exists(lconfigd):
+        environ['koji.web.ConfigFile'] = lconfig
+        environ['koji.web.ConfigDir'] = lconfigd
+
+
 def application(environ, start_response):
     global FIRST
     setup_testing_defaults(environ)
     # provide some needed info
     environ['SCRIPT_FILENAME'] = wsgi_publisher.__file__
     environ['REQUEST_URI'] = get_url(environ)
-    environ['koji.web.ConfigFile'] = "%s/devtools/fakeweb.conf" % os.getcwd()
-    environ['koji.web.ConfigDir'] = "%s/devtools/fakeweb.conf.d" % os.getcwd()
+    set_config(environ)
     if FIRST:
         pprint.pprint(environ)
         FIRST = False
