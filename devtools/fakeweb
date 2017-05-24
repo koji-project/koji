@@ -1,12 +1,14 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import
+from __future__ import print_function
 import mimetypes
 import os
 import os.path
 import pprint
 import sys
 
-from urllib import quote
+from six.moves.urllib.parse import quote
 from wsgiref.util import setup_testing_defaults
 from wsgiref.simple_server import make_server
 
@@ -53,7 +55,7 @@ def do_static(environ, start_response):
     path = path.lstrip('/')
     fn = os.path.join(CWD, 'www/static', path)
     if not os.path.exists(fn):
-        print "No such file: %s" % fn
+        print("No such file: %s" % fn)
         return do_404(environ, start_response)
     size = os.path.getsize(fn)
     ctype, encoding = mimetypes.guess_type(fn)
@@ -122,7 +124,7 @@ def application(environ, start_response):
 def main():
     # koji.add_file_logger('koji', 'fakeweb.log')
     httpd = make_server('', 8000, application)
-    print "Serving on port 8000..."
+    print("Serving on port 8000...")
     httpd.serve_forever()
 
 if __name__ == '__main__':
