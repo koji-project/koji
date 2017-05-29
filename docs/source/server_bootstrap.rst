@@ -85,6 +85,14 @@ starting point for your minimal buildroot.
     $ koji add-group-pkg dist-foo-build build pkg1
     $ koji add-group-pkg dist-foo-build build pkg2
 
+Maybe you want to copy complete Fedora's groups. Then it would be easier to
+do it in a bulk - export Fedora's data and import it to your build tag.
+
+::
+
+    $ koji -s https://$ARCH.koji.fedoraproject.org/kojihub show-groups --comps f17-build > comps.xml
+    $ koji import-comps comps.xml dist-foo-build
+
 -  regenerate the repo
 
 ::
