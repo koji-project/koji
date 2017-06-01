@@ -343,12 +343,12 @@ currently hard coded into the koji client.
 ``HTTP/kojiweb@EXAMPLE.COM``
     Used by the koji-web server when performing a negotiated Kerberos
     authentication with a web browser. This is a service principal for
-    Apache's mod_auth_kerb.
+    Apache's mod_auth_gssapi.
 
 ``koji/kojiweb@EXAMPLE.COM``
     Used by the koji-web server during communications with the koji-hub. This
     is a user principal that will authenticate koji-web to Kerberos as
-    "koji/kojiweb@EXAMPLE.COM". Koji-web will proxy the mod_auth_kerb user
+    "koji/kojiweb@EXAMPLE.COM". Koji-web will proxy the mod_auth_gssapi user
     information to koji-hub (the <code>ProxyPrincipals</code> koji-hub config
     option).
 
