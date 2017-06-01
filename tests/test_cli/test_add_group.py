@@ -1,14 +1,15 @@
+from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
 
 import os
 
 import sys
 
 import mock
+import six
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 
@@ -18,7 +19,7 @@ class TestAddGroup(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_group(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -47,7 +48,7 @@ class TestAddGroup(unittest.TestCase):
         session.groupListAdd.assert_called_once_with(tag, group)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_group_dupl(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -76,8 +77,8 @@ class TestAddGroup(unittest.TestCase):
         session.groupListAdd.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_group_help(
             self,
@@ -113,7 +114,7 @@ class TestAddGroup(unittest.TestCase):
         session.groupListAdd.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_group_no_perm(self, activate_session_mock, stdout):
         tag = 'tag'
@@ -139,7 +140,7 @@ class TestAddGroup(unittest.TestCase):
         session.groupListAdd.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_group_no_tag(self, activate_session_mock, stdout):
         tag = 'tag'

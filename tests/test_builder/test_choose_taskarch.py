@@ -1,12 +1,12 @@
+from __future__ import absolute_import
 import unittest
-import os
-import sys
 import mock
 import rpm
 import tempfile
 import koji
 
-from loadkojid import kojid
+from .loadkojid import kojid
+from six.moves import range
 
 
 class FakeHeader(dict):

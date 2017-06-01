@@ -1,14 +1,16 @@
+from __future__ import absolute_import
 import unittest
 
 import os
 import sys
-import StringIO as stringio
 
 import mock
 
 from mock import call
 
-import loadcli
+from . import loadcli
+from six.moves import range
+import six
 
 cli = loadcli.cli
 
@@ -30,7 +32,7 @@ class TestWatchTasks(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_watch_tasks_no_tasklist(self, stdout):
         returned = cli.watch_tasks(self.session, [])
         actual = stdout.getvalue()
@@ -38,7 +40,7 @@ class TestWatchTasks(unittest.TestCase):
         self.assertIsNone(returned)
         self.assertEqual(actual, expected)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
     @mock.patch('koji_cli.display_tasklist_status')
     @mock.patch('koji_cli.display_task_results')
@@ -64,7 +66,7 @@ class TestWatchTasks(unittest.TestCase):
 
         def side_effect(*args, **kwargs):
             rt = None
-            if args[0] not in range(2):
+            if args[0] not in list(range(2)):
                 rt = mock.MagicMock()
                 rt.level = args[2]
                 rt.is_done.return_value = True
@@ -76,7 +78,7 @@ class TestWatchTasks(unittest.TestCase):
             return rt
 
         twClzMock.side_effect = side_effect
-        rv = cli.watch_tasks(self.session, range(2), quiet=False)
+        rv = cli.watch_tasks(self.session, list(range(2)), quiet=False)
         actual = stdout.getvalue()
         self.assertMultiLineEqual(
             actual, "Watching tasks (this may be safely interrupted)...\n\n")
@@ -168,7 +170,7 @@ class TestWatchTasks(unittest.TestCase):
                           call.display_task_results_mock({0: tw1, 1: tw2, 11: manager.tw11, 12: manager.tw12})
                           ])
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.TaskWatcher')
     @mock.patch('koji_cli.display_tasklist_status')
     @mock.patch('koji_cli.display_task_results')
@@ -201,7 +203,7 @@ class TestWatchTasks(unittest.TestCase):
 
         def side_effect(*args, **kwargs):
             rt = None
-            if args[0] not in range(2):
+            if args[0] not in list(range(2)):
                 rt = mock.MagicMock()
                 rt.level = args[2]
                 rt.is_done.return_value = True
@@ -215,7 +217,7 @@ class TestWatchTasks(unittest.TestCase):
         twClzMock.side_effect = side_effect
 
         with self.assertRaises(KeyboardInterrupt):
-            cli.watch_tasks(self.session, range(2), quiet=False)
+            cli.watch_tasks(self.session, list(range(2)), quiet=False)
 
         actual = stdout.getvalue()
         self.assertMultiLineEqual(

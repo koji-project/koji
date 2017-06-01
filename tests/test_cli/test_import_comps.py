@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 import json
 import unittest
-import StringIO as stringio
 import os
 import sys
 import mock
-import loadcli
+import six
+from . import loadcli
 
 try:
     import libcomps
@@ -22,7 +23,7 @@ class TestImportComps(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.libcomps')
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._import_comps')
@@ -62,7 +63,7 @@ class TestImportComps(unittest.TestCase):
         mock_import_comps_alt.assert_not_called()
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True)
     @mock.patch('koji_cli.activate_session')
@@ -103,7 +104,7 @@ class TestImportComps(unittest.TestCase):
             session, filename, tag, local_options)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', new=None, create=True)
     @mock.patch('koji_cli.activate_session')
@@ -140,7 +141,7 @@ class TestImportComps(unittest.TestCase):
         mock_import_comps_alt.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._import_comps')
     @mock.patch('koji_cli._import_comps_alt')
@@ -175,8 +176,8 @@ class TestImportComps(unittest.TestCase):
         mock_import_comps_alt.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     @mock.patch('koji_cli._import_comps')
     @mock.patch('koji_cli._import_comps_alt')
@@ -215,7 +216,7 @@ class TestImportComps(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     @unittest.skipIf(libcomps is None, "No libcomps")
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_import_comps_libcomps(self, stdout):
         comps_file = os.path.dirname(__file__) + '/data/comps-example.xml'
         stdout_file = os.path.dirname(
@@ -230,7 +231,7 @@ class TestImportComps(unittest.TestCase):
             stdout)
 
     @unittest.skipIf(libcomps is None, "No libcomps")
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_import_comps_sample_libcomps(self, stdout):
         comps_file = os.path.dirname(__file__) + '/data/comps-sample.xml'
         stdout_file = os.path.dirname(
@@ -245,7 +246,7 @@ class TestImportComps(unittest.TestCase):
             stdout)
 
     @unittest.skipIf(yumcomps is None, "No yum.comps")
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True, new=yumcomps)
     def test_import_comps_yumcomps(self, stdout):
@@ -262,7 +263,7 @@ class TestImportComps(unittest.TestCase):
             stdout)
 
     @unittest.skipIf(yumcomps is None, "No yum.comps")
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.libcomps', new=None)
     @mock.patch('koji_cli.yumcomps', create=True, new=yumcomps)
     def test_import_comps_sample_yumcomps(self, stdout):

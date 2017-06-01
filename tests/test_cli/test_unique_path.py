@@ -1,6 +1,8 @@
+from __future__ import absolute_import
 import unittest
 
-import loadcli
+from . import loadcli
+from six.moves import range
 
 cli = loadcli.cli
 
@@ -14,7 +16,7 @@ class TestUniquePath(unittest.TestCase):
                 cli._unique_path('prefix'))
             self.assertRegexpMatches(
                 cli._unique_path('prefix'),
-                '^prefix/\d{10}\.\d{1,6}\.[a-zA-Z]{8}$')
+                '^prefix/\d{10}\.\d{1,7}\.[a-zA-Z]{8}$')
 
 if __name__ == '__main__':
     unittest.main()

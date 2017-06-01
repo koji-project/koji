@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 import mock
 import unittest
 from mock import call
 
 import os
 import optparse
-import ConfigParser
+import six.moves.configparser
 import koji
 import koji.util
 
@@ -37,6 +38,14 @@ class EnumTestCase(unittest.TestCase):
         """ Test slice access. """
         test = koji.Enum(('one', 'two', 'three'))
         self.assertEquals(test[1:], ('two', 'three'))
+
+
+def mock_open():
+    """Return the right patch decorator for open"""
+    if six.PY2:
+        return mock.patch('__builtin__.open')
+    else:
+        return mock.patch('builtins.open')
 
 
 class MiscFunctionTestCase(unittest.TestCase):
@@ -81,12 +90,12 @@ class MiscFunctionTestCase(unittest.TestCase):
         islink.assert_called_once_with(dst)
         move.assert_not_called()
 
-    @mock.patch('urllib2.urlopen')
+    @mock_open()
+    @mock.patch('six.moves.urllib.request.urlopen')
     @mock.patch('tempfile.TemporaryFile')
     @mock.patch('shutil.copyfileobj')
-    @mock.patch('__builtin__.open')
-    def test_openRemoteFile(self, m_open, m_copyfileobj, m_TemporaryFile,
-                            m_urlopen):
+    def test_openRemoteFile(self, m_copyfileobj, m_TemporaryFile,
+                            m_urlopen, m_open):
         """Test openRemoteFile function"""
 
         mocks = [m_open, m_copyfileobj, m_TemporaryFile, m_urlopen]
@@ -473,7 +482,7 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertEqual(cm.exception.args[0], 'total ordering not possible')
 
     def _read_conf(self, cfile):
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         path = os.path.dirname(__file__)
         with open(path + cfile, 'r') as conf_file:
             config.readfp(conf_file)

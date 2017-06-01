@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 import unittest
 
 import mock
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 

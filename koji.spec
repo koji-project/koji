@@ -1,4 +1,21 @@
-%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+# Enable Python 3 builds for Fedora + EPEL >5
+# NOTE: do **NOT** change 'epel' to 'rhel' here, as this spec is also
+%if 0%{?fedora} || 0%{?epel} > 5
+%bcond_without python3
+# If the definition isn't available for python3_pkgversion, define it
+%{?!python3_pkgversion:%global python3_pkgversion 3}
+%else
+%bcond_with python3
+%endif
+
+# Compatibility with RHEL. These macros have been added to EPEL but
+# not yet to RHEL proper.
+# https://bugzilla.redhat.com/show_bug.cgi?id=1307190
+%{!?__python2: %global __python2 /usr/bin/python2}
+%{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
+%{!?py2_build: %global py2_build %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} build --executable="%{__python2} -s"}}
+%{!?py2_install: %global py2_install %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} install -O1 --skip-build --root %{buildroot}}}
 
 %if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
 %global use_systemd 1
@@ -25,25 +42,56 @@ URL: https://pagure.io/koji
 Source: https://releases.pagure.org/koji/koji-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-Requires: python-krbV >= 1.0.13
-Requires: rpm-python
-Requires: pyOpenSSL
-Requires: python-requests
-Requires: python-requests-kerberos
-Requires: python-urlgrabber
-Requires: python-dateutil
-BuildRequires: python
+%if 0%{with python3}
+Requires: python3-%{name} = %{version}-%{release}
+Requires: python3-pycurl
+Requires: python3-libcomps
+%else
+Requires: python2-%{name} = %{version}-%{release}
+Requires: python2-pycurl
+%if 0%{?fedora} || 0%{?rhel} >= 7
+Requires: python2-libcomps
+%endif
+%endif
 %if %{use_systemd}
 BuildRequires: systemd
 BuildRequires: pkgconfig
-%endif
-%if 0%{?fedora} || 0%{?rhel} >= 7
-Requires: python-libcomps
 %endif
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
 contains shared libraries and the command-line interface.
+
+%package -n python2-%{name}
+Summary: Build system tools python library
+%{?python_provide:%python_provide python2-%{name}}
+BuildRequires: python2-devel
+Requires: python-krbV >= 1.0.13
+Requires: rpm-python
+Requires: pyOpenSSL
+Requires: python-requests
+Requires: python-requests-kerberos
+Requires: python-dateutil
+Requires: python-six
+
+%description -n python2-%{name}
+desc
+
+%if 0%{with python3}
+%package -n python3-%{name}
+Summary: Build system tools python library
+%{?python_provide:%python_provide python3-%{name}}
+BuildRequires: python3-devel
+Requires: python3-rpm
+Requires: python3-pyOpenSSL
+Requires: python3-requests
+Requires: python3-requests-kerberos
+Requires: python3-dateutil
+Requires: python3-six
+
+%description -n python3-%{name}
+desc
+%endif
 
 %package hub
 Summary: Koji XMLRPC interface
@@ -189,6 +237,12 @@ koji-web is a web UI to the Koji system.
 %install
 rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT %{?install_opt} install
+%if 0%{with python3}
+cd koji
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+# alter python interpreter in koji CLI
+sed -i 's/\#\!\/usr\/bin\/python/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
+%endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -196,10 +250,18 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %{_bindir}/*
-%{python_sitelib}/%{name}
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
+
+%files -n python2-%{name}
+%defattr(-,root,root)
+%{python2_sitelib}/%{name}
+
+%if 0%{with python3}
+%files -n python3-koji
+%{python3_sitelib}/%{name}
+%endif
 
 %files hub
 %defattr(-,root,root)

@@ -1,14 +1,12 @@
+from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 
@@ -18,7 +16,7 @@ class TestRenameChannel(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_rename_channel(self, activate_session_mock, stdout):
         old_name = 'old_name'
@@ -44,7 +42,7 @@ class TestRenameChannel(unittest.TestCase):
         session.renameChannel.assert_called_once_with(old_name, new_name)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_rename_channel_no_channel(
             self, activate_session_mock, stdout):
@@ -71,8 +69,8 @@ class TestRenameChannel(unittest.TestCase):
         session.renameChannel.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_rename_channel_help(
             self, activate_session_mock, stderr, stdout):

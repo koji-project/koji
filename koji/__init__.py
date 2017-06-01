@@ -21,19 +21,23 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+
+from __future__ import absolute_import
 import sys
+from six.moves import range
+from six.moves import zip
+import six
+krbV = None
 try:
     import krbV
 except ImportError:  # pragma: no cover
-    sys.stderr.write("Warning: Could not install krbV module. Kerberos support will be disabled.\n")
-    sys.stderr.flush()
+    pass
 import base64
 import datetime
-import ConfigParser
+import six.moves.configparser
 import errno
-import exceptions
 from fnmatch import fnmatch
-import httplib
+import six.moves.http_client
 import imp
 import logging
 import logging.handlers
@@ -69,15 +73,13 @@ import struct
 import tempfile
 import time
 import traceback
-import urllib
-import urllib2
-import urlparse
-import util
+from . import util
 import warnings
-import xmlrpclib
+import six.moves.xmlrpc_client
 import xml.sax
 import xml.sax.handler
-from xmlrpclib import loads, dumps, Fault
+from six.moves.xmlrpc_client import loads, dumps, Fault
+import six.moves.urllib
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
@@ -87,7 +89,7 @@ def _(args):
 
 ## Constants ##
 
-RPM_HEADER_MAGIC = '\x8e\xad\xe8'
+RPM_HEADER_MAGIC = six.b('\x8e\xad\xe8')
 RPM_TAG_HEADERSIGNATURES = 62
 RPM_TAG_FILEDIGESTALGO = 5011
 RPM_SIGTAG_PGP = 1002
@@ -261,6 +263,8 @@ PRIO_DEFAULT = 20
 ## BEGIN kojikamid dup
 
 #Exceptions
+PythonImportError = ImportError # will be masked by koji's one
+
 class GenericError(Exception):
     """Base class for our custom exceptions"""
     faultCode = 1000
@@ -408,7 +412,7 @@ def listFaults():
             info['name'] = n
             info['desc'] = getattr(v, '__doc__', None)
             ret.append(info)
-    ret.sort(lambda a, b: cmp(a['faultCode'], b['faultCode']))
+    ret.sort(key=lambda x: x['faultCode'])
     return ret
 
 #functions for encoding/decoding optional arguments
@@ -444,7 +448,7 @@ def decode_args2(args, names, strict=True):
     args, opts = decode_args(*args)
     if strict and len(names) < len(args):
         raise TypeError("Expecting at most %i arguments" % len(names))
-    ret = dict(zip(names, args))
+    ret = dict(list(zip(names, args)))
     ret.update(opts)
     return ret
 
@@ -460,7 +464,7 @@ def encode_int(n):
 
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
-    if isinstance(n, (int, long)):
+    if isinstance(n, six.integer_types):
         return n
     #else
     return int(n)
@@ -471,7 +475,7 @@ def safe_xmlrpc_loads(s):
     """Load xmlrpc data from a string, but catch faults"""
     try:
         return loads(s)
-    except Fault, f:
+    except Fault as f:
         return f
 
 ## BEGIN kojikamid dup
@@ -528,7 +532,7 @@ def multibyte(data):
     """Convert a list of bytes to an integer (network byte order)"""
     sum = 0
     n = len(data)
-    for i in xrange(n):
+    for i in range(n):
         sum += data[i] << (8 * (n - i - 1))
     return sum
 
@@ -547,8 +551,8 @@ def rpm_hdr_size(f, ofs=None):
     f = filename or file object
     ofs = offset of the header
     """
-    if isinstance(f, (str, unicode)):
-        fo = file(f, 'rb')
+    if isinstance(f, six.string_types):
+        fo = open(f, 'rb')
     else:
         fo = f
     if ofs != None:
@@ -564,7 +568,7 @@ def rpm_hdr_size(f, ofs=None):
     # now read two 4-byte integers which tell us
     #  - # of index entries
     #  - bytes of data in header
-    data = [ord(x) for x in fo.read(8)]
+    data = [_ord(x) for x in fo.read(8)]
     il = multibyte(data[0:4])
     dl = multibyte(data[4:8])
 
@@ -577,7 +581,7 @@ def rpm_hdr_size(f, ofs=None):
     # add eight bytes for section header
     hdrsize = hdrsize + 8
 
-    if not isinstance(f, (str, unicode)):
+    if not isinstance(f, six.string_types):
         fo.close()
     return hdrsize
 
@@ -594,23 +598,23 @@ class RawHeader(object):
 
     def version(self):
         #fourth byte is the version
-        return ord(self.header[3])
+        return _ord(self.header[3])
 
     def _index(self):
         # read two 4-byte integers which tell us
         #  - # of index entries  (each 16 bytes long)
         #  - bytes of data in header
-        data = [ord(x) for x in self.header[8:12]]
+        data = [_ord(x) for x in self.header[8:12]]
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
 
         #read the index (starts at offset 16)
         index = {}
-        for i in xrange(il):
+        for i in range(il):
             entry = []
-            for j in xrange(4):
+            for j in range(4):
                 ofs = 16 + i*16 + j*4
-                data = [ord(x) for x in self.header[ofs:ofs+4]]
+                data = [_ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
             #print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
             index[entry[0]] = entry
@@ -627,11 +631,11 @@ class RawHeader(object):
         print("Store at offset %d (%0x)" % (store, store))
         #sort entries by offset, dtype
         #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
-        order = sorted([(x[2], x[1], x[0], x[3]) for x in self.index.itervalues()])
+        order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
         next = store
         #map some rpmtag codes
         tags = {}
-        for name, code in rpm.__dict__.iteritems():
+        for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
         for entry in order:
@@ -653,15 +657,15 @@ class RawHeader(object):
                 next = pos
             elif dtype == 1:
                 #char
-                for i in xrange(count):
+                for i in range(count):
                     print("Char: %r" % self.header[pos])
                     pos += 1
                 next = pos
             elif dtype >= 2 and dtype <= 5:
                 #integer
                 n = 1 << (dtype - 2)
-                for i in xrange(count):
-                    data = [ord(x) for x in self.header[pos:pos+n]]
+                for i in range(count):
+                    data = [_ord(x) for x in self.header[pos:pos+n]]
                     print("%r" % data)
                     num = multibyte(data)
                     print("Int(%d): %d" % (n, num))
@@ -669,7 +673,7 @@ class RawHeader(object):
                 next = pos
             elif dtype == 6:
                 # string (null terminated)
-                end = self.header.find('\0', pos)
+                end = self.header.find(six.b('\0'), pos)
                 print("String(%d): %r" % (end-pos, self.header[pos:end]))
                 next = end + 1
             elif dtype == 7:
@@ -677,15 +681,15 @@ class RawHeader(object):
                 next = pos+count
             elif dtype == 8:
                 # string array
-                for i in xrange(count):
-                    end = self.header.find('\0', pos)
+                for i in range(count):
+                    end = self.header.find(six.b('\0'), pos)
                     print("String(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
-                for i in xrange(count):
-                    end = self.header.find('\0', pos)
+                for i in range(count):
+                    end = self.header.find(six.b('\0'), pos)
                     print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
@@ -714,7 +718,7 @@ class RawHeader(object):
         if dtype >= 2 and dtype <= 5:
             n = 1 << (dtype - 2)
             # n-byte integer
-            data = [ord(x) for x in self.header[pos:pos+n]]
+            data = [_ord(x) for x in self.header[pos:pos+n]]
             return multibyte(data)
         elif dtype == 6:
             # string (null terminated)
@@ -738,7 +742,7 @@ class RawHeader(object):
 def rip_rpm_sighdr(src):
     """Rip the signature header out of an rpm"""
     (start, size) = find_rpm_sighdr(src)
-    fo = file(src, 'rb')
+    fo = open(src, 'rb')
     fo.seek(start, 0)
     sighdr = fo.read(size)
     fo.close()
@@ -749,15 +753,22 @@ def rip_rpm_hdr(src):
     (start, size) = find_rpm_sighdr(src)
     start += size
     size = rpm_hdr_size(src, start)
-    fo = file(src, 'rb')
+    fo = open(src, 'rb')
     fo.seek(start, 0)
     hdr = fo.read(size)
     fo.close()
     return hdr
 
+def _ord(s):
+    # in python2 it is char/str, while in py3 it is already int/bytes
+    if isinstance(s, int):
+        return s
+    else:
+        return ord(s)
+
 def __parse_packet_header(pgp_packet):
     """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
-    byte0 = ord(pgp_packet[0])
+    byte0 = _ord(pgp_packet[0])
     if (byte0 & 0x80) == 0:
         raise ValueError('Not an OpenPGP packet')
     if (byte0 & 0x40) == 0:
@@ -771,12 +782,12 @@ def __parse_packet_header(pgp_packet):
             length = struct.unpack(fmt, pgp_packet[1:offset])[0]
     else:
         tag = byte0 & 0x3F
-        byte1 = ord(pgp_packet[1])
+        byte1 = _ord(pgp_packet[1])
         if byte1 < 192:
             length = byte1
             offset = 2
         elif byte1 < 224:
-            length = ((byte1 - 192) << 8) + ord(pgp_packet[2]) + 192
+            length = ((byte1 - 192) << 8) + _ord(pgp_packet[2]) + 192
             offset = 3
         elif byte1 == 255:
             length = struct.unpack('>I', pgp_packet[2:6])[0]
@@ -793,17 +804,17 @@ def __subpacket_key_ids(subs):
     """Parse v4 signature subpackets and return a list of issuer key IDs"""
     res = []
     while len(subs) > 0:
-        byte0 = ord(subs[0])
+        byte0 = _ord(subs[0])
         if byte0 < 192:
             length = byte0
             off = 1
         elif byte0 < 255:
-            length = ((byte0 - 192) << 8) + ord(subs[1]) + 192
+            length = ((byte0 - 192) << 8) + _ord(subs[1]) + 192
             off = 2
         else:
             length = struct.unpack('>I', subs[1:5])[0]
             off = 5
-        if ord(subs[off]) == 16:
+        if _ord(subs[off]) == 16:
             res.append(subs[off+1 : off+length])
         subs = subs[off+length:]
     return res
@@ -813,9 +824,9 @@ def get_sigpacket_key_id(sigpacket):
     (tag, sigpacket) = __parse_packet_header(sigpacket)
     if tag != 2:
         raise ValueError('Not a signature packet')
-    if ord(sigpacket[0]) == 0x03:
+    if _ord(sigpacket[0]) == 0x03:
         key_id = sigpacket[11:15]
-    elif ord(sigpacket[0]) == 0x04:
+    elif _ord(sigpacket[0]) == 0x04:
         sub_len = struct.unpack('>H', sigpacket[4:6])[0]
         off = 6 + sub_len
         key_ids = __subpacket_key_ids(sigpacket[6:off])
@@ -828,7 +839,7 @@ def get_sigpacket_key_id(sigpacket):
         key_id = key_ids[0][-4:]
     else:
         raise NotImplementedError(
-            'Unknown PGP signature packet version %s' % ord(sigpacket[0]))
+            'Unknown PGP signature packet version %s' % _ord(sigpacket[0]))
     return hex_string(key_id)
 
 def get_sighdr_key(sighdr):
@@ -848,8 +859,8 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     if dst is None:
         (fd, dst) = tempfile.mkstemp()
         os.close(fd)
-    src_fo = file(src, 'rb')
-    dst_fo = file(dst, 'wb')
+    src_fo = open(src, 'rb')
+    dst_fo = open(dst, 'wb')
     dst_fo.write(src_fo.read(start))
     dst_fo.write(sighdr)
     src_fo.seek(size, 1)
@@ -867,8 +878,8 @@ def get_rpm_header(f, ts=None):
     if ts is None:
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
-    if isinstance(f, (str, unicode)):
-        fo = file(f, "r")
+    if isinstance(f, six.string_types):
+        fo = open(f, "r")
     else:
         fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
@@ -910,8 +921,14 @@ def get_header_field(hdr, name, src_arch=False):
         # HACK: workaround for https://bugzilla.redhat.com/show_bug.cgi?id=991329
         if result is None:
             result = []
-        elif isinstance(result, (int, long)):
+        elif isinstance(result, six.integer_types):
             result = [result]
+    if six.PY3 and isinstance(result, bytes):
+        try:
+            result = result.decode('utf-8')
+        except UnicodeDecodeError:
+            # typically signatures
+            pass
     return result
 
 
@@ -993,7 +1010,7 @@ def check_NVR(nvr, strict=False):
             return False
 
 def _check_NVR(nvr):
-    if isinstance(nvr, basestring):
+    if isinstance(nvr, six.string_types):
         nvr = parse_NVR(nvr)
     if '-' in nvr['version']:
         raise GenericError('The "-" character not allowed in version field')
@@ -1022,7 +1039,7 @@ def check_NVRA(nvra, strict=False):
 
 
 def _check_NVRA(nvra):
-    if isinstance(nvra, basestring):
+    if isinstance(nvra, six.string_types):
             nvra = parse_NVRA(nvra)
     if '-' in nvra['version']:
         raise GenericError('The "-" character not allowed in version field')
@@ -1112,7 +1129,7 @@ def parse_pom(path=None, contents=None):
     values = {}
     handler = POMHandler(values, fields)
     if path:
-        fd = file(path)
+        fd = open(path)
         contents = fd.read()
         fd.close()
 
@@ -1133,7 +1150,7 @@ def parse_pom(path=None, contents=None):
         xml.sax.parseString(contents, handler)
 
     for field in fields:
-        if field not in values.keys():
+        if field not in list(values.keys()):
             raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
@@ -1174,7 +1191,7 @@ def mavenLabel(maveninfo):
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""
-    return ''.join(['%02x' % ord(x) for x in s])
+    return ''.join(['%02x' % _ord(x) for x in s])
 
 
 def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
@@ -1214,7 +1231,7 @@ BuildArch: noarch
             continue
         data.append("#Group: %s\n" % group_name)
         pkglist = list(group['packagelist'])
-        pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
+        pkglist.sort(key=lambda x: x['package'])
         for pkg in pkglist:
             pkg_name = pkg['package']
             if pkg_name in seen_pkg:
@@ -1256,7 +1273,7 @@ def generate_comps(groups, expand_groups=False):
 """]
     groups = list(groups)
     group_idx = dict([(g['name'], g) for g in groups])
-    groups.sort(lambda a, b: cmp(a['name'], b['name']))
+    groups.sort(key=lambda x: x['name'])
     for g in groups:
         group_id = g['name']
         name = g['display_name']
@@ -1283,7 +1300,7 @@ def generate_comps(groups, expand_groups=False):
 """    <grouplist>
 """)
             grouplist = list(g['grouplist'])
-            grouplist.sort(lambda a, b: cmp(a['name'], b['name']))
+            grouplist.sort(key=lambda x: x['name'])
             for x in grouplist:
                 #['req_id','type','is_metapkg','name']
                 name = x['name']
@@ -1319,7 +1336,7 @@ def generate_comps(groups, expand_groups=False):
 """)
         if g['packagelist']:
             packagelist = list(g['packagelist'])
-            packagelist.sort(lambda a, b: cmp(a['package'], b['package']))
+            packagelist.sort(key=lambda x: x['package'])
             for p in packagelist:
                 data.append(
 """      %s
@@ -1346,7 +1363,7 @@ def generate_comps(groups, expand_groups=False):
 """      <!-- Expanding Group: %s -->
 """ % group_name)
                 pkglist = list(group['packagelist'])
-                pkglist.sort(lambda a, b: cmp(a['package'], b['package']))
+                pkglist.sort(key=lambda x: x['package'])
                 for pkg in pkglist:
                     pkg_name = pkg['package']
                     if pkg_name in seen_pkg:
@@ -1427,14 +1444,14 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
         # if we're setting up DNS,
         # also copy /etc/hosts from the host
-        etc_hosts = file('/etc/hosts')
+        etc_hosts = open('/etc/hosts')
         files['etc/hosts'] = etc_hosts.read()
         etc_hosts.close()
     mavenrc = ''
     if opts.get('maven_opts'):
         mavenrc = 'export MAVEN_OPTS="%s"\n' % ' '.join(opts['maven_opts'])
     if opts.get('maven_envs'):
-        for name, val in opts['maven_envs'].iteritems():
+        for name, val in six.iteritems(opts['maven_envs']):
             mavenrc += 'export %s="%s"\n' % (name, val)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
@@ -1497,10 +1514,10 @@ name=build
 """ % locals())
 
     parts.append("\n")
-    for key, value in config_opts.iteritems():
+    for key, value in six.iteritems(config_opts):
         parts.append("config_opts[%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in plugin_conf.iteritems():
+    for key, value in six.iteritems(plugin_conf):
         parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
 
@@ -1508,14 +1525,14 @@ name=build
         # This line is REQUIRED for mock to work if bind_opts defined.
         parts.append("config_opts['internal_dev_setup'] = False\n")
         for key in bind_opts.keys():
-            for mnt_src, mnt_dest in bind_opts.get(key).iteritems():
+            for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
                 parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
         parts.append("\n")
 
-    for key, value in macros.iteritems():
+    for key, value in six.iteritems(macros):
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in files.iteritems():
+    for key, value in six.iteritems(files):
         parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)
@@ -1561,7 +1578,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     on options"""
     if topurl:
         url = "%s/%s" % (topurl, relpath)
-        src = urllib2.urlopen(url)
+        src = six.moves.urllib.request.urlopen(url)
         fo = tempfile.TemporaryFile(dir=tempdir)
         shutil.copyfileobj(src, fo)
         src.close()
@@ -1578,7 +1595,7 @@ def config_directory_contents(dir_name):
     configs = []
     try:
         conf_dir_contents = os.listdir(dir_name)
-    except OSError, exception:
+    except OSError as exception:
         if exception.errno != errno.ENOENT:
             raise
     else:
@@ -1659,7 +1676,7 @@ def read_config(profile_name, user_config=None):
     got_conf = False
     for configFile in configs:
         f = open(configFile)
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         config.readfp(f)
         f.close()
         if config.has_section(profile_name):
@@ -1754,7 +1771,7 @@ def get_profile_module(profile_name, config=None):
 
 class PathInfo(object):
     # ASCII numbers and upper- and lower-case letter for use in tmpdir()
-    ASCII_CHARS = [chr(i) for i in range(48, 58) + range(65, 91) + range(97, 123)]
+    ASCII_CHARS = [chr(i) for i in list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))]
 
     def __init__(self, topdir=None):
         self._topdir = topdir
@@ -1942,7 +1959,7 @@ def is_conn_error(e):
             return True
         # else
         return False
-    if isinstance(e, httplib.BadStatusLine):
+    if isinstance(e, six.moves.http_client.BadStatusLine):
         return True
     if requests is not None:
         try:
@@ -1952,7 +1969,7 @@ def is_conn_error(e):
                 e2 = getattr(e, 'args', [None])[0]
                 if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
                     e3 = getattr(e2, 'args', [None, None])[1]
-                    if isinstance(e3, httplib.BadStatusLine):
+                    if isinstance(e3, six.moves.http_client.BadStatusLine):
                         return True
                 if isinstance(e2, socket.error):
                     # same check as unwrapped socket error
@@ -2035,6 +2052,8 @@ class ClientSession(object):
         if self.rsession:
             self.rsession.close()
         if self.opts.get('use_old_ssl', False) or requests is None:
+            if not six.PY2:
+                raise GenericError('use_old_ssl is only supported on python2')
             import koji.compatrequests
             self.rsession = koji.compatrequests.Session()
         else:
@@ -2086,7 +2105,7 @@ class ClientSession(object):
                 pass
 
         if not krbV:
-            raise exceptions.ImportError(
+            raise PythonImportError(
                 "Please install python-krbV to use kerberos."
             )
 
@@ -2137,7 +2156,7 @@ class ClientSession(object):
         # decode and decrypt the login info
         sinfo_priv = base64.decodestring(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
-        sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
+        sinfo = dict(list(zip(['session-id', 'session-key'], sinfo_str.split())))
 
         if not sinfo:
             self.logger.warn('No session info received')
@@ -2151,8 +2170,7 @@ class ClientSession(object):
         """Get the Kerberos principal of the server we're connecting
         to, based on baseurl."""
 
-        uri = urlparse.urlsplit(self.baseurl)
-        host, port = urllib.splitport(uri[1])
+        host = six.moves.urllib.parse.urlparse(self.baseurl).hostname
         if self.opts.get('krb_rdns', True):
             servername = socket.getfqdn(host)
         else:
@@ -2164,13 +2182,13 @@ class ClientSession(object):
 
     def gssapi_login(self, proxyuser=None):
         if not HTTPKerberosAuth:
-            raise exceptions.ImportError(
+            raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
 
         # force https
         old_baseurl = self.baseurl
-        uri = urlparse.urlsplit(self.baseurl)
+        uri = six.moves.urllib.parse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
 
@@ -2214,7 +2232,7 @@ class ClientSession(object):
         # when API is changed
 
         # force https
-        uri = urlparse.urlsplit(self.baseurl)
+        uri = six.moves.urllib.parse.urlsplit(self.baseurl)
         if uri[0] != 'https':
             self.baseurl = 'https://%s%s' % (uri[1], uri[2])
 
@@ -2289,7 +2307,7 @@ class ClientSession(object):
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = "%s?%s" % (self.baseurl, urllib.urlencode(sinfo))
+            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
@@ -2308,7 +2326,7 @@ class ClientSession(object):
         for i in (0, 1):
             try:
                 return self._sendOneCall(handler, headers, request)
-            except Exception, e:
+            except Exception as e:
                 if i or not is_conn_error(e):
                     raise
                 self.logger.debug("Connection Error: %s", e)
@@ -2364,7 +2382,7 @@ class ClientSession(object):
         return ret
 
     def _read_xmlrpc_response(self, response):
-        p, u = xmlrpclib.getparser()
+        p, u = six.moves.xmlrpc_client.getparser()
         for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
                 print("body: %r" % chunk)
@@ -2401,7 +2419,7 @@ class ClientSession(object):
                 # note that, for logged-in sessions the server should tell us (via a RetryError fault)
                 # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
                 # and hence retryable.
-                except Fault, fault:
+                except Fault as fault:
                     #try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
@@ -2417,7 +2435,7 @@ class ClientSession(object):
                 except (SystemExit, KeyboardInterrupt):
                     #(depending on the python version, these may or may not be subclasses of Exception)
                     raise
-                except Exception, e:
+                except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self.new_session()
 
@@ -2490,7 +2508,7 @@ class ClientSession(object):
         if name is None:
             name = os.path.basename(localfile)
         self.logger.debug("Fast upload: %s to %s/%s", localfile, path, name)
-        fo = file(localfile, 'rb')
+        fo = open(localfile, 'rb')
         ofs = 0
         size = os.path.getsize(localfile)
         start = time.time()
@@ -2560,7 +2578,7 @@ class ClientSession(object):
             args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
-        handler = "%s?%s" % (self.baseurl, urllib.urlencode(args))
+        handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(args))
         headers = [
             ('User-Agent', 'koji/1'),
             ("Content-Type", "application/octet-stream"),
@@ -2598,7 +2616,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = file(localfile, "r")  #specify bufsize?
+        fo = open(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = md5_constructor()
@@ -2695,7 +2713,7 @@ class DBHandler(logging.Handler):
             values = []
             data = {}
             record.message = record.getMessage()
-            for key, value in self.mapping.iteritems():
+            for key, value in six.iteritems(self.mapping):
                 value = str(value)
                 if value.find("%(asctime)") >= 0:
                     if self.formatter:
@@ -2895,7 +2913,7 @@ def _taskLabel(taskInfo):
         return '%s (%s)' % (method, arch)
 
 CONTROL_CHARS = [chr(i) for i in range(32)]
-NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
+NONPRINTABLE_CHARS = six.b(''.join([c for c in CONTROL_CHARS if c not in '\r\n\t']))
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     return value.translate(None, NONPRINTABLE_CHARS)
@@ -2907,9 +2925,9 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     encoded in the 'fallback' charset.
     """
     if not value:
-        return ''
+        return six.b('')
 
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
         # value is already unicode, so just convert it
         # to a utf8-encoded str
         s = value.encode('utf8')
@@ -2943,7 +2961,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
             k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
-    elif isinstance(value, unicode):
+    elif isinstance(value, six.text_type):
         if remove_nonprintable:
             return removeNonprintable(value.encode('utf8'))
         else:

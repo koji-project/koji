@@ -24,7 +24,14 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
+from __future__ import absolute_import
+from __future__ import division
 import sys
+from six.moves import range
+from six.moves import zip
+import six
+from six.moves import filter
+from six.moves import map
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -40,7 +47,7 @@ except ImportError:  # pragma: no cover
         import simplejson as json
     except ImportError:
         json = None
-import ConfigParser
+import six.moves.configparser
 import base64
 import dateutil.parser
 import errno
@@ -52,15 +59,14 @@ import logging
 import os
 import re
 import pprint
+import pycurl
 import random
 import socket
 import stat
 import string
 import time
 import traceback
-import urlgrabber.grabber as grabber
-import urlgrabber.progress as progress
-import xmlrpclib
+import six.moves.xmlrpc_client
 try:
     import libcomps
 except ImportError:  # pragma: no cover
@@ -110,6 +116,12 @@ def _(args):
     """Stub function for translation"""
     return args
 
+def _printable_unicode(s):
+    if six.PY2:
+        return s.encode('utf-8')
+    else:
+        return s
+
 ARGMAP = {'None': None,
           'True': True,
           'False': False}
@@ -142,7 +154,7 @@ categories = {
 def get_epilog_str(progname=None):
     if progname is None:
         progname = os.path.basename(sys.argv[0]) or 'koji'
-    categories_ordered=', '.join(sorted(['all'] + categories.keys()))
+    categories_ordered=', '.join(sorted(['all'] + list(categories.keys())))
     epilog_str = '''
 Try "%(progname)s --help" for help about global options
 Try "%(progname)s help" to get all available commands
@@ -237,12 +249,12 @@ def get_options():
     # load local config
     try:
         result = koji.read_config(options.profile, user_config=options.configFile)
-    except koji.ConfigurationError, e:
+    except koji.ConfigurationError as e:
         parser.error(e.args[0])
         assert False  # pragma: no cover
 
     # update options according to local config
-    for name, value in result.iteritems():
+    for name, value in six.iteritems(result):
         if getattr(options, name, None) is None:
             setattr(options, name, value)
 
@@ -275,7 +287,7 @@ def get_options():
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
@@ -339,7 +351,7 @@ class TaskWatcher(object):
         error = None
         try:
             result = self.session.getTaskResult(self.id)
-        except (xmlrpclib.Fault,koji.GenericError),e:
+        except (six.moves.xmlrpc_client.Fault,koji.GenericError) as e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -448,7 +460,7 @@ def watch_tasks(session,tasklist,quiet=False):
             tasks[task_id] = TaskWatcher(task_id,session,quiet=quiet)
         while True:
             all_done = True
-            for task_id,task in tasks.items():
+            for task_id, task in list(tasks.items()):
                 changed = task.update()
                 if not task.is_done():
                     all_done = False
@@ -461,7 +473,7 @@ def watch_tasks(session,tasklist,quiet=False):
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
-                    if not child_id in tasks.keys():
+                    if not child_id in list(tasks.keys()):
                         tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
@@ -511,7 +523,7 @@ def watch_logs(session, tasklist, opts):
             output = list_task_output_all_volumes(session, task_id)
             # convert to list of (file, volume)
             files = []
-            for filename, volumes in output.iteritems():
+            for filename, volumes in six.iteritems(output):
                 files += [(filename, volume) for volume in volumes]
 
             if opts.log:
@@ -547,7 +559,7 @@ def list_task_output_all_volumes(session, task_id):
     """List task output with all volumes, or fake it"""
     try:
         return session.listTaskOutput(task_id, all_volumes=True)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         if 'got an unexpected keyword argument' not in str(e):
             raise
     # otherwise leave off the option and fake it
@@ -941,7 +953,7 @@ def _progress_callback(uploaded, total, piece, time, total_time):
 def _running_in_bg():
     try:
         return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
-    except OSError, e:
+    except OSError as e:
         return True
 
 def handle_build(options, session, args):
@@ -1164,11 +1176,11 @@ def handle_maven_build(options, session, args):
         try:
             params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
                                                  section=build_opts.section)
-        except ValueError, e:
+        except ValueError as e:
             parser.error(e.args[0])
-        opts = params.values()[0]
+        opts = list(params.values())[0]
         if opts.pop('type', 'maven') != 'maven':
-            parser.error(_("Section %s does not contain a maven-build config") % params.keys()[0])
+            parser.error(_("Section %s does not contain a maven-build config") % list(params.keys())[0])
         source = opts.pop('scmurl')
     else:
         source = args[1]
@@ -1223,11 +1235,11 @@ def handle_wrapper_rpm(options, session, args):
         try:
             params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
                                                  section=build_opts.section)
-        except ValueError, e:
+        except ValueError as e:
             parser.error(e.args[0])
-        opts = params.values()[0]
+        opts = list(params.values())[0]
         if opts.get('type') != 'wrapper':
-            parser.error(_("Section %s does not contain a wrapper-rpm config") % params.keys()[0])
+            parser.error(_("Section %s does not contain a wrapper-rpm config") % list(params.keys())[0])
         url = opts['scmurl']
         package = opts['buildrequires'][0]
         target_info = session.getBuildTarget(target, strict=True)
@@ -1297,7 +1309,7 @@ def handle_maven_chain(options, session, args):
             opts[key] = val
     try:
         builds = koji.util.parse_maven_chain(args[1:], scratch=opts.get('scratch'))
-    except ValueError, e:
+    except ValueError as e:
         parser.error(e.args[0])
     priority = None
     if build_opts.background:
@@ -1491,7 +1503,7 @@ def anon_handle_mock_config(options, session, args):
         name = "%(tag_name)s-repo_%(repoid)s" % opts
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
-        fo = file(options.ofile, 'w')
+        fo = open(options.ofile, 'w')
         fo.write(output)
         fo.close()
     else:
@@ -1576,7 +1588,7 @@ def handle_restart_hosts(options, session, args):
 
 def linked_upload(localfile, path, name=None):
     """Link a file into the (locally writable) workdir, bypassing upload"""
-    old_umask = os.umask(002)
+    old_umask = os.umask(0o02)
     try:
         if name is None:
             name = os.path.basename(localfile)
@@ -1625,7 +1637,7 @@ def handle_import(options, session, args):
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
         to_import.setdefault(nvr,[]).append((path,data))
     builds_missing = False
-    nvrs = to_import.keys()
+    nvrs = list(to_import.keys())
     nvrs.sort()
     for nvr in nvrs:
         to_import[nvr].sort()
@@ -1672,7 +1684,7 @@ def handle_import(options, session, args):
         sys.stdout.flush()
         try:
             session.importRPM(serverdir, os.path.basename(path))
-        except koji.GenericError, e:
+        except koji.GenericError as e:
             print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
@@ -1759,7 +1771,7 @@ def handle_import_cg(options, session, args):
         parser.error(_("Unable to find json module"))
         assert False  # pragma: no cover
     activate_session(session)
-    metadata = json.load(file(args[0], 'r'))
+    metadata = json.load(open(args[0], 'r'))
     if 'output' not in metadata:
         print(_("Metadata contains no output"))
         sys.exit(1)
@@ -1850,7 +1862,11 @@ def _import_comps(session, filename, tag, options):
                         }
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
-            print("  Package: %s: %r" % (pkg.name, pkgopts))
+            for k in pkgopts.keys():
+                if six.PY2 and isinstance(pkgopts[k], unicode):
+                    pkgopts[k] = str(pkgopts[k])
+            s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+            print("  Package: %s: {%s}" % (pkg.name, s_opts))
             session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
         # libcomps does not support group dependencies
         # libcomps does not support metapkgs
@@ -1875,11 +1891,15 @@ def _import_comps_alt(session, filename, tag, options):
                              ('optional', group.optional_packages),
                              ('conditional', group.conditional_packages)]:
             for pkg in pdata:
+                #yum.comps does not support basearchonly
                 pkgopts = {'type' : ptype}
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
-                #yum.comps does not support basearchonly
-                print("  Package: %s: %r" % (pkg, pkgopts))
+                for k in pkgopts.keys():
+                    if six.PY2 and isinstance(pkgopts[k], unicode):
+                        pkgopts[k] = str(pkgopts[k])
+                s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+                print("  Package: %s: {%s}" % (pkg, s_opts))
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
         #yum.comps does not support group dependencies
         #yum.comps does not support metapkgs
@@ -2024,11 +2044,11 @@ def handle_prune_signed_copies(options, session, args):
     #(with the modification that we check to see if the build was latest within
     #the last N days)
     if options.ignore_tag_file:
-        fo = file(options.ignore_tag_file)
+        fo = open(options.ignore_tag_file)
         options.ignore_tag.extend([line.strip() for line in fo.readlines()])
         fo.close()
     if options.protect_tag_file:
-        fo = file(options.protect_tag_file)
+        fo = open(options.protect_tag_file)
         options.protect_tag.extend([line.strip() for line in fo.readlines()])
         fo.close()
     if options.debug:
@@ -2087,7 +2107,7 @@ def handle_prune_signed_copies(options, session, args):
             #that the build was recently untagged from
             tags.setdefault(entry['tag_name'], 1)
         if options.debug:
-            print("Tags: %s" % tags.keys())
+            print("Tags: %s" % list(tags.keys()))
         for tag_name in tags:
             if tag_name == options.trashcan_tag:
                 if options.debug:
@@ -2119,7 +2139,7 @@ def handle_prune_signed_copies(options, session, args):
             timeline.sort()
             #find most recent creation entry for our build and crop there
             latest_ts = None
-            for i in xrange(len(timeline)-1, -1, -1):
+            for i in range(len(timeline)-1, -1, -1):
                 #searching in reverse cronological order
                 event_id, is_create, entry = timeline[i]
                 if entry['build_id'] == binfo['id'] and is_create:
@@ -2257,7 +2277,7 @@ def handle_prune_signed_copies(options, session, args):
         build_space = 0
         if not by_sig and options.debug:
             print("(build has no signatures)")
-        for sigkey, rpms in by_sig.iteritems():
+        for sigkey, rpms in six.iteritems(by_sig):
             mycount = 0
             archdirs = {}
             sigdirs = {}
@@ -2281,7 +2301,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Unlinking: %s" % signedpath)
                     try:
                         os.unlink(signedpath)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
                         print("This script needs write access to %s" % koji.BASEDIR)
                         continue
@@ -2301,10 +2321,10 @@ def handle_prune_signed_copies(options, session, args):
                         print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             if len(sigdirs) == 1:
-                dir = sigdirs.keys()[0]
+                dir = list(sigdirs.keys())[0]
                 if options.test:
                     print("Would have removed dir: %s" % dir)
                 else:
@@ -2312,7 +2332,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Removing dir: %s" % dir)
                     try:
                         os.rmdir(dir)
-                    except OSError, e:
+                    except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             elif len(sigdirs) > 1:
                 print("Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs))
@@ -2546,7 +2566,7 @@ def handle_import_in_place(options, session, args):
         sys.stdout.write(_("importing %s... ") % nvr)
         try:
             session.importBuildInPlace(data)
-        except koji.GenericError, e:
+        except koji.GenericError as e:
             print(_("\nError importing: %s" % str(e).splitlines()[-1]))
             sys.stdout.flush()
         else:
@@ -3671,35 +3691,35 @@ def handle_clone_tag(options, session, args):
                 dstgroups[group['name']] = group
         #construct to-do lists.
         paddlist = [] # list containing new packages to be added from src tag
-        for (package_name, pkg) in srcpkgs.iteritems():
+        for (package_name, pkg) in six.iteritems(srcpkgs):
             if package_name not in dstpkgs:
                 paddlist.append(pkg)
         paddlist.sort(key = lambda x: x['package_name'])
         pdellist = [] # list containing packages no more present in dst tag
-        for (package_name, pkg) in dstpkgs.iteritems():
+        for (package_name, pkg) in six.iteritems(dstpkgs):
             if package_name not in srcpkgs:
                 pdellist.append(pkg)
         pdellist.sort(key = lambda x: x['package_name'])
         baddlist = [] # list containing new builds to be added from src tag
-        for (nvr, lbld) in srclblds.iteritems():
+        for (nvr, lbld) in six.iteritems(srclblds):
             if nvr not in dstlblds:
                 baddlist.append(lbld)
         baddlist.sort(key = lambda x: x['package_name'])
         bdellist = [] # list containing new builds to be removed from src tag
-        for (nvr, lbld) in dstlblds.iteritems():
+        for (nvr, lbld) in six.iteritems(dstlblds):
             if nvr not in srclblds:
                 bdellist.append(lbld)
         bdellist.sort(key = lambda x: x['package_name'])
         gaddlist = [] # list containing new groups to be added from src tag
-        for (grpname, group) in srcgroups.iteritems():
+        for (grpname, group) in six.iteritems(srcgroups):
             if grpname not in dstgroups:
                 gaddlist.append(group)
         gdellist = [] # list containing groups to be removed from src tag
-        for (grpname, group) in dstgroups.iteritems():
+        for (grpname, group) in six.iteritems(dstgroups):
             if grpname not in srcgroups:
                 gdellist.append(group)
         grpchanges = {} # dict of changes to make in shared groups
-        for (grpname, group) in srcgroups.iteritems():
+        for (grpname, group) in six.iteritems(srcgroups):
             if grpname in dstgroups:
                 grpchanges[grpname] = {'adds':[], 'dels':[]}
                 # Store whether group is inherited or not
@@ -4041,15 +4061,15 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
         if depth < currtag['currdepth']:
             outspacing = depth - outdepth
             sys.stdout.write(' ' * (outspacing * 3 - 1))
-            sys.stdout.write(u'\u2502'.encode('UTF-8'))
+            sys.stdout.write(_printable_unicode(u'\u2502'))
             outdepth = depth
 
     sys.stdout.write(' ' * ((currtag['currdepth'] - outdepth) * 3 - 1))
     if siblings:
-        sys.stdout.write(u'\u251c'.encode('UTF-8'))
+        sys.stdout.write(_printable_unicode(u'\u251c'))
     else:
-        sys.stdout.write(u'\u2514'.encode('UTF-8'))
-    sys.stdout.write(u'\u2500'.encode('UTF-8'))
+        sys.stdout.write(_printable_unicode(u'\u2514'))
+    sys.stdout.write(_printable_unicode(u'\u2500'))
     if reverse:
         sys.stdout.write('%(name)s (%(tag_id)i)\n' % currtag)
     else:
@@ -4148,7 +4168,7 @@ def anon_handle_list_tags(options, session, args):
             assert False  # pragma: no cover
 
     tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
-    tags.sort(lambda a,b: cmp(a['name'],b['name']))
+    tags.sort(key=lambda x: x['name'])
     #if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
     if options.show_id:
@@ -4393,7 +4413,7 @@ def _print_histline(entry, **kwargs):
         else:
             return '%s.name' % key
     if edit:
-        keys = x.keys()
+        keys = list(x.keys())
         keys.sort()
         y = other[-1]
         for key in keys:
@@ -4408,7 +4428,7 @@ def _print_histline(entry, **kwargs):
                 continue
             print("    %s: %s -> %s" % (key, x[key], y[key]))
     elif create and options.verbose and table != 'tag_listing':
-        keys = x.keys()
+        keys = list(x.keys())
         keys.sort()
         # the table keys have already been represented in the base format string
         also_hidden = list(_table_keys[table])
@@ -4884,7 +4904,7 @@ def anon_handle_taginfo(options, session, args):
             print("Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no'))
         if 'extra' in info:
             print("Tag options:")
-            keys = info['extra'].keys()
+            keys = list(info['extra'].keys())
             keys.sort()
             for key in keys:
                 print("  %s : %s" % (key, pprint.pformat(info['extra'][key])))
@@ -5437,7 +5457,7 @@ def _pick_external_repo_priority(session, tag):
     if not repolist:
         priority = 5
     else:
-        priority = (repolist[-1]['priority'] + 7) / 5 * 5
+        priority = (repolist[-1]['priority'] + 7) // 5 * 5
         #at least 3 higher than current max and a multiple of 5
     return priority
 
@@ -5914,7 +5934,7 @@ def handle_image_build(options, session, args):
         if not os.path.exists(task_options.config):
             parser.error(_("%s not found!" % task_options.config))
         section = 'image-build'
-        config = ConfigParser.ConfigParser()
+        config = six.moves.configparser.ConfigParser()
         conf_fd = open(task_options.config)
         config.readfp(conf_fd)
         conf_fd.close()
@@ -6524,7 +6544,7 @@ def handle_make_task(opts, session, args):
         if value is not None:
             taskopts[key] = value
     task_id = session.makeTask(method=args[0],
-                               arglist=map(arg_filter,args[1:]),
+                               arglist=list(map(arg_filter,args[1:])),
                                **taskopts)
     print("Created task id %d" % task_id)
     if _running_in_bg() or not options.watch:
@@ -6732,7 +6752,7 @@ def anon_handle_download_build(options, session, args):
         # We want the latest build, not a specific build
         try:
             builds = session.listTagged(suboptions.latestfrom, latest=True, package=build, type=suboptions.type)
-        except koji.GenericError, data:
+        except koji.GenericError as data:
             print("Error finding latest build: %s" % data)
             return 1
         if not builds:
@@ -6813,15 +6833,29 @@ def anon_handle_download_build(options, session, args):
             url = pathinfo.build(info) + '/' + fname
             urls.append((url, os.path.basename(fname)))
 
-    if suboptions.quiet:
-        pg = None
-    else:
-        pg = progress.TextMeter()
+    def _progress(download_t, download_d, upload_t, upload_d):
+        if download_t == 0:
+            percent_done = 0.0
+        else:
+            percent_done = float(download_d)/float(download_t)
+        percent_done_str = "%02d%%" % (percent_done * 100)
+        data_done = _format_size(download_d)
+
+        sys.stdout.write("[% -36s] % 4s % 10s\r" % ('='*(int(percent_done * 36)), percent_done_str, data_done))
+        sys.stdout.flush()
 
     for url, relpath in urls:
         if '/' in relpath:
             koji.ensuredir(os.path.dirname(relpath))
-        grabber.urlgrab(url, filename=relpath, progress_obj=pg, text=relpath)
+        print(relpath)
+        c = pycurl.Curl()
+        c.setopt(c.URL, url)
+        c.setopt(c.WRITEDATA, open(relpath, 'wb'))
+        if not suboptions.quiet:
+            c.setopt(c.NOPROGRESS, False)
+            c.setopt(c.XFERINFOFUNCTION, _progress)
+        c.perform()
+        print('')
 
 
 def anon_handle_download_logs(options, session, args):
@@ -6861,7 +6895,7 @@ def anon_handle_download_logs(options, session, args):
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
         koji.ensuredir(os.path.dirname(full_filename))
         sys.stdout.write("Writing: %s\n" % full_filename)
-        file(full_filename, 'w').write(content)
+        open(full_filename, 'w').write(content)
 
     def download_log(task_log_dir, task_id, filename, blocksize=102400, volume=None):
         # Create directories only if there is any log file to write to
@@ -6874,11 +6908,11 @@ def anon_handle_download_logs(options, session, args):
         contents = 'IGNORE ME!'
         if suboptions.cont and os.path.exists(full_filename):
             sys.stdout.write("Continuing: %s\n" % full_filename)
-            fd = file(full_filename, 'ab')
+            fd = open(full_filename, 'ab')
             offset = fd.tell()
         else:
             sys.stdout.write("Downloading: %s\n" % full_filename)
-            fd = file(full_filename, 'wb')
+            fd = open(full_filename, 'wb')
             offset = 0
         try:
             while contents:
@@ -6975,7 +7009,7 @@ def anon_handle_download_task(options, session, args):
         downloadable_tasks.append(base_task)
     else:
         subtasks = session.getTaskChildren(base_task_id)
-        downloadable_tasks.extend(filter(check_downloadable, subtasks))
+        downloadable_tasks.extend(list(filter(check_downloadable, subtasks)))
 
     # get files for download
 
@@ -7064,7 +7098,7 @@ def anon_handle_wait_repo(options, session, args):
             targets = session.getBuildTargets(destTagID=tag_info['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
-                maybe = maybe.keys()
+                maybe = list(maybe.keys())
                 maybe.sort()
                 print("Suggested tags: %s" % ', '.join(maybe))
             return 1
@@ -7321,7 +7355,7 @@ def handle_moshimoshi(options, session, args):
     if not u:
         print("Not authenticated")
         u = {'name' : 'anonymous user'}
-    print("%s, %s!" % (random.choice(greetings).encode('utf-8'), u["name"]))
+    print("%s, %s!" % (_printable_unicode(random.choice(greetings)), u["name"]))
     print("")
     print("You are using the hub at %s" % session.baseurl)
     authtype = u.get('authtype', getattr(session, 'authtype', None))
@@ -7379,7 +7413,7 @@ def handle_runroot(options, session, args):
             kwargs['new_chroot'] = True
 
         task_id = session.runroot(tag, arch, command, **kwargs)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         if 'Invalid method' in str(e):
             print("* The runroot plugin appears to not be installed on the"
                   " koji hub.  Please contact the administrator.")
@@ -7455,7 +7489,7 @@ def handle_save_failed_tree(options, session, args):
 
     try:
         task_id = session.saveFailedTree(br_id, opts.full)
-    except koji.GenericError, e:
+    except koji.GenericError as e:
         m = str(e)
         if 'Invalid method' in m:
             print(_("* The save_failed_tree plugin appears to not be "
@@ -7489,7 +7523,7 @@ def handle_help(options, session, args):
     chosen = set(args)
     if options.admin:
         chosen.add('admin')
-    avail = set(categories.keys() + ['all'])
+    avail = set(list(categories.keys()) + ['all'])
     unavail = chosen - avail
     for arg in unavail:
         print("No such help category: %s" % arg)
@@ -7502,7 +7536,7 @@ def handle_help(options, session, args):
 
 def list_commands(categories_chosen=None):
     if categories_chosen is None or "all" in categories_chosen:
-        categories_chosen = categories.keys()
+        categories_chosen = list(categories.keys())
     else:
         # copy list since we're about to modify it
         categories_chosen = list(categories_chosen)
@@ -7570,9 +7604,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except socket.error, e:
+        except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
-        except Exception, e:
+        except Exception as e:
             if krbV is not None and isinstance(e, krbV.Krb5Error):
                 error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
             else:

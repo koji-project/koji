@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 import unittest
 import mock
 import sys
-import StringIO as stringio
+import six
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 
@@ -30,7 +31,7 @@ class TestUploadProgressCallBack(unittest.TestCase):
         self.assertEqual(cli._format_secs(4321), '01:12:01')
         self.assertEqual(cli._format_secs(4321.567), '01:12:01')
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_progress_callback(self, stdout):
         cli._progress_callback(12300, 234000, 5670, 80, 900)
         cli._progress_callback(45600, 234000, 5670, 0, 900)

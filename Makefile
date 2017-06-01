@@ -66,9 +66,21 @@ git-clean:
 
 test:
 	coverage erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. nosetests --with-coverage --cover-package .
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. coverage run \
+	    --source . /usr/bin/nosetests
+	coverage report
 	coverage html
-	@echo Coverage report in htmlcov/index.html
+	@echo Full coverage report in htmlcov/index.html
+
+test3:
+	coverage erase
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. coverage3 run \
+	    --rcfile .coveragerc3 --source . \
+	    /usr/bin/nosetests-3 \
+	    tests/test_lib tests/test_cli
+	coverage report
+	coverage html
+	@echo Full coverage report in htmlcov/index.html
 
 subdirs:
 	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done

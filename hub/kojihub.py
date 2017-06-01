@@ -9884,7 +9884,7 @@ class RootExports(object):
 
         headers = koji.get_header_fields(rpm_path, headers)
         for key, value in headers.items():
-            if isinstance(value, basestring):
+            if isinstance(value, six.string_types):
                 headers[key] = koji.fixEncoding(value, remove_nonprintable=True)
         return headers
 

@@ -18,6 +18,7 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import calendar
 from fnmatch import fnmatch
 import koji
@@ -30,8 +31,10 @@ import shutil
 import stat
 import sys
 import time
-import ConfigParser
+import six.moves.configparser
 from zlib import adler32
+from six.moves import range
+import six
 
 # imported from kojiweb and kojihub
 try:
@@ -124,7 +127,7 @@ def multi_fnmatch(s, patterns):
 
     If patterns is a string, it will be split() first
     """
-    if isinstance(patterns, basestring):
+    if isinstance(patterns, six.string_types):
         patterns = patterns.split()
     for pat in patterns:
         if fnmatch(s, pat):
@@ -154,7 +157,7 @@ def call_with_argcheck(func, args, kwargs=None):
         kwargs = {}
     try:
         return func(*args, **kwargs)
-    except TypeError, e:
+    except TypeError as e:
         if sys.exc_info()[2].tb_next is None:
             # The stack is only one high, so the error occurred in this function.
             # Therefore, we assume the TypeError is due to a parameter mismatch
@@ -238,11 +241,11 @@ class LazyDict(dict):
         return [(key, lazy_eval(val)) for key, val in super(LazyDict, self).items()]
 
     def itervalues(self):
-        for val in super(LazyDict, self).itervalues():
+        for val in six.itervalues(super(LazyDict, self)):
             yield lazy_eval(val)
 
     def iteritems(self):
-        for key, val in super(LazyDict, self).iteritems():
+        for key, val in six.iteritems(super(LazyDict, self)):
             yield key, lazy_eval(val)
 
     def pop(self, key, *args, **kwargs):
@@ -457,19 +460,23 @@ def setup_rlimits(opts, logger=None):
         logger.warn('Setting resource limit: %s = %r', key, limits)
         try:
             resource.setrlimit(rcode, tuple(limits))
-        except ValueError, e:
+        except ValueError as e:
             logger.error("Unable to set %s: %s", key, e)
 
 class adler32_constructor(object):
 
     #mimicing the hashlib constructors
     def __init__(self, arg=''):
-        self._value = adler32(arg) & 0xffffffffL
+        if six.PY3 and isinstance(arg, str):
+            arg = bytes(arg, 'utf-8')
+        self._value = adler32(arg) & 0xffffffff
         #the bitwise and works around a bug in some versions of python
         #see: https://bugs.python.org/issue1202
 
     def update(self, arg):
-        self._value = adler32(arg, self._value) & 0xffffffffL
+        if six.PY3 and isinstance(arg, str):
+            arg = bytes(arg, 'utf-8')
+        self._value = adler32(arg, self._value) & 0xffffffff
 
     def digest(self):
         return self._value
@@ -496,11 +503,11 @@ def tsort(parts):
     parts = parts.copy()
     result = []
     while True:
-        level = set([name for name, deps in parts.iteritems() if not deps])
+        level = set([name for name, deps in six.iteritems(parts) if not deps])
         if not level:
             break
         result.append(level)
-        parts = dict([(name, deps - level) for name, deps in parts.iteritems()
+        parts = dict([(name, deps - level) for name, deps in six.iteritems(parts)
                       if name not in level])
     if parts:
         raise ValueError('total ordering not possible')
@@ -586,9 +593,9 @@ def parse_maven_params(confs, chain=False, scratch=False):
     """
     if not isinstance(confs, (list, tuple)):
         confs = [confs]
-    config = ConfigParser.ConfigParser()
+    config = six.moves.configparser.ConfigParser()
     for conf in confs:
-        conf_fd = file(conf)
+        conf_fd = open(conf)
         config.readfp(conf_fd)
         conf_fd.close()
     builds = {}

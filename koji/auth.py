@@ -19,14 +19,21 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import socket
 import string
 import random
 import base64
-import krbV
+try:
+    import krbV
+except ImportError:
+    krbV = None
 import koji
 import cgi      #for parse_qs
-from context import context
+from .context import context
+from six.moves import range
+from six.moves import zip
+import six
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -76,7 +83,7 @@ class Session(object):
         try:
             id = long(args['session-id'][0])
             key = args['session-key'][0]
-        except KeyError, field:
+        except KeyError as field:
             raise koji.AuthError('%s not specified in session args' % field)
         try:
             callnum = args['callnum'][0]
@@ -96,7 +103,7 @@ class Session(object):
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
             }
-        fields, aliases = zip(*fields.items())
+        fields, aliases = list(zip(*list(fields.items())))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -108,7 +115,7 @@ class Session(object):
         row = c.fetchone()
         if not row:
             raise koji.AuthError('Invalid session or bad credentials')
-        session_data = dict(zip(aliases, row))
+        session_data = dict(list(zip(aliases, row)))
         #check for expiration
         if session_data['expired']:
             raise koji.AuthExpired('session "%i" has expired' % id)
@@ -146,7 +153,7 @@ class Session(object):
         fields = ('name', 'status', 'usertype')
         q = """SELECT %s FROM users WHERE id=%%(user_id)s""" % ','.join(fields)
         c.execute(q, session_data)
-        user_data = dict(zip(fields, c.fetchone()))
+        user_data = dict(list(zip(fields, c.fetchone())))
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
@@ -296,6 +303,10 @@ class Session(object):
         "proxy_principal" in the server config."""
         if self.logged_in:
             raise koji.AuthError("Already logged in")
+
+        if krbV is None:
+            # python3 is not supported
+            raise koji.AuthError("krbV module not installed")
 
         if not (context.opts.get('AuthPrincipal') and context.opts.get('AuthKeytab')):
             raise koji.AuthError('not configured for Kerberos authentication')
@@ -525,7 +536,7 @@ class Session(object):
     def getPerms(self):
         if not self.logged_in:
             return []
-        return self.perms.keys()
+        return list(self.perms.keys())
 
     def hasPerm(self, name):
         if not self.logged_in:
@@ -697,7 +708,7 @@ def get_user_data(user_id):
     row = c.fetchone()
     if not row:
         return None
-    return dict(zip(fields, row))
+    return dict(list(zip(fields, row)))
 
 def login(*args, **opts):
     return context.session.login(*args, **opts)
@@ -738,7 +749,7 @@ if __name__ == '__main__':
     print("logging in with session 1")
     session_info = sess.login('host/1', 'foobar', {'hostip':'127.0.0.1'})
     #wrap values in lists
-    session_info = dict([[k, [v]] for k, v in session_info.iteritems()])
+    session_info = dict([[k, [v]] for k, v in six.iteritems(session_info)])
     print("Session 1: %s" % sess)
     print("Session 1 info: %r" % session_info)
     print("Creating session 2")

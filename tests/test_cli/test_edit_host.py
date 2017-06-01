@@ -1,16 +1,13 @@
+from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
-
+import six
 from mock import call
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 
@@ -20,7 +17,7 @@ class TestEditHost(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_host(self, activate_session_mock, stdout):
         host = 'host'
@@ -59,7 +56,7 @@ class TestEditHost(unittest.TestCase):
         self.assertEqual(session.multiCall.call_count, 2)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_host_failed(self, activate_session_mock, stdout):
         host = 'host'
@@ -98,7 +95,7 @@ class TestEditHost(unittest.TestCase):
         self.assertEqual(session.multiCall.call_count, 2)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_multi_host(self, activate_session_mock, stdout):
         hosts = ['host1', 'host2']
@@ -144,8 +141,8 @@ class TestEditHost(unittest.TestCase):
                              call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_host_no_arg(
             self, activate_session_mock, stderr, stdout):
@@ -180,7 +177,7 @@ class TestEditHost(unittest.TestCase):
         session.multiCall.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_edit_host_no_host(self, activate_session_mock, stdout):
         host = 'host'

@@ -1,14 +1,12 @@
+from __future__ import absolute_import
 import unittest
 
-import StringIO as stringio
-
 import os
-
 import sys
-
 import mock
+import six
 
-import loadcli
+from . import loadcli
 
 cli = loadcli.cli
 
@@ -18,7 +16,7 @@ class TestAddHost(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_host(self, activate_session_mock, stdout):
         host = 'host'
@@ -48,7 +46,7 @@ class TestAddHost(unittest.TestCase):
         session.addHost.assert_called_once_with(host, arches, **kwargs)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_host_no_krb_principal(
             self, activate_session_mock, stdout):
@@ -75,7 +73,7 @@ class TestAddHost(unittest.TestCase):
         session.addHost.assert_called_once_with(host, arches)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_host_dupl(self, activate_session_mock, stdout):
         host = 'host'
@@ -102,8 +100,8 @@ class TestAddHost(unittest.TestCase):
         session.addHost.assert_not_called()
         self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
-    @mock.patch('sys.stderr', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_host_help(self, activate_session_mock, stderr, stdout):
         arguments = []
@@ -133,7 +131,7 @@ class TestAddHost(unittest.TestCase):
         session.addHost.assert_not_called()
         self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=stringio.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.activate_session')
     def test_handle_add_host_failed(self, activate_session_mock, stdout):
         host = 'host'
