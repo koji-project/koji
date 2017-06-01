@@ -5633,6 +5633,14 @@ class CG_Importer(object):
             raise koji.GenericError('Output type %s not listed in build '
                         'types' % btype)
 
+        if btype not in legacy_types:
+            raise koji.BuildError('unsupported archive type: %s' % type)
+
+        if koji.CHECKSUM_TYPES[fileinfo['checksum_type']] != 'md5':
+            # XXX
+            # until we change the way we handle checksums, we have to limit this to md5
+            raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+
         fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
 
