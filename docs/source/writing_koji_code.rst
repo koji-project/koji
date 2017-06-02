@@ -629,13 +629,19 @@ Here are some guidelines on producing preferable pull requests.
 -  Please adhere to `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__.
    While much of the older code in Koji does not, we try to stick to it
    with new code
--  Please maintain backward-compatibility up to RHEL 5 (which means
-   Python 2.4). On the other hand we are looking to migration to python 3, so
-   please use compatible constructs such as:
-
-   -  Use ``print()`` function, not ``print`` statement
+-  Code which is imported into CLI or needed for stand-alone API calls must
+   be running in both 2.6+ and 3.x python versions. Six library is used when
+   needed. Basic list of affected files is:
+     - ``cli/*``
+     - ``koji/__init__.py``
+     - ``koji/auth.py``
+     - ``koji/tasks.py``
+     - ``koji/util.py``
+     - ``tests/test_lib/*``
+     - ``tests/test_cli/*``
 - Check, that unit tests are not broken. Simply run ``make test`` in main
-  directory of your branch.
+  directory of your branch. For python3 compatible-code we have also ``make
+  test3`` target.
 
 Note that the core development team for Koji is small, so it may take a few
 days for someone to reply to your request.
