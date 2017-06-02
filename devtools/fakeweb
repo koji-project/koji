@@ -1,0 +1,131 @@
+#!/usr/bin/python
+
+from __future__ import absolute_import
+from __future__ import print_function
+import mimetypes
+import os
+import os.path
+import pprint
+import sys
+
+from six.moves.urllib.parse import quote
+from wsgiref.util import setup_testing_defaults
+from wsgiref.simple_server import make_server
+
+CWD = os.getcwd()
+sys.path.insert(0, CWD)
+sys.path.insert(1, os.path.join(CWD, 'www/lib'))
+sys.path.insert(1, os.path.join(CWD, 'www/kojiweb'))
+import wsgi_publisher
+
+
+def get_url(environ):
+    url = environ['wsgi.url_scheme']+'://'
+
+    if environ.get('HTTP_HOST'):
+        url += environ['HTTP_HOST']
+    else:
+        url += environ['SERVER_NAME']
+
+        if environ['wsgi.url_scheme'] == 'https':
+            if environ['SERVER_PORT'] != '443':
+                url += ':' + environ['SERVER_PORT']
+        else:
+            if environ['SERVER_PORT'] != '80':
+                url += ':' + environ['SERVER_PORT']
+
+    url += quote(environ.get('SCRIPT_NAME', ''))
+    url += quote(environ.get('PATH_INFO', ''))
+    if environ.get('QUERY_STRING'):
+        url += '?' + environ['QUERY_STRING']
+    return url
+
+FIRST = True
+
+
+def do_static(environ, start_response):
+    redirect = os.environ.get('STATIC_URL', '')
+    if redirect:
+        environ['STATIC_URL'] = redirect
+        return redirect_static(environ, start_response)
+    # otherwise serve our local static files
+    path = environ.get('PATH_INFO', '')
+    assert path.startswith('/koji-static')
+    path = path[12:]
+    path = path.lstrip('/')
+    fn = os.path.join(CWD, 'www/static', path)
+    if not os.path.exists(fn):
+        print("No such file: %s" % fn)
+        return do_404(environ, start_response)
+    size = os.path.getsize(fn)
+    ctype, encoding = mimetypes.guess_type(fn)
+    headers = [
+            ('Content-Length', str(size)),
+            ('Content-Type', ctype),
+            ]
+    start_response('200 OK', headers)
+    return iter_file(fn)
+
+
+def do_404(environ, start_response):
+    content = 'URL not found\n'
+    headers = [
+            ('Content-Length', str(len(content))),
+            ('Content-Type', 'text/plain'),
+            ]
+    start_response('404 Not Found', headers)
+    return [content]
+
+
+def iter_file(fn):
+    with open(fn, 'rb') as fo:
+        while True:
+            chunk = fo.read(8192)
+            if not chunk:
+                break
+            yield chunk
+
+
+def redirect_static(environ, start_response):
+    response = ''
+    headers = [
+            ('Content-Length', str(len(response))),
+            ('Content-Type', "text/plain"),
+            ('Location', environ['STATIC_URL'] + environ['PATH_INFO']),
+            ]
+    start_response('302 Found', headers)
+    return [response]
+
+
+def set_config(environ):
+    lconfig = "%s/devtools/fakeweb.conf" % os.getcwd()
+    lconfigd = "%s/devtools/fakeweb.conf.d" % os.getcwd()
+    if os.path.exists(lconfig) or os.path.exists(lconfigd):
+        environ['koji.web.ConfigFile'] = lconfig
+        environ['koji.web.ConfigDir'] = lconfigd
+
+
+def application(environ, start_response):
+    global FIRST
+    setup_testing_defaults(environ)
+    # provide some needed info
+    environ['SCRIPT_FILENAME'] = wsgi_publisher.__file__
+    environ['REQUEST_URI'] = get_url(environ)
+    set_config(environ)
+    if FIRST:
+        pprint.pprint(environ)
+        FIRST = False
+    path = environ.get('PATH_INFO', '')
+    if path.startswith('/koji-static'):
+        return do_static(environ, start_response)
+    return wsgi_publisher.application(environ, start_response)
+
+
+def main():
+    # koji.add_file_logger('koji', 'fakeweb.log')
+    httpd = make_server('', 8000, application)
+    print("Serving on port 8000...")
+    httpd.serve_forever()
+
+if __name__ == '__main__':
+    main()

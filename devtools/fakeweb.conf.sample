@@ -1,0 +1,14 @@
+[web]
+SiteName = koji
+
+# Key urls
+KojiHubURL = http://localhost/kojihub
+KojiFilesURL = http://localhost/kojifiles
+
+Secret = toomanysecrets
+
+PythonDebug = on
+LogLevel = DEBUG
+
+# prevent web code from tweaking the path
+LibPath = /nosuchpath

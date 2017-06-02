@@ -1,0 +1,19 @@
+[hub]
+
+# example configuration for fakehub
+DBName = koji
+DBUser = koji
+KojiDir = /mnt/koji
+DisableNotifications = True
+
+EnableMaven = True
+EnableWin = True
+
+CheckClientIP = False
+
+#KojiDebug = On
+LogLevel = DEBUG
+
+#KojiTraceback = normal
+KojiTraceback = extended
+

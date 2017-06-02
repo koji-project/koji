@@ -1,0 +1,107 @@
+#!/usr/bin/python
+
+from __future__ import absolute_import
+from __future__ import print_function
+import ast
+import os
+import os.path
+import pprint
+import sys
+import six.moves.xmlrpc_client
+from six.moves import cStringIO
+from six.moves.urllib.parse import quote
+
+sys.path.insert(0, os.getcwd())
+sys.path.insert(1, os.path.join(os.getcwd(), 'hub'))
+import koji
+import kojixmlrpc
+
+
+def get_url(environ):
+    url = environ['wsgi.url_scheme']+'://'
+
+    if environ.get('HTTP_HOST'):
+        url += environ['HTTP_HOST']
+    else:
+        url += environ['SERVER_NAME']
+
+        if environ['wsgi.url_scheme'] == 'https':
+            if environ['SERVER_PORT'] != '443':
+                url += ':' + environ['SERVER_PORT']
+        else:
+            if environ['SERVER_PORT'] != '80':
+                url += ':' + environ['SERVER_PORT']
+
+    url += quote(environ.get('SCRIPT_NAME', ''))
+    url += quote(environ.get('PATH_INFO', ''))
+    if environ.get('QUERY_STRING'):
+        url += '?' + environ['QUERY_STRING']
+    return url
+
+
+def nice_literal(value):
+    try:
+        return ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return value
+
+
+def get_request():
+    method = sys.argv[1]
+    args = []
+    kwargs = {}
+    for s in sys.argv[2:]:
+        if '=' in s:
+            k, v = s.split('=', 1)
+            v = nice_literal(v)
+            kwargs[k] = v
+        else:
+            args.append(nice_literal(s))
+    args = koji.encode_args(*args, **kwargs)
+    request = six.moves.xmlrpc_client.dumps(args, method, allow_none=1)
+    return request
+
+
+def start_response(status, headers):
+    pprint.pprint("Status: %r" % status)
+    pprint.pprint("Headers: %r" % headers)
+
+
+def parse_response(data):
+    p, u = six.moves.xmlrpc_client.getparser()
+    for chunk in data:
+        p.feed(chunk)
+    p.close()
+    result = u.close()
+    if len(result) == 1:
+        result = result[0]
+    return result
+
+
+def set_config(environ):
+    lconfig = "%s/devtools/fakehub.conf" % os.getcwd()
+    lconfigd = "%s/devtools/fakehub.conf.d" % os.getcwd()
+    if os.path.exists(lconfig) or os.path.exists(lconfigd):
+        environ['koji.hub.ConfigFile'] = lconfig
+        environ['koji.hub.ConfigDir'] = lconfigd
+
+
+def main():
+    environ = {}
+    environ['SCRIPT_FILENAME'] = kojixmlrpc.__file__
+    environ['wsgi.url_scheme'] = 'https'
+    environ['SERVER_NAME'] = 'myserver'
+    environ['SERVER_PORT'] = '443'
+    environ['REQUEST_URI'] = get_url(environ)
+    environ['wsgi.input'] = cStringIO(get_request())
+    environ['REQUEST_METHOD'] = 'POST'
+    environ['CONTENT_TYPE'] = 'text/xml'
+    set_config(environ)
+    print('RESULT:')
+    data = kojixmlrpc.application(environ, start_response)
+    result = parse_response(data)
+    pprint.pprint(result)
+
+
+if __name__ == '__main__':
+    main()
