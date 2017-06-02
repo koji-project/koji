@@ -108,6 +108,8 @@ Requires: python-psycopg2
 Requires: python-simplejson
 %endif
 Requires: %{name} = %{version}-%{release}
+# we need the python2 lib here
+Requires: python2-%{name} = %{version}-%{release}
 
 %description hub
 koji-hub is the XMLRPC interface to the koji database
@@ -146,6 +148,8 @@ Group: Applications/System
 License: LGPLv2 and GPLv2+
 #mergerepos (from createrepo) is GPLv2+
 Requires: %{name} = %{version}-%{release}
+# we need the python2 lib here
+Requires: python2-%{name} = %{version}-%{release}
 Requires: mock >= 0.9.14
 Requires(pre): /usr/sbin/useradd
 Requires: squashfs-tools
@@ -183,6 +187,8 @@ Summary: Koji virtual machine management daemon
 Group: Applications/System
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
+# we need the python2 lib here
+Requires: python2-%{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -208,6 +214,8 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: python-psycopg2
 Requires: %{name} = %{version}-%{release}
+# we need the python2 lib here
+Requires: python2-%{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -231,6 +239,8 @@ Requires: mod_auth_kerb
 Requires: python-psycopg2
 Requires: python-cheetah
 Requires: %{name} = %{version}-%{release}
+# we need the python2 lib here
+Requires: python2-%{name} = %{version}-%{release}
 Requires: python-krbV >= 1.0.13
 
 %description web
