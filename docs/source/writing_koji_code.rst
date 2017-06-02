@@ -630,8 +630,8 @@ Here are some guidelines on producing preferable pull requests.
    While much of the older code in Koji does not, we try to stick to it
    with new code
 -  Code which is imported into CLI or needed for stand-alone API calls must
-   be running in both 2.6+ and 3.x python versions. Six library is used when
-   needed. Basic list of affected files is:
+   run in both 2.6+ and 3.x python versions. We use the python-six library
+   for compatibility. The affected files are:
      - ``cli/*``
      - ``koji/__init__.py``
      - ``koji/auth.py``
