@@ -572,7 +572,10 @@ def get_policy(opts, plugins):
     alltests = [koji.policy.findSimpleTests([vars(kojihub), vars(koji.policy)])]
     # we delay merging these to allow a test to be overridden for a specific policy
     for plugin_name in opts.get('Plugins', '').split():
-        alltests.append(koji.policy.findSimpleTests(vars(plugins.get(plugin_name))))
+        plugin = plugins.get(plugin_name)
+        if not plugin:
+            continue
+        alltests.append(koji.policy.findSimpleTests(vars(plugin)))
     policy = {}
     for pname, text in opts['policy'].iteritems():
         #filter/merge tests
@@ -813,5 +816,8 @@ def get_registry(opts, plugins):
     registry.register_function(koji.auth.exclusiveSession)
     registry.register_function(koji.auth.sharedSession)
     for name in opts.get('Plugins', '').split():
-        registry.register_plugin(plugins.get(name))
+        plugin = plugins.get(name)
+        if not plugin:
+            continue
+        registry.register_plugin(plugin)
     return registry
