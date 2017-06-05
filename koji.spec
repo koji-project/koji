@@ -43,9 +43,9 @@ Source: https://releases.pagure.org/koji/koji-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 %if 0%{with python3}
-Requires: python3-%{name} = %{version}-%{release}
-Requires: python3-pycurl
-Requires: python3-libcomps
+Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
+Requires: python%{python3_pkgversion}-pycurl
+Requires: python%{python3_pkgversion}-libcomps
 %else
 Requires: python2-%{name} = %{version}-%{release}
 Requires: python2-pycurl
@@ -78,18 +78,18 @@ Requires: python-six
 desc
 
 %if 0%{with python3}
-%package -n python3-%{name}
+%package -n python%{python3_pkgversion}-%{name}
 Summary: Build system tools python library
-%{?python_provide:%python_provide python3-%{name}}
-BuildRequires: python3-devel
-Requires: python3-rpm
-Requires: python3-pyOpenSSL
-Requires: python3-requests
-Requires: python3-requests-kerberos
-Requires: python3-dateutil
-Requires: python3-six
+%{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
+BuildRequires: python%{python3_pkgversion}-devel
+Requires: python%{python3_pkgversion}-rpm
+Requires: python%{python3_pkgversion}-pyOpenSSL
+Requires: python%{python3_pkgversion}-requests
+Requires: python%{python3_pkgversion}-requests-kerberos
+Requires: python%{python3_pkgversion}-dateutil
+Requires: python%{python3_pkgversion}-six
 
-%description -n python3-%{name}
+%description -n python%{python3_pkgversion}-%{name}
 desc
 %endif
 
@@ -266,7 +266,7 @@ rm -rf $RPM_BUILD_ROOT
 %{python2_sitelib}/%{name}
 
 %if 0%{with python3}
-%files -n python3-koji
+%files -n python%{python3_pkgversion}-koji
 %{python3_sitelib}/%{name}
 %endif
 
