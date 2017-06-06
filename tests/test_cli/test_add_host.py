@@ -1,15 +1,11 @@
 from __future__ import absolute_import
+import mock
+import os
+import six
+import sys
 import unittest
 
-import os
-import sys
-import mock
-import six
-
-from . import loadcli
-
-cli = loadcli.cli
-
+from koji_cli.commands import handle_add_host
 
 class TestAddHost(unittest.TestCase):
 
@@ -17,7 +13,7 @@ class TestAddHost(unittest.TestCase):
     maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host(self, activate_session_mock, stdout):
         host = 'host'
         host_id = 1
@@ -36,18 +32,18 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: success
-        rv = cli.handle_add_host(options, session, arguments)
+        rv = handle_add_host(options, session, arguments)
         actual = stdout.getvalue()
         expected = 'host added: id 1\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_no_krb_principal(
             self, activate_session_mock, stdout):
         host = 'host'
@@ -63,18 +59,18 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2
         # expected: success
-        rv = cli.handle_add_host(options, session, arguments)
+        rv = handle_add_host(options, session, arguments)
         actual = stdout.getvalue()
         expected = 'host added: id 1\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_dupl(self, activate_session_mock, stdout):
         host = 'host'
         host_id = 1
@@ -90,19 +86,19 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed, host already exists
-        rv = cli.handle_add_host(options, session, arguments)
+        rv = handle_add_host(options, session, arguments)
         actual = stdout.getvalue()
         expected = 'host is already in the database\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_not_called()
         self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_help(self, activate_session_mock, stderr, stdout):
         arguments = []
         options = mock.MagicMock()
@@ -113,7 +109,7 @@ class TestAddHost(unittest.TestCase):
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_add_host(options, session, arguments)
+            handle_add_host(options, session, arguments)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -132,7 +128,7 @@ class TestAddHost(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_failed(self, activate_session_mock, stdout):
         host = 'host'
         arches = ['arch1', 'arch2']
@@ -150,12 +146,12 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed
-        cli.handle_add_host(options, session, arguments)
+        handle_add_host(options, session, arguments)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
 

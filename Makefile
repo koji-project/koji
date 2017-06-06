@@ -66,7 +66,7 @@ git-clean:
 
 test:
 	coverage erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. coverage run \
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/. coverage run \
 	    --source . /usr/bin/nosetests
 	coverage report
 	coverage html
@@ -74,7 +74,7 @@ test:
 
 test3:
 	coverage erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/. coverage3 run \
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/. coverage3 run \
 	    --rcfile .coveragerc3 --source . \
 	    /usr/bin/nosetests-3 \
 	    tests/test_lib tests/test_cli

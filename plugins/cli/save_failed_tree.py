@@ -1,3 +1,8 @@
+import koji
+from koji.plugin import export_cli
+from koji_cli.lib import _, activate_session, OptionParser, watch_tasks
+
+@export_cli
 def handle_save_failed_tree(options, session, args):
     "Create tarball with whole buildtree"
     usage = _("usage: %prog save-failed-tree [options] ID")
@@ -26,7 +31,7 @@ def handle_save_failed_tree(options, session, args):
     except ValueError:
         parser.error(_("ID must be an integer"))
 
-    activate_session(session)
+    activate_session(session, options)
 
     if opts.mode == "buildroot":
         br_id = id_val
@@ -59,4 +64,4 @@ def handle_save_failed_tree(options, session, args):
         return
     else:
         session.logout()
-        watch_tasks(session, [task_id], quiet=opts.quiet)
+        watch_tasks(session, [task_id], quiet=opts.quiet, poll_interval=options.poll_interval)

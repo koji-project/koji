@@ -105,6 +105,15 @@ def export(f):
     setattr(f, 'exported', True)
     return f
 
+def export_cli(f):
+    """a decorator that marks a function as exported for CLI
+
+    intended to be used by plugins
+    the HandlerRegistry will export the function under its own name
+    """
+    setattr(f, 'exported_cli', True)
+    return f
+
 def export_as(alias):
     """returns a decorator that marks a function as exported and gives it an alias
 

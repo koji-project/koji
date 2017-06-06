@@ -1,17 +1,13 @@
 from __future__ import absolute_import
-import unittest
-
-
-import os
-import sys
 import mock
+import os
 import six
+import sys
+import unittest
 from mock import call
 
-from . import loadcli
 
-cli = loadcli.cli
-
+from koji_cli.commands import handle_remove_pkg
 
 class TestRemovePkg(unittest.TestCase):
 
@@ -19,7 +15,7 @@ class TestRemovePkg(unittest.TestCase):
     maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -37,12 +33,12 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package
         # expected: success
-        rv = cli.handle_remove_pkg(options, session, args)
+        rv = handle_remove_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_called_once_with(
             tagID=dsttag['id'])
@@ -52,7 +48,7 @@ class TestRemovePkg(unittest.TestCase):
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_multi_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -74,12 +70,12 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: success
-        rv = cli.handle_remove_pkg(options, session, args)
+        rv = handle_remove_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(
             session.mock_calls, [
                 call.getTag(tag), call.listPackages(
@@ -91,7 +87,7 @@ class TestRemovePkg(unittest.TestCase):
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_force(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -113,12 +109,12 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: --force, tag, package1, package2, package3
         # expected: success
-        rv = cli.handle_remove_pkg(options, session, args)
+        rv = handle_remove_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(
             session.mock_calls, [
                 call.getTag(tag), call.listPackages(
@@ -130,7 +126,7 @@ class TestRemovePkg(unittest.TestCase):
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_no_package(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -149,12 +145,12 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: can not find package2 under tag
-        rv = cli.handle_remove_pkg(options, session, args)
+        rv = handle_remove_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'Package package2 is not in tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_called_once_with(
             tagID=dsttag['id'])
@@ -163,7 +159,7 @@ class TestRemovePkg(unittest.TestCase):
         self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_tag_no_exists(
             self, activate_session_mock, stdout):
         tag = 'tag'
@@ -179,12 +175,12 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: tag does not exist
-        rv = cli.handle_remove_pkg(options, session, args)
+        rv = handle_remove_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_not_called()
         session.packageListRemove.assert_not_called()
@@ -192,7 +188,7 @@ class TestRemovePkg(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_help(
             self, activate_session_mock, stderr, stdout):
         args = []
@@ -205,7 +201,7 @@ class TestRemovePkg(unittest.TestCase):
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_remove_pkg(options, session, args)
+            handle_remove_pkg(options, session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
