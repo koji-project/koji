@@ -26,19 +26,60 @@
 
 from __future__ import absolute_import
 from __future__ import division
-import sys
-import six
-import six.moves.configparser
-import koji
-import koji.util
 import logging
+import optparse
 import os
 import re
+import six
+import sys
+import types
+
+import six.moves.configparser
 import six.moves.xmlrpc_client
-import optparse
+
+import koji
+import koji.util
+import koji.plugin
 
 from koji_cli.lib import _, OptionParser, get_epilog_str, greetings, \
         warn, categories
+from koji_cli.commands import *
+
+
+def register_plugin(plugin):
+    """Scan a given plugin for handlers
+
+    Handlers are functions marked with one of the decorators defined in koji.plugin
+    """
+    for v in vars(plugin).itervalues():
+        if isinstance(v, (types.ClassType, types.TypeType)):
+            #skip classes
+            continue
+        if callable(v):
+            if getattr(v, 'exported_cli', False):
+                if hasattr(v, 'export_alias'):
+                    name = getattr(v, 'export_alias')
+                else:
+                    name = v.__name__
+                # copy object to local namespace
+                globals()[name] = v
+
+
+def load_plugins(options):
+    """Load plugins specified by our configuration plus system plugins. Order
+    is that system plugins are first, so they can be overriden by
+    user-specified ones with same name."""
+    logger = logging.getLogger('koji.plugins')
+    pluginpaths = options.pluginpath.split()
+    syspath = '%s/lib/python%s.%s/site-packages/koji_cli_plugins' % \
+              (sys.prefix, sys.version_info.major, sys.version_info.minor)
+    if os.path.exists(syspath):
+        pluginpaths = [syspath] + pluginpaths
+    tracker = koji.plugin.PluginTracker(path=pluginpaths)
+    for name in options.plugins.split():
+        logger.info('Loading plugin: %s', name)
+        tracker.load(name)
+        register_plugin(tracker.get(name))
 
 
 def get_options():
@@ -87,6 +128,44 @@ def get_options():
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
+    # load local config
+    try:
+        result = koji.read_config(options.profile, user_config=options.configFile)
+    except koji.ConfigurationError as e:
+        parser.error(e.args[0])
+        assert False  # pragma: no cover
+
+    # update options according to local config
+    for name, value in six.iteritems(result):
+        if getattr(options, name, None) is None:
+            setattr(options, name, value)
+
+    dir_opts = ('topdir', 'cert', 'serverca', 'pluginpath')
+    for name in dir_opts:
+        # expand paths here, so we don't have to worry about it later
+        value = os.path.expanduser(getattr(options, name))
+        setattr(options, name, value)
+
+    #honor topdir
+    if options.topdir:
+        koji.BASEDIR = options.topdir
+        koji.pathinfo.topdir = options.topdir
+
+    #pkgurl is obsolete
+    if options.pkgurl:
+        if options.topurl:
+            warn("Warning: the pkgurl option is obsolete")
+        else:
+            suggest = re.sub(r'/packages/?$', '', options.pkgurl)
+            if suggest != options.pkgurl:
+                warn("Warning: the pkgurl option is obsolete, using topurl=%r"
+                     % suggest)
+                options.topurl = suggest
+            else:
+                warn("Warning: The pkgurl option is obsolete, please use topurl instead")
+
+    load_plugins(options)
+
     if options.help_commands:
         list_commands()
         sys.exit(0)
@@ -122,42 +201,6 @@ def get_options():
         list_commands()
         parser.error('Unknown command: %s' % args[0])
         assert False  # pragma: no cover
-
-    # load local config
-    try:
-        result = koji.read_config(options.profile, user_config=options.configFile)
-    except koji.ConfigurationError as e:
-        parser.error(e.args[0])
-        assert False  # pragma: no cover
-
-    # update options according to local config
-    for name, value in six.iteritems(result):
-        if getattr(options, name, None) is None:
-            setattr(options, name, value)
-
-    dir_opts = ('topdir', 'cert', 'serverca')
-    for name in dir_opts:
-        # expand paths here, so we don't have to worry about it later
-        value = os.path.expanduser(getattr(options, name))
-        setattr(options, name, value)
-
-    #honor topdir
-    if options.topdir:
-        koji.BASEDIR = options.topdir
-        koji.pathinfo.topdir = options.topdir
-
-    #pkgurl is obsolete
-    if options.pkgurl:
-        if options.topurl:
-            warn("Warning: the pkgurl option is obsolete")
-        else:
-            suggest = re.sub(r'/packages/?$', '', options.pkgurl)
-            if suggest != options.pkgurl:
-                warn("Warning: the pkgurl option is obsolete, using topurl=%r"
-                     % suggest)
-                options.topurl = suggest
-            else:
-                warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
     return options, cmd, args[1:]
 

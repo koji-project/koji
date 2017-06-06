@@ -259,7 +259,6 @@ def display_task_results(tasks):
             print('%s has not completed' % task_label)
 
 def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
-    global options
     if not tasklist:
         return
     if not quiet:
@@ -467,7 +466,6 @@ def has_krb_creds():
 
 def activate_session(session, options):
     """Test and login the session is applicable"""
-    global options
     if options.authtype == "noauth" or options.noauth:
         #skip authentication
         pass
