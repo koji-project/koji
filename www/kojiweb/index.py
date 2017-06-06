@@ -244,7 +244,7 @@ def login(environ, page=None):
     elif options['WebPrincipal']:
         principal = environ.get('REMOTE_USER')
         if not principal:
-            raise koji.AuthError('configuration error: mod_auth_kerb should have performed authentication before presenting this page')
+            raise koji.AuthError('configuration error: mod_auth_gssapi should have performed authentication before presenting this page')
 
         if not _krbLogin(environ, session, principal):
             raise koji.AuthError('could not login using principal: %s' % principal)

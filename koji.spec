@@ -100,6 +100,9 @@ License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: mod_wsgi
+%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+Requires: mod_auth_gssapi
+%endif
 Requires: python-psycopg2
 %if 0%{?rhel} == 5
 Requires: python-simplejson
@@ -220,7 +223,11 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: httpd
 Requires: mod_wsgi
+%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+Requires: mod_auth_gssapi
+%else
 Requires: mod_auth_kerb
+%endif
 Requires: python-psycopg2
 Requires: python-cheetah
 Requires: %{name} = %{version}-%{release}
