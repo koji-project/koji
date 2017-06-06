@@ -5626,15 +5626,13 @@ class CG_Importer(object):
             btype = key
             type_info = extra['typeinfo'][key]
 
+        btype = lookup_name('btype', btype, strict=False)
         if btype is None:
             raise koji.GenericError("No typeinfo for: %(filename)s" % fileinfo)
 
         if btype not in self.typeinfo:
             raise koji.GenericError('Output type %s not listed in build '
                         'types' % btype)
-
-        if btype not in legacy_types:
-            raise koji.BuildError('unsupported archive type: %s' % type)
 
         if koji.CHECKSUM_TYPES[fileinfo['checksum_type']] != 'md5':
             # XXX
