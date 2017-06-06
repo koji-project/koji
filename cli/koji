@@ -3517,7 +3517,11 @@ def anon_handle_hostinfo(options, session, args):
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
         print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
         update = session.getLastHostUpdate(info['id'])
-        print("Last Update: %s" % update[:update.find('.')])
+        if update is None:
+            update = "never"
+        else:
+            update = update[:update.find('.')]
+        print("Last Update: %s" % update)
         print("Channels: %s" % ' '.join([c['name'] for c in session.listChannels(hostID=info['id'])]))
         print("Active Buildroots:")
         states = {0:"INIT", 1:"WAITING", 2:"BUILDING"}
