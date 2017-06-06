@@ -27,96 +27,18 @@
 from __future__ import absolute_import
 from __future__ import division
 import sys
-from six.moves import range
-from six.moves import zip
 import six
-from six.moves import filter
-from six.moves import map
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-try:
-    import ast
-except ImportError:  # pragma: no cover
-    ast = None
-try:
-    import json
-except ImportError:  # pragma: no cover
-    try:
-        import simplejson as json
-    except ImportError:
-        json = None
 import six.moves.configparser
-import base64
-import dateutil.parser
-import errno
 import koji
 import koji.util
-import fnmatch
-from koji.util import md5_constructor
 import logging
 import os
 import re
-import pprint
-import pycurl
-import random
-import socket
-import stat
-import string
-import time
-import traceback
 import six.moves.xmlrpc_client
-try:
-    import libcomps
-except ImportError:  # pragma: no cover
-    libcomps = None
-    try:
-        import yum.comps as yumcomps
-    except ImportError:
-        yumcomps = None
 import optparse
 
-
-# fix OptionParser for python 2.3 (optparse verion 1.4.1+)
-# code taken from optparse version 1.5a2
-OptionParser = optparse.OptionParser
-if optparse.__version__ == "1.4.1+":  # pragma: no cover
-    def _op_error(self, msg):
-        self.print_usage(sys.stderr)
-        msg = "%s: error: %s\n" % (self._get_prog_name(), msg)
-        if msg:
-            sys.stderr.write(msg)
-        sys.exit(2)
-    OptionParser.error = _op_error
-
-greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
-             'bonjour',
-             'hallo',
-             'ciao',
-             'hola',
-            u'olá',
-            u'dobrý den',
-            u'zdravstvuite',
-            u'góðan daginn',
-             'hej',
-             'tervehdys',
-            u'grüezi',
-            u'céad míle fáilte',
-            u'hylô',
-            u'bună ziua',
-            u'jó napot',
-             'dobre dan',
-            u'你好',
-            u'こんにちは',
-            u'नमस्कार',
-            u'안녕하세요')
-
-
-
-ARGMAP = {'None': None,
-          'True': True,
-          'False': False}
+from koji_cli.lib import _, OptionParser, get_epilog_str, greetings, \
+        warn, categories
 
 
 def get_options():
@@ -238,18 +160,6 @@ def get_options():
                 warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
     return options, cmd, args[1:]
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def handle_help(options, session, args):

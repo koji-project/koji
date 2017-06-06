@@ -1,3 +1,61 @@
+# coding=utf-8
+from __future__ import absolute_import
+from __future__ import division
+import optparse
+import os
+import random
+import six
+import socket
+import string
+import sys
+import time
+from six.moves import range
+
+try:
+    import krbV
+except ImportError:  # pragma: no cover
+    krbV = None
+
+import koji
+
+# fix OptionParser for python 2.3 (optparse verion 1.4.1+)
+# code taken from optparse version 1.5a2
+OptionParser = optparse.OptionParser
+if optparse.__version__ == "1.4.1+":  # pragma: no cover
+    def _op_error(self, msg):
+        self.print_usage(sys.stderr)
+        msg = "%s: error: %s\n" % (self._get_prog_name(), msg)
+        if msg:
+            sys.stderr.write(msg)
+        sys.exit(2)
+    OptionParser.error = _op_error
+
+greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
+             'bonjour',
+             'hallo',
+             'ciao',
+             'hola',
+            u'olá',
+            u'dobrý den',
+            u'zdravstvuite',
+            u'góðan daginn',
+             'hej',
+             'tervehdys',
+            u'grüezi',
+            u'céad míle fáilte',
+            u'hylô',
+            u'bună ziua',
+            u'jó napot',
+             'dobre dan',
+            u'你好',
+            u'こんにちは',
+            u'नमस्कार',
+            u'안녕하세요')
+
+ARGMAP = {'None': None,
+          'True': True,
+          'False': False}
+
 def _(args):
     """Stub function for translation"""
     return args
@@ -104,7 +162,7 @@ class TaskWatcher(object):
             return ''
         error = None
         try:
-            result = self.session.getTaskResult(self.id)
+            self.session.getTaskResult(self.id)
         except (six.moves.xmlrpc_client.Fault,koji.GenericError) as e:
             error = e
         if error is None:
@@ -200,7 +258,7 @@ def display_task_results(tasks):
             # shouldn't happen
             print('%s has not completed' % task_label)
 
-def watch_tasks(session,tasklist,quiet=False):
+def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
     global options
     if not tasklist:
         return
@@ -240,7 +298,7 @@ def watch_tasks(session,tasklist,quiet=False):
                 break
 
             sys.stdout.flush()
-            time.sleep(options.poll_interval)
+            time.sleep(poll_interval)
     except KeyboardInterrupt:
         if tasks and not quiet:
             progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -253,8 +311,7 @@ Running Tasks:
         raise
     return rv
 
-def watch_logs(session, tasklist, opts):
-    global options
+def watch_logs(session, tasklist, opts, poll_interval):
     print("Watching logs (this may be safely interrupted)...")
     def _isDone(session, taskId):
         info = session.getTaskInfo(taskId)
@@ -306,7 +363,7 @@ def watch_logs(session, tasklist, opts):
         if not tasklist:
             break
 
-        time.sleep(options.poll_interval)
+        time.sleep(poll_interval)
 
 
 def list_task_output_all_volumes(session, task_id):
@@ -369,7 +426,7 @@ def _progress_callback(uploaded, total, piece, time, total_time):
 def _running_in_bg():
     try:
         return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
-    except OSError as e:
+    except OSError:
         return True
 def linked_upload(localfile, path, name=None):
     """Link a file into the (locally writable) workdir, bypassing upload"""
@@ -403,12 +460,12 @@ def has_krb_creds():
     try:
         ctx = krbV.default_context()
         ccache = ctx.default_ccache()
-        princ = ccache.principal()
+        ccache.principal()
         return True
     except krbV.Krb5Error:
         return False
 
-def activate_session(session):
+def activate_session(session, options):
     """Test and login the session is applicable"""
     global options
     if options.authtype == "noauth" or options.noauth:

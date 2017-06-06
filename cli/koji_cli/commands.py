@@ -1,3 +1,46 @@
+from __future__ import absolute_import
+from __future__ import division
+import ast
+import base64
+import dateutil.parser
+import fnmatch
+import json
+import logging
+import optparse
+import os
+import pprint
+import pycurl
+import random
+import re
+import six
+import stat
+import sys
+import time
+import traceback
+
+import six.moves.xmlrpc_client
+from six.moves import filter
+from six.moves import map
+from six.moves import zip
+
+try:
+    import libcomps
+except ImportError:  # pragma: no cover
+    libcomps = None
+    try:
+        import yum.comps as yumcomps
+    except ImportError:
+        yumcomps = None
+
+import koji
+from koji.util import md5_constructor
+from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
+        _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
+        arg_filter, linked_upload, list_task_output_all_volumes, \
+        print_task_headers, print_task_recurse, _format_size, watch_logs, \
+        error, greetings
+
+
 def _printable_unicode(s):
     if six.PY2:
         return s.encode('utf-8')
@@ -410,7 +453,8 @@ def handle_build(options, session, args):
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet,
+                poll_interval=options.poll_interval)
     else:
         return
 
@@ -487,7 +531,8 @@ def handle_chain_build(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet,
+                poll_interval=options.poll_interval)
 
 def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
@@ -585,7 +630,8 @@ def handle_maven_build(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet,
+                poll_interval=options.poll_interval)
 
 def handle_wrapper_rpm(options, session, args):
     """[build] Build wrapper rpms for any archives associated with a build."""
@@ -651,7 +697,8 @@ def handle_wrapper_rpm(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,[task_id],quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
 
 def handle_maven_chain(options, session, args):
     "[build] Run a set of Maven builds in dependency order"
@@ -703,9 +750,10 @@ def handle_maven_chain(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
 
-def handle_resubmit(options, session, args):
+def handle_resubmit(global_options, session, args):
     """[build] Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] taskID")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -722,7 +770,7 @@ def handle_resubmit(options, session, args):
     taskID = int(args[0])
     if not options.quiet:
         print("Resubmitting the following task:")
-        _printTaskInfo(session, taskID, 0, False, True)
+        _printTaskInfo(session, taskID, 0, global_options.topdir, False, True)
     newID = session.resubmitTask(taskID)
     if not options.quiet:
         print("Resubmitted task %s as new task %s" % (taskID, newID))
@@ -730,7 +778,8 @@ def handle_resubmit(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [newID], quiet=options.quiet)
+        return watch_tasks(session, [newID], quiet=options.quiet,
+                poll_interval=options.poll_interval)
 
 def handle_call(options, session, args):
     "Execute an arbitrary XML-RPC call"
@@ -963,7 +1012,8 @@ def handle_restart_hosts(options, session, args):
     task_id = session.restartHosts()
     if my_opts.wait or (my_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=my_opts.quiet)
+        return watch_tasks(session, [task_id], quiet=my_opts.quiet,
+                poll_interval=options.poll_interval)
     else:
         return
 def handle_import(options, session, args):
@@ -2551,14 +2601,14 @@ def handle_unblock_group_req(options, session, args):
     activate_session(session)
     session.groupReqListUnblock(tag, group, req)
 
-def anon_handle_list_channels(options, session, args):
+def anon_handle_list_channels(goptions, session, args):
     "[info] Print channels listing"
     usage = _("usage: %prog list-channels")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=goptions.quiet)
     (options, args) = parser.parse_args(args)
-    activate_session(session)
+    activate_session(session, goptions)
     channels = session.listChannels()
     session.multicall = True
     for channel in channels:
@@ -3993,17 +4043,18 @@ def _handleOpts(lines, opts, prefix=''):
         _handleMap(lines, opts, prefix)
 
 
-def _parseTaskParams(session, method, task_id):
+def _parseTaskParams(session, method, task_id, topdir):
     try:
-        return _do_parseTaskParams(session, method, task_id)
+        return _do_parseTaskParams(session, method, task_id, topdir)
     except Exception:
+        logger = logging.getLogger("koji")
         if logger.isEnabledFor(logging.DEBUG):
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             logger.debug(tb_str)
         return ['Unable to parse task parameters']
 
 
-def _do_parseTaskParams(session, method, task_id):
+def _do_parseTaskParams(session, method, task_id, topdir):
     """Parse the return of getTaskRequest()"""
     params = session.getTaskRequest(task_id)
 
@@ -4014,7 +4065,7 @@ def _do_parseTaskParams(session, method, task_id):
     elif method == 'buildSRPMFromSCM':
         lines.append("SCM URL: %s" % params[0])
     elif method == 'buildArch':
-        lines.append("SRPM: %s/work/%s" % (options.topdir, params[0]))
+        lines.append("SRPM: %s/work/%s" % (topdir, params[0]))
         lines.append("Build Tag: %s" % session.getTag(params[1])['name'])
         lines.append("Build Arch: %s" % params[2])
         lines.append("SRPM Kept: %r" % params[3])
@@ -4151,7 +4202,7 @@ def _do_parseTaskParams(session, method, task_id):
 
     return lines
 
-def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
+def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True):
     """Recursive function to print information about a task
        and its children."""
 
@@ -4189,7 +4240,7 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
     print("%sType: %s" % (indent, info['method']))
     if verbose:
         print("%sRequest Parameters:" % indent)
-        for line in _parseTaskParams(session, info['method'], task_id):
+        for line in _parseTaskParams(session, info['method'], task_id, topdir):
             print("%s  %s" % (indent, line))
     print("%sOwner: %s" % (indent, owner))
     print("%sState: %s" % (indent, koji.TASK_STATES[info['state']].lower()))
@@ -4223,9 +4274,9 @@ def _printTaskInfo(session, task_id, level=0, recurse=True, verbose=True):
         children = session.getTaskChildren(task_id, request=True)
         children.sort(cmp=lambda a, b: cmp(a['id'], b['id']))
         for child in children:
-            _printTaskInfo(session, child['id'], level, verbose=verbose)
+            _printTaskInfo(session, child['id'], topdir, level, verbose=verbose)
 
-def anon_handle_taskinfo(options, session, args):
+def anon_handle_taskinfo(global_options, session, args):
     """[info] Show information about a task"""
     usage = _("usage: %prog taskinfo [options] taskID [taskID...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -4241,7 +4292,7 @@ def anon_handle_taskinfo(options, session, args):
 
     for arg in args:
         task_id = int(arg)
-        _printTaskInfo(session, task_id, 0, options.recurse, options.verbose)
+        _printTaskInfo(session, task_id, options.topdir, 0, options.recurse, options.verbose)
 
 def anon_handle_taginfo(options, session, args):
     "[info] Print basic information about a tag"
@@ -5444,7 +5495,8 @@ def _build_image(options, task_opts, session, args, img_type):
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
     else:
         return
 
@@ -5513,7 +5565,8 @@ def _build_image_oz(options, task_opts, session, args):
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
     else:
         return
 
@@ -5590,7 +5643,8 @@ def handle_win_build(options, session, args):
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=build_opts.quiet)
+        return watch_tasks(session, [task_id], quiet=build_opts.quiet,
+                poll_interval=options.poll_interval)
     else:
         return
 
@@ -5851,7 +5905,7 @@ def handle_set_pkg_owner_global(options, session, args):
                         % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
             session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 
-def anon_handle_watch_task(options, session, args):
+def anon_handle_watch_task(global_options, session, args):
     "[monitor] Track progress of particular tasks"
     usage = _("usage: %prog watch-task [options] <task id> [<task id>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -5890,9 +5944,10 @@ def anon_handle_watch_task(options, session, args):
         if not tasks:
             parser.error(_("at least one task id must be specified"))
 
-    return watch_tasks(session, tasks, quiet=options.quiet)
+    return watch_tasks(session, tasks, quiet=options.quiet,
+            poll_interval=global_options.poll_interval)
 
-def anon_handle_watch_logs(options, session, args):
+def anon_handle_watch_logs(global_options, session, args):
     "[monitor] Watch logs in realtime"
     usage = _("usage: %prog watch-logs [options] <task id> [<task id>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
@@ -5910,7 +5965,7 @@ def anon_handle_watch_logs(options, session, args):
     if not tasks:
         parser.error(_("at least one task id must be specified"))
 
-    watch_logs(session, tasks, options)
+    watch_logs(session, tasks, options, global_options.poll_interval)
 
 def handle_make_task(opts, session, args):
     "[admin] Create an arbitrary task"
@@ -5937,7 +5992,8 @@ def handle_make_task(opts, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=opts.quiet)
+        return watch_tasks(session, [task_id], quiet=opts.quiet,
+                poll_interval=opts.poll_interval)
 
 def handle_tag_build(opts, session, args):
     "[bind] Apply a tag to one or more builds"
@@ -5961,7 +6017,8 @@ def handle_tag_build(opts, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session,tasks,quiet=opts.quiet)
+        return watch_tasks(session, tasks, quiet=opts.quiet,
+                poll_interval=opts.poll_interval)
 
 def handle_move_build(opts, session, args):
     "[bind] 'Move' one or more builds between tags"
@@ -6007,7 +6064,8 @@ def handle_move_build(opts, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, tasks, quiet=opts.quiet)
+        return watch_tasks(session, tasks, quiet=opts.quiet,
+                poll_interval=opts.poll_interval)
 
 def handle_untag_build(options, session, args):
     "[bind] Remove a tag from one or more builds"
@@ -6275,7 +6333,7 @@ def anon_handle_download_logs(options, session, args):
             # with current code, failed task results should always be faults,
             # but that could change in the future
             content = pprint.pformat(result)
-        except (xmlrpclib.Fault, koji.GenericError):
+        except (six.moves.xmlrpc_client.Fault, koji.GenericError):
             etype, e = sys.exc_info()[:2]
             content = ''.join(traceback.format_exception_only(etype, e))
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
@@ -6582,7 +6640,8 @@ def handle_regen_repo(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
 
 def handle_dist_repo(options, session, args):
     """Create a yum repo with distribution options"""
@@ -6700,7 +6759,8 @@ def handle_dist_repo(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet,
+                poll_interval=options.poll_interval)
 
 
 def anon_handle_search(options, session, args):
