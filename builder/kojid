@@ -1415,7 +1415,7 @@ class BuildMavenTask(BaseBuildTask):
         uploadpath = self.getUploadDir()
 
 
-        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
         self.run_callbacks("postSCMCheckout",
@@ -1431,7 +1431,7 @@ class BuildMavenTask(BaseBuildTask):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(self.options.allowed_scms)
-            self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
             # never try to check out a common/ dir when checking out patches
             patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
@@ -1719,7 +1719,7 @@ class WrapperRPMTask(BaseBuildTask):
         logfile = os.path.join(self.workdir, 'checkout.log')
         scmdir = buildroot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
-        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         specdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
@@ -2658,7 +2658,7 @@ class ImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout.log')
-            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             scmsrcdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
                                scminfo=scm.get_info(),
@@ -3276,7 +3276,7 @@ class OzImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout-%s.log' % self.arch)
-            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
@@ -4087,7 +4087,7 @@ class BuildIndirectionImageTask(OzImageTask):
         if fileurl:
             scm = SCM(fileurl)
             scm.assert_allowed(self.options.allowed_scms)
-            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             logfile = os.path.join(self.workdir, 'checkout.log')
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
@@ -4436,7 +4436,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
-        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
         self.run_callbacks("postSCMCheckout",
