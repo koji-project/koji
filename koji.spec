@@ -93,6 +93,26 @@ Requires: python%{python3_pkgversion}-six
 desc
 %endif
 
+%package -n python2-%{name}-cli-plugins
+Summary: Koji client plugins
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+
+%description -n python2-%{name}-cli-plugins
+Plugins to the koji command-line interface
+
+%if 0%{with python3}
+%package -n python3-%{name}-cli-plugins
+Summary: Koji client plugins
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+
+%description -n python3-%{name}-cli-plugins
+Plugins to the koji command-line interface
+%endif
+
 %package hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
@@ -257,6 +277,10 @@ make DESTDIR=$RPM_BUILD_ROOT %{?install_opt} install
 %if 0%{with python3}
 cd koji
 make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+cd ../cli
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+cd ../plugins
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
 # alter python interpreter in koji CLI
 sed -i 's/\#\!\/usr\/bin\/python/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
 %endif
@@ -274,10 +298,28 @@ rm -rf $RPM_BUILD_ROOT
 %files -n python2-%{name}
 %defattr(-,root,root)
 %{python2_sitelib}/%{name}
+%{python2_sitelib}/koji_cli
 
 %if 0%{with python3}
 %files -n python%{python3_pkgversion}-koji
 %{python3_sitelib}/%{name}
+%{python3_sitelib}/koji_cli
+%endif
+
+%files -n python2-%{name}-cli-plugins
+%defattr(-,root,root)
+%{python2_sitelib}/koji_cli_plugins
+# we don't have config files for default plugins yet
+#%%dir %{_sysconfdir}/koji/plugins
+#%%config(noreplace) %{_sysconfdir}/koji/plugins/*.conf
+
+%if 0%{with python3}
+%files -n python%{python3_pkgversion}-%{name}-cli-plugins
+%defattr(-,root,root)
+%{python3_sitelib}/koji_cli_plugins
+# we don't have config files for default plugins yet
+#%%dir %{_sysconfdir}/koji/plugins
+#%%config(noreplace) %{_sysconfdir}/koji/plugins/*.conf
 %endif
 
 %files hub
