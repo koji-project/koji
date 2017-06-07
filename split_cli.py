@@ -44,7 +44,11 @@ sys.stderr.write("Module file: %r\n" % modfile)
 for name in vars(mod):
     obj = getattr(mod, name)
     if inspect.isclass(obj) or inspect.isfunction(obj):
-        objfile = inspect.getsourcefile(obj)
+        try:
+            objfile = inspect.getsourcefile(obj)
+        except TypeError as ex:
+            sys.stderr.write("Skipping %s from %s\n" % (name, obj))
+            continue
         if objfile != modfile:
             sys.stderr.write("Skipping %s from %s\n" % (name, inspect.getfile(obj)))
             continue
