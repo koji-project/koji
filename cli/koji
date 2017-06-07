@@ -709,7 +709,7 @@ def handle_add_host_to_channel(options, session, args):
     usage = _("usage: %prog add-host-to-channel [options] hostname channel")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--list", action="store_true", help=_("List possible channels"))
+    parser.add_option("--list", action="store_true", help=optparse.SUPPRESS_HELP)
     parser.add_option("--new", action="store_true", help=_("Create channel if needed"))
     (options, args) = parser.parse_args(args)
     if not options.list and len(args) != 2:
@@ -3188,6 +3188,25 @@ def handle_unblock_group_req(options, session, args):
     req = args[2]
     activate_session(session)
     session.groupReqListUnblock(tag, group, req)
+
+def anon_handle_list_channels(options, session, args):
+    "[info] Print channels listing"
+    usage = _("usage: %prog list-channels")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
+    (options, args) = parser.parse_args(args)
+    activate_session(session)
+    channels = session.listChannels()
+    session.multicall = True
+    for channel in channels:
+        session.listHosts(channelID=channel['id'])
+    for channel, hosts in zip(channels, session.multiCall()):
+        channel['hosts'] = len(hosts[0])
+    if not options.quiet:
+        print('Channel         Hosts')
+    for channel in channels:
+        print("%(name)-15s %(hosts) 5d" % channel)
 
 def anon_handle_list_hosts(options, session, args):
     "[info] Print the host listing"
