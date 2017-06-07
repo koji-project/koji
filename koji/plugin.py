@@ -76,6 +76,10 @@ class PluginTracker(object):
         file, pathname, description = imp.find_module(name, self.pathlist(path))
         try:
             plugin = imp.load_module(mod_name, file, pathname, description)
+        except Exception:
+            msg = 'Loading plugin %s failed' % name
+            logging.getLogger('koji.plugin').error(msg)
+            raise
         finally:
             file.close()
         self.plugins[name] = plugin
