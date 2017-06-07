@@ -100,3 +100,5 @@ if len(orig) > ofs:
 
 for dest in outfiles:
     outfiles[dest].close()
+
+open('cli/koji_cli/__init__.py', 'a+').close()
