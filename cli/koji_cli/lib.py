@@ -56,9 +56,12 @@ ARGMAP = {'None': None,
           'True': True,
           'False': False}
 
+
 def _(args):
     """Stub function for translation"""
     return args
+
+
 def arg_filter(arg):
     try:
         return int(arg)
@@ -73,6 +76,7 @@ def arg_filter(arg):
     #handle lists/dicts?
     return arg
 
+
 categories = {
     'admin' : 'admin commands',
     'build' : 'build commands',
@@ -83,6 +87,7 @@ categories = {
     'bind' : 'bind commands',
     'misc' : 'miscellaneous commands',
 }
+
 
 def get_epilog_str(progname=None):
     if progname is None:
@@ -96,6 +101,8 @@ Try "%(progname)s help <category>" to get commands under a particular category
 Available categories are: %(categories)s
 ''' % ({'progname': progname, 'categories': categories_ordered})
     return _(epilog_str)
+
+
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
@@ -104,9 +111,11 @@ def ensure_connection(session):
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
 
+
 def print_task_headers():
     """Print the column headers"""
     print("ID       Pri  Owner                State    Arch       Name")
+
 
 def print_task(task,depth=0):
     """Print a task"""
@@ -120,11 +129,13 @@ def print_task(task,depth=0):
     label = koji.taskLabel(task)
     print(''.join([fmt % task, indent, label]))
 
+
 def print_task_recurse(task,depth=0):
     """Print a task and its children"""
     print_task(task,depth)
     for child in task.get('children',()):
         print_task_recurse(child,depth+1)
+
 
 def parse_arches(arches, to_list=False):
     """Parse comma or space-separated list of arches and return
@@ -134,6 +145,7 @@ def parse_arches(arches, to_list=False):
         return arches
     else:
         return ' '.join(arches)
+
 
 class TaskWatcher(object):
 
@@ -226,6 +238,7 @@ class TaskWatcher(object):
         else:
             return koji.TASK_STATES[info['state']].lower()
 
+
 def display_tasklist_status(tasks):
     free = 0
     open = 0
@@ -243,6 +256,7 @@ def display_tasklist_status(tasks):
             free += 1
     print("  %d free  %d open  %d done  %d failed" % (free, open, done, failed))
 
+
 def display_task_results(tasks):
     for task in [task for task in tasks.values() if task.level == 0]:
         state = task.info['state']
@@ -257,6 +271,7 @@ def display_task_results(tasks):
         else:
             # shouldn't happen
             print('%s has not completed' % task_label)
+
 
 def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
     if not tasklist:
@@ -310,8 +325,10 @@ Running Tasks:
         raise
     return rv
 
+
 def watch_logs(session, tasklist, opts, poll_interval):
     print("Watching logs (this may be safely interrupted)...")
+
     def _isDone(session, taskId):
         info = session.getTaskInfo(taskId)
         if info is None:
@@ -375,6 +392,8 @@ def list_task_output_all_volumes(session, task_id):
     # otherwise leave off the option and fake it
     output = session.listTaskOutput(task_id)
     return dict([fn, ['DEFAULT']] for fn in output)
+
+
 def _unique_path(prefix):
     """Create a unique path fragment by appending a path component
     to prefix.  The path component will consist of a string of letter and numbers
@@ -386,6 +405,7 @@ def _unique_path(prefix):
     return '%s/%r.%s' % (prefix, time.time(),
                       ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
+
 def _format_size(size):
     if (size / 1073741824 >= 1):
         return "%0.2f GiB" % (size / 1073741824.0)
@@ -395,12 +415,14 @@ def _format_size(size):
         return "%0.2f KiB" % (size / 1024.0)
     return "%0.2f B" % (size)
 
+
 def _format_secs(t):
     h = t / 3600
     t %= 3600
     m = t / 60
     s = t % 60
     return "%02d:%02d:%02d" % (h, m, s)
+
 
 def _progress_callback(uploaded, total, piece, time, total_time):
     if total == 0:
@@ -422,11 +444,14 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('='*(int(percent_done*36)), percent_done_str, elapsed, data_done, speed))
     sys.stdout.flush()
 
+
 def _running_in_bg():
     try:
         return (not os.isatty(0)) or (os.getpgrp() != os.tcgetpgrp(0))
     except OSError:
         return True
+
+
 def linked_upload(localfile, path, name=None):
     """Link a file into the (locally writable) workdir, bypassing upload"""
     old_umask = os.umask(0o02)
@@ -443,15 +468,19 @@ def linked_upload(localfile, path, name=None):
         os.link(localfile, dst)
     finally:
         os.umask(old_umask)
+
+
 def error(msg=None, code=1):
     if msg:
         sys.stderr.write(msg + "\n")
         sys.stderr.flush()
     sys.exit(code)
 
+
 def warn(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
+
 
 def has_krb_creds():
     if krbV is None:
@@ -463,6 +492,7 @@ def has_krb_creds():
         return True
     except krbV.Krb5Error:
         return False
+
 
 def activate_session(session, options):
     """Test and login the session is applicable"""

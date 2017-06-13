@@ -46,6 +46,8 @@ def _printable_unicode(s):
         return s.encode('utf-8')
     else:
         return s
+
+
 def handle_add_group(goptions, session, args):
     "[admin] Add a group to a tag"
     usage = _("usage: %prog add-group <tag> <group>")
@@ -75,6 +77,7 @@ def handle_add_group(goptions, session, args):
         return 1
 
     session.groupListAdd(tag, group)
+
 
 def handle_assign_task(goptions, session, args):
     "[admin] Assign a task to a host"
@@ -139,6 +142,7 @@ def handle_add_host(goptions, session, args):
         if id:
             print("%s added: id %d" % (host, id))
 
+
 def handle_edit_host(options, session, args):
     "[admin] Edit a host"
     usage = _("usage: %prog edit-host hostname ... [options]")
@@ -183,6 +187,7 @@ def handle_edit_host(options, session, args):
         else:
             print(_("No changes made to %s") % host)
 
+
 def handle_add_host_to_channel(goptions, session, args):
     "[admin] Add a host to a channel"
     usage = _("usage: %prog add-host-to-channel [options] hostname channel")
@@ -215,6 +220,7 @@ def handle_add_host_to_channel(goptions, session, args):
         kwargs['create'] = True
     session.addHostToChannel(host, channel, **kwargs)
 
+
 def handle_remove_host_from_channel(goptions, session, args):
     "[admin] Remove a host from a channel"
     usage = _("usage: %prog remove-host-from-channel [options] hostname channel")
@@ -239,6 +245,7 @@ def handle_remove_host_from_channel(goptions, session, args):
 
     session.removeHostFromChannel(host, channel)
 
+
 def handle_remove_channel(goptions, session, args):
     "[admin] Remove a channel entirely"
     usage = _("usage: %prog remove-channel [options] channel")
@@ -256,6 +263,7 @@ def handle_remove_channel(goptions, session, args):
         return 1
     session.removeChannel(args[0], force=options.force)
 
+
 def handle_rename_channel(goptions, session, args):
     "[admin] Rename a channel"
     usage = _("usage: %prog rename-channel [options] old-name new-name")
@@ -271,6 +279,7 @@ def handle_rename_channel(goptions, session, args):
         print("No such channel: %s" % args[0])
         return 1
     session.renameChannel(args[0], args[1])
+
 
 def handle_add_pkg(goptions, session, args):
     "[admin] Add a package to the listing for tag"
@@ -349,6 +358,7 @@ def handle_block_pkg(goptions, session, args):
         session.packageListBlock(tag, package)
     session.multiCall(strict=True)
 
+
 def handle_remove_pkg(goptions, session, args):
     "[admin] Remove a package from the listing for tag"
     usage = _("usage: %prog remove-pkg [options] tag package [package2 ...]")
@@ -381,6 +391,8 @@ def handle_remove_pkg(goptions, session, args):
     for package in args[1:]:
         session.packageListRemove(tag, package, **opts)
     session.multiCall(strict=True)
+
+
 def handle_build(options, session, args):
     "[build] Build a package from source"
     usage = _("usage: %prog build [options] target <srpm path or scm url>")
@@ -458,6 +470,7 @@ def handle_build(options, session, args):
     else:
         return
 
+
 def handle_chain_build(options, session, args):
     # XXX - replace handle_build with this, once chain-building has gotten testing
     "[build] Build one or more packages from source"
@@ -533,6 +546,7 @@ def handle_chain_build(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                 poll_interval=options.poll_interval)
+
 
 def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
@@ -633,6 +647,7 @@ def handle_maven_build(options, session, args):
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                 poll_interval=options.poll_interval)
 
+
 def handle_wrapper_rpm(options, session, args):
     """[build] Build wrapper rpms for any archives associated with a build."""
     usage = _("usage: %prog wrapper-rpm [options] target build-id|n-v-r URL")
@@ -700,6 +715,7 @@ def handle_wrapper_rpm(options, session, args):
         return watch_tasks(session, [task_id], quiet=options.quiet,
                 poll_interval=options.poll_interval)
 
+
 def handle_maven_chain(options, session, args):
     "[build] Run a set of Maven builds in dependency order"
     usage = _("usage: %prog maven-chain [options] target config...")
@@ -753,6 +769,7 @@ def handle_maven_chain(options, session, args):
         return watch_tasks(session, [task_id], quiet=options.quiet,
                 poll_interval=options.poll_interval)
 
+
 def handle_resubmit(goptions, session, args):
     """[build] Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] taskID")
@@ -780,6 +797,7 @@ def handle_resubmit(goptions, session, args):
         session.logout()
         return watch_tasks(session, [newID], quiet=options.quiet,
                 poll_interval=options.poll_interval)
+
 
 def handle_call(goptions, session, args):
     "Execute an arbitrary XML-RPC call"
@@ -819,6 +837,7 @@ def handle_call(goptions, session, args):
         print(json.dumps(response, indent=2, separators=(',', ': ')))
     else:
         pprint.pprint(response)
+
 
 def anon_handle_mock_config(goptions, session, args):
     "[info] Create a mock config"
@@ -940,6 +959,7 @@ def anon_handle_mock_config(goptions, session, args):
     else:
         print(output)
 
+
 def handle_disable_host(goptions, session, args):
     "[admin] Mark one or more hosts as disabled"
     usage = _("usage: %prog disable-host [options] hostname ...")
@@ -966,6 +986,7 @@ def handle_disable_host(goptions, session, args):
         if options.comment is not None:
             session.editHost(host, comment=options.comment)
     session.multiCall(strict=True)
+
 
 def handle_enable_host(goptions, session, args):
     "[admin] Mark one or more hosts as enabled"
@@ -1016,6 +1037,8 @@ def handle_restart_hosts(options, session, args):
                 poll_interval=options.poll_interval)
     else:
         return
+
+
 def handle_import(goptions, session, args):
     "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] package [package...]")
@@ -1488,6 +1511,7 @@ def handle_prune_signed_copies(options, session, args):
         builds = [("%(name)s-%(version)s-%(release)s" % binfo, binfo)]
     total_files = 0
     total_space = 0
+
     def _histline(event_id, x):
         if event_id == x['revoke_event']:
             ts = x['revoke_ts']
@@ -1760,6 +1784,7 @@ def handle_prune_signed_copies(options, session, args):
     print("Files: %i" % total_files)
     print("Bytes: %i" % total_space)
 
+
 def handle_set_build_volume(goptions, session, args):
     "[admin] Move a build to a different volume"
     usage = _("usage: %prog set-build-volume volume n-v-r [n-v-r ...]")
@@ -1791,6 +1816,7 @@ def handle_set_build_volume(goptions, session, args):
         if options.verbose:
             print("%s: %s -> %s" % (binfo['nvr'], binfo['volume_name'], volinfo['name']))
 
+
 def handle_add_volume(goptions, session, args):
     "[admin] Add a new storage volume"
     usage = _("usage: %prog add-volume volume-name")
@@ -1808,6 +1834,7 @@ def handle_add_volume(goptions, session, args):
     volinfo = session.addVolume(name)
     print("Added volume %(name)s with id %(id)i" % volinfo)
 
+
 def handle_list_volumes(options, session, args):
     "[info] List storage volumes"
     usage = _("usage: %prog list-volumes")
@@ -1816,6 +1843,7 @@ def handle_list_volumes(options, session, args):
     (options, args) = parser.parse_args(args)
     for volinfo in session.listVolumes():
         print(volinfo['name'])
+
 
 def handle_list_permissions(goptions, session, args):
     "[info] List user permissions"
@@ -1842,6 +1870,7 @@ def handle_list_permissions(goptions, session, args):
     for perm in perms:
         print(perm)
 
+
 def handle_add_user(goptions, session, args):
     "[admin] Add a user"
     usage = _("usage: %prog add-user username [options]")
@@ -1863,6 +1892,7 @@ def handle_add_user(goptions, session, args):
     user_id = session.createUser(username, status=status, krb_principal=options.principal)
     print("Added user %s (%i)" % (username, user_id))
 
+
 def handle_enable_user(goptions, session, args):
     "[admin] Enable logins by a user"
     usage = _("usage: %prog enable-user username")
@@ -1877,6 +1907,7 @@ def handle_enable_user(goptions, session, args):
     activate_session(session, goptions)
     session.enableUser(username)
 
+
 def handle_disable_user(goptions, session, args):
     "[admin] Disable logins by a user"
     usage = _("usage: %prog disable-user username")
@@ -1890,6 +1921,7 @@ def handle_disable_user(goptions, session, args):
     username = args[0]
     activate_session(session, goptions)
     session.disableUser(username)
+
 
 def handle_list_signed(goptions, session, args):
     "[admin] List signed copies of rpms"
@@ -1963,6 +1995,7 @@ def handle_list_signed(goptions, session, args):
             continue
         print(signedpath)
 
+
 def handle_import_in_place(goptions, session, args):
     "[admin] Import RPMs that are already in place"
     usage = _("usage: %prog import-in-place [options] package [package...]")
@@ -1984,6 +2017,7 @@ def handle_import_in_place(goptions, session, args):
         else:
             print(_("done"))
         sys.stdout.flush()
+
 
 def handle_import_archive(options, session, args):
     "[admin] Import an archive file and associate it with a build"
@@ -2089,6 +2123,7 @@ def handle_import_archive(options, session, args):
         session.importArchive(serverpath, buildinfo, suboptions.type, suboptions.type_info)
         print("Imported: %s" % filename)
 
+
 def handle_grant_permission(goptions, session, args):
     "[admin] Grant a permission to a user"
     usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
@@ -2114,6 +2149,7 @@ def handle_grant_permission(goptions, session, args):
         kwargs['create'] = True
     for user in users:
         session.grantPermission(user['name'], perm, **kwargs)
+
 
 def handle_revoke_permission(goptions, session, args):
     "[admin] Revoke a permission from a user"
@@ -2285,6 +2321,7 @@ def anon_handle_list_api(goptions, session, args):
         if x['doc']:
             print("  description: %s" % x['doc'])
 
+
 def anon_handle_list_tagged(goptions, session, args):
     "[info] List the builds or rpms in a tag"
     usage = _("usage: %prog list-tagged [options] tag [package]")
@@ -2387,6 +2424,7 @@ def anon_handle_list_tagged(goptions, session, args):
     for line in output:
         print(line)
 
+
 def anon_handle_list_buildroot(goptions, session, args):
     "[info] List the rpms used in or built in a buildroot"
     usage = _("usage: %prog list-buildroot [options] buildroot-id")
@@ -2416,6 +2454,7 @@ def anon_handle_list_buildroot(goptions, session, args):
             print(nvra, "[update]")
         else:
             print(nvra)
+
 
 def anon_handle_list_untagged(goptions, session, args):
     "[info] List untagged builds"
@@ -2467,11 +2506,14 @@ def anon_handle_list_untagged(goptions, session, args):
     for line in output:
         print(line)
 
+
 def print_group_list_req_group(group):
     print("  @%(name)s  [%(tag_name)s]" % group)
 
+
 def print_group_list_req_package(pkg):
     print("  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg)
+
 
 def anon_handle_list_groups(goptions, session, args):
     "[info] Print the group listings"
@@ -2511,6 +2553,7 @@ def anon_handle_list_groups(goptions, session, args):
             x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
             print_group_list_req_package(x)
 
+
 def handle_add_group_pkg(goptions, session, args):
     "[admin] Add a package to a group's package listing"
     usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
@@ -2525,6 +2568,7 @@ def handle_add_group_pkg(goptions, session, args):
     activate_session(session, goptions)
     for pkg in args[2:]:
         session.groupPackageListAdd(tag, group, pkg)
+
 
 def handle_block_group_pkg(goptions, session, args):
     "[admin] Block a package from a group's package listing"
@@ -2541,6 +2585,7 @@ def handle_block_group_pkg(goptions, session, args):
     for pkg in args[2:]:
         session.groupPackageListBlock(tag, group, pkg)
 
+
 def handle_unblock_group_pkg(goptions, session, args):
     "[admin] Unblock a package from a group's package listing"
     usage = _("usage: %prog unblock-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
@@ -2555,6 +2600,7 @@ def handle_unblock_group_pkg(goptions, session, args):
     activate_session(session, goptions)
     for pkg in args[2:]:
         session.groupPackageListUnblock(tag, group, pkg)
+
 
 def handle_add_group_req(goptions, session, args):
     "[admin] Add a group to a group's required list"
@@ -2571,6 +2617,7 @@ def handle_add_group_req(goptions, session, args):
     activate_session(session, goptions)
     session.groupReqListAdd(tag, group, req)
 
+
 def handle_block_group_req(goptions, session, args):
     "[admin] Block a group's requirement listing"
     usage = _("usage: %prog block-group-req [options] <tag> <group> <blocked req>")
@@ -2586,6 +2633,7 @@ def handle_block_group_req(goptions, session, args):
     activate_session(session, goptions)
     session.groupReqListBlock(tag, group, req)
 
+
 def handle_unblock_group_req(goptions, session, args):
     "[admin] Unblock a group's requirement listing"
     usage = _("usage: %prog unblock-group-req [options] <tag> <group> <requirement>")
@@ -2600,6 +2648,7 @@ def handle_unblock_group_req(goptions, session, args):
     req = args[2]
     activate_session(session, goptions)
     session.groupReqListUnblock(tag, group, req)
+
 
 def anon_handle_list_channels(goptions, session, args):
     "[info] Print channels listing"
@@ -2619,6 +2668,7 @@ def anon_handle_list_channels(goptions, session, args):
         print('Channel         Hosts')
     for channel in channels:
         print("%(name)-15s %(hosts) 5d" % channel)
+
 
 def anon_handle_list_hosts(goptions, session, args):
     "[info] Print the host listing"
@@ -2674,6 +2724,7 @@ def anon_handle_list_hosts(goptions, session, args):
         print("Hostname                     Enb Rdy Load/Cap Arches           Last Update")
     for host in hosts:
         print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host)
+
 
 def anon_handle_list_pkgs(goptions, session, args):
     "[info] Print the package listing for tag or for owner"
@@ -2751,6 +2802,7 @@ def anon_handle_list_pkgs(goptions, session, args):
             else:
                 fmt = "%(package_name)s"
             print(fmt % pkg)
+
 
 def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
@@ -2909,6 +2961,7 @@ def anon_handle_buildinfo(goptions, session, args):
                 print("Changelog:")
                 print(koji.util.formatChangelog(changelog))
 
+
 def anon_handle_hostinfo(goptions, session, args):
     "[info] Print basic information about a host"
     usage = _("usage: %prog hostinfo [options] <hostname> [<hostname> ...]")
@@ -2966,6 +3019,7 @@ def anon_handle_hostinfo(goptions, session, args):
                 print("%-50s %-10s %-20s" % row)
         else:
             print("None")
+
 
 def handle_clone_tag(goptions, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
@@ -3362,6 +3416,7 @@ def handle_add_target(goptions, session, args):
 
     session.createBuildTarget(name, build_tag, dest_tag)
 
+
 def handle_edit_target(goptions, session, args):
     "[admin] Set the name, build_tag, and/or dest_tag of an existing build target to new values"
     usage = _("usage: %prog edit-target [options] name")
@@ -3408,6 +3463,7 @@ def handle_edit_target(goptions, session, args):
 
     session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'], targetInfo['build_tag_name'], targetInfo['dest_tag_name'])
 
+
 def handle_remove_target(goptions, session, args):
     "[admin] Remove a build target"
     usage = _("usage: %prog remove-target [options] name")
@@ -3431,6 +3487,7 @@ def handle_remove_target(goptions, session, args):
         return 1
 
     session.deleteBuildTarget(target_info['id'])
+
 
 def handle_remove_tag(goptions, session, args):
     "[admin] Remove a tag"
@@ -3456,6 +3513,7 @@ def handle_remove_tag(goptions, session, args):
 
     session.deleteTag(tag_info['id'])
 
+
 def anon_handle_list_targets(goptions, session, args):
     "[info] List the build targets"
     usage = _("usage: %prog list-targets [options]")
@@ -3479,6 +3537,7 @@ def anon_handle_list_targets(goptions, session, args):
     for target in targets:
         print(fmt % target)
     #pprint.pprint(session.getBuildTargets())
+
 
 def _printInheritance(tags, sibdepths=None, reverse=False):
     if len(tags) == 0:
@@ -3519,6 +3578,7 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
             sibdepths.pop()
 
     _printInheritance(tags, sibdepths, reverse)
+
 
 def anon_handle_list_tag_inheritance(goptions, session, args):
     "[info] Print the inheritance information for a tag"
@@ -3574,6 +3634,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     sys.stdout.write('%s (%i)\n' % (tag['name'], tag['id']))
     data = session.getFullInheritance(tag['id'], **opts)
     _printInheritance(data, None, opts['reverse'])
+
 
 def anon_handle_list_tags(goptions, session, args):
     "[info] Print the list of tags"
@@ -3631,6 +3692,7 @@ def anon_handle_list_tags(goptions, session, args):
                 sys.stdout.write(' [%(perm)s perm required]' % tag)
             print('')
 
+
 def anon_handle_list_tag_history(goptions, session, args):
     "[info] Print a history of tag operations"
     usage = _("usage: %prog list-tag-history [options]")
@@ -3670,6 +3732,7 @@ def anon_handle_list_tag_history(goptions, session, args):
         event_id = x['create_event']
         timeline.append((event_id, x))
     timeline.sort()
+
     def _histline(event_id, x):
         if event_id == x['revoke_event']:
             ts = x['revoke_ts']
@@ -3691,6 +3754,7 @@ def anon_handle_list_tag_history(goptions, session, args):
         if options.debug:
             print("%r" % x)
         print(_histline(event_id, x))
+
 
 def _print_histline(entry, **kwargs):
     options = kwargs['options']
@@ -3841,6 +3905,7 @@ def _print_histline(entry, **kwargs):
     print(' '.join(parts))
     hidden_fields = ['active', 'create_event', 'revoke_event', 'creator_id', 'revoker_id',
                      'creator_name', 'revoker_name', 'create_ts', 'revoke_ts']
+
     def get_nkey(key):
         if key == 'perm_id':
             return 'permission.name'
@@ -3901,6 +3966,7 @@ _table_keys = {
     'group_req_listing' : ['group_id', 'tag_id', 'req_id'],
     'group_package_listing' : ['group_id', 'tag_id', 'package'],
     }
+
 
 def anon_handle_list_history(goptions, session, args):
     "[info] Display historical data"
@@ -3983,6 +4049,7 @@ def anon_handle_list_history(goptions, session, args):
     while True:
         histdata = session.queryHistory(tables=tables, **kwargs)
         timeline = []
+
         def distinguish_match(x, name):
             """determine if create or revoke event matched"""
             if options.context:
@@ -4031,10 +4098,12 @@ def anon_handle_list_history(goptions, session, args):
             if last_event:
                 kwargs['afterEvent'] = last_event
 
+
 def _handleMap(lines, data, prefix=''):
     for key, val in data.items():
         if key != '__starstar':
             lines.append('  %s%s: %s' % (prefix, key, val))
+
 
 def _handleOpts(lines, opts, prefix=''):
     if opts:
@@ -4201,6 +4270,7 @@ def _do_parseTaskParams(session, method, task_id, topdir):
 
     return lines
 
+
 def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True):
     """Recursive function to print information about a task
        and its children."""
@@ -4275,6 +4345,7 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
         for child in children:
             _printTaskInfo(session, child['id'], topdir, level, verbose=verbose)
 
+
 def anon_handle_taskinfo(goptions, session, args):
     """[info] Show information about a task"""
     usage = _("usage: %prog taskinfo [options] taskID [taskID...]")
@@ -4292,6 +4363,7 @@ def anon_handle_taskinfo(goptions, session, args):
     for arg in args:
         task_id = int(arg)
         _printTaskInfo(session, task_id, goptions.topdir, 0, options.recurse, options.verbose)
+
 
 def anon_handle_taginfo(goptions, session, args):
     "[info] Print basic information about a tag"
@@ -4431,6 +4503,7 @@ def handle_add_tag(goptions, session, args):
         opts['extra'] = extra
     session.createTag(args[0],**opts)
 
+
 def handle_edit_tag(goptions, session, args):
     "[admin] Alter tag information"
     usage = _("usage: %prog edit-tag [options] name")
@@ -4489,6 +4562,7 @@ def handle_edit_tag(goptions, session, args):
     #XXX change callname
     session.editTag2(tag, **opts)
 
+
 def handle_lock_tag(goptions, session, args):
     "[admin] Lock a tag"
     usage = _("usage: %prog lock-tag [options] <tag> [<tag> ...] ")
@@ -4539,6 +4613,7 @@ def handle_lock_tag(goptions, session, args):
                 continue
             session.editTag2(tag['id'], perm=perm_id)
 
+
 def handle_unlock_tag(goptions, session, args):
     "[admin] Unlock a tag"
     usage = _("usage: %prog unlock-tag [options] <tag> [<tag> ...]")
@@ -4582,6 +4657,7 @@ def handle_unlock_tag(goptions, session, args):
             print("Tag %s: skipping changes: %r" % (tag['name'], opts))
         else:
             session.editTag2(tag['id'], locked=False, perm_id=None)
+
 
 def handle_add_tag_inheritance(goptions, session, args):
     """[admin] Add to a tag's inheritance"""
@@ -4726,6 +4802,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
     inheritanceData[index] = new_data
     session.setInheritanceData(tag['id'], inheritanceData)
 
+
 def handle_remove_tag_inheritance(goptions, session, args):
     """[admin] Remove a tag inheritance link"""
     usage = _("usage: %prog remove-tag-inheritance tag <parent> <priority>")
@@ -4789,6 +4866,7 @@ def handle_remove_tag_inheritance(goptions, session, args):
     inheritanceData[index] = new_data
     session.setInheritanceData(tag['id'], inheritanceData)
 
+
 def anon_handle_show_groups(goptions, session, args):
     "[info] Show groups data for a tag"
     usage = _("usage: %prog show-groups [options] <tag>")
@@ -4811,6 +4889,7 @@ def anon_handle_show_groups(goptions, session, args):
         print(koji.make_groups_spec(groups,name='buildgroups',buildgroup='build'))
     else:
         pprint.pprint(groups)
+
 
 def anon_handle_list_external_repos(goptions, session, args):
     "[info] List external repos"
@@ -4886,6 +4965,7 @@ def anon_handle_list_external_repos(goptions, session, args):
     for rinfo in data:
         print(format % rinfo)
 
+
 def _pick_external_repo_priority(session, tag):
     """pick priority after current ones, leaving space for later insertions"""
     repolist = session.getTagExternalRepos(tag_info=tag)
@@ -4896,6 +4976,7 @@ def _pick_external_repo_priority(session, tag):
         priority = (repolist[-1]['priority'] + 7) // 5 * 5
         #at least 3 higher than current max and a multiple of 5
     return priority
+
 
 def _parse_tagpri(tagpri):
     parts = tagpri.rsplit('::', 1)
@@ -4910,6 +4991,7 @@ def _parse_tagpri(tagpri):
         except ValueError:
             raise koji.GenericError("Invalid priority: %s" % parts[1])
         return tag, pri
+
 
 def handle_add_external_repo(goptions, session, args):
     "[admin] Create an external repo and/or add one to a tag"
@@ -4946,6 +5028,7 @@ def handle_add_external_repo(goptions, session, args):
             print("Added external repo %s to tag %s (priority %i)" \
                     % (rinfo['name'], tag, priority))
 
+
 def handle_edit_external_repo(goptions, session, args):
     "[admin] Edit data for an external repo"
     usage = _("usage: %prog edit-external-repo name")
@@ -4967,6 +5050,7 @@ def handle_edit_external_repo(goptions, session, args):
         parser.error(_("No changes specified"))
     activate_session(session, goptions)
     session.editExternalRepo(args[0], **opts)
+
 
 def handle_remove_external_repo(goptions, session, args):
     "[admin] Remove an external repo from a tag or tags, or remove entirely"
@@ -5007,6 +5091,7 @@ def handle_remove_external_repo(goptions, session, args):
                 print(_("External repo %s not associated with tag %s") % (repo, tag))
                 continue
             session.removeExternalRepoFromTag(tag, repo)
+
 
 # This handler is for spinning livecd images
 #
@@ -5103,6 +5188,7 @@ def handle_spin_livemedia(options, session, args):
         assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'livemedia')
 
+
 # This handler is for spinning appliance images
 #
 def handle_spin_appliance(options, session, args):
@@ -5157,6 +5243,7 @@ def handle_spin_appliance(options, session, args):
                        " to a kickstart file."))
         assert False  # pragma: no cover
     _build_image(options, task_options, session, args, 'appliance')
+
 
 def handle_image_build_indirection(options, session, args):
     """[build] Create a disk image using other disk images via the Indirection plugin"""
@@ -5423,6 +5510,7 @@ def handle_image_build(options, session, args):
               "SL-6.4 or CentOS-6.4"))
     _build_image_oz(options, task_options, session, args)
 
+
 def _build_image(options, task_opts, session, args, img_type):
     """
     A private helper function that houses common CLI code for building
@@ -5499,6 +5587,7 @@ def _build_image(options, task_opts, session, args, img_type):
     else:
         return
 
+
 def _build_image_oz(options, task_opts, session, args):
     """
     A private helper function that houses common CLI code for building
@@ -5568,6 +5657,7 @@ def _build_image_oz(options, task_opts, session, args):
                 poll_interval=options.poll_interval)
     else:
         return
+
 
 def handle_win_build(options, session, args):
     """[build] Build a Windows package from source"""
@@ -5647,6 +5737,7 @@ def handle_win_build(options, session, args):
     else:
         return
 
+
 def handle_free_task(goptions, session, args):
     "[admin] Free a task"
     usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")
@@ -5663,6 +5754,7 @@ def handle_free_task(goptions, session, args):
             assert False  # pragma: no cover
     for task_id in tlist:
         session.freeTask(task_id)
+
 
 def handle_cancel(goptions, session, args):
     "[build] Cancel tasks and/or builds"
@@ -5703,6 +5795,7 @@ def handle_cancel(goptions, session, args):
     for build in blist:
         session.cancelBuild(build)
 
+
 def handle_set_task_priority(goptions, session, args):
     "[admin] Set task priority"
     usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task-id> [task-id]...")
@@ -5727,6 +5820,7 @@ def handle_set_task_priority(goptions, session, args):
 
     for task_id in tasks:
         session.setTaskPriority(task_id, options.priority, options.recurse)
+
 
 def _list_tasks(options, session):
     "Retrieve a list of tasks"
@@ -5811,6 +5905,7 @@ def handle_list_tasks(goptions, session, args):
             continue
         print_task_recurse(t)
 
+
 def handle_set_pkg_arches(goptions, session, args):
     "[admin] Set the list of extra arches for a package"
     usage = _("usage: %prog set-pkg-arches [options] arches tag package [package2 ...]")
@@ -5828,6 +5923,7 @@ def handle_set_pkg_arches(goptions, session, args):
         #really should implement multicall...
         session.packageListSetArches(tag,package,arches,force=options.force)
 
+
 def handle_set_pkg_owner(goptions, session, args):
     "[admin] Set the owner for a package"
     usage = _("usage: %prog set-pkg-owner [options] owner tag package [package2 ...]")
@@ -5844,6 +5940,7 @@ def handle_set_pkg_owner(goptions, session, args):
     for package in args[2:]:
         #really should implement multicall...
         session.packageListSetOwner(tag,package,owner,force=options.force)
+
 
 def handle_set_pkg_owner_global(goptions, session, args):
     "[admin] Set the owner for a package globally"
@@ -5904,6 +6001,7 @@ def handle_set_pkg_owner_global(goptions, session, args):
                         % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
             session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 
+
 def anon_handle_watch_task(goptions, session, args):
     "[monitor] Track progress of particular tasks"
     usage = _("usage: %prog watch-task [options] <task id> [<task id>...]")
@@ -5946,6 +6044,7 @@ def anon_handle_watch_task(goptions, session, args):
     return watch_tasks(session, tasks, quiet=options.quiet,
             poll_interval=goptions.poll_interval)
 
+
 def anon_handle_watch_logs(goptions, session, args):
     "[monitor] Watch logs in realtime"
     usage = _("usage: %prog watch-logs [options] <task id> [<task id>...]")
@@ -5965,6 +6064,7 @@ def anon_handle_watch_logs(goptions, session, args):
         parser.error(_("at least one task id must be specified"))
 
     watch_logs(session, tasks, options, goptions.poll_interval)
+
 
 def handle_make_task(opts, session, args):
     "[admin] Create an arbitrary task"
@@ -5994,6 +6094,7 @@ def handle_make_task(opts, session, args):
         return watch_tasks(session, [task_id], quiet=opts.quiet,
                 poll_interval=opts.poll_interval)
 
+
 def handle_tag_build(opts, session, args):
     "[bind] Apply a tag to one or more builds"
     usage = _("usage: %prog tag-build [options] <tag> <pkg> [<pkg>...]")
@@ -6018,6 +6119,7 @@ def handle_tag_build(opts, session, args):
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
                 poll_interval=opts.poll_interval)
+
 
 def handle_move_build(opts, session, args):
     "[bind] 'Move' one or more builds between tags"
@@ -6065,6 +6167,7 @@ def handle_move_build(opts, session, args):
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
                 poll_interval=opts.poll_interval)
+
 
 def handle_untag_build(goptions, session, args):
     "[bind] Remove a tag from one or more builds"
@@ -6136,6 +6239,7 @@ def handle_untag_build(goptions, session, args):
                 print(_("untagging %(nvr)s") % binfo)
             session.untagBuild(tag['name'], binfo['nvr'], force=options.force)
 
+
 def handle_unblock_pkg(goptions, session, args):
     "[admin] Unblock a package in the listing for tag"
     usage = _("usage: %prog unblock-pkg [options] tag package [package2 ...]")
@@ -6150,6 +6254,7 @@ def handle_unblock_pkg(goptions, session, args):
     for package in args[1:]:
         #really should implement multicall...
         session.packageListUnblock(tag,package)
+
 
 def anon_handle_download_build(options, session, args):
     "[download] Download a built package"
@@ -6503,6 +6608,7 @@ def anon_handle_download_task(options, session, args):
         output_file.write(session.downloadTaskOutput(task["id"], filename, volume=volume))
         output_file.close()
 
+
 def anon_handle_wait_repo(options, session, args):
     "[monitor] Wait for a repo to be regenerated"
     usage = _("usage: %prog wait-repo [options] <tag>")
@@ -6587,6 +6693,7 @@ def anon_handle_wait_repo(options, session, args):
 
 _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'maven', 'win')
 
+
 def handle_regen_repo(options, session, args):
     "[admin] Force a repo to be regenerated"
     usage = _("usage: %prog regen-repo [options] <tag>")
@@ -6641,6 +6748,7 @@ def handle_regen_repo(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                 poll_interval=options.poll_interval)
+
 
 def handle_dist_repo(options, session, args):
     """Create a yum repo with distribution options"""
@@ -6786,6 +6894,7 @@ def anon_handle_search(options, session, args):
     data = session.search(pattern, type, matchType)
     for row in data:
         print(row['name'])
+
 
 def handle_moshimoshi(options, session, args):
     "[misc] Introduce yourself"
