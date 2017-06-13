@@ -1636,8 +1636,6 @@ def read_config(profile_name, user_config=None):
         'authtype': None,
         'debug': False,
         'debug_xmlrpc': False,
-        'pluginpath': '',
-        'plugins': '',
     }
 
     result = config_defaults.copy()

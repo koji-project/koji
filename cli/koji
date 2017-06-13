@@ -70,16 +70,16 @@ def load_plugins(options):
     is that system plugins are first, so they can be overriden by
     user-specified ones with same name."""
     logger = logging.getLogger('koji.plugins')
-    pluginpaths = options.pluginpath.split()
     syspath = '%s/lib/python%s.%s/site-packages/koji_cli_plugins' % \
               (sys.prefix, sys.version_info.major, sys.version_info.minor)
     if os.path.exists(syspath):
-        pluginpaths = [syspath] + pluginpaths
-    tracker = koji.plugin.PluginTracker(path=pluginpaths)
-    for name in options.plugins.split():
-        logger.info('Loading plugin: %s', name)
-        tracker.load(name)
-        register_plugin(tracker.get(name))
+        tracker = koji.plugin.PluginTracker(path=syspath)
+        for name in sorted(os.listdir(syspath)):
+            if not name.endswith('.py'):
+                continue
+            logger.info('Loading plugin: %s', name)
+            tracker.load(name)
+            register_plugin(tracker.get(name))
 
 
 def get_options():
@@ -140,7 +140,7 @@ def get_options():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
 
-    dir_opts = ('topdir', 'cert', 'serverca', 'pluginpath')
+    dir_opts = ('topdir', 'cert', 'serverca')
     for name in dir_opts:
         # expand paths here, so we don't have to worry about it later
         value = os.path.expanduser(getattr(options, name))
