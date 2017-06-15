@@ -778,7 +778,8 @@ def handle_resubmit(goptions, session, args):
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
     parser.add_option("--nowatch", action="store_true", dest="nowait",
             help=_("An alias for --nowait"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+            help=_("Do not print the task information"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a single task ID"))
@@ -855,7 +856,7 @@ def anon_handle_mock_config(goptions, session, args):
                       help=_("Specify mockdir"))
     parser.add_option("--topdir", metavar="DIR",
                       help=_("Specify topdir"))
-    parser.add_option("--topurl", metavar="URL", default=options.topurl,
+    parser.add_option("--topurl", metavar="URL", default=goptions.topurl,
                       help=_("URL under which Koji files are accessible"))
     parser.add_option("--distribution", default="Koji Testing",
                       help=_("Change the distribution macro"))
@@ -2223,7 +2224,8 @@ def anon_handle_latest_build(goptions, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven"))
     (options, args) = parser.parse_args(args)
@@ -2332,7 +2334,8 @@ def anon_handle_list_tagged(goptions, session, args):
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
     parser.add_option("--latest-n", type='int', metavar="N", help=_("Only show the latest N builds/rpms"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven, win, image"))
@@ -2655,7 +2658,8 @@ def anon_handle_list_channels(goptions, session, args):
     usage = _("usage: %prog list-channels")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=goptions.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print header information"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     channels = session.listChannels()
@@ -2681,7 +2685,8 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
     parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
     parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print header information"))
     (options, args) = parser.parse_args(args)
     opts = {}
     activate_session(session, goptions)
@@ -2734,7 +2739,8 @@ def anon_handle_list_pkgs(goptions, session, args):
     parser.add_option("--owner", help=_("Specify owner"))
     parser.add_option("--tag", help=_("Specify tag"))
     parser.add_option("--package", help=_("Specify package"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print header information"))
     parser.add_option("--noinherit", action="store_true", help=_("Don't follow inheritance"))
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
@@ -3520,7 +3526,8 @@ def anon_handle_list_targets(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--name", help=_("Specify the build target name"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not print the header information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print the header information"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -4906,7 +4913,7 @@ def anon_handle_list_external_repos(goptions, session, args):
     parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("Query at timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#",
                             help=_("Query at event corresponding to (nonexternal) repo"))
-    parser.add_option("--quiet", action="store_true", default=options.quiet,
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not display the column headers"))
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
@@ -5886,7 +5893,8 @@ def handle_list_tasks(goptions, session, args):
     parser.add_option("--method", help=_("Only tasks of this method"))
     parser.add_option("--channel", help=_("Only tasks in this channel"))
     parser.add_option("--host", help=_("Only tasks for this host"))
-    parser.add_option("--quiet", action="store_true", help=_("Do not display the column headers"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not display the column headers"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -6007,8 +6015,8 @@ def anon_handle_watch_task(goptions, session, args):
     usage = _("usage: %prog watch-task [options] <task id> [<task id>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--quiet", action="store_true",
-                      help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                      help=_("Do not print the task information"))
     parser.add_option("--mine", action="store_true", help=_("Just watch your tasks"))
     parser.add_option("--user", help=_("Only tasks for this user"))
     parser.add_option("--arch", help=_("Only tasks for this architecture"))
