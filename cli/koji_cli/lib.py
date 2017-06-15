@@ -374,7 +374,7 @@ def watch_logs(session, tasklist, opts, poll_interval):
                                 sys.stdout.write("\n")
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
-                        sys.stdout.write(contents)
+                        sys.stdout.write(contents.decode('utf8'))
 
         if not tasklist:
             break
