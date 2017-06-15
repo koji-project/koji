@@ -1572,7 +1572,7 @@ def handle_prune_signed_copies(options, session, args):
                 #at the same event, revokes happen first
                 if x['revoke_event'] is not None:
                     timeline.append((x['revoke_event'], 0, x))
-            timeline.sort()
+            timeline.sort(key=lambda entry: entry[:2])
             #find most recent creation entry for our build and crop there
             latest_ts = None
             for i in range(len(timeline)-1, -1, -1):
@@ -3731,7 +3731,7 @@ def anon_handle_list_tag_history(goptions, session, args):
             timeline.append((event_id, x))
         event_id = x['create_event']
         timeline.append((event_id, x))
-    timeline.sort()
+    timeline.sort(key=lambda entry: entry[0])
 
     def _histline(event_id, x):
         if event_id == x['revoke_event']:
@@ -4069,7 +4069,7 @@ def anon_handle_list_history(goptions, session, args):
                     #pprint.pprint(timeline[-1])
                 if distinguish_match(x, 'created'):
                     timeline.append((x['create_event'], table, 1, x))
-        timeline.sort()
+        timeline.sort(key=lambda entry: entry[:3])
         #group edits together
         new_timeline = []
         last_event = None
