@@ -2,7 +2,7 @@ PYTHON=python
 PACKAGE = $(shell basename `pwd`)
 ifeq ($(PYTHON), python3)
     # for python3 we fully support only basic library + CLI
-    PYFILES = __init__.py util.py
+    PYFILES = __init__.py util.py plugin.py
     PYSCRIPTS =
     SUBDIRS =
 else

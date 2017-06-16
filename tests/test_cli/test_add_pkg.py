@@ -1,16 +1,14 @@
 from __future__ import absolute_import
-import unittest
 
-import os
-import sys
 import mock
+import os
 import six
+import sys
+import unittest
 
 from mock import call
 
-from . import loadcli
-
-cli = loadcli.cli
+from koji_cli.commands import handle_add_pkg
 
 
 class TestAddPkg(unittest.TestCase):
@@ -19,7 +17,7 @@ class TestAddPkg(unittest.TestCase):
     maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -49,12 +47,12 @@ class TestAddPkg(unittest.TestCase):
         # Run it and check immediate output
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4', tag, package
         # expected: success
-        rv = cli.handle_add_pkg(options, session, args)
+        rv = handle_add_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'Adding 1 packages to tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         session.getUser.assert_called_once_with(owner)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_called_once_with(tagID=dsttag['id'])
@@ -64,7 +62,7 @@ class TestAddPkg(unittest.TestCase):
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_multi_pkg(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
@@ -92,12 +90,12 @@ class TestAddPkg(unittest.TestCase):
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: success
-        rv = cli.handle_add_pkg(options, session, args)
+        rv = handle_add_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'Package package2 already exists in tag tag\nAdding 2 packages to tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag),
@@ -108,7 +106,7 @@ class TestAddPkg(unittest.TestCase):
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_owner_no_exists(
             self, activate_session_mock, stdout):
         tag = 'tag'
@@ -130,7 +128,7 @@ class TestAddPkg(unittest.TestCase):
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: failed: owner does not exist
-        rv = cli.handle_add_pkg(options, session, args)
+        rv = handle_add_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'User owner does not exist\n'
         self.assertMultiLineEqual(actual, expected)
@@ -141,7 +139,7 @@ class TestAddPkg(unittest.TestCase):
         self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_tag_no_exists(self, activate_session_mock, stdout):
         tag = 'tag'
         dsttag = None
@@ -165,12 +163,12 @@ class TestAddPkg(unittest.TestCase):
         #       tag, package1, package2, package3
         # expected: failed: tag does not exist
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_add_pkg(options, session, args)
+            handle_add_pkg(options, session, args)
         actual = stdout.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session)
+        activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag)])
@@ -178,7 +176,7 @@ class TestAddPkg(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_no_owner(
             self, activate_session_mock, stderr, stdout):
         tag = 'tag'
@@ -194,7 +192,7 @@ class TestAddPkg(unittest.TestCase):
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_add_pkg(options, session, args)
+            handle_add_pkg(options, session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -216,7 +214,7 @@ class TestAddPkg(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
+    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_no_arg(
             self, activate_session_mock, stderr, stdout):
         args = []
@@ -228,7 +226,7 @@ class TestAddPkg(unittest.TestCase):
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_add_pkg(options, session, args)
+            handle_add_pkg(options, session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''

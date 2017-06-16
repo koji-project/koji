@@ -1,15 +1,11 @@
 from __future__ import absolute_import
+import mock
+import os
+import six
+import sys
 import unittest
 
-import os
-import sys
-import mock
-import six
-
-from . import loadcli
-
-cli = loadcli.cli
-
+from koji_cli.commands import handle_build, _progress_callback
 
 class TestBuild(unittest.TestCase):
     # Show long diffs in error output...
@@ -20,14 +16,15 @@ class TestBuild(unittest.TestCase):
         self.options = mock.MagicMock()
         self.options.quiet = None
         self.options.weburl = 'weburl'
+        self.options.poll_interval = 0
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_from_srpm(
             self,
             watch_tasks_mock,
@@ -51,7 +48,7 @@ class TestBuild(unittest.TestCase):
         # Run it and check immediate output
         # args: target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Uploading srpm: srpm
 
@@ -60,25 +57,26 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
         self.assertEqual(running_in_bg_mock.call_count, 2)
         self.session.uploadWrapper.assert_called_once_with(
-            source, 'random_path', callback=cli._progress_callback)
+            source, 'random_path', callback=_progress_callback)
         self.session.build.assert_called_once_with(
             'random_path/' + source, target, opts, priority=priority)
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_from_scm(
             self,
             watch_tasks_mock,
@@ -102,14 +100,14 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target, http://scm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Created task: 1
 Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_not_called()
@@ -119,15 +117,16 @@ Task info: weburl/taskinfo?taskID=1
             source, target, opts, priority=priority)
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_no_arg(
             self,
             watch_tasks_mock,
@@ -141,7 +140,7 @@ Task info: weburl/taskinfo?taskID=1
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -167,10 +166,10 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_help(
             self,
             watch_tasks_mock,
@@ -184,7 +183,7 @@ Task info: weburl/taskinfo?taskID=1
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s build [options] target <srpm path or scm url>
@@ -221,10 +220,10 @@ Options:
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_arch_override_denied(
             self,
             watch_tasks_mock,
@@ -241,7 +240,7 @@ Options:
 
         # Run it and check immediate output
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -266,10 +265,10 @@ Options:
         self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_none_tag(
             self,
             watch_tasks_mock,
@@ -289,14 +288,14 @@ Options:
         # Run it and check immediate output
         # args: --repo-id=2, nOne, http://scm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Created task: 1
 Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_not_called()
         self.session.getTag.assert_not_called()
         unique_path_mock.assert_not_called()
@@ -307,14 +306,15 @@ Task info: weburl/taskinfo?taskID=1
             source, None, opts, priority=priority)
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_target_not_found(
             self,
             watch_tasks_mock,
@@ -334,7 +334,7 @@ Task info: weburl/taskinfo?taskID=1
         # args: target, http://scm
         # expected: failed, target not found
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
         expected = """Usage: %s build [options] target <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
@@ -343,7 +343,7 @@ Task info: weburl/taskinfo?taskID=1
 """ % (progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_not_called()
         unique_path_mock.assert_not_called()
@@ -355,10 +355,10 @@ Task info: weburl/taskinfo?taskID=1
         self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_dest_tag_not_found(
             self,
             watch_tasks_mock,
@@ -382,7 +382,7 @@ Task info: weburl/taskinfo?taskID=1
         # args: target, http://scm
         # expected: failed, dest_tag not found
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
         expected = """Usage: %s build [options] target <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
@@ -391,7 +391,7 @@ Task info: weburl/taskinfo?taskID=1
 """ % (progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_not_called()
@@ -403,10 +403,10 @@ Task info: weburl/taskinfo?taskID=1
         self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_dest_tag_locked(
             self,
             watch_tasks_mock,
@@ -430,7 +430,7 @@ Task info: weburl/taskinfo?taskID=1
         # args: target, http://scm
         # expected: failed, dest_tag is locked
         with self.assertRaises(SystemExit) as cm:
-            cli.handle_build(self.options, self.session, args)
+            handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
         expected = """Usage: %s build [options] target <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
@@ -439,7 +439,7 @@ Task info: weburl/taskinfo?taskID=1
 """ % (progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_not_called()
@@ -451,10 +451,10 @@ Task info: weburl/taskinfo?taskID=1
         self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_arch_override(
             self,
             watch_tasks_mock,
@@ -484,14 +484,14 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --arch-override=somearch, --scratch, target, http://scm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Created task: 1
 Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_not_called()
@@ -502,14 +502,15 @@ Task info: weburl/taskinfo?taskID=1
             source, target, opts, priority=priority)
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_background(
             self,
             watch_tasks_mock,
@@ -533,14 +534,14 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --background, target, http://scm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Created task: 1
 Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_not_called()
@@ -550,14 +551,15 @@ Task info: weburl/taskinfo?taskID=1
             source, target, opts, priority=priority)
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=True)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=True)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_running_in_bg(
             self,
             watch_tasks_mock,
@@ -581,7 +583,7 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Uploading srpm: srpm
 
@@ -590,7 +592,7 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
@@ -605,10 +607,10 @@ Task info: weburl/taskinfo?taskID=1
         self.assertIsNone(rv)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_noprogress(
             self,
             watch_tasks_mock,
@@ -632,7 +634,7 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --noprogress, target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Uploading srpm: srpm
 
@@ -641,7 +643,7 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
@@ -653,14 +655,15 @@ Task info: weburl/taskinfo?taskID=1
             'random_path/' + source, target, opts, priority=priority)
         self.session.logout.assert_called_once()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_quiet(
             self,
             watch_tasks_mock,
@@ -685,12 +688,12 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --quiet, target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = '\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
@@ -702,14 +705,15 @@ Task info: weburl/taskinfo?taskID=1
             'random_path/' + source, target, opts, priority=priority)
         self.session.logout.assert_called_once()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=quiet)
+            self.session, [task_id], quiet=quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_wait(
             self,
             watch_tasks_mock,
@@ -734,7 +738,7 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --wait, target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Uploading srpm: srpm
 
@@ -743,26 +747,27 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
         # the second one won't be executed when wait==False
         self.assertEqual(running_in_bg_mock.call_count, 1)
         self.session.uploadWrapper.assert_called_once_with(
-            source, 'random_path', callback=cli._progress_callback)
+            source, 'random_path', callback=_progress_callback)
         self.session.build.assert_called_once_with(
             'random_path/' + source, target, opts, priority=priority)
         self.session.logout.assert_called_once()
         watch_tasks_mock.assert_called_once_with(
-            self.session, [task_id], quiet=self.options.quiet)
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.activate_session')
-    @mock.patch('koji_cli._unique_path', return_value='random_path')
-    @mock.patch('koji_cli._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.watch_tasks', return_value=0)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_nowait(
             self,
             watch_tasks_mock,
@@ -786,7 +791,7 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --nowait, target, srpm
         # expected: success
-        rv = cli.handle_build(self.options, self.session, args)
+        rv = handle_build(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = """Uploading srpm: srpm
 
@@ -795,14 +800,14 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag)
         unique_path_mock.assert_called_once_with('cli-build')
         # the second one won't be executed when wait==False
         self.assertEqual(running_in_bg_mock.call_count, 1)
         self.session.uploadWrapper.assert_called_once_with(
-            source, 'random_path', callback=cli._progress_callback)
+            source, 'random_path', callback=_progress_callback)
         self.session.build.assert_called_once_with(
             'random_path/' + source, target, opts, priority=priority)
         self.session.logout.assert_not_called()

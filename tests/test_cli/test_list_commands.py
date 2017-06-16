@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 import mock
 import os
-import unittest
 import six
+import unittest
 
 from . import loadcli
 cli = loadcli.cli

@@ -188,3 +188,63 @@ tagging a build:
 ::
 
     $ koji tag-build mytag mypkg-1.0-1
+
+New command for CLI
+-------------------
+
+When you add new XMLRPC call or just wanted to do some more complicated
+things with API, you can benefit from writing a new command for CLI.
+
+Most simple command would look like this:
+
+::
+
+    from koji.plugin import export_cli
+
+    @export_cli
+    def anon_handle_echo(options, session, args):
+        usage = _("usage: %prog echo <message>")
+        parser = OptionParser(usage=usage)
+        (opts, args) = parser.parse_args(args)
+        print(args[0])
+
+`@export_cli` is decorator which will register plugin's command with name
+derived from name of the function. Function name needs to follow one rule: It
+has to start with `anon_handle_` or `handle_`. Rest of the name is name of
+the command. First one will not authenticate against hub (user can still override
+this behaviour with `--force-auth` or `--mine` options where it is relevant)
+- it is simply same as using `--noath` option. Second variant doesn't presume
+  anything about authentication.
+
+Compared to this simple example is real usage with API calls. Koji provides
+some important functions via client library `koji_cli.lib` which can be
+imported and used inside command's function. Feel free to examine, what is
+provided there. Some notable examples are:
+
+ * `activate_session(session, options)` - It is needed to authenticate
+   against hub. Both parameters are same as those passed to handler.
+ * `watch_tasks(session, tasklist, quiet=False, poll_interval=60)` - It is
+   the same function used e.g. in `build` command for waiting for spawned
+   tasks.
+ * `list_task_output_all_volumes(session, task_id)` - wrapper function for
+   `listTaskOutput` with different versions of hub.
+
+Final command has to be saved in python system-wide library path - e.g. in
+`/usr/lib/python3.4/site-packages/koji_cli_plugins`. Filename doesn't matter
+as all files in this directory are searched for `@export_cli` macros. Note,
+that python 3 variant of CLI is looking to different directory than python 2
+one.
+
+CLI plugins structure will be extended (made configurable and allowing more
+than just adding commands - e.g. own authentication methods, etc.) in future.
+
+Pull requests
+^^^^^^^^^^^^^
+
+These plugins have to be written in python 2.6+/3.x compatible way. We are
+using `six` library to support this, so we will also prefer pull requests
+written this way. CLI (and client library) is meant to be fully compatible
+with python 3 from koji 1.13.
+
+Tests are also recommended for PR. For example one see
+`tests/test_plugins/test_runroot_cli.py`.

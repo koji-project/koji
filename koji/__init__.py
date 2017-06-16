@@ -2680,7 +2680,8 @@ class ClientSession(object):
         if volume and volume != 'DEFAULT':
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
-        return base64.decodestring(result)
+        return base64.decodestring(result.encode('ascii'))
+
 
 class DBHandler(logging.Handler):
     """

@@ -1,49 +1,38 @@
 from __future__ import absolute_import
+import mock
+import os
+import six
+import sys
 import unittest
 
-import os
-import sys
-
-import mock
-
 from mock import call
-
-from . import loadcli
 from six.moves import range
-import six
 
-cli = loadcli.cli
+from koji_cli.lib import watch_tasks
 
 
 class TestWatchTasks(unittest.TestCase):
 
     def setUp(self):
         self.options = mock.MagicMock()
-        cli.options = self.options
         self.session = mock.MagicMock(name='sessionMock')
         self.args = mock.MagicMock()
-        self.original_parser = cli.OptionParser
-        cli.OptionParser = mock.MagicMock()
-        self.parser = cli.OptionParser.return_value
-
-    def tearDown(self):
-        cli.OptionParser = self.original_parser
 
     # Show long diffs in error output...
     maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_watch_tasks_no_tasklist(self, stdout):
-        returned = cli.watch_tasks(self.session, [])
+        returned = watch_tasks(self.session, [], poll_interval=0)
         actual = stdout.getvalue()
         expected = ""
         self.assertIsNone(returned)
         self.assertEqual(actual, expected)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.TaskWatcher')
-    @mock.patch('koji_cli.display_tasklist_status')
-    @mock.patch('koji_cli.display_task_results')
+    @mock.patch('koji_cli.lib.TaskWatcher')
+    @mock.patch('koji_cli.lib.display_tasklist_status')
+    @mock.patch('koji_cli.lib.display_task_results')
     def test_watch_tasks(self, dtrMock, dtsMock, twClzMock, stdout):
         self.options.poll_interval = 0
         manager = mock.MagicMock()
@@ -78,7 +67,7 @@ class TestWatchTasks(unittest.TestCase):
             return rt
 
         twClzMock.side_effect = side_effect
-        rv = cli.watch_tasks(self.session, list(range(2)), quiet=False)
+        rv = watch_tasks(self.session, list(range(2)), quiet=False, poll_interval=0)
         actual = stdout.getvalue()
         self.assertMultiLineEqual(
             actual, "Watching tasks (this may be safely interrupted)...\n\n")
@@ -171,9 +160,9 @@ class TestWatchTasks(unittest.TestCase):
                           ])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.TaskWatcher')
-    @mock.patch('koji_cli.display_tasklist_status')
-    @mock.patch('koji_cli.display_task_results')
+    @mock.patch('koji_cli.lib.TaskWatcher')
+    @mock.patch('koji_cli.lib.display_tasklist_status')
+    @mock.patch('koji_cli.lib.display_task_results')
     def test_watch_tasks_with_keyboardinterrupt(
             self, dtrMock, dtsMock, twClzMock, stdout):
         """Raise KeyboardInterrupt inner watch_tasks.
@@ -217,7 +206,7 @@ class TestWatchTasks(unittest.TestCase):
         twClzMock.side_effect = side_effect
 
         with self.assertRaises(KeyboardInterrupt):
-            cli.watch_tasks(self.session, list(range(2)), quiet=False)
+            watch_tasks(self.session, list(range(2)), quiet=False, poll_interval=0)
 
         actual = stdout.getvalue()
         self.assertMultiLineEqual(
