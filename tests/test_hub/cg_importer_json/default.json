@@ -52,7 +52,15 @@
                                  "filename": "jboss-eap-6.3.3-full-build.zip",
                                  "filesize": 12345678,
                                  "checksum": "5ec2f29c4e1c2e2aa6552836e236a158",
-                                 "checksum_type": "md5"}],
+                                 "checksum_type": "md5"},
+                                {"type": "kojifile",
+                                 "filename": "jboss-eap-6.4.10-1.win6.src.zip",
+                                 "filesize": 21670719,
+                                 "checksum": "215cf04db6bdbefb9644f001995bd550",
+                                 "checksum_type": "md5",
+                                 "archive_id": 1,
+                                 "nvr": "jboss-eap-6.4.10-1.win6"}
+                 ],
                  "extra": {"osbs": {"build_id": 12345,
                                     "builder_image_id": 67890}}
                  }],

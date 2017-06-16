@@ -108,6 +108,14 @@ Each map in the buildroots list contains the following entries:
    -  checksum: The checksum of the file.
    -  checksum\_type: The checksum type used.
 
+-  For maps where **type = kojifile**, the following fields will be present:
+   -  filename: The name of the file.
+   -  filesize: The size of the file.
+   -  checksum: The checksum of the file.
+   -  checksum\_type: The checksum type used.
+   -  nvr: Build nvr from which this file origins.
+   -  archive\_id: ID of archive from specified build.
+
 -  The format may be extended with other types in the future.
 -  extra: A map containing information specific to the Content Generator
    that produced the files to import. For OSBS, the extra map should

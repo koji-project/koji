@@ -5360,6 +5360,10 @@ class CG_Importer(object):
                 match = self.match_file(comp)
                 if match:
                     files.append(match)
+            elif comp['type'] == 'kojifile':
+                match = self.match_kojifile(comp)
+                if match:
+                    files.append(match)
             else:
                 raise koji.GenericError("Unknown component type: %(type)s" % comp)
         return rpms, files
@@ -5410,6 +5414,27 @@ class CG_Importer(object):
         logger.warning("IGNORING unmatched archive: %r", comp)
         return None
         #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
+
+    def match_kojifile(self, comp):
+        # kojifile is identified by nvr + archive_id + filename
+        # additional checks by checksum
+        assert(comp['type'] == 'kojifile')
+        build = get_build(comp['nvr'])
+        if build is None:
+            logger.error("No match: NVR: %(nvr)" % comp)
+            return None
+        try:
+            archive = list_archives(buildID = build['id'], archiveID = comp['archive_id'])[0]
+        except IndexError:
+            logger.error("No match: NVR: %(nvr), Archive: %(archive_id)s" % comp)
+            return None
+        if archive['checksum_type'] != koji.CHECKSUM_TYPES[comp['checksum_type']]:
+            logger.error("Failed to match archive %(filename)s, unsupported checksum type: %(checksum_type)s" % archive)
+        elif archive['checksum'] != comp['checksum']:
+            logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
+        else:
+            return archive
+        return None
 
 
     def prep_outputs(self):
