@@ -1028,9 +1028,26 @@ def handle_restart_hosts(options, session, args):
                       help=_("Don't wait on task"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--force", action="store_true",
+                      help=_("Ignore checks and force operation"))
     (my_opts, args) = parser.parse_args(args)
 
     activate_session(session, options)
+
+    # check for existing restart tasks
+    if not my_opts.force:
+        query = {
+            'method': 'restartHosts',
+            'state':
+                [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+            }
+        others = session.listTasks(query)
+        if others:
+            print('Found other restartHosts tasks running.')
+            print('Task ids: %r' % [t['id'] for t in others])
+            print('Use --force to run anyway')
+            return 1
+
     task_id = session.restartHosts()
     if my_opts.wait or (my_opts.wait is None and not _running_in_bg()):
         session.logout()
