@@ -77,6 +77,7 @@ def load_plugins(options):
         for name in sorted(os.listdir(syspath)):
             if not name.endswith('.py'):
                 continue
+            name = name[:-3]
             logger.info('Loading plugin: %s', name)
             tracker.load(name)
             register_plugin(tracker.get(name))
