@@ -1034,6 +1034,8 @@ def handle_restart_hosts(options, session, args):
     parser.add_option("--arch", "-a", action="append", default=[],
                       help=_("Limit to hosts of this architecture (can be "
                                 "given multiple times)"))
+    parser.add_option("--timeout", metavar='N', type='int',
+                      help=_("Time out after N seconds"))
     (my_opts, args) = parser.parse_args(args)
 
     activate_session(session, options)
@@ -1057,6 +1059,8 @@ def handle_restart_hosts(options, session, args):
         callopts['channel'] = my_opts.channel
     if my_opts.arch:
         callopts['arches'] = my_opts.arch
+    if my_opts.timeout:
+        callopts['timeout'] = my_opts.timeout
     if callopts:
         task_id = session.restartHosts(options=callopts)
     else:

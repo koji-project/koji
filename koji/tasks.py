@@ -256,18 +256,25 @@ class BaseTaskHandler(object):
                 else:
                     # at least one done
                     break
-            # signal handler set by TaskManager.forkTask
-            self.logger.debug("Pausing...")
-            signal.pause()
-            # main process will wake us up with SIGUSR2
-            self.logger.debug("...waking up")
             if timeout:
+                # sleep until timeout is up (or let main process wake us up)
+                remain = start + timeout - time.time()
+                self.logger.debug("Sleeping for %.1fs", remain)
+                if remain > 0:
+                    time.sleep(remain)
+                # check if we're timed out
                 duration = time.time() - start
                 if duration > timeout:
                     self.logger.info('Subtasks timed out')
                     self.session.cancelTaskChildren(self.id)
-                    raise koji.GenericError('Subtasks timed out after %s '
+                    raise koji.GenericError('Subtasks timed out after %.1f '
                                 'seconds' % duration)
+            else:
+                # signal handler set by TaskManager.forkTask
+                self.logger.debug("Pausing...")
+                signal.pause()
+                # main process will wake us up with SIGUSR2
+                self.logger.debug("...waking up")
 
         self.logger.debug("Finished waiting")
         if all:
