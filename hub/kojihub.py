@@ -8414,9 +8414,11 @@ class RootExports(object):
         raise koji.FunctionDeprecated()
         #return make_task('buildFromCVS',[url, tag])
 
-    def restartHosts(self, priority=5):
+    def restartHosts(self, priority=5, options=None):
         context.session.assertPerm('admin')
-        return make_task('restartHosts', [], priority=priority)
+        if options is None:
+            options = {}
+        return make_task('restartHosts', [options], priority=priority)
 
     def build(self, src, target, opts=None, priority=None, channel=None):
         """Create a build task

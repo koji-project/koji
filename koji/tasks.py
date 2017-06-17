@@ -191,7 +191,8 @@ class BaseTaskHandler(object):
         safe_rmtree(self.workdir, unmount=False, strict=True)
         #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
-    def wait(self, subtasks=None, all=False, failany=False, canfail=None):
+    def wait(self, subtasks=None, all=False, failany=False, canfail=None,
+                timeout=None):
         """Wait on subtasks
 
         subtasks is a list of integers (or an integer). If more than one subtask
@@ -205,6 +206,9 @@ class BaseTaskHandler(object):
 
         If canfail is given a list of task ids, then those tasks can fail
         without affecting the other tasks.
+
+        If timeout is specified, then subtasks will be failed and an exception
+        raised when the timeout is exceeded.
 
         special values:
             subtasks = None     specify all subtasks
@@ -223,6 +227,7 @@ class BaseTaskHandler(object):
             subtasks = [subtasks]
         self.session.host.taskSetWait(self.id, subtasks)
         self.logger.debug("Waiting on %r" % subtasks)
+        start = time.time()
         while True:
             finished, unfinished = self.session.host.taskWait(self.id)
             if len(unfinished) == 0:
@@ -256,6 +261,14 @@ class BaseTaskHandler(object):
             signal.pause()
             # main process will wake us up with SIGUSR2
             self.logger.debug("...waking up")
+            if timeout:
+                duration = time.time() - start
+                if duration > timeout:
+                    self.logger.info('Subtasks timed out')
+                    self.session.cancelTaskChildren(self.id)
+                    raise koji.GenericError('Subtasks timed out after %s '
+                                'seconds' % duration)
+
         self.logger.debug("Finished waiting")
         if all:
             finished = subtasks
@@ -507,36 +520,49 @@ class RestartVerifyTask(BaseTaskHandler):
 
 
 class RestartHostsTask(BaseTaskHandler):
-    """Gracefully restart the daemon"""
+    """Gracefully restart the build hosts"""
 
     Methods = ['restartHosts']
     _taskWeight = 0.1
-    def handler(self):
-        hosts = self.session.listHosts(enabled=True)
+    def handler(self, options):
+        # figure out which hosts we're restarting
+        hostquery = {'enabled': True}
+        if 'channel' in options:
+            chan = self.session.getChannel(options['channel'], strict=True)
+            hostquery['channelID']= chan['id']
+        if 'arches' in options:
+            hostquery['arches'] = options['arches']
+        hosts = self.session.listHosts(**hostquery)
         if not hosts:
-            raise koji.GenericError("No hosts enabled")
+            raise koji.GenericError("No matching hosts")
+
+        timeout = options.get('timeout', 3600*24)
+
+        # fire off the subtasks
         this_host = self.session.host.getID()
         subtasks = []
         my_tasks = None
         for host in hosts:
-            #note: currently task assignments bypass channel restrictions
+            # note: currently task assignments bypass channel restrictions
             task1 = self.subtask('restart', [host], assign=host['id'], label="restart %i" % host['id'])
             task2 = self.subtask('restartVerify', [task1, host], assign=host['id'], label="sleep %i" % host['id'])
             subtasks.append(task1)
             subtasks.append(task2)
             if host['id'] == this_host:
                 my_tasks = [task1, task2]
-        if not my_tasks:
-            raise koji.GenericError('This host is not enabled')
-        self.wait(my_tasks[0])
-        #see if we've restarted
-        if not self.session.taskFinished(my_tasks[1]):
-            raise ServerRestart
-            #raising this inside a task handler causes TaskManager.runTask
-            #to free the task so that it will not block a pending restart
+
+        # if we're being restarted, then we have to take extra steps
+        if my_tasks:
+            self.wait(my_tasks[0], timeout=timeout)
+            # see if we've restarted
+            if not self.session.taskFinished(my_tasks[1]):
+                raise ServerRestart
+                # raising this inside a task handler causes TaskManager.runTask
+                # to free the task so that it will not block a pending restart
+
+        # at this point the subtasks do the rest
         if subtasks:
-            self.wait(subtasks, all=True)
-        return
+            self.wait(subtasks, all=True, timeout=timeout)
 
 
 class DependantTask(BaseTaskHandler):
