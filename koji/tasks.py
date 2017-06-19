@@ -259,8 +259,8 @@ class BaseTaskHandler(object):
             if timeout:
                 # sleep until timeout is up (or let main process wake us up)
                 remain = start + timeout - time.time()
-                self.logger.debug("Sleeping for %.1fs", remain)
                 if remain > 0:
+                    self.logger.debug("Sleeping for %.1fs", remain)
                     time.sleep(remain)
                 # check if we're timed out
                 duration = time.time() - start
