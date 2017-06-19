@@ -10532,27 +10532,29 @@ class RootExports(object):
 
         clauses = []
         joins = []
-        if arches != None:
+        if arches is not None:
+            if not arches:
+                raise koji.GenericError('arches option cannot be empty')
             # include the regex constraints below so we can match 'ppc' without
             # matching 'ppc64'
             if not (isinstance(arches, list) or isinstance(arches, tuple)):
                 arches = [arches]
             archClause = [r"""arches ~ E'\\m%s\\M'""" % arch for arch in arches]
             clauses.append('(' + ' OR '.join(archClause) + ')')
-        if channelID != None:
+        if channelID is not None:
             joins.append('host_channels on host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
-        if ready != None:
+        if ready is not None:
             if ready:
                 clauses.append('ready is true')
             else:
                 clauses.append('ready is false')
-        if enabled != None:
+        if enabled is not None:
             if enabled:
                 clauses.append('enabled is true')
             else:
                 clauses.append('enabled is false')
-        if userID != None:
+        if userID is not None:
             clauses.append('user_id = %(userID)i')
 
         query = QueryProcessor(columns=fields, tables=['host'],
