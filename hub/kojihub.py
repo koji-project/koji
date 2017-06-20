@@ -8417,8 +8417,10 @@ class RootExports(object):
     def restartHosts(self, priority=5, options=None):
         context.session.assertPerm('admin')
         if options is None:
-            options = {}
-        return make_task('restartHosts', [options], priority=priority)
+            args = []
+        else:
+            args = [options]
+        return make_task('restartHosts', args, priority=priority)
 
     def build(self, src, target, opts=None, priority=None, channel=None):
         """Create a build task

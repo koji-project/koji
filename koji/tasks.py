@@ -531,7 +531,9 @@ class RestartHostsTask(BaseTaskHandler):
 
     Methods = ['restartHosts']
     _taskWeight = 0.1
-    def handler(self, options):
+    def handler(self, options=None):
+        if options is None:
+            options = {}
         # figure out which hosts we're restarting
         hostquery = {'enabled': True}
         if 'channel' in options:
