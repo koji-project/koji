@@ -132,15 +132,6 @@
           #end if
           <tr>
             <th>$arch</th>
-            <td>
-              #if $task
-              #if $arch == 'noarch'
-              (<a href="$nvrpath/data/logs/$noarch_log_dest/">build logs</a>)
-              #else
-              (<a href="$nvrpath/data/logs/$arch/">build logs</a>)
-              #end if
-              #end if
-            </td>
           </tr>
           #for $rpm in $rpmsByArch[$arch]
           <tr>
@@ -172,19 +163,6 @@
           #for ext in $exts
           <tr>
             <th>$ext</th>
-            <td>
-          #if $task and $ext == $exts[0]
-            #if $btype == 'maven'
-                (<a href="$nvrpath/data/logs/maven/">build logs</a>)
-            #elif $btype == 'win'
-                (<a href="$nvrpath/data/logs/win/">build logs</a>)
-            #elif $btype == 'image'
-                (<a href="$nvrpath/data/logs/image">build logs</a>)
-            #else
-                (<a href="$nvrpath/data/logs">build logs</a>)
-            #end if
-          #end if
-            </td>
           </tr>
           #for $archive in $archivesByExt[$ext]
           <tr>
@@ -203,6 +181,29 @@
       </td>
     </tr>
     #end for
+    #if $logs_by_dir
+    <tr>
+      <th>Logs</th>
+      <td class="container">
+        <table class="nested">
+          #set $logdirs = $logs_by_dir.keys()
+          #for logdir in $logdirs
+          <tr>
+            <th>$logdir</th>
+          </tr>
+          #for loginfo in $logs_by_dir[$logdir]
+          <tr>
+            <td/>
+            <td>
+            <a href="$loginfo.dl_url">$loginfo.name</a>
+            </td>
+          </tr>
+          #end for
+          #end for
+        </table>
+      </td>
+    </tr>
+    #end if
     #if $changelog
     <tr>
       <th>Changelog</th>

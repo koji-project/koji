@@ -1145,26 +1145,8 @@ def buildinfo(environ, buildID):
         values['description'] = koji.fixEncoding(headers.get('description'))
         values['changelog'] = server.getChangelogEntries(build['id'])
 
-    noarch_log_dest = 'noarch'
     if build['task_id']:
         task = server.getTaskInfo(build['task_id'], request=True)
-        if 'noarch' in rpmsByArch and \
-                [a for a in rpmsByArch.keys() if a not in ('noarch', 'src')]:
-            # This build has noarch and other-arch packages, indicating either
-            # noarch in extra-arches (kernel) or noarch subpackages.
-            # Point the log link to the arch of the buildArch task that the first
-            # noarch package came from.  This will be correct in both the
-            # extra-arches case (noarch) and the subpackage case (one of the other
-            # arches).  If noarch extra-arches and noarch subpackages are mixed in
-            # same build, this will become incorrect.
-            noarch_rpm = rpmsByArch['noarch'][0]
-            if noarch_rpm['buildroot_id']:
-                noarch_buildroot = server.getBuildroot(noarch_rpm['buildroot_id'])
-                if noarch_buildroot:
-                    noarch_task = server.getTaskInfo(noarch_buildroot['task_id'], request=True)
-                    if noarch_task:
-                        noarch_log_dest = noarch_task['request'][2]
-
         # get the summary, description, and changelogs from the built srpm
         # if the build is not yet complete
         if build['state'] != koji.BUILD_STATES['COMPLETE']:
@@ -1189,6 +1171,17 @@ def buildinfo(environ, buildID):
     else:
         task = None
 
+    # get logs
+    logs = server.getBuildLogs(buildID)
+    logs_by_dir = {}
+    for loginfo in logs:
+        loginfo['dl_url'] = "%s/%s" % (topurl, loginfo['path'])
+        logdir = loginfo['dir']
+        if logdir == '.':
+            logdir = ''
+        logs_by_dir.setdefault(logdir, []).append(loginfo)
+    values['logs_by_dir'] = logs_by_dir
+
     values['build'] = build
     values['tags'] = tags
     values['rpmsByArch'] = rpmsByArch
@@ -1196,7 +1189,6 @@ def buildinfo(environ, buildID):
     values['typeinfo'] = typeinfo
     values['archiveIndex'] = archiveIndex
 
-    values['noarch_log_dest'] = noarch_log_dest
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
