@@ -84,8 +84,9 @@ class TestGetBuildLogs(unittest.TestCase):
         files2.sort()
         self.assertEqual(files, files2)
 
-    def test_get_build_logs_symlinks(self):
-        # symlinks should be ignored
+    @mock.patch('kojihub.logger')
+    def test_get_build_logs_symlinks(self, logger):
+        # symlinks should be ignored with a warning
         files = [
                 'noarch/build.log',
                 'noarch/root.log',
@@ -106,3 +107,25 @@ class TestGetBuildLogs(unittest.TestCase):
         files2 = ["%s/%s" % (f['dir'], f['name']) for f in data]
         files2.sort()
         self.assertEqual(files, files2)
+        self.assertEqual(logger.warning.call_count, 3)
+
+    @mock.patch('kojihub.logger')
+    def test_get_build_logs_nonfile(self, logger):
+        # symlinks should be ignored
+        files = [
+                'noarch/build.log',
+                'noarch/root.log',
+                'noarch/mock.log',
+                'noarch/checkout.log',
+                'noarch/readme.txt',
+                'noarch/hello',
+                'oddball/log/dir/fake.log',
+                ]
+        files.sort()
+        self.make_tree(files)
+        os.mkfifo('%s/%s' % (self.tempdir, 'this_is_a_named_pipe'))
+        data = kojihub.get_build_logs('fakebuild')
+        files2 = ["%s/%s" % (f['dir'], f['name']) for f in data]
+        files2.sort()
+        self.assertEqual(files, files2)
+        logger.warning.assert_called_once()
