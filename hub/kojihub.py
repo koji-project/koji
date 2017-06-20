@@ -5424,7 +5424,10 @@ class CG_Importer(object):
             logger.error("No match: NVR: %(nvr)" % comp)
             return None
         try:
-            archive = list_archives(buildID = build['id'], archiveID = comp['archive_id'])[0]
+            archive = list_archives(buildID = build['id'],
+                                    archiveID = comp['archive_id'],
+                                    filename=comp['filename'],
+                                    size=comp['filesize'])[0]
         except IndexError:
             logger.error("No match: NVR: %(nvr), Archive: %(archive_id)s" % comp)
             return None
