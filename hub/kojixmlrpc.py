@@ -60,6 +60,24 @@ class Marshaller(xmlrpclib.Marshaller):
         self.dump_string(value, write)
     dispatch[datetime.datetime] = dump_datetime
 
+    MAXI8 = 2 ** 64 - 1
+    MINI8 = -2 ** 64
+    def dump_i8(self, value, write):
+        # python2's xmlrpclib doesn't support i8 extension for marshalling,
+        # but can unmarshall it correctly.
+        if value > Marshaller.MAXI8 or value < Marshaller.MINI8:
+            raise OverflowError, "long int exceeds XML-RPC limits"
+        elif value > xmlrpclib.MAXINT or value < xmlrpclib.MININT:
+            write("<value><i8>")
+            write(str(int(value)))
+            write("</i8></value>\n")
+        else:
+            write("<value><int>")
+            write(str(int(value)))
+            write("</int></value>\n")
+    dispatch[types.LongType] = dump_i8
+    dispatch[types.IntType] = dump_i8
+
 xmlrpclib.Marshaller = Marshaller
 
 
