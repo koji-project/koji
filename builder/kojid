@@ -899,7 +899,7 @@ class BuildTask(BaseTaskHandler):
     def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
         task_id = self.session.host.subtask(method='buildSRPMFromSCM',
-                                            arglist=[url, build_tag, {'repo_id': repo_id}],
+                                            arglist=[url, build_tag, {'repo_id': repo_id, 'scratch': self.opts.get('scratch')}],
                                             label='srpm',
                                             parent=self.id)
         # wait for subtask to finish
@@ -1264,7 +1264,7 @@ class MavenTask(MultiPlatformTask):
                 raise koji.BuildError('no repo for tag %s' % build_tag['name'])
 
         build_opts = dslice(opts, ['goals', 'profiles', 'properties', 'envs', 'patches',
-                                   'packages', 'jvm_options', 'maven_options', 'deps'],
+                                   'packages', 'jvm_options', 'maven_options', 'deps', 'scratch'],
                             strict=False)
         build_opts['repo_id'] = repo_id
 
@@ -1364,7 +1364,6 @@ class BuildMavenTask(BaseBuildTask):
 
         scm = SCM(url)
         scm.assert_allowed(self.options.allowed_scms)
-
         repo_id = opts.get('repo_id')
         if not repo_id:
             raise koji.BuildError('A repo_id must be provided')
@@ -1415,8 +1414,14 @@ class BuildMavenTask(BaseBuildTask):
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
+
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         # Check out sources from the SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=opts.get('scratch'),
+                           srcdir=sourcedir)
 
         # zip up pristine sources for auditing purposes
         self._zip_dir(sourcedir, os.path.join(outputdir, 'scm-sources.zip'))
@@ -1426,9 +1431,14 @@ class BuildMavenTask(BaseBuildTask):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
             patch_scm.assert_allowed(self.options.allowed_scms)
+            self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
             # never try to check out a common/ dir when checking out patches
             patch_scm.use_common = False
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=patch_scm.get_info(),
+                               scratch=opts.get('scratch'),
+                               srcdir=patchcheckoutdir)
             self._zip_dir(patchcheckoutdir, os.path.join(outputdir, 'patches.zip'))
 
         # Apply patches, if present
@@ -1709,7 +1719,12 @@ class WrapperRPMTask(BaseBuildTask):
         logfile = os.path.join(self.workdir, 'checkout.log')
         scmdir = buildroot.rootdir() + '/tmp/scmroot'
         koji.ensuredir(scmdir)
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         specdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=opts.get('scratch'),
+                           srcdir=specdir)
 
         spec_template = None
         for path, dir, files in os.walk(specdir):
@@ -2619,7 +2634,7 @@ class ImageTask(BaseTaskHandler):
         self.logger.debug("Image buildroot ready: " + broot.rootdir())
         return broot
 
-    def fetchKickstart(self, broot, ksfile):
+    def fetchKickstart(self, broot, ksfile, build_tag):
         """
         Retrieve the kickstart file we were given (locally or remotely) and
         upload it.
@@ -2633,6 +2648,7 @@ class ImageTask(BaseTaskHandler):
         @args:
             broot: a buildroot object
             ksfile: path to a kickstart file
+            build_tag: build tag name
         @returns: absolute path to the retrieved kickstart file
         """
         scmdir = os.path.join(broot.rootdir(), 'tmp')
@@ -2642,7 +2658,12 @@ class ImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout.log')
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             scmsrcdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, ksfile)
         else:
             kspath = self.localPath("work/%s" % ksfile)
@@ -2816,7 +2837,7 @@ class ApplianceTask(ImageTask):
         self.opts = opts
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
                                       'appliance-build')
-        kspath = self.fetchKickstart(broot, ksfile)
+        kspath = self.fetchKickstart(broot, ksfile, target_info['build_tag_name'])
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
         # Figure out appliance-creator arguments, let it fail if something
@@ -2965,7 +2986,7 @@ class LiveCDTask(ImageTask):
 
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
             'livecd-build')
-        kspath = self.fetchKickstart(broot, ksfile)
+        kspath = self.fetchKickstart(broot, ksfile, target_info['build_tag_name'])
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
@@ -3115,7 +3136,7 @@ class LiveMediaTask(ImageTask):
 
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
             'livemedia-build')
-        kspath = self.fetchKickstart(broot, ksfile)
+        kspath = self.fetchKickstart(broot, ksfile, target_info['build_tag_name'])
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
@@ -3233,7 +3254,7 @@ class LiveMediaTask(ImageTask):
 class OzImageTask(BaseTaskHandler):
     Methods = []
 
-    def fetchKickstart(self):
+    def fetchKickstart(self, build_tag):
         """
         Retrieve the kickstart file we were given (locally or remotely) and
         upload it to the hub.
@@ -3244,7 +3265,8 @@ class OzImageTask(BaseTaskHandler):
         relative path in a remote scm. The user should have passed in an scm
         url with --ksurl.
 
-        @args: None, use self.opts for options
+        @args: build_tag: build tag name
+               use self.opts for options
         @returns:
             absolute path to the retrieved kickstart file
         """
@@ -3254,8 +3276,13 @@ class OzImageTask(BaseTaskHandler):
             scm = SCM(self.opts['ksurl'])
             scm.assert_allowed(self.options.allowed_scms)
             logfile = os.path.join(self.workdir, 'checkout-%s.log' % self.arch)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
@@ -3909,7 +3936,7 @@ class BaseImageTask(OzImageTask):
         self.formats = self._format_deps(opts.get('format'))
 
         # First, prepare the kickstart to use the repos we tell it
-        kspath = self.fetchKickstart()
+        kspath = self.fetchKickstart(build_tag=target_info['build_tag_name'])
         ks = self.prepareKickstart(kspath, inst_tree)
         kskoji = self.writeKickstart(ks,
             os.path.join(self.workdir, 'koji-%s-%i-base.ks' %
@@ -4040,7 +4067,7 @@ class BuildIndirectionImageTask(OzImageTask):
 
     # END inefficient base image task method copies
 
-    def fetchHubOrSCM(self, filepath, fileurl):
+    def fetchHubOrSCM(self, filepath, fileurl, build_tag):
         """
         Retrieve a file either from the hub or a remote scm
 
@@ -4060,9 +4087,14 @@ class BuildIndirectionImageTask(OzImageTask):
         if fileurl:
             scm = SCM(fileurl)
             scm.assert_allowed(self.options.allowed_scms)
+            self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
             logfile = os.path.join(self.workdir, 'checkout.log')
             scmsrcdir = scm.checkout(self.workdir, self.session,
                 self.getUploadDir(), logfile)
+            self.run_callbacks("postSCMCheckout",
+                               scminfo=scm.get_info(),
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
         else:
             tops = dict([(k, getattr(self.options, k)) for k in 'topurl','topdir'])
@@ -4212,7 +4244,8 @@ class BuildIndirectionImageTask(OzImageTask):
             raise koji.ApplianceError('The Release may not have a hyphen')
 
         indirection_template = self.fetchHubOrSCM(opts.get('indirection_template'),
-                                                  opts.get('indirection_template_url'))
+                                                  opts.get('indirection_template_url'),
+                                                  target_info['build_tag_name'])
 
         self.logger.debug('Got indirection template %s' % (indirection_template))
 
@@ -4403,8 +4436,13 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
+        self.run_callbacks("postSCMCheckout",
+                           scminfo=scm.get_info(),
+                           scratch=self.opts.get('scratch'),
+                           srcdir=sourcedir)
         # chown the sourcedir and everything under it to the mockuser
         # so we can build the srpm as non-root
         uid = pwd.getpwnam(self.options.mockuser)[2]

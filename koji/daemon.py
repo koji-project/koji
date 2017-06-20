@@ -23,7 +23,7 @@
 import koji
 import koji.tasks
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, adler32_constructor, parseStatus
+from koji.util import md5_constructor, adler32_constructor, parseStatus, dslice
 import os
 import signal
 import logging
@@ -228,6 +228,11 @@ class SCM(object):
         else:   # pragma: no cover
             # should never happen
             raise koji.GenericError('Invalid SCM URL: %s' % url)
+
+    def get_info(self, keys=None):
+        if keys is None:
+            keys = ["url", "scheme", "user", "host", "repository", "module", "revision", "scmtype"]
+        return dslice(vars(self), keys)
 
     def _parse_url(self):
         """
@@ -513,13 +518,29 @@ class TaskManager(object):
     def findHandlers(self, vars):
         """Find and index task handlers"""
         for v in vars.values():
-            if isinstance(v, type(koji.tasks.BaseTaskHandler)) and issubclass(v, koji.tasks.BaseTaskHandler):
-                for method in v.Methods:
-                    self.handlers[method] = v
+            self.registerHandler(v)
+
+    def registerHandler(self, entry):
+        """register and index task handler"""
+        if isinstance(entry, type(koji.tasks.BaseTaskHandler)) and issubclass(entry, koji.tasks.BaseTaskHandler):
+            for method in entry.Methods:
+                self.handlers[method] = entry
+
+    def registerCallback(self, entry):
+        """register and index callback plugins"""
+        if callable(entry) and getattr(entry, 'callbacks', None):
+            for cbtype in entry.callbacks:
+                koji.plugin.register_callback(cbtype, entry)
+
+    def registerEntries(self, vars):
+        """Register task handlers and other plugins"""
+        for v in vars.values():
+            self.registerHandler(v)
+            self.registerCallback(v)
 
     def scanPlugin(self, plugin):
         """Find task handlers in a plugin"""
-        self.findHandlers(vars(plugin))
+        self.registerEntries(vars(plugin))
 
     def shutdown(self):
         """Attempt to shut down cleanly"""

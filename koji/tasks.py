@@ -383,6 +383,18 @@ class BaseTaskHandler(object):
         return repo_info
 
 
+    def run_callbacks(self, plugin, *args, **kwargs):
+        if 'taskinfo' not in kwargs:
+            try:
+                taskinfo = self.taskinfo
+            except AttributeError:
+                self.taskinfo = self.session.getTaskInfo(self.id, request=True)
+                taskinfo = self.taskinfo
+            kwargs['taskinfo'] = taskinfo
+        kwargs['session'] = self.session
+        koji.plugin.run_callbacks(plugin, *args, **kwargs)
+
+
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True

@@ -48,6 +48,8 @@ callbacks = {
     'postRepoDone':           [],
     'preCommit':              [],
     'postCommit':             [],
+    'preSCMCheckout':         [],
+    'postSCMCheckout':        [],
     }
 
 class PluginTracker(object):
