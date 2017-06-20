@@ -3538,6 +3538,35 @@ def get_build(buildInfo, strict=False):
         return result
 
 
+def get_build_logs(build):
+    """Return a list of log files for the given build"""
+    buildinfo = get_build(build, strict=True)
+    logdir = koji.pathinfo.build_logs(buildinfo)
+    logreldir = koji.util.relpath(logdir, koji.pathinfo.topdir)
+    if not os.path.exists(logdir):
+        return []
+    if not os.path.isdir(logdir):
+        raise koji.GenericError("Not a directory: %s" % logdir)
+    logs = []
+    for dirpath, dirs, files in os.walk(logdir):
+        subdir = koji.util.relpath(dirpath, logdir)
+        for fn in files:
+            filepath = os.path.join(dirpath, fn)
+            if os.path.islink(filepath):
+                logger.warning("Symlink under logdir: %s", filepath)
+                continue
+            if not os.path.isfile(filepath):
+                logger.warning("Non-regular file under logdir: %s", filepath)
+                continue
+            loginfo = {
+                'name': fn,
+                'dir': subdir,
+                'path': "%s/%s/%s" % (logreldir, subdir, fn)
+                }
+            logs.append(loginfo)
+    return logs
+
+
 def get_next_release(build_info):
     """find the last successful or deleted build of this N-V"""
     values = {'name': build_info['name'],
@@ -9273,6 +9302,7 @@ class RootExports(object):
     listTags = staticmethod(list_tags)
 
     getBuild = staticmethod(get_build)
+    getBuildLogs = staticmethod(get_build_logs)
     getNextRelease = staticmethod(get_next_release)
     getMavenBuild = staticmethod(get_maven_build)
     getWinBuild = staticmethod(get_win_build)
