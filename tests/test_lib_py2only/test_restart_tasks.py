@@ -1,4 +1,6 @@
 import mock
+import shutil
+import tempfile
 import unittest
 
 import koji.tasks
@@ -10,9 +12,12 @@ class TestRestartTask(unittest.TestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.manager = mock.MagicMock()
+        self.workdir = tempfile.mkdtemp()
+        self.options.workdir = self.workdir
         self.safe_rmtree = mock.patch('koji.tasks.safe_rmtree').start()
 
     def tearDown(self):
+        shutil.rmtree(self.workdir)
         mock.patch.stopall()
 
     def get_handler(self, *args, **kwargs):
@@ -47,9 +52,12 @@ class TestRestartVerifyTask(unittest.TestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.manager = mock.MagicMock()
+        self.workdir = tempfile.mkdtemp()
+        self.options.workdir = self.workdir
         self.safe_rmtree = mock.patch('koji.tasks.safe_rmtree').start()
 
     def tearDown(self):
+        shutil.rmtree(self.workdir)
         mock.patch.stopall()
 
     def get_handler(self, *args, **kwargs):
@@ -133,9 +141,12 @@ class TestRestartHostsTask(unittest.TestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.manager = mock.MagicMock()
+        self.workdir = tempfile.mkdtemp()
+        self.options.workdir = self.workdir
         self.safe_rmtree = mock.patch('koji.tasks.safe_rmtree').start()
 
     def tearDown(self):
+        shutil.rmtree(self.workdir)
         mock.patch.stopall()
 
     def get_handler(self, *args, **kwargs):
