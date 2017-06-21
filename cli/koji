@@ -52,7 +52,7 @@ def register_plugin(plugin):
     Handlers are functions marked with one of the decorators defined in koji.plugin
     """
     for v in six.itervalues(vars(plugin)):
-        if isinstance(v, (types.ClassType, types.TypeType)):
+        if isinstance(v, six.class_types):
             #skip classes
             continue
         if callable(v):
