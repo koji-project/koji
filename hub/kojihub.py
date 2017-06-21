@@ -9400,7 +9400,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         task = Task(task_id)
         host = get_host(host, strict=True)
-        task.assign(host['id'], force)
+        return task.assign(host['id'], force)
 
     def freeTask(self, task_id):
         """Free a task"""
