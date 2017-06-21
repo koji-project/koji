@@ -138,3 +138,63 @@ class TestCallbacks(unittest.TestCase):
         with self.assertRaises(koji.PluginError):
             koji.plugin.run_callbacks('badtype', *args, **kwargs)
 
+
+class TestPluginTracker(unittest.TestCase):
+
+    def setUp(self):
+        self.find_module = mock.patch('imp.find_module').start()
+        self.modfile = mock.MagicMock()
+        self.modpath = mock.MagicMock()
+        self.moddesc = mock.MagicMock()
+        self.find_module.return_value = (self.modfile, self.modpath,
+                self.moddesc)
+        self.load_module = mock.patch('imp.load_module').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_tracked_plugin(self):
+        tracker = koji.plugin.PluginTracker(path='/MODPATH')
+        self.load_module.return_value = 'MODULE!'
+        tracker.load('hello')
+        self.assertEqual(tracker.get('hello'), 'MODULE!')
+        self.find_module.assert_called_once_with('hello', ['/MODPATH'])
+
+    def test_plugin_reload(self):
+        tracker = koji.plugin.PluginTracker(path='/MODPATH')
+        self.load_module.return_value = 'MODULE!'
+        tracker.load('hello')
+        self.assertEqual(tracker.get('hello'), 'MODULE!')
+
+        # should not reload if we don't ask
+        self.load_module.return_value = 'DUPLICATE!'
+        tracker.load('hello')
+        self.assertEqual(tracker.get('hello'), 'MODULE!')
+
+        # should reload if we do ask
+        tracker.load('hello', reload=True)
+        self.assertEqual(tracker.get('hello'), 'DUPLICATE!')
+
+    def test_no_plugin_path(self):
+        tracker = koji.plugin.PluginTracker()
+        with self.assertRaises(koji.PluginError):
+            tracker.load('hello')
+        self.load_module.assert_not_called()
+        self.assertEqual(tracker.get('hello'), None)
+
+    def test_plugin_path_list(self):
+        tracker = koji.plugin.PluginTracker(path='/MODPATH')
+        self.load_module.return_value = 'MODULE!'
+        tracker.load('hello', path=['/PATH1', '/PATH2'])
+        self.assertEqual(tracker.get('hello'), 'MODULE!')
+        self.find_module.assert_called_once_with('hello', ['/PATH1', '/PATH2'])
+
+    @mock.patch('logging.getLogger')
+    def test_bad_plugin(self, getLogger):
+        tracker = koji.plugin.PluginTracker(path='/MODPATH')
+        self.load_module.side_effect = TestError
+        with self.assertRaises(TestError):
+            tracker.load('hello')
+        self.assertEqual(tracker.get('hello'), None)
+        getLogger.assert_called_once()
+        getLogger.return_value.error.assert_called_once()
