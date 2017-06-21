@@ -4,7 +4,7 @@ from os import path, makedirs
 from shutil import rmtree
 from tempfile import gettempdir
 from unittest import TestCase
-from mock import patch, Mock, call
+from mock import patch, MagicMock, Mock, call
 
 import koji
 from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, \
@@ -358,6 +358,51 @@ class TasksTestCase(TestCase):
         except koji.GenericError as e:
             self.assertEquals(e.args[0], 'Uh oh, we\'ve got a problem here!')
             obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
+
+    @patch('time.time')
+    @patch('time.sleep')
+    @patch('signal.pause')
+    def test_BaseTaskHandler_wait_timeout(self, pause, sleep, time):
+        """Tests timeout behavior in the wait function"""
+        temp_path = get_tmp_dir_path('TestTask')
+        obj = TestTask(95, 'some_method', ['random_arg'], None, None, temp_path)
+        makedirs(temp_path)
+        obj.session = MagicMock()
+        obj.session.host.taskWait.return_value = [[], [99, 100, 101]]
+        time.side_effect = list(range(0, 4000, 60))
+        try:
+            obj.wait([99, 100, 101], timeout=3600)
+            raise Exception('A GenericError was not raised.')
+        except koji.GenericError as e:
+            self.assertEquals(e.args[0][:24], 'Subtasks timed out after')
+        obj.session.host.taskSetWait.assert_called_once_with(95, [99, 100, 101])
+        obj.session.cancelTaskChildren.assert_called_once_with(95)
+        obj.session.getTaskResult.assert_not_called()
+        pause.assert_not_called()
+
+    @patch('time.time')
+    @patch('time.sleep')
+    @patch('signal.pause')
+    def test_BaseTaskHandler_wait_avoid_timeout(self, pause, sleep, time):
+        """Tests that timeout does not happen if tasks finish in time"""
+        temp_path = get_tmp_dir_path('TestTask')
+        obj = TestTask(95, 'some_method', ['random_arg'], None, None, temp_path)
+        makedirs(temp_path)
+        obj.session = MagicMock()
+        time.side_effect = list(range(0, 4000, 20))
+        # time ticks every 20s for a little over an "hour"
+        # code checks time 3x each cycle (twice directly, once via logging)
+        # so each cycle is a "minute"
+        # report all unfinished for most of an hour
+        taskWait_returns = [[[], [99, 100, 101]]] * 50
+        # and then report all done
+        taskWait_returns.append([[99, 100, 101], []])
+        obj.session.host.taskWait.side_effect = taskWait_returns
+        obj.wait([99, 100, 101], timeout=3600)
+
+        obj.session.host.taskSetWait.assert_called_once_with(95, [99, 100, 101])
+        obj.session.cancelTaskChildren.assert_not_called()
+        pause.assert_not_called()
 
     def test_BaseTaskHandler_getUploadDir(self):
         """ Tests that the getUploadDir function returns the appropriate path based on the id of the handler.

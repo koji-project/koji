@@ -1028,10 +1028,44 @@ def handle_restart_hosts(options, session, args):
                       help=_("Don't wait on task"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
+    parser.add_option("--force", action="store_true",
+                      help=_("Ignore checks and force operation"))
+    parser.add_option("--channel", help=_("Only hosts in this channel"))
+    parser.add_option("--arch", "-a", action="append", default=[],
+                      help=_("Limit to hosts of this architecture (can be "
+                                "given multiple times)"))
+    parser.add_option("--timeout", metavar='N', type='int',
+                      help=_("Time out after N seconds"))
     (my_opts, args) = parser.parse_args(args)
 
     activate_session(session, options)
-    task_id = session.restartHosts()
+
+    # check for existing restart tasks
+    if not my_opts.force:
+        query = {
+            'method': 'restartHosts',
+            'state':
+                [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+            }
+        others = session.listTasks(query)
+        if others:
+            print('Found other restartHosts tasks running.')
+            print('Task ids: %r' % [t['id'] for t in others])
+            print('Use --force to run anyway')
+            return 1
+
+    callopts = {}
+    if my_opts.channel:
+        callopts['channel'] = my_opts.channel
+    if my_opts.arch:
+        callopts['arches'] = my_opts.arch
+    if my_opts.timeout:
+        callopts['timeout'] = my_opts.timeout
+    if callopts:
+        task_id = session.restartHosts(options=callopts)
+    else:
+        # allow default case to work with older hub
+        task_id = session.restartHosts()
     if my_opts.wait or (my_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=my_opts.quiet,
