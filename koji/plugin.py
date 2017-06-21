@@ -24,6 +24,7 @@ import koji
 import logging
 import sys
 import traceback
+import six
 
 # the available callback hooks and a list
 # of functions to be called for each event
@@ -91,7 +92,7 @@ class PluginTracker(object):
         return self.plugins.get(name)
 
     def pathlist(self, path):
-        if isinstance(path, basestring):
+        if isinstance(path, six.string_types):
             return [path]
         else:
             return path
