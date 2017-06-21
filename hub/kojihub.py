@@ -10542,6 +10542,7 @@ class RootExports(object):
             archClause = [r"""arches ~ E'\\m%s\\M'""" % arch for arch in arches]
             clauses.append('(' + ' OR '.join(archClause) + ')')
         if channelID is not None:
+            channelID = get_channel_id(channelID, strict=True)
             joins.append('host_channels on host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
         if ready is not None:
@@ -10555,6 +10556,7 @@ class RootExports(object):
             else:
                 clauses.append('enabled is false')
         if userID is not None:
+            userID = get_user(userID, strict=True)['id']
             clauses.append('user_id = %(userID)i')
 
         query = QueryProcessor(columns=fields, tables=['host'],
