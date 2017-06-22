@@ -588,3 +588,6 @@ All features supported by command-line client are also accessible by XMLRPC
 API. You can get listing of all available calls, arguments and basic help via
 calling `koji list-api` command. This call will also provide you API
 extensions provided by plugins in that particular koji instance.
+
+In addition to xmlrpc standard we are using `i8` extension for large
+integers. Datetimes are exchanged as text strings in iso format.
