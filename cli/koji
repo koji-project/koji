@@ -51,8 +51,8 @@ def register_plugin(plugin):
 
     Handlers are functions marked with one of the decorators defined in koji.plugin
     """
-    for v in vars(plugin).itervalues():
-        if isinstance(v, (types.ClassType, types.TypeType)):
+    for v in six.itervalues(vars(plugin)):
+        if isinstance(v, six.class_types):
             #skip classes
             continue
         if callable(v):
@@ -65,16 +65,14 @@ def register_plugin(plugin):
                 globals()[name] = v
 
 
-def load_plugins(options):
+def load_plugins(options, path):
     """Load plugins specified by our configuration plus system plugins. Order
     is that system plugins are first, so they can be overriden by
     user-specified ones with same name."""
     logger = logging.getLogger('koji.plugins')
-    syspath = '%s/lib/python%s.%s/site-packages/koji_cli_plugins' % \
-              (sys.prefix, sys.version_info.major, sys.version_info.minor)
-    if os.path.exists(syspath):
-        tracker = koji.plugin.PluginTracker(path=syspath)
-        for name in sorted(os.listdir(syspath)):
+    if os.path.exists(path):
+        tracker = koji.plugin.PluginTracker(path=path)
+        for name in sorted(os.listdir(path)):
             if not name.endswith('.py'):
                 continue
             name = name[:-3]
@@ -165,7 +163,9 @@ def get_options():
             else:
                 warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
-    load_plugins(options)
+    plugins_path = '%s/lib/python%s.%s/site-packages/koji_cli_plugins' % \
+                   (sys.prefix, sys.version_info.major, sys.version_info.minor)
+    load_plugins(options, plugins_path)
 
     if options.help_commands:
         list_commands()
