@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 import os
-import sys
+#import sys
 
 # We have to do this craziness because 'import koji' is ambiguous.  Is it the
 # koji module, or the koji cli module.  Jump through hoops accordingly.
@@ -16,4 +16,4 @@ else:
 '''
 
 import imp
-cli = imp.load_source('koji_cli', CLI_FILENAME)
+cli = imp.load_source('koji_cli_fake', CLI_FILENAME)
