@@ -403,6 +403,25 @@ for example to get the latest buildroot for dist-f12-build run
 you will need to pass in --topurl=https://kojipkgs.fedoraproject.org/ to
 any mock-config command to get a working mock-config from fedoras koji.
 
+Tuning mock's behaviour per tag
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Few options for mock can be configured per-tag. These options are stored in
+tag info's *extra* field. Extra values can be checked via `koji taginfo`
+command.  Example for forcing `dnf` usage in specific build
+environment follows:
+
+::
+
+    koji edit-tag dnf-fedora-tag -x mock.package_manager=dnf
+
+
+* `mock.package_manager` - If this is set, it will override mock's default
+  package manager. Typically used with `yum` or `dnf` values.
+* `mock.new_chroot` - 0/1 value. If it is set, `--new-chroot` or
+  `--old-chroot` option is appended to any mock call. If it is not set,
+  mock's default behaviour is used.
+
 Using Koji to control tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
