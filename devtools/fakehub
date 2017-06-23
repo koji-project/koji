@@ -14,6 +14,7 @@ sys.path.insert(0, os.getcwd())
 sys.path.insert(1, os.path.join(os.getcwd(), 'hub'))
 import koji
 import kojixmlrpc
+import koji.xmlrpcplus
 
 
 def get_url(environ):
@@ -57,7 +58,7 @@ def get_request():
         else:
             args.append(nice_literal(s))
     args = koji.encode_args(*args, **kwargs)
-    request = koji.dumps(args, method, allow_none=1)
+    request = koji.xmlrpcplus.dumps(args, method, allow_none=1)
     return request
 
 
@@ -67,7 +68,7 @@ def start_response(status, headers):
 
 
 def parse_response(data):
-    p, u = koji.getparser()
+    p, u = koji.xmlrpcplus.getparser()
     for chunk in data:
         p.feed(chunk)
     p.close()

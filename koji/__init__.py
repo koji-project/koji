@@ -73,54 +73,12 @@ import struct
 import tempfile
 import time
 import traceback
-import types
 from . import util
 import warnings
 import xml.sax
 import xml.sax.handler
 import six.moves.urllib
-from six.moves.xmlrpc_client import getparser, loads, dumps, Fault
-
-# Workaround to allow xmlrpclib deal with iterators and 64-bit ints
-class Marshaller(six.moves.xmlrpc_client.Marshaller):
-
-    dispatch = six.moves.xmlrpc_client.Marshaller.dispatch.copy()
-
-    def dump_generator(self, value, write):
-        dump = self.__dump
-        write("<value><array><data>\n")
-        for v in value:
-            dump(v, write)
-        write("</data></array></value>\n")
-    dispatch[types.GeneratorType] = dump_generator
-
-    def dump_datetime(self, value, write):
-        # For backwards compatibility, we return datetime objects as strings
-        value = value.isoformat(' ')
-        self.dump_string(value, write)
-    dispatch[datetime.datetime] = dump_datetime
-
-    MAXI8 = 2 ** 64 - 1
-    MINI8 = -2 ** 64
-    def dump_i8(self, value, write):
-        # python2's xmlrpclib doesn't support i8 extension for marshalling,
-        # but can unmarshall it correctly.
-        if value > Marshaller.MAXI8 or value < Marshaller.MINI8:
-            raise OverflowError, "long int exceeds XML-RPC limits"
-        elif value > six.moves.xmlrpc_client.MAXINT or \
-             value < six.moves.xmlrpc_client.MININT:
-            write("<value><i8>")
-            write(str(int(value)))
-            write("</i8></value>\n")
-        else:
-            write("<value><int>")
-            write(str(int(value)))
-            write("</int></value>\n")
-    dispatch[types.LongType] = dump_i8
-    dispatch[types.IntType] = dump_i8
-
-six.moves.xmlrpc_client.Marshaller = Marshaller
-six.moves.xmlrpc_client.FastMarshaller = None
+from koji.xmlrpcplus import getparser, loads, dumps, Fault
 
 
 PROFILE_MODULES = {}  # {module_name: module_instance}

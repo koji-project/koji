@@ -35,7 +35,7 @@ import koji.plugin
 import koji.policy
 import koji.util
 # import xmlrpclib functions from koji to use tweaked Marshaller
-from koji import getparser, dumps, Fault
+from koji.xmlrpcplus import getparser, dumps, Fault
 from koji.context import context
 
 
