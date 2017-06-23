@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.12.0
+Version: 1.13.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -472,6 +472,57 @@ fi
 %endif
 
 %changelog
+* Fri Jun 30 2017 Mike McLean <mikem at redhat.com> - 1.13.0-1
+- PR#400 per-tag configuration of chroot mock behaviour
+- PR#480 koji_cli name interferes with new library
+- PR#475 fix StringType and itervalues in plugin and cli
+- PR#476 provide a temporary workdir for restart task unit tests
+- PR#477 update .gitignore
+- PR#465 Don't allow not-null empty arch/userID in listHosts
+- PR#471 Rework build log display in web ui
+- PR#472 New features for restart-hosts command
+- PR#474 propagate task.assign return value
+- PR#353 add pre/postSCMCheckout plugin_callbacks
+- PR#199 CLI plugins
+- PR#449 Make sure to fix encoding all RPM Headers
+- PR#442 list-channels CLI command
+- PR#445 log failed plugin
+- PR#441 document easier bootstrap for groups
+- PR#438 Fix traceback for missing update
+- PR#453 honor --quiet in list-tagged
+- PR#448 Fix python3 deps
+- PR#450 epel-compatible python3 macros
+- PR#444 require mod_auth_gssapi instead of mod_auth_kerb where applicable
+- PR#434 devtools: fakehub and fakeweb
+- PR#447 python3 docs update
+- PR#417 Python3 support for CLI + XMLRPC client
+- PR#421 Extend allowed_scms format to allow explicit blocks
+- PR#424 handle task fault results in download-logs
+- PR#431 don't inspect results for failed createImage tasks
+- PR#430 note about where API docs are found
+- PR#403 fixEncoding for changelogs
+- PR#402 parse deleted mountpoints
+- PR#418 use old tarfile arguments
+- PR#422 doc: use `tag-build` instead of alias cmd `tag-pkg`
+- PR#404 XZ threads are very bad about memory, so use only two threads.
+- PR#408 Support proxyuser=username in krbLogin
+- PR#411 Replace references to cvs with modern git examples
+- PR#381 use /etc/ in the spec file
+- PR#380 Make raw-xz faster by using xz threads
+- PR#397 missing argument
+- PR#399 Added hostinfo command to cli
+- PR#401 add default_md to docs (ssl.cnf)
+- PR#394 link to kojiji (Koji Java Interface)
+- PR#388 Increase 50 character limit of tag names
+- PR#352 Optional JSON output for 'koji call'
+- PR#393 remove minor version from User-Agent header
+- PR#372 update jenkins config
+- PR#375 raise error on non-existing profile
+- PR#382 update the 1.11 to 1.12 upgrade schema for BDR
+- PR#384 Pull in some get_header_fields enhancements from Kobo
+- PR#378 Couple of small fixes to the koji documentation
+- PR#385 allow kojid to start when not using ssl cert auth
+
 * Tue Apr 18 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
 - PR#373 backward-compatible try/except
 - PR#365 handle buildroots with state=None
