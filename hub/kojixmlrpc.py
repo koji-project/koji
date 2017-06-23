@@ -19,18 +19,14 @@
 #       Mike McLean <mikem@redhat.com>
 
 from ConfigParser import RawConfigParser
-import datetime
 import inspect
 import logging
 import os
 import sys
 import time
 import traceback
-import types
 import pprint
 import resource
-import xmlrpclib
-from xmlrpclib import getparser, dumps, Fault
 
 import koji
 import koji.auth
@@ -38,47 +34,9 @@ import koji.db
 import koji.plugin
 import koji.policy
 import koji.util
+# import xmlrpclib functions from koji to use tweaked Marshaller
+from koji import getparser, dumps, Fault
 from koji.context import context
-
-
-# Workaround to allow xmlrpclib deal with iterators
-class Marshaller(xmlrpclib.Marshaller):
-
-    dispatch = xmlrpclib.Marshaller.dispatch.copy()
-
-    def dump_generator(self, value, write):
-        dump = self.__dump
-        write("<value><array><data>\n")
-        for v in value:
-            dump(v, write)
-        write("</data></array></value>\n")
-    dispatch[types.GeneratorType] = dump_generator
-
-    def dump_datetime(self, value, write):
-        # For backwards compatibility, we return datetime objects as strings
-        value = value.isoformat(' ')
-        self.dump_string(value, write)
-    dispatch[datetime.datetime] = dump_datetime
-
-    MAXI8 = 2 ** 64 - 1
-    MINI8 = -2 ** 64
-    def dump_i8(self, value, write):
-        # python2's xmlrpclib doesn't support i8 extension for marshalling,
-        # but can unmarshall it correctly.
-        if value > Marshaller.MAXI8 or value < Marshaller.MINI8:
-            raise OverflowError, "long int exceeds XML-RPC limits"
-        elif value > xmlrpclib.MAXINT or value < xmlrpclib.MININT:
-            write("<value><i8>")
-            write(str(int(value)))
-            write("</i8></value>\n")
-        else:
-            write("<value><int>")
-            write(str(int(value)))
-            write("</int></value>\n")
-    dispatch[types.LongType] = dump_i8
-    dispatch[types.IntType] = dump_i8
-
-xmlrpclib.Marshaller = Marshaller
 
 
 class HandlerRegistry(object):

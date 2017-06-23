@@ -34,7 +34,6 @@ import time
 import sys
 import traceback
 import errno
-import xmlrpclib
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -1209,12 +1208,12 @@ class TaskManager(object):
         try:
             response = (handler.run(),)
             # note that we wrap response in a singleton tuple
-            response = xmlrpclib.dumps(response, methodresponse=1, allow_none=1)
+            response = koji.dumps(response, methodresponse=1, allow_none=1)
             self.logger.info("RESPONSE: %r" % response)
             self.session.host.closeTask(handler.id, response)
             return
-        except xmlrpclib.Fault, fault:
-            response = xmlrpclib.dumps(fault)
+        except koji.Fault, fault:
+            response = koji.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
@@ -1233,7 +1232,7 @@ class TaskManager(object):
             if issubclass(e_class, koji.GenericError):
                 #just pass it through
                 tb = str(e)
-            response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
+            response = koji.dumps(koji.Fault(faultCode, tb))
 
         # if we get here, then we're handling an exception, so fail the task
         self.session.host.failTask(handler.id, response)
