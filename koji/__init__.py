@@ -2693,7 +2693,7 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
-                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data, **volopts):
+                if self.callMethod('uploadFile', path, name, sz, digest, offset, data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1

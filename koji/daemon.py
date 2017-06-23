@@ -60,7 +60,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
 
         tries = 0
         while True:
-            if session.uploadFile(path, fname, koji.encode_int(size), digest, koji.encode_int(offset), data):
+            if session.uploadFile(path, fname, size, digest, offset, data):
                 break
 
             if tries <= retries:
