@@ -94,8 +94,8 @@ in the ``User-Agent`` header. Now it simply reports the major version.
 raise error on non-existing profile
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-https://pagure.io/koji/pull-request/375
-https://pagure.io/koji/issue/370
+| PR: https://pagure.io/koji/pull-request/375
+| Issue: https://pagure.io/koji/issue/370
 
 If the requested client profile is not configured, the library will raise an
 error, rather than proceeding with default values.
