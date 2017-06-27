@@ -26,6 +26,7 @@ Contents
     external_repo_server_bootstrap
     image_build
     misc
+    release_notes
     migrations
     runs_here
     server_bootstrap
