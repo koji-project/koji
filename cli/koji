@@ -164,7 +164,7 @@ def get_options():
                 warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
     plugins_path = '%s/lib/python%s.%s/site-packages/koji_cli_plugins' % \
-                   (sys.prefix, sys.version_info.major, sys.version_info.minor)
+                   (sys.prefix, sys.version_info[0], sys.version_info[1])
     load_plugins(options, plugins_path)
 
     if options.help_commands:
