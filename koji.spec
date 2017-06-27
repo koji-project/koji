@@ -44,13 +44,11 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 %if 0%{with python3}
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
-Requires: python%{python3_pkgversion}-pycurl
 Requires: python%{python3_pkgversion}-libcomps
 %else
 Requires: python2-%{name} = %{version}-%{release}
-Requires: python2-pycurl
 %if 0%{?fedora} || 0%{?rhel} >= 7
-Requires: python2-libcomps
+Requires: python-libcomps
 %endif
 %endif
 %if %{use_systemd}
@@ -69,6 +67,7 @@ BuildRequires: python2-devel
 Requires: python-krbV >= 1.0.13
 Requires: rpm-python
 Requires: pyOpenSSL
+Requires: python-pycurl
 Requires: python-requests
 Requires: python-requests-kerberos
 Requires: python-dateutil
@@ -83,6 +82,7 @@ Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
 BuildRequires: python%{python3_pkgversion}-devel
 Requires: rpm-python%{python3_pkgversion}
+Requires: python%{python3_pkgversion}-pycurl
 Requires: python%{python3_pkgversion}-pyOpenSSL
 Requires: python%{python3_pkgversion}-requests
 Requires: python%{python3_pkgversion}-requests-kerberos
