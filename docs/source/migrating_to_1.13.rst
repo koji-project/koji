@@ -21,34 +21,29 @@ database.
     # psql koji koji  </usr/share/doc/koji/docs/schema-upgrade-1.12-1.13.sql
 
 
-Command line changes
---------------------
-
-For full details see the release notes.
-
-New commands: ``list-channels``, ``hostinfo``
-
-The ``restart-hosts`` command takes several new options and now defaults to
-a 24 hour timeout.
-
-
 Packaging changes
 -----------------
 
-Because the CLI and base library now support both python2 and python3, the core libs
-and most of the cli code have moved to separate packages for each major Python
-version:
+Because the CLI and base library now support both python2 and python3, the core
+libs and most of the cli code have moved to separate packages for each major
+Python version:
 
     * python2-koji
     * python3-koji
 
-The main koji package still contains the (now much smaller) koji script.
+The main koji package still contains the (now much smaller) koji script, and
+requires either python2-koji or python3-koji, depending on whether python3
+support is enabled.
 
 The CLI now also supports plugins, and two commands (runroot and
-save-failed-tree) have moved to the ``python[23]-koji-cli-plugins`` subpackages.
+save-failed-tree) have moved to the `python[23]-koji-cli-plugins`
+subpackages. If you need these subcommands, you may need to explicitly install
+the appropriate koji-cli-plugins package.
 
 
-Configuration
+Other changes
 -------------
 
-The ``allowed_scms`` option supports a new syntax. See the release notes for details.
+There are numerous other changes in 1.13 that should not have a direct impact
+on migration. For details see:
+:doc:`release_notes_1.13`
