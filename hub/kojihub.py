@@ -3137,7 +3137,7 @@ def _delete_tag(tagInfo):
         update.make_revoke()
         update.execute()
 
-    tag = get_tag(tagInfo)
+    tag = get_tag(tagInfo, strict=True)
     tagID = tag['id']
 
     _tagDelete('tag_config', tagID)
