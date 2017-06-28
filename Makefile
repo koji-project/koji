@@ -59,7 +59,7 @@ clean:
 	rm -f *.o *.so *.pyc *~ koji*.bz2 koji*.src.rpm
 	rm -rf koji-$(VERSION)
 	for d in $(SUBDIRS); do make -s -C $$d clean; done
-	coverage erase
+	coverage erase ||:
 
 git-clean:
 	@git clean -d -q -x
