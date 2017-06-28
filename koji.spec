@@ -1,6 +1,5 @@
-# Enable Python 3 builds for Fedora + EPEL >5
-# NOTE: do **NOT** change 'epel' to 'rhel' here, as this spec is also
-%if 0%{?fedora} || 0%{?epel} > 5
+# Enable Python 3 builds for Fedora
+%if 0%{?fedora}
 %bcond_without python3
 # If the definition isn't available for python3_pkgversion, define it
 %{?!python3_pkgversion:%global python3_pkgversion 3}
@@ -103,13 +102,13 @@ Requires: %{name} = %{version}-%{release}
 Plugins to the koji command-line interface
 
 %if 0%{with python3}
-%package -n python3-%{name}-cli-plugins
+%package -n python%{python3_pkgversion}-%{name}-cli-plugins
 Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
 
-%description -n python3-%{name}-cli-plugins
+%description -n python%{python3_pkgversion}-%{name}-cli-plugins
 Plugins to the koji command-line interface
 %endif
 
