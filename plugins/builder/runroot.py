@@ -168,7 +168,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 cmdstr = ' '.join(["'%s'" % arg.replace("'", r"'\''") for arg in command])
             # A nasty hack to put command output into its own file until mock can be
             # patched to do something more reasonable than stuff everything into build.log
-            cmdargs = ['/bin/sh', '-c', "{ %s; } < /dev/null 2>&1 | /usr/bin/tee /tmp/runroot.log; exit ${PIPESTATUS[0]}" % cmdstr]
+            cmdargs = ['/bin/sh', '-c', "{ %s; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit ${PIPESTATUS[0]}" % cmdstr]
 
             # always mount /mnt/redhat (read-only)
             # always mount /mnt/iso (read-only)
@@ -185,7 +185,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             mock_cmd.append('--')
             mock_cmd.extend(cmdargs)
             rv = broot.mock(mock_cmd)
-            log_paths = ['/tmp/runroot.log']
+            log_paths = ['/builddir/runroot.log']
             if upload_logs is not None:
                 log_paths += upload_logs
             for log_path in log_paths:
