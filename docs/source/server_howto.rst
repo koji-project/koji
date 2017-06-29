@@ -583,10 +583,6 @@ following:
 Koji Hub
 ========
 
-.. note::
-    Koji 1.7 and greater uses mod_wsgi.  Any mod_python configurations will
-    need to be migrated.
-
 Koji-hub is the center of all Koji operations. It is an XML-RPC server running
 under mod_wsgi in the Apache httpd. koji-hub is passive in that it only
 receives XML-RPC calls and relies upon the build daemons and other components
@@ -833,10 +829,6 @@ The following command will test your login to the hub:
 Koji Web - Interface for the Masses
 ===================================
 
-.. note::
-    Koji 1.7 and greater uses mod_wsgi.  Any mod_python configurations will
-    need to be migrated.
-
 Koji-web is a set of scripts that run in mod_wsgi and use the Cheetah
 templating engine to provide an web interface to Koji. koji-web exposes a lot
 of information and also provides a means for certain operations, such as
@@ -873,11 +865,6 @@ Required Configuration
 The koji-web package provides this configuration file. You will need to modify
 it based on your authentication type. Instructions are contained within the
 file and should be simple to follow.
-
-.. note::
-    RHEL 5's mod_python publisher does not support non-basic auth, so Kerberos
-    authentication does not currently work in EPEL 5's Koji-web. See
-    `BZ #682319 <https://bugzilla.redhat.com/682319>`_.
 
 /etc/httpd/conf.d/ssl.conf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

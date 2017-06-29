@@ -81,7 +81,6 @@ Warning to the reader:
 - streamlined cli options
 - marker files for many things on disk
 - more history data
-- drop modpython support
 - policy code
   - more robust syntax
     - test negation
