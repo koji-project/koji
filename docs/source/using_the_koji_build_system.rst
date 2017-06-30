@@ -403,6 +403,9 @@ for example to get the latest buildroot for dist-f12-build run
 you will need to pass in --topurl=https://kojipkgs.fedoraproject.org/ to
 any mock-config command to get a working mock-config from fedoras koji.
 
+
+.. _tuning-mock-per-tag:
+
 Tuning mock's behaviour per tag
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -189,6 +189,9 @@ tagging a build:
 
     $ koji tag-build mytag mypkg-1.0-1
 
+
+.. _plugin-cli-command:
+
 New command for CLI
 -------------------
 

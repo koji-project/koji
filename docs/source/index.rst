@@ -26,11 +26,13 @@ Contents
     external_repo_server_bootstrap
     image_build
     misc
+    release_notes
     migrations
     runs_here
     server_bootstrap
     server_howto
     using_the_koji_build_system
+    profiles
     plugins
     writing_a_plugin
     writing_koji_code

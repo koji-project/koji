@@ -1104,6 +1104,8 @@ By default it will look for the Kerberos keytab in ``/etc/kojid/kojid.keytab``
     Kojid will not attempt kerberos authentication to the koji-hub unless the
     username field is commented out
 
+.. _scm-config:
+
 Source Control Configuration
 ----------------------------
 
