@@ -473,6 +473,10 @@ fi
 
 %changelog
 * Fri Jun 30 2017 Mike McLean <mikem at redhat.com> - 1.13.0-1
+- PR#496 Makefile/spec fixes for building on el6
+- PR#491 epel-compatible macro in spec
+- PR#487 alter specfile for rhel6/7
+- PR#488 python2.5 doesn't know named components
 - PR#400 per-tag configuration of chroot mock behaviour
 - PR#480 koji_cli name interferes with new library
 - PR#475 fix StringType and itervalues in plugin and cli
