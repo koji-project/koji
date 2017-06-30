@@ -6631,25 +6631,21 @@ def anon_handle_download_task(options, session, args):
         downloadable_tasks.extend(list(filter(check_downloadable, subtasks)))
 
     # get files for download
-
     downloads = []
 
     for task in downloadable_tasks:
         files = list_task_output_all_volumes(session, task["id"])
         for filename in files:
-            if filename.endswith(".log") and suboptions.logs:
-                for volume in files[filename]:
-                    # rename logs, they would conflict
-                    new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
-                    downloads.append((task, filename, volume, new_filename))
-                    continue
-
             if filename.endswith(".rpm"):
                 for volume in files[filename]:
                     filearch = filename.split(".")[-2]
                     if len(suboptions.arches) == 0 or filearch in suboptions.arches:
                         downloads.append((task, filename, volume, filename))
-                    continue
+            elif filename.endswith(".log") and suboptions.logs:
+                for volume in files[filename]:
+                    # rename logs, they would conflict
+                    new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
+                    downloads.append((task, filename, volume, new_filename))
 
     if len(downloads) == 0:
         error(_("No files for download found."))
