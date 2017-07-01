@@ -15,6 +15,27 @@ class TestDownloadTask(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
+    def gen_calls(self, task_output, pattern, blacklist=[], arch=None):
+
+        params = [(k, v) for k, vl in
+                  six.iteritems(task_output)
+                  if k not in blacklist
+                  for v in vl]
+        total = len(params)
+        calls = []
+        for i, (k, v) in enumerate(params):
+            target = k
+            if v == 'DEFAULT':
+                subpath = ''
+            else:
+                subpath = 'vol/%s/' % v
+                target = '%s/%s' % (v, k)
+            url = pattern % (subpath, k)
+            if target.endswith('.log') and arch is not None:
+                target = "%s.%s.log" % (target.rstrip(".log"), arch)
+            calls.append(call(url, target, None, None, total, i + 1))
+        return calls
+
     def setUp(self):
         # Mock out the options parsed in main
         self.options = mock.MagicMock()
@@ -44,6 +65,11 @@ class TestDownloadTask(unittest.TestCase):
             'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
             'somerpm.noarch.rpm': ['vol3'],
             'somelog.log': ['DEFAULT', 'vol1']}
+
+        calls = self.gen_calls(self.list_task_output_all_volumes.return_value,
+                               'https://topurl/%swork/tasks/3333/123333/%s',
+                               ['somelog.log'])
+
         # Run it and check immediate output
         # args: task_id
         # expected: success
@@ -57,17 +83,7 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
-        self.assertEqual(self.download_file.mock_calls, [
-            call('https://topurl/work/tasks/3333/123333/somerpm.src.rpm',
-                 'somerpm.src.rpm', None, None, 5, 1),
-            call('https://topurl/vol/vol1/work/tasks/3333/123333/somerpm.src.rpm',
-                 'vol1/somerpm.src.rpm', None, None, 5, 2),
-            call('https://topurl/work/tasks/3333/123333/somerpm.x86_64.rpm',
-                 'somerpm.x86_64.rpm', None, None, 5, 3),
-            call('https://topurl/vol/vol2/work/tasks/3333/123333/somerpm.x86_64.rpm',
-                 'vol2/somerpm.x86_64.rpm', None, None, 5, 4),
-            call('https://topurl/vol/vol3/work/tasks/3333/123333/somerpm.noarch.rpm',
-                 'vol3/somerpm.noarch.rpm', None, None, 5, 5)])
+        self.assertListEqual(self.download_file.mock_calls, calls)
         self.assertIsNone(rv)
 
     def test_handle_download_task_parent(self):
@@ -115,7 +131,7 @@ class TestDownloadTask(unittest.TestCase):
             call(self.session, 22222),
             call(self.session, 33333),
             call(self.session, 44444)])
-        self.assertEqual(self.download_file.mock_calls, [
+        self.assertListEqual(self.download_file.mock_calls, [
             call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
                  'somerpm.x86_64.rpm', None, None, 3, 1),
             call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
@@ -136,6 +152,10 @@ class TestDownloadTask(unittest.TestCase):
             'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
             'somerpm.noarch.rpm': ['vol3'],
             'somelog.log': ['DEFAULT', 'vol1']}
+
+        calls = self.gen_calls(self.list_task_output_all_volumes.return_value,
+                               'https://topurl/%swork/tasks/3333/123333/%s', arch='taskarch')
+
         # Run it and check immediate output
         # args: task_id --log
         # expected: success
@@ -149,21 +169,7 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
-        self.assertEqual(self.download_file.mock_calls, [
-            call('https://topurl/work/tasks/3333/123333/somerpm.src.rpm',
-                 'somerpm.src.rpm', None, None, 7, 1),
-            call('https://topurl/vol/vol1/work/tasks/3333/123333/somerpm.src.rpm',
-                 'vol1/somerpm.src.rpm', None, None, 7, 2),
-            call('https://topurl/work/tasks/3333/123333/somerpm.x86_64.rpm',
-                 'somerpm.x86_64.rpm', None, None, 7, 3),
-            call('https://topurl/vol/vol2/work/tasks/3333/123333/somerpm.x86_64.rpm',
-                 'vol2/somerpm.x86_64.rpm', None, None, 7, 4),
-            call('https://topurl/vol/vol3/work/tasks/3333/123333/somerpm.noarch.rpm',
-                 'vol3/somerpm.noarch.rpm', None, None, 7, 5),
-            call('https://topurl/work/tasks/3333/123333/somelog.log',
-                 'some.taskarch.log', None, None, 7, 6),
-            call('https://topurl/vol/vol1/work/tasks/3333/123333/somelog.log',
-                 'vol1/some.taskarch.log', None, None, 7, 7)])
+        self.assertListEqual(self.download_file.mock_calls, calls)
         self.assertIsNone(rv)
 
     def test_handle_download_no_download(self):
@@ -180,6 +186,7 @@ class TestDownloadTask(unittest.TestCase):
             'somelog.log': ['DEFAULT', 'vol1'],
             'somezip.zip': ['DEFAULT']
         }
+
         # Run it and check immediate output
         # args: task_id --arch=s390,ppc
         # expected: failure
