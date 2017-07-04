@@ -6313,8 +6313,10 @@ def anon_handle_download_build(options, session, args):
     parser.add_option("--key", help=_("Download rpms signed with the given key"))
     parser.add_option("--topurl", metavar="URL", default=options.topurl,
                       help=_("URL under which Koji files are accessible"))
-    parser.add_option("-q", "--quiet", action="store_true", help=_("Do not display progress meter"),
-                      default=options.quiet)
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress meter"))
+    parser.add_option("-q", "--quiet", action="store_true",
+                      help=_("Suppress output"), default=options.quiet)
     (suboptions, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a package N-V-R or build ID"))
@@ -6437,15 +6439,17 @@ def anon_handle_download_build(options, session, args):
     for url, relpath in urls:
         if '/' in relpath:
             koji.ensuredir(os.path.dirname(relpath))
-        print(relpath)
+        if not suboptions.quiet:
+            print(relpath)
         c = pycurl.Curl()
         c.setopt(c.URL, url)
         c.setopt(c.WRITEDATA, open(relpath, 'wb'))
-        if not suboptions.quiet:
+        if not (suboptions.quiet or suboptions.noprogress):
             c.setopt(c.NOPROGRESS, False)
             c.setopt(c.XFERINFOFUNCTION, _progress)
         c.perform()
-        print('')
+        if not (suboptions.quiet or suboptions.noprogress):
+            print('')
 
 
 def anon_handle_download_logs(options, session, args):
