@@ -105,6 +105,26 @@ rpm: tarball
 test-rpm: tarball
 	$(RPM_WITH_DIRS) $(DIST_DEFINES) --define "testbuild 1" -bb $(SPECFILE)
 
+pypi:
+	rm -rf dist
+	python setup.py sdist
+	# py2
+	virtualenv build_py2
+	build_py2/bin/pip install --upgrade pip setuptools wheel virtualenv
+	build_py2/bin/python setup.py bdist_wheel
+	rm -rf build_py2
+	# py3
+	python3 -m venv build_py3
+	build_py3/bin/pip install --upgrade pip setuptools wheel virtualenv
+	build_py3/bin/python setup.py bdist_wheel
+	rm -rf build_py3
+
+pypi-upload-test:
+	twine upload -r https://test.pypi.org/legacy/ dist/*
+
+pypi-upload:
+	twine upload dist/*
+
 tag::
 	git tag -a $(TAG)
 	@echo "Tagged with: $(TAG)"
