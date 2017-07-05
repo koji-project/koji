@@ -5,28 +5,19 @@ import koji
 import ConfigParser
 import os
 import platform
-compat_mode = False
-try:
-    import koji.tasks as tasks
-    from koji.tasks import scan_mounts
-    from koji.util import isSuccess as _isSuccess
-    from koji.util import parseStatus as _parseStatus
-    from koji.daemon import log_output
-    from __main__ import BuildRoot
-except ImportError:  # pragma: no cover
-    compat_mode = True
-    #old way
-    import tasks
-    #XXX - stuff we need from kojid
-    from __main__ import BuildRoot, log_output, scan_mounts, _isSuccess, _parseStatus
 
+import koji.tasks
+from koji.tasks import scan_mounts
+from koji.util import isSuccess, parseStatus
+from koji.daemon import log_output
+from __main__ import BuildRoot
 
 __all__ = ('RunRootTask',)
 
 CONFIG_FILE = '/etc/kojid/plugins/runroot.conf'
 
 
-class RunRootTask(tasks.BaseTaskHandler):
+class RunRootTask(koji.tasks.BaseTaskHandler):
 
     Methods = ['runroot']
 
@@ -151,11 +142,8 @@ class RunRootTask(tasks.BaseTaskHandler):
                                            arglist=[root, None, None],
                                            parent=self.id)
             repo_info = self.wait(task_id)[task_id]
-        if compat_mode:
-            broot = BuildRoot(root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
-        else:
-            broot = BuildRoot(self.session, self.options, root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
-            broot.workdir = self.workdir
+        broot = BuildRoot(self.session, self.options, root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
+        broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
         #workaround for rpm oddness
@@ -168,8 +156,8 @@ class RunRootTask(tasks.BaseTaskHandler):
                 pkgcmd = ['--install'] + packages
                 status = broot.mock(pkgcmd)
                 self.session.host.updateBuildRootList(broot.id, broot.getPackageList())
-                if not _isSuccess(status):
-                    raise koji.BuildrootError(_parseStatus(status, pkgcmd))
+                if not isSuccess(status):
+                    raise koji.BuildrootError(parseStatus(status, pkgcmd))
 
             if isinstance(command, str):
                 cmdstr = command
@@ -215,10 +203,10 @@ class RunRootTask(tasks.BaseTaskHandler):
             cmd = os.path.basename(cmdlist[0])
         else:
             cmd = '(none)'
-        if _isSuccess(rv):
+        if isSuccess(rv):
             return '%s completed successfully' % cmd
         else:
-            raise koji.BuildrootError(_parseStatus(rv, cmd))
+            raise koji.BuildrootError(parseStatus(rv, cmd))
 
     def do_extra_mounts(self, rootdir, mounts):
         mnts = []
@@ -271,13 +259,10 @@ class RunRootTask(tasks.BaseTaskHandler):
             cmd = ['mount', '-t', type, '-o', opts, dev, mpoint]
             self.logger.info("Mount command: %r" % cmd)
             koji.ensuredir(mpoint)
-            if compat_mode:
-                status = log_output(cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
-            else:
-                status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
-            if not _isSuccess(status):
+            status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
+            if not isSuccess(status):
                 error = koji.GenericError("Unable to mount %s: %s" \
-                        % (mpoint, _parseStatus(status, cmd)))
+                        % (mpoint, parseStatus(status, cmd)))
                 break
             fslog.write("%s\n" % mpoint)
             fslog.flush()
