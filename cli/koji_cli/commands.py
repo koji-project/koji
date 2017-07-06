@@ -79,6 +79,36 @@ def handle_add_group(goptions, session, args):
     session.groupListAdd(tag, group)
 
 
+def handle_block_group(goptions, session, args):
+    "[admin] Block group in tag"
+    usage = _("usage: %prog block-group <tag> <group>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a tag name and a group name"))
+        assert False  # pragma: no cover
+    tag = args[0]
+    group = args[1]
+
+    activate_session(session, goptions)
+    if not session.hasPerm('admin'):
+        print("This action requires admin privileges")
+        return 1
+
+    dsttag = session.getTag(tag)
+    if not dsttag:
+        print("Unknown tag: %s" % tag)
+        return 1
+
+    groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
+    group_id = groups.get(group, None)
+    if group_id is None:
+        print("Group %s doesn't exist within tag %s" % (group, tag))
+        return 1
+
+    session.groupListBlock(tag, group)
+
 def handle_assign_task(goptions, session, args):
     "[admin] Assign a task to a host"
     usage = _('usage: %prog assign-task task_id hostname')

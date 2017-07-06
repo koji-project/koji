@@ -14,6 +14,7 @@ admin commands:
         add-user                  Add a user
         add-volume                Add a new storage volume
         assign-task               Assign a task to a host
+        block-group               Block group in tag
         block-group-pkg           Block a package from a group's package listing
         block-group-req           Block a group's requirement listing
         block-pkg                 Block a package in the listing for tag
