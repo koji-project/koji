@@ -8439,10 +8439,6 @@ def importImageInternal(task_id, build_id, imgdata):
 class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
-    def buildFromCVS(self, url, tag):
-        raise koji.FunctionDeprecated()
-        #return make_task('buildFromCVS',[url, tag])
-
     def restartHosts(self, priority=5, options=None):
         context.session.assertPerm('admin')
         if options is None:
