@@ -3025,17 +3025,5 @@ def add_mail_logger(logger, addr):
     handler.setLevel(logging.ERROR)
     logging.getLogger(logger).addHandler(handler)
 
-def add_db_logger(logger, cnx):
-    handler = DBHandler(cnx, "log_messages", {'message': '%(message)s',
-                                              'message_time': '%(asctime)s',
-                                              'logger_name': '%(name)s',
-                                              'level': '%(levelname)s',
-                                              'location': '%(pathname)s:%(lineno)d',
-                                              'host': socket.getfqdn(),
-                                              })
-    handler.setFormatter(logging.Formatter(datefmt='%Y-%m-%d %H:%M:%S'))
-    logging.getLogger(logger).addHandler(handler)
-    return handler
-
 def remove_log_handler(logger, handler):
     logging.getLogger(logger).removeHandler(handler)

@@ -17,7 +17,6 @@ DROP TABLE IF EXISTS archivetypes;
 DROP TABLE IF EXISTS win_builds;
 DROP TABLE IF EXISTS maven_builds;
 DROP TABLE IF EXISTS build_notifications;
-DROP TABLE IF EXISTS log_messages;
 DROP TABLE IF EXISTS buildroot_listing;
 DROP TABLE IF EXISTS rpmsigs;
 DROP TABLE IF EXISTS rpminfo;

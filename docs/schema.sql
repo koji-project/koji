@@ -685,16 +685,6 @@ CREATE TABLE buildroot_listing (
 ) WITHOUT OIDS;
 CREATE INDEX buildroot_listing_rpms ON buildroot_listing(rpm_id);
 
-CREATE TABLE log_messages (
-    id SERIAL NOT NULL PRIMARY KEY,
-    message TEXT NOT NULL,
-    message_time TIMESTAMP NOT NULL DEFAULT NOW(),
-    logger_name VARCHAR(200) NOT NULL,
-    level VARCHAR(10) NOT NULL,
-    location VARCHAR(200),
-    host VARCHAR(200)
-) WITHOUT OIDS;
-
 CREATE TABLE build_notifications (
     id SERIAL NOT NULL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users (id),
