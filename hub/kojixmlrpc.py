@@ -31,7 +31,6 @@ import pprint
 import resource
 import xmlrpclib
 from xmlrpclib import getparser, dumps, Fault
-from koji.server import WSGIWrapper
 
 import koji
 import koji.auth
@@ -203,7 +202,7 @@ class HandlerAccess(object):
 
 
 class ModXMLRPCRequestHandler(object):
-    """Simple XML-RPC handler for mod_python environment"""
+    """Simple XML-RPC handler for mod_wsgi environment"""
 
     def __init__(self, handlers):
         self.traceback = False
@@ -394,21 +393,8 @@ def load_config(environ):
     """
     logger = logging.getLogger("koji")
     #get our config file(s)
-    if 'modpy.opts' in environ:
-        modpy_opts = environ.get('modpy.opts')
-        cf = modpy_opts.get('ConfigFile', None)
-        # to aid in the transition from PythonOptions to hub.conf, we only load
-        # the configfile if it is explicitly configured
-        if cf == '/etc/koji-hub/hub.conf':
-            cfdir = modpy_opts.get('ConfigDir', '/etc/koji-hub/hub.conf.d')
-        else:
-            cfdir = modpy_opts.get('ConfigDir', None)
-        if not cf and not cfdir:
-            logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use hub.conf')
-    else:
-        cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
-        cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
-        modpy_opts = {}
+    cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
+    cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
     if cfdir:
         configs = koji.config_directory_contents(cfdir)
     else:
@@ -482,27 +468,16 @@ def load_config(environ):
     ]
     opts = {}
     for name, dtype, default in cfgmap:
-        if config:
-            key = ('hub', name)
-            if config.has_option(*key):
-                if dtype == 'integer':
-                    opts[name] = config.getint(*key)
-                elif dtype == 'boolean':
-                    opts[name] = config.getboolean(*key)
-                else:
-                    opts[name] = config.get(*key)
+        key = ('hub', name)
+        if config and config.has_option(*key):
+            if dtype == 'integer':
+                opts[name] = config.getint(*key)
+            elif dtype == 'boolean':
+                opts[name] = config.getboolean(*key)
             else:
-                opts[name] = default
-        else:
-            if modpy_opts.get(name, None) is not None:
-                if dtype == 'integer':
-                    opts[name] = int(modpy_opts.get(name))
-                elif dtype == 'boolean':
-                    opts[name] = modpy_opts.get(name).lower() in ('yes', 'on', 'true', '1')
-                else:
-                    opts[name] = modpy_opts.get(name)
-            else:
-                opts[name] = default
+                opts[name] = config.get(*key)
+            continue
+        opts[name] = default
     if opts['DBHost'] is None:
         opts['DBHost'] = opts['DBhost']
     # load policies
@@ -677,15 +652,6 @@ def load_scripts(environ):
     scriptsdir = os.path.dirname(environ['SCRIPT_FILENAME'])
     sys.path.insert(0, scriptsdir)
     import kojihub
-
-
-#
-# mod_python handler
-#
-
-def handler(req):
-    wrapper = WSGIWrapper(req)
-    return wrapper.run(application)
 
 
 def get_memory_usage():

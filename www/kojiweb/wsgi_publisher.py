@@ -30,7 +30,7 @@ import sys
 import traceback
 
 from ConfigParser import RawConfigParser
-from koji.server import WSGIWrapper, ServerError, ServerRedirect
+from koji.server import ServerError, ServerRedirect
 from koji.util import dslice
 
 
@@ -122,17 +122,8 @@ class Dispatcher(object):
             - all PythonOptions (except koji.web.ConfigFile) are now deprecated and
               support for them will disappear in a future version of Koji
         """
-        modpy_opts = environ.get('modpy.opts', {})
-        if 'modpy.opts' in environ:
-            cf = modpy_opts.get('koji.web.ConfigFile', None)
-            cfdir =  modpy_opts.get('koji.web.ConfigDir', None)
-            # to aid in the transition from PythonOptions to web.conf, we do
-            # not check the config file by default, it must be configured
-            if not cf and not cfdir:
-                self.logger.warn('Warning: configuring Koji via PythonOptions is deprecated. Use web.conf')
-        else:
-            cf = environ.get('koji.web.ConfigFile', '/etc/kojiweb/web.conf')
-            cfdir = environ.get('koji.web.ConfigDir', '/etc/kojiweb/web.conf.d')
+        cf = environ.get('koji.web.ConfigFile', '/etc/kojiweb/web.conf')
+        cfdir = environ.get('koji.web.ConfigDir', '/etc/kojiweb/web.conf.d')
         if cfdir:
             configs = koji.config_directory_contents(cfdir)
         else:
@@ -142,40 +133,23 @@ class Dispatcher(object):
         if configs:
             config = RawConfigParser()
             config.read(configs)
-        elif modpy_opts:
-            # presumably we are configured by modpy options
-            config = None
         else:
             raise koji.GenericError("Configuration missing")
 
         opts = {}
         for name, dtype, default in self.cfgmap:
-            if config:
-                key = ('web', name)
-                if config.has_option(*key):
-                    if dtype == 'integer':
-                        opts[name] = config.getint(*key)
-                    elif dtype == 'boolean':
-                        opts[name] = config.getboolean(*key)
-                    elif dtype == 'list':
-                        opts[name] = [x.strip() for x in config.get(*key).split(',')]
-                    else:
-                        opts[name] = config.get(*key)
+            key = ('web', name)
+            if config and config.has_option(*key):
+                if dtype == 'integer':
+                    opts[name] = config.getint(*key)
+                elif dtype == 'boolean':
+                    opts[name] = config.getboolean(*key)
+                elif dtype == 'list':
+                    opts[name] = [x.strip() for x in config.get(*key).split(',')]
                 else:
-                    opts[name] = default
+                    opts[name] = config.get(*key)
             else:
-                if modpy_opts.get(name, None) is not None:
-                    if dtype == 'integer':
-                        opts[name] = int(modpy_opts.get(name))
-                    elif dtype == 'boolean':
-                        opts[name] = modpy_opts.get(name).lower() in ('yes', 'on', 'true', '1')
-                    else:
-                        opts[name] = modpy_opts.get(name)
-                else:
-                    opts[name] = default
-        if 'modpy.conf' in environ:
-            debug = environ['modpy.conf'].get('PythonDebug', '0').lower()
-            opts['PythonDebug'] = (debug in ['yes', 'on', 'true', '1'])
+                opts[name] = default
         opts['Secret'] = koji.util.HiddenValue(opts['Secret'])
         self.options = opts
         return opts
@@ -432,11 +406,6 @@ class Dispatcher(object):
             result = [result]
         return result
 
-    def handler(self, req):
-        """mod_python handler"""
-        wrapper = WSGIWrapper(req)
-        return wrapper.run(self.application)
-
     def application(self, environ, start_response):
         """wsgi handler"""
         if self.formatter:
@@ -483,7 +452,6 @@ class HubFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
-# provide necessary global handlers for mod_wsgi and mod_python
+# provide necessary global handlers for mod_wsgi
 dispatcher = Dispatcher()
-handler = dispatcher.handler
 application = dispatcher.application
