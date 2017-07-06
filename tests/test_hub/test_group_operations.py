@@ -196,18 +196,8 @@ class TestGrouplist(unittest.TestCase):
         # db
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        q = """
-SELECT blocked
-  FROM group_config
-
- WHERE (active = TRUE)
-   AND (group_id=%(grp_id)s)
-   AND (tag_id=%(tag_id)s)
-
-
-
-
- FOR UPDATE"""
-        self.assertEqual(str(query), q)
+        q = "SELECT blocked FROM group_config WHERE (active = TRUE) AND (group_id=%(grp_id)s) AND (tag_id=%(tag_id)s) FOR UPDATE"
+        actual = ' '.join(str(query).split())
+        self.assertEqual(actual, q)
         self.assertEqual(len(self.updates), 0)
         self.assertEqual(len(self.inserts), 0)
