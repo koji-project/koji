@@ -10597,9 +10597,13 @@ class RootExports(object):
         """Get a list of the permissions granted to the currently logged-in user."""
         return context.session.getPerms()
 
-    def getUserPerms(self, userID):
-        """Get a list of the permissions granted to the user with the given ID."""
-        return koji.auth.get_user_perms(userID)
+    def getUserPerms(self, userID=None):
+        """Get a list of the permissions granted to the user with the given ID/name.
+        Options:
+        - userID: User ID or username. If no userID provided, current login user's
+                  permissions will be listed."""
+        user_info = get_user(userID, strict=True)
+        return koji.auth.get_user_perms(user_info['id'])
 
     def getAllPerms(self):
         """Get a list of all permissions in the system.  Returns a list of maps.  Each
