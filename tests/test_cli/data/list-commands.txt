@@ -86,7 +86,7 @@ build commands:
 download commands:
         download-build            Download a built package
         download-logs             Download a logs for package
-        download-task             Download the output of a build task 
+        download-task             Download the output of a build task
 
 info commands:
         buildinfo                 Print basic information about a build

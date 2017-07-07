@@ -9,7 +9,6 @@ import logging
 import optparse
 import os
 import pprint
-import pycurl
 import random
 import re
 import six
@@ -37,7 +36,7 @@ from koji.util import md5_constructor
 from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
-        print_task_headers, print_task_recurse, _format_size, watch_logs, \
+        print_task_headers, print_task_recurse, download_file, watch_logs, \
         error, greetings
 
 
@@ -6466,31 +6465,8 @@ def anon_handle_download_build(options, session, args):
             url = pathinfo.build(info) + '/' + fname
             urls.append((url, os.path.basename(fname)))
 
-    def _progress(download_t, download_d, upload_t, upload_d):
-        if download_t == 0:
-            percent_done = 0.0
-        else:
-            percent_done = float(download_d)/float(download_t)
-        percent_done_str = "%02d%%" % (percent_done * 100)
-        data_done = _format_size(download_d)
-
-        sys.stdout.write("[% -36s] % 4s % 10s\r" % ('='*(int(percent_done * 36)), percent_done_str, data_done))
-        sys.stdout.flush()
-
     for url, relpath in urls:
-        if '/' in relpath:
-            koji.ensuredir(os.path.dirname(relpath))
-        if not suboptions.quiet:
-            print(relpath)
-        c = pycurl.Curl()
-        c.setopt(c.URL, url)
-        c.setopt(c.WRITEDATA, open(relpath, 'wb'))
-        if not (suboptions.quiet or suboptions.noprogress):
-            c.setopt(c.NOPROGRESS, False)
-            c.setopt(c.XFERINFOFUNCTION, _progress)
-        c.perform()
-        if not (suboptions.quiet or suboptions.noprogress):
-            print('')
+        download_file(url, relpath, suboptions.quiet)
 
 
 def anon_handle_download_logs(options, session, args):
@@ -6615,13 +6591,19 @@ def anon_handle_download_logs(options, session, args):
 
 
 def anon_handle_download_task(options, session, args):
-    "[download] Download the output of a build task "
+    "[download] Download the output of a build task"
     usage = _("usage: %prog download-task <task_id>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--logs", dest="logs", action="store_true", default=False, help=_("Also download build logs"))
+    parser.add_option("--topurl", metavar="URL", default=options.topurl,
+                      help=_("URL under which Koji files are accessible"))
+    parser.add_option("--noprogress", action="store_true",
+                      help=_("Do not display progress meter"))
+    parser.add_option("-q", "--quiet", action="store_true",
+                      help=_("Suppress output"), default=options.quiet)
 
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -6632,6 +6614,8 @@ def anon_handle_download_task(options, session, args):
     base_task_id = int(args.pop())
     if len(suboptions.arches) > 0:
         suboptions.arches = ",".join(suboptions.arches).split(",")
+
+    activate_session(session, options)
 
     # get downloadable tasks
 
@@ -6683,17 +6667,17 @@ def anon_handle_download_task(options, session, args):
                 error(_("Child task %d has not finished yet.") % task_id)
 
     # perform the download
-
     number = 0
+    pathinfo = koji.PathInfo(topdir=suboptions.topurl)
     for (task, filename, volume, new_filename) in downloads:
         number += 1
         if volume not in (None, 'DEFAULT'):
             koji.ensuredir(volume)
             new_filename = os.path.join(volume, new_filename)
-        print(_("Downloading [%d/%d]: %s") % (number, len(downloads), new_filename))
-        output_file = open(new_filename, "wb")
-        output_file.write(session.downloadTaskOutput(task["id"], filename, volume=volume))
-        output_file.close()
+        if '..' in filename:
+            error(_('Invalid file name: %s') % filename)
+        url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
+        download_file(url, new_filename, suboptions.quiet, suboptions.noprogress, len(downloads), number)
 
 
 def anon_handle_wait_repo(options, session, args):
