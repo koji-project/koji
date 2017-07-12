@@ -6466,7 +6466,7 @@ def anon_handle_download_build(options, session, args):
             urls.append((url, os.path.basename(fname)))
 
     for url, relpath in urls:
-        download_file(url, relpath, suboptions.quiet)
+        download_file(url, relpath, suboptions.quiet, suboptions.noprogress)
 
 
 def anon_handle_download_logs(options, session, args):
