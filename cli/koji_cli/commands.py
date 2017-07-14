@@ -797,7 +797,7 @@ def handle_resubmit(goptions, session, args):
     else:
         session.logout()
         return watch_tasks(session, [newID], quiet=options.quiet,
-                poll_interval=options.poll_interval)
+                poll_interval=goptions.poll_interval)
 
 
 def handle_call(goptions, session, args):
