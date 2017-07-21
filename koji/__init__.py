@@ -2101,7 +2101,10 @@ class ClientSession(object):
                 if self.gssapi_login(proxyuser=proxyuser):
                     return True
             except:
-                pass
+                if krbV:
+                    pass
+                else:
+                    raise
 
         if not krbV:
             raise PythonImportError(
@@ -2195,6 +2198,7 @@ class ClientSession(object):
         self.new_session()
 
         # 60 second timeout during login
+        sinfo = None
         old_opts = self.opts
         self.opts = old_opts.copy()
         self.opts['timeout'] = 60
