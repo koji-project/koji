@@ -788,7 +788,7 @@ def handle_resubmit(goptions, session, args):
     taskID = int(args[0])
     if not options.quiet:
         print("Resubmitting the following task:")
-        _printTaskInfo(session, taskID, 0, goptions.topdir, False, True)
+        _printTaskInfo(session, taskID, goptions.topdir, 0, False, True)
     newID = session.resubmitTask(taskID)
     if not options.quiet:
         print("Resubmitted task %s as new task %s" % (taskID, newID))
@@ -797,7 +797,7 @@ def handle_resubmit(goptions, session, args):
     else:
         session.logout()
         return watch_tasks(session, [newID], quiet=options.quiet,
-                poll_interval=options.poll_interval)
+                poll_interval=goptions.poll_interval)
 
 
 def handle_call(goptions, session, args):
