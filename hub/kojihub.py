@@ -1580,7 +1580,7 @@ def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
 
 def _grplist_add(taginfo, grpinfo, block, force, **opts):
     """grplist_add without permission check"""
-    tag = get_tag(taginfo)
+    tag = get_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, create=True)
     block = bool(block)
     # check current group status (incl inheritance)
@@ -1638,8 +1638,8 @@ def grplist_remove(taginfo, grpinfo, force=False):
 
 
 def _grplist_remove(taginfo, grpinfo, force):
-    """grplist_remove without permssion check"""
-    tag = get_tag(taginfo)
+    """grplist_remove without permission check"""
+    tag = get_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
     grp_id = group['id']
