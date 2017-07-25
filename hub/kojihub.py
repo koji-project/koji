@@ -5416,29 +5416,28 @@ class CG_Importer(object):
         #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
 
     def match_kojifile(self, comp):
-        # kojifile is identified by nvr + archive_id + filename
-        # additional checks by checksum
+        """Look up the file by archive id and sanity check the other data"""
         assert(comp['type'] == 'kojifile')
-        build = get_build(comp['nvr'])
-        if build is None:
-            logger.error("No match: NVR: %(nvr)" % comp)
-            return None
-        try:
-            archive = list_archives(buildID = build['id'],
-                                    archiveID = comp['archive_id'],
-                                    filename=comp['filename'],
-                                    size=comp['filesize'])[0]
-        except IndexError:
-            logger.error("No match: NVR: %(nvr), Archive: %(archive_id)s" % comp)
-            return None
-        if archive['checksum_type'] != koji.CHECKSUM_TYPES[comp['checksum_type']]:
-            logger.error("Failed to match archive %(filename)s, unsupported checksum type: %(checksum_type)s" % archive)
-        elif archive['checksum'] != comp['checksum']:
-            logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s", comp)
-        else:
-            return archive
-        return None
+        archive = get_archive(comp['archive_id'], strict=True)
+        build = get_build(archive['build_id'], strict=True)
 
+        for key in ['nvr', 'filename']:
+            if key not in comp:
+                raise koji.GenericError('%s field missing for component, '
+                        'archive_id=%s' % (key, archive['id']))
+        expected = {
+                'nvr': build['nvr'],
+                'filename': archive['filename'],
+                'filesize': int(archive['size']),
+                'checksum': archive['checksum'],
+                'checksum_type': koji.CHECKSUM_TYPES[archive['checksum_type']],
+                }
+        for key in expected:
+            if key in comp and expected[key] != comp[key]:
+                raise koji.GenericError('Component field %s does not match for '
+                    'archive_id=%s: %s != %s' % (key, archive['id'],
+                        expected[key], comp[key]))
+        return archive
 
     def prep_outputs(self):
         metadata = self.metadata
