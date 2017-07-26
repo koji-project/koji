@@ -1052,7 +1052,8 @@ def _check_NVRA(nvra):
 
 def is_debuginfo(name):
     """Determines if an rpm is a debuginfo rpm, based on name"""
-    if name.endswith('-debuginfo') or name.find('-debuginfo-') != -1:
+    if name.endswith('-debuginfo') or name.endswith('-debugsource') or \
+            name.find('-debuginfo-') != -1:
         return True
     return False
 
