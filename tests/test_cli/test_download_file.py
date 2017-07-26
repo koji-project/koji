@@ -79,7 +79,7 @@ class TestDownloadFile(unittest.TestCase):
         self.reset_mock()
         download_file("http://url", self.filename, quiet=False, noprogress=True)
         actual = self.stdout.getvalue()
-        expected = 'Downloading: %s\n\n' % self.filename
+        expected = 'Downloading: %s\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(self.curl.setopt.call_count, 3)
 

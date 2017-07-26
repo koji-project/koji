@@ -491,7 +491,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         c.setopt(c.XFERINFOFUNCTION, _download_progress)
     c.perform()
     c.close()
-    if not quiet:
+    if not (quiet or noprogress):
         print('')
 
 
