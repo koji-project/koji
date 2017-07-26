@@ -1052,10 +1052,8 @@ def _check_NVRA(nvra):
 
 def is_debuginfo(name):
     """Determines if an rpm is a debuginfo rpm, based on name"""
-    if name.endswith('-debuginfo') or name.endswith('-debugsource') or \
-            '-debuginfo-' in name:
-        return True
-    return False
+    return (name.endswith('-debuginfo') or name.endswith('-debugsource') or
+            '-debuginfo-' in name)
 
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
