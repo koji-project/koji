@@ -135,3 +135,62 @@ class TestCGImporter(unittest.TestCase):
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.import_metadata()
+
+
+class TestMatchKojiFile(unittest.TestCase):
+
+    def setUp(self):
+        self.importer = kojihub.CG_Importer()
+        self.archive1 = {
+                'id': 99,
+                'build_id': 42,
+                'checksum': 'e1f95555eae04b8e1ebdc5555c5555f0',
+                'checksum_type': 0,
+                'filename': 'foo-bar-3.0.jar',
+                'size': 42710,
+                }
+        self.build1 = {
+                'id': 79218,
+                'nvr': 'foo-3.0-1',
+                }
+        self.comp1 = {
+                'type': 'kojifile',
+                'archive_id': self.archive1['id'],
+                'nvr': self.build1['nvr'],
+                'filename': self.archive1['filename'],
+                }
+        self.get_archive = mock.patch('kojihub.get_archive').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_match_kojifile_basic(self):
+        comp = self.comp1
+        self.get_archive.return_value = self.archive1
+        self.get_build.return_value = self.build1
+        match = self.importer.match_kojifile(comp)
+        self.assertEqual(match, self.archive1)
+        self.get_build.assert_called_once()
+
+    def test_match_kojifile_missing_fields(self):
+        self.get_archive.return_value = self.archive1
+        self.get_build.return_value = self.build1
+        # nvr missing
+        comp = self.comp1.copy()
+        del comp['nvr']
+        with self.assertRaises(koji.GenericError):
+            self.importer.match_kojifile(comp)
+        # filename missing
+        comp = self.comp1.copy()
+        del comp['filename']
+        with self.assertRaises(koji.GenericError):
+            self.importer.match_kojifile(comp)
+
+    def test_match_kojifile_mismatch(self):
+        comp = self.comp1
+        comp['filesize'] = 1
+        self.get_archive.return_value = self.archive1
+        self.get_build.return_value = self.build1
+        with self.assertRaises(koji.GenericError):
+            self.importer.match_kojifile(comp)

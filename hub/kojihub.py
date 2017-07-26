@@ -5360,6 +5360,10 @@ class CG_Importer(object):
                 match = self.match_file(comp)
                 if match:
                     files.append(match)
+            elif comp['type'] == 'kojifile':
+                match = self.match_kojifile(comp)
+                if match:
+                    files.append(match)
             else:
                 raise koji.GenericError("Unknown component type: %(type)s" % comp)
         return rpms, files
@@ -5411,6 +5415,29 @@ class CG_Importer(object):
         return None
         #raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" % comp)
 
+    def match_kojifile(self, comp):
+        """Look up the file by archive id and sanity check the other data"""
+        assert(comp['type'] == 'kojifile')
+        archive = get_archive(comp['archive_id'], strict=True)
+        build = get_build(archive['build_id'], strict=True)
+
+        for key in ['nvr', 'filename']:
+            if key not in comp:
+                raise koji.GenericError('%s field missing for component, '
+                        'archive_id=%s' % (key, archive['id']))
+        expected = {
+                'nvr': build['nvr'],
+                'filename': archive['filename'],
+                'filesize': int(archive['size']),
+                'checksum': archive['checksum'],
+                'checksum_type': koji.CHECKSUM_TYPES[archive['checksum_type']],
+                }
+        for key in expected:
+            if key in comp and expected[key] != comp[key]:
+                raise koji.GenericError('Component field %s does not match for '
+                    'archive_id=%s: %s != %s' % (key, archive['id'],
+                        expected[key], comp[key]))
+        return archive
 
     def prep_outputs(self):
         metadata = self.metadata
