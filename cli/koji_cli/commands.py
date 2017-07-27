@@ -2873,6 +2873,78 @@ def anon_handle_list_pkgs(goptions, session, args):
             print(fmt % pkg)
 
 
+def anon_handle_list_builds(goptions, session, args):
+    "[info] Print the build listing"
+    usage = _("usage: %prog list-builds [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--package", help=_("List builds for this package"))
+    parser.add_option("--buildid", help=_("List build from build ID"))
+    parser.add_option("--beforedate", help=_("List builds built before this date. YYYY-MM-DD format"))
+    parser.add_option("--afterdate", help=_("List builds built after this date. YYYY-MM-DD format"))
+    parser.add_option("--state", help=_("List builds in this state"))
+    parser.add_option("--type", help=_("List builds of this type."))
+    parser.add_option("--owner", help=_("List builds built by this owner"))
+    parser.add_option("--volume", help=_("List builds by volume ID"))
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print the header information"))
+    (options, args) = parser.parse_args(args)
+    activate_session(session, goptions)
+    opts = {}
+    for key in ('state', 'type'):
+        opts[key] = getattr(options, key)
+    if options.package:
+        try:
+            opts['packageID'] = int(options.package)
+        except ValueError:
+            opts['packageID'] = session.getPackageID(options.package)
+    if options.owner:
+        try:
+            opts['userID'] = int(options.owner)
+        except ValueError:
+            opts['userID'] = session.getUser(options.owner)['id']
+    if options.volume:
+        try:
+            opts['volumeID'] = int(options.volume)
+        except ValueError:
+            volumes = session.listVolumes()
+            for volume in volumes:
+                if options.volume == volume['name']:
+                    opts['volumeID'] = volume['id']
+    if options.beforedate:
+        opts['completeBefore'] = options.beforedate
+    if options.afterdate:
+        opts['completeAfter'] = options.afterdate
+    if options.buildid:
+        try:
+            buildid = int(options.buildid)
+        except ValueError:
+            buildid = options.buildid
+        data = [session.getBuild(buildid)]
+        if options.type == 'maven':
+            data[0].update(session.getMavenBuild(buildid))
+    else:
+        data = session.listBuilds(**opts)
+    if options.type == 'maven' and options.buildid:
+        fmt = "%(nvr)-55s  %(group_id)-20s  %(artifact_id)-20s  %(owner_name)s"
+    elif options.type == 'maven':
+        fmt = "%(nvr)-55s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+    else:
+        fmt = "%(nvr)-55s  %(owner_name)s"
+    if not options.quiet:
+        if options.type == 'maven':
+            print("%-55s  %-20s  %-20s  %s" % ("Build", "Group Id", "Artifact Id", "Built by"))
+            print("%s  %s  %s  %s" % ("-"*55, "-"*20, "-"*20, "-"*16))
+        else:
+            print("%-55s  %s" % ("Build", "Built by"))
+            print("%s  %s" % ("-"*55, "-"*16))
+
+    output = [ fmt % x for x in data ]
+    output.sort()
+    for line in output:
+        print(line)
+
+
 def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
     usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
