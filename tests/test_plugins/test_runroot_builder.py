@@ -31,6 +31,9 @@ class FakeConfigParser(object):
     def read(self, path):
         return
 
+    def sections(self):
+        return self.CONFIG.keys()
+
     def has_option(self, section, key):
         return section in self.CONFIG and key in self.CONFIG[section]
 
