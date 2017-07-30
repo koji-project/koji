@@ -209,7 +209,7 @@ class RepoMerge(object):
                     other_srpm, other_repoid = include_srpms[srpm_name]
                     if pkg.repoid != other_repoid:
                         # We found a rpm built from an srpm with the same name in a previous repo.
-                        # The previous repo takes precendence, so ignore the srpm found here.
+                        # The previous repo takes precedence, so ignore the srpm found here.
                         sys.stderr.write('Package %s already provided by repo %s'
                                 ' (at %s in repo %s)\n'
                                 % (srpm_name, other_repoid, str(pkg), pkg.repoid))

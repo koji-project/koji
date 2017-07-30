@@ -4921,7 +4921,7 @@ def handle_remove_tag_inheritance(goptions, session, args):
         if not priority:
             print(_("Please specify a priority on the command line."))
             return
-        print(_("Error: Key constrainsts may be broken.  Exiting."))
+        print(_("Error: Key constraints may be broken.  Exiting."))
         return
 
     # len(data) == 1

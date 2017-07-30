@@ -169,7 +169,7 @@ class TaskWatcher(object):
         return self.str()
 
     def get_failure(self):
-        """Print infomation about task completion"""
+        """Print information about task completion"""
         if self.info['state'] != koji.TASK_STATES['FAILED']:
             return ''
         error = None

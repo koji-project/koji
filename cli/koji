@@ -67,7 +67,7 @@ def register_plugin(plugin):
 
 def load_plugins(options, path):
     """Load plugins specified by our configuration plus system plugins. Order
-    is that system plugins are first, so they can be overriden by
+    is that system plugins are first, so they can be overridden by
     user-specified ones with same name."""
     logger = logging.getLogger('koji.plugins')
     if os.path.exists(path):

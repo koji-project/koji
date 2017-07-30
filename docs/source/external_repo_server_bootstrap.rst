@@ -124,7 +124,7 @@ Tags
     dist-f10-updates               - This is where the external repos for f10 release and f10 updates are attached
      `- dist-f10-build             - This is the f10 build target with the 'build' and 'srpm-build' group inherited from dist-f9-build,
          |                           so that your buildroot gets populated but you do not have to maintain these groups for each
-         |                           seperate release.
+         |                           separate release.
          `- dist-f9-build          - etc.
              `- dist-f8-build      - etc.
 
