@@ -2879,7 +2879,7 @@ def anon_handle_list_builds(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--package", help=_("List builds for this package"))
-    parser.add_option("--buildid", help=_("List build from build ID"))
+    parser.add_option("--buildid", help=_("List build from build ID or nvr"))
     parser.add_option("--beforedate", help=_("List builds built before this date. YYYY-MM-DD format"))
     parser.add_option("--afterdate", help=_("List builds built after this date. YYYY-MM-DD format"))
     parser.add_option("--state", help=_("List builds in this state"))
@@ -2889,28 +2889,46 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print the header information"))
     (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False  # pragma: no cover
     activate_session(session, goptions)
     opts = {}
     for key in ('state', 'type'):
-        opts[key] = getattr(options, key)
+        value = getattr(options, key)
+        if value is not None:
+            opts[key] = value
     if options.package:
         try:
             opts['packageID'] = int(options.package)
         except ValueError:
-            opts['packageID'] = session.getPackageID(options.package)
+            package = session.getPackageID(options.package)
+            if package is None:
+                parser.error(_("Invalid package"))
+                assert False  # pragma: no cover
+            opts['packageID'] = package
     if options.owner:
         try:
             opts['userID'] = int(options.owner)
         except ValueError:
-            opts['userID'] = session.getUser(options.owner)['id']
+            user = session.getUser(options.owner)
+            if user is None:
+                parser.error(_("Invalid owner"))
+                assert False  # pragma: no cover
+            opts['userID'] = user['id']
     if options.volume:
         try:
             opts['volumeID'] = int(options.volume)
         except ValueError:
             volumes = session.listVolumes()
+            volumeID = None
             for volume in volumes:
                 if options.volume == volume['name']:
-                    opts['volumeID'] = volume['id']
+                    volumeID = volume['id']
+            if volumeID is None:
+                parser.error(_("Invalid volume"))
+                assert False  # pragma: no cover
+            opts['volumeID'] = volume
     if options.beforedate:
         opts['completeBefore'] = options.beforedate
     if options.afterdate:
@@ -2921,10 +2939,18 @@ def anon_handle_list_builds(goptions, session, args):
         except ValueError:
             buildid = options.buildid
         data = [session.getBuild(buildid)]
+        if data is None:
+            parser.error(_("Invalid build ID"))
+            assert False  # pragma: no cover
         if options.type == 'maven':
             data[0].update(session.getMavenBuild(buildid))
     else:
-        data = session.listBuilds(**opts)
+        # Check filter exists
+        if any(opts):
+            data = session.listBuilds(**opts)
+        else:
+            parser.error(_("Filter must be provided for list"))
+            assert False  # pragma: no cover
     if options.type == 'maven' and options.buildid:
         fmt = "%(nvr)-55s  %(group_id)-20s  %(artifact_id)-20s  %(owner_name)s"
     elif options.type == 'maven':
