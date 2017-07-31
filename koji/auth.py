@@ -134,7 +134,7 @@ class Session(object):
                     #Some explanation:
                     #This function is one of the few that performs its own commit.
                     #However, our storage of the current callnum is /after/ that
-                    #commit. This means the the current callnum only gets commited if
+                    #commit. This means the the current callnum only gets committed if
                     #a commit happens afterward.
                     #We only schedule a commit for dml operations, so if we find the
                     #callnum in the db then a previous attempt succeeded but failed to

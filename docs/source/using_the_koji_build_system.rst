@@ -73,7 +73,7 @@ Authority used to sign the user keys.) : It can be manually downloaded
 from
 `here <https://admin.fedoraproject.org/accounts/fedora-upload-ca.cert>`__
 or ``fedora-packager-setup or fedora-cert -n`` should fetch it. using
-the CLI is prefered.
+the CLI is preferred.
 ``~/.fedora-server-ca.cert`` (The certificate for the Certificate
 Authority used to sign the build system's server keys.) : It can be
 downloaded manually from

@@ -12005,7 +12005,7 @@ class HostExports(object):
 
     def failBuild(self, task_id, build_id):
         """Mark the build as failed.  If the current state is not
-        'BUILDING', or the current competion_time is not null, a
+        'BUILDING', or the current completion_time is not null, a
         GenericError will be raised."""
         host = Host()
         host.verify()

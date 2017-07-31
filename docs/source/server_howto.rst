@@ -135,7 +135,7 @@ koji components.
     default_md              = sha256
     distinguished_name      = req_distinguished_name
     attributes              = req_attributes
-    x509_extensions         = v3_ca # The extentions to add to the self signed cert
+    x509_extensions         = v3_ca # The extensions to add to the self signed cert
     string_mask             = MASK:0x2002
 
     [req_distinguished_name] 
@@ -1063,7 +1063,7 @@ certificates you generated at the beginning of the setup process.
     ;certificate of the CA that issued the HTTP server certificate
     serverca = /etc/kojid/koji_ca_cert.crt
 
-It is important to note that if your builders are hosted on seperate machines
+It is important to note that if your builders are hosted on separate machines
 from koji hub and koji web, you will need to scp the certificates mentioned in
 the above configuration file from the ``/etc/kojid/`` directory on koji hub to
 the ``/etc/koji/`` directory on the local machine so that the builder can be

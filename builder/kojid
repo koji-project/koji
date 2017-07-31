@@ -1219,7 +1219,7 @@ class BuildArchTask(BaseBuildTask):
             if len(srpm_files) == 0:
                 raise koji.BuildError("no srpm files found for task %i" % self.id)
             if len(srpm_files) > 1:
-                raise koji.BuildError("mulitple srpm files found for task %i: %s" % (self.id, srpm_files))
+                raise koji.BuildError("multiple srpm files found for task %i: %s" % (self.id, srpm_files))
 
             # Run sanity checks.  Any failures will throw a BuildError
             self.srpm_sanity_checks("%s/%s" % (resultdir,srpm_files[0]))
@@ -3681,7 +3681,7 @@ class BaseImageTask(OzImageTask):
 
         @args:
             img_opts - an existing dict with any pre-existing parameters
-            fixed_params - list of parameters that must not be overriden
+            fixed_params - list of parameters that must not be overridden
         @returns:
             nothing - dict is modified in place
         """
@@ -3873,8 +3873,8 @@ class BaseImageTask(OzImageTask):
                 uses this to figure out what plugin to run
             img_opts - a dict of additional options that specific to the target
                 type we pass in via image_type
-            fixed_params - a list of parameter keys that should not be overriden
-                           by the --factory-parameter CLI
+            fixed_params - a list of parameter keys that should not be
+                           overridden by the --factory-parameter CLI
         @returns:
             A Builder() object from ImageFactory that contains information
             about the image building include state and progress.
@@ -3917,7 +3917,7 @@ class BaseImageTask(OzImageTask):
         if format == 'qcow2':
             # qemu-img changed its default behavior at some point to generate a
             # v3 image when the requested output format is qcow2.  We don't
-            # want koji to output different formats based on the verison of
+            # want koji to output different formats based on the version of
             # qemu-img that happens to be on the builder. Here we use a function
             # inside of Image Factory that detects qemu-img behavior and adds
             # the correct options to ensure original "v2" compatibility

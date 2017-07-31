@@ -41,7 +41,7 @@ The new ``dist-repo`` command creates rpm repos suitable for distribution.
 
 The new ``save-failed-tree`` command allows the a task owner (or admin)
 to download information from the buildroot of a failed build. This feature
-requires the ``save_failed_tree`` plugin to be enabled on the hub and buidlers.
+requires the ``save_failed_tree`` plugin to be enabled on the hub and builders.
 
 
 Configuration

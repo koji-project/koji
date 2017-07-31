@@ -148,7 +148,7 @@ def get_options():
     parser.add_option("--rules-protectlist",
                       help=_("Rules: list of package names to never replace"))
     parser.add_option("--tag-build", action="store_true", default=False,
-                      help=_("tag sucessful builds into the tag we are building, default is to not tag"))
+                      help=_("tag successful builds into the tag we are building, default is to not tag"))
     parser.add_option("--logfile",
                       help=_("file where everything gets logged"))
     parser.add_option("--arches",
