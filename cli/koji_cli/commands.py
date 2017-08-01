@@ -2879,13 +2879,18 @@ def anon_handle_list_builds(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--package", help=_("List builds for this package"))
-    parser.add_option("--buildid", help=_("List build from build ID or nvr"))
-    parser.add_option("--beforedate", help=_("List builds built before this date. YYYY-MM-DD format"))
-    parser.add_option("--afterdate", help=_("List builds built after this date. YYYY-MM-DD format"))
+    parser.add_option("--buildid", help=_("List specific build from ID or nvr"))
+    parser.add_option("--before",
+                      help=_("List builds built before this time. 'YYYY-MM-DD HH24:MI:SS' ISO format"))
+    parser.add_option("--after",
+                      help=_("List builds built after this time. 'YYYY-MM-DD HH24:MI:SS' ISO format"))
     parser.add_option("--state", help=_("List builds in this state"))
     parser.add_option("--type", help=_("List builds of this type."))
+    parser.add_option("--prefix", help=_("Only list packages starting with this prefix"))
     parser.add_option("--owner", help=_("List builds built by this owner"))
     parser.add_option("--volume", help=_("List builds by volume ID"))
+    parser.add_option("--descending", action="store_true", default=False,
+                help=_("Print the list in descending order"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print the header information"))
     (options, args) = parser.parse_args(args)
@@ -2894,7 +2899,7 @@ def anon_handle_list_builds(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
     opts = {}
-    for key in ('state', 'type'):
+    for key in ('type', 'prefix'):
         value = getattr(options, key)
         if value is not None:
             opts[key] = value
@@ -2929,10 +2934,39 @@ def anon_handle_list_builds(goptions, session, args):
                 parser.error(_("Invalid volume"))
                 assert False  # pragma: no cover
             opts['volumeID'] = volume
-    if options.beforedate:
-        opts['completeBefore'] = options.beforedate
-    if options.afterdate:
-        opts['completeAfter'] = options.afterdate
+    if options.state:
+        try:
+            state = int(options.state)
+            if state > 4 or state < 0:
+                parser.error(_("Invalid state"))
+                assert False  # pragma: no cover
+            opts['state'] = state
+        except ValueError:
+            try:
+                opts['state'] = koji.BUILD_STATES[options.state]
+            except KeyError:
+                parser.error(_("Invalid state"))
+                assert False  # pragma: no cover
+    for opt in ('before', 'after'):
+        val = getattr(options, opt)
+        if not val:
+            continue
+        try:
+            ts = float(val)
+            setattr(options, opt, ts)
+            continue
+        except ValueError:
+            pass
+        try:
+            dt = dateutil.parser.parse(val)
+            ts = time.mktime(dt.timetuple())
+            setattr(options, opt, ts)
+        except:
+            parser.error(_("Invalid time specification: %s") % val)
+    if options.before:
+        opts['completeBefore'] = getattr(options, 'before')
+    if options.after:
+        opts['completeAfter'] = getattr(options, 'after')
     if options.buildid:
         try:
             buildid = int(options.buildid)
@@ -2951,6 +2985,8 @@ def anon_handle_list_builds(goptions, session, args):
         else:
             parser.error(_("Filter must be provided for list"))
             assert False  # pragma: no cover
+    sorteddata = sorted(data, key=lambda k: k['nvr'], reverse=options.descending)
+
     if options.type == 'maven' and options.buildid:
         fmt = "%(nvr)-55s  %(group_id)-20s  %(artifact_id)-20s  %(owner_name)s"
     elif options.type == 'maven':
@@ -2965,8 +3001,7 @@ def anon_handle_list_builds(goptions, session, args):
             print("%-55s  %s" % ("Build", "Built by"))
             print("%s  %s" % ("-"*55, "-"*16))
 
-    output = [ fmt % x for x in data ]
-    output.sort()
+    output = [ fmt % x for x in sorteddata ]
     for line in output:
         print(line)
 
