@@ -5,6 +5,7 @@ import koji
 import ConfigParser
 import os
 import platform
+import re
 
 import koji.tasks
 from koji.tasks import scan_mounts
@@ -63,11 +64,10 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         if cp.has_option('paths', 'path_subs'):
             self.config['path_subs'] = [x.split(',') for x in cp.get('paths', 'path_subs').split('\n')]
 
-        count = 0
-        while True:
-            section_name = 'path%d' % count
-            if not cp.has_section(section_name):
-                break
+        # path section are in form 'path%d' while order is important as some
+        # paths can be mounted inside other mountpoints
+        path_sections = [p for p in cp.sections() if re.match('path\d+', p)]
+        for section_name in sorted(path_sections, key=lambda x: int(x[4:])):
             try:
                 self.config['paths'].append({
                     'mountpoint': cp.get(section_name, 'mountpoint'),
@@ -77,7 +77,6 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 })
             except ConfigParser.NoOptionError:
                 raise koji.GenericError("bad config: missing options in %s section" % section_name)
-            count += 1
 
         for path in self.config['default_mounts'] + self.config['safe_roots'] + [x[0] for x in self.config['path_subs']]:
             if not path.startswith('/'):

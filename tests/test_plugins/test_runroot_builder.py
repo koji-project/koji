@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import copy
 import unittest
 import mock
 import six.moves.configparser
@@ -11,25 +12,62 @@ __main__.BuildRoot = kojid.BuildRoot
 import koji
 from runroot import RunRootTask
 
+
+CONFIG1 = {
+        'paths': {
+            'default_mounts': '/mnt/archive,/mnt/workdir',
+            'safe_roots': '/mnt/workdir/tmp',
+            'path_subs':
+            '/mnt/archive/prehistory/,/mnt/prehistoric_disk/archive/prehistory',
+        },
+        'path0': {
+            'mountpoint': '/mnt/archive',
+            'path': 'archive.org:/vol/archive',
+            'fstype': 'nfs',
+            'options': 'ro,hard,intr,nosuid,nodev,noatime,tcp',
+        }}
+
+
+CONFIG2 = {
+        'paths': {
+            'default_mounts': '/mnt/archive,/mnt/workdir',
+            'safe_roots': '/mnt/workdir/tmp',
+            'path_subs':
+            '/mnt/archive/prehistory/,/mnt/prehistoric_disk/archive/prehistory',
+        },
+        'path0': {
+            'mountpoint': '/mnt/archive',
+            'path': 'archive.org:/vol/archive',
+            'fstype': 'nfs',
+            'options': 'ro,hard,intr,nosuid,nodev,noatime,tcp',
+        },
+        'path1': {
+            'mountpoint': '/mnt/workdir',
+            'path': 'archive.org:/vol/workdir',
+            'fstype': 'nfs',
+            'options': 'ro,hard,intr,nosuid,nodev,noatime,tcp',
+        },
+        'path2': {
+            'mountpoint': '/mnt/prehistoric_disk',
+            'path': 'archive.org:/vol/prehistoric_disk',
+            'fstype': 'nfs',
+            'options': 'ro,hard,intr,nosuid,nodev,noatime,tcp',
+        }}
+
+
 class FakeConfigParser(object):
-    def __init__(self):
-        self.CONFIG = {
-            'paths': {
-                'default_mounts': '/mnt/archive,/mnt/workdir',
-                'safe_roots': '/mnt/workdir/tmp',
-                'path_subs':
-                '/mnt/archive/prehistory/,/mnt/prehistoric_disk/archive/prehistory',
-            },
-            'path0': {
-                'mountpoint': '/mnt/archive',
-                'path': 'archive.org:/vol/archive',
-                'fstype': 'nfs',
-                'options': 'ro,hard,intr,nosuid,nodev,noatime,tcp',
-            },
-        }
+
+    def __init__(self, config=None):
+        if config is None:
+            self.CONFIG = copy.deepcopy(CONFIG1)
+        else:
+            self.CONFIG = copy.deepcopy(config)
 
     def read(self, path):
         return
+
+    def sections(self):
+        return self.CONFIG.keys()
 
     def has_option(self, section, key):
         return section in self.CONFIG and key in self.CONFIG[section]
@@ -78,6 +116,36 @@ class TestRunrootConfig(unittest.TestCase):
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         RunRootTask(123, 'runroot', {}, session, options)
+
+    @mock.patch('ConfigParser.SafeConfigParser')
+    def test_valid_config_alt(self, safe_config_parser):
+        safe_config_parser.return_value = FakeConfigParser(CONFIG2)
+        session = mock.MagicMock()
+        options = mock.MagicMock()
+        options.workdir = '/tmp/nonexistentdirectory'
+        RunRootTask(123, 'runroot', {}, session, options)
+
+    @mock.patch('ConfigParser.SafeConfigParser')
+    def test_pathnum_gaps(self, safe_config_parser):
+        session = mock.MagicMock()
+        options = mock.MagicMock()
+        options.workdir = '/tmp/nonexistentdirectory'
+        config = CONFIG2.copy()
+        safe_config_parser.return_value = FakeConfigParser(config)
+        task1 = RunRootTask(123, 'runroot', {}, session, options)
+        # adjust the path numbers (but preserving order) and do it again
+        config = CONFIG2.copy()
+        config['path99'] = config['path1']
+        config['path999'] = config['path2']
+        del config['path1']
+        del config['path2']
+        safe_config_parser.return_value = FakeConfigParser(config)
+        task2 = RunRootTask(123, 'runroot', {}, session, options)
+        # resulting processed config should be the same
+        self.assertEqual(task1.config, task2.config)
+        paths = list([CONFIG2[k] for k in ('path0', 'path1', 'path2')])
+        self.assertEqual(task2.config['paths'], paths)
+
 
 class TestMounts(unittest.TestCase):
     @mock.patch('ConfigParser.SafeConfigParser')
