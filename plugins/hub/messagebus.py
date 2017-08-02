@@ -5,7 +5,7 @@
 #     Mike Bonnet <mikeb@redhat.com>
 
 from koji import PluginError
-from koji.plugin import callbacks, callback, ignore_error
+from koji.plugin import callbacks, callback, ignore_error, convert_datetime
 import ConfigParser
 import logging
 import qpid.messaging
@@ -203,6 +203,7 @@ def get_message_headers(msgtype, *args, **kws):
 @callback(*[c for c in callbacks.keys() if c.startswith('post')
             and c != 'postCommit'])
 @ignore_error
+@convert_datetime
 def send_message(cbtype, *args, **kws):
     global config
     sender = get_sender()
