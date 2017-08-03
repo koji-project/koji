@@ -253,7 +253,10 @@ def send_messages(cbtype, *args, **kws):
     messages = getattr(context, 'messagebus_plugin_messages', [])
     if not messages:
         return
-    if config.getboolean('broker', 'test_mode'):
+    test_mode = False
+    if config.has_option('broker', 'test_mode'):
+        test_mode = config.getboolean('broker', 'test_mode')
+    if test_mode:
         logger.debug('test mode: skipping broker connection')
         for message in messages:
             logger.debug('test mode: skipping message: %r', message)
