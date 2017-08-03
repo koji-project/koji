@@ -11,7 +11,7 @@ hub is up, appropriate authentication methods have been configured, the Koji
 repo administration daemon (``kojira``) is properly configured and running,
 and at least one Koji builder (``kojid``) is properly configured and running.
 All koji cli commands assume that the user is a Koji ``admin``.  If you need
-help with these tasks, see the :doc:`ServerHowTo <server_howto>`.
+help with these tasks, see the :doc:`server_howto`.
 
 * Create a new tag. ::
 
