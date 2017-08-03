@@ -236,9 +236,11 @@ def prep_message(cbtype, *args, **kws):
     else:
         raise PluginError('unsupported exchange type: %s' % exchange_type)
 
-    messages = getattr(context, 'messagebus_plugin_messages', [])
+    messages = getattr(context, 'messagebus_plugin_messages', None)
+    if messages is None:
+        messages = []
+        context.messagebus_plugin_messages = messages
     messages.append(message)
-    context.messagebus_plugin_messages = messages
 
 
 @callback('postCommit')
