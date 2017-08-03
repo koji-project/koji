@@ -62,7 +62,15 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         if cp.has_option('paths', 'safe_roots'):
             self.config['safe_roots'] = cp.get('paths', 'safe_roots').split(',')
         if cp.has_option('paths', 'path_subs'):
-            self.config['path_subs'] = [x.split(',') for x in cp.get('paths', 'path_subs').split('\n')]
+            self.config['path_subs'] = []
+            for line in cp.get('paths', 'path_subs').splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                sub = line.split(',')
+                if len(sub) != 2:
+                    raise koji.GenericError('bad runroot substitution: %s' % sub)
+                self.config['path_subs'].append(sub)
 
         # path section are in form 'path%d' while order is important as some
         # paths can be mounted inside other mountpoints
