@@ -487,8 +487,15 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
     c.setopt(pycurl.FOLLOWLOCATION, 1)
     c.setopt(c.WRITEDATA, open(relpath, 'wb'))
     if not (quiet or noprogress):
-        c.setopt(c.NOPROGRESS, False)
-        c.setopt(c.XFERINFOFUNCTION, _download_progress)
+        proc_func_param = getattr(c, 'XFERINFOFUNCTION', None)
+        if proc_func_param is None:
+            proc_func_param = getattr(c, 'PROGRESSFUNCTION', None)
+        if proc_func_param is not None:
+            c.setopt(c.NOPROGRESS, False)
+            c.setopt(proc_func_param, _download_progress)
+        else:
+            c.close()
+            error(_('Error: XFERINFOFUNCTION and PROGRESSFUNCTION are not supported by pyCurl. Quit download progress'))
     c.perform()
     c.close()
     if not (quiet or noprogress):

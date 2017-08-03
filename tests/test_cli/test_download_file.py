@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import mock
+from mock import call
 import six
 import shutil
 import tempfile
@@ -15,6 +16,8 @@ class TestDownloadFile(unittest.TestCase):
     def reset_mock(self):
         self.stdout.seek(0)
         self.stdout.truncate()
+        self.stderr.seek(0)
+        self.stderr.truncate()
         # self.curl.reset_mock()
         self.curlClass.reset_mock()
 
@@ -22,6 +25,7 @@ class TestDownloadFile(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp()
         self.filename = self.tempdir + "/filename"
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
+        self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
         self.curlClass = mock.patch('pycurl.Curl', create=True).start()
         self.curl = self.curlClass.return_value
 
@@ -82,6 +86,29 @@ class TestDownloadFile(unittest.TestCase):
         expected = 'Downloading: %s\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(self.curl.setopt.call_count, 3)
+
+    def test_handle_download_file_curl_version(self):
+        self.curl.XFERINFOFUNCTION = None
+        download_file("http://url", self.filename, quiet=False, noprogress=False)
+        actual = self.stdout.getvalue()
+        expected = 'Downloading: %s\n\n' % self.filename
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(self.curl.setopt.call_count, 5)
+        self.curl.setopt.assert_has_calls([call(self.curl.PROGRESSFUNCTION, _download_progress)])
+
+        self.reset_mock()
+        self.curl.PROGRESSFUNCTION = None
+        with self.assertRaises(SystemExit) as cm:
+            download_file("http://url", self.filename, quiet=False, noprogress=False)
+        actual = self.stdout.getvalue()
+        expected = 'Downloading: %s\n' % self.filename
+        self.assertMultiLineEqual(actual, expected)
+        actual = self.stderr.getvalue()
+        expected = 'Error: XFERINFOFUNCTION and PROGRESSFUNCTION are not supported by pyCurl. Quit download progress\n'
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(self.curl.setopt.call_count, 3)
+        self.assertEqual(cm.exception.code, 1)
+
 
 
 class TestDownloadProgress(unittest.TestCase):
