@@ -248,14 +248,21 @@ def prep_message(cbtype, *args, **kws):
 def send_messages(cbtype, *args, **kws):
     '''Send the messages cached by prep_message'''
 
+    logger = logging.getLogger('koji.plugin.messagebus')
     config = get_config()
     messages = getattr(context, 'messagebus_plugin_messages', [])
     if not messages:
         return
-    sender = get_sender()
-    for message in messages:
-        sender.send(message, sync=False, timeout=config.getfloat('broker', 'timeout'))
-    sender.close(timeout=config.getfloat('broker', 'timeout'))
+    if config.getboolean('broker', 'test_mode'):
+        logger.debug('test mode: skipping broker connection')
+        for message in messages:
+            logger.debug('test mode: skipping message: %r', message)
+    else:
+        sender = get_sender()
+        for message in messages:
+            sender.send(message, sync=False,
+                    timeout=config.getfloat('broker', 'timeout'))
+        sender.close(timeout=config.getfloat('broker', 'timeout'))
 
     # koji should do this for us, but just in case...
     del context.messagebus_plugin_messages
