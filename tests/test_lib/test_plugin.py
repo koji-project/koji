@@ -1,8 +1,10 @@
 import copy
+import datetime
 import mock
 import unittest
 
 import koji
+import koji.util
 import koji.plugin
 
 
@@ -98,6 +100,10 @@ class TestCallbacks(unittest.TestCase):
         self.callbacks.append([cbtype, args, kwargs])
         raise TestError
 
+    @koji.plugin.convert_datetime
+    def datetime_callback(self, cbtype, *args, **kwargs):
+        self.callbacks.append([cbtype, args, kwargs])
+
     def test_simple_callback(self):
         args = ('hello',)
         kwargs = {'world': 1}
@@ -126,6 +132,19 @@ class TestCallbacks(unittest.TestCase):
         self.assertEqual(self.callbacks[0], [cbtype, args, kwargs])
         getLogger.assert_called_once()
         getLogger.return_value.warn.assert_called_once()
+
+    def test_datetime_callback(self):
+        dt1 = datetime.datetime.now()
+        dt2 = datetime.datetime(2001,1,1)
+        args = (dt1,"2",["three"], {4: dt2},)
+        kwargs = {'foo': [dt1, dt2]}
+        cbtype = 'preTag'
+        koji.plugin.register_callback(cbtype, self.datetime_callback)
+        koji.plugin.run_callbacks(cbtype, *args, **kwargs)
+        args2 = koji.util.encode_datetime_recurse(args)
+        kwargs2 = koji.util.encode_datetime_recurse(kwargs)
+        self.assertEqual(len(self.callbacks), 1)
+        self.assertEqual(self.callbacks[0], [cbtype, args2, kwargs2])
 
     def test_bad_callback(self):
         args = ('hello',)
