@@ -200,6 +200,16 @@ def run_callbacks(cbtype, *args, **kws):
 
 def _fix_cb_args(func, args, kwargs, cache):
     if getattr(func, 'convert_datetime', False):
-        args = encode_datetime_recurse(args)
-        kwargs = encode_datetime_recurse(kwargs)
+        if id(args) in cache:
+            args = cache[id(args)]
+        else:
+            val = encode_datetime_recurse(args)
+            cache[id(args)] = val
+            args = val
+        if id(kwargs) in cache:
+            kwargs = cache[id(kwargs)]
+        else:
+            val = encode_datetime_recurse(kwargs)
+            cache[id(kwargs)] = val
+            kwargs = val
     return args, kwargs
