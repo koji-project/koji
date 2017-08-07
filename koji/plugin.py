@@ -25,6 +25,7 @@ import logging
 import sys
 import traceback
 import six
+from koji.util import encode_datetime_recurse
 
 # the available callback hooks and a list
 # of functions to be called for each event
@@ -165,6 +166,13 @@ def ignore_error(f):
     setattr(f, 'failure_is_an_option', True)
     return f
 
+
+def convert_datetime(f):
+    """Indicate that callback needs to receive datetime objects as strings"""
+    setattr(f, 'convert_datetime', True)
+    return f
+
+
 def register_callback(cbtype, func):
     if not cbtype in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
@@ -172,12 +180,15 @@ def register_callback(cbtype, func):
         raise koji.PluginError('%s is not callable' % getattr(func, '__name__', 'function'))
     callbacks[cbtype].append(func)
 
+
 def run_callbacks(cbtype, *args, **kws):
     if not cbtype in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
+    cache = {}
     for func in callbacks[cbtype]:
+        cb_args, cb_kwargs = _fix_cb_args(func, args, kws, cache)
         try:
-            func(cbtype, *args, **kws)
+            func(cbtype, *cb_args, **cb_kwargs)
         except:
             msg = 'Error running %s callback from %s' % (cbtype, func.__module__)
             if getattr(func, 'failure_is_an_option', False):
@@ -185,3 +196,20 @@ def run_callbacks(cbtype, *args, **kws):
             else:
                 tb = ''.join(traceback.format_exception(*sys.exc_info()))
                 raise koji.CallbackError('%s:\n%s' % (msg, tb))
+
+
+def _fix_cb_args(func, args, kwargs, cache):
+    if getattr(func, 'convert_datetime', False):
+        if id(args) in cache:
+            args = cache[id(args)]
+        else:
+            val = encode_datetime_recurse(args)
+            cache[id(args)] = val
+            args = val
+        if id(kwargs) in cache:
+            kwargs = cache[id(kwargs)]
+        else:
+            val = encode_datetime_recurse(kwargs)
+            cache[id(kwargs)] = val
+            kwargs = val
+    return args, kwargs

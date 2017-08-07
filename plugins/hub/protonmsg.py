@@ -6,7 +6,7 @@
 #     Mike Bonnet <mikeb@redhat.com>
 
 import koji
-from koji.plugin import callback, ignore_error
+from koji.plugin import callback, ignore_error, convert_datetime
 from koji.context import context
 import ConfigParser
 import logging
@@ -138,6 +138,7 @@ def queue_msg(address, props, data):
     body = json.dumps(data)
     msgs.append((address, props, body))
 
+@convert_datetime
 @callback('postPackageListChange')
 def prep_package_list_change(cbtype, *args, **kws):
     address = 'package.' + kws['action']
@@ -147,6 +148,7 @@ def prep_package_list_change(cbtype, *args, **kws):
              'action': kws['action']}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postTaskStateChange')
 def prep_task_state_change(cbtype, *args, **kws):
     if kws['attribute'] != 'state':
@@ -161,6 +163,7 @@ def prep_task_state_change(cbtype, *args, **kws):
              'new': kws['new']}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postBuildStateChange')
 def prep_build_state_change(cbtype, *args, **kws):
     if kws['attribute'] != 'state':
@@ -179,6 +182,7 @@ def prep_build_state_change(cbtype, *args, **kws):
              'new': new}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postImport')
 def prep_import(cbtype, *args, **kws):
     address = 'import.' + kws['type']
@@ -189,6 +193,7 @@ def prep_import(cbtype, *args, **kws):
              'release': kws['build']['release']}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postRPMSign')
 def prep_rpm_sign(cbtype, *args, **kws):
     address = 'sign.rpm'
@@ -212,14 +217,17 @@ def _prep_tag_msg(address, cbtype, kws):
              'user': kws['user']['name']}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postTag')
 def prep_tag(cbtype, *args, **kws):
     _prep_tag_msg('build.tag', cbtype, kws)
 
+@convert_datetime
 @callback('postUntag')
 def prep_untag(cbtype, *args, **kws):
     _prep_tag_msg('build.untag', cbtype, kws)
 
+@convert_datetime
 @callback('postRepoInit')
 def prep_repo_init(cbtype, *args, **kws):
     address = 'repo.init'
@@ -228,6 +236,7 @@ def prep_repo_init(cbtype, *args, **kws):
              'repo_id': kws['repo_id']}
     queue_msg(address, props, kws)
 
+@convert_datetime
 @callback('postRepoDone')
 def prep_repo_done(cbtype, *args, **kws):
     address = 'repo.done'
@@ -238,6 +247,7 @@ def prep_repo_done(cbtype, *args, **kws):
     queue_msg(address, props, kws)
 
 @ignore_error
+@convert_datetime
 @callback('postCommit')
 def send_queued_msgs(cbtype, *args, **kws):
     msgs = getattr(context, 'protonmsg_msgs', None)

@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 import calendar
+import datetime
 from fnmatch import fnmatch
 import koji
 import logging
@@ -150,6 +151,51 @@ def dslice_ex(dict, keys, strict=True):
         if strict or key in ret:
             del ret[key]
     return ret
+
+
+class DataWalker(object):
+
+    def __init__(self, data, callback, kwargs=None):
+        self.data = data
+        self.callback = callback
+        if kwargs is None:
+            kwargs = {}
+        self.kwargs = kwargs
+
+    def walk(self):
+        return self._walk(self.data)
+
+    def _walk(self, value):
+        # first let callback filter the value
+        value = self.callback(value, **self.kwargs)
+        # then recurse if needed
+        if isinstance(value, tuple):
+            return tuple([self._walk(x) for x in value])
+        elif isinstance(value, list):
+            return list([self._walk(x) for x in value])
+        elif isinstance(value, dict):
+            ret = {}
+            for k in value:
+                k = self._walk(k)
+                v = self._walk(value[k])
+                ret[k] = v
+            return ret
+        else:
+            return value
+
+
+def encode_datetime(value):
+    """Convert datetime objects to strings"""
+    if isinstance(value, datetime.datetime):
+        return value.isoformat(' ')
+    else:
+        return value
+
+
+def encode_datetime_recurse(value):
+    walker = DataWalker(value, encode_datetime)
+    return walker.walk()
+
 
 def call_with_argcheck(func, args, kwargs=None):
     """Call function, raising ParameterError if args do not match"""
