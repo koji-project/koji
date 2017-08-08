@@ -1,6 +1,6 @@
 [Unit]
 Description=Koji vm build server
-Documentation=https://fedoraproject.org/wiki/Koji/ServerHowTo
+Documentation=https://docs.pagure.org/koji/server_howto/
 
 After=network.target
 

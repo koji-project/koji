@@ -211,18 +211,23 @@ Most simple command would look like this:
         (opts, args) = parser.parse_args(args)
         print(args[0])
 
-`@export_cli` is decorator which will register plugin's command with name
-derived from name of the function. Function name needs to follow one rule: It
-has to start with `anon_handle_` or `handle_`. Rest of the name is name of
-the command. First one will not authenticate against hub (user can still override
-this behaviour with `--force-auth` or `--mine` options where it is relevant)
-- it is simply same as using `--noath` option. Second variant doesn't presume
-  anything about authentication.
+`@export_cli` is a decorator which registers a new command. The command
+name is derived from name of the function. The function name must start with
+either `anon_handle_` or `handle_`. The rest of the name becomes the name of
+the command.
 
-Compared to this simple example is real usage with API calls. Koji provides
-some important functions via client library `koji_cli.lib` which can be
-imported and used inside command's function. Feel free to examine, what is
-provided there. Some notable examples are:
+In the first case, the command will not automatically
+authenticate with the hub (though the user can still override
+this behaviour with `--force-auth` option). In the second case, the command
+will perform authentication by default (this too can be overridden by the
+user with the `--noauth` option).
+
+The example above is very simplistic. We recommend that developers also
+examine the actual calls included in Koji. The built in commands live in
+`koji_cli.commands` and our standard cli plugins live in `plugins/cli`.
+
+Koji provides some important functions via in the client cli library
+(`koji_cli.lib`) for use by cli commands. Some notable examples are:
 
  * `activate_session(session, options)` - It is needed to authenticate
    against hub. Both parameters are same as those passed to handler.
@@ -242,7 +247,7 @@ CLI plugins structure will be extended (made configurable and allowing more
 than just adding commands - e.g. own authentication methods, etc.) in future.
 
 Pull requests
-^^^^^^^^^^^^^
+=============
 
 These plugins have to be written in python 2.6+/3.x compatible way. We are
 using `six` library to support this, so we will also prefer pull requests
