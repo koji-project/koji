@@ -890,15 +890,16 @@ def get_rpm_header(f, ts=None):
 
 def get_header_field(hdr, name, src_arch=False):
     """Extract named field from an rpm header"""
+    name = name.upper()
     opt_dep_hdrs = (
             'SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
             'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
             'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
             'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS')
-    if not RPM_SUPPORTS_OPTIONAL_DEPS and name.upper() in opt_dep_hdrs:
+    if not RPM_SUPPORTS_OPTIONAL_DEPS and name in opt_dep_hdrs:
         return []
 
-    if (src_arch and name.lower() == "arch"
+    if (src_arch and name == "ARCH"
                 and get_header_field(hdr, "sourcepackage")):
         # return "src" or "nosrc" arch instead of build arch for src packages
         if (get_header_field(hdr, "nosource")
@@ -906,18 +907,18 @@ def get_header_field(hdr, name, src_arch=False):
             return "nosrc"
         return "src"
 
-    hdr_key = getattr(rpm, "RPMTAG_%s" % name.upper(), None)
+    hdr_key = getattr(rpm, "RPMTAG_%s" % name, None)
     if hdr_key is None:
         # HACK: nosource and nopatch may not be in exported rpm tags
-        if name == "nosource":
+        if name == "NOSOURCE":
             hdr_key = 1051
-        elif name == "nopatch":
+        elif name == "NOPATCH":
             hdr_key = 1052
         else:
             raise GenericError("No such rpm header field: %s" % name)
 
     result = hdr[hdr_key]
-    if name in ("nosource", "nopatch"):
+    if name in ("NOSOURCE", "NOPATCH"):
         # HACK: workaround for https://bugzilla.redhat.com/show_bug.cgi?id=991329
         if result is None:
             result = []
@@ -929,6 +930,10 @@ def get_header_field(hdr, name, src_arch=False):
         except UnicodeDecodeError:
             # typically signatures
             pass
+
+    if name == 'SIZE' and result is None:
+        result = hdr[rpm.RPMTAG_LONGSIZE]
+
     return result
 
 
