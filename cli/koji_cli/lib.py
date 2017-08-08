@@ -9,6 +9,7 @@ import socket
 import string
 import sys
 import time
+import pycurl
 from six.moves import range
 
 try:
@@ -468,6 +469,49 @@ def linked_upload(localfile, path, name=None):
         os.link(localfile, dst)
     finally:
         os.umask(old_umask)
+
+
+def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=None):
+    """Download files from remote"""
+
+    if '/' in relpath:
+        koji.ensuredir(os.path.dirname(relpath))
+    if not quiet:
+        if size and num:
+            print(_("Downloading [%d/%d]: %s") % (num, size, relpath))
+        else:
+            print(_("Downloading: %s") % relpath)
+    c = pycurl.Curl()
+    c.setopt(c.URL, url)
+    # allow 301/302 redirect
+    c.setopt(pycurl.FOLLOWLOCATION, 1)
+    c.setopt(c.WRITEDATA, open(relpath, 'wb'))
+    if not (quiet or noprogress):
+        proc_func_param = getattr(c, 'XFERINFOFUNCTION', None)
+        if proc_func_param is None:
+            proc_func_param = getattr(c, 'PROGRESSFUNCTION', None)
+        if proc_func_param is not None:
+            c.setopt(c.NOPROGRESS, False)
+            c.setopt(proc_func_param, _download_progress)
+        else:
+            c.close()
+            error(_('Error: XFERINFOFUNCTION and PROGRESSFUNCTION are not supported by pyCurl. Quit download progress'))
+    c.perform()
+    c.close()
+    if not (quiet or noprogress):
+        print('')
+
+
+def _download_progress(download_t, download_d, upload_t, upload_d):
+    if download_t == 0:
+        percent_done = 0.0
+    else:
+        percent_done = float(download_d) / float(download_t)
+    percent_done_str = "%02d%%" % (percent_done * 100)
+    data_done = _format_size(download_d)
+
+    sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str, data_done))
+    sys.stdout.flush()
 
 
 def error(msg=None, code=1):
