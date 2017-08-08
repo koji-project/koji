@@ -561,7 +561,7 @@ def make_task(method, arglist, **opts):
             raise koji.GenericError("invalid channel policy")
 
     # encode xmlrpc request
-    opts['request'] = koji.xmlrpcplus.dumps(tuple(arglist), methodname=method, allow_none=1)
+    opts['request'] = koji.xmlrpcplus.dumps(tuple(arglist), methodname=method)
     opts['state'] = koji.TASK_STATES['FREE']
     opts['method'] = method
     koji.plugin.run_callbacks('preTaskStateChange', attribute='state', old=None, new='FREE', info=opts)

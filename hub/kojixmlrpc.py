@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from ConfigParser import RawConfigParser
+import datetime
 import inspect
 import logging
 import os
@@ -41,7 +42,7 @@ from koji.context import context
 
 class Marshaller(ExtendedMarshaller):
 
-    dispatch = xmlrpclib.Marshaller.dispatch.copy()
+    dispatch = ExtendedMarshaller.dispatch.copy()
 
     def dump_datetime(self, value, write):
         # For backwards compatibility, we return datetime objects as strings
