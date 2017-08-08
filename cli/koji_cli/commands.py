@@ -6585,8 +6585,7 @@ def anon_handle_download_logs(options, session, args):
             try:
                 task_id = int(arg)
             except ValueError:
-                error(_("Task id must be number: %r") % task_id)
-                continue
+                error(_("Task id must be number: %r") % arg)
         save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
 
 
