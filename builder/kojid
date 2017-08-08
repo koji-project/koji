@@ -705,6 +705,27 @@ class BuildRoot(object):
             rpm_info['external_repo'] = erepo
             rpm_info['location'] = erepo['external_repo_id']
 
+    def path_without_to_within(self, path):
+        """
+        Convert an absolute path from without the BuildRoot to one within.
+
+        For example, if the BuildRoot is located at '/tmp/my/build/root',
+        calling path_without_to_within('/tmp/my/build/root/foo/bar') would
+        return '/foo/bar').
+
+        :param path:
+            A reference within the BuildRoot but as an absolute path from
+            without a chroot.
+        :return:
+            The equivalent absolute path from within a chroot of the BuildRoot.
+        """
+        root = self.rootdir()
+        if os.path.commonprefix([root, path]) != root:
+            raise ValueError(
+                'path %r is not within the BuildRoot at %r' % (path, root)
+            )
+        return os.path.join('/', koji.util.relpath(path, root))
+
     def resultdir(self):
         return "%s/%s/result" % (self.options.mockdir, self.name)
 
@@ -3066,6 +3087,31 @@ class LiveMediaTask(ImageTask):
     # https://bugzilla.redhat.com/show_bug.cgi?id=1315541
     bind_opts = {}
 
+    def fetch_lorax_templates_from_scm(self, build_root):
+        """
+        Checkout the lorax templates from SCM for use by livemedia-creator.
+
+        This will make a checkout of the lorax templates from SCM so that they
+        may be passed to livemedia-creator.  Here we are operating outside the
+        chroot of the BuildRoot.  The following options are essential:
+            - lorax_url points to the SCM containing the templates.
+            - lorax_dir provides a relative reference to the templates within
+            the checkout.
+
+        :param build_root:
+            The BuildRoot instance to receive the checkout.
+        :return:
+            An absolute path (from within the chroot) to where livemedia-creator
+            can find the checked out templates.
+        """
+        scm = SCM(self.opts['lorax_url'])
+        scm.assert_allowed(self.options.allowed_scms)
+        logfile = os.path.join(self.workdir, 'lorax-templates-checkout.log')
+        checkout_dir = scm.checkout(os.path.join(build_root.rootdir(), 'tmp'),
+                                    self.session, self.getUploadDir(), logfile)
+        return os.path.join(build_root.path_without_to_within(checkout_dir),
+                            self.opts['lorax_dir'])
+
     def genISOManifest(self, image, manifile):
         """
         Using iso9660 from pycdio, get the file manifest of the given image,
@@ -3178,6 +3224,10 @@ class LiveMediaTask(ImageTask):
 
         if arch == 'x86_64':
             cmd.append('--macboot')
+
+        if 'lorax_url' in self.opts:
+            templates_dir = self.fetch_lorax_templates_from_scm(broot)
+            cmd.extend(['--lorax-templates', templates_dir])
 
 
         # Run livemedia-creator
