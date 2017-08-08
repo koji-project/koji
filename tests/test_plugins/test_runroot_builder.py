@@ -33,7 +33,9 @@ CONFIG2 = {
             'default_mounts': '/mnt/archive,/mnt/workdir',
             'safe_roots': '/mnt/workdir/tmp',
             'path_subs':
-            '/mnt/archive/prehistory/,/mnt/prehistoric_disk/archive/prehistory',
+                '\n'
+                '/mnt/archive/prehistory/,/mnt/prehistoric_disk/archive/prehistory\n'
+                '/mnt/archve/workdir,/mnt/workdir\n',
         },
         'path0': {
             'mountpoint': '/mnt/archive',
@@ -145,6 +147,17 @@ class TestRunrootConfig(unittest.TestCase):
         self.assertEqual(task1.config, task2.config)
         paths = list([CONFIG2[k] for k in ('path0', 'path1', 'path2')])
         self.assertEqual(task2.config['paths'], paths)
+
+    @mock.patch('ConfigParser.SafeConfigParser')
+    def test_bad_path_sub(self, safe_config_parser):
+        session = mock.MagicMock()
+        options = mock.MagicMock()
+        options.workdir = '/tmp/nonexistentdirectory'
+        config = copy.deepcopy(CONFIG2)
+        config['paths']['path_subs'] += 'incorrect:format'
+        safe_config_parser.return_value = FakeConfigParser(config)
+        with self.assertRaises(koji.GenericError):
+            RunRootTask(123, 'runroot', {}, session, options)
 
 
 class TestMounts(unittest.TestCase):
