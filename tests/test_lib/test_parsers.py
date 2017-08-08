@@ -113,6 +113,19 @@ class INITTestCase(unittest.TestCase):
                               koji.check_NVRA, value, strict=True)
 
 
+class FakeHeader(object):
+
+    def __init__(self, **kwargs):
+        self.data = {}
+        for key in kwargs:
+            kname = "RPMTAG_%s" % key.upper()
+            hkey = getattr(rpm, kname)
+            self.data[hkey] = kwargs[key]
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+
 class HeaderTestCase(unittest.TestCase):
     rpm_path = os.path.join(os.path.dirname(__file__), 'data/rpms/test-deps-1-1.fc24.x86_64.rpm')
     rpmdir = os.path.join(os.path.dirname(__file__), 'data/rpms')
@@ -142,6 +155,11 @@ class HeaderTestCase(unittest.TestCase):
         self.assertEqual(['PROVIDES', 'REQUIRES'], sorted(koji.get_header_fields(self.rpm_path, ['REQUIRES', 'PROVIDES'])))
         hdr = koji.get_rpm_header(self.rpm_path)
         self.assertEqual(['REQUIRES'], list(koji.get_header_fields(hdr, ['REQUIRES']).keys()))
+
+    def test_get_header_fields_largefile(self):
+        size = 4294967295
+        hdr = FakeHeader(longsize=size,size=None)
+        self.assertEqual({'SIZE': size}, koji.get_header_fields(hdr, ['SIZE']))
 
 
     def test_get_header_field_src(self):
