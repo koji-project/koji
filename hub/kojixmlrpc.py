@@ -35,8 +35,19 @@ import koji.plugin
 import koji.policy
 import koji.util
 # import xmlrpclib functions from koji to use tweaked Marshaller
-from koji.xmlrpcplus import getparser, dumps, Fault
+from koji.xmlrpcplus import getparser, dumps, Fault, ExtendedMarshaller
 from koji.context import context
+
+
+class Marshaller(ExtendedMarshaller):
+
+    dispatch = xmlrpclib.Marshaller.dispatch.copy()
+
+    def dump_datetime(self, value, write):
+        # For backwards compatibility, we return datetime objects as strings
+        value = value.isoformat(' ')
+        self.dump_string(value, write)
+    dispatch[datetime.datetime] = dump_datetime
 
 
 class HandlerRegistry(object):
@@ -216,10 +227,10 @@ class ModXMLRPCRequestHandler(object):
             response = handler(environ)
             # wrap response in a singleton tuple
             response = (response,)
-            response = dumps(response, methodresponse=1, allow_none=1)
+            response = dumps(response, methodresponse=1, marshaller=Marshaller)
         except Fault, fault:
             self.traceback = True
-            response = dumps(fault)
+            response = dumps(fault, marshaller=Marshaller)
         except:
             self.traceback = True
             # report exception back to server
@@ -243,7 +254,7 @@ class ModXMLRPCRequestHandler(object):
                 else:
                     faultString = "%s: %s" % (e_class, e)
             self.logger.warning(tb_str)
-            response = dumps(Fault(faultCode, faultString))
+            response = dumps(Fault(faultCode, faultString), marshaller=Marshaller)
 
         return response
 
