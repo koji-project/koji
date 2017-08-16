@@ -64,4 +64,4 @@ def handle_save_failed_tree(options, session, args):
         return
     else:
         session.logout()
-        watch_tasks(session, [task_id], quiet=opts.quiet, poll_interval=options.poll_interval)
+        return watch_tasks(session, [task_id], quiet=opts.quiet, poll_interval=options.poll_interval)
