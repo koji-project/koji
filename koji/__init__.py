@@ -34,6 +34,11 @@ except ImportError:  # pragma: no cover
     pass
 import base64
 import datetime
+dns_resolver = None
+try:
+    import dns.resolver as dns_resolver
+except ImportError:  # pragma: no cover
+    pass
 import six.moves.configparser
 import errno
 from fnmatch import fnmatch
@@ -1641,6 +1646,7 @@ def read_config(profile_name, user_config=None):
         'poll_interval': 6,
         'krbservice': 'host',
         'krb_rdns': True,
+        'krb_canon_host': False,
         'principal': None,
         'keytab': None,
         'cert': None,
@@ -1703,7 +1709,7 @@ def read_config(profile_name, user_config=None):
                 if name in result:
                     if name in ('anon_retry', 'offline_retry', 'keepalive',
                                 'use_fast_upload', 'krb_rdns', 'use_old_ssl',
-                                'debug', 'debug_xmlrpc'):
+                                'debug', 'debug_xmlrpc', 'krb_canon_host'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
                                   'offline_retry_interval', 'poll_interval', 'timeout',
@@ -2027,6 +2033,7 @@ def grab_session_options(options):
         'use_fast_upload',
         'upload_blocksize',
         'krb_rdns',
+        'krb_canon_host',
         'use_old_ssl',
         'no_ssl_verify',
         'serverca',
@@ -2194,14 +2201,25 @@ class ClientSession(object):
         to, based on baseurl."""
 
         host = six.moves.urllib.parse.urlparse(self.baseurl).hostname
-        if self.opts.get('krb_rdns', True):
-            servername = socket.getfqdn(host)
-        else:
-            servername = host
+        servername = self._fix_krb_host(host)
         realm = cprinc.realm
         service = self.opts.get('krbservice', 'host')
 
-        return '%s/%s@%s' % (service, servername, realm)
+        ret = '%s/%s@%s' % (service, servername, realm)
+        self.logger.debug('Using server principal: %s', ret)
+        return ret
+
+    def _fix_krb_host(self, host):
+        if self.opts.get('krb_canon_host', False):
+            if dns_resolver is None:
+                self.logger.warning('python-dns missing -- cannot resolve hostname')
+            else:
+                answer = dns_resolver.query(host, 'A')
+                return answer.canonical_name.to_text()
+        if self.opts.get('krb_rdns', True):
+            return socket.getfqdn(host)
+        # else
+        return host
 
     def gssapi_login(self, proxyuser=None):
         if not HTTPKerberosAuth:
