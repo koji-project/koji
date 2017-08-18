@@ -132,7 +132,7 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
-                'cert': '/etc/kojivmd/client.crt',
+                'cert': None,
                 'ca': '',  # FIXME: Remove in next major release
                 'serverca': None}
     if config.has_section('kojivmd'):
@@ -159,8 +159,8 @@ def get_options():
 
     # special handling for cert defaults
     cert_defaults = {
-        'cert': '/etc/kojira/client.crt',
-        'serverca': '/etc/kojira/serverca.crt',
+        'cert': '/etc/kojivmd/client.crt',
+        'serverca': '/etc/kojivmd/serverca.crt',
     }
     for name in cert_defaults:
         if getattr(options, name, None) is None:
