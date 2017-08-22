@@ -9,6 +9,7 @@ ExecStart=/usr/sbin/kojid \
        --fg \
        --force-lock \
        --verbose
+ExecReload=/bin/kill -USR1 $MAINPID
 
 [Install]
 WantedBy=multi-user.target

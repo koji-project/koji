@@ -82,14 +82,14 @@ case "$1" in
   status)
         status $prog
         ;;
+  reload|graceful)
+        graceful
+        ;;
   restart|reload|force-reload)
         restart
         ;;
   condrestart|try-restart)
         [ -f /var/lock/subsys/kojid ] && restart || :
-        ;;
-  graceful)
-        graceful
         ;;
   *)
         echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|graceful}"
