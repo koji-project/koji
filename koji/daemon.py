@@ -263,6 +263,8 @@ class SCM(object):
         elif len(userhost) > 2:
             raise koji.GenericError('Invalid username@hostname specified: %s' % netloc)
 
+        path = os.path.normpath(path)
+
         # ensure that path and query do not end in /
         if path.endswith('/'):
             path = path[:-1]
