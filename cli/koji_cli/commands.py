@@ -5206,7 +5206,7 @@ def handle_spin_livecd(options, session, args):
                        " architecture, a build target, and a relative path to" +
                        " a kickstart file."))
         assert False  # pragma: no cover
-    _build_image(options, task_options, session, args, 'livecd')
+    return _build_image(options, task_options, session, args, 'livecd')
 
 
 # This handler is for spinning livemedia images
@@ -5266,7 +5266,7 @@ def handle_spin_livemedia(options, session, args):
     if task_options.lorax_url is not None and task_options.lorax_dir is None:
         parser.error(_('The "--lorax_url" option requires that "--lorax_dir" '
                        'also be used.'))
-    _build_image(options, task_options, session, args, 'livemedia')
+    return _build_image(options, task_options, session, args, 'livemedia')
 
 
 # This handler is for spinning appliance images
@@ -5322,7 +5322,7 @@ def handle_spin_appliance(options, session, args):
                        "an architecture, a build target, and a relative path" +
                        " to a kickstart file."))
         assert False  # pragma: no cover
-    _build_image(options, task_options, session, args, 'appliance')
+    return _build_image(options, task_options, session, args, 'appliance')
 
 
 def handle_image_build_indirection(options, session, args):
@@ -5588,7 +5588,7 @@ def handle_image_build(options, session, args):
         parser.error(
             _("You must specify --distro. Examples: Fedora-16, RHEL-6.4, " +
               "SL-6.4 or CentOS-6.4"))
-    _build_image_oz(options, task_options, session, args)
+    return _build_image_oz(options, task_options, session, args)
 
 
 def _build_image(options, task_opts, session, args, img_type):
