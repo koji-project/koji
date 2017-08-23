@@ -230,6 +230,29 @@ def handle_help(options, session, args):
         list_commands(chosen)
 
 
+def fix_pyver(options, logger):
+    '''Attempt to run under the correct python version, if requested'''
+    pyver = getattr(options, 'pyver', None)
+    if not pyver:
+        return
+    if pyver not in [2,3]:
+        logger.warning('Invalid python version requested: %s', pyver)
+    if sys.version_info[0] == pyver:
+        return
+    py_exec = '/usr/bin/python%i' % pyver
+    if not os.path.exists(py_exec):
+        logger.error('No such file: %s', py_exec)
+        return
+    args = list(sys.argv)
+    args.insert(0, py_exec)
+    logger.debug('Executing via %s', py_exec)
+    logger.debug('args = %r', args)
+    try:
+        os.execvp(py_exec, args)
+    except Exception:
+        logger.exception('Unable to execute with requested python version')
+
+
 def list_commands(categories_chosen=None):
     if categories_chosen is None or "all" in categories_chosen:
         categories_chosen = list(categories.keys())
@@ -277,6 +300,8 @@ if __name__ == "__main__":
         logger.setLevel(logging.ERROR)
     else:
         logger.setLevel(logging.WARN)
+
+    fix_pyver(options, logger)
 
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
