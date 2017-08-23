@@ -132,9 +132,9 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
-                'cert': '/etc/kojivmd/client.crt',
+                'cert': None,
                 'ca': '',  # FIXME: Remove in next major release
-                'serverca': '/etc/kojivmd/serverca.crt'}
+                'serverca': None}
     if config.has_section('kojivmd'):
         for name, value in config.items('kojivmd'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'minmem',
@@ -156,6 +156,17 @@ def get_options():
     for name, value in defaults.items():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
+
+    # special handling for cert defaults
+    cert_defaults = {
+        'cert': '/etc/kojivmd/client.crt',
+        'serverca': '/etc/kojivmd/serverca.crt',
+    }
+    for name in cert_defaults:
+        if getattr(options, name, None) is None:
+            fn = cert_defaults[name]
+            if os.path.exists(fn):
+                setattr(options, name, fn)
 
     #make sure workdir exists
     if not os.path.exists(options.workdir):
