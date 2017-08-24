@@ -17,8 +17,13 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
 
     dispatch = xmlrpc_client.Marshaller.dispatch.copy()
 
+    def _dump(self, value, write):
+        # Parent class is unfriendly to subclasses :-/
+        f = self.dispatch[type(value)]
+        f(self, value, write)
+
     def dump_generator(self, value, write):
-        dump = self.__dump
+        dump = self._dump
         write("<value><array><data>\n")
         for v in value:
             dump(v, write)
