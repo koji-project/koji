@@ -170,6 +170,7 @@ send_timeout = 60
 """)
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
+        protonmsg.CONFIG = None
         protonmsg.send_queued_msgs('postCommit')
         log = getLogger.return_value
         self.assertEqual(log.debug.call_count, 2)
@@ -193,6 +194,7 @@ send_timeout = 60
 """)
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
+        protonmsg.CONFIG = None
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
@@ -201,6 +203,34 @@ send_timeout = 60
         self.assertEqual(log.debug.call_count, 1)
         self.assertTrue(log.debug.args[0][0].startswith('all msgs sent'))
         self.assertEqual(log.error.call_count, 0)
+
+    @patch('protonmsg.Container')
+    @patch('logging.getLogger')
+    def test_send_queued_msgs_test_mode(self, getLogger, Container):
+        context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
+        conf = tempfile.NamedTemporaryFile()
+        conf.write("""[broker]
+urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
+cert = /etc/koji-hub/plugins/client.pem
+cacert = /etc/koji-hub/plugins/ca.pem
+topic_prefix = koji
+connect_timeout = 10
+send_timeout = 60
+test_mode = on
+""")
+        conf.flush()
+        protonmsg.CONFIG_FILE = conf.name
+        protonmsg.CONFIG = None
+        def clear_msgs():
+            del context.protonmsg_msgs[:]
+        Container.return_value.run.side_effect = clear_msgs
+        protonmsg.send_queued_msgs('postCommit')
+        Container.assert_not_called()
+        log = getLogger.return_value
+        self.assertEqual(log.debug.call_count, len(context.protonmsg_msgs) + 1)
+        self.assertTrue(log.debug.args[0][0].startswith('all msgs sent'))
+        self.assertEqual(log.error.call_count, 0)
+
 
 class TestTimeoutHandler(unittest.TestCase):
     def setUp(self):
