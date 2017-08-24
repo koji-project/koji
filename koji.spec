@@ -16,7 +16,7 @@
 %{!?py2_build: %global py2_build %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} build --executable="%{__python2} -s"}}
 %{!?py2_install: %global py2_install %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} install -O1 --skip-build --root %{buildroot}}}
 
-%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 %global use_systemd 1
 %else
 %global use_systemd 0
@@ -64,7 +64,7 @@ Summary: Build system tools python library
 %{?python_provide:%python_provide python2-%{name}}
 BuildRequires: python-devel
 Requires: python-krbV >= 1.0.13
-%if 0%{?fedora} >= 25 || 0%{?redhat} >= 8
+%if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
 Requires: rpm-python
@@ -84,7 +84,7 @@ desc
 Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
 BuildRequires: python%{python3_pkgversion}-devel
-%if 0%{?fedora} >= 25 || 0%{?redhat} >= 8
+%if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
 Requires: rpm-python%{python3_pkgversion}
@@ -127,7 +127,7 @@ License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: mod_wsgi
-%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
@@ -258,7 +258,7 @@ Group: Applications/Internet
 License: LGPLv2
 Requires: httpd
 Requires: mod_wsgi
-%if 0%{?fedora} >= 21 || 0%{?redhat} >= 7
+%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %else
 Requires: mod_auth_kerb
