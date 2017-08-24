@@ -923,8 +923,12 @@ def get_header_field(hdr, name, src_arch=False):
             pass
 
     sizetags = ('SIZE', 'ARCHIVESIZE', 'FILESIZES', 'SIGSIZE')
-    if result is None and name in sizetags:
-        result = _get_header_field(hdr, 'LONG' + name)
+    if name in sizetags and (result is None or result == []):
+        try:
+            result = _get_header_field(hdr, 'LONG' + name)
+        except GenericError:
+            # no such header
+            pass
 
     return result
 
