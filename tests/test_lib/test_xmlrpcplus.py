@@ -19,9 +19,32 @@ class TestDump(unittest.TestCase):
             {"a": ["b", 1, 2, None], "b": {"c": 1}},
         ]
 
-    def test_standard_data(self):
+    def test_call(self):
+        method = 'my_rpc_method'
+        for value in self.standard_data:
+            value = (value, "other arg")
+            enc = xmlrpcplus.dumps(value, methodname=method)
+            _enc = xmlrpclib.dumps(value, methodname=method, allow_none=1)
+            self.assertEqual(enc, _enc)
+            params, method = xmlrpclib.loads(enc)
+            self.assertEqual(params, value)
+            self.assertEqual(method, method)
+
+    def test_response(self):
         for value in self.standard_data:
             value = (value,)
+            enc = xmlrpcplus.dumps(value, methodresponse=1)
+            _enc = xmlrpclib.dumps(value, methodresponse=1, allow_none=1)
+            self.assertEqual(enc, _enc)
+            params, method = xmlrpclib.loads(enc)
+            self.assertEqual(params, value)
+            self.assertEqual(method, None)
+
+    def test_just_data(self):
+        # xmlrpclib supports this case, so I guess we should too
+        # neither method call nor response
+        for value in self.standard_data:
+            value = (value, "foo", "bar")
             enc = xmlrpcplus.dumps(value)
             _enc = xmlrpclib.dumps(value, allow_none=1)
             self.assertEqual(enc, _enc)
@@ -35,7 +58,7 @@ class TestDump(unittest.TestCase):
 
     def test_generator(self):
         value = (self.gendata(),)
-        enc = xmlrpcplus.dumps(value)
+        enc = xmlrpcplus.dumps(value, methodresponse=1)
         params, method = xmlrpclib.loads(enc)
         expect = (list(self.gendata()),)
         self.assertEqual(params, expect)
@@ -51,12 +74,47 @@ class TestDump(unittest.TestCase):
     def test_i8(self):
         for value in self.long_data:
             value = (value,)
-            enc = xmlrpcplus.dumps(value)
+            enc = xmlrpcplus.dumps(value, methodresponse=1)
             params, method = xmlrpclib.loads(enc)
             self.assertEqual(params, value)
             self.assertEqual(method, None)
+        # and as a call
+        method = "foomethod"
+        value = tuple(self.long_data)
+        enc = xmlrpcplus.dumps(value, methodname=method)
+        params, method = xmlrpclib.loads(enc)
+        self.assertEqual(params, value)
+        self.assertEqual(method, method)
 
     def test_overflow(self):
         value = (2**64,)
         with self.assertRaises(OverflowError):
             xmlrpcplus.dumps(value)
+
+    def test_fault(self):
+        code = 1001
+        msg = "some useless error"
+        f1 = xmlrpcplus.Fault(code, msg)
+        f2 = xmlrpclib.Fault(code, msg)
+        value = f1
+        enc = xmlrpcplus.dumps(value, methodresponse=1)
+        _enc = xmlrpclib.dumps(value, methodresponse=1, allow_none=1)
+        self.assertEqual(enc, _enc)
+        try:
+            params, method = xmlrpclib.loads(enc)
+        except xmlrpclib.Fault, e:
+            self.assertEqual(e.faultCode, code)
+            self.assertEqual(e.faultString, msg)
+        else:
+            raise Exception('Fault not raised')
+
+    def test_badargs(self):
+        wrong_type = ["a", 0, 0.1, [], {}, True]
+        for value in wrong_type:
+            with self.assertRaises(TypeError):
+                xmlrpcplus.dumps(value, methodname="foo")
+        # responses much be singletons
+        value = (1, 2, 3)
+        with self.assertRaises(ValueError):
+            xmlrpcplus.dumps(value, methodresponse=1)
+
