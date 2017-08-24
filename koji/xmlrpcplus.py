@@ -79,7 +79,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
     if marshaller is not None:
         m = marshaller(encoding)
     else:
-        m = ExtendedMarshaller(encoding, allow_none)
+        m = ExtendedMarshaller(encoding)
 
     data = m.dumps(params)
 
