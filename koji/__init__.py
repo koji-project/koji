@@ -907,17 +907,8 @@ def get_header_field(hdr, name, src_arch=False):
             return "nosrc"
         return "src"
 
-    hdr_key = getattr(rpm, "RPMTAG_%s" % name, None)
-    if hdr_key is None:
-        # HACK: nosource and nopatch may not be in exported rpm tags
-        if name == "NOSOURCE":
-            hdr_key = 1051
-        elif name == "NOPATCH":
-            hdr_key = 1052
-        else:
-            raise GenericError("No such rpm header field: %s" % name)
+    result = _get_header_field(hdr, name)
 
-    result = hdr[hdr_key]
     if name in ("NOSOURCE", "NOPATCH"):
         # HACK: workaround for https://bugzilla.redhat.com/show_bug.cgi?id=991329
         if result is None:
@@ -931,10 +922,25 @@ def get_header_field(hdr, name, src_arch=False):
             # typically signatures
             pass
 
-    if name == 'SIZE' and result is None:
-        result = hdr[rpm.RPMTAG_LONGSIZE]
+    sizetags = ('SIZE', 'ARCHIVESIZE', 'FILESIZES', 'SIGSIZE')
+    if result is None and name in sizetags:
+        result = _get_header_field(hdr, 'LONG' + name)
 
     return result
+
+
+def _get_header_field(hdr, name):
+    '''Just get the header field'''
+    hdr_key = getattr(rpm, "RPMTAG_%s" % name, None)
+    if hdr_key is None:
+        # HACK: nosource and nopatch may not be in exported rpm tags
+        if name == "NOSOURCE":
+            hdr_key = 1051
+        elif name == "NOPATCH":
+            hdr_key = 1052
+        else:
+            raise GenericError("No such rpm header field: %s" % name)
+    return hdr[hdr_key]
 
 
 def get_header_fields(X, fields, src_arch=False):
