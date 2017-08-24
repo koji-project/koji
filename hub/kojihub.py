@@ -8692,6 +8692,8 @@ class RootExports(object):
         if 'scratch' not in opts and 'indirection_template_url' not in opts:
             raise koji.ActionNotAllowed('Non-scratch builds must provide url for the indirection template')
 
+        if 'arch' in opts:
+            taskOpts['arch'] = opts['arch']
         return make_task('indirectionimage', [opts], **taskOpts)
 
     # Create the image task. Called from _build_image_oz in the client.
