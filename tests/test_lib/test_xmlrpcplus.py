@@ -1,3 +1,4 @@
+# coding=utf-8
 import unittest
 
 from six.moves import xmlrpc_client
@@ -13,6 +14,7 @@ class TestDump(unittest.TestCase):
             None,
             True,
             False,
+            u'Hævē s°mə ŭnıčođė',
             [1],
             {"a": 1},
             ["fnord"],
