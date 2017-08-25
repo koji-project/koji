@@ -75,11 +75,11 @@ import time
 import traceback
 from . import util
 import warnings
-import six.moves.xmlrpc_client
 import xml.sax
 import xml.sax.handler
-from six.moves.xmlrpc_client import loads, dumps, Fault
 import six.moves.urllib
+from koji.xmlrpcplus import getparser, loads, dumps, Fault
+
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
@@ -2390,7 +2390,7 @@ class ClientSession(object):
         return ret
 
     def _read_xmlrpc_response(self, response):
-        p, u = six.moves.xmlrpc_client.getparser()
+        p, u = getparser()
         for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
                 print("body: %r" % chunk)
@@ -2651,7 +2651,7 @@ class ClientSession(object):
             while True:
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
-                if self.callMethod('uploadFile', path, name, encode_int(sz), digest, encode_int(offset), data, **volopts):
+                if self.callMethod('uploadFile', path, name, sz, digest, offset, data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1

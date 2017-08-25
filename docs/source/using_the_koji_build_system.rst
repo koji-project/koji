@@ -588,3 +588,15 @@ All features supported by command-line client are also accessible by XMLRPC
 API. You can get listing of all available calls, arguments and basic help via
 calling `koji list-api` command. This call will also provide you API
 extensions provided by plugins in that particular koji instance.
+
+Because of the data Koji routinely deals with, we use the following extensions
+to the xmlrpc standard:
+
+    * We use the ``nil`` extension to represent null values (e.g. None in
+      Python). Koji's library handles this automatically. If you are using a
+      different library, you may need to explicitly enable this (e.g. enabling
+      allow_none in Python's own xmlrpc library).
+    * We represent large integers with the ``i8`` tag. This standard is borrowed
+      from Apache's `ws-xmlrpc <https://ws.apache.org/xmlrpc/types.html>`
+      implementation. Python's own xmlrpc library understands this tag, even
+      thought it will not emit it.

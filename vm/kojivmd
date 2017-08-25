@@ -731,8 +731,8 @@ class VMExecTask(BaseTaskHandler):
         """
         remotepath = os.path.dirname(os.path.join(self.getUploadDir(), filepath))
         filename = os.path.basename(filepath)
-        self.session.uploadFile(remotepath, filename, koji.encode_int(size),
-                                md5sum, koji.encode_int(offset), data)
+        self.session.uploadFile(remotepath, filename, size,
+                                md5sum, offset, data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))

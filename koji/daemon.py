@@ -22,6 +22,7 @@
 
 import koji
 import koji.tasks
+import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
 from koji.util import md5_constructor, adler32_constructor, parseStatus, dslice
 import os
@@ -34,7 +35,6 @@ import time
 import sys
 import traceback
 import errno
-import xmlrpclib
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -61,7 +61,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
 
         tries = 0
         while True:
-            if session.uploadFile(path, fname, koji.encode_int(size), digest, koji.encode_int(offset), data):
+            if session.uploadFile(path, fname, size, digest, offset, data):
                 break
 
             if tries <= retries:
@@ -1209,12 +1209,12 @@ class TaskManager(object):
         try:
             response = (handler.run(),)
             # note that we wrap response in a singleton tuple
-            response = xmlrpclib.dumps(response, methodresponse=1, allow_none=1)
+            response = koji.xmlrpcplus.dumps(response, methodresponse=1, allow_none=1)
             self.logger.info("RESPONSE: %r" % response)
             self.session.host.closeTask(handler.id, response)
             return
-        except xmlrpclib.Fault, fault:
-            response = xmlrpclib.dumps(fault)
+        except koji.xmlrpcplus.Fault, fault:
+            response = koji.xmlrpcplus.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
@@ -1233,7 +1233,7 @@ class TaskManager(object):
             if issubclass(e_class, koji.GenericError):
                 #just pass it through
                 tb = str(e)
-            response = xmlrpclib.dumps(xmlrpclib.Fault(faultCode, tb))
+            response = koji.xmlrpcplus.dumps(koji.xmlrpcplus.Fault(faultCode, tb))
 
         # if we get here, then we're handling an exception, so fail the task
         self.session.host.failTask(handler.id, response)
