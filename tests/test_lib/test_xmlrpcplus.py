@@ -144,6 +144,28 @@ class TestDump(unittest.TestCase):
             self.assertEqual(params, value)
             self.assertEqual(method, None)
 
+    def test_no_i8(self):
+        # we shouldn't use i8 if we don't have to
+        data = [
+                23,
+                42,
+                -1024,
+                2 ** 31 - 1,
+                -2 ** 31,
+                [2**31 -1],
+                {"a": -2 ** 31, "b": 3.14},
+                ]
+        for value in data:
+            value = (value,)
+            enc = xmlrpcplus.dumps(value, methodresponse=1, encoding='us-ascii')
+            _enc = xmlrpc_client.dumps(value, methodresponse=1, allow_none=1, encoding='us-ascii')
+            if 'i8' in enc or 'I8' in enc:
+                raise Exception('i8 used unnecessarily')
+            self.assertEqual(enc, _enc)
+            params, method = xmlrpc_client.loads(enc)
+            self.assertEqual(params, value)
+            self.assertEqual(method, None)
+
 
 class MyMarshaller(xmlrpcplus.ExtendedMarshaller):
 
