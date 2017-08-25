@@ -33,7 +33,7 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
     MAXI8 = 2 ** 64 - 1
     MINI8 = -2 ** 64
 
-    def dump_i8(self, value, write):
+    def dump_int(self, value, write):
         # python2's xmlrpclib doesn't support i8 extension for marshalling,
         # but can unmarshall it correctly.
         if (value > self.MAXI8 or value < self.MINI8):
@@ -47,13 +47,17 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
             write("<value><int>")
             write(str(int(value)))
             write("</int></value>\n")
-    dispatch[types.LongType] = dump_i8
-    dispatch[types.IntType] = dump_i8
+    dispatch[int] = dump_int
 
     # we always want to allow None
     def dump_nil(self, value, write):
         write("<value><nil/></value>")
     dispatch[type(None)] = dump_nil
+
+
+if six.PY2:
+    ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int
+
 
 
 def dumps(params, methodname=None, methodresponse=None, encoding=None,
