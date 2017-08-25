@@ -67,10 +67,10 @@ class TestDump(unittest.TestCase):
         self.assertEqual(method, None)
 
     long_data = [
-            2 ** 63,
+            2 ** 63 - 1,
             -(2 ** 63),
-            [2**n - 1 for n  in range(65)],
-            {"a": [2 ** 63, 5], "b": 2**63+42},
+            [2**n - 1 for n  in range(64)],
+            {"a": [2 ** 63 - 23, 5], "b": 2**63 - 42},
             ]
 
     def test_i8(self):

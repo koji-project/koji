@@ -30,8 +30,8 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
         write("</data></array></value>\n")
     dispatch[types.GeneratorType] = dump_generator
 
-    MAXI8 = 2 ** 64 - 1
-    MINI8 = -2 ** 64
+    MAXI8 = 2 ** 63 - 1
+    MINI8 = -2 ** 63
 
     def dump_int(self, value, write):
         # python2's xmlrpclib doesn't support i8 extension for marshalling,
