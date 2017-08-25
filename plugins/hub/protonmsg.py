@@ -261,6 +261,14 @@ def send_queued_msgs(cbtype, *args, **kws):
             conf.readfp(conffile)
         CONFIG = conf
     urls = CONFIG.get('broker', 'urls').split()
+    test_mode = False
+    if CONFIG.has_option('broker', 'test_mode'):
+        test_mode = CONFIG.getboolean('broker', 'test_mode')
+    if test_mode:
+        log.debug('test mode: skipping send to urls: %r', urls)
+        for msg in msgs:
+            log.debug('test mode: skipped msg: %r', msg)
+        return
     for url in sorted(urls, key=lambda k: random.random()):
         container = Container(TimeoutHandler(url, msgs, CONFIG))
         container.run()
