@@ -120,3 +120,37 @@ class TestDump(unittest.TestCase):
         with self.assertRaises(ValueError):
             xmlrpcplus.dumps(value, methodresponse=1)
 
+    def test_marshaller(self):
+        value = 3.14159
+        value = (value,)
+        enc = xmlrpcplus.dumps(value, methodresponse=1, marshaller=MyMarshaller)
+        params, method = xmlrpc_client.loads(enc)
+        # MyMarshaller rounds off floats
+        self.assertEqual(params, (3,))
+        self.assertEqual(method, None)
+
+    def test_encoding(self):
+        data = [
+                45,
+                ["hello", "world"],
+                {"a": 5.5, "b": [None]},
+                ]
+        for value in data:
+            value = (value,)
+            enc = xmlrpcplus.dumps(value, methodresponse=1, encoding='us-ascii')
+            _enc = xmlrpc_client.dumps(value, methodresponse=1, allow_none=1, encoding='us-ascii')
+            self.assertEqual(enc, _enc)
+            params, method = xmlrpc_client.loads(enc)
+            self.assertEqual(params, value)
+            self.assertEqual(method, None)
+
+
+class MyMarshaller(xmlrpcplus.ExtendedMarshaller):
+
+    dispatch = xmlrpcplus.ExtendedMarshaller.dispatch.copy()
+
+    def dump_float_rounded(self, value, write):
+        value = int(value)
+        self.dump_int(value, write)
+
+    dispatch[float] = dump_float_rounded
