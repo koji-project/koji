@@ -11445,14 +11445,13 @@ class Host(object):
             raise_fault = (task_id not in canfail)
             try:
                 results.append([task_id, task.getResult(raise_fault=raise_fault)])
-            except koji.GenericError:
-                # Canceled tasks raises error even for tasks in can_fail as
-                # it signals higher level problem. So, ignore it here.
+            except koji.GenericError, e:
+                # Asking for result of canceled task raises an error
+                # For canfail tasks, return error in neutral form
                 if not raise_fault and task.isCanceled():
-                    results.append([task_id, {
-                        'faultCode': koji.GenericError.fault_code,
-                        'faultString': 'Task canceled'
-                    }])
+                    f_info = {'faultCode': e.faultCode,
+                              'faultString': str(e)}
+                    results.append([task_id, f_info])
                     continue
                 raise
         return results
