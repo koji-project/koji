@@ -786,6 +786,8 @@ insert into archivetypes (name, description, extensions) values ('obr', 'OSGi Bu
 insert into archivetypes (name, description, extensions) values ('liveimg-squashfs', 'liveimg compatible squashfs image', 'liveimg.squashfs');
 insert into archivetypes (name, description, extensions) values ('tlb', 'OLE type library file', 'tlb');
 insert into archivetypes (name, description, extensions) values ('jnilib', 'Java Native Interface library', 'jnilib');
+insert into archivetypes (name, description, extensions) values ('yaml', 'YAML Ain''t Markup Language', 'yaml yml');
+insert into archivetypes (name, description, extensions) values ('xjb', 'JAXB(Java Architecture for XML Binding) Binding Customization File', 'xjb');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
