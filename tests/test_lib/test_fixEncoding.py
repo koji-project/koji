@@ -7,6 +7,7 @@ from __future__ import absolute_import
 import koji
 import six
 import unittest
+import mock
 
 class FixEncodingTestCase(unittest.TestCase):
     """Main test case container"""
@@ -43,6 +44,23 @@ class FixEncodingTestCase(unittest.TestCase):
             self.assertEqual(koji.fixEncoding(c, fallback='utf16'), b)
             d = a[:-3] + u'\x00\x01' + a[-3:]
             self.assertEqual(koji.fixEncoding(d, remove_nonprintable=True), b)
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_fixPrint(self, stdout):
+        """Test the fixPrint function"""
+        expected = ''
+        for a, b in self.simple_values:
+            if six.PY3:
+                self.assertEqual(koji.fixPrint(b), a)
+            else:
+                self.assertEqual(koji.fixPrint(b), b)
+            print(koji.fixPrint(b))
+            if six.PY3:
+                expected = expected + a + '\n'
+            else:
+                expected = expected + b + '\n'
+        actual = stdout.getvalue()
+        self.assertEqual(actual, expected)
 
     complex_values = [
         # [ value, fixed ]
