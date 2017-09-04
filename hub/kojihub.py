@@ -8369,7 +8369,7 @@ def rpmdiff(basepath, rpmlist):
         #  embedded dates or other insignificant differences)
         args = ['/usr/libexec/koji-hub/rpmdiff',
                 '--ignore', 'S', '--ignore', '5',
-                '--ignore', 'T',
+                '--ignore', 'T', '--ignore', 'N',
                 os.path.join(basepath, first_rpm),
                 os.path.join(basepath, other_rpm)]
         proc = subprocess.Popen(args,
