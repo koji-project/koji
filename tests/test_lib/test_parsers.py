@@ -161,6 +161,12 @@ class HeaderTestCase(unittest.TestCase):
         hdr = FakeHeader(longsize=size,size=None)
         self.assertEqual({'SIZE': size}, koji.get_header_fields(hdr, ['SIZE']))
 
+    @mock.patch('rpm.RPMTAG_LONGSIZE', new=None)
+    def test_get_header_fields_nosize(self):
+        # not sure if this is a sane header case, but let's make sure we don't
+        # error anyway
+        hdr = FakeHeader(size=None)
+        self.assertEqual({'SIZE': None}, koji.get_header_fields(hdr, ['SIZE']))
 
     def test_get_header_field_src(self):
         srpm = os.path.join(self.rpmdir, 'test-src-1-1.fc24.src.rpm')
