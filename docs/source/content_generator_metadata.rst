@@ -152,6 +152,10 @@ Each map in the output list contains the following entries:
       applicable).
    -  repositories: A list of repository locations where the image is
       available.
+   -  digests: A map of media type (such as
+      "application/vnd.docker.distribution.manifest.v2+json") to
+      manifest digest (a string usually starting "sha256:"), for each
+      available media type.
 
 Example Metadata JSON
 =====================
@@ -228,8 +232,12 @@ The below JSON is based loosely on the output of a docker image build.
                 "components": "",
                 "extra": {"docker": {"id": "987654...",
                                      "parent_id": "a1b2c3...",
-                                     "repositories": ["repository.example.com/username/imagename:tagname",
-                                                      "repository.example.com/username/imagename:latest"]}}},
+                                     "repositories": ["repository.example.com/username/imagename:7.1-4",
+                                                      "repository.example.com/username/imagename@sha256:100000...",
+                                                      "repository.example.com/username/imagename@sha256:200000..."],
+                                     "digests": {"application/vnd.docker.distribution.manifest.v1+json": "sha256:100000...",
+                                                 "application/vnd.docker.distribution.manifest.v2+json": "sha256:200000..."}
+                                     }}},
                {"buildroot_id": 1,
                 "filename": "checkout.log",
                 "filesize": 85724,
