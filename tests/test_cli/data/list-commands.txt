@@ -95,6 +95,7 @@ info commands:
         latest-build              Print the latest builds for a tag
         list-api                  Print the list of XML-RPC APIs
         list-buildroot            List the rpms used in or built in a buildroot
+        list-builds               Print the build listing
         list-channels             Print channels listing
         list-external-repos       List external repos
         list-groups               Print the group listings

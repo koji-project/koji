@@ -2873,6 +2873,134 @@ def anon_handle_list_pkgs(goptions, session, args):
             print(fmt % pkg)
 
 
+def anon_handle_list_builds(goptions, session, args):
+    "[info] Print the build listing"
+    usage = _("usage: %prog list-builds [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--package", help=_("List builds for this package"))
+    parser.add_option("--buildid", help=_("List specific build from ID or nvr"))
+    parser.add_option("--before",
+                      help=_("List builds built before this time"))
+    parser.add_option("--after",
+                      help=_("List builds built after this time"))
+    parser.add_option("--state", help=_("List builds in this state"))
+    parser.add_option("--type", help=_("List builds of this type."))
+    parser.add_option("--prefix", help=_("Only list packages starting with this prefix"))
+    parser.add_option("--owner", help=_("List builds built by this owner"))
+    parser.add_option("--volume", help=_("List builds by volume ID"))
+    parser.add_option("-k", "--sort-key", action="append", metavar='FIELD',
+                      default=[], help=_("Sort the list by the named field"))
+    parser.add_option("-r", "--reverse", action="store_true", default=False,
+                      help=_("Print the list in reverse order"))
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                help=_("Do not print the header information"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+        assert False  # pragma: no cover
+    activate_session(session, goptions)
+    opts = {}
+    for key in ('type', 'prefix'):
+        value = getattr(options, key)
+        if value is not None:
+            opts[key] = value
+    if options.package:
+        try:
+            opts['packageID'] = int(options.package)
+        except ValueError:
+            package = session.getPackageID(options.package)
+            if package is None:
+                parser.error(_("Invalid package"))
+                assert False  # pragma: no cover
+            opts['packageID'] = package
+    if options.owner:
+        try:
+            opts['userID'] = int(options.owner)
+        except ValueError:
+            user = session.getUser(options.owner)
+            if user is None:
+                parser.error(_("Invalid owner"))
+                assert False  # pragma: no cover
+            opts['userID'] = user['id']
+    if options.volume:
+        try:
+            opts['volumeID'] = int(options.volume)
+        except ValueError:
+            volumes = session.listVolumes()
+            volumeID = None
+            for volume in volumes:
+                if options.volume == volume['name']:
+                    volumeID = volume['id']
+            if volumeID is None:
+                parser.error(_("Invalid volume"))
+                assert False  # pragma: no cover
+            opts['volumeID'] = volumeID
+    if options.state:
+        try:
+            state = int(options.state)
+            if state > 4 or state < 0:
+                parser.error(_("Invalid state"))
+                assert False  # pragma: no cover
+            opts['state'] = state
+        except ValueError:
+            try:
+                opts['state'] = koji.BUILD_STATES[options.state]
+            except KeyError:
+                parser.error(_("Invalid state"))
+                assert False  # pragma: no cover
+    for opt in ('before', 'after'):
+        val = getattr(options, opt)
+        if not val:
+            continue
+        try:
+            ts = float(val)
+            setattr(options, opt, ts)
+            continue
+        except ValueError:
+            pass
+        try:
+            dt = dateutil.parser.parse(val)
+            ts = time.mktime(dt.timetuple())
+            setattr(options, opt, ts)
+        except:
+            parser.error(_("Invalid time specification: %s") % val)
+    if options.before:
+        opts['completeBefore'] = getattr(options, 'before')
+    if options.after:
+        opts['completeAfter'] = getattr(options, 'after')
+    if options.buildid:
+        try:
+            buildid = int(options.buildid)
+        except ValueError:
+            buildid = options.buildid
+        data = [session.getBuild(buildid)]
+        if data is None:
+            parser.error(_("Invalid build ID"))
+            assert False  # pragma: no cover
+    else:
+        # Check filter exists
+        if any(opts):
+            data = session.listBuilds(**opts)
+        else:
+            parser.error(_("Filter must be provided for list"))
+            assert False  # pragma: no cover
+    if not options.sort_key:
+        options.sort_key = ['nvr']
+    data = sorted(data, key=lambda b: [b.get(k) for k in options.sort_key],
+                  reverse=options.reverse)
+    for build in data:
+        build['state'] = koji.BUILD_STATES[build['state']]
+
+    fmt = "%(nvr)-55s  %(owner_name)-16s  %(state)s"
+    if not options.quiet:
+        print("%-55s  %-16s  %s" % ("Build", "Built by", "State"))
+        print("%s  %s  %s" % ("-"*55, "-"*16, "-"*16))
+
+    for build in data:
+        print(fmt % build)
+
+
 def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
     usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
