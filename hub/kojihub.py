@@ -3472,7 +3472,7 @@ def get_build(buildInfo, strict=False):
     buildID may be either a int ID, a string NVR, or a map containing
     'name', 'version' and 'release.
 
-    A map will be returned containing the following keys:
+    A map will be returned containing the following keys*:
       id: build ID
       package_id: ID of the package built
       package_name: name of the package built
@@ -3499,6 +3499,9 @@ def get_build(buildInfo, strict=False):
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
+
+    [*] Not every build will have data for all keys. E.g. not all builds will
+        associated task ids, and not all import methods provide source info.
     """
     buildID = find_build_id(buildInfo, strict=strict)
     if buildID == None:
