@@ -1446,6 +1446,7 @@ class BuildMavenTask(BaseBuildTask):
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
+                           build_tag=build_tag,
                            scratch=opts.get('scratch'),
                            srcdir=sourcedir)
 
@@ -1463,6 +1464,7 @@ class BuildMavenTask(BaseBuildTask):
             patchcheckoutdir = patch_scm.checkout(patchdir, self.session, uploadpath, patchlog)
             self.run_callbacks("postSCMCheckout",
                                scminfo=patch_scm.get_info(),
+                               build_tag=build_tag,
                                scratch=opts.get('scratch'),
                                srcdir=patchcheckoutdir)
             self._zip_dir(patchcheckoutdir, os.path.join(outputdir, 'patches.zip'))
@@ -1749,6 +1751,7 @@ class WrapperRPMTask(BaseBuildTask):
         specdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
+                           build_tag=build_tag,
                            scratch=opts.get('scratch'),
                            srcdir=specdir)
 
@@ -2688,6 +2691,7 @@ class ImageTask(BaseTaskHandler):
             scmsrcdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
                                scminfo=scm.get_info(),
+                               build_tag=build_tag,
                                scratch=self.opts.get('scratch'),
                                srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, ksfile)
@@ -3336,6 +3340,7 @@ class OzImageTask(BaseTaskHandler):
                 self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
                                scminfo=scm.get_info(),
+                               build_tag=build_tag,
                                scratch=self.opts.get('scratch'),
                                srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
@@ -4148,6 +4153,7 @@ class BuildIndirectionImageTask(OzImageTask):
                 self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
                                scminfo=scm.get_info(),
+                               build_tag=build_tag,
                                scratch=self.opts.get('scratch'),
                                srcdir=scmsrcdir)
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
@@ -4496,6 +4502,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
+                           build_tag=build_tag,
                            scratch=self.opts.get('scratch'),
                            srcdir=sourcedir)
         # chown the sourcedir and everything under it to the mockuser
