@@ -2316,7 +2316,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     insert.execute()
     # Need to pass event_id because even though this is a single transaction,
     # it is possible to see the results of other committed transactions
-    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=True)
+    latest = not tinfo['extra'].get('repo_include_all', False)
+    # Note: the repo_include_all option is not recommended for common use
+    #       see https://pagure.io/koji/issue/588 for background
+    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
     blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values() \
                   if pkg['blocked']]
