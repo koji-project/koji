@@ -4497,13 +4497,13 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
 
-        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=self.opts.get('scratch'))
+        self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         # Check out spec file, etc. from SCM
         sourcedir = scm.checkout(scmdir, self.session, uploadpath, logfile)
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
                            build_tag=build_tag,
-                           scratch=self.opts.get('scratch'),
+                           scratch=opts.get('scratch'),
                            srcdir=sourcedir)
         # chown the sourcedir and everything under it to the mockuser
         # so we can build the srpm as non-root
