@@ -1,5 +1,7 @@
-import unittest
 import mock
+import shutil
+import tempfile
+import unittest
 
 from koji_cli.lib import activate_session
 
@@ -7,16 +9,16 @@ from koji_cli.lib import activate_session
 class TestActivateSession(unittest.TestCase):
 
     def setUp(self):
-        self.isfile = mock.patch('os.path.isfile').start()
+        self.tempdir = tempfile.mkdtemp()
         self.warn = mock.patch('koji_cli.lib.warn').start()
         self.error = mock.patch('koji_cli.lib.error').start()
         # self.ensure_connection = mock.patch('koji_cli.lib.warn.ensure_connection').start()
         self.has_krb_creds = mock.patch('koji_cli.lib.has_krb_creds').start()
-        self.isfile.return_value = False
         self.has_krb_creds.return_value = False
 
     def tearDown(self):
         mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     def test_activate_session_noauth(self):
         session = mock.MagicMock()
@@ -32,12 +34,13 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_ssl(self):
         session = mock.MagicMock()
         session.logged_in = True
+        certfile = '%s/CERT' % self.tempdir
         options = {'authtype': 'ssl',
                 'debug': False,
-                'cert': 'CERT',
+                'cert': certfile,
                 'serverca': 'SERVERCA'}
         activate_session(session, options)
-        session.ssl_login.assert_called_once_with('CERT', None, 'SERVERCA',
+        session.ssl_login.assert_called_once_with(certfile, None, 'SERVERCA',
                     proxyuser=None)
         session.login.assert_not_called()
         session.krb_login.assert_not_called()
@@ -45,13 +48,14 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_ssl_implicit(self):
         session = mock.MagicMock()
         session.logged_in = True
+        certfile = '%s/CERT' % self.tempdir
+        open(certfile, 'w').close()
         options = {'authtype': None,
                 'debug': False,
-                'cert': 'CERT',
+                'cert': certfile,
                 'serverca': 'SERVERCA'}
-        self.isfile.return_value = True
         activate_session(session, options)
-        session.ssl_login.assert_called_once_with('CERT', None, 'SERVERCA',
+        session.ssl_login.assert_called_once_with(certfile, None, 'SERVERCA',
                     proxyuser=None)
         session.login.assert_not_called()
         session.krb_login.assert_not_called()
@@ -59,8 +63,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_pw(self):
         session = mock.MagicMock()
         session.logged_in = True
-        self.isfile.return_value = True
-        options = {'authtype': 'password', 'debug': False, 'cert': None}
+        options = {'authtype': 'password', 'debug': False, 'cert': ''}
         activate_session(session, options)
         session.login.assert_called_once_with()
         session.ssl_login.assert_not_called()
@@ -69,8 +72,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_pw_implicit(self):
         session = mock.MagicMock()
         session.logged_in = True
-        self.isfile.return_value = False
-        options = {'authtype': None, 'debug': False, 'cert': None,
+        options = {'authtype': None, 'debug': False, 'cert': '',
                     'user': 'USER'}
         activate_session(session, options)
         session.login.assert_called_once_with()
@@ -80,8 +82,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_krb(self):
         session = mock.MagicMock()
         session.logged_in = True
-        self.isfile.return_value = True
-        options = {'authtype': 'kerberos', 'debug': False, 'cert': None,
+        options = {'authtype': 'kerberos', 'debug': False, 'cert': '',
                 'keytab': None, 'principal': None}
         activate_session(session, options)
         session.login.assert_not_called()
@@ -91,8 +92,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_krb_implicit(self):
         session = mock.MagicMock()
         session.logged_in = True
-        self.isfile.return_value = False
-        options = {'authtype': None, 'debug': False, 'cert': None,
+        options = {'authtype': None, 'debug': False, 'cert': '',
                 'keytab': None, 'principal': None}
         self.has_krb_creds.return_value = True
         activate_session(session, options)
@@ -103,8 +103,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_krb_keytab(self):
         session = mock.MagicMock()
         session.logged_in = True
-        self.isfile.return_value = True
-        options = {'authtype': 'kerberos', 'debug': False, 'cert': None,
+        options = {'authtype': 'kerberos', 'debug': False, 'cert': '',
                 'keytab': 'KEYTAB', 'principal': 'PRINCIPAL'}
         activate_session(session, options)
         session.login.assert_not_called()
@@ -115,7 +114,7 @@ class TestActivateSession(unittest.TestCase):
     def test_activate_session_no_method(self):
         session = mock.MagicMock()
         session.logged_in = False
-        options = {'authtype': None, 'debug': False, 'cert': None}
+        options = {'authtype': None, 'debug': False, 'cert': ''}
         self.has_krb_creds.return_value = False
         activate_session(session, options)
         session.login.assert_not_called()
