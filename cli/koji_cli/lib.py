@@ -543,18 +543,18 @@ def activate_session(session, options):
     if isinstance(options, dict):
         options = optparse.Values(options)
     noauth = options.authtype == "noauth" or getattr(options, 'noauth', False)
+    runas = getattr(options, 'runas', None)
     if noauth:
         #skip authentication
         pass
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
-        session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
+        session.ssl_login(options.cert, None, options.serverca, proxyuser=runas)
     elif options.authtype == "password" or getattr(options, 'user', None) and options.authtype is None:
         # authenticate using user/password
         session.login()
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
-            runas = getattr(options, 'runas', None)
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=runas)
             else:
