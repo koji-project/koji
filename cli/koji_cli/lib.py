@@ -540,21 +540,25 @@ def has_krb_creds():
 
 def activate_session(session, options):
     """Test and login the session is applicable"""
-    if options.authtype == "noauth" or options.noauth:
+    if isinstance(options, dict):
+        options = optparse.Values(options)
+    noauth = options.authtype == "noauth" or getattr(options, 'noauth', False)
+    runas = getattr(options, 'runas', None)
+    if noauth:
         #skip authentication
         pass
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
-        session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
-    elif options.authtype == "password" or options.user and options.authtype is None:
+        session.ssl_login(options.cert, None, options.serverca, proxyuser=runas)
+    elif options.authtype == "password" or getattr(options, 'user', None) and options.authtype is None:
         # authenticate using user/password
         session.login()
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if options.keytab and options.principal:
-                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
+                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=runas)
             else:
-                session.krb_login(proxyuser=options.runas)
+                session.krb_login(proxyuser=runas)
         except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
         except Exception as e:
@@ -562,7 +566,7 @@ def activate_session(session, options):
                 error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
             else:
                 raise
-    if not options.noauth and options.authtype != "noauth" and not session.logged_in:
+    if not noauth and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
     if options.debug:
