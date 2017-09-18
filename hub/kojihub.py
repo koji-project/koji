@@ -5660,13 +5660,14 @@ def import_rpm_file(fn, buildinfo, rpminfo):
     _import_archive_file(fn, os.path.dirname(final_path))
 
 def import_build_in_place(build):
-    """Import a package already in the packages directory
+    """[DEPRECATED] Import a package already in the packages directory
 
     This is used for bootstrapping the database
     Parameters:
         build: a dictionary with fields: name, version, release
     """
     # Only an admin may do this
+    logger.warning('import_build_in_place() is DEPRECATED')
     context.session.assertPerm('admin')
     prev = get_build(build)
     if prev is not None:
