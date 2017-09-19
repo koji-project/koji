@@ -37,6 +37,19 @@ available. You will need to have a valid authentication token to use
 many features. However, many of the read-only commands will work without
 authentication.
 
+Alternatively, koji CLI is now also available via:
+
+  * `Project releases tarballs <https://pagure.io/koji/releases>`__
+    Preferred way is to use your distribution's mechanism instead, as it
+    will also contain appropriate configuration files.
+  * `PyPi <https://pypi.python.org/pypi/koji>`__ There is only client/API
+    part and it is mostly usable for people who wants some more advanced
+    client-side scripting in virtualenv's, so API-only access is not
+    sufficient for them or who can profit from some utilities in e.g. basic
+    ``koji`` library.
+  * Actual development version via Pagure's git: ``git clone
+    https://pagure.io/koji.git``
+
 Fedora Account System (FAS2) Setup
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

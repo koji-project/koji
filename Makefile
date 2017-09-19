@@ -119,9 +119,6 @@ pypi:
 	build_py3/bin/python setup.py bdist_wheel
 	rm -rf build_py3
 
-pypi-upload-test:
-	twine upload -r https://test.pypi.org/legacy/ dist/*
-
 pypi-upload:
 	twine upload dist/*
 
