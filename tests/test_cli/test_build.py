@@ -198,6 +198,8 @@ Options:
   --quiet               Do not print the task information
   --arch-override=ARCH_OVERRIDE
                         Override build arches
+  --fail-fast           Override build_arch_can_fail settings and fail as fast
+                        as possible
   --repo-id=REPO_ID     Use a specific repo
   --noprogress          Do not display progress of the upload
   --background          Run the build at a lower priority

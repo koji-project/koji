@@ -438,6 +438,8 @@ def handle_build(options, session, args):
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--arch-override", help=_("Override build arches"))
+    parser.add_option("--fail-fast", action="store_true",
+                      help=_("Override build_arch_can_fail settings and fail as fast as possible"))
     parser.add_option("--repo-id", type="int", help=_("Use a specific repo"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
@@ -467,7 +469,7 @@ def handle_build(options, session, args):
     opts = {}
     if build_opts.arch_override:
         opts['arch_override'] = parse_arches(build_opts.arch_override)
-    for key in ('skip_tag', 'scratch', 'repo_id'):
+    for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
