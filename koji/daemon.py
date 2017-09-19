@@ -262,12 +262,25 @@ class SCM(object):
             netloc = userhost[1]
         elif len(userhost) > 2:
             raise koji.GenericError('Invalid username@hostname specified: %s' % netloc)
+        if not netloc:
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
 
-        # ensure that path and query do not end in /
-        if path.endswith('/'):
-            path = path[:-1]
-        if query.endswith('/'):
-            query = query[:-1]
+        # check for empty path before we apply normpath
+        if not path:
+            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the path element.' % self.url)
+
+        path = os.path.normpath(path)
+
+        # path and query should not end with /
+        path = path.rstrip('/')
+        query = query.rstrip('/')
+        # normpath might not strip // at start of path
+        if path.startswith('//'):
+            path = '/' + path.strip('/')
+        # path should start with /
+        if not path.startswith('/'):  # pragma: no cover
+            # any such url should have already been caught by is_scm_url
+            raise koji.GenericError('Invalid SCM URL. Path should begin with /: %s) ')
 
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params:
@@ -275,10 +288,6 @@ class SCM(object):
         if not scheme:  #pragma: no cover
             # should not happen because of is_scm_url check earlier
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
-        if not netloc:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
-        if not path:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the path element.' % self.url)
         if not fragment:
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url)
 

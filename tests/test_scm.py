@@ -28,6 +28,9 @@ class TestSCM(unittest.TestCase):
             "http://localhost/foo.html",
             "foo-1.1-1.src.rpm",
             "https://server/foo-1.1-1.src.rpm",
+            "git:foobar",
+            "https:foo/bar",
+            "https://",
             ]
         for url in good:
             self.assertTrue(SCM.is_scm_url(url))
@@ -81,6 +84,13 @@ class TestSCM(unittest.TestCase):
             "cvs://badserver/projects/42#ref",
             "svn://badserver/projects/42#ref",
             "git://maybeserver/badpath/project#1234",
+            "git://maybeserver//badpath/project#1234",
+            "git://maybeserver////badpath/project#1234",
+            "git://maybeserver/./badpath/project#1234",
+            "git://maybeserver//.//badpath/project#1234",
+            "git://maybeserver/goodpath/../badpath/project#1234",
+            "git://maybeserver/goodpath/..//badpath/project#1234",
+            "git://maybeserver/..//badpath/project#1234",
             ]
         for url in good:
             scm = SCM(url)
