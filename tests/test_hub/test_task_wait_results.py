@@ -65,9 +65,11 @@ class TestTaskWaitResults(unittest.TestCase):
         self.tasks[6].getResult.side_effect = xmlrpclib.Fault(1, "error")
         with self.assertRaises(xmlrpclib.Fault):
             results = self.host_exports.taskWaitResults(parent, task_ids)
+            self.assertEqual(results, [])
         self.tasks[6].getResult.side_effect = koji.GenericError('problem')
         with self.assertRaises(koji.GenericError):
             results = self.host_exports.taskWaitResults(parent, task_ids)
+            self.assertEqual(results, [])
         self.assertEqual(self.queries, [])
 
     def test_canfail_canceled(self):
