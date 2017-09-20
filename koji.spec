@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.13.0
+Version: 1.14.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -480,6 +480,57 @@ fi
 %endif
 
 %changelog
+* Fri Sep 22 2017 Mike McLean <mikem at redhat.com> - 1.14.0-1
+- PR#591: Normalize paths for scms
+- PR#432: override build_arch_can_fail settings
+- PR#566: allow profiles to request a specific python version
+- PR#554: deprecate importBuildInPlace hub call
+- PR#590: support repo_include_all tag extra option
+- PR#582: Content generator metadata documentation update
+- PR#579: ignore inodes when running rpmdiff.
+- PR#493: modify activate_session to be easily used without CLI
+- PR#589: fix scratch ref for scm callback
+- PR#587: add `build_tag` argument in `postSCMCheckout` callback
+- PR#583: support rpm LONG*SIZE header fields
+- PR#526: Added list builds command to koji CLI
+- PR#581: Add a note to get_build docstring
+- PR#575: add xjb and yaml type in archivetypes table
+- PR#571: Support large ints over xmlrpc using i8 tag
+- PR#538: protonmsg plugin: test mode
+- PR#547: update version in sphinx config
+- PR#548: set task arch for indirection image builds
+- PR#568: spec: use correct macro - rhel instead redhat for RHEL version
+- PR#558: cli: Fix exit code for building images
+- PR#559: return result status in save-failed-tree
+- PR#561: rename rpm-python to python*-rpm for EOL of F24
+- PR#562: fix serverca default in kojivmd
+- PR#565: expose graceful reload in kojid service config and init script
+- PR#544: incorrect parameter for error message
+- PR#510: cli: change download-task to regular curl download
+- PR#536: fix docs links, plus minor docs cleanup
+- PR#539: runroot: friendlier parsing of path_subs config
+- PR#542: check RPMTAG_LONGSIZE is RPMTAG_SIZE is null
+- PR#419: Koji support for custom Lorax templates in LiveMedia tasks
+- PR#546: fix test_krbv_disabled unit test
+- PR#518: Error out if krbV is unavailable and gssapi did not work
+- PR#535: datetime compatibility for plugins
+- PR#524: Add support for debugsource
+- PR#528: allow some missing path sections in runroot config
+- PR#530: Spelling fixes
+- PR#506: Track artifacts coming from koji itself
+- PR#499: runroot: use /builddir/runroot.log instead of /tmp/runroot.log
+- PR#509: CLI block-group command
+- PR#514: Fix resubmit
+- PR#521: update links in README.md
+- PR#502: download-build: suppress output on quiet and add --noprogress
+- PR#511: unit tests for delete_tag() [Open]
+- PR#484: fix NoneType TypeError in deleteTag
+- PR#490: getUserPerms should throw GenericError when no user found
+- PR#497: remove deprecated buildFromCVS call
+- PR#503: Remove deprecated compat_mode from runroot plugin
+- PR#507: drop unused add_db_logger call and db table
+- PR#508: drop mod_python support
+
 * Fri Jun 30 2017 Mike McLean <mikem at redhat.com> - 1.13.0-1
 - PR#496 Makefile/spec fixes for building on el6
 - PR#491 epel-compatible macro in spec
