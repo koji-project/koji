@@ -118,6 +118,86 @@ Builder changes
 ---------------
 
 
+Normalize paths for scms
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/591
+
+
+For many years, kojid has supported the ``allowed_scms`` option
+(see: :ref:`scm-config`) for controlling which scms can be used for building.
+In 1.13.0, Koji added the ability to explicitly block a host:path pattern.
+
+Unfortunately, 1.13.0 did not normalize the path before checking the pattern,
+making it possible for users to use equivalent paths to route around the
+block patterns.
+
+Now, Koji will normalize these paths before the allowed_scms check.
+
+
+Graceful reload
+^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/565
+
+
+For a long time kojid handled the USR1 signal by initiating a graceful restart.
+This change exposes that in the systemd service config (and the init script
+on older platforms).
+
+Now, ``service kojid reload`` will trigger the same sort of restart that the
+``restart-hosts`` command accomplishes, but only for the build host you run it
+on. When this happens, kojid will:
+
+    * stop taking new tasks
+    * wait for current tasks to finish
+    * restart itself once all its tasks are completed
+
+
+Friendlier runroot configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/539
+| PR: https://pagure.io/koji/pull-request/528
+
+Two changes make it easier to write a configuration for runroot.
+
+The ``path_subs`` configuration for the builder runroot plugin is now more
+forgiving about whitespace:
+
+    * leading and trailing whitespace is ignored for each line
+    * blank lines are ignored
+
+The ``[pathNN]`` sections are no longer required to have sequential numbers.
+Previously, the plugin expected a sequence like ``[path0]``, ``[path1]``,
+``[path2]``, etc, and would stop looking for entries if the next number
+was missing. Now, any set of distinct numbers is valid and all ``[pathNN]``
+sections will be processed.
+
+
+Custom Lorax templates
+^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/419
+
+Koji now supports custom Lorax templates for the ``spin-livemedia`` command.
+The command accepts two new options:
+
+.. code-block:: text
+
+      --lorax_url=URL       The URL to the SCM containing any custom lorax
+                            templates that are to be used to override the default
+                            templates.
+      --lorax_dir=DIR       The relative path to the lorax templates directory
+                            within the checkout of "lorax_url".
+
+
+The Lorax templates must come from an SCM, and the ``allowed_scms`` rules
+apply.
+
+When these options are used, the templates will be fetched and an appropriate
+``--lorax-templates`` option will be passed to the underlying livemedia-creator
+command.
 
 
 

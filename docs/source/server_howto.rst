@@ -1134,6 +1134,9 @@ a host, but allow from it otherwise
         alt-server.example.com:/repo/dist/repos*/:no:fedpkg,sources
 
 
+The explicit block syntax was added in version 1.13.0.
+
+
 Add the host to the createrepo channel
 --------------------------------------
 
