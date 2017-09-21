@@ -23,6 +23,15 @@ database.
     # psql koji koji  </usr/share/doc/koji/docs/schema-upgrade-1.13-1.14.sql
 
 
+Dropped mod_python support
+--------------------------
+
+Koji's support for mod_python has been deprecated for many years. If you are
+still relying on mod_python, you will need to switch to mod_wsgi.
+
+See: :doc:`migrating_to_1.7`
+
+
 Other changes
 -------------
 
