@@ -204,4 +204,102 @@ command.
 System changes
 --------------
 
-TODO
+Deprecations
+^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/554
+
+The following rpc calls are deprecated and will be removed in a future release
+
+    * importBuildInPlace
+
+
+Removed calls
+^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/497
+| PR: https://pagure.io/koji/pull-request/507
+
+The deprecated ``buildFromCVS`` hub call has been removed. It was replaced
+by the ``buildSRPMFromCVS`` call many years ago and has been deprecated since
+version 1.6.0.
+
+The ``add_db_logger`` function has been removed from the koji library, along
+with the ``log_messages`` table in the db. This extraneous call has never been
+used in Koji.
+
+
+Drop mod_python support
+^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/508
+
+
+Koji no longer supports mod_python. This option has been deprecated since
+mod_wsgi support was added in version 1.7.0.
+
+
+Large integer support
+^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/571
+
+
+Koji uses xmlrpc for communications with the hub, and unfortunately the
+baseline xmlrpc standard only supports 32-bit signed integers. This
+results in errors when larger integers are encountered, typically
+when a file is larger than 2 GiB.
+
+Starting with version 1.14.0, Koji will emit ``i8`` tags when encoding
+large integers for xmlrpc. Integers below the limit are still encoded
+with the standard ``int`` tag. The only time this makes a difference
+is when Koji would previously have raised an ``OverflowError``.
+
+The ``i8`` tag comes from the
+`ws-xmlrpc <https://ws.apache.org/xmlrpc/types.html>`__
+spec. Python's xmlrpc decoder has
+for many years accepted and understood this tag, even though its encoder
+will not emit it.
+
+Previous versions of Koji worked around such size issues by converting
+large integers to strings in a few targeted places. Those targeted
+workarounds have been left in place on the hub for the sake of backward
+compatibility.
+
+
+Test mode for protonmsg plugin
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/538
+
+The ``protonmsg`` plugin now accepts a boolean ``test_mode`` configuration
+option. When this option is enabled, the plugin will not actually
+send messages, but will instead log them (at the DEBUG level).
+
+This option allows testing environments to run with the plugin enabled, but
+without requiring a message bus to be set up for that environment.
+
+
+
+Handling of debugsource rpms
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/524
+
+Koji will now treat rpms ending in ``-debugsource`` the same way that it does
+other debuginfo rpms. Such rpms are:
+
+    * omitted from Koji's normal yum repos
+    * listed separately when displaying builds
+    * not downloaded by default in the ``download-build`` command
+
+
+Added kojifile component type for content generators
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/506
+
+Content generator imports now accept entries with type equal to ``kojifile``
+in the component lists for buildroots and images/archives.
+
+See: :doc:`content_generator_metadata`
