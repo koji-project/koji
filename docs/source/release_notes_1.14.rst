@@ -107,7 +107,7 @@ without having to resort to the ``call`` command.
 
 .. code-block:: text
 
-    Usage: lkoji block-group <tag> <group>
+    Usage: koji block-group <tag> <group>
     (Specify the --help global option for a list of other help options)
 
     Options:

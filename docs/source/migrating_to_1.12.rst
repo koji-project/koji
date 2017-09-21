@@ -71,7 +71,7 @@ Changes to calls:
     * repo related calls (e.g. ``repoInfo`` now include a boolean ``dist``
       field
     * the ``editTag2`` call can now remove tag_extra data if the
-      ``remove_extra`` keywarg argument is used
+      ``remove_extra`` keyword argument is used
     * the listTaskOutput call supports a new ``all_volumes`` keyword argument.
       If true, the results are extended to deal with files in same relative paths
       on different volumes.

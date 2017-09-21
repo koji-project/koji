@@ -66,7 +66,7 @@ by running ``fedora-cert -n`` again. You can check if it has expired
 with ``fedora-cert -v``.
 
 the following are downloaded automatically by fedora-packager-setup and
-dont need to be manually setup
+don't need to be manually setup
 
 ``~/.fedora-upload-ca.cert`` (The certificate for the Certificate
 Authority used to sign the user keys.) : It can be manually downloaded
@@ -258,7 +258,7 @@ the next group will begin building. For example:
 ``fedpkg chain-build libwidget libaselib : libgizmo :``
 
 will cause libwidget and libaselib to be built in parallel, followed by
-libgizmo and then the currect directory package. If no groups are
+libgizmo and then the correct directory package. If no groups are
 defined, packages will be built sequentially.
 
 If a build fail, following builds are cancelled but the builds that
@@ -406,7 +406,7 @@ any mock-config command to get a working mock-config from fedoras koji.
 
 .. _tuning-mock-per-tag:
 
-Tuning mock's behaviour per tag
+Tuning mock's behavior per tag
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Few options for mock can be configured per-tag. These options are stored in
@@ -423,7 +423,7 @@ environment follows:
   package manager. Typically used with `yum` or `dnf` values.
 * `mock.new_chroot` - 0/1 value. If it is set, `--new-chroot` or
   `--old-chroot` option is appended to any mock call. If it is not set,
-  mock's default behaviour is used.
+  mock's default behavior is used.
 
 Using Koji to control tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

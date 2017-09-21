@@ -83,7 +83,7 @@ Examples of urls to use for external Repositories
 all these examples use mirrors.kernel.org please find the closest mirror
 to yourself. Note that the Fedora minimal buildroots download ~100Mb
 then build dependencies on top. these are downloaded each build you can
-save alot of network bandwidth by using a local mirror or running
+save a lot of network bandwidth by using a local mirror or running
 through a caching proxy.
 
 NOTE: this uses $arch **NOT** $basearch

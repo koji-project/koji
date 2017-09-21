@@ -247,7 +247,7 @@ Available tests
     * for use with the channel policy
 
 ``method``
-    * matches the task method name agaist glob pattern(s)
+    * matches the task method name against glob pattern(s)
     * true if the method name matches any of the patterns
     * for use with the channel policy
 
