@@ -27,6 +27,31 @@ the ``--fail-fast`` option to the build command, which overrides this setting.
 The option only has an effect if the builders are configured to fail slow.
 
 
+Custom Lorax templates
+^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/419
+
+Koji now supports custom Lorax templates for the ``spin-livemedia`` command.
+The command accepts two new options:
+
+.. code-block:: text
+
+      --lorax_url=URL       The URL to the SCM containing any custom lorax
+                            templates that are to be used to override the default
+                            templates.
+      --lorax_dir=DIR       The relative path to the lorax templates directory
+                            within the checkout of "lorax_url".
+
+
+The Lorax templates must come from an SCM, and the ``allowed_scms`` rules
+apply.
+
+When these options are used, the templates will be fetched and an appropriate
+``--lorax-templates`` option will be passed to the underlying livemedia-creator
+command.
+
+
 Allow profiles to request a specific python version
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -39,21 +64,6 @@ work under python3, notably old-style (non-gssapi) Kerberos authentication.
 If this issue is affecting you, you can set ``pyver=2`` in your Koji
 configuration. This can be done per profile. When Koji sees this setting
 at startup, it will re-execute itself under the requested python binary.
-
-
-Easier for scripts to use activate_session
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-| PR: https://pagure.io/koji/pull-request/493
-
-In Koji 1.13.0, it became possible for scripts to ``import koji_cli.lib`` and
-gain access to the ``activate_session`` function that the command line tool
-uses to authenticate.
-
-In this release, this function has been made easier for scripts to use:
-
-    * the options argument can now be a dictionary
-    * less options need to be specified
 
 
 New list-builds command
@@ -84,19 +94,6 @@ functionality to the builds tab of the web interface.
       --quiet               Do not print the header information
 
 
-Exit codes for some commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-| PR: https://pagure.io/koji/pull-request/558
-| PR: https://pagure.io/koji/pull-request/559
-
-Several more commands will now return a non-zero exit code
-when an error occurs:
-
-    * the various image building commands
-    * the ``save-failed-tree`` command (provided by a plugin)
-
-
 New block-group command
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -112,6 +109,34 @@ without having to resort to the ``call`` command.
 
     Options:
       -h, --help  show this help message and exit
+
+
+Exit codes for some commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/558
+| PR: https://pagure.io/koji/pull-request/559
+
+Several more commands will now return a non-zero exit code
+when an error occurs:
+
+    * the various image building commands
+    * the ``save-failed-tree`` command (provided by a plugin)
+
+
+Easier for scripts to use activate_session
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/493
+
+In Koji 1.13.0, it became possible for scripts to ``import koji_cli.lib`` and
+gain access to the ``activate_session`` function that the command line tool
+uses to authenticate.
+
+In this release, this function has been made easier for scripts to use:
+
+    * the options argument can now be a dictionary
+    * less options need to be specified
 
 
 Builder changes
@@ -173,32 +198,6 @@ Previously, the plugin expected a sequence like ``[path0]``, ``[path1]``,
 ``[path2]``, etc, and would stop looking for entries if the next number
 was missing. Now, any set of distinct numbers is valid and all ``[pathNN]``
 sections will be processed.
-
-
-Custom Lorax templates
-^^^^^^^^^^^^^^^^^^^^^^
-
-| PR: https://pagure.io/koji/pull-request/419
-
-Koji now supports custom Lorax templates for the ``spin-livemedia`` command.
-The command accepts two new options:
-
-.. code-block:: text
-
-      --lorax_url=URL       The URL to the SCM containing any custom lorax
-                            templates that are to be used to override the default
-                            templates.
-      --lorax_dir=DIR       The relative path to the lorax templates directory
-                            within the checkout of "lorax_url".
-
-
-The Lorax templates must come from an SCM, and the ``allowed_scms`` rules
-apply.
-
-When these options are used, the templates will be fetched and an appropriate
-``--lorax-templates`` option will be passed to the underlying livemedia-creator
-command.
-
 
 
 System changes
@@ -278,7 +277,6 @@ send messages, but will instead log them (at the DEBUG level).
 
 This option allows testing environments to run with the plugin enabled, but
 without requiring a message bus to be set up for that environment.
-
 
 
 Handling of debugsource rpms
