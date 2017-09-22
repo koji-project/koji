@@ -20,10 +20,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    pass
 import sys
 import os
 import koji
@@ -832,7 +828,7 @@ if  __name__ == "__main__":
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif 'krbV' in sys.modules and options.principal and options.keytab:
+    elif koji.krbV and options.principal and options.keytab:
         session.krb_login(options.principal, options.keytab, options.ccache)
     #get an exclusive session
     try:
