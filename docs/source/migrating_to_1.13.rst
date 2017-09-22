@@ -4,7 +4,7 @@ Migrating to Koji 1.13
 ..
   reStructured Text formatted
 
-The 1.13 release of Koji includes a several changes that you should consider when
+The 1.13 release of Koji includes several changes that you should consider when
 migrating.
 
 DB Updates

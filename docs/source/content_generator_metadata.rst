@@ -108,7 +108,10 @@ Each map in the buildroots list contains the following entries:
    -  checksum: The checksum of the file.
    -  checksum\_type: The checksum type used.
 
+.. _metadata-kojifile:
+
 -  For maps where **type = kojifile**, the following fields will be present:
+
    -  filename: The name of the file.
    -  filesize: The size of the file.
    -  checksum: The checksum of the file.

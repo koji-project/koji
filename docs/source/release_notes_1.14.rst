@@ -58,7 +58,7 @@ Allow profiles to request a specific python version
 | PR: https://pagure.io/koji/pull-request/566
 
 On platforms with python3 available, the Koji client is built to execute
-with the python3 binary. However, there are a few features that do not
+with the python3 binary. However, there are a few client features that do not
 work under python3, notably old-style (non-gssapi) Kerberos authentication.
 
 If this issue is affecting you, you can set ``pyver=2`` in your Koji
@@ -68,6 +68,8 @@ at startup, it will re-execute itself under the requested python binary.
 
 New list-builds command
 ^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/526
 
 The command line now has a ``list-builds`` command that has similar
 functionality to the builds tab of the web interface.
@@ -157,7 +159,7 @@ Unfortunately, 1.13.0 did not normalize the path before checking the pattern,
 making it possible for users to use equivalent paths to route around the
 block patterns.
 
-Now, Koji will normalize these paths before the allowed_scms check.
+Now, Koji will normalize these paths before the ``allowed_scms`` check.
 
 
 Graceful reload
@@ -166,7 +168,7 @@ Graceful reload
 | PR: https://pagure.io/koji/pull-request/565
 
 
-For a long time kojid handled the USR1 signal by initiating a graceful restart.
+For a long time kojid has handled the USR1 signal by initiating a graceful restart.
 This change exposes that in the systemd service config (and the init script
 on older platforms).
 
@@ -185,10 +187,9 @@ Friendlier runroot configuration
 | PR: https://pagure.io/koji/pull-request/539
 | PR: https://pagure.io/koji/pull-request/528
 
-Two changes make it easier to write a configuration for runroot.
+Two changes make it easier to write a configuration for the runroot plugin.
 
-The ``path_subs`` configuration for the builder runroot plugin is now more
-forgiving about whitespace:
+The ``path_subs`` option is now more forgiving about whitespace:
 
     * leading and trailing whitespace is ignored for each line
     * blank lines are ignored
@@ -208,9 +209,7 @@ Deprecations
 
 | PR: https://pagure.io/koji/pull-request/554
 
-The following rpc calls are deprecated and will be removed in a future release
-
-    * importBuildInPlace
+The ``importBuildInPlace`` rpc call is deprecated and will be removed in a future release.
 
 
 Removed calls
@@ -228,14 +227,16 @@ with the ``log_messages`` table in the db. This extraneous call has never been
 used in Koji.
 
 
-Drop mod_python support
-^^^^^^^^^^^^^^^^^^^^^^^
+Dropped mod_python support
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/508
 
 
 Koji no longer supports mod_python. This option has been deprecated since
 mod_wsgi support was added in version 1.7.0.
+
+See also: :doc:`migrating_to_1.7`
 
 
 Large integer support
@@ -258,7 +259,7 @@ The ``i8`` tag comes from the
 `ws-xmlrpc <https://ws.apache.org/xmlrpc/types.html>`__
 spec. Python's xmlrpc decoder has
 for many years accepted and understood this tag, even though its encoder
-will not emit it.
+would not emit it.
 
 Previous versions of Koji worked around such size issues by converting
 large integers to strings in a few targeted places. Those targeted
@@ -298,6 +299,7 @@ Added kojifile component type for content generators
 | PR: https://pagure.io/koji/pull-request/506
 
 Content generator imports now accept entries with type equal to ``kojifile``
-in the component lists for buildroots and images/archives.
+in the component lists for buildroots and images/archives. This type provides
+a more reliable way to reference archive that come from Koji.
 
-See: :doc:`content_generator_metadata`
+See: :ref:`Example metadata <metadata-kojifile>`.
