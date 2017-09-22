@@ -2565,6 +2565,7 @@ def repo_references(repo_id):
         ret.append(data)
     return ret
 
+
 def get_active_repos():
     """Get data on all active repos
 
@@ -2576,14 +2577,17 @@ def get_active_repos():
         ('repo.create_event', 'create_event'),
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
         ('repo.tag_id', 'tag_id'),
+        ('repo.dist', 'dist'),
         ('tag.name', 'tag_name'),
     )
-    st_deleted = koji.REPO_DELETED
-    q = """SELECT %s FROM repo
-    JOIN tag ON tag_id=tag.id
-    JOIN events ON repo.create_event = events.id
-    WHERE repo.state != %%(st_deleted)s""" % ','.join([f[0] for f in fields])
-    return _multiRow(q, locals(), [f[1] for f in fields])
+    fields, aliases = zip(*fields)
+    values = {'st_deleted': koji.REPO_DELETED}
+    joins = ['tag ON repo.tag_id=tag.id', 'events ON repo.create_event = events.id']
+    clauses = ['repo.state != %(st_deleted)s']
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=['repo'],
+                joins=joins, clauses=clauses, values=values)
+    return query.execute()
+
 
 def tag_changed_since_event(event, taglist):
     """Report whether any changes since event affect any of the tags in list
