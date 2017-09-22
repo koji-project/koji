@@ -209,7 +209,11 @@ Deprecations
 
 | PR: https://pagure.io/koji/pull-request/554
 
-The ``importBuildInPlace`` rpc call is deprecated and will be removed in a future release.
+The following features are deprecated and will be removed in a future release:
+
+    * the ``importBuildInPlace`` rpc call
+    * the ``use_old_ssl`` client configuration option (and the underlying
+      ``koji.compatrequests`` library)
 
 
 Removed calls
