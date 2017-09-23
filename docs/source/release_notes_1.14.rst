@@ -208,6 +208,7 @@ Deprecations
 ^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/554
+| PR: https://pagure.io/koji/pull-request/597
 
 The following features are deprecated and will be removed in a future release:
 
