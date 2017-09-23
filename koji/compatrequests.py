@@ -12,6 +12,7 @@ import urlparse
 import urllib
 import sys
 import ssl.SSLCommon
+from warnings import warn
 try:
     from ssl import ssl as pyssl
 except ImportError:  # pragma: no cover
@@ -22,6 +23,7 @@ class Session(object):
 
     def __init__(self):
         self.connection = None
+        warn('koji: compatrequests is deprecated', DeprecationWarning)
 
     def post(self, url, data=None, headers=None, stream=None, verify=None,
                 cert=None, timeout=None):

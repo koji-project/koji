@@ -2060,6 +2060,7 @@ class ClientSession(object):
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout',  60 * 60 * 12)
+        self._old_ssl_warning = False
 
 
     def new_session(self):
@@ -2067,6 +2068,10 @@ class ClientSession(object):
         if self.rsession:
             self.rsession.close()
         if self.opts.get('use_old_ssl', False) or requests is None:
+            if not self._old_ssl_warning:
+                # only warn once per instance
+                self.logger.warn('The use_old_ssl option is deprecated')
+                self._old_ssl_warning = True
             if not six.PY2:
                 raise GenericError('use_old_ssl is only supported on python2')
             import koji.compatrequests
