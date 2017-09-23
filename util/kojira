@@ -69,6 +69,9 @@ class ManagedRepo(object):
         self.event_ts = data['create_ts']
         self.tag_id = data['tag_id']
         self.state = data['state']
+        if 'dist' in data:
+            self._dist = data['dist']
+        self.tag_name = data['tag_name']
         self.expire_ts = None
         if koji.REPO_STATES[self.state] in ['EXPIRED', 'DELETED', 'PROBLEM']:
             self.current = False
@@ -82,6 +85,15 @@ class ManagedRepo(object):
             for x in order:
                 tags[x['parent_id']] = 1
             self.taglist = tags.keys()
+
+    @property
+    def dist(self):
+        # TODO: remove this indirection once we can rely on the hub to return
+        # dist field in getActiveRepos
+        if hasattr(self, '_dist'):
+            return self._dist
+        rinfo = self.session.repoInfo(self.repo_id)
+        self._dist = rinfo['dist']
 
     def expire(self):
         """Mark the repo expired"""
@@ -130,8 +142,7 @@ class ManagedRepo(object):
                              (self.tag_id, self.repo_id))
             return False
         tag_name = tag_info['name']
-        rinfo = self.session.repoInfo(self.repo_id, strict=True)
-        if rinfo['dist']:
+        if self.dist:
             path = pathinfo.distrepo(self.repo_id, tag_name)
             lifetime = self.options.dist_repo_lifetime
         else:
