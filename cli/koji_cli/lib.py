@@ -10,6 +10,7 @@ import socket
 import string
 import sys
 import time
+from contextlib import closing
 from six.moves import range
 
 try:
@@ -488,7 +489,8 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         else:
             print(_("Downloading: %s") % relpath)
 
-    with requests.get(url, stream=True) as response:
+
+    with closing(requests.get(url, stream=True)) as response:
         length = response.headers.get('content-length')
         f = open(relpath, 'wb')
         if length is None:

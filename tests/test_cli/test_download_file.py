@@ -32,7 +32,8 @@ class TestDownloadFile(unittest.TestCase):
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
         self.requests_get = mock.patch('requests.get', create=True, name='requests.get').start()
-        self.requests_get = self.requests_get.return_value.__enter__
+        # will work when contextlib.closing will be removed in future
+        #self.requests_get = self.requests_get.return_value.__enter__
 
     def tearDown(self):
         mock.patch.stopall()
