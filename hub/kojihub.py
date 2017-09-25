@@ -10067,9 +10067,8 @@ class RootExports(object):
 
     def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None):
         """List all users in the system.
-        type can be either koji.USERTYPES['NORMAL']
-        or koji.USERTYPES['HOST'].  Returns a list of maps with the
-        following keys:
+        userType can be an integer value from koji.USERTYPES (defaults to 0,
+        i.e. normal users).  Returns a list of maps with the following keys:
 
         - id
         - name
