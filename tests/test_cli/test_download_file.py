@@ -1,12 +1,18 @@
 from __future__ import absolute_import
 import mock
-from mock import call
 import six
 import shutil
 import tempfile
 import unittest
 
 from koji_cli.lib import download_file, _download_progress
+
+def mock_open():
+    """Return the right patch decorator for open"""
+    if six.PY2:
+        return mock.patch('__builtin__.open')
+    else:
+        return mock.patch('builtins.open')
 
 
 class TestDownloadFile(unittest.TestCase):
@@ -18,16 +24,15 @@ class TestDownloadFile(unittest.TestCase):
         self.stdout.truncate()
         self.stderr.seek(0)
         self.stderr.truncate()
-        # self.curl.reset_mock()
-        self.curlClass.reset_mock()
+        self.requests_get.reset_mock()
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         self.filename = self.tempdir + "/filename"
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
-        self.curlClass = mock.patch('pycurl.Curl', create=True).start()
-        self.curl = self.curlClass.return_value
+        self.requests_get = mock.patch('requests.get', create=True, name='requests.get').start()
+        self.requests_get = self.requests_get.return_value.__enter__
 
     def tearDown(self):
         mock.patch.stopall()
@@ -40,30 +45,55 @@ class TestDownloadFile(unittest.TestCase):
         expected = 'Downloading: %s\n' % self.tempdir
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(cm.exception.args, (21, 'Is a directory'))
-        self.curlClass.assert_called_once()
-        self.assertEqual(self.curl.setopt.call_count, 2)
-        self.curl.perform.assert_not_called()
+        self.requests_get.assert_called_once()
 
-    def test_handle_download_file(self):
+    @mock_open()
+    def test_handle_download_file(self, m_open):
+        self.reset_mock()
+        response = mock.MagicMock()
+        self.requests_get.return_value = response
+        response.headers.get.return_value = '5' # content-length
+        response.iter_content.return_value = ['abcde']
+
         rv = download_file("http://url", self.filename)
+
         actual = self.stdout.getvalue()
-        expected = 'Downloading: %s\n\n' % self.filename
+        expected = 'Downloading: %s\n[====================================] 100%%     5.00 B\r\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
-        self.curlClass.assert_called_once()
-        self.assertEqual(self.curl.setopt.call_count, 5)
-        self.curl.perform.assert_called_once()
-        self.curl.close.assert_called_once()
+
+        self.requests_get.assert_called_once()
+        m_open.assert_called_once()
+        response.headers.get.assert_called_once()
+        response.iter_content.assert_called_once()
         self.assertIsNone(rv)
+
+    @mock_open()
+    def test_handle_download_file_undefined_length(self, m_open):
+        self.reset_mock()
+        response = mock.MagicMock()
+        self.requests_get.return_value = response
+        response.headers.get.return_value = None # content-length
+        response.content = 'abcdef'
+
+        rv = download_file("http://url", self.filename)
+
+        actual = self.stdout.getvalue()
+        expected = 'Downloading: %s\n[====================================] 100%%     6.00 B\r\n' % self.filename
+        self.assertMultiLineEqual(actual, expected)
+
+        self.requests_get.assert_called_once()
+        m_open.assert_called_once()
+        response.headers.get.assert_called_once()
+        response.iter_content.assert_not_called()
+        self.assertIsNone(rv)
+
 
     def test_handle_download_file_with_size(self):
         rv = download_file("http://url", self.filename, size=10, num=8)
         actual = self.stdout.getvalue()
         expected = 'Downloading [8/10]: %s\n\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
-        self.curlClass.assert_called_once()
-        self.assertEqual(self.curl.setopt.call_count, 5)
-        self.curl.perform.assert_called_once()
-        self.curl.close.assert_called_once()
+        self.requests_get.assert_called_once()
         self.assertIsNone(rv)
 
     def test_handle_download_file_quiet_noprogress(self):
@@ -71,45 +101,24 @@ class TestDownloadFile(unittest.TestCase):
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(self.curl.setopt.call_count, 3)
 
         self.reset_mock()
         download_file("http://url", self.filename, quiet=True, noprogress=True)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(self.curl.setopt.call_count, 3)
 
         self.reset_mock()
         download_file("http://url", self.filename, quiet=False, noprogress=True)
         actual = self.stdout.getvalue()
         expected = 'Downloading: %s\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(self.curl.setopt.call_count, 3)
 
-    def test_handle_download_file_curl_version(self):
-        self.curl.XFERINFOFUNCTION = None
-        download_file("http://url", self.filename, quiet=False, noprogress=False)
-        actual = self.stdout.getvalue()
-        expected = 'Downloading: %s\n\n' % self.filename
-        self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(self.curl.setopt.call_count, 5)
-        self.curl.setopt.assert_has_calls([call(self.curl.PROGRESSFUNCTION, _download_progress)])
-
-        self.reset_mock()
-        self.curl.PROGRESSFUNCTION = None
-        with self.assertRaises(SystemExit) as cm:
-            download_file("http://url", self.filename, quiet=False, noprogress=False)
-        actual = self.stdout.getvalue()
-        expected = 'Downloading: %s\n' % self.filename
-        self.assertMultiLineEqual(actual, expected)
-        actual = self.stderr.getvalue()
-        expected = 'Error: XFERINFOFUNCTION and PROGRESSFUNCTION are not supported by pyCurl. Quit download progress\n'
-        self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(self.curl.setopt.call_count, 3)
-        self.assertEqual(cm.exception.code, 1)
-
-
+    '''
+    possible tests
+    - handling redirect headers
+    - http vs https
+    '''
 
 class TestDownloadProgress(unittest.TestCase):
     # Show long diffs in error output...
@@ -122,14 +131,14 @@ class TestDownloadProgress(unittest.TestCase):
         mock.patch.stopall()
 
     def test_download_progress(self):
-        _download_progress(0, 0, None, None)
-        _download_progress(1024 * 92, 1024, None, None)
-        _download_progress(1024 * 1024 * 23, 1024 * 1024 * 11, None, None)
-        _download_progress(1024 * 1024 * 1024 * 35, 1024 * 1024 * 1024 * 30, None, None)
-        _download_progress(318921, 318921, None, None)
+        _download_progress(0, 0)
+        _download_progress(1024 * 92, 1024)
+        _download_progress(1024 * 1024 * 23, 1024 * 1024 * 11)
+        _download_progress(1024 * 1024 * 1024 * 35, 1024 * 1024 * 1024 * 30)
+        _download_progress(318921, 318921)
         actual = self.stdout.getvalue()
-        expected = '[                                    ]  00%     0.00 B\r' + \
-                   '[                                    ]  01%   1.00 KiB\r' + \
+        expected = '[                                    ]   0%     0.00 B\r' + \
+                   '[                                    ]   1%   1.00 KiB\r' + \
                    '[=================                   ]  47%  11.00 MiB\r' + \
                    '[==============================      ]  85%  30.00 GiB\r' + \
                    '[====================================] 100% 311.45 KiB\r'

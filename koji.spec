@@ -70,7 +70,6 @@ Requires: python2-rpm
 Requires: rpm-python
 %endif
 Requires: pyOpenSSL
-Requires: python-pycurl
 Requires: python-requests
 Requires: python-requests-kerberos
 Requires: python-dateutil
@@ -89,7 +88,6 @@ Requires: python%{python3_pkgversion}-rpm
 %else
 Requires: rpm-python%{python3_pkgversion}
 %endif
-Requires: python%{python3_pkgversion}-pycurl
 Requires: python%{python3_pkgversion}-pyOpenSSL
 Requires: python%{python3_pkgversion}-requests
 Requires: python%{python3_pkgversion}-requests-kerberos
