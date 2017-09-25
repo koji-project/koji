@@ -2062,29 +2062,6 @@ def handle_list_signed(goptions, session, args):
         print(signedpath)
 
 
-def handle_import_in_place(goptions, session, args):
-    "[admin] Import RPMs that are already in place"
-    usage = _("usage: %prog import-in-place [options] package [package...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
-    (options, args) = parser.parse_args(args)
-    if len(args) < 1:
-        parser.error(_("At least one package must be specified"))
-        assert False  # pragma: no cover
-    activate_session(session, goptions)
-    for nvr in args:
-        data = koji.parse_NVR(nvr)
-        sys.stdout.write(_("importing %s... ") % nvr)
-        try:
-            session.importBuildInPlace(data)
-        except koji.GenericError as e:
-            print(_("\nError importing: %s" % str(e).splitlines()[-1]))
-            sys.stdout.flush()
-        else:
-            print(_("done"))
-        sys.stdout.flush()
-
-
 def handle_import_archive(options, session, args):
     "[admin] Import an archive file and associate it with a build"
     usage = _("usage: %prog import-archive build-id|n-v-r /path/to/archive...")
