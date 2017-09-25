@@ -480,7 +480,8 @@ fi
 %endif
 
 %changelog
-* Fri Sep 22 2017 Mike McLean <mikem at redhat.com> - 1.14.0-1
+* Mon Sep 25 2017 Mike McLean <mikem at redhat.com> - 1.14.0-1
+- PR#597: use_old_ssl is deprecated
 - PR#591: Normalize paths for scms
 - PR#432: override build_arch_can_fail settings
 - PR#566: allow profiles to request a specific python version
