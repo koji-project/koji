@@ -12,7 +12,7 @@ provide stable APIs and interfaces to other processes.
 
 Along with the content to be managed by Koji, a Content Generator will
 provide enough metadata to enable a reasonable level of auditing and
-reproduceability. The exact data provided and the format used is being
+reproducibility. The exact data provided and the format used is being
 discussed, but will include information like the upstream source URL,
 build tools used, build environment contents, and any
 container/virtualization technologies used.

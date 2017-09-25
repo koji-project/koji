@@ -67,7 +67,7 @@ And there are three new commands
 Other Configuration changes
 ---------------------------
 
-The Koji web interface can now treate ``extra-footer.html`` as a Cheetah
+The Koji web interface can now treat ``extra-footer.html`` as a Cheetah
 template. This behavior can be enabled by setting the ``LiteralFooter`` option
 to ``False`` in the kojiweb config.
 

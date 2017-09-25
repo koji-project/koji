@@ -566,7 +566,7 @@ Set Database To Listen On All Addresses
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The koji-hub service will attempt to connect to the database server in the
 manner you configure.  If you use the system hostname, then the database will
-need to be avalible on that address.  To configure this please perform the
+need to be available on that address.  To configure this please perform the
 following:
 
 #.  Edit /var/lib/pgsql/data/postgresql.conf
@@ -987,7 +987,7 @@ Add the host entry for the koji builder to the database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You will now need to add the koji builder to the database so that they can be
-utilized by kojij hub. Make sure you do this before you start kojid for the
+utilized by koji hub. Make sure you do this before you start kojid for the
 first time, or you'll need to manually remove entries from the sessions and
 users table before it can be run successfully.
 
@@ -1033,7 +1033,7 @@ the same as KojiDir)
     ; The directory root for temporary storage
     workdir=/tmp/koji
 
-The root of the koji build directory (ie, ``/mnt/koji``) must be mounted on the
+The root of the koji build directory (i.e., ``/mnt/koji``) must be mounted on the
 builder. A Read-Only NFS mount is the easiest way to handle this.
 
 ::
@@ -1132,6 +1132,9 @@ a host, but allow from it otherwise
         !scm-server.example.com:/blocked/path/*
         scm-server.example.com:/repo/base/repos*/:no
         alt-server.example.com:/repo/dist/repos*/:no:fedpkg,sources
+
+
+The explicit block syntax was added in version 1.13.0.
 
 
 Add the host to the createrepo channel

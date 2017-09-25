@@ -218,7 +218,7 @@ the command.
 
 In the first case, the command will not automatically
 authenticate with the hub (though the user can still override
-this behaviour with `--force-auth` option). In the second case, the command
+this behavior with `--force-auth` option). In the second case, the command
 will perform authentication by default (this too can be overridden by the
 user with the `--noauth` option).
 

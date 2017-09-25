@@ -61,7 +61,7 @@ similar to the web interface.
 
 .. code-block:: text
 
-    Usage: lkoji hostinfo [options] <hostname> [<hostname> ...]
+    Usage: koji hostinfo [options] <hostname> [<hostname> ...]
     (Specify the --help global option for a list of other help options)
 
     Options:
@@ -75,7 +75,7 @@ Enhancements to restart-hosts
 The `restart-hosts` command is used by admins to safely restart the build hosts
 after a configuration change.
 
-Because multiple restarts can confict, the command will now exit with a error
+Because multiple restarts can conflict, the command will now exit with a error
 if a restart is already underway (can be overridden with --force).
 
 There are now options to limit the restart to a given channel or arch.

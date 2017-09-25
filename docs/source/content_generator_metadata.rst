@@ -1,8 +1,8 @@
-========================================
-Koji Content Generator Metadata Proposal
-========================================
+===============================
+Koji Content Generator Metadata
+===============================
 
-This document describes the proposed Koji Content Generator Metadata
+This document describes the Koji Content Generator Metadata
 Format (version 0). This is the metadata that should be provided by a
 Content Generator in order for the content to be imported and managed by
 Koji. If you have further questions about :doc:`Content
@@ -108,7 +108,10 @@ Each map in the buildroots list contains the following entries:
    -  checksum: The checksum of the file.
    -  checksum\_type: The checksum type used.
 
+.. _metadata-kojifile:
+
 -  For maps where **type = kojifile**, the following fields will be present:
+
    -  filename: The name of the file.
    -  filesize: The size of the file.
    -  checksum: The checksum of the file.

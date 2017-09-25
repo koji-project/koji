@@ -632,6 +632,7 @@ Here are some guidelines on producing preferable pull requests.
 -  Code which is imported into CLI or needed for stand-alone API calls must
    run in both 2.6+ and 3.x python versions. We use the python-six library
    for compatibility. The affected files are:
+
      - ``cli/*``
      - ``koji/__init__.py``
      - ``koji/auth.py``
@@ -639,6 +640,7 @@ Here are some guidelines on producing preferable pull requests.
      - ``koji/util.py``
      - ``tests/test_lib/*``
      - ``tests/test_cli/*``
+
 - Check, that unit tests are not broken. Simply run ``make test`` in main
   directory of your branch. For python3 compatible-code we have also ``make
   test3`` target.
