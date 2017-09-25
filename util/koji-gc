@@ -154,7 +154,6 @@ def get_options():
             ['unprotected_keys', None, 'string'],
             ['grace_period', None, 'string'],
             ['trashcan_tag', None, 'string'],
-            ['use_old_ssl', None, 'boolean'],
             ['no_ssl_verify', None, 'boolean'],
             ['timeout', None, 'integer'],
             ]

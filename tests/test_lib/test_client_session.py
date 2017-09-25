@@ -34,30 +34,17 @@ class TestClientSession(unittest.TestCase):
 
     @mock.patch('requests.Session')
     def test_new_session(self, rsession):
-        opts = {'use_old_ssl': False}
-        ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
+        koji.ClientSession('http://koji.example.com/kojihub')
 
         # init should have called new_session for us
 
         rsession.assert_called_once()
 
     @mock.patch('requests.Session')
-    def test_new_session_old(self, rsession):
-        if six.PY3:
-            return
-        opts = {'use_old_ssl': True}
-        ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
-
-        # init should have called new_session for us
-
-        rsession.assert_not_called()
-
-    @mock.patch('requests.Session')
     def test_new_session_close(self, rsession):
         if six.PY3:
             return
-        opts = {'use_old_ssl': True}
-        ksession = koji.ClientSession('http://koji.example.com/kojihub', opts)
+        ksession = koji.ClientSession('http://koji.example.com/kojihub')
         my_rsession = mock.MagicMock()
         ksession.rsession = my_rsession
 
@@ -69,7 +56,7 @@ class TestClientSession(unittest.TestCase):
 class TestFastUpload(unittest.TestCase):
 
     def setUp(self):
-        self.ksession = koji.ClientSession('http://koji.example.com/kojihub', {})
+        self.ksession = koji.ClientSession('http://koji.example.com/kojihub')
         self.do_fake_login()
         # mocks
         self.ksession._callMethod = mock.MagicMock()

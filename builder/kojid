@@ -5632,7 +5632,6 @@ def get_options():
                 'offline_retry_interval': 120,
                 'keepalive' : True,
                 'timeout' : None,
-                'use_old_ssl' : False,
                 'no_ssl_verify' : False,
                 'use_fast_upload': True,
                 'use_createrepo_c': False,
@@ -5661,7 +5660,7 @@ def get_options():
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
                           'support_rpm_source_layout', 'krb_rdns', 'krb_canon_host',
-                          'build_arch_can_fail', 'use_old_ssl', 'no_ssl_verify']:
+                          'build_arch_can_fail', 'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
