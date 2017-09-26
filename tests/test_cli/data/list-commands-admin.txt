@@ -57,7 +57,6 @@ admin commands:
         set-pkg-owner             Set the owner for a package
         set-pkg-owner-global      Set the owner for a package globally
         set-task-priority         Set task priority
-        spin-livemedia            Create a livemedia image given a kickstart file
         unblock-group-pkg         Unblock a package from a group's package listing
         unblock-group-req         Unblock a group's requirement listing
         unblock-pkg               Unblock a package in the listing for tag

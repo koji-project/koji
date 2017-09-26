@@ -5341,7 +5341,7 @@ def handle_spin_livecd(options, session, args):
 
 # This handler is for spinning livemedia images
 def handle_spin_livemedia(options, session, args):
-    """[admin] Create a livemedia image given a kickstart file"""
+    """[build] Create a livemedia image given a kickstart file"""
 
     # Usage & option parsing.
     usage = _("usage: %prog spin-livemedia [options] <name> <version> <target>" +
