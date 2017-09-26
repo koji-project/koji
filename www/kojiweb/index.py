@@ -1432,6 +1432,8 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
+    values['show_components'] = archive.get('rootid', False) or \
+                                server.listRPMs(imageID=archive['id'], queryOpts={'limit':1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
 
