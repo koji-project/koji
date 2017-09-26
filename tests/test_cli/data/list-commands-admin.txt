@@ -34,7 +34,6 @@ admin commands:
         import                    Import externally built RPMs into the database
         import-archive            Import an archive file and associate it with a build
         import-cg                 Import external builds with rich metadata
-        import-in-place           Import RPMs that are already in place
         import-sig                Import signatures into the database
         list-signed               List signed copies of rpms
         lock-tag                  Lock a tag

@@ -5659,81 +5659,6 @@ def import_rpm_file(fn, buildinfo, rpminfo):
     final_path = "%s/%s" % (koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(rpminfo))
     _import_archive_file(fn, os.path.dirname(final_path))
 
-def import_build_in_place(build):
-    """[DEPRECATED] Import a package already in the packages directory
-
-    This is used for bootstrapping the database
-    Parameters:
-        build: a dictionary with fields: name, version, release
-    """
-    # Only an admin may do this
-    logger.warning('import_build_in_place() is DEPRECATED')
-    context.session.assertPerm('admin')
-    prev = get_build(build)
-    if prev is not None:
-        state = koji.BUILD_STATES[prev['state']]
-        if state == 'COMPLETE':
-            log_error("Skipping build %r, already in db" % build)
-            # TODO - check contents against db
-            return prev['id']
-        elif state not in ('FAILED', 'CANCELED'):
-            raise koji.GenericError("build already exists (%s): %r" % (state, build))
-        #otherwise try to reimport
-    bdir = koji.pathinfo.build(build)
-    srpm = None
-    rpms = []
-    srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % build
-    # look for srpm first
-    srcdir = bdir + "/src"
-    if os.path.isdir(srcdir):
-        for basename in os.listdir(srcdir):
-            if basename != srpmname:
-                raise koji.GenericError("unexpected file: %s" % basename)
-            srpm = "%s/%s" % (srcdir, basename)
-    for arch in os.listdir(bdir):
-        if arch == 'src':
-            #already done that
-            continue
-        if arch == "data":
-            continue
-        adir = "%s/%s" % (bdir, arch)
-        if not os.path.isdir(adir):
-            raise koji.GenericError("out of place file: %s" % adir)
-        for basename in os.listdir(adir):
-            fn = "%s/%s" % (adir, basename)
-            if not os.path.isfile(fn):
-                raise koji.GenericError("unexpected non-regular file: %s" % fn)
-            if fn[-4:] != '.rpm':
-                raise koji.GenericError("out of place file: %s" % adir)
-            #check sourcerpm field
-            hdr = koji.get_rpm_header(fn)
-            sourcerpm = hdr[rpm.RPMTAG_SOURCERPM]
-            if sourcerpm != srpmname:
-                raise koji.GenericError("srpm mismatch for %s: %s (expected %s)" \
-                        % (fn, sourcerpm, srpmname))
-            rpms.append(fn)
-    koji.plugin.run_callbacks('preImport', type='build', in_place=True, srpm=srpm, rpms=rpms)
-    # actually import
-    buildinfo = None
-    if srpm is not None:
-        rpminfo = import_rpm(srpm)
-        add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(srpm))
-        buildinfo = rpminfo['build']
-        # file already in place
-    for fn in rpms:
-        rpminfo = import_rpm(fn, buildinfo)
-        add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
-    #update build state
-    build_id = buildinfo['id']
-    st_complete = koji.BUILD_STATES['COMPLETE']
-    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
-    update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
-    WHERE id=%(build_id)i"""
-    _dml(update, locals())
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_complete, info=buildinfo)
-    koji.plugin.run_callbacks('postImport', type='build', in_place=True, build=buildinfo, srpm=srpm, rpms=rpms)
-    return build_id
-
 def _import_wrapper(task_id, build_info, rpm_results):
     """Helper function to import wrapper rpms for a Maven build"""
     rpm_buildroot_id = rpm_results['buildroot_id']
@@ -9016,7 +8941,6 @@ class RootExports(object):
     getTagExternalRepos = staticmethod(get_tag_external_repos)
     getExternalRepoList = staticmethod(get_external_repo_list)
 
-    importBuildInPlace = staticmethod(import_build_in_place)
     resetBuild = staticmethod(reset_build)
 
     def importArchive(self, filepath, buildinfo, type, typeInfo):
