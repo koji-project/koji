@@ -7163,7 +7163,7 @@ def reset_build(build):
     delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
-    update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
+    update = """UPDATE build SET state=%(state)s, task_id=NULL, volume_id=0 WHERE id=%(id)s"""
     _dml(update, binfo)
     #now clear the build dirs
     dirs_to_clear = []
