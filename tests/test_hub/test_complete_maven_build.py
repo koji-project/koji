@@ -38,8 +38,8 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch('kojihub._fetchSingle').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
-        # mock.patch('kojihub.check_volume_policy',
-        #         return_value={'id':0, 'name': 'DEFAULT'}).start()
+        mock.patch('kojihub.check_volume_policy',
+                return_value={'id':0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
 
     def tearDown(self):
@@ -116,6 +116,8 @@ class TestCompleteMavenBuild(unittest.TestCase):
         buildinfo['release'] = '1'
         buildinfo['source'] = None
         buildinfo['state'] = koji.BUILD_STATES['BUILDING']
+        buildinfo['volume_id'] = 0
+        buildinfo['volume_name'] = 'DEFAULT'
         maven_info = self.maven_data['maven_info'].copy()
         maven_info['build_id'] = buildinfo['id']
         self.get_build.return_value = buildinfo

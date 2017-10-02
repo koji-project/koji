@@ -57,8 +57,8 @@ class TestCompleteImageBuild(unittest.TestCase):
         self._dml = mock.patch('kojihub._dml').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
-        # mock.patch('kojihub.check_volume_policy',
-        #         return_value={'id':0, 'name': 'DEFAULT'}).start()
+        mock.patch('kojihub.check_volume_policy',
+                return_value={'id':0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
         self.rpms = {}
         self.inserts = []
