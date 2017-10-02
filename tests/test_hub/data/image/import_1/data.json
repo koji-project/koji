@@ -1,0 +1,51 @@
+{
+    "x86_64": {
+        "files": [
+            "tdl-x86_64.xml", 
+            "image.ks", 
+            "image-base.ks", 
+            "foo-x86_64.xml", 
+            "my-image-7.4.2-2.x86_64.ova"
+        ], 
+        "rpmlist": [
+            {
+                "name": "some-package", 
+                "buildtime": 1421172150, 
+                "epoch": null, 
+                "version": "1.0", 
+                "release": "8.el7", 
+                "arch": "x86_64", 
+                "payloadhash": "28f1f3e6194573da1069bc82acdb79bd", 
+                "size": 638
+            }, 
+            {
+                "name": "another-package", 
+                "buildtime": 1462364954, 
+                "epoch": null, 
+                "version": "2.8.71", 
+                "release": "7.el7", 
+                "arch": "noarch", 
+                "payloadhash": "0a445b4440665e1b435ed08b792f4811", 
+                "size": 696715
+            }, 
+            {
+                "name": "yet-another-package", 
+                "buildtime": 1435146325, 
+                "epoch": null, 
+                "version": "2.6.0", 
+                "release": "1.el7_1", 
+                "arch": "noarch", 
+                "payloadhash": "ca7829d6a999db3835ab50902e44ce05", 
+                "size": 350906
+            }
+        ], 
+        "logs": [
+            "oz-x86_64.log"
+        ], 
+        "task_id": 999, 
+        "version": "7.4.2", 
+        "release": "2", 
+        "arch": "x86_64", 
+        "name": "my-image"
+    }
+}
