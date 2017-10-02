@@ -38,8 +38,8 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch('kojihub._fetchSingle').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
-        mock.patch('kojihub.check_volume_policy',
-                return_value={'id':0, 'name': 'DEFAULT'}).start()
+        # mock.patch('kojihub.check_volume_policy',
+        #         return_value={'id':0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
 
     def tearDown(self):
@@ -130,14 +130,14 @@ class TestCompleteMavenBuild(unittest.TestCase):
         # check callbacks
         cbtypes = [c[0] for c in self.callbacks]
         cb_expect = [
-            'preBuildStateChange',  # building -> completed
-            'postBuildStateChange',
             'preImport',    # archive 1...
             'postImport',
             'preImport',    # archive 2...
             'postImport',
             'preImport',    # archive 3...
             'postImport',
+            'preBuildStateChange',  # building -> completed
+            'postBuildStateChange',
             ]
         self.assertEqual(cbtypes, cb_expect)
 
