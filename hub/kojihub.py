@@ -11830,10 +11830,25 @@ class HostExports(object):
         build_info = get_build(build_id, strict=True)
         maven_info = get_maven_build(build_id, strict=True)
 
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'cgs': [],
+                'import': True,
+                'import_type': 'maven',
+                }
+        vol = check_volume_policy(policy_data, strict=False)
+        if vol'id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
+        # import the build output
         maven_task_id = maven_results['task_id']
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
-        # import the build output
         for relpath, files in maven_results['files'].iteritems():
             dir_maven_info = maven_info
             poms = [f for f in files if f.endswith('.pom')]
@@ -11884,6 +11899,8 @@ class HostExports(object):
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.rawset(completion_time='now()')
         update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
