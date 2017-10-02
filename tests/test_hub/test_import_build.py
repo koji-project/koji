@@ -193,6 +193,7 @@ class TestImportBuild(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
+    @mock.patch('kojihub.check_volume_policy')
     @mock.patch('kojihub.new_typed_build')
     @mock.patch('kojihub._dml')
     @mock.patch('kojihub._singleValue')
@@ -211,7 +212,7 @@ class TestImportBuild(unittest.TestCase):
                                           import_rpm, import_rpm_file,
                                           rip_rpm_sighdr, add_rpm_sig,
                                           get_build, _singleValue, _dml,
-                                          new_typed_build):
+                                          new_typed_build, check_volume_policy):
 
         rip_rpm_sighdr.return_value = (0, 0)
 
@@ -222,6 +223,8 @@ class TestImportBuild(unittest.TestCase):
         context.session.user_id = 99
 
         work.return_value = '/'
+
+        check_volume_policy.return_value = {'id':0, 'name': 'DEFAULT'}
 
         retval = copy.copy(self.rpm_header_retval)
         retval.update({

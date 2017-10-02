@@ -5020,13 +5020,26 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         #this will raise an exception if the buildroot id is invalid
         BuildRoot(br_id)
 
-    #read srpm info
+    # get build informaton
     fn = "%s/%s" % (uploadpath, srpm)
     build = koji.get_header_fields(fn, ('name', 'version', 'release', 'epoch',
                                         'sourcepackage'))
     if build['sourcepackage'] != 1:
         raise koji.GenericError("not a source package: %s" % fn)
     build['task_id'] = task_id
+
+    policy_data = {
+            'prebuild': build,
+            'package': build['name'],
+            'buildroots': brmap.values(),
+            'import': True,
+            'import_type': 'rpm',
+            }
+    vol = check_volume_policy(policy_data, strict=False)
+    if vol:
+        build['volume_id'] = vol['id']
+        build['volume_name'] = vol['name']
+
     if build_id is None:
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
@@ -5043,10 +5056,13 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             raise koji.GenericError("Unable to complete build: state is %s" \
                     % koji.BUILD_STATES[binfo['state']])
         #update build state
-        update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
-        WHERE id=%(build_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo)
+        update.set(state=st_complete)
+        update.rawset(completion_time='NOW()')
+        update.set(volume_id=build['volume_id'])
+        update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
+
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
