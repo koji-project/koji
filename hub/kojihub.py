@@ -11997,6 +11997,21 @@ class HostExports(object):
         build_info = get_build(build_id, strict=True)
         get_win_build(build_id, strict=True)  # raise exception if not found.
 
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'cgs': [],
+                'import': True,
+                'import_type': 'win',
+                }
+        vol = check_volume_policy(policy_data, strict=False)
+        if vol'id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
         task_dir = koji.pathinfo.task(results['task_id'])
         # import the build output
         for relpath, metadata in results['output'].iteritems():
@@ -12026,6 +12041,8 @@ class HostExports(object):
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.rawset(completion_time='now()')
         update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
