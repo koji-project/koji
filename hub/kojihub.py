@@ -51,6 +51,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import traceback
 import time
 import types
 import xmlrpclib
@@ -1527,6 +1528,7 @@ def _direct_tag_build(tag, build, user, force=False):
     insert.make_create(user_id=user_id)
     insert.execute()
     koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
+
 
 def _untag_build(tag, build, user_id=None, strict=True, force=False):
     """Untag a build
@@ -4709,6 +4711,11 @@ def change_build_volume(build, volume, strict=True):
     context.session.assertPerm('admin')
     volinfo = lookup_name('volume', volume, strict=True)
     binfo = get_build(build, strict=True)
+    _set_build_volume(binfo, volinfo, strict)
+
+
+def _set_build_volume(binfo, volinfo, strict=True):
+    """Move a build to a different storage volume"""
     if binfo['volume_id'] == volinfo['id']:
         if strict:
             raise koji.GenericError("Build %(nvr)s already on volume %(volume_name)s" % binfo)
@@ -4783,6 +4790,57 @@ def change_build_volume(build, volume, strict=True):
         os.symlink(relpath, basedir)
 
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
+
+
+def check_volume_policy(data, strict=False):
+    """Check volume policy for the given data
+
+    If strict is True, raises exception on bad policies or no matches
+    Returns volume info, or None if no match
+    """
+    result = None
+    try:
+        ruleset = context.policy.get('volume')
+        result = ruleset.apply(data)
+    except Exception:
+        logger.error('Volume policy error')
+        if strict:
+            raise
+        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+        logger.debug(tb_str)
+    if result is None:
+        if strict:
+            raise koji.GenericError('No volume policy match')
+        logger.warn('No volume policy match')
+        return None
+    logger.debug('Volume policy returned %s', result)
+    vol = lookup_name('volume', result)
+    if not vol:
+        if strict:
+            raise koji.GenericError("Policy returned invalid volume: %s" % result)
+        logger.error('Volume policy returned unknown volume %s', result)
+        return None
+    return vol
+
+
+def apply_volume_policy(build, strict=False):
+    """Apply volume policy, moving build as needed
+
+    build should be the buildinfo returned by get_build()
+
+    The strict options determines what happens in the case of a bad policy.
+    If strict is True, and exception will be raised. Otherwise, the existing
+    volume we be retained (or DEFAULT will be used if the build has no volume)
+    """
+    policy_data = {'build': build}
+    volume = check_volume_policy(policy_data, strict=strict)
+    if volume is None:
+        # just leave the build where it is
+        return
+    if build['volume_id'] == volume['id']:
+        # nothing to do
+        return
+    _set_build_volume(build, volume, strict=True)
 
 
 def new_build(data):
@@ -5135,6 +5193,7 @@ class CG_Importer(object):
         self.prep_outputs()
 
         self.assert_policy()
+        self.set_volume()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory)
@@ -5204,6 +5263,23 @@ class CG_Importer(object):
             # TODO: provide more data
         }
         assert_policy('cg_import', policy_data)
+
+
+    def set_volume(self):
+        """Use policy to determine what the volume should be"""
+        # we have to be careful and provide sufficient data
+        policy_data = {
+                'build': self.buildinfo,
+                'package': self.buildinfo['name'],
+                'source': self.buildinfo['source'],
+                'cgs': self.cgs,
+                'volume': 'DEFAULT',  # ???
+                'cg_import': True,
+                }
+        vol = check_volume_policy(policy_data, strict=False)
+        if vol:
+            self.buildinfo['volume_id'] = vol['id']
+            self.buildinfo['volume_name'] = vol['name']
 
 
     def prep_build(self):
@@ -7859,27 +7935,49 @@ def policy_get_pkg(data):
     raise koji.GenericError("policy requires package data")
 
 
-def policy_get_cgs(data):
+def policy_get_brs(data):
     """Determine content generators from policy data"""
 
-    if 'build' not in data:
-        raise koji.GenericError("policy requires build data")
-    binfo = get_build(data['build'], strict=True)
+    if 'buildroots' in data:
+        return set(data['buildroots'])
+    elif 'build' in data:
+        binfo = get_build(data['build'], strict=True)
+        rpm_brs = [r['buildroot_id'] for r in list_rpms(buildID=binfo['id'])]
+        archive_brs = [a['buildroot_id'] for a in list_archives(buildID=binfo['id'])]
+        return set(rpm_brs + archive_brs)
+    else:
+        return set()
 
-    # first get buildroots used
-    rpm_brs = [r['buildroot_id'] for r in list_rpms(buildID=binfo['id'])]
-    archive_brs = [a['buildroot_id'] for a in list_archives(buildID=binfo['id'])]
 
+def policy_get_cgs(data):
     # pull cg info out
     # note that br_id will be None if a component had no buildroot
     cgs = set()
-    for br_id in set(rpm_brs + archive_brs):
+    for br_id in policy_get_brs(data):
         if br_id is None:
             cgs.add(None)
         else:
             cgs.add(get_buildroot(br_id, strict=True)['cg_name'])
-
     return cgs
+
+
+def policy_get_build_tags(data):
+    # pull cg info out
+    # note that br_id will be None if a component had no buildroot
+    if 'build_tag' in data:
+        return [get_tag(data['build_tag'], strict=True)['name']]
+    elif 'build_tags' in data:
+        return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
+    elif 'build' in data:
+        tags = set()
+        for br_id in policy_get_brs(data):
+            if br_id is None:
+                tags.add(None)
+            else:
+                tags.add(get_buildroot(br_id, strict=True)['tag_name'])
+        return tags
+    else:
+        return []
 
 
 class NewPackageTest(koji.policy.BaseSimpleTest):
@@ -7996,6 +8094,8 @@ class HasTagTest(koji.policy.BaseSimpleTest):
     """Check to see if build (currently) has a given tag"""
     name = 'hastag'
     def run(self, data):
+        if 'build' not in data:
+            return False
         tags = list_tags(build=data['build'])
         #True if any of these tags match any of the patterns
         args = self.str.split()[1:]
@@ -8015,8 +8115,9 @@ class SkipTagTest(koji.policy.BaseSimpleTest):
     def run(self, data):
         return bool(data.get('skip_tag'))
 
+
 class BuildTagTest(koji.policy.BaseSimpleTest):
-    """Check the build tag of the build
+    """Check the build tag(s) of the build
 
     If build_tag is not provided in policy data, it is determined by the
     buildroots of the component rpms
@@ -8024,37 +8125,15 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     name = 'buildtag'
     def run(self, data):
         args = self.str.split()[1:]
-        if 'build_tag' in data:
-            tagname = get_tag(data['build_tag'], strict=True)['name']
-            for pattern in args:
-                if fnmatch.fnmatch(tagname, pattern):
-                    return True
-            #else
-            return False
-        elif 'build' in data:
-            #determine build tag from buildroots
-            #in theory, we should find only one unique build tag
-            #it is possible that some rpms could have been imported later and hence
-            #not have a buildroot.
-            #or if the entire build was imported, there will be no buildroots
-            rpms = context.handlers.call('listRPMs', buildID=data['build'])
-            archives = list_archives(buildID=data['build'])
-            br_list = [r['buildroot_id'] for r in rpms]
-            br_list.extend([a['buildroot_id'] for a in archives])
-            for br_id in br_list:
-                if br_id is None:
-                    continue
-                tagname = get_buildroot(br_id)['tag_name']
-                if tagname is None:
-                    # content generator buildroots might not have tag info
-                    continue
-                for pattern in args:
-                    if fnmatch.fnmatch(tagname, pattern):
-                        return True
-            #otherwise...
-            return False
-        else:
-            return False
+        for tagname in policy_get_build_tags(data):
+            if tagname is None:
+                # content generator buildroots might not have tag info
+                continue
+            if multi_fnmatch(tagname, args):
+                return True
+        #otherwise...
+        return False
+
 
 class ImportedTest(koji.policy.BaseSimpleTest):
     """Check if any part of a build was imported
