@@ -7986,16 +7986,14 @@ def policy_get_build_tags(data):
         return [get_tag(data['build_tag'], strict=True)['name']]
     elif 'build_tags' in data:
         return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
-    elif 'build' in data:
-        tags = set()
-        for br_id in policy_get_brs(data):
-            if br_id is None:
-                tags.add(None)
-            else:
-                tags.add(get_buildroot(br_id, strict=True)['tag_name'])
-        return tags
-    else:
-        return []
+    # otherise look at buildroots
+    tags = set()
+    for br_id in policy_get_brs(data):
+        if br_id is None:
+            tags.add(None)
+        else:
+            tags.add(get_buildroot(br_id, strict=True)['tag_name'])
+    return tags
 
 
 class NewPackageTest(koji.policy.BaseSimpleTest):
