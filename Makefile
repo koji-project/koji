@@ -82,9 +82,6 @@ test3:
 	coverage html
 	@echo Full coverage report in htmlcov/index.html
 
-subdirs:
-	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
-
 test-tarball:
 	@rm -rf .koji-$(VERSION)
 	@mkdir .koji-$(VERSION)
