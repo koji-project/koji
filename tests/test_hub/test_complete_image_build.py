@@ -13,8 +13,26 @@ import kojihub
 
 
 orig_import_archive_internal = kojihub.import_archive_internal
-IP = kojihub.InsertProcessor
-UP = kojihub.UpdateProcessor
+
+
+def make_insert_grabber(test):
+    # test is the test class instance
+    def grab_insert(insert):
+        # insert is self for the InsertProcessor instance
+        # we are replacing execute()
+        info = [str(insert), insert.data.copy(), insert.rawdata.copy()]
+        test.inserts.append(info)
+    return grab_insert
+
+
+def make_update_grabber(test):
+    # test is the test class instance
+    def grab_update(update):
+        # update is self for the UpdateProcessor instance
+        # we are replacing execute()
+        info = [str(update), update.data.copy(), update.rawdata.copy()]
+        test.updates.append(info)
+    return grab_update
 
 
 class TestCompleteImageBuild(unittest.TestCase):
@@ -39,14 +57,16 @@ class TestCompleteImageBuild(unittest.TestCase):
         self._dml = mock.patch('kojihub._dml').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
-        mock.patch('kojihub.check_volume_policy',
-                return_value={'id':0, 'name': 'DEFAULT'}).start()
+        # mock.patch('kojihub.check_volume_policy',
+        #         return_value={'id':0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
         self.rpms = {}
-        mock.patch('kojihub.InsertProcessor', new=self.get_insert).start()
-        mock.patch('kojihub.UpdateProcessor', new=self.get_update).start()
         self.inserts = []
         self.updates = []
+        mock.patch.object(kojihub.InsertProcessor, 'execute',
+                    new=make_insert_grabber(self)).start()
+        mock.patch.object(kojihub.UpdateProcessor, 'execute',
+                    new=make_update_grabber(self)).start()
         mock.patch('kojihub.nextval', new=self.my_nextval).start()
         self.sequences = {}
 
@@ -54,17 +74,11 @@ class TestCompleteImageBuild(unittest.TestCase):
         mock.patch.stopall()
         shutil.rmtree(self.tempdir)
 
-    def get_insert(self, *a, **kw):
-        insert = IP(*a, **kw)
-        insert.execute = mock.MagicMock()
-        self.inserts.append(insert)
-        return insert
-
-    def get_update(self, *a, **kw):
-        update = UP(*a, **kw)
-        update.execute = mock.MagicMock()
-        self.updates.append(update)
-        return update
+    def grab_update(self, update):
+        # update is self for the UpdateProcessor instance
+        # we are replacing execute()
+        info = [str(update), update.data.copy(), update.rawdata.copy()]
+        self.updates.append(info)
 
     def set_up_files(self, name):
         datadir = os.path.join(os.path.dirname(__file__), 'data/image', name)
@@ -91,8 +105,8 @@ class TestCompleteImageBuild(unittest.TestCase):
                 paths.append(os.path.join(imgdir, filename))
             for filename in data[arch]['logs']:
                 paths.append(os.path.join(logdir, 'image', filename))
-        bdir = koji.pathinfo.build(buildinfo)
-        paths.append(os.path.join(bdir, 'metadata.json'))
+        # bdir = koji.pathinfo.build(buildinfo)
+        # paths.append(os.path.join(bdir, 'metadata.json'))
         return paths
 
     def my_nextval(self, sequence):
@@ -190,8 +204,6 @@ class TestCompleteImageBuild(unittest.TestCase):
         # check callbacks
         cbtypes = [c[0] for c in self.callbacks]
         cb_expect = [
-            'preBuildStateChange',  # building -> completed
-            'postBuildStateChange',
             'preImport',    # build
             'preImport',    # archive 1...
             'postImport',
@@ -204,6 +216,8 @@ class TestCompleteImageBuild(unittest.TestCase):
             'preImport',    # archive 5...
             'postImport',
             'postImport',   # build
+            'preBuildStateChange',  # building -> completed
+            'postBuildStateChange',
             ]
         self.assertEqual(cbtypes, cb_expect)
         cb_idx = {}
@@ -253,13 +267,5 @@ class TestCompleteImageBuild(unittest.TestCase):
         # db operations
         # with our other mocks, we should never reach _dml
         self._dml.assert_not_called()
-        inserts = []
-        for insert in self.inserts:
-            info = [str(insert), insert.data, insert.rawdata]
-            inserts.append(info)
-        updates = []
-        for update in self.updates:
-            info = [str(update), update.data, update.rawdata]
-            updates.append(info)
-        data = {'inserts': inserts, 'updates': updates}
+        data = {'inserts': self.inserts, 'updates': self.updates}
         self.assertEqual(data, self.db_expect)

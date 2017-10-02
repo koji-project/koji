@@ -123,6 +123,70 @@
         [
             "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
             {
+                "archive_id": 1002, 
+                "rpm_id": 1000
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1002, 
+                "rpm_id": 1001
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1002, 
+                "rpm_id": 1002
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1003, 
+                "rpm_id": 1000
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1003, 
+                "rpm_id": 1001
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1003, 
+                "rpm_id": 1002
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1005, 
+                "rpm_id": 1000
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
+                "archive_id": 1005, 
+                "rpm_id": 1001
+            }, 
+            {}
+        ], 
+        [
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            {
                 "archive_id": 1005, 
                 "rpm_id": 1002
             }, 
