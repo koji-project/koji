@@ -5062,6 +5062,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         update.set(volume_id=build['volume_id'])
         update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
+        binfo['volume_id'] = build['volume_id']
+        binfo['volume_name'] = build['volume_name']
 
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
