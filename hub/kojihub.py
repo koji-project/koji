@@ -5287,12 +5287,12 @@ class CG_Importer(object):
         """Use policy to determine what the volume should be"""
         # we have to be careful and provide sufficient data
         policy_data = {
-                'build': self.buildinfo,
+                'prebuild': self.buildinfo,
                 'package': self.buildinfo['name'],
                 'source': self.buildinfo['source'],
                 'cgs': self.cgs,
-                'volume': 'DEFAULT',  # ???
-                'cg_import': True,
+                'import': True,
+                'import_type': 'cg',
                 }
         vol = check_volume_policy(policy_data, strict=False)
         if vol:
