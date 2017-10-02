@@ -11768,16 +11768,36 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
+
+        build_info = get_build(build_id)
+
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'cgs': [],
+                'import': True,
+                'import_type': 'maven',
+                }
+        vol = check_volume_policy(policy_data, strict=False)
+        if vol['id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
+
         self.importImage(task_id, build_id, results)
 
         st_complete = koji.BUILD_STATES['COMPLETE']
-        build_info = get_build(build_id)
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
 
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(id=build_id, state=st_complete)
         update.rawset(completion_time='now()')
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.execute()
 
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
@@ -11840,7 +11860,7 @@ class HostExports(object):
                 'import_type': 'maven',
                 }
         vol = check_volume_policy(policy_data, strict=False)
-        if vol'id'] != build_info['volume_id']:
+        if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
             build_info['volume_name'] = vol['name']
             vol_update = True
@@ -12007,7 +12027,7 @@ class HostExports(object):
                 'import_type': 'win',
                 }
         vol = check_volume_policy(policy_data, strict=False)
-        if vol'id'] != build_info['volume_id']:
+        if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
             build_info['volume_name'] = vol['name']
             vol_update = True
