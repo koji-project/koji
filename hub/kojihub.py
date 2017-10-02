@@ -6148,7 +6148,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
                               build_type=type, filepath=filepath, fileinfo=fileinfo)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
-    archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
+    archive_id = nextval('archiveinfo_id_seq')
     archiveinfo['id'] = archive_id
     insert = InsertProcessor('archiveinfo', data=archiveinfo)
     insert.execute()
@@ -8380,15 +8380,16 @@ def importImageInternal(task_id, build_id, imgdata):
         rpm_ids.append(data['id'])
 
     # associate those RPMs with the image
-    q = """INSERT INTO archive_rpm_components (archive_id,rpm_id)
-           VALUES (%(archive_id)i,%(rpm_id)i)"""
+    insert = InsertProcessor('archive_rpm_components')
     for archive in archives:
         logger.info('working on archive %s', archive)
         if archive['filename'].endswith('xml'):
             continue
+        insert.set(archive_id = archive['id'])
         logger.info('associating installed rpms with %s', archive['id'])
         for rpm_id in rpm_ids:
-            _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
+            insert.set(rpm_id = rpm_id)
+            insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               build=build_info, fullpath=fullpath)
