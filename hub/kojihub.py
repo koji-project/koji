@@ -4841,7 +4841,7 @@ def apply_volume_policy(build, strict=False):
     build should be the buildinfo returned by get_build()
 
     The strict options determines what happens in the case of a bad policy.
-    If strict is True, and exception will be raised. Otherwise, the existing
+    If strict is True, an exception will be raised. Otherwise, the existing
     volume we be retained.
     """
     policy_data = {'build': build}
@@ -5048,9 +5048,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             'import_type': 'rpm',
             }
     vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
-    if vol:
-        build['volume_id'] = vol['id']
-        build['volume_name'] = vol['name']
+    build['volume_id'] = vol['id']
+    build['volume_name'] = vol['name']
 
     if build_id is None:
         build_id = new_build(build)
@@ -5306,7 +5305,7 @@ class CG_Importer(object):
                 'import': True,
                 'import_type': 'cg',
                 }
-        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
+        vol = check_volume_policy(policy_data, strict=False)
         if vol:
             self.buildinfo['volume_id'] = vol['id']
             self.buildinfo['volume_name'] = vol['name']
@@ -9093,8 +9092,14 @@ class RootExports(object):
     removeVolume = staticmethod(remove_volume)
     listVolumes = staticmethod(list_volumes)
     changeBuildVolume = staticmethod(change_build_volume)
+
     def getVolume(self, volume, strict=False):
         return lookup_name('volume', volume, strict=strict)
+
+    def applyVolumePolicy(self, build, strict=False):
+        context.session.assertPerm('admin')
+        build = get_build(build, strict=True)
+        return apply_volume_policy(build, strict)
 
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')
