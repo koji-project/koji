@@ -4842,7 +4842,7 @@ def apply_volume_policy(build, strict=False):
 
     The strict options determines what happens in the case of a bad policy.
     If strict is True, and exception will be raised. Otherwise, the existing
-    volume we be retained (or DEFAULT will be used if the build has no volume)
+    volume we be retained.
     """
     policy_data = {'build': build}
     volume = check_volume_policy(policy_data, strict=strict)
