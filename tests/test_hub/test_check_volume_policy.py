@@ -75,6 +75,37 @@ class TestCheckVolumePolicy(unittest.TestCase):
 
         self.lookup_name.assert_not_called()
 
+    def test_volume_policy_default(self):
+        self.load_policy({'volume': 'none :: othervol'})
+        data = {}
+        self.lookup_name.return_value = mock.sentinel.volume_info
+
+        ret = kojihub.check_volume_policy(data, default='myvol')
+        self.lookup_name.assert_called_once_with('volume', 'myvol')
+        self.assertEqual(ret, mock.sentinel.volume_info)
+
+        # and again with strict on
+        self.lookup_name.reset_mock()
+        ret = kojihub.check_volume_policy(data, strict=True, default='myvol')
+        self.lookup_name.assert_called_once_with('volume', 'myvol')
+        self.assertEqual(ret, mock.sentinel.volume_info)
+
+    def test_volume_policy_bad_default(self):
+        self.load_policy({'volume': 'none :: othervol'})
+        data = {}
+        self.lookup_name.return_value = None
+
+        ret = kojihub.check_volume_policy(data, default='badvol')
+        self.lookup_name.assert_called_once_with('volume', 'badvol')
+        self.assertEqual(ret, None)
+
+        # and again with strict on
+        self.lookup_name.reset_mock()
+        with self.assertRaises(koji.GenericError):
+            kojihub.check_volume_policy(data, strict=True, default='badvol')
+        self.lookup_name.assert_called_once_with('volume', 'badvol')
+        self.assertEqual(ret, None)
+
     def test_volume_policy_badvolume(self):
         self.load_policy({'volume': 'bool foo :: testvol'})
         data = {'foo': True}
@@ -89,6 +120,24 @@ class TestCheckVolumePolicy(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.check_volume_policy(data, strict=True)
         self.lookup_name.assert_called_once_with('volume', 'testvol')
+
+    def test_volume_policy_badvolume_with_default(self):
+        self.load_policy({'volume': 'all :: badvol'})
+        data = {}
+        def my_lookup_name(table, info):
+            self.assertEqual(table, 'volume')
+            if info == 'goodvol':
+                return mock.sentinel.good_volume
+            else:
+                return None
+        self.lookup_name.side_effect = my_lookup_name
+
+        ret = kojihub.check_volume_policy(data, default='goodvol')
+        self.assertEqual(ret, mock.sentinel.good_volume)
+
+        # and again with strict on
+        with self.assertRaises(koji.GenericError):
+            kojihub.check_volume_policy(data, strict=True, default='goodvol')
 
     def test_volume_policy_good(self):
         self.load_policy({'volume': 'bool foo :: testvol'})

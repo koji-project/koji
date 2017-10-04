@@ -4792,11 +4792,14 @@ def _set_build_volume(binfo, volinfo, strict=True):
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
 
 
-def check_volume_policy(data, strict=False):
+def check_volume_policy(data, strict=False, default=None):
     """Check volume policy for the given data
 
-    If strict is True, raises exception on bad policies or no matches
-    Returns volume info, or None if no match
+    If strict is True, raises exception when a volume cannot be determined.
+    The default option can either be None, or a valid volume id or name, and
+    is used when the policy rules do not return a match.
+
+    Returns volume info or None
     """
     result = None
     try:
@@ -4808,19 +4811,28 @@ def check_volume_policy(data, strict=False):
             raise
         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
         logger.debug(tb_str)
-    if result is None:
-        if strict:
-            raise koji.GenericError('No volume policy match')
-        logger.warn('No volume policy match')
-        return None
     logger.debug('Volume policy returned %s', result)
-    vol = lookup_name('volume', result)
-    if not vol:
+    if result is not None:
+        vol = lookup_name('volume', result)
+        if vol:
+            return vol
+        # otherwise
         if strict:
-            raise koji.GenericError("Policy returned invalid volume: %s" % result)
+            raise koji.GenericError("Policy returned invalid volume: %s"
+                                    % result)
         logger.error('Volume policy returned unknown volume %s', result)
-        return None
-    return vol
+    # fall back to default
+    if default is not None:
+        vol = lookup_name('volume', default)
+        if vol:
+            return vol
+        if strict:
+            raise koji.GenericError("Invalid default volume: %s" % default)
+        logger.error('Invalid default volume: %s', default)
+    if strict:
+        raise koji.GenericError('No volume policy match')
+    logger.warn('No volume policy match')
+    return None
 
 
 def apply_volume_policy(build, strict=False):
@@ -5035,7 +5047,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             'import': True,
             'import_type': 'rpm',
             }
-    vol = check_volume_policy(policy_data, strict=False)
+    vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
     if vol:
         build['volume_id'] = vol['id']
         build['volume_name'] = vol['name']
@@ -5294,7 +5306,7 @@ class CG_Importer(object):
                 'import': True,
                 'import_type': 'cg',
                 }
-        vol = check_volume_policy(policy_data, strict=False)
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol:
             self.buildinfo['volume_id'] = vol['id']
             self.buildinfo['volume_name'] = vol['name']
@@ -11796,7 +11808,7 @@ class HostExports(object):
                 'import': True,
                 'import_type': 'maven',
                 }
-        vol = check_volume_policy(policy_data, strict=False)
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
             build_info['volume_name'] = vol['name']
@@ -11875,7 +11887,7 @@ class HostExports(object):
                 'import': True,
                 'import_type': 'maven',
                 }
-        vol = check_volume_policy(policy_data, strict=False)
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
             build_info['volume_name'] = vol['name']
@@ -12042,7 +12054,7 @@ class HostExports(object):
                 'import': True,
                 'import_type': 'win',
                 }
-        vol = check_volume_policy(policy_data, strict=False)
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
             build_info['volume_name'] = vol['name']
