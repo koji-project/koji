@@ -5041,7 +5041,6 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
 
     policy_data = {
-            'prebuild': build,
             'package': build['name'],
             'buildroots': brmap.values(),
             'import': True,
@@ -5298,7 +5297,6 @@ class CG_Importer(object):
         """Use policy to determine what the volume should be"""
         # we have to be careful and provide sufficient data
         policy_data = {
-                'prebuild': self.buildinfo,
                 'package': self.buildinfo['name'],
                 'source': self.buildinfo['source'],
                 'cgs': self.cgs,
