@@ -459,6 +459,11 @@ def formatMode(mode):
             else:
                 result += '-'
 
+    if mode & stat.S_ISUID:
+        result = result[:3] + 's' + result[4:]
+    if mode & stat.S_ISGID:
+        result = result[:6] + 's' + result[7:]
+
     return result
 
 def rowToggle(template):
