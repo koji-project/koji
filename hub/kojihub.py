@@ -5299,7 +5299,7 @@ class CG_Importer(object):
         policy_data = {
                 'package': self.buildinfo['name'],
                 'source': self.buildinfo['source'],
-                'cgs': self.cgs,
+                'cg_list': list(self.cgs),
                 'import': True,
                 'import_type': 'cg',
                 }
@@ -7979,6 +7979,11 @@ def policy_get_brs(data):
 def policy_get_cgs(data):
     # pull cg info out
     # note that br_id will be None if a component had no buildroot
+    if 'cg_list' in data:
+        cgs = [lookup_name('content_generator', cg, strict=True)
+                for cg in data['cg_list']]
+        return set(cgs)
+    # otherwise try buildroot data
     cgs = set()
     for br_id in policy_get_brs(data):
         if br_id is None:
@@ -11807,7 +11812,6 @@ class HostExports(object):
         policy_data = {
                 'build': build_info,
                 'package': build_info['name'],
-                'cgs': [],
                 'import': True,
                 'import_type': 'maven',
                 }
@@ -11886,7 +11890,6 @@ class HostExports(object):
         policy_data = {
                 'build': build_info,
                 'package': build_info['name'],
-                'cgs': [],
                 'import': True,
                 'import_type': 'maven',
                 }
@@ -12053,7 +12056,6 @@ class HostExports(object):
         policy_data = {
                 'build': build_info,
                 'package': build_info['name'],
-                'cgs': [],
                 'import': True,
                 'import_type': 'win',
                 }

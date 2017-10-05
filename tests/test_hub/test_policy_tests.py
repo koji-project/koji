@@ -85,6 +85,7 @@ class TestPolicyGetCGs(unittest.TestCase):
         self.list_rpms = mock.patch('kojihub.list_rpms').start()
         self.list_archives = mock.patch('kojihub.list_archives').start()
         self.get_buildroot = mock.patch('kojihub.get_buildroot').start()
+        self.lookup_name = mock.patch('kojihub.lookup_name').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -98,7 +99,7 @@ class TestPolicyGetCGs(unittest.TestCase):
             return None
         return 'cg for br %s'% br_id
 
-    def test_policy_get_cg_basic(self):
+    def test_policy_get_cg_from_brs(self):
         self.get_build.return_value = {'id': 42}
         br1 = [1,1,1,2,3,4,5,5]
         br2 = [2,2,7,7,8,8,9,9,None]
@@ -109,9 +110,28 @@ class TestPolicyGetCGs(unittest.TestCase):
         result = kojihub.policy_get_cgs({'build': 'NVR'})
         expect = set([self._cgname(n) for n in br1 + br2])
         self.assertEqual(result, expect)
-        self.list_rpms.called_once_with(buildID=42)
-        self.list_archives.called_once_with(buildID=42)
-        self.get_build.called_once_with('NVR', strict=True)
+        self.list_rpms.assert_called_once_with(buildID=42)
+        self.list_archives.assert_called_once_with(buildID=42)
+        self.get_build.assert_called_once_with('NVR', strict=True)
+
+    def test_policy_get_cg_from_cgs(self):
+        data = {
+                'cg_list': [1,1,1,2,2,2,3,3,3],
+                'build': 'whatever',
+                'buildroots': [],
+                }
+        def my_lookup_name(table, info, strict=False, create=False):
+            self.assertEqual(strict, True)
+            self.assertEqual(create, False)
+            self.assertEqual(table, 'content_generator')
+            return "cg %i" % info
+        self.lookup_name.side_effect = my_lookup_name
+
+        result = kojihub.policy_get_cgs(data)
+        expect = set(['cg %i' % c for c in data['cg_list']])
+        self.assertEqual(result, expect)
+        self.get_build.assert_not_called()
+        self.get_buildroot.assert_not_called()
 
     def test_policy_get_cg_nobuild(self):
         result = kojihub.policy_get_cgs({'package': 'foobar'})
