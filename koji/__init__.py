@@ -78,7 +78,7 @@ import warnings
 import xml.sax
 import xml.sax.handler
 import six.moves.urllib
-from koji.xmlrpcplus import getparser, loads, dumps, Fault
+from koji.xmlrpcplus import getparser, loads, dumps, Fault, xmlrpc_client
 
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
@@ -2766,7 +2766,9 @@ def formatTime(value):
     """Format a timestamp so it looks nicer"""
     if not value:
         return ''
-    elif isinstance(value, datetime.datetime):
+    if isinstance(value, xmlrpc_client.DateTime):
+        value = datetime.datetime.strptime(value.value, "%Y%m%dT%H:%M:%S")
+    if isinstance(value, datetime.datetime):
         return value.strftime('%Y-%m-%d %H:%M:%S')
     else:
         # trim off the microseconds, if present
