@@ -29,20 +29,27 @@ class TestFormatTime(unittest.TestCase):
         self.assertEqual(formatTimeLong(None), '')
         self.assertEqual(formatTimeLong(''), '')
 
-        desired = 'Thu, 05 Oct 2017 09:52:31 CEST'
+        desired = 'Thu, 05 Oct 2017 09:52:31'
 
         # datetime
         d = datetime.datetime(year=2017, month=10, day=5, hour=9, minute=52, second=31, microsecond=12)
-        self.assertEqual(formatTimeLong(d), desired)
+        r = formatTimeLong(d)
+        r = r[:r.rfind(' ')]
+        self.assertEqual(r, desired)
 
         # DateTime
         d1 = xmlrpc_client.DateTime(d)
-        self.assertEqual(formatTimeLong(d1), desired)
+        r = formatTimeLong(d1)
+        r = r[:r.rfind(' ')]
+        self.assertEqual(r, desired)
 
         # str
         d2 = '2017-10-05 09:52:31'
-        self.assertEqual(formatTimeLong(d2), desired)
+        r = formatTimeLong(d2)
+        r = r[:r.rfind(' ')]
+        self.assertEqual(r, desired)
 
         # str + microseconds
-        self.assertEqual(formatTimeLong(d2 + '.123'), desired)
-
+        r = formatTimeLong(d2 + '.123')
+        r = r[:r.rfind(' ')]
+        self.assertEqual(r, desired)
