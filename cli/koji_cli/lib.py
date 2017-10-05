@@ -377,6 +377,12 @@ def watch_logs(session, tasklist, opts, poll_interval):
                             lastlog = currlog
                         sys.stdout.write(contents.decode('utf8'))
 
+            if opts.follow:
+                for child in session.getTaskChildren(task_id):
+                    if child['id'] not in tasklist:
+                        tasklist.append(child['id'])
+                        offsets[child['id']] = {}
+
         if not tasklist:
             break
 

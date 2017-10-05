@@ -6240,15 +6240,26 @@ def anon_handle_watch_logs(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--log", help=_("Watch only a specific log"))
+    parser.add_option("--mine", action="store_true", help=_("Watch logs for all your tasks"))
+    parser.add_option("--follow", action="store_true", help=_("Follow spawned child tasks"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
 
-    tasks = []
-    for task in args:
-        try:
-            tasks.append(int(task))
-        except ValueError:
-            parser.error(_("task id must be an integer"))
+    if options.mine:
+        options.user = None
+        options.arch = None
+        options.method = None
+        options.channel = None
+        options.host = None
+        tasks = _list_tasks(options, session)
+        tasks = [t['id'] for t in tasks]
+    else:
+        tasks = []
+        for task in args:
+            try:
+                tasks.append(int(task))
+            except ValueError:
+                parser.error(_("task id must be an integer"))
     if not tasks:
         parser.error(_("at least one task id must be specified"))
 
