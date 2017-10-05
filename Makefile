@@ -1,6 +1,6 @@
 NAME=koji
 SPECFILE = $(firstword $(wildcard *.spec))
-SUBDIRS = hub builder koji cli docs util www plugins vm
+SUBDIRS = hub builder koji cli util www plugins vm
 
 ifdef DIST
 DIST_DEFINES := --define "dist $(DIST)"
@@ -81,9 +81,6 @@ test3:
 	coverage report
 	coverage html
 	@echo Full coverage report in htmlcov/index.html
-
-subdirs:
-	for d in $(SUBDIRS); do make -C $$d; [ $$? = 0 ] || exit 1; done
 
 test-tarball:
 	@rm -rf .koji-$(VERSION)
