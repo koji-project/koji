@@ -1,0 +1,44 @@
+From: koji@example.com
+Subject: Package: sisu-0.3.0-0.2.M1.fc23 Tag: f23 Status: complete Built by: user
+To: user@example.com
+X-Koji-Tag: f23
+X-Koji-Package: sisu
+X-Koji-Builder: user
+X-Koji-Status: complete
+
+Package: sisu-0.3.0-0.2.M1.fc23
+Tag: f23
+Status: complete
+Built by: user
+ID: 612609
+Started: Wed, 18 Feb 2015 14:50:37 EST
+Finished: Wed, 18 Feb 2015 14:57:37 EST
+Changelog:
+* Wed Feb 18 2015 Happy Koji User <user@example.com> - 1:0.3.0-0.2.M1
+- Unbundle ASM
+- Resolves: rhbz#1085903
+
+* Wed Feb 04 2015 Happy Koji User <user@example.com> - 1:0.3.0-0.1.M1
+- Update to upstream milestone 0.3.0.M1
+
+* Tue Sep 30 2014 Happy Koji User <user@example.com> - 1:0.2.1-10
+- Port to plexus-utils 3.0.18
+
+
+
+Closed tasks:
+-------------
+
+Task 8982172 on buildvm-26.build.example.com
+Task Type: build (rawhide, /sisu:5428a6665ed5d4920bda5da6db6c9fce942070ac)
+
+Task 8982174 on arm02-builder13.build.example.com
+Task Type: buildSRPMFromSCM (/sisu:5428a6665ed5d4920bda5da6db6c9fce942070ac)
+
+Task 8982231 on buildvm-23.build.example.com
+Task Type: buildArch (sisu-0.3.0-0.2.M1.fc23.src.rpm, noarch)
+
+
+
+Task Info: https://koji.example.com/kojiweb/taskinfo?taskID=8982172
+Build Info: https://koji.example.com/kojiweb/buildinfo?buildID=612609

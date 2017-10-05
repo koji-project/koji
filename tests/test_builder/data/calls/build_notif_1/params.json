@@ -1,0 +1,35 @@
+{
+    "recipients": [
+        "user@example.com"
+    ], 
+    "weburl": "https://koji.example.com/kojiweb", 
+    "build": {
+        "task_id": 8982172, 
+        "owner_name": "user", 
+        "name": "sisu", 
+        "package_id": 11059, 
+        "state": 1, 
+        "package_name": "sisu", 
+        "creation_event_id": 9798602, 
+        "creation_time": "2015-02-18 14:50:37.471074", 
+        "owner_id": 2045, 
+        "completion_time": "2015-02-18 14:57:37.107872", 
+        "epoch": 1, 
+        "version": "0.3.0", 
+        "volume_id": 0, 
+        "release": "0.2.M1.fc23", 
+        "creation_ts": 1424271037.47107, 
+        "completion_ts": 1424271457.10787, 
+        "id": 612609, 
+        "volume_name": "DEFAULT", 
+        "nvr": "sisu-0.3.0-0.2.M1.fc23"
+    }, 
+    "target": {
+        "dest_tag": 292, 
+        "build_tag": 299, 
+        "build_tag_name": "f23-build", 
+        "dest_tag_name": "f23", 
+        "id": 88, 
+        "name": "rawhide"
+    }
+}
