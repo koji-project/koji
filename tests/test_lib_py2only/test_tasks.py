@@ -36,6 +36,8 @@ def get_fake_mounts_file():
         'cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0\n'
         'cgroup /sys/fs/cgroup/hugetlb cgroup rw,nosuid,nodev,noexec,relatime,hugetlb 0 0\n'
         'configfs /sys/kernel/config configfs rw,relatime 0 0\n'
+        'hugetlbfs /dev/hugepages hugetlbfs rw,seclabel,relatime 0 0\n'
+        'mqueue /dev/mqueue mqueue rw,seclabel,relatime 0 0\n'
     )))
 
 
@@ -80,9 +82,8 @@ class TasksTestCase(TestCase):
         """
         fake_mounts_file_contents = get_fake_mounts_file()
 
-        with patch('{0}.open'.format(__name__), return_value=fake_mounts_file_contents, create=True):
-            self.assertIn(scan_mounts('/dev'), [['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/hugepages', '/dev'],
-                                                ['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/console', '/dev']])
+        with patch('koji.tasks.open', return_value=fake_mounts_file_contents, create=True):
+            self.assertIn(scan_mounts('/dev'), [['/dev/shm', '/dev/pts', '/dev/mqueue', '/dev/hugepages', '/dev']])
 
     def test_scan_mounts_no_results(self):
         """ Tests the scan_mounts function with a mocked /proc/mounts file. An argument of /nonexistent/path
@@ -90,7 +91,7 @@ class TasksTestCase(TestCase):
         """
         fake_mounts_file_contents = get_fake_mounts_file()
 
-        with patch('{0}.open'.format(__name__), return_value=fake_mounts_file_contents, create=True):
+        with patch('koji.tasks.open', return_value=fake_mounts_file_contents, create=True):
             self.assertEquals(scan_mounts('/nonexistent/path'), [])
 
     # Patching the scan_mounts function instead of the built-in open function because this is only testing umount_all
