@@ -526,6 +526,9 @@ _default_policies = {
     'cg_import': '''
             all :: allow
             ''',
+    'volume': '''
+            all :: DEFAULT
+            ''',
 }
 
 def get_policy(opts, plugins):

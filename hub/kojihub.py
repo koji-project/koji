@@ -51,6 +51,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import traceback
 import time
 import types
 import xmlrpclib
@@ -1527,6 +1528,7 @@ def _direct_tag_build(tag, build, user, force=False):
     insert.make_create(user_id=user_id)
     insert.execute()
     koji.plugin.run_callbacks('postTag', tag=tag, build=build, user=user, force=force)
+
 
 def _untag_build(tag, build, user_id=None, strict=True, force=False):
     """Untag a build
@@ -4709,6 +4711,11 @@ def change_build_volume(build, volume, strict=True):
     context.session.assertPerm('admin')
     volinfo = lookup_name('volume', volume, strict=True)
     binfo = get_build(build, strict=True)
+    _set_build_volume(binfo, volinfo, strict)
+
+
+def _set_build_volume(binfo, volinfo, strict=True):
+    """Move a build to a different storage volume"""
     if binfo['volume_id'] == volinfo['id']:
         if strict:
             raise koji.GenericError("Build %(nvr)s already on volume %(volume_name)s" % binfo)
@@ -4783,6 +4790,69 @@ def change_build_volume(build, volume, strict=True):
         os.symlink(relpath, basedir)
 
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
+
+
+def check_volume_policy(data, strict=False, default=None):
+    """Check volume policy for the given data
+
+    If strict is True, raises exception when a volume cannot be determined.
+    The default option can either be None, or a valid volume id or name, and
+    is used when the policy rules do not return a match.
+
+    Returns volume info or None
+    """
+    result = None
+    try:
+        ruleset = context.policy.get('volume')
+        result = ruleset.apply(data)
+    except Exception:
+        logger.error('Volume policy error')
+        if strict:
+            raise
+        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+        logger.debug(tb_str)
+    logger.debug('Volume policy returned %s', result)
+    if result is not None:
+        vol = lookup_name('volume', result)
+        if vol:
+            return vol
+        # otherwise
+        if strict:
+            raise koji.GenericError("Policy returned invalid volume: %s"
+                                    % result)
+        logger.error('Volume policy returned unknown volume %s', result)
+    # fall back to default
+    if default is not None:
+        vol = lookup_name('volume', default)
+        if vol:
+            return vol
+        if strict:
+            raise koji.GenericError("Invalid default volume: %s" % default)
+        logger.error('Invalid default volume: %s', default)
+    if strict:
+        raise koji.GenericError('No volume policy match')
+    logger.warn('No volume policy match')
+    return None
+
+
+def apply_volume_policy(build, strict=False):
+    """Apply volume policy, moving build as needed
+
+    build should be the buildinfo returned by get_build()
+
+    The strict options determines what happens in the case of a bad policy.
+    If strict is True, an exception will be raised. Otherwise, the existing
+    volume we be retained.
+    """
+    policy_data = {'build': build}
+    volume = check_volume_policy(policy_data, strict=strict)
+    if volume is None:
+        # just leave the build where it is
+        return
+    if build['volume_id'] == volume['id']:
+        # nothing to do
+        return
+    _set_build_volume(build, volume, strict=True)
 
 
 def new_build(data):
@@ -4962,13 +5032,24 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         #this will raise an exception if the buildroot id is invalid
         BuildRoot(br_id)
 
-    #read srpm info
+    # get build informaton
     fn = "%s/%s" % (uploadpath, srpm)
     build = koji.get_header_fields(fn, ('name', 'version', 'release', 'epoch',
                                         'sourcepackage'))
     if build['sourcepackage'] != 1:
         raise koji.GenericError("not a source package: %s" % fn)
     build['task_id'] = task_id
+
+    policy_data = {
+            'package': build['name'],
+            'buildroots': brmap.values(),
+            'import': True,
+            'import_type': 'rpm',
+            }
+    vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
+    build['volume_id'] = vol['id']
+    build['volume_name'] = vol['name']
+
     if build_id is None:
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
@@ -4985,10 +5066,15 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             raise koji.GenericError("Unable to complete build: state is %s" \
                     % koji.BUILD_STATES[binfo['state']])
         #update build state
-        update = """UPDATE build SET state=%(st_complete)i,completion_time=NOW()
-        WHERE id=%(build_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo)
+        update.set(state=st_complete)
+        update.rawset(completion_time='NOW()')
+        update.set(volume_id=build['volume_id'])
+        update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
+        binfo['volume_id'] = build['volume_id']
+        binfo['volume_name'] = build['volume_name']
+
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
@@ -5135,6 +5221,7 @@ class CG_Importer(object):
         self.prep_outputs()
 
         self.assert_policy()
+        self.set_volume()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory)
@@ -5204,6 +5291,22 @@ class CG_Importer(object):
             # TODO: provide more data
         }
         assert_policy('cg_import', policy_data)
+
+
+    def set_volume(self):
+        """Use policy to determine what the volume should be"""
+        # we have to be careful and provide sufficient data
+        policy_data = {
+                'package': self.buildinfo['name'],
+                'source': self.buildinfo['source'],
+                'cg_list': list(self.cgs),
+                'import': True,
+                'import_type': 'cg',
+                }
+        vol = check_volume_policy(policy_data, strict=False)
+        if vol:
+            self.buildinfo['volume_id'] = vol['id']
+            self.buildinfo['volume_name'] = vol['name']
 
 
     def prep_build(self):
@@ -6148,7 +6251,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
                               build_type=type, filepath=filepath, fileinfo=fileinfo)
 
     # XXX verify that the buildroot is associated with a task that's associated with the build
-    archive_id = _singleValue("SELECT nextval('archiveinfo_id_seq')", strict=True)
+    archive_id = nextval('archiveinfo_id_seq')
     archiveinfo['id'] = archive_id
     insert = InsertProcessor('archiveinfo', data=archiveinfo)
     insert.execute()
@@ -7071,7 +7174,7 @@ def reset_build(build):
     delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
-    update = """UPDATE build SET state=%(state)i, task_id=NULL WHERE id=%(id)i"""
+    update = """UPDATE build SET state=%(state)s, task_id=NULL, volume_id=0 WHERE id=%(id)s"""
     _dml(update, binfo)
     #now clear the build dirs
     dirs_to_clear = []
@@ -7859,27 +7962,52 @@ def policy_get_pkg(data):
     raise koji.GenericError("policy requires package data")
 
 
-def policy_get_cgs(data):
+def policy_get_brs(data):
     """Determine content generators from policy data"""
 
-    if 'build' not in data:
-        raise koji.GenericError("policy requires build data")
-    binfo = get_build(data['build'], strict=True)
+    if 'buildroots' in data:
+        return set(data['buildroots'])
+    elif 'build' in data:
+        binfo = get_build(data['build'], strict=True)
+        rpm_brs = [r['buildroot_id'] for r in list_rpms(buildID=binfo['id'])]
+        archive_brs = [a['buildroot_id'] for a in list_archives(buildID=binfo['id'])]
+        return set(rpm_brs + archive_brs)
+    else:
+        return set()
 
-    # first get buildroots used
-    rpm_brs = [r['buildroot_id'] for r in list_rpms(buildID=binfo['id'])]
-    archive_brs = [a['buildroot_id'] for a in list_archives(buildID=binfo['id'])]
 
+def policy_get_cgs(data):
     # pull cg info out
     # note that br_id will be None if a component had no buildroot
+    if 'cg_list' in data:
+        cgs = [lookup_name('content_generator', cg, strict=True)
+                for cg in data['cg_list']]
+        return set(cgs)
+    # otherwise try buildroot data
     cgs = set()
-    for br_id in set(rpm_brs + archive_brs):
+    for br_id in policy_get_brs(data):
         if br_id is None:
             cgs.add(None)
         else:
             cgs.add(get_buildroot(br_id, strict=True)['cg_name'])
-
     return cgs
+
+
+def policy_get_build_tags(data):
+    # pull cg info out
+    # note that br_id will be None if a component had no buildroot
+    if 'build_tag' in data:
+        return [get_tag(data['build_tag'], strict=True)['name']]
+    elif 'build_tags' in data:
+        return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
+    # otherise look at buildroots
+    tags = set()
+    for br_id in policy_get_brs(data):
+        if br_id is None:
+            tags.add(None)
+        else:
+            tags.add(get_buildroot(br_id, strict=True)['tag_name'])
+    return tags
 
 
 class NewPackageTest(koji.policy.BaseSimpleTest):
@@ -7996,6 +8124,8 @@ class HasTagTest(koji.policy.BaseSimpleTest):
     """Check to see if build (currently) has a given tag"""
     name = 'hastag'
     def run(self, data):
+        if 'build' not in data:
+            return False
         tags = list_tags(build=data['build'])
         #True if any of these tags match any of the patterns
         args = self.str.split()[1:]
@@ -8015,8 +8145,9 @@ class SkipTagTest(koji.policy.BaseSimpleTest):
     def run(self, data):
         return bool(data.get('skip_tag'))
 
+
 class BuildTagTest(koji.policy.BaseSimpleTest):
-    """Check the build tag of the build
+    """Check the build tag(s) of the build
 
     If build_tag is not provided in policy data, it is determined by the
     buildroots of the component rpms
@@ -8024,37 +8155,15 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
     name = 'buildtag'
     def run(self, data):
         args = self.str.split()[1:]
-        if 'build_tag' in data:
-            tagname = get_tag(data['build_tag'], strict=True)['name']
-            for pattern in args:
-                if fnmatch.fnmatch(tagname, pattern):
-                    return True
-            #else
-            return False
-        elif 'build' in data:
-            #determine build tag from buildroots
-            #in theory, we should find only one unique build tag
-            #it is possible that some rpms could have been imported later and hence
-            #not have a buildroot.
-            #or if the entire build was imported, there will be no buildroots
-            rpms = context.handlers.call('listRPMs', buildID=data['build'])
-            archives = list_archives(buildID=data['build'])
-            br_list = [r['buildroot_id'] for r in rpms]
-            br_list.extend([a['buildroot_id'] for a in archives])
-            for br_id in br_list:
-                if br_id is None:
-                    continue
-                tagname = get_buildroot(br_id)['tag_name']
-                if tagname is None:
-                    # content generator buildroots might not have tag info
-                    continue
-                for pattern in args:
-                    if fnmatch.fnmatch(tagname, pattern):
-                        return True
-            #otherwise...
-            return False
-        else:
-            return False
+        for tagname in policy_get_build_tags(data):
+            if tagname is None:
+                # content generator buildroots might not have tag info
+                continue
+            if multi_fnmatch(tagname, args):
+                return True
+        #otherwise...
+        return False
+
 
 class ImportedTest(koji.policy.BaseSimpleTest):
     """Check if any part of a build was imported
@@ -8380,15 +8489,16 @@ def importImageInternal(task_id, build_id, imgdata):
         rpm_ids.append(data['id'])
 
     # associate those RPMs with the image
-    q = """INSERT INTO archive_rpm_components (archive_id,rpm_id)
-           VALUES (%(archive_id)i,%(rpm_id)i)"""
+    insert = InsertProcessor('archive_rpm_components')
     for archive in archives:
         logger.info('working on archive %s', archive)
         if archive['filename'].endswith('xml'):
             continue
+        insert.set(archive_id = archive['id'])
         logger.info('associating installed rpms with %s', archive['id'])
         for rpm_id in rpm_ids:
-            _dml(q, {'archive_id': archive['id'], 'rpm_id': rpm_id})
+            insert.set(rpm_id = rpm_id)
+            insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               build=build_info, fullpath=fullpath)
@@ -8985,8 +9095,14 @@ class RootExports(object):
     removeVolume = staticmethod(remove_volume)
     listVolumes = staticmethod(list_volumes)
     changeBuildVolume = staticmethod(change_build_volume)
+
     def getVolume(self, volume, strict=False):
         return lookup_name('volume', volume, strict=strict)
+
+    def applyVolumePolicy(self, build, strict=False):
+        context.session.assertPerm('admin')
+        build = get_build(build, strict=True)
+        return apply_volume_policy(build, strict)
 
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
         context.session.assertPerm('admin')
@@ -11688,16 +11804,35 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
+
+        build_info = get_build(build_id)
+
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'import': True,
+                'import_type': 'maven',
+                }
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
+        if vol['id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
+
         self.importImage(task_id, build_id, results)
 
         st_complete = koji.BUILD_STATES['COMPLETE']
-        build_info = get_build(build_id)
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
 
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(id=build_id, state=st_complete)
         update.rawset(completion_time='now()')
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.execute()
 
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
@@ -11750,10 +11885,24 @@ class HostExports(object):
         build_info = get_build(build_id, strict=True)
         maven_info = get_maven_build(build_id, strict=True)
 
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'import': True,
+                'import_type': 'maven',
+                }
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
+        if vol['id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
+        # import the build output
         maven_task_id = maven_results['task_id']
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
-        # import the build output
         for relpath, files in maven_results['files'].iteritems():
             dir_maven_info = maven_info
             poms = [f for f in files if f.endswith('.pom')]
@@ -11804,6 +11953,8 @@ class HostExports(object):
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.rawset(completion_time='now()')
         update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
@@ -11900,6 +12051,20 @@ class HostExports(object):
         build_info = get_build(build_id, strict=True)
         get_win_build(build_id, strict=True)  # raise exception if not found.
 
+        # check volume policy
+        vol_update = False
+        policy_data = {
+                'build': build_info,
+                'package': build_info['name'],
+                'import': True,
+                'import_type': 'win',
+                }
+        vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
+        if vol['id'] != build_info['volume_id']:
+            build_info['volume_id'] = vol['id']
+            build_info['volume_name'] = vol['name']
+            vol_update = True
+
         task_dir = koji.pathinfo.task(results['task_id'])
         # import the build output
         for relpath, metadata in results['output'].iteritems():
@@ -11929,6 +12094,8 @@ class HostExports(object):
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
+        if vol_update:
+            update.set(volume_id=build_info['volume_id'])
         update.rawset(completion_time='now()')
         update.execute()
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)

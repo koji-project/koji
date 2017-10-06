@@ -1,0 +1,35 @@
+{
+    "files": {
+        "": [
+            "my-app-1.0-SNAPSHOT-scm-sources.zip"
+        ], 
+        "com/mycompany/app/my-app": [
+            "maven-metadata.xml.md5", 
+            "maven-metadata.xml.sha1", 
+            "maven-metadata.xml"
+        ], 
+        "com/mycompany/app/my-app/1.0-SNAPSHOT": [
+            "my-app-1.0-20170927.043542-1.pom.md5", 
+            "maven-metadata.xml.md5", 
+            "my-app-1.0-20170927.043542-1.pom.sha1", 
+            "maven-metadata.xml.sha1", 
+            "my-app-1.0-20170927.043542-1.jar.sha1", 
+            "maven-metadata.xml", 
+            "my-app-1.0-20170927.043542-1.jar", 
+            "my-app-1.0-20170927.043542-1.pom", 
+            "my-app-1.0-20170927.043542-1.jar.md5"
+        ]
+    }, 
+    "buildroot_id": 3492408, 
+    "logs": [
+        "checkout.log", 
+        "state.log", 
+        "build.log", 
+        "root.log"
+    ], 
+    "maven_info": {
+        "group_id": "com.mycompany.app", 
+        "artifact_id": "my-app", 
+        "version": "1.0-SNAPSHOT"
+    }
+}

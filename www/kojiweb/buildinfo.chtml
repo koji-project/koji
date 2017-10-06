@@ -65,6 +65,10 @@
       </td>
     </tr>
     <tr>
+      <th>Volume</th>
+      <td>$build.volume_name</td>
+    </tr>
+    <tr>
       <th>Started</th><td>$util.formatTimeLong($start_time)</td>
     </tr>
     #if $build.state == $koji.BUILD_STATES.BUILDING
