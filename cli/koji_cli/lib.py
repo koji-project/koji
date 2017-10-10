@@ -588,6 +588,8 @@ def _list_tasks(options, session):
     }
 
     if getattr(options, 'mine'):
+        if getattr(options, 'user'):
+            raise koji.GenericError("Can't specify 'mine' and 'user' in same time")
         user = session.getLoggedInUser()
         if not user:
             print("Unable to determine user")
