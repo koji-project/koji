@@ -29,6 +29,7 @@ class TestListCommands(unittest.TestCase):
         arguments = [tag, arch, command]
         options = mock.MagicMock()
         options.new_chroot = False
+        options.watch = False
         self.parser.parse_args.return_value = [options, arguments]
 
         # Mock out the xmlrpc server
@@ -54,3 +55,62 @@ class TestListCommands(unittest.TestCase):
             mounts=mock.ANY, packages=mock.ANY, skip_setarch=mock.ANY,
             channel=mock.ANY,
         )
+
+    def test_handle_runroot_watch(self):
+        arguments = ['tag', 'arch', 'command']
+        options = mock.MagicMock()
+        options.new_chroot = True
+        options.watch = True
+        options.use_shell = False
+        self.parser.parse_args.return_value = [options, arguments]
+        runroot.watch_tasks = mock.MagicMock(name='watch_tasks')
+
+        # Mock out the xmlrpc server
+        self.session.runroot.return_value = 1
+
+        # Run it and check immediate output
+        runroot.handle_runroot(self.options, self.session, self.args)
+
+        # Finally, assert that things were called as we expected.
+        runroot.watch_tasks.assert_called_once()
+        self.session.getTaskInfo.assert_not_called()
+        self.session.listTaskOutput.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.runroot.assert_called_once()
+
+    def test_invalid_arguments(self):
+        arguments = ['tag', 'arch'] # just two
+        options = mock.MagicMock()
+        options.new_chroot = False
+        options.watch = True
+        options.use_shell = False
+        self.parser.parse_args.return_value = [options, arguments]
+
+        # Run it and check immediate output
+        runroot.handle_runroot(self.options, self.session, self.args)
+
+        # Finally, assert that things were called as we expected.
+        self.session.getTaskInfo.assert_not_called()
+        self.session.listTaskOutput.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.runroot.assert_not_called()
+
+    def test_nowait(self):
+        arguments = ['tag', 'arch', 'command']
+        options = mock.MagicMock()
+        options.wait = False
+        self.parser.parse_args.return_value = [options, arguments]
+        runroot.watch_tasks = mock.MagicMock(name='watch_tasks')
+
+        # Mock out the xmlrpc server
+        self.session.runroot.return_value = 1
+
+        # Run it and check immediate output
+        runroot.handle_runroot(self.options, self.session, self.args)
+
+        # Finally, assert that things were called as we expected.
+        runroot.watch_tasks.assert_not_called()
+        self.session.getTaskInfo.assert_not_called()
+        self.session.listTaskOutput.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.runroot.assert_called_once()
