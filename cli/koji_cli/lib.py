@@ -577,3 +577,56 @@ def activate_session(session, options):
     ensure_connection(session)
     if options.debug:
         print("successfully connected to hub")
+
+
+def _list_tasks(options, session):
+    "Retrieve a list of tasks"
+
+    callopts = {
+        'state' : [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+        'decode' : True,
+    }
+
+    if getattr(options, 'mine'):
+        user = session.getLoggedInUser()
+        if not user:
+            print("Unable to determine user")
+            sys.exit(1)
+        callopts['owner'] = user['id']
+    if getattr(options, 'user'):
+        user = session.getUser(options.user)
+        if not user:
+            print("No such user: %s" % options.user)
+            sys.exit(1)
+        callopts['owner'] = user['id']
+    if getattr(options, 'arch'):
+        callopts['arch'] = parse_arches(options.arch, to_list=True)
+    if getattr(options, 'method'):
+        callopts['method'] = options.method
+    if getattr(options, 'channel'):
+        chan = session.getChannel(options.channel)
+        if not chan:
+            print("No such channel: %s" % options.channel)
+            sys.exit(1)
+        callopts['channel_id'] = chan['id']
+    if getattr(options, 'host'):
+        host = session.getHost(options.host)
+        if not host:
+            print("No such host: %s" % options.host)
+            sys.exit(1)
+        callopts['host_id'] = host['id']
+
+    qopts = {'order' : 'priority,create_time'}
+    tasklist = session.listTasks(callopts, qopts)
+    tasks = dict([(x['id'], x) for x in tasklist])
+
+    #thread the tasks
+    for t in tasklist:
+        if t['parent'] is not None:
+            parent = tasks.get(t['parent'])
+            if parent:
+                parent.setdefault('children',[])
+                parent['children'].append(t)
+                t['sub'] = True
+
+    return tasklist
