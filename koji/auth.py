@@ -103,7 +103,8 @@ class Session(object):
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
             }
-        fields, aliases = list(zip(*list(fields.items())))
+        # sort for stability (unittests)
+        fields, aliases = list(zip(*list(sorted(fields.items(), key=lambda x: x[1]))))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -737,7 +738,7 @@ def sharedSession():
     return context.session.makeShared()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     # XXX - testing defaults
     import db
     db.setDBopts(database="test", user="test")
