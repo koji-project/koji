@@ -166,22 +166,20 @@ class DataWalker(object):
         return self._walk(self.data)
 
     def _walk(self, value):
-        # first let callback filter the value
-        value = self.callback(value, **self.kwargs)
-        # then recurse if needed
+        # recurse if needed
         if isinstance(value, tuple):
-            return tuple([self._walk(x) for x in value])
+            value = tuple([self._walk(x) for x in value])
         elif isinstance(value, list):
-            return list([self._walk(x) for x in value])
+            value = list([self._walk(x) for x in value])
         elif isinstance(value, dict):
             ret = {}
             for k in value:
                 k = self._walk(k)
                 v = self._walk(value[k])
                 ret[k] = v
-            return ret
-        else:
-            return value
+            value = ret
+        # finally, let callback filter the value
+        return self.callback(value, **self.kwargs)
 
 
 def encode_datetime(value):

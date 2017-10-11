@@ -1,0 +1,362 @@
+[
+    {
+        "method": "getTaskInfo", 
+        "args": [
+            8982172
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": "2015-02-18 14:57:37.719876", 
+            "start_time": "2015-02-18 14:45:50.535914", 
+            "start_ts": 1424270750.53591, 
+            "state": 2, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": false, 
+            "create_time": "2015-02-18 14:45:43.283233", 
+            "id": 8982172, 
+            "create_ts": 1424270743.28323, 
+            "owner": 2045, 
+            "host_id": 84, 
+            "completion_ts": 1424271457.71988, 
+            "arch": "noarch", 
+            "method": "build"
+        }
+    }, 
+    {
+        "method": "getHost", 
+        "args": [
+            84
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "comment": null, 
+            "capacity": 4.0, 
+            "name": "buildvm-26.build.example.com", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 0.0, 
+            "ready": true, 
+            "user_id": 2179, 
+            "id": 84, 
+            "description": null
+        }
+    }, 
+    {
+        "method": "getTaskResult", 
+        "args": [
+            8982172
+        ], 
+        "kwargs": {}, 
+        "result": null
+    }, 
+    {
+        "method": "listTaskOutput", 
+        "args": [
+            8982172
+        ], 
+        "kwargs": {
+            "all_volumes": true
+        }, 
+        "result": {}
+    }, 
+    {
+        "method": "getTaskRequest", 
+        "args": [
+            8982172
+        ], 
+        "kwargs": {}, 
+        "result": [
+            "git://pkgs.example.com/sisu?#5428a6665ed5d4920bda5da6db6c9fce942070ac", 
+            "rawhide", 
+            {
+                "skip_tag": true
+            }
+        ]
+    }, 
+    {
+        "method": "getTaskChildren", 
+        "args": [
+            8982172
+        ], 
+        "kwargs": {}, 
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 8982172, 
+                "completion_time": "2015-02-18 14:50:13.119183", 
+                "start_time": "2015-02-18 14:45:59.156319", 
+                "start_ts": 1424270759.15632, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2015-02-18 14:45:51.418503", 
+                "id": 8982174, 
+                "create_ts": 1424270751.4185, 
+                "owner": 2045, 
+                "host_id": 116, 
+                "completion_ts": 1424271013.11918, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }, 
+            {
+                "weight": 1.62572677375, 
+                "parent": 8982172, 
+                "completion_time": "2015-02-18 14:57:33.063121", 
+                "start_time": "2015-02-18 14:50:43.011525", 
+                "start_ts": 1424271043.01152, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "noarch", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2015-02-18 14:50:37.546755", 
+                "id": 8982231, 
+                "create_ts": 1424271037.54676, 
+                "owner": 2045, 
+                "host_id": 81, 
+                "completion_ts": 1424271453.06312, 
+                "arch": "noarch", 
+                "method": "buildArch"
+            }
+        ]
+    }, 
+    {
+        "method": "getTaskInfo", 
+        "args": [
+            8982174
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "weight": 1.0, 
+            "parent": 8982172, 
+            "completion_time": "2015-02-18 14:50:13.119183", 
+            "start_time": "2015-02-18 14:45:59.156319", 
+            "start_ts": 1424270759.15632, 
+            "state": 2, 
+            "awaited": false, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2015-02-18 14:45:51.418503", 
+            "id": 8982174, 
+            "create_ts": 1424270751.4185, 
+            "owner": 2045, 
+            "host_id": 116, 
+            "completion_ts": 1424271013.11918, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }
+    }, 
+    {
+        "method": "getHost", 
+        "args": [
+            116
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "comment": null, 
+            "capacity": 2.0, 
+            "name": "arm02-builder13.build.example.com", 
+            "enabled": false, 
+            "arches": "armhfp", 
+            "task_load": 0.0, 
+            "ready": false, 
+            "user_id": 2477, 
+            "id": 116, 
+            "description": null
+        }
+    }, 
+    {
+        "method": "getTaskResult", 
+        "args": [
+            8982174
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "brootid": 2978259, 
+            "srpm": "tasks/2174/8982174/sisu-0.3.0-0.2.M1.fc23.src.rpm", 
+            "logs": [
+                "tasks/2174/8982174/build.log", 
+                "tasks/2174/8982174/root.log", 
+                "tasks/2174/8982174/state.log"
+            ]
+        }
+    }, 
+    {
+        "method": "listTaskOutput", 
+        "args": [
+            8982174
+        ], 
+        "kwargs": {
+            "all_volumes": true
+        }, 
+        "result": {}
+    }, 
+    {
+        "method": "getTaskRequest", 
+        "args": [
+            8982174
+        ], 
+        "kwargs": {}, 
+        "result": [
+            "git://pkgs.example.com/sisu?#5428a6665ed5d4920bda5da6db6c9fce942070ac", 
+            299, 
+            {
+                "repo_id": 456563
+            }
+        ]
+    }, 
+    {
+        "method": "getTaskChildren", 
+        "args": [
+            8982174
+        ], 
+        "kwargs": {}, 
+        "result": []
+    }, 
+    {
+        "method": "getTaskInfo", 
+        "args": [
+            8982231
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "weight": 1.62572677375, 
+            "parent": 8982172, 
+            "completion_time": "2015-02-18 14:57:33.063121", 
+            "start_time": "2015-02-18 14:50:43.011525", 
+            "start_ts": 1424271043.01152, 
+            "state": 2, 
+            "awaited": false, 
+            "label": "noarch", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2015-02-18 14:50:37.546755", 
+            "id": 8982231, 
+            "create_ts": 1424271037.54676, 
+            "owner": 2045, 
+            "host_id": 81, 
+            "completion_ts": 1424271453.06312, 
+            "arch": "noarch", 
+            "method": "buildArch"
+        }
+    }, 
+    {
+        "method": "getHost", 
+        "args": [
+            81
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "comment": null, 
+            "capacity": 4.0, 
+            "name": "buildvm-23.build.example.com", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 0.0, 
+            "ready": true, 
+            "user_id": 2176, 
+            "id": 81, 
+            "description": null
+        }
+    }, 
+    {
+        "method": "getTaskResult", 
+        "args": [
+            8982231
+        ], 
+        "kwargs": {}, 
+        "result": {
+            "brootid": 2978278, 
+            "srpms": [
+                "tasks/2231/8982231/sisu-0.3.0-0.2.M1.fc23.src.rpm"
+            ], 
+            "rpms": [
+                "tasks/2231/8982231/sisu-javadoc-0.3.0-0.2.M1.fc23.noarch.rpm", 
+                "tasks/2231/8982231/sisu-plexus-0.3.0-0.2.M1.fc23.noarch.rpm", 
+                "tasks/2231/8982231/sisu-inject-0.3.0-0.2.M1.fc23.noarch.rpm"
+            ], 
+            "logs": [
+                "tasks/2231/8982231/root.log", 
+                "tasks/2231/8982231/state.log", 
+                "tasks/2231/8982231/build.log"
+            ]
+        }
+    }, 
+    {
+        "method": "listTaskOutput", 
+        "args": [
+            8982231
+        ], 
+        "kwargs": {
+            "all_volumes": true
+        }, 
+        "result": {}
+    }, 
+    {
+        "method": "getTaskRequest", 
+        "args": [
+            8982231
+        ], 
+        "kwargs": {}, 
+        "result": [
+            "tasks/2174/8982174/sisu-0.3.0-0.2.M1.fc23.src.rpm", 
+            299, 
+            "noarch", 
+            true, 
+            {
+                "repo_id": 456563
+            }
+        ]
+    }, 
+    {
+        "method": "getTaskChildren", 
+        "args": [
+            8982231
+        ], 
+        "kwargs": {}, 
+        "result": []
+    }, 
+    {
+        "method": "getChangelogEntries", 
+        "args": [
+            612609
+        ], 
+        "kwargs": {
+            "queryOpts": {
+                "limit": 3
+            }
+        }, 
+        "result": [
+            {
+                "date": "2015-02-18 12:00:00", 
+                "text": "- Unbundle ASM\n- Resolves: rhbz#1085903", 
+                "date_ts": 1424260800, 
+                "author": "Happy Koji User <user@example.com> - 1:0.3.0-0.2.M1"
+            }, 
+            {
+                "date": "2015-02-04 12:00:00", 
+                "text": "- Update to upstream milestone 0.3.0.M1", 
+                "date_ts": 1423051200, 
+                "author": "Happy Koji User <user@example.com> - 1:0.3.0-0.1.M1"
+            }, 
+            {
+                "date": "2014-09-30 12:00:00", 
+                "text": "- Port to plexus-utils 3.0.18", 
+                "date_ts": 1412078400, 
+                "author": "Happy Koji User <user@example.com> - 1:0.2.1-10"
+            }
+        ]
+    }
+]
