@@ -37,7 +37,7 @@ from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, greetings
+        error, greetings, _list_tasks
 
 
 def _printable_unicode(s):
@@ -6010,59 +6010,6 @@ def handle_set_task_priority(goptions, session, args):
         session.setTaskPriority(task_id, options.priority, options.recurse)
 
 
-def _list_tasks(options, session):
-    "Retrieve a list of tasks"
-
-    callopts = {
-        'state' : [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
-        'decode' : True,
-    }
-
-    if options.mine:
-        user = session.getLoggedInUser()
-        if not user:
-            print("Unable to determine user")
-            sys.exit(1)
-        callopts['owner'] = user['id']
-    if options.user:
-        user = session.getUser(options.user)
-        if not user:
-            print("No such user: %s" % options.user)
-            sys.exit(1)
-        callopts['owner'] = user['id']
-    if options.arch:
-        callopts['arch'] = parse_arches(options.arch, to_list=True)
-    if options.method:
-        callopts['method'] = options.method
-    if options.channel:
-        chan = session.getChannel(options.channel)
-        if not chan:
-            print("No such channel: %s" % options.channel)
-            sys.exit(1)
-        callopts['channel_id'] = chan['id']
-    if options.host:
-        host = session.getHost(options.host)
-        if not host:
-            print("No such host: %s" % options.host)
-            sys.exit(1)
-        callopts['host_id'] = host['id']
-
-    qopts = {'order' : 'priority,create_time'}
-    tasklist = session.listTasks(callopts, qopts)
-    tasks = dict([(x['id'], x) for x in tasklist])
-
-    #thread the tasks
-    for t in tasklist:
-        if t['parent'] is not None:
-            parent = tasks.get(t['parent'])
-            if parent:
-                parent.setdefault('children',[])
-                parent['children'].append(t)
-                t['sub'] = True
-
-    return tasklist
-
-
 def handle_list_tasks(goptions, session, args):
     "[info] Print the list of tasks"
     usage = _("usage: %prog list-tasks [options]")
@@ -6240,15 +6187,21 @@ def anon_handle_watch_logs(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--log", help=_("Watch only a specific log"))
+    parser.add_option("--mine", action="store_true", help=_("Watch logs for all your tasks"))
+    parser.add_option("--follow", action="store_true", help=_("Follow spawned child tasks"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
 
-    tasks = []
-    for task in args:
-        try:
-            tasks.append(int(task))
-        except ValueError:
-            parser.error(_("task id must be an integer"))
+    if options.mine:
+        tasks = _list_tasks(options, session)
+        tasks = [t['id'] for t in tasks]
+    else:
+        tasks = []
+        for task in args:
+            try:
+                tasks.append(int(task))
+            except ValueError:
+                parser.error(_("task id must be an integer"))
     if not tasks:
         parser.error(_("at least one task id must be specified"))
 
