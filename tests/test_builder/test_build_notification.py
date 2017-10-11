@@ -51,6 +51,8 @@ class MyClientSession(koji.ClientSession):
 class TestBuildNotification(unittest.TestCase):
 
     def setUp(self):
+        self.original_timezone = os.environ.get('TZ')
+        os.environ['TZ'] = 'US/Eastern'
         self.tempdir = tempfile.mkdtemp()
         self.SMTP = mock.patch('smtplib.SMTP').start()
         self.session = mock.MagicMock()
@@ -59,6 +61,10 @@ class TestBuildNotification(unittest.TestCase):
         self.options.workdir = self.tempdir
 
     def tearDown(self):
+        if self.original_timezone is None:
+            del os.environ['TZ']
+        else:
+            os.environ['TZ'] = self.original_timezone
         mock.patch.stopall()
 
     def test_build_notification(self):
