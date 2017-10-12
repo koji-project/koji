@@ -7359,14 +7359,16 @@ def new_group(name):
 def add_group_member(group, user, strict=True):
     """Add user to group"""
     context.session.assertPerm('admin')
-    group = get_user(group)
-    user = get_user(user)
-    if group['usertype'] != koji.USERTYPES['GROUP']:
-        raise koji.GenericError("Not a group: %(name)s" % group)
-    if user['usertype'] == koji.USERTYPES['GROUP']:
+    ginfo = get_user(group)
+    uinfo = get_user(user)
+    if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
+        raise koji.GenericError("Not a group: %s" % group)
+    if not uinfo:
+        raise koji.GenericError("Not an user: %s" % user)
+    if uinfo['usertype'] == koji.USERTYPES['GROUP']:
         raise koji.GenericError("Groups cannot be members of other groups")
     #check to see if user is already a member
-    data = {'user_id' : user['id'], 'group_id' : group['id']}
+    data = {'user_id' : uinfo['id'], 'group_id' : ginfo['id']}
     table = 'user_groups'
     clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
     query = QueryProcessor(columns=['user_id'], tables=[table],
@@ -7388,6 +7390,8 @@ def drop_group_member(group, user):
     ginfo = get_user(group)
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("No such group: %s" % group)
+    if user['id'] not in [u['id'] for u in get_group_members(group)]:
+        raise koji.GenericError("No such user in group: %s" % group)
     data = {'user_id' : user['id'], 'group_id' : ginfo['id']}
     clauses = ["user_id = %(user_id)i", "group_id = %(group_id)i"]
     update = UpdateProcessor('user_groups', values=data, clauses=clauses)
@@ -7397,10 +7401,10 @@ def drop_group_member(group, user):
 def get_group_members(group):
     """Get the members of a group"""
     context.session.assertPerm('admin')
-    group = get_user(group)
-    if group['usertype'] != koji.USERTYPES['GROUP']:
-        raise koji.GenericError("Not a group: %(name)s" % group)
-    group_id = group['id']
+    ginfo = get_user(group)
+    if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
+        raise koji.GenericError("Not a group: %s" % group)
+    group_id = ginfo['id']
     fields = ('id', 'name', 'usertype', 'krb_principal')
     q = """SELECT %s FROM user_groups
     JOIN users ON user_id = users.id
