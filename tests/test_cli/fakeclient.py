@@ -1,10 +1,13 @@
 import mock
 import koji
 
+from koji.xmlrpcplus import Fault
+
+
 class BaseFakeClientSession(koji.ClientSession):
 
     def __init__(self, *a, **kw):
-        super(FakeClientSession, self).__init__(*a, **kw)
+        super(BaseFakeClientSession, self).__init__(*a, **kw)
 
     def multiCall(self, strict=False):
         if not self.multicall:
@@ -82,12 +85,12 @@ class FakeClientSession(BaseFakeClientSession):
 class RecordingClientSession(BaseFakeClientSession):
 
     def __init__(self, *a, **kw):
-        super(FakeClientSession, self).__init__(*a, **kw)
-        self._calldata = {}
+        super(RecordingClientSession, self).__init__(*a, **kw)
+        self._calldata = []
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
         if self.multicall:
-            return super(FakeClientSession, self)._callMethod(name, args,
+            return super(RecordingClientSession, self)._callMethod(name, args,
                             kwargs, retry)
         call = {
                 'method': name,
@@ -96,7 +99,7 @@ class RecordingClientSession(BaseFakeClientSession):
                 }
         self._calldata.append(call)
         try:
-            result = super(FakeClientSession, self)._callMethod(name, args,
+            result = super(RecordingClientSession, self)._callMethod(name, args,
                             kwargs, retry)
             call['result'] = result
             return result
