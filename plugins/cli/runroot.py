@@ -26,7 +26,8 @@ def handle_runroot(options, session, args):
     parser.add_option("--new-chroot", action="store_true", default=False,
             help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
-    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Do not wait on task"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+            default=True, help=_("Do not wait on task"))
     parser.add_option("--watch", action="store_true", help=_("Watch task instead of printing runroot.log"))
     parser.add_option("--quiet", action="store_true", default=options.quiet,
                       help=_("Do not print the task information"))
