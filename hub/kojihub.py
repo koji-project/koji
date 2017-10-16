@@ -7256,10 +7256,12 @@ def get_notification_recipients(build, tag_id, state):
     Only active 'human' users will be in this list.
     """
 
+    users_status = koji.USER_STATUS['NORMAL']
+    users_usertypes = [koji.USERTYPES['NORMAL'], koji.USERTYPES['GROUP']]
     clauses = [
         'users.id = build_notifications.user_id',
-        'users.status = %s' % koji.USER_STATUS['NORMAL'],
-        'users.usertype = %s' % koji.USERTYPES['NORMAL'],
+        'users.status = %(users_status)i',
+        'users.usertype IN %(users_usertype)s',
     ]
 
     if not build and tag_id:
