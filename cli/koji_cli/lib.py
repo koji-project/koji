@@ -4,12 +4,13 @@ from __future__ import division
 import optparse
 import os
 import random
+import requests
 import six
 import socket
 import string
 import sys
 import time
-import pycurl
+from contextlib import closing
 from six.moves import range
 
 try:
@@ -487,33 +488,36 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
             print(_("Downloading [%d/%d]: %s") % (num, size, relpath))
         else:
             print(_("Downloading: %s") % relpath)
-    c = pycurl.Curl()
-    c.setopt(c.URL, url)
-    # allow 301/302 redirect
-    c.setopt(pycurl.FOLLOWLOCATION, 1)
-    c.setopt(c.WRITEDATA, open(relpath, 'wb'))
-    if not (quiet or noprogress):
-        proc_func_param = getattr(c, 'XFERINFOFUNCTION', None)
-        if proc_func_param is None:
-            proc_func_param = getattr(c, 'PROGRESSFUNCTION', None)
-        if proc_func_param is not None:
-            c.setopt(c.NOPROGRESS, False)
-            c.setopt(proc_func_param, _download_progress)
+
+
+    with closing(requests.get(url, stream=True)) as response:
+        length = response.headers.get('content-length')
+        f = open(relpath, 'wb')
+        if length is None:
+            f.write(response.content)
+            length = len(response.content)
+            if not (quiet or noprogress):
+                _download_progress(length, length)
         else:
-            c.close()
-            error(_('Error: XFERINFOFUNCTION and PROGRESSFUNCTION are not supported by pyCurl. Quit download progress'))
-    c.perform()
-    c.close()
+            l = 0
+            length = int(length)
+            for chunk in response.iter_content(chunk_size=65536):
+                l += len(chunk)
+                f.write(chunk)
+                if not (quiet or noprogress):
+                    _download_progress(length, l)
+            f.close()
+
     if not (quiet or noprogress):
         print('')
 
 
-def _download_progress(download_t, download_d, upload_t, upload_d):
+def _download_progress(download_t, download_d):
     if download_t == 0:
         percent_done = 0.0
     else:
         percent_done = float(download_d) / float(download_t)
-    percent_done_str = "%02d%%" % (percent_done * 100)
+    percent_done_str = "%3d%%" % (percent_done * 100)
     data_done = _format_size(download_d)
 
     sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str, data_done))

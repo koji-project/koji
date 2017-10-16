@@ -40,9 +40,10 @@ import SimpleXMLRPCServer
 import threading
 import base64
 import pwd
-import pycurl
+import requests
 import fnmatch
 from ConfigParser import ConfigParser
+from contextlib import closing
 from optparse import OptionParser
 try:
     import krbV
@@ -676,10 +677,16 @@ class VMExecTask(BaseTaskHandler):
             else:
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
-            c = pycurl.Curl()
-            c.setopt(c.URL, remote_url)
-            c.setopt(c.WRITEDATA, open(localpath, 'wb'))
-            c.perform()
+            with closing(requests.get(remote_url, stream=True)) as response:
+                f = open(localpath, 'wb')
+                length = response.headers.get('content-length')
+                if length is None:
+                    f.write(response.content)
+                else:
+                    for chunk in response.iter_content(chunk_size=65536):
+                        f.write(chunk)
+                f.close()
+
 
         return file(localpath, 'r')
 

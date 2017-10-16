@@ -676,7 +676,6 @@ You will need to install the following packages to actually run the tests.
  * ``python-mock``
  * ``python-simplejson``
  * ``python-psycopg2``
- * ``python-pycurl``
  * ``python-requests``
  * ``python-qpid-proton``
 
