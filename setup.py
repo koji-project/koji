@@ -7,28 +7,6 @@ def get_install_requires():
     #               glib2-devel sqlite-devel libxml2-devel python-devel \
     #               openssl-devel libffi-devel
 
-    # In a perfect world this would suffice:
-    # 'rpm',
-    # But rpm isn't available on PyPI so it needs to be installed other way.
-
-    # To install it from upstream one would need to run ./autogen.sh and
-    # ./configure just to create setup.py with correct paths to header
-    # files. I wasn't able run it successfully anyway so it is easier to
-    # grab system package instead.
-
-    # Install rpm python package system-wide:
-    # $ dnf install rpm-python
-
-    # If you are running in virtualenv use following command to make
-    # system-wide rpm python package inside virtualenv:
-    # $ ln -vs $(/usr/bin/python -c 'import rpm, os.path; print(os.path.dirname(rpm.__file__))') \
-    #          $(/usr/bin/env python -c 'import distutils.sysconfig; print(distutils.sysconfig.get_python_lib())')
-    # resp. for python3
-    # $ ln -vs $(/usr/bin/python3 -c 'import rpm, os.path; print(os.path.dirname(rpm.__file__))') \
-    #          $(/usr/bin/env python -c 'import distutils.sysconfig; print(distutils.sysconfig.get_python_lib())')
-    # Other options is to create virtualenv with --system-site-packages if
-    # it doesn't harm you.
-
     # pycurl can come without ssl backend (or bad one). In such case use
     # $ pip uninstall pycurl; pip install pycurl --global-option="--with-nss"
     # or different backend mentioned in error message (openssl, ...)
@@ -41,6 +19,7 @@ def get_install_requires():
         'requests-kerberos',
         'six',
         #'libcomps',
+        'rpm-py-installer',
         #'rpm',
     ]
     if sys.version_info[0] < 3:
