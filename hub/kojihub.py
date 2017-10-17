@@ -5225,6 +5225,7 @@ class CG_Importer(object):
 
         self.assert_policy()
         self.set_volume()
+        self.check_build_dir()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
                 directory=directory)
@@ -5310,6 +5311,13 @@ class CG_Importer(object):
         if vol:
             self.buildinfo['volume_id'] = vol['id']
             self.buildinfo['volume_name'] = vol['name']
+
+
+    def check_build_dir(self):
+        """Check that the import directory does not already exist"""
+        path = koji.pathinfo.build(self.buildinfo)
+        if os.path.lexists(path):
+            raise koji.GenericError("Destination directory already exists: %s" % path)
 
 
     def prep_build(self):
