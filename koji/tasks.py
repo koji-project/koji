@@ -328,9 +328,6 @@ class BaseTaskHandler(object):
         """(abstract) the handler for the task."""
         raise NotImplementedError
 
-    def parseParams(self):
-        tp = parse_task_params(self.params)
-
     def run(self):
         """Execute the task"""
         self.createWorkdir()
