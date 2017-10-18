@@ -240,10 +240,19 @@ LEGACY_SIGNATURES = {
         [['n'], None, None, (4,)],
     ],
     'restartHosts' : [
-        [[], None, None, None],
+        [['options'], None, None, (None,)],
     ],
     'runroot' : [
         [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch', 'weight', 'upload_logs', 'new_chroot'], None, None, (False, [], [], None, False, None, None, False)],
+    ],
+    'distRepo' : [
+        [['tag', 'repo_id', 'keys', 'task_opts'], None, None, None],
+    ],
+    'createdistrepo' : [
+        [['tag', 'repo_id', 'arch', 'keys', 'opts'], None, None, None],
+    ],
+    'saveFailedTree' : [
+        [['buildrootID', 'full'], None, None, (False,)],
     ],
 }
 
