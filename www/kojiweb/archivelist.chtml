@@ -1,9 +1,19 @@
 #from kojiweb import util
 
 #include "includes/header.chtml"
+#
+#def getID()
+  #if $type == 'image'
+imageID=$image.id #slurp
+  #else
+buildrootID=$buildroot.id #slurp
+  #end if
+#end def
 
   #if $type == 'component'
   <h4>Component Archives of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
+  #elif $type == 'image'
+  <h4>Archives installed in <a href="archiveinfo?archiveID=$image.id">$image.filename</a></h4>
   #else
   <h4>Archives built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
   #end if
@@ -14,7 +24,7 @@
         #if $len($archivePages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'archivelist?buildrootID=$buildroot.id&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
+          <select onchange="javascript: window.location = 'archivelist?$getID()&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $archivePages
             <option value="$pageNum"#if $pageNum == $archiveCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -22,21 +32,21 @@
         </form>
         #end if
         #if $archiveStart > 0
-        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        <a href="archivelist?$getID()&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
         #end if
         #if $totalArchives != 0
         <strong>Archives #echo $archiveStart + 1 # through #echo $archiveStart + $archiveCount # of $totalArchives</strong>
         #end if
         #if $archiveStart + $archiveCount < $totalArchives
-        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        <a href="archivelist?$getID()&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="archivelist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'filename')$util.passthrough($self, 'type')">Filename</a> $util.sortImage($self, 'filename')</th>
-      <th><a href="archivelist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'type_name')$util.passthrough($self, 'type')">Type</a> $util.sortImage($self, 'type_name')</th>
+      <th><a href="archivelist?$getID()&order=$util.toggleOrder($self, 'filename')$util.passthrough($self, 'type')">Filename</a> $util.sortImage($self, 'filename')</th>
+      <th><a href="archivelist?$getID()&order=$util.toggleOrder($self, 'type_name')$util.passthrough($self, 'type')">Type</a> $util.sortImage($self, 'type_name')</th>
       #if $type == 'component'
-      <th><a href="archivelist?buildrootID=$buildroot.id&order=$util.toggleOrder($self, 'project')$util.passthrough($self, 'type')">Build Dependency?</a> $util.sortImage($self, 'project')</th>
+      <th><a href="archivelist?$getID()&order=$util.toggleOrder($self, 'project')$util.passthrough($self, 'type')">Build Dependency?</a> $util.sortImage($self, 'project')</th>
       #end if
     </tr>
     #if $len($archives) > 0
@@ -60,7 +70,7 @@
         #if $len($archivePages) > 1
         <form class="pageJump">
           Page:
-          <select onchange="javascript: window.location = 'archivelist?buildrootID=$buildroot.id&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
+          <select onchange="javascript: window.location = 'archivelist?$getID()&start=' + this.value * $archiveRange + '$util.passthrough($self, 'order', 'type')';">
             #for $pageNum in $archivePages
             <option value="$pageNum"#if $pageNum == $archiveCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
@@ -68,13 +78,13 @@
         </form>
         #end if
         #if $archiveStart > 0
-        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
+        <a href="archivelist?$getID()&start=#echo $archiveStart - $archiveRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
         #end if
         #if $totalArchives != 0
         <strong>Archives #echo $archiveStart + 1 # through #echo $archiveStart + $archiveCount # of $totalArchives</strong>
         #end if
         #if $archiveStart + $archiveCount < $totalArchives
-        <a href="archivelist?buildrootID=$buildroot.id&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
+        <a href="archivelist?$getID()&start=#echo $archiveStart + $archiveRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>

@@ -1432,8 +1432,8 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
-    values['show_components'] = archive.get('rootid', False) or \
-                                server.listRPMs(imageID=archive['id'], queryOpts={'limit':1})
+    values['show_rpm_components'] = archive.get('rootid', False)
+    values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit':1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
 
@@ -1723,27 +1723,40 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
 
     return _genHTML(environ, 'rpmlist.chtml')
 
-def archivelist(environ, buildrootID, type, start=None, order='filename'):
+def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order='filename'):
     values = _initValues(environ, 'Archive List', 'hosts')
     server = _getServer(environ)
 
-    buildrootID = int(buildrootID)
-    buildroot = server.getBuildroot(buildrootID)
-    if buildroot == None:
-        raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
+    if buildrootID is not None:
+        buildrootID = int(buildrootID)
+        buildroot = server.getBuildroot(buildrootID)
+        values['buildroot'] = buildroot
 
-    if type == 'component':
-        kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
+        if buildroot == None:
+            raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
+
+        if type == 'component':
+            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
+                                        start=start, dataName='archives', prefix='archive', order=order)
+        elif type == 'built':
+            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
                                     start=start, dataName='archives', prefix='archive', order=order)
-    elif type == 'built':
-        kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
-                                    start=start, dataName='archives', prefix='archive', order=order)
+        else:
+            raise koji.GenericError('unrecognized type of archivelist')
+    elif imageID is not None:
+        imageID = int(imageID)
+        values['image'] = server.getArchive(imageID)
+        # If/When future image types are supported, add elifs here if needed.
+        if type == 'image':
+            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'imageID': imageID},
+                                        start=start, dataName='archives', prefix='archive', order=order)
+        else:
+            raise koji.GenericError('unrecognized type of archivelist')
     else:
-        raise koji.GenericError('invalid type: %s' % type)
+        # It is an error if neither buildrootID and imageID are defined.
+        raise koji.GenericError('Both buildrootID and imageID are None')
 
-    values['buildroot'] = buildroot
     values['type'] = type
-
     values['order'] = order
 
     return _genHTML(environ, 'archivelist.chtml')
