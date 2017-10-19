@@ -196,6 +196,8 @@ def prep_import(cbtype, *args, **kws):
 @convert_datetime
 @callback('postRPMSign')
 def prep_rpm_sign(cbtype, *args, **kws):
+    if not kws['sigkey']:
+        return
     address = 'sign.rpm'
     props = {'type': cbtype[4:],
              'sigkey': kws['sigkey'],

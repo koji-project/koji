@@ -123,6 +123,18 @@ class TestProtonMsg(unittest.TestCase):
                        rpm_version=rpm['version'], rpm_release=rpm['release'],
                        **build)
 
+    def test_prep_rpm_sign_no_sigkey(self):
+        build = {'name': 'test-pkg',
+                 'version': '1.0',
+                 'release': '1'}
+        rpm = {'name': 'test-pkg-subpkg',
+               'version': '2.0',
+               'release': '2'}
+        sigkey = ''
+        protonmsg.prep_rpm_sign('postRPMSign', sigkey=sigkey, sighash='fedcba9876543210',
+                                build=build, rpm=rpm)
+        self.assertFalse(hasattr(context, 'protonmsg_msgs'))
+
     def test_prep_tag(self):
         build = {'name': 'test-pkg', 'version': '1.0', 'release': '1'}
         protonmsg.prep_tag('postTag', tag={'name': 'test-tag'},
