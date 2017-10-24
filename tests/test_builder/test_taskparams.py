@@ -1,28 +1,15 @@
-#!/usr/bin/python
-
-"""Test argspec functions"""
-
+from __future__ import absolute_import
 import inspect
-import os.path
-import sys
+import mock
 import unittest
 
+import koji
 import koji.tasks
 
-
-# jump through hoops to import kojid
-KOJID_FILENAME = os.path.dirname(__file__) + "/../builder/kojid"
-if sys.version_info[0] >= 3:
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("kojid", KOJID_FILENAME)
-    kojid = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(kojid)
-else:
-    import imp
-    kojid = imp.load_source('koji_kojid', KOJID_FILENAME)
+from .loadkojid import kojid
 
 
-class ParseTaskParamsCase(unittest.TestCase):
+class TestParseTaskParams(unittest.TestCase):
     """Main test case container"""
 
     def test_parse_task_params(self):
@@ -48,14 +35,19 @@ class ParseTaskParamsCase(unittest.TestCase):
         self.assertIsNot(ret, params)
         # ^data should be copied
 
-
     def test_legacy_data(self):
+        # set up a fake TaskManager to get our handlers
+        options = mock.MagicMock()
+        session = mock.MagicMock()
+        tm = koji.daemon.TaskManager(options, session)
+        tm.findHandlers(vars(kojid))
+        tm.findHandlers(vars(koji.tasks))
+
+        missing = []
         for method in koji.tasks.LEGACY_SIGNATURES:
-            for mod in kojid, koji.tasks:
-                h_class = getattr(mod, method, None)
-                if h_class:
-                    break
-            else:
+            h_class = tm.handlers.get(method)
+            if not h_class:
+                missing.append(method)
                 continue
 
             spec = inspect.getargspec(h_class.handler)
@@ -64,8 +56,9 @@ class ParseTaskParamsCase(unittest.TestCase):
 
             # for the methods we have, at least one of the signatures should
             # match
-            self.assertIn(argspec, koji.tasks.LEGACY_SIGNATURES[method])
+            self.assertIn(list(spec), koji.tasks.LEGACY_SIGNATURES[method])
 
-
-if __name__ == '__main__':
-    unittest.main()
+        if len(missing) > 0.1 * len(koji.tasks.LEGACY_SIGNATURES):
+            # we should hit most of the legacy entries this way
+            raise Exception('Unable to test enough legacy signatures. Missing: '
+                            '%r' % missing)
