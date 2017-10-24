@@ -222,7 +222,7 @@ def apply_argspec(argspec, args, kwargs=None):
     data = dict(zip(f_args, args))
     if len(args) > len(f_args):
         if not f_varargs:
-            raise koji.ParameterError, "Too many args"
+            raise koji.ParameterError('too many args')
         data[f_varargs] = tuple(args[len(f_args):])
     elif f_varargs:
         data[f_varargs] = ()
@@ -230,13 +230,11 @@ def apply_argspec(argspec, args, kwargs=None):
         data[f_varkw] = {}
     for arg in kwargs:
         if arg in data:
-            raise koji.ParameterError, "duplicate keyword argument %r" \
-                    % arg
+            raise koji.ParameterError('duplicate keyword argument %r' % arg)
         if arg in f_args:
             data[arg] = kwargs[arg]
         elif not f_varkw:
-            raise koji.ParameterError, "Unexpected keyword argument %r" \
-                % (arg)
+            raise koji.ParameterError("unexpected keyword argument %r" % arg)
         else:
             data[f_varkw][arg] = kwargs[arg]
     if f_defaults:
@@ -244,9 +242,8 @@ def apply_argspec(argspec, args, kwargs=None):
             data.setdefault(arg, val)
     for n, arg in enumerate(f_args):
         if arg not in data:
-            # missing arg
-            raise koji.ParameterError, "missing required argument %r (#%i)" \
-                    % (arg, n)
+            raise koji.ParameterError('missing required argument %r (#%i)'
+                                        % (arg, n))
     return data
 
 
