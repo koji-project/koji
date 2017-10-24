@@ -739,6 +739,7 @@ def get_options():
                 'ccache': '/var/tmp/kojira.ccache',
                 'krbservice': 'host',
                 'krb_rdns': True,
+                'krb_canon_host': False,
                 'retry_interval': 60,
                 'max_retries': 120,
                 'offline_retry': True,
@@ -766,7 +767,7 @@ def get_options():
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',
-                     'krb_rdns', 'use_old_ssl', 'no_ssl_verify')
+                     'krb_rdns', 'krb_canon_host', 'use_old_ssl', 'no_ssl_verify')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)

@@ -54,6 +54,8 @@ def get_options():
                       help=_("the service name of the principal being used by the hub"))
     parser.add_option("--krb-rdns", action="store_true", default=False,
                       help=_("get reverse dns FQDN for krb target"))
+    parser.add_option("--krb-canon-host", action="store_true", default=False,
+                      help=_("get canonical hostname for krb target"))
     parser.add_option("--runas", metavar="USER",
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
@@ -134,6 +136,7 @@ def get_options():
             ['principal', None, 'string'],
             ['krbservice', None, 'string'],
             ['krb_rdns', None, 'boolean'],
+            ['krb_canon_host', None, 'boolean'],
             ['runas', None, 'string'],
             ['user', None, 'string'],
             ['password', None, 'string'],

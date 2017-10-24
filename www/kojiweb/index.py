@@ -158,9 +158,11 @@ def _assertLogin(environ):
 
 def _getServer(environ):
     opts = environ['koji.options']
-    session = koji.ClientSession(opts['KojiHubURL'],
-                                 opts={'krbservice': opts['KrbService'],
-                                       'krb_rdns': opts['KrbRDNS']})
+    s_opts = {'krbservice': opts['KrbService'],
+              'krb_rdns': opts['KrbRDNS'],
+              'krb_canon_host': opts['KrbCanonHost'],
+              }
+    session = koji.ClientSession(opts['KojiHubURL'], opts=s_opts)
 
     environ['koji.currentLogin'] = _getUserCookie(environ)
     if environ['koji.currentLogin']:

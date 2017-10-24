@@ -123,6 +123,7 @@ def get_options():
                 'ccache': '/var/tmp/kojivmd.ccache',
                 'krbservice': 'host',
                 'krb_rdns': True,
+                'krb_canon_host': False,
                 'server': None,
                 'user': None,
                 'password': None,
@@ -145,8 +146,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'krb_rdns', 'use_old_ssl',
-                          'no_ssl_verify']:
+            elif name in ['offline_retry', 'krb_rdns', 'krb_canon_host',
+                          'use_old_ssl', 'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
