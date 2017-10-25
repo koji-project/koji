@@ -277,6 +277,6 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-.. _Mock: https://fedoraproject.org/wiki/Projects/Mock
+.. _Mock: https://github.com/rpm-software-management/mock/wiki
 .. _RPM packages for the Fedora project: https://koji.fedoraproject.org/koji/
-.. _Koji project website: https://fedorahosted.org/koji/wiki
+.. _Koji project website: https://pagure.io/koji
