@@ -22,7 +22,6 @@ class TestAssignTask(unittest.TestCase):
         task_id = "1"
         arguments = [task_id, hostname]
         options = mock.MagicMock()
-        progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Mock out the xmlrpc server
         session = mock.MagicMock()

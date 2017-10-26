@@ -4,7 +4,6 @@ import os
 import six
 import sys
 import unittest
-import koji
 
 from koji_cli.commands import handle_wrapper_rpm
 
