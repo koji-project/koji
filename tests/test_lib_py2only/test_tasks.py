@@ -128,66 +128,6 @@ class TasksTestCase(TestCase):
         except koji.GenericError as e:
             self.assertEquals(e.args[0], 'Unmounting incomplete: [\'/dev/shm\', \'/dev/mqueue\']')
 
-    @patch('os.path.isfile', return_value=True)
-    @patch('os.remove')
-    def test_safe_rmtree_file(self, mock_remove, mock_isfile):
-        """ Tests that the safe_rmtree function returns nothing when the path parameter is a file.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.islink', return_value=True)
-    @patch('os.remove')
-    def test_safe_rmtree_link(self, mock_remove, mock_islink, mock_isfile):
-        """ Tests that the safe_rmtree function returns nothing when the path parameter is a link.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_link', False, True), None)
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.islink', return_value=False)
-    @patch('os.path.exists', return_value=False)
-    def test_safe_rmtree_does_not_exist(self, mock_exists, mock_islink, mock_isfile):
-        """ Tests that the safe_rmtree function returns nothing if the path does not exist.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.islink', return_value=False)
-    @patch('os.path.exists', return_value=True)
-    @patch('os.system', side_effect=[0, 0])
-    def test_safe_rmtree_directory(self, mock_os_system, mock_exists, mock_islink, mock_isfile):
-        """ Tests that the safe_rmtree function returns nothing when the path is a directory.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder', False, True), 0)
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.islink', return_value=False)
-    @patch('os.path.exists', return_value=True)
-    @patch('os.system', side_effect=[1, 0])
-    def test_safe_rmtree_directory_scrub_file_failure(self, mock_os_system, mock_exists, mock_islink, mock_isfile):
-        """ Tests that the safe_rmtree function returns a GeneralException when the path parameter is a directory
-        and the scrub of the files in the directory fails.
-        """
-        try:
-            safe_rmtree('/mnt/folder', False, True)
-            raise Exception('A GenericError was not raised during the test')
-        except koji.GenericError as e:
-            self.assertEquals(e.args[0], 'file removal failed (code 1) for /mnt/folder')
-
-    @patch('os.path.isfile', return_value=False)
-    @patch('os.path.islink', return_value=False)
-    @patch('os.path.exists', return_value=True)
-    @patch('os.system', side_effect=[0, 1])
-    def test_safe_rmtree_directory_scrub_directory_failure(self, mock_os_system, mock_exists, mock_islink, mock_isfile):
-        """ Tests that the safe_rmtree function returns a GeneralException when the path parameter is a directory
-        and the scrub of the directories in the directory fails.
-        """
-        try:
-            safe_rmtree('/mnt/folder', False, True)
-            raise Exception('A GenericError was not raised during the test')
-        except koji.GenericError as e:
-            self.assertEquals(e.args[0], 'dir removal failed (code 1) for /mnt/folder')
-
     def test_BaseTaskHandler_handler_not_set(self):
         """ Tests that an exception is thrown when the handler function is not overwritten by the child class.
         """
@@ -759,3 +699,57 @@ class TasksTestCase(TestCase):
         # getTaskResult should be called in 2nd round only for task 3, as 4
         # will be skipped as 'canfail'
         obj.session.getTaskResult.assert_has_calls([call(3)])
+
+    @patch('koji.util.rmtree')
+    def test_safe_rmtree_file(self, mock_rmtree):
+        """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a file.
+        """
+        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
+
+    @patch('koji.util.rmtree')
+    def test_rmtree_link(self, rmtree):
+        """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a link.
+        """
+        self.assertEquals(safe_rmtree('/mnt/folder/some_link', False, True), None)
+
+    @patch('koji.util.rmtree')
+    def test_rmtree_does_not_exist(self, rmtree):
+        """ Tests that the koji.util.rmtree function returns nothing if the path does not exist.
+        """
+        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
+
+    @patch('koji.util.rmtree')
+    def test_rmtree_directory(self, rmtree):
+        """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
+        """
+        self.assertEquals(safe_rmtree('/mnt/folder', False, True), None)
+
+    @patch('koji.util.rmtree')
+    @patch('os.path.isfile', return_value=False)
+    @patch('os.path.islink', return_value=False)
+    @patch('os.path.exists', return_value=True)
+    def test_rmtree_directory_scrub_file_failure(self, exists, islink, isfile, rmtree):
+        """ Tests that the koji.util.rmtree function returns a GeneralException when the path parameter is a directory
+        and the scrub of the files in the directory fails.
+        """
+        rmtree.side_effect = koji.GenericError('xyz')
+        try:
+            safe_rmtree('/mnt/folder', False, True)
+            raise Exception('A GenericError was not raised during the test')
+        except koji.GenericError as e:
+            self.assertEquals(e.args[0], 'xyz')
+
+    @patch('koji.util.rmtree')
+    @patch('os.path.isfile', return_value=False)
+    @patch('os.path.islink', return_value=False)
+    @patch('os.path.exists', return_value=True)
+    def test_safe_rmtree_directory_scrub_directory_failure(self, exists, islink, isfile, rmtree):
+        """ Tests that the koji.util.rmtree function returns a GeneralException when the path parameter is a directory
+        and the scrub of the directories in the directory fails.
+        """
+        rmtree.side_effect = OSError('xyz')
+        try:
+            safe_rmtree('/mnt/folder', False, True)
+            raise Exception('An OSError was not raised during the test')
+        except OSError as e:
+            self.assertEquals(e.args[0], 'xyz')

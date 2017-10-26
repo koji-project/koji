@@ -8,6 +8,7 @@
 import koji
 from koji.context import context
 from koji.plugin import callback
+from koji.util import rmtree
 import ConfigParser
 import fnmatch
 import os
@@ -42,13 +43,13 @@ def maven_import(cbtype, *args, **kws):
     tmpdir = os.path.join(koji.pathinfo.work(), 'rpm2maven', koji.buildLabel(buildinfo))
     try:
         if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir)
+            rmtree(tmpdir)
         koji.ensuredir(tmpdir)
         expand_rpm(filepath, tmpdir)
         scan_and_import(buildinfo, rpminfo, tmpdir)
     finally:
         if os.path.exists(tmpdir):
-            shutil.rmtree(tmpdir)
+            rmtree(tmpdir)
 
 def expand_rpm(filepath, tmpdir):
     devnull = file('/dev/null', 'r+')

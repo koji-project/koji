@@ -84,26 +84,16 @@ def safe_rmtree(path, unmount=False, strict=True):
     if not os.path.exists(path):
         logger.debug("No such path: %s" % path)
         return
-    #first rm -f non-directories
+
     logger.debug('Scrubbing files in %s' % path)
-    rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % path)
-    msg = 'file removal failed (code %r) for %s' % (rv, path)
-    if rv != 0:
-        logger.warn(msg)
+    try:
+        koji.util.rmtree(path)
+    except:
+        logger.warn('file removal failed for %s' % path)
         if strict:
-            raise koji.GenericError(msg)
-        else:
-            return rv
-    #them rmdir directories
-    #with -depth, we start at the bottom and work up
-    logger.debug('Scrubbing directories in %s' % path)
-    rv = os.system("find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % path)
-    msg = 'dir removal failed (code %r) for %s' % (rv, path)
-    if rv != 0:
-        logger.warn(msg)
-        if strict:
-            raise koji.GenericError(msg)
-    return rv
+            raise
+        return 1
+
 
 class ServerExit(Exception):
     """Raised to shutdown the server"""
