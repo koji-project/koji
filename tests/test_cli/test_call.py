@@ -9,7 +9,7 @@ import json
 from koji_cli.commands import handle_call
 
 
-class TestResubmit(unittest.TestCase):
+class TestCall(unittest.TestCase):
 
     # Show long diffs in error output...
     maxDiff = None

@@ -9,7 +9,7 @@ import koji
 from koji_cli.commands import handle_moshimoshi
 
 
-class TestResubmit(unittest.TestCase):
+class TestHello(unittest.TestCase):
 
     # Show long diffs in error output...
     maxDiff = None
