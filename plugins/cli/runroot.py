@@ -36,7 +36,7 @@ def handle_runroot(options, session, args):
 
     if len(args) < 3:
         parser.error(_("Incorrect number of arguments"))
-        return
+        assert False  # pragma: no cover
 
     activate_session(session, options)
     tag = args[0]
