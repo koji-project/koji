@@ -78,10 +78,11 @@ def safe_rmtree(path, unmount=False, strict=True):
                 raise
             else:
                 logger.warn("Error removing: %s", exc_info=True)
-        return
+                return 1
+        return 0
     if not os.path.exists(path):
         logger.debug("No such path: %s" % path)
-        return
+        return 0
 
     logger.debug('Scrubbing files in %s' % path)
     try:
@@ -91,6 +92,7 @@ def safe_rmtree(path, unmount=False, strict=True):
         if strict:
             raise
         return 1
+    return 0
 
 
 class ServerExit(Exception):
