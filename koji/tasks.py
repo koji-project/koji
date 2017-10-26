@@ -67,8 +67,6 @@ def umount_all(topdir):
 
 def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
-    #safe remove: with -xdev the find cmd will not cross filesystems
-    #             (though it will cross bind mounts from the same filesystem)
     if unmount:
         umount_all(path)
     if os.path.isfile(path) or os.path.islink(path):
@@ -88,7 +86,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     logger.debug('Scrubbing files in %s' % path)
     try:
         koji.util.rmtree(path)
-    except:
+    except Exception:
         logger.warn('file removal failed for %s' % path)
         if strict:
             raise
