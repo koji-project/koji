@@ -206,7 +206,8 @@ def prep_rpm_sign(cbtype, *args, **kws):
              'release': kws['build']['release'],
              'rpm_name': kws['rpm']['name'],
              'rpm_version': kws['rpm']['version'],
-             'rpm_release': kws['rpm']['release']}
+             'rpm_release': kws['rpm']['release'],
+             'rpm_arch': kws['rpm']['arch']}
     queue_msg(address, props, kws)
 
 def _prep_tag_msg(address, cbtype, kws):

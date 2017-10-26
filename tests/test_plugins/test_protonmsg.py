@@ -115,12 +115,14 @@ class TestProtonMsg(unittest.TestCase):
                  'release': '1'}
         rpm = {'name': 'test-pkg-subpkg',
                'version': '2.0',
-               'release': '2'}
+               'release': '2',
+               'arch': 'x86_64'}
         sigkey = 'a1b2c3d4'
         protonmsg.prep_rpm_sign('postRPMSign', sigkey=sigkey, sighash='fedcba9876543210',
                                 build=build, rpm=rpm)
         self.assertMsg('sign.rpm', type='RPMSign', sigkey=sigkey, rpm_name=rpm['name'],
                        rpm_version=rpm['version'], rpm_release=rpm['release'],
+                       rpm_arch='x86_64',
                        **build)
 
     def test_prep_rpm_sign_no_sigkey(self):
@@ -129,7 +131,8 @@ class TestProtonMsg(unittest.TestCase):
                  'release': '1'}
         rpm = {'name': 'test-pkg-subpkg',
                'version': '2.0',
-               'release': '2'}
+               'release': '2',
+               'arch': 'x86_64'}
         sigkey = ''
         protonmsg.prep_rpm_sign('postRPMSign', sigkey=sigkey, sighash='fedcba9876543210',
                                 build=build, rpm=rpm)
