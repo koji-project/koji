@@ -4,7 +4,7 @@ import time
 import koji
 from koji.plugin import export_cli
 from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
-                         _running_in_bg, list_task_output_all_volumes
+                         list_task_output_all_volumes
 
 @export_cli
 def handle_runroot(options, session, args):
