@@ -5233,8 +5233,12 @@ class CG_Importer(object):
         # finalize import
         self.get_build()
         self.import_brs()
-        self.import_outputs()
-        self.import_metadata()
+        try:
+            self.import_outputs()
+            self.import_metadata()
+        except Exception:
+            self.check_build_dir(delete=True)
+            raise
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
                                   directory=directory, build=self.buildinfo)
@@ -5313,11 +5317,15 @@ class CG_Importer(object):
             self.buildinfo['volume_name'] = vol['name']
 
 
-    def check_build_dir(self):
+    def check_build_dir(self, delete=False):
         """Check that the import directory does not already exist"""
         path = koji.pathinfo.build(self.buildinfo)
         if os.path.lexists(path):
-            raise koji.GenericError("Destination directory already exists: %s" % path)
+            if delete:
+                logger.warning("Deleting build directory: %s", path)
+                koji.util.rmtree(path)
+            else:
+                raise koji.GenericError("Destination directory already exists: %s" % path)
 
 
     def prep_build(self):

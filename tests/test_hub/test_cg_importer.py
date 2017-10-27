@@ -82,6 +82,32 @@ class TestCGImporter(unittest.TestCase):
         assert x.buildinfo
         assert isinstance(x.buildinfo, dict)
 
+    @mock.patch('koji.pathinfo.build')
+    @mock.patch('os.path.lexists')
+    @mock.patch('koji.util.rmtree')
+    def test_check_build_dir(self, rmtree, lexists, build):
+        path = '/random_path/random_dir'
+        build.return_value = path
+
+        x = kojihub.CG_Importer()
+
+        # directory exists
+        lexists.return_value = True
+        with self.assertRaises(koji.GenericError):
+            x.check_build_dir(delete=False)
+        rmtree.assert_not_called()
+
+        # directory exists + delete
+        lexists.return_value = True
+        x.check_build_dir(delete=True)
+        rmtree.assert_called_once_with(path)
+
+        # directory doesn't exist
+        rmtree.reset_mock()
+        lexists.return_value = False
+        x.check_build_dir()
+        rmtree.assert_not_called()
+
     @mock.patch('kojihub.get_build')
     @mock.patch("koji.pathinfo.work")
     def test_prep_build_exists(self, work, get_build):
