@@ -7256,12 +7256,12 @@ def get_notification_recipients(build, tag_id, state):
     Only active 'human' users will be in this list.
     """
 
+    joins = ['JOIN users ON build_notifications.user_id = users.id']
     users_status = koji.USER_STATUS['NORMAL']
     users_usertypes = [koji.USERTYPES['NORMAL'], koji.USERTYPES['GROUP']]
     clauses = [
-        'users.id = build_notifications.user_id',
-        'users.status = %(users_status)i',
-        'users.usertype IN %(users_usertype)s',
+        'status = %(users_status)i',
+        'usertype IN %(users_usertype)s',
     ]
 
     if not build and tag_id:
@@ -7279,8 +7279,8 @@ def get_notification_recipients(build, tag_id, state):
     if state != koji.BUILD_STATES['COMPLETE']:
         clauses.append('success_only = FALSE')
 
-    query = QueryProcessor(columns=('email',), tables=['build_notifications', 'users'],
-                           clauses=clauses, values=locals(),
+    query = QueryProcessor(columns=('email',), tables=['build_notifications'],
+                           joins=joins, clauses=clauses, values=locals(),
                            opts={'asList':True})
     emails = [result[0] for result in query.execute()]
 
