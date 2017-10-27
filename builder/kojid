@@ -5603,6 +5603,7 @@ def get_options():
                 'ccache': '/var/tmp/kojid.ccache',
                 'krbservice': 'host',
                 'krb_rdns': True,
+                'krb_canon_host': False,
                 'server': None,
                 'user': None,
                 'password': None,
@@ -5640,7 +5641,7 @@ def get_options():
                     quit("value for %s option must be a valid integer" % name)
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
-                          'support_rpm_source_layout', 'krb_rdns',
+                          'support_rpm_source_layout', 'krb_rdns', 'krb_canon_host',
                           'build_arch_can_fail', 'use_old_ssl', 'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:

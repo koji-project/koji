@@ -76,6 +76,7 @@ class Dispatcher(object):
         ['WebCCache', 'string', '/var/tmp/kojiweb.ccache'],
         ['KrbService', 'string', 'host'],
         ['KrbRDNS', 'boolean', True],
+        ['KrbCanonHost', 'boolean', False],
 
         ['WebCert', 'string', None],
         ['KojiHubCA', 'string', '/etc/kojiweb/kojihubca.crt'],
