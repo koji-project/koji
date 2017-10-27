@@ -700,56 +700,113 @@ class TasksTestCase(TestCase):
         # will be skipped as 'canfail'
         obj.session.getTaskResult.assert_has_calls([call(3)])
 
+class TestSafeRmtree(TestCase):
+    @patch('os.path.exists', return_value=True)
+    @patch('os.path.isfile', return_value=True)
+    @patch('os.path.islink', return_value=False)
+    @patch('os.remove')
     @patch('koji.util.rmtree')
-    def test_safe_rmtree_file(self, mock_rmtree):
+    def test_safe_rmtree_file(self, rmtree, remove, islink, isfile, exists):
         """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a file.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), 0)
+        path = '/mnt/folder/some_file'
+        self.assertEquals(safe_rmtree(path, False, True), 0)
+        isfile.assert_called_once_with(path)
+        islink.assert_not_called()
+        exists.assert_not_called()
+        remove.assert_called_once_with(path)
+        rmtree.assert_not_called()
 
+    @patch('os.path.exists', return_value=True)
+    @patch('os.path.isfile', return_value=False)
+    @patch('os.path.islink', return_value=True)
+    @patch('os.remove')
     @patch('koji.util.rmtree')
-    def test_rmtree_link(self, rmtree):
+    def test_rmtree_link(self, rmtree, remove, islink, isfile, exists):
         """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a link.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_link', False, True), 0)
+        path = '/mnt/folder/some_link'
+        self.assertEquals(safe_rmtree(path, False, True), 0)
+        isfile.assert_called_once_with(path)
+        islink.assert_called_once_with(path)
+        exists.assert_not_called()
+        remove.assert_called_once_with(path)
+        rmtree.assert_not_called()
 
-    @patch('koji.util.rmtree')
-    def test_rmtree_does_not_exist(self, rmtree):
-        """ Tests that the koji.util.rmtree function returns nothing if the path does not exist.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), 0)
 
-    @patch('koji.util.rmtree')
-    def test_rmtree_directory(self, rmtree):
-        """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
-        """
-        self.assertEquals(safe_rmtree('/mnt/folder', False, True), 0)
-
-    @patch('koji.util.rmtree')
+    @patch('os.path.exists', return_value=False)
     @patch('os.path.isfile', return_value=False)
     @patch('os.path.islink', return_value=False)
+    @patch('os.remove')
+    @patch('koji.util.rmtree')
+    def test_rmtree_does_not_exist(self, rmtree, remove, islink, isfile, exists):
+        """ Tests that the koji.util.rmtree function returns nothing if the path does not exist.
+        """
+        path = '/mnt/folder/some_file'
+        self.assertEquals(safe_rmtree(path, False, True), 0)
+        isfile.assert_called_once_with(path)
+        islink.assert_called_once_with(path)
+        exists.assert_called_once_with(path)
+        remove.assert_not_called()
+        rmtree.assert_not_called()
+
     @patch('os.path.exists', return_value=True)
-    def test_rmtree_directory_scrub_file_failure(self, exists, islink, isfile, rmtree):
+    @patch('os.path.isfile', return_value=False)
+    @patch('os.path.islink', return_value=False)
+    @patch('os.remove')
+    @patch('koji.util.rmtree')
+    def test_rmtree_directory(self, rmtree, remove, islink, isfile, exists):
+        """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
+        """
+        path = '/mnt/folder'
+        self.assertEquals(safe_rmtree(path, False, True), 0)
+        isfile.assert_called_once_with(path)
+        islink.assert_called_once_with(path)
+        exists.assert_called_once_with(path)
+        remove.assert_not_called()
+        rmtree.assert_called_once_with(path)
+
+    @patch('os.path.exists', return_value=True)
+    @patch('os.path.isfile', return_value=False)
+    @patch('os.path.islink', return_value=False)
+    @patch('os.remove')
+    @patch('koji.util.rmtree')
+    def test_rmtree_directory_scrub_file_failure(self, rmtree, remove, islink, isfile, exists):
         """ Tests that the koji.util.rmtree function returns a GeneralException when the path parameter is a directory
         and the scrub of the files in the directory fails.
         """
         rmtree.side_effect = koji.GenericError('xyz')
+        path = '/mnt/folder'
         try:
-            safe_rmtree('/mnt/folder', False, 1)
+            safe_rmtree(path, False, 1)
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
             self.assertEquals(e.args[0], 'xyz')
+        isfile.assert_called_once_with(path)
+        islink.assert_called_once_with(path)
+        exists.assert_called_once_with(path)
+        remove.assert_not_called()
+        rmtree.assert_called_once_with(path)
 
-    @patch('koji.util.rmtree')
+    @patch('os.path.exists', return_value=True)
     @patch('os.path.isfile', return_value=False)
     @patch('os.path.islink', return_value=False)
-    @patch('os.path.exists', return_value=True)
-    def test_safe_rmtree_directory_scrub_directory_failure(self, exists, islink, isfile, rmtree):
+    @patch('os.remove')
+    @patch('koji.util.rmtree')
+    def test_safe_rmtree_directory_scrub_directory_failure(self, rmtree, remove, islink, isfile, exists):
         """ Tests that the koji.util.rmtree function returns a GeneralException when the path parameter is a directory
         and the scrub of the directories in the directory fails.
         """
         rmtree.side_effect = OSError('xyz')
+        path = '/mnt/folder'
         try:
-            safe_rmtree('/mnt/folder', False, True)
+            safe_rmtree(path, False, True)
             raise Exception('An OSError was not raised during the test')
         except OSError as e:
             self.assertEquals(e.args[0], 'xyz')
+
+        isfile.assert_called_once_with(path)
+        islink.assert_called_once_with(path)
+        exists.assert_called_once_with(path)
+        remove.assert_not_called()
+        rmtree.assert_called_once_with(path)
