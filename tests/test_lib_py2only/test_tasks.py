@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import random
+import shutil
 from os import path, makedirs
-from shutil import rmtree
 from tempfile import gettempdir
 from unittest import TestCase
 from mock import patch, MagicMock, Mock, call
@@ -74,7 +74,7 @@ class TasksTestCase(TestCase):
         temp_dir_root = get_temp_dir_root()
 
         if path.isdir(temp_dir_root):
-            rmtree(get_temp_dir_root())
+            shutil.rmtree(get_temp_dir_root())
 
     def test_scan_mounts_results(self):
         """ Tests the scan_mounts function with a mocked /proc/mounts file. A list containing mount points
@@ -170,7 +170,7 @@ class TasksTestCase(TestCase):
         obj = TestTask(123, 'some_method', ['random_arg'], None, None, temp_path)
         obj.createWorkdir()
         self.assertEquals(path.isdir(temp_path), True)
-        rmtree(get_temp_dir_root())
+        shutil.rmtree(get_temp_dir_root())
 
     def test_BaseTaskHandler_removeWorkdir(self):
         """ Tests that the removeWOrkdir function deletes a folder based on the path given to the
@@ -704,25 +704,25 @@ class TasksTestCase(TestCase):
     def test_safe_rmtree_file(self, mock_rmtree):
         """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a file.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
+        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), 0)
 
     @patch('koji.util.rmtree')
     def test_rmtree_link(self, rmtree):
         """ Tests that the koji.util.rmtree function returns nothing when the path parameter is a link.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_link', False, True), None)
+        self.assertEquals(safe_rmtree('/mnt/folder/some_link', False, True), 0)
 
     @patch('koji.util.rmtree')
     def test_rmtree_does_not_exist(self, rmtree):
         """ Tests that the koji.util.rmtree function returns nothing if the path does not exist.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), None)
+        self.assertEquals(safe_rmtree('/mnt/folder/some_file', False, True), 0)
 
     @patch('koji.util.rmtree')
     def test_rmtree_directory(self, rmtree):
         """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
         """
-        self.assertEquals(safe_rmtree('/mnt/folder', False, True), None)
+        self.assertEquals(safe_rmtree('/mnt/folder', False, True), 0)
 
     @patch('koji.util.rmtree')
     @patch('os.path.isfile', return_value=False)
@@ -734,7 +734,7 @@ class TasksTestCase(TestCase):
         """
         rmtree.side_effect = koji.GenericError('xyz')
         try:
-            safe_rmtree('/mnt/folder', False, True)
+            safe_rmtree('/mnt/folder', False, 1)
             raise Exception('A GenericError was not raised during the test')
         except koji.GenericError as e:
             self.assertEquals(e.args[0], 'xyz')
