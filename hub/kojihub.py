@@ -7119,19 +7119,10 @@ def _delete_build(binfo):
     update.execute()
     update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
     _dml(update, locals())
-    #now clear the build dirs
-    dirs_to_clear = []
+    # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
-        dirs_to_clear.append(builddir)
-    for filedir in dirs_to_clear:
-        rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
-        if rv != 0:
-            raise koji.GenericError('file removal failed (code %r) for %s' % (rv, filedir))
-        #and clear out the emptied dirs
-        rv = os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
-        if rv != 0:
-            raise koji.GenericError('directory removal failed (code %r) for %s' % (rv, filedir))
+        koji.util.rmtree(builddir)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_deleted, info=binfo)
 
 def reset_build(build):
@@ -7195,19 +7186,10 @@ def reset_build(build):
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = """UPDATE build SET state=%(state)s, task_id=NULL, volume_id=0 WHERE id=%(id)s"""
     _dml(update, binfo)
-    #now clear the build dirs
-    dirs_to_clear = []
+    # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
-        dirs_to_clear.append(builddir)
-    for filedir in dirs_to_clear:
-        rv = os.system(r"find '%s' -xdev \! -type d -print0 |xargs -0 rm -f" % filedir)
-        if rv != 0:
-            raise koji.GenericError('file removal failed (code %r) for %s' % (rv, filedir))
-        #and clear out the emptied dirs
-        rv = os.system(r"find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % filedir)
-        if rv != 0:
-            raise koji.GenericError('directory removal failed (code %r) for %s' % (rv, filedir))
+        koji.util.rmtree(builddir)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
 
 def cancel_build(build_id, cancel_task=True):
