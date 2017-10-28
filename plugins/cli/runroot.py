@@ -3,7 +3,8 @@ import time
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import _, activate_session, OptionParser, list_task_output_all_volumes
+from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
+                         list_task_output_all_volumes
 
 @export_cli
 def handle_runroot(options, session, args):
@@ -25,11 +26,18 @@ def handle_runroot(options, session, args):
     parser.add_option("--new-chroot", action="store_true", default=False,
             help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+            default=True, help=_("Do not wait on task"))
+    parser.add_option("--watch", action="store_true", help=_("Watch task instead of printing runroot.log"))
+    parser.add_option("--quiet", action="store_true", default=options.quiet,
+                      help=_("Do not print the task information"))
 
     (opts, args) = parser.parse_args(args)
 
     if len(args) < 3:
         parser.error(_("Incorrect number of arguments"))
+        assert False  # pragma: no cover
+
     activate_session(session, options)
     tag = args[0]
     arch = args[1]
@@ -59,6 +67,14 @@ def handle_runroot(options, session, args):
     if opts.task_id:
         print(task_id)
 
+    if not opts.wait:
+        return
+
+    if opts.watch:
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=opts.quiet,
+                           poll_interval=options.poll_interval)
+
     try:
         while True:
             # wait for the task to finish
@@ -81,4 +97,3 @@ def handle_runroot(options, session, args):
     state = koji.TASK_STATES[info['state']]
     if state in ('FAILED', 'CANCELED'):
         sys.exit(1)
-    return
