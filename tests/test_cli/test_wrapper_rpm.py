@@ -35,10 +35,16 @@ class TestWrapperRpm(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands._running_in_bg')
     @mock.patch('koji_cli.commands.watch_tasks')
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_wrapper_rpm(self, activate_session_mock,
-                                watch_tasks_mock, stderr, stdout):
+    def test_handle_wrapper_rpm(
+            self,
+            activate_session_mock,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            stderr,
+            stdout):
         """Test  handle_wrapper_rpm function without --ini option"""
         arguments = [self.target, self.build, self.scm_url]
         options = mock.MagicMock(weburl='weburl')
@@ -48,22 +54,32 @@ class TestWrapperRpm(unittest.TestCase):
         session.logout.return_value = None
         session.wrapperRPM.return_value = self.task_id
 
-        # Argument tests
-        arguments.extend(['--create-build', '--skip-tag', '--scratch'])
-        with mock.patch('koji_cli.commands._running_in_bg',
-                        return_value=False):
-            handle_wrapper_rpm(options, session,
-                               arguments + ['--nowait', '--background'])
         expected = "Created task: %d\n" % self.task_id
         expected += "Task info: %s/taskinfo?taskID=%s\n" % \
                     (options.weburl, self.task_id)
+
+        # Background on test
+        running_in_bg_mock.return_value = True
+
+        arguments.extend(['--create-build', '--skip-tag', '--scratch'])
+        self.assertEqual(None, handle_wrapper_rpm(options, session, arguments))
         self.assert_console_output(stdout, expected)
 
+        # Background off but --nowait is specified
+        running_in_bg_mock.return_value = False
+
+        args = arguments + ['--nowait']
+        self.assertEqual(None, handle_wrapper_rpm(options, session, args))
+        self.assert_console_output(stdout, expected)
+
+        # proirity test
+        args = arguments + ['--nowait', '--background']
+        self.assertEqual(None, handle_wrapper_rpm(options, session, args))
+        self.assert_console_output(stdout, expected)
+
+        # watch task case
         watch_tasks_mock.return_value = True
         self.assertTrue(handle_wrapper_rpm(options, session, arguments))
-        expected = "Created task: %d\n" % self.task_id
-        expected += "Task info: %s/taskinfo?taskID=%s\n" % \
-                    (options.weburl, self.task_id)
         self.assert_console_output(stdout, expected)
 
         # Finally, assert that things were called as we expected.
@@ -75,11 +91,17 @@ class TestWrapperRpm(unittest.TestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji.util.parse_maven_param')
+    @mock.patch('koji_cli.commands._running_in_bg')
     @mock.patch('koji_cli.commands.watch_tasks')
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_wrapper_rpm_with_ini_config(
-            self, activate_session_mock, watch_tasks_mock,
-            parse_maven_mock, stderr, stdout):
+            self,
+            activate_session_mock,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            parse_maven_mock,
+            stderr,
+            stdout):
         """Test  handle_wrapper_rpm function with --ini option"""
         arguments = []
         options = mock.MagicMock(weburl='weburl')
@@ -103,6 +125,7 @@ class TestWrapperRpm(unittest.TestCase):
         session.getBuildTarget.return_value = target_info
         session.getLatestBuilds.return_value = None
         session.wrapperRPM.return_value = self.task_id
+        running_in_bg_mock.return_value = False
 
         # With --ini option, only build target is required
         arguments = [
