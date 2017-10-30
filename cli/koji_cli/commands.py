@@ -936,7 +936,8 @@ def anon_handle_mock_config(goptions, session, args):
             opts['repoid'] = brootinfo['repo_id']
         opts['tag_name'] = brootinfo['tag_name']
         arch = brootinfo['arch']
-        def_name = "%s-task_%i" % (opts['tag_name'], task_id)
+        if not options.name:
+            options.name = "%s-task_%i" % (opts['tag_name'], task_id)
     elif options.tag:
         if not options.arch:
             print(_("Please specify an arch"))
@@ -958,7 +959,6 @@ def anon_handle_mock_config(goptions, session, args):
                 print(_("Could not get a repo for tag: %(name)s") % tag)
                 return 1
             opts['repoid'] = repo['id']
-        def_name = "%(tag_name)s-repo_%(repoid)s" % opts
     elif options.target:
         if not options.arch:
             print(_("Please specify an arch"))
