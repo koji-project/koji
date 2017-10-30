@@ -3110,7 +3110,6 @@ def anon_handle_buildinfo(goptions, session, args):
                 archives_seen.setdefault(archive['id'], 1)
                 print(os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive)))
         rpms = session.listRPMs(buildID=info['id'])
-        image_info = session.getImageBuild(info['id'])
         img_archives = session.listArchives(buildID=info['id'], type='image')
         if img_archives:
             print('Image archives:')
@@ -6460,7 +6459,7 @@ def anon_handle_download_build(options, session, args):
     else:
         # if we're given an rpm name without --rpm, download the containing build
         try:
-            nvra = koji.parse_NVRA(build)
+            koji.parse_NVRA(build)
             rpminfo = session.getRPM(build)
             build = rpminfo['build_id']
         except Exception:
