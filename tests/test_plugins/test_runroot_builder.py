@@ -10,7 +10,7 @@ import __main__
 __main__.BuildRoot = kojid.BuildRoot
 
 import koji
-from runroot import RunRootTask
+import runroot
 
 
 CONFIG1 = {
@@ -94,7 +94,7 @@ class TestRunrootConfig(unittest.TestCase):
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         with self.assertRaises(koji.GenericError) as cm:
-            RunRootTask(123, 'runroot', {}, session, options)
+            runroot.RunRootTask(123, 'runroot', {}, session, options)
         self.assertEqual(cm.exception.message,
             "bad config: missing options in path0 section")
 
@@ -107,7 +107,7 @@ class TestRunrootConfig(unittest.TestCase):
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         with self.assertRaises(koji.GenericError) as cm:
-            RunRootTask(123, 'runroot', {}, session, options)
+            runroot.RunRootTask(123, 'runroot', {}, session, options)
         self.assertEqual(cm.exception.message,
             "bad config: all paths (default_mounts, safe_roots, path_subs) needs to be absolute: ")
 
@@ -117,7 +117,7 @@ class TestRunrootConfig(unittest.TestCase):
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
-        RunRootTask(123, 'runroot', {}, session, options)
+        runroot.RunRootTask(123, 'runroot', {}, session, options)
 
     @mock.patch('ConfigParser.SafeConfigParser')
     def test_valid_config_alt(self, safe_config_parser):
@@ -125,7 +125,7 @@ class TestRunrootConfig(unittest.TestCase):
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
-        RunRootTask(123, 'runroot', {}, session, options)
+        runroot.RunRootTask(123, 'runroot', {}, session, options)
 
     @mock.patch('ConfigParser.SafeConfigParser')
     def test_pathnum_gaps(self, safe_config_parser):
@@ -134,7 +134,7 @@ class TestRunrootConfig(unittest.TestCase):
         options.workdir = '/tmp/nonexistentdirectory'
         config = CONFIG2.copy()
         safe_config_parser.return_value = FakeConfigParser(config)
-        task1 = RunRootTask(123, 'runroot', {}, session, options)
+        task1 = runroot.RunRootTask(123, 'runroot', {}, session, options)
         # adjust the path numbers (but preserving order) and do it again
         config = CONFIG2.copy()
         config['path99'] = config['path1']
@@ -142,7 +142,7 @@ class TestRunrootConfig(unittest.TestCase):
         del config['path1']
         del config['path2']
         safe_config_parser.return_value = FakeConfigParser(config)
-        task2 = RunRootTask(123, 'runroot', {}, session, options)
+        task2 = runroot.RunRootTask(123, 'runroot', {}, session, options)
         # resulting processed config should be the same
         self.assertEqual(task1.config, task2.config)
         paths = list([CONFIG2[k] for k in ('path0', 'path1', 'path2')])
@@ -157,7 +157,7 @@ class TestRunrootConfig(unittest.TestCase):
         config['paths']['path_subs'] += 'incorrect:format'
         safe_config_parser.return_value = FakeConfigParser(config)
         with self.assertRaises(koji.GenericError):
-            RunRootTask(123, 'runroot', {}, session, options)
+            runroot.RunRootTask(123, 'runroot', {}, session, options)
 
 
 class TestMounts(unittest.TestCase):
@@ -167,7 +167,7 @@ class TestMounts(unittest.TestCase):
         self.session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
-        self.t = RunRootTask(123, 'runroot', {}, self.session, options)
+        self.t = runroot.RunRootTask(123, 'runroot', {}, self.session, options)
 
     def test_get_path_params(self):
         # non-existent item
@@ -252,11 +252,40 @@ class TestMounts(unittest.TestCase):
         self.assertEqual(cm.exception.message,
             "bad config: background mount not allowed")
 
+    def test_do_extra_mounts(self):
+        self.t.do_mounts = mock.MagicMock()
+        self.t._get_path_params = mock.MagicMock()
+        self.t._get_path_params.return_value = 'path_params'
+
+        # no mounts
+        self.t.do_extra_mounts('rootdir', [])
+        self.t.do_mounts.assert_called_once_with('rootdir', [])
+
+        # safe mount
+        self.t.do_mounts.reset_mock()
+        self.t.do_extra_mounts('rootdir', ['/mnt/workdir/tmp/xyz'])
+        self.t.do_mounts.assert_called_once_with('rootdir', ['path_params'])
+
+        # unsafe mount
+        self.t.do_mounts.reset_mock()
+        with self.assertRaises(koji.GenericError):
+            self.t.do_extra_mounts('rootdir', ['unsafe'])
+        self.t.do_mounts.assert_not_called()
+
+        # hackish mount
+        self.t.do_mounts.reset_mock()
+        with self.assertRaises(koji.GenericError):
+            self.t.do_extra_mounts('rootdir', ['/mnt/workdir/tmp/../xyz'])
+        self.t.do_mounts.assert_not_called()
+
+
+    @mock.patch('runroot.scan_mounts')
     @mock.patch('os.unlink')
     @mock.patch('commands.getstatusoutput')
     @mock.patch('os.path.exists')
-    def test_undo_mounts(self, path_exists, getstatusoutput, os_unlink):
+    def test_undo_mounts(self, path_exists, getstatusoutput, os_unlink, scan_mounts):
         self.t.logger = mock.MagicMock()
+        scan_mounts.return_value = ['mount_1', 'mount_2']
 
         # correct
         getstatusoutput.return_value = (0, 'ok')
@@ -265,7 +294,7 @@ class TestMounts(unittest.TestCase):
             self.t.undo_mounts('rootdir')
         self.t.logger.assert_has_calls([
             mock.call.debug('Unmounting runroot mounts'),
-            mock.call.info("Unmounting (runroot): ['mountpoint']"),
+            mock.call.info("Unmounting (runroot): ['mountpoint', 'mount_2', 'mount_1']"),
         ])
         os_unlink.assert_called_once_with('rootdir/tmp/runroot_mounts')
 
@@ -276,9 +305,83 @@ class TestMounts(unittest.TestCase):
         with mock.patch('runroot.open', mock.mock_open(read_data = 'mountpoint')):
             with self.assertRaises(koji.GenericError) as cm:
                 self.t.undo_mounts('rootdir')
-            self.assertEqual(cm.exception.message, 'Unable to unmount: mountpoint: error')
+            self.assertEqual(cm.exception.message,
+                'Unable to unmount: mountpoint: error, mount_2: error, mount_1: error')
+
         os_unlink.assert_not_called()
 
 class TestHandler(unittest.TestCase):
-    # TODO
-    pass
+    @mock.patch('ConfigParser.SafeConfigParser')
+    def setUp(self, safe_config_parser):
+        self.session = mock.MagicMock()
+        self.br = mock.MagicMock()
+        self.br.mock.return_value = 0
+        self.br.id = 678
+        self.br.rootdir.return_value = '/rootdir'
+        runroot.BuildRoot = mock.MagicMock()
+        runroot.BuildRoot.return_value = self.br
+
+        options = mock.MagicMock()
+        options.workdir = '/tmp/nonexistentdirectory'
+        #options.topurl = 'http://topurl'
+        options.topurls = None
+        self.t = runroot.RunRootTask(123, 'runroot', {}, self.session, options)
+        self.t.config['default_mounts'] = ['default_mount']
+        self.t.do_mounts = mock.MagicMock()
+        self.t.do_extra_mounts = mock.MagicMock()
+        self.t.undo_mounts = mock.MagicMock()
+        self.t.uploadFile = mock.MagicMock()
+        self.t._get_path_params = mock.MagicMock()
+        self.t._get_path_params.side_effect = lambda x: x
+
+    def tearDown(self):
+        runroot.BuildRoot = kojid.BuildRoot
+
+    @mock.patch('platform.uname')
+    @mock.patch('os.system')
+    def test_handler_simple(self, os_system, platform_uname):
+        platform_uname.return_value = ('system', 'node', 'release', 'version', 'machine', 'arch')
+        self.session.getBuildConfig.return_value = {
+            'id': 456,
+            'name': 'tag_name',
+            'arches': 'noarch x86_64',
+            'extra': {},
+        }
+        self.session.repoInfo.return_value = {
+            'id': 1,
+            'create_event': 123,
+            'state': koji.REPO_STATES['READY'],
+            'tag_id': 456,
+            'tag_name': 'tag_name',
+        }
+        self.session.getRepo.return_value = {
+            'id': 1,
+        }
+        self.session.host.getHost.return_value = {'arches': 'x86_64'}
+        self.t.handler('tag_name', 'noarch', 'command', weight=10.0,
+                repo_id=1, packages=['rpm_a', 'rpm_b'], new_chroot=True,
+                mounts=['/mnt/a'], skip_setarch=True,
+                upload_logs=['log_1', 'log_2'])
+
+        # calls
+        self.session.host.setTaskWeight.assert_called_once_with(self.t.id, 10.0)
+        self.session.host.getHost.assert_called_once_with()
+        self.session.getBuildConfig.assert_called_once_with('tag_name')
+        self.session.repoInfo.assert_called_once_with(1, strict=True)
+        self.session.host.subtask.assert_not_called()
+        runroot.BuildRoot.assert_called_once_with(self.session, self.t.options,
+                'tag_name', 'x86_64', self.t.id, repo_id=1, setup_dns=True)
+        os_system.assert_called_once()
+        self.session.host.setBuildRootState.assert_called_once_with(678, 'BUILDING')
+        self.br.mock.assert_has_calls([
+            mock.call(['--install', 'rpm_a', 'rpm_b']),
+            mock.call(['chroot', '--new-chroot', '--arch', 'arch', '--', '/bin/sh', '-c', '{ command; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit ${PIPESTATUS[0]}']),
+        ])
+        self.session.host.updateBuildRootList.assert_called_once_with(678, self.br.getPackageList())
+        self.t.do_mounts.assert_called_once_with('/rootdir', ['default_mount'])
+        self.t.do_extra_mounts.assert_called_once_with('/rootdir', ['/mnt/a'])
+        self.t.uploadFile.assert_has_calls([
+            mock.call('/rootdir/builddir/runroot.log'),
+            mock.call('/rootdir/log_1'),
+            mock.call('/rootdir/log_2'),
+        ])
