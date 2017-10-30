@@ -20,7 +20,19 @@ class TestListCommands(unittest.TestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
-        self.args = ['TAG', 'ARCH', 'COMMAND']
+        self.args = [
+                '--skip-setarch',
+                '--use-shell',
+                '--new-chroot',
+                '--task-id',
+                '--package', 'rpm_a',
+                '--package', 'rpm_b',
+                '--mount', 'mount_a',
+                '--mount', 'mount_b',
+                '--weight', '3',
+                '--channel-override', 'some_channel',
+                '--repo-id', '12345',
+                'TAG', 'ARCH', 'COMMAND']
         self.old_OptionParser = runroot.OptionParser
         runroot.OptionParser = mock.MagicMock(side_effect=self.get_parser)
         self.old_watch_tasks = runroot.watch_tasks
@@ -39,19 +51,21 @@ class TestListCommands(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
+    @mock.patch('time.sleep')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_handle_runroot(self, stdout):
+    def test_handle_runroot(self, stdout, sleep):
         # Mock out the xmlrpc server
         self.session.getTaskInfo.return_value = {'state': 1}
         self.session.downloadTaskOutput.return_value = 'task output'
         self.session.listTaskOutput.return_value = {'runroot.log': ['DEFAULT']}
         self.session.runroot.return_value = 1
+        self.session.taskFinished.side_effect = [False, True]
 
         # Run it and check immediate output
         runroot.handle_runroot(self.options, self.session, self.args)
         actual = stdout.getvalue()
         actual = actual.replace('nosetests', 'koji')
-        expected = 'task output'
+        expected = '1\ntask output'
         self.assertMultiLineEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.
@@ -60,9 +74,13 @@ class TestListCommands(unittest.TestCase):
         self.session.downloadTaskOutput.assert_called_once_with(
             1, 'runroot.log', volume='DEFAULT')
         self.session.runroot.assert_called_once_with(
-            'TAG', 'ARCH', ['COMMAND'], repo_id=mock.ANY, weight=mock.ANY,
-            mounts=mock.ANY, packages=mock.ANY, skip_setarch=mock.ANY,
-            channel=mock.ANY,
+            'TAG', 'ARCH', 'COMMAND',
+            repo_id=12345, weight=3,
+            mounts=['mount_a', 'mount_b'],
+            packages=['rpm_a', 'rpm_b'],
+            skip_setarch=True,
+            channel='some_channel',
+            new_chroot=True,
         )
 
     def test_handle_runroot_watch(self):
@@ -109,3 +127,27 @@ class TestListCommands(unittest.TestCase):
         self.session.listTaskOutput.assert_not_called()
         self.session.downloadTaskOutput.assert_not_called()
         self.session.runroot.assert_called_once()
+
+    def test_fail_call(self):
+        args = ['--nowait', 'TAG', 'ARCH', 'COMMAND']
+
+        # Mock out the xmlrpc server
+        self.session.runroot.side_effect = koji.GenericError()
+
+        with self.assertRaises(koji.GenericError):
+            runroot.handle_runroot(self.options, self.session, args)
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_missing_plugin(self, stdout):
+        args = ['--nowait', 'TAG', 'ARCH', 'COMMAND']
+
+        # Mock out the xmlrpc server
+        self.session.runroot.side_effect = koji.GenericError('Invalid method')
+
+        with self.assertRaises(koji.GenericError):
+            runroot.handle_runroot(self.options, self.session, args)
+
+        actual = stdout.getvalue().strip()
+        self.assertEqual(actual,
+                         "* The runroot plugin appears to not be installed on the"
+                         " koji hub.  Please contact the administrator.")

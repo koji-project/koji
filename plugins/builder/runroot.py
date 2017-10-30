@@ -123,7 +123,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             if not tag_arches:
                 raise koji.BuildError("No arch list for tag: %s" % root)
             #index canonical host arches
-            host_arches = dict([(koji.canonArch(a), 1) for a in host_arches.split()])
+            host_arches = set([koji.canonArch(a) for a in host_arches.split()])
             #pick the first suitable match from tag's archlist
             for br_arch in tag_arches.split():
                 br_arch = koji.canonArch(br_arch)
@@ -192,11 +192,11 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             mock_cmd.append('--')
             mock_cmd.extend(cmdargs)
             rv = broot.mock(mock_cmd)
-            log_paths = ['/builddir/runroot.log']
+            log_paths = ['builddir/runroot.log']
             if upload_logs is not None:
                 log_paths += upload_logs
             for log_path in log_paths:
-                self.uploadFile(rootdir + log_path)
+                self.uploadFile(os.path.join(rootdir, log_path))
         finally:
             # mock should umount its mounts, but it will not handle ours
             self.undo_mounts(rootdir, fatal=False)
@@ -229,8 +229,8 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             if mount.find('/../') != -1:
                 raise koji.GenericError("read-write mount point is not safe: %s" % mount)
 
-            for re, sub in self.config['path_subs']:
-                mount = mount.replace(re, sub)
+            for rep, sub in self.config['path_subs']:
+                mount = mount.replace(rep, sub)
 
             mnts.append(self._get_path_params(mount, rw=True))
         self.do_mounts(rootdir, mnts)
@@ -280,17 +280,16 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
 
     def undo_mounts(self, rootdir, fatal=True):
         self.logger.debug("Unmounting runroot mounts")
-        mounts = {}
+        mounts = set()
         fn = '%s/tmp/runroot_mounts' % rootdir
         if os.path.exists(fn):
             fslog = open(fn, 'r')
             for line in fslog.readlines():
-                mounts.setdefault(line.strip(), 1)
+                mounts.add(line.strip())
             fslog.close()
         #also, check /proc/mounts just in case
-        for dir in scan_mounts(rootdir):
-            mounts.setdefault(dir, 1)
-        mounts = sorted(mounts.keys())
+        mounts |= set(scan_mounts(rootdir))
+        mounts = sorted(mounts)
         # deeper directories first
         mounts.reverse()
         failed = []
