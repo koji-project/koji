@@ -67,8 +67,6 @@ def umount_all(topdir):
 
 def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
-    #safe remove: with -xdev the find cmd will not cross filesystems
-    #             (though it will cross bind mounts from the same filesystem)
     if unmount:
         umount_all(path)
     if os.path.isfile(path) or os.path.islink(path):
@@ -80,30 +78,22 @@ def safe_rmtree(path, unmount=False, strict=True):
                 raise
             else:
                 logger.warn("Error removing: %s", exc_info=True)
-        return
+                return 1
+        return 0
     if not os.path.exists(path):
         logger.debug("No such path: %s" % path)
-        return
-    #first rm -f non-directories
+        return 0
+
     logger.debug('Scrubbing files in %s' % path)
-    rv = os.system("find '%s' -xdev \\! -type d -print0 |xargs -0 rm -f" % path)
-    msg = 'file removal failed (code %r) for %s' % (rv, path)
-    if rv != 0:
-        logger.warn(msg)
+    try:
+        koji.util.rmtree(path)
+    except Exception:
+        logger.warn('file removal failed for %s' % path)
         if strict:
-            raise koji.GenericError(msg)
-        else:
-            return rv
-    #them rmdir directories
-    #with -depth, we start at the bottom and work up
-    logger.debug('Scrubbing directories in %s' % path)
-    rv = os.system("find '%s' -xdev -depth -type d -print0 |xargs -0 rmdir" % path)
-    msg = 'dir removal failed (code %r) for %s' % (rv, path)
-    if rv != 0:
-        logger.warn(msg)
-        if strict:
-            raise koji.GenericError(msg)
-    return rv
+            raise
+        return 1
+    return 0
+
 
 class ServerExit(Exception):
     """Raised to shutdown the server"""

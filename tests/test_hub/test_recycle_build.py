@@ -16,7 +16,7 @@ class TestRecycleBuild():
                                 side_effect=self.getUpdate).start()
         self._dml = mock.patch('kojihub._dml').start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
-        self.rmtree = mock.patch('shutil.rmtree').start()
+        self.rmtree = mock.patch('koji.util.rmtree').start()
         self.exists = mock.patch('os.path.exists').start()
         self.updates = []
 

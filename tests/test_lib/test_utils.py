@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import mock
 import unittest
-from mock import call
+from mock import call, patch
 
 import os
 import optparse
@@ -487,6 +487,195 @@ class MavenUtilTestCase(unittest.TestCase):
         with open(path + cfile, 'r') as conf_file:
             config.readfp(conf_file)
         return config
+
+class TestRmtree(unittest.TestCase):
+    @patch('koji.util._rmtree')
+    @patch('os.rmdir')
+    @patch('os.chdir')
+    @patch('os.getcwd')
+    @patch('stat.S_ISDIR')
+    @patch('os.lstat')
+    def test_rmtree_file(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
+        """ Tests that the koji.util.rmtree function raises error when the
+        path parameter is not a directory.
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        lstat.return_value = stat
+        isdir.return_value = False
+        getcwd.return_value = 'cwd'
+
+        with self.assertRaises(koji.GenericError):
+            koji.util.rmtree('/mnt/folder/some_file')
+        _rmtree.assert_not_called()
+        rmdir.assert_not_called()
+
+    @patch('koji.util._rmtree')
+    @patch('os.rmdir')
+    @patch('os.chdir')
+    @patch('os.getcwd')
+    @patch('stat.S_ISDIR')
+    @patch('os.lstat')
+    def test_rmtree_directory(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
+        """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        lstat.return_value = stat
+        isdir.return_value = True
+        getcwd.return_value = 'cwd'
+        path = '/mnt/folder'
+
+        self.assertEquals(koji.util.rmtree(path), None)
+        chdir.assert_called_with('cwd')
+        _rmtree.assert_called_once_with('dev')
+        rmdir.assert_called_once_with(path)
+
+    @patch('koji.util._rmtree')
+    @patch('os.rmdir')
+    @patch('os.chdir')
+    @patch('os.getcwd')
+    @patch('stat.S_ISDIR')
+    @patch('os.lstat')
+    def test_rmtree_directory_scrub_failure(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
+        """ Tests that the koji.util.rmtree function returns a GeneralException
+        when the scrub of the files in the directory fails.
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        lstat.return_value = stat
+        isdir.return_value = True
+        getcwd.return_value = 'cwd'
+        path = '/mnt/folder'
+        _rmtree.side_effect = OSError('xyz')
+
+        with self.assertRaises(OSError):
+            koji.util.rmtree(path)
+
+    @patch('os.chdir')
+    @patch('os.rmdir')
+    @patch('koji.util._stripcwd')
+    def test_rmtree_internal_empty(self, stripcwd, rmdir, chdir):
+        dev = 'dev'
+        stripcwd.return_value = []
+
+        koji.util._rmtree(dev)
+
+        stripcwd.assert_called_once_with(dev)
+        rmdir.assert_not_called()
+        chdir.assert_not_called()
+
+    @patch('os.chdir')
+    @patch('os.rmdir')
+    @patch('koji.util._stripcwd')
+    def test_rmtree_internal_dirs(self, stripcwd, rmdir, chdir):
+        dev = 'dev'
+        stripcwd.side_effect = (['a', 'b'], [], [])
+
+        koji.util._rmtree(dev)
+
+        stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
+        rmdir.assert_has_calls([call('b'), call('a')])
+        chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
+
+    @patch('os.chdir')
+    @patch('os.rmdir')
+    @patch('koji.util._stripcwd')
+    def test_rmtree_internal_fail(self, stripcwd, rmdir, chdir):
+        dev = 'dev'
+        stripcwd.side_effect = (['a', 'b'], [], [])
+        rmdir.side_effect = OSError()
+
+        # don't fail on anything
+        koji.util._rmtree(dev)
+
+        stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
+        rmdir.assert_has_calls([call('b'), call('a')])
+        chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
+
+
+    @patch('os.listdir')
+    @patch('os.lstat')
+    @patch('stat.S_ISDIR')
+    @patch('os.unlink')
+    def test_stripcwd_empty(dev, unlink, isdir, lstat, listdir):
+        # simple empty directory
+        dev = 'dev'
+        listdir.return_value = []
+
+        koji.util._stripcwd(dev)
+
+        listdir.assert_called_once_with('.')
+        unlink.assert_not_called()
+        isdir.assert_not_called()
+        lstat.assert_not_called()
+
+    @patch('os.listdir')
+    @patch('os.lstat')
+    @patch('stat.S_ISDIR')
+    @patch('os.unlink')
+    def test_stripcwd_all(dev, unlink, isdir, lstat, listdir):
+        # test valid file + dir
+        dev = 'dev'
+        listdir.return_value = ['a', 'b']
+        st = mock.MagicMock()
+        st.st_dev = dev
+        st.st_mode = 'mode'
+        lstat.return_value = st
+        isdir.side_effect = [True, False]
+
+        koji.util._stripcwd(dev)
+
+        listdir.assert_called_once_with('.')
+        unlink.assert_called_once_with('b')
+        isdir.assert_has_calls([call('mode'), call('mode')])
+        lstat.assert_has_calls([call('a'), call('b')])
+
+    @patch('os.listdir')
+    @patch('os.lstat')
+    @patch('stat.S_ISDIR')
+    @patch('os.unlink')
+    def test_stripcwd_diffdev(dev, unlink, isdir, lstat, listdir):
+        # ignore files on different devices
+        dev = 'dev'
+        listdir.return_value = ['a', 'b']
+        st1 = mock.MagicMock()
+        st1.st_dev = dev
+        st1.st_mode = 'mode'
+        st2 = mock.MagicMock()
+        st2.st_dev = 'other_dev'
+        st2.st_mode = 'mode'
+        lstat.side_effect = [st1, st2]
+        isdir.side_effect = [True, False]
+
+        koji.util._stripcwd(dev)
+
+        listdir.assert_called_once_with('.')
+        unlink.assert_not_called()
+        isdir.assert_called_once_with('mode')
+        lstat.assert_has_calls([call('a'), call('b')])
+
+    @patch('os.listdir')
+    @patch('os.lstat')
+    @patch('stat.S_ISDIR')
+    @patch('os.unlink')
+    def test_stripcwd_fails(dev, unlink, isdir, lstat, listdir):
+        # ignore all unlink errors
+        dev = 'dev'
+        listdir.return_value = ['a', 'b']
+        st = mock.MagicMock()
+        st.st_dev = dev
+        st.st_mode = 'mode'
+        lstat.return_value = st
+        isdir.side_effect = [True, False]
+        unlink.side_effect = OSError()
+
+        koji.util._stripcwd(dev)
+
+        listdir.assert_called_once_with('.')
+        unlink.assert_called_once_with('b')
+        isdir.assert_has_calls([call('mode'), call('mode')])
+        lstat.assert_has_calls([call('a'), call('b')])
 
 
 if __name__ == '__main__':
