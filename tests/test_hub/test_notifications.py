@@ -43,13 +43,13 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
         self.assertEqual(q.columns, ('email',))
-        self.assertEqual(q.tables, ['build_notifications', 'users'])
-        self.assertEqual(q.clauses, ['users.id = build_notifications.user_id',
-                                     'users.status = %(users_status)i',
-                                     'users.usertype IN %(users_usertype)s',
+        self.assertEqual(q.tables, ['build_notifications'])
+        self.assertEqual(q.clauses, [ 'status = %(users_status)i',
+                                     'usertype IN %(users_usertype)s',
                                      'package_id IS NULL',
                                      'tag_id IS NULL',
                                      'success_only = FALSE'])
+        self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['state'], state)
         self.assertEqual(q.values['build'], build)
         self.assertEqual(q.values['tag_id'], tag_id)
@@ -67,13 +67,13 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
         self.assertEqual(q.columns, ('email',))
-        self.assertEqual(q.tables, ['build_notifications', 'users'])
-        self.assertEqual(q.clauses, ['users.id = build_notifications.user_id',
-                                     'users.status = %(users_status)i',
-                                     'users.usertype IN %(users_usertype)s',
+        self.assertEqual(q.tables, ['build_notifications'])
+        self.assertEqual(q.clauses, ['status = %(users_status)i',
+                                     'usertype IN %(users_usertype)s',
                                      'package_id = %(package_id)i OR package_id IS NULL',
                                      'tag_id IS NULL',
                                      'success_only = FALSE'])
+        self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['package_id'], build['package_id'])
         self.assertEqual(q.values['state'], state)
         self.assertEqual(q.values['build'], build)
@@ -111,13 +111,13 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
         self.assertEqual(q.columns, ('email',))
-        self.assertEqual(q.tables, ['build_notifications', 'users'])
-        self.assertEqual(q.clauses, ['users.id = build_notifications.user_id',
-                                     'users.status = %(users_status)i',
-                                     'users.usertype IN %(users_usertype)s',
+        self.assertEqual(q.tables, ['build_notifications'])
+        self.assertEqual(q.clauses, ['status = %(users_status)i',
+                                     'usertype IN %(users_usertype)s',
                                      'package_id = %(package_id)i OR package_id IS NULL',
                                      'tag_id = %(tag_id)i OR tag_id IS NULL',
                                      'success_only = FALSE'])
+        self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['package_id'], build['package_id'])
         self.assertEqual(q.values['state'], state)
         self.assertEqual(q.values['build'], build)
