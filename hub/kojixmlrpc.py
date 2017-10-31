@@ -229,7 +229,7 @@ class ModXMLRPCRequestHandler(object):
             # wrap response in a singleton tuple
             response = (response,)
             response = dumps(response, methodresponse=1, marshaller=Marshaller)
-        except Fault, fault:
+        except Fault as fault:
             self.traceback = True
             response = dumps(fault, marshaller=Marshaller)
         except:
@@ -323,7 +323,7 @@ class ModXMLRPCRequestHandler(object):
         for call in calls:
             try:
                 result = self._dispatch(call['methodName'], call['params'])
-            except Fault, fault:
+            except Fault as fault:
                 results.append({'faultCode': fault.faultCode, 'faultString': fault.faultString})
             except:
                 # transform unknown exceptions into XML-RPC Faults

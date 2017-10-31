@@ -637,7 +637,7 @@ class TaskManager(object):
                     rootdir = "%s/root" % topdir
                     try:
                         st = os.lstat(rootdir)
-                    except OSError, e:
+                    except OSError as e:
                         if e.errno == errno.ENOENT:
                             rootdir = None
                         else:
@@ -658,13 +658,13 @@ class TaskManager(object):
                     #also remove the config
                     try:
                         os.unlink(data['cfg'])
-                    except OSError, e:
+                    except OSError as e:
                         self.logger.warn("%s: can't remove config: %s" % (desc, e))
                 elif age > 120:
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
-                        except OSError, e:
+                        except OSError as e:
                             self.logger.warn("%s: can't list rootdir: %s" % (desc, e))
                             continue
                         if flist:
@@ -892,7 +892,7 @@ class TaskManager(object):
         prefix = "Task %i (pid %i)" % (task_id, pid)
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
-        except OSError, e:
+        except OSError as e:
             #check errno
             if e.errno != errno.ECHILD:
                 #should not happen
@@ -933,7 +933,7 @@ class TaskManager(object):
 
             try:
                 os.kill(pid, sig)
-            except OSError, e:
+            except OSError as e:
                 # process probably went away, we'll find out on the next iteration
                 self.logger.info('Error sending signal %i to %s (pid %i, taskID %i): %s' %
                                  (sig, execname, pid, task_id, e))
@@ -1222,7 +1222,7 @@ class TaskManager(object):
             self.logger.info("RESPONSE: %r" % response)
             self.session.host.closeTask(handler.id, response)
             return
-        except koji.xmlrpcplus.Fault, fault:
+        except koji.xmlrpcplus.Fault as fault:
             response = koji.xmlrpcplus.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)

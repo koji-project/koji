@@ -233,7 +233,7 @@ class BaseTaskHandler(object):
                                 continue
                             try:
                                 self.session.getTaskResult(task)
-                            except (koji.GenericError, xmlrpclib.Fault), task_error:
+                            except (koji.GenericError, xmlrpclib.Fault) as task_error:
                                 self.logger.info("task %s failed or was canceled" % task)
                                 failed = True
                                 break
