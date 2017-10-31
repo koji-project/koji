@@ -111,7 +111,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             flags = os.O_CREAT | os.O_WRONLY
             if append:
                 flags |= os.O_APPEND
-            fd = os.open(outfile, flags, 0666)
+            fd = os.open(outfile, flags, 0o666)
             os.dup2(fd, 1)
             if logerror:
                 os.dup2(fd, 2)
