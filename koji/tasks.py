@@ -233,7 +233,7 @@ class BaseTaskHandler(object):
                                 continue
                             try:
                                 self.session.getTaskResult(task)
-                            except (koji.GenericError, xmlrpclib.Fault), task_error:
+                            except (koji.GenericError, xmlrpclib.Fault) as task_error:
                                 self.logger.info("task %s failed or was canceled" % task)
                                 failed = True
                                 break
@@ -322,7 +322,7 @@ class BaseTaskHandler(object):
             fsrc = six.moves.urllib.request.urlopen(url)
             if not os.path.exists(os.path.dirname(fn)):
                 os.makedirs(os.path.dirname(fn))
-            fdst = file(fn, 'w')
+            fdst = open(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()

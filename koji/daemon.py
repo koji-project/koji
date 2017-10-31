@@ -111,7 +111,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             flags = os.O_CREAT | os.O_WRONLY
             if append:
                 flags |= os.O_APPEND
-            fd = os.open(outfile, flags, 0666)
+            fd = os.open(outfile, flags, 0o666)
             os.dup2(fd, 1)
             if logerror:
                 os.dup2(fd, 2)
@@ -142,7 +142,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 
             if not outfd:
                 try:
-                    outfd = file(outfile, 'r')
+                    outfd = open(outfile, 'r')
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue
@@ -637,7 +637,7 @@ class TaskManager(object):
                     rootdir = "%s/root" % topdir
                     try:
                         st = os.lstat(rootdir)
-                    except OSError, e:
+                    except OSError as e:
                         if e.errno == errno.ENOENT:
                             rootdir = None
                         else:
@@ -658,13 +658,13 @@ class TaskManager(object):
                     #also remove the config
                     try:
                         os.unlink(data['cfg'])
-                    except OSError, e:
+                    except OSError as e:
                         self.logger.warn("%s: can't remove config: %s" % (desc, e))
                 elif age > 120:
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
-                        except OSError, e:
+                        except OSError as e:
                             self.logger.warn("%s: can't list rootdir: %s" % (desc, e))
                             continue
                         if flist:
@@ -691,7 +691,7 @@ class TaskManager(object):
             fn = "%s/%s" % (configdir, f)
             if not os.path.isfile(fn):
                 continue
-            fo = file(fn, 'r')
+            fo = open(fn, 'r')
             id = None
             name = None
             for n in xrange(10):
@@ -892,7 +892,7 @@ class TaskManager(object):
         prefix = "Task %i (pid %i)" % (task_id, pid)
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
-        except OSError, e:
+        except OSError as e:
             #check errno
             if e.errno != errno.ECHILD:
                 #should not happen
@@ -933,7 +933,7 @@ class TaskManager(object):
 
             try:
                 os.kill(pid, sig)
-            except OSError, e:
+            except OSError as e:
                 # process probably went away, we'll find out on the next iteration
                 self.logger.info('Error sending signal %i to %s (pid %i, taskID %i): %s' %
                                  (sig, execname, pid, task_id, e))
@@ -957,14 +957,14 @@ class TaskManager(object):
             proc_path = '/proc/%i/stat' % pid
             if not os.path.isfile(proc_path):
                 return None
-            proc_file = file(proc_path)
+            proc_file = open(proc_path)
             procstats = [not field.isdigit() and field or int(field) for field in proc_file.read().split()]
             proc_file.close()
 
             cmd_path = '/proc/%i/cmdline' % pid
             if not os.path.isfile(cmd_path):
                 return None
-            cmd_file = file(cmd_path)
+            cmd_file = open(cmd_path)
             procstats[1] = cmd_file.read().replace('\0', ' ').strip()
             cmd_file.close()
             if not procstats[1]:
@@ -1222,7 +1222,7 @@ class TaskManager(object):
             self.logger.info("RESPONSE: %r" % response)
             self.session.host.closeTask(handler.id, response)
             return
-        except koji.xmlrpcplus.Fault, fault:
+        except koji.xmlrpcplus.Fault as fault:
             response = koji.xmlrpcplus.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)

@@ -71,7 +71,7 @@ class TestBuildNotification(unittest.TestCase):
         # task_info['id'], method, params, self.session, self.options
         task_id = 999
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'params.json')
-        with file(fn) as fp:
+        with open(fn) as fp:
             kwargs = json.load(fp)
         self.session = MyClientSession('https://koji.example.com/kojihub')
         self.session.load_calls('build_notif_1')
@@ -95,6 +95,6 @@ class TestBuildNotification(unittest.TestCase):
         self.assertEqual(from_addr, "koji@example.com")
         self.assertEqual(recipients, ["user@example.com"])
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'message.txt')
-        with file(fn) as fp:
+        with open(fn) as fp:
             msg_expect = fp.read()
         self.assertEqual(message, msg_expect)

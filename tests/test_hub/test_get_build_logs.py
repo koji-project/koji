@@ -31,7 +31,7 @@ class TestGetBuildLogs(unittest.TestCase):
                 dirpath = os.path.dirname(path)
             koji.ensuredir(dirpath)
             if path:
-                with file(path, 'w') as fo:
+                with open(path, 'w') as fo:
                     fo.write('TEST LOG FILE CONTENTS\n')
 
     def test_get_build_logs_basic(self):

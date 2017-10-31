@@ -301,7 +301,7 @@ class WindowsBuild(object):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))
-        destfile = file(destpath, 'w')
+        destfile = open(destpath, 'w')
         offset = 0
         checksum = hashlib.md5()
         while True:
@@ -560,7 +560,7 @@ def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
     destpath = os.path.join(prefix, path)
-    fobj = file(destpath, 'r')
+    fobj = open(destpath, 'r')
     offset = 0
     sum = hashlib.md5()
     while True:
@@ -614,7 +614,7 @@ def setup_logging(opts):
     if opts.debug:
         level = logging.DEBUG
     logger.setLevel(level)
-    logfd = file(logfile, 'w')
+    logfd = open(logfile, 'w')
     handler = logging.StreamHandler(logfd)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
@@ -643,7 +643,7 @@ def stream_logs(server, handler, builds):
             if not fd:
                 if os.path.isfile(log):
                     try:
-                        fd = file(log, 'r')
+                        fd = open(log, 'r')
                         logs[log] = (relpath, fd)
                     except:
                         log_local('Error opening %s' % log)
