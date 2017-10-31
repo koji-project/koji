@@ -2016,7 +2016,8 @@ class VirtualMethod(object):
 
 
 def grab_session_options(options):
-    '''Convert optparse options to a dict that ClientSession can handle'''
+    """Convert optparse options to a dict that ClientSession can handle;
+    If options is already a dict, filter out meaningless and None value items"""
     s_opts = (
         'user',
         'password',
@@ -2037,8 +2038,10 @@ def grab_session_options(options):
         'use_old_ssl',
         'no_ssl_verify',
         'serverca',
-        )
+    )
     # cert is omitted for now
+    if isinstance(options, dict):
+        return {k: v for k, v in six.iteritems(options) if k in s_opts and v is not None}
     ret = {}
     for key in s_opts:
         if not hasattr(options, key):
