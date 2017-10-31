@@ -7305,7 +7305,7 @@ def get_notification_recipients(build, tag_id, state):
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
-    return set(emails)
+    return list(set(emails))
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
     if context.opts.get('DisableNotifications'):

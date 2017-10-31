@@ -37,7 +37,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         state = koji.BUILD_STATES['CANCELED']
 
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, set([]))
+        self.assertEqual(emails, [])
 
         # only query to watchers
         self.assertEqual(len(self.queries), 1)
@@ -61,7 +61,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.queries = []
 
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, set(['owner_name@test.domain.com']))
+        self.assertEqual(emails, ['owner_name@test.domain.com'])
 
         # there should be only query to watchers
         self.assertEqual(len(self.queries), 1)
@@ -104,7 +104,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         }
 
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, set(['owner_name@test.domain.com', 'pkg_owner_name@test.domain.com']))
+        self.assertEqual(emails, ['owner_name@test.domain.com', 'pkg_owner_name@test.domain.com'])
 
 
         # there should be only query to watchers
@@ -133,7 +133,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
             'usertype': koji.USERTYPES['NORMAL']
         }
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, set(['owner_name@test.domain.com']))
+        self.assertEqual(emails, ['owner_name@test.domain.com'])
 
         # package owner is machine
         get_user.return_value = {
@@ -143,4 +143,4 @@ class TestGetNotificationRecipients(unittest.TestCase):
             'usertype': koji.USERTYPES['HOST']
         }
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, set(['owner_name@test.domain.com']))
+        self.assertEqual(emails, ['owner_name@test.domain.com'])
