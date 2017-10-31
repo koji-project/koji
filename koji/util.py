@@ -85,7 +85,8 @@ def parseTime(val):
     result = TIME_RE.search(rest)
     if result:
         time = [int(r) for r in result.groups()]
-    return calendar.timegm(date + time + [0, 0, 0])
+    return calendar.timegm(
+            datetime.datetime(*(date + time)).timetuple())
 
 def checkForBuilds(session, tag, builds, event, latest=False):
     """Check that the builds existed in tag at the time of the event.
