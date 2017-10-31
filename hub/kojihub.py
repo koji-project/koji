@@ -2331,7 +2331,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
     comps = koji.generate_comps(groups, expand_groups=True)
-    fo = file("%s/comps.xml" % groupsdir, 'w')
+    fo = open("%s/comps.xml" % groupsdir, 'w')
     fo.write(comps)
     fo.close()
 
@@ -2350,7 +2350,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist[repoarch] = file(os.path.join(archdir, 'pkglist'), 'w')
+        pkglist[repoarch] = open(os.path.join(archdir, 'pkglist'), 'w')
     #NOTE - rpms is now an iterator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
@@ -2375,7 +2375,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
 
     #write blocked package lists
     for repoarch in repo_arches:
-        blocklist = file(os.path.join(repodir, repoarch, 'blocklist'), 'w')
+        blocklist = open(os.path.join(repodir, repoarch, 'blocklist'), 'w')
         for pkg in blocks:
             blocklist.write(pkg['package_name'])
             blocklist.write('\n')
@@ -2442,7 +2442,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    mdfile = file(os.path.join(destdir, 'maven-metadata.xml'), 'w')
+    mdfile = open(os.path.join(destdir, 'maven-metadata.xml'), 'w')
     mdfile.write(contents)
     mdfile.close()
     _generate_maven_metadata(destdir)
@@ -6080,7 +6080,7 @@ def check_old_image_files(old):
                     (img_path, img_size, old['filesize']))
     # old images always used sha256 hashes
     sha256sum = hashlib.sha256()
-    image_fo = file(img_path, 'r')
+    image_fo = open(img_path, 'r')
     while True:
         data = image_fo.read(1048576)
         sha256sum.update(data)
@@ -6232,7 +6232,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
-        archivefp = file(filepath)
+        archivefp = open(filepath)
         m = md5_constructor()
         while True:
             contents = archivefp.read(8192)
@@ -6372,14 +6372,14 @@ def _generate_maven_metadata(mavendir):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
                 sum = sum_constr()
-                fobj = file('%s/%s' % (mavendir, mavenfile))
+                fobj = open('%s/%s' % (mavendir, mavenfile))
                 while True:
                     content = fobj.read(8192)
                     if not content:
                         break
                     sum.update(content)
                 fobj.close()
-                sumobj = file('%s/%s' % (mavendir, sumfile), 'w')
+                sumobj = open('%s/%s' % (mavendir, sumfile), 'w')
                 sumobj.write(sum.hexdigest())
                 sumobj.close()
 
@@ -6435,7 +6435,7 @@ def add_rpm_sig(an_rpm, sighdr):
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
-    fo = file(sigpath, 'wb')
+    fo = open(sigpath, 'wb')
     fo.write(sighdr)
     fo.close()
     koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
@@ -6451,7 +6451,7 @@ def _scan_sighdr(sighdr, fn):
     sig_start, sigsize = koji.find_rpm_sighdr(fn)
     hdr_start = sig_start + sigsize
     hdrsize = koji.rpm_hdr_size(fn, hdr_start)
-    inp = file(fn, 'rb')
+    inp = open(fn, 'rb')
     outp = tempfile.TemporaryFile(mode='w+b')
     #before signature
     outp.write(inp.read(sig_start))
@@ -6488,7 +6488,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         koji.splice_rpm_sighdr(sighdr, rpm_path, temp)
         ts = rpm.TransactionSet()
         ts.setVSFlags(0)  #full verify
-        fo = file(temp, 'rb')
+        fo = open(temp, 'rb')
         hdr = ts.hdrFromFdno(fo.fileno())
         fo.close()
     except:
@@ -6551,7 +6551,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
         else:
             os.unlink(signedpath)
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
-    fo = file(sigpath, 'rb')
+    fo = open(sigpath, 'rb')
     sighdr = fo.read()
     fo.close()
     koji.ensuredir(os.path.dirname(signedpath))
@@ -9018,7 +9018,7 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        f = file(filePath, 'r')
+        f = open(filePath, 'r')
         if isinstance(offset, str):
             offset = int(offset)
         if offset != None and offset > 0:
@@ -12641,11 +12641,11 @@ def get_upload_path(reldir, name, create=False, volume=None):
             # assuming login was asserted earlier
             u_fn = os.path.join(udir, '.user')
             if os.path.exists(u_fn):
-                user_id = int(file(u_fn, 'r').read())
+                user_id = int(open(u_fn, 'r').read())
                 if context.session.user_id != user_id:
                     raise koji.GenericError("Invalid upload directory, not owner: %s" % orig_reldir)
             else:
-                fo = file(u_fn, 'w')
+                fo = open(u_fn, 'w')
                 fo.write(str(context.session.user_id))
                 fo.close()
     return os.path.join(udir, name)

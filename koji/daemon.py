@@ -142,7 +142,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 
             if not outfd:
                 try:
-                    outfd = file(outfile, 'r')
+                    outfd = open(outfile, 'r')
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue
@@ -691,7 +691,7 @@ class TaskManager(object):
             fn = "%s/%s" % (configdir, f)
             if not os.path.isfile(fn):
                 continue
-            fo = file(fn, 'r')
+            fo = open(fn, 'r')
             id = None
             name = None
             for n in xrange(10):
@@ -957,14 +957,14 @@ class TaskManager(object):
             proc_path = '/proc/%i/stat' % pid
             if not os.path.isfile(proc_path):
                 return None
-            proc_file = file(proc_path)
+            proc_file = open(proc_path)
             procstats = [not field.isdigit() and field or int(field) for field in proc_file.read().split()]
             proc_file.close()
 
             cmd_path = '/proc/%i/cmdline' % pid
             if not os.path.isfile(cmd_path):
                 return None
-            cmd_file = file(cmd_path)
+            cmd_file = open(cmd_path)
             procstats[1] = cmd_file.read().replace('\0', ' ').strip()
             cmd_file.close()
             if not procstats[1]:
