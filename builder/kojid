@@ -4986,7 +4986,7 @@ class CreaterepoTask(BaseTaskHandler):
                 cmd.append('--update')
                 if self.options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
-        if oldpkgs is not None:
+        if oldpkgs:
             # generate delta-rpms
             cmd.append('--deltas')
             for op_dir in oldpkgs:
