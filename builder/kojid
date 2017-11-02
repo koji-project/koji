@@ -868,6 +868,10 @@ class BuildTask(BaseTaskHandler):
         h = self.readSRPMHeader(srpm)
         data = koji.get_header_fields(h,['name','version','release','epoch'])
         data['task_id'] = self.id
+        if getattr(self, 'source'):
+            data['source'] = self.source['source']
+            data['extra'] = {'url': self.source['url']}
+
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)
         pkg_cfg = self.session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
@@ -933,6 +937,7 @@ class BuildTask(BaseTaskHandler):
                                             parent=self.id)
         # wait for subtask to finish
         result = self.wait(task_id)[task_id]
+        self.source = result['source']
         srpm = result['srpm']
         return srpm
 
@@ -4565,6 +4570,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
                 'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
                                         for f in log_files],
                 'brootid': brootid,
+                'source': scm.get_source(),
                }
 
 class TagNotificationTask(BaseTaskHandler):
