@@ -21,6 +21,7 @@
 from __future__ import absolute_import
 import calendar
 import datetime
+from koji.xmlrpcplus import DateTime
 from fnmatch import fnmatch
 import koji
 import logging
@@ -186,6 +187,8 @@ def encode_datetime(value):
     """Convert datetime objects to strings"""
     if isinstance(value, datetime.datetime):
         return value.isoformat(' ')
+    elif isinstance(value, DateTime):
+        return datetime.datetime(*value.timetuple()[:6]).isoformat(' ')
     else:
         return value
 

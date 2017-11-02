@@ -2,6 +2,7 @@ import datetime
 import unittest
 
 import koji.util
+from koji.xmlrpcplus import DateTime
 
 
 class testEncodeDatetime(unittest.TestCase):
@@ -22,6 +23,15 @@ class testEncodeDatetime(unittest.TestCase):
             self.assertEqual(chk1, dstr)
             self.assertEqual(chk2, dstr)
 
+    def test_xmlrpc_dates(self):
+        # we skip the last because xmlrpc's DateTime class does not preserve
+        # fractions of seconds
+        for dt, dstr in self.DATES[:2]:
+            dt = DateTime(dt)
+            chk1 = koji.util.encode_datetime(dt)
+            chk2 = koji.util.encode_datetime_recurse(dt)
+            self.assertEqual(chk1, dstr)
+            self.assertEqual(chk2, dstr)
 
     def test_embedded_dates(self):
         dt1, ds1 = self.DATES[0]
