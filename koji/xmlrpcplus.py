@@ -11,6 +11,7 @@ import types
 getparser = xmlrpc_client.getparser
 loads = xmlrpc_client.loads
 Fault = xmlrpc_client.Fault
+DateTime = xmlrpc_client.DateTime
 
 
 class ExtendedMarshaller(xmlrpc_client.Marshaller):
