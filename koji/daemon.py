@@ -511,19 +511,21 @@ class SCM(object):
             'url': self.url,
             'source': '',
         }
-        if self.scmtype.startswith('GIT'):
+        if self.scmtype.startswith('CVS') or self.scmtype.startswith('SVN'):
+            scheme = self.scheme[:-3]
+            netloc = self.host
+            path = self.repository
+            query = self.module
+            fragment = self.revision
+        elif self.scmtype.startswith('GIT'):
             cmd = ['git', 'rev-parse', 'HEAD']
             fragment = subprocess.check_output(cmd, cwd=self.sourcedir).strip()
             scheme = self.scheme[:-3]
-            if self.user:
-                netloc = '%s@%s' % (self.user, self.host)
-            else:
-                netloc = self.host
+            netloc = self.host
             path = self.repository
             query = self.module
             r['source'] = urlparse.urlunsplit([scheme, netloc, path, query, fragment])
         return r
-
 
 
 class TaskManager(object):
