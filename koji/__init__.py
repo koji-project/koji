@@ -2041,7 +2041,7 @@ def grab_session_options(options):
     )
     # cert is omitted for now
     if isinstance(options, dict):
-        return {k: v for k, v in six.iteritems(options) if k in s_opts and v is not None}
+        return dict((k, v) for k, v in six.iteritems(options) if k in s_opts and v is not None)
     ret = {}
     for key in s_opts:
         if not hasattr(options, key):
