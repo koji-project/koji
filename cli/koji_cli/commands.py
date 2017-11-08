@@ -3020,6 +3020,8 @@ def anon_handle_rpminfo(goptions, session, args):
             print("Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime'])))
         print("SIGMD5: %(payloadhash)s" % info)
         print("Size: %(size)s" % info)
+        headers = session.getRPMHeaders(rpmID=info['id'], headers=["license"])
+        print("License: %(license)s" % headers)
         if not info.get('external_repo_id', 0):
             print("Build ID: %(build_id)s" % info)
         if info['buildroot_id'] is None:
