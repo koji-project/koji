@@ -7061,3 +7061,170 @@ def handle_moshimoshi(options, session, args):
         print("Authenticated via Kerberos principal %s" % u["krb_principal"])
     elif authtype == koji.AUTHTYPE_SSL:
         print("Authenticated via client certificate %s" % options.cert)
+
+
+def anon_handle_list_notifications(goptions, session, args):
+    "[monitor] List user's notifications"
+    usage = _("usage: %prog list-notifications [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--mine", action="store_true", help=_("Just print your notifications"))
+    parser.add_option("--user", help=_("Only notifications for this user"))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+    if not options.mine and not options.user:
+        parser.error(_("Use --user or --mine."))
+
+    activate_session(session, goptions)
+
+    if options.user:
+        user = session.getUser(options.user)
+        if not user:
+            print("User %s does not exist" % options.user)
+            return 1
+        user_id = user['id']
+    else:
+        user_id = None
+
+    mask = "%(id)6s %(tag)-25s %(package)-25s %(email)-20s %(success)s"
+    head = mask % {'id': 'ID', 'tag': 'Tag', 'package': 'Package', 'email': 'E-mail', 'success': 'Success-only'}
+    print(head)
+    print('-' * len(head))
+    for notification in session.getBuildNotifications(user_id):
+        if notification['tag_id']:
+            notification['tag'] = session.getTag(notification['tag_id'])['name']
+        else:
+            notification['tag'] = '*'
+        if notification['package_id']:
+            notification['package'] = session.getPackage(notification['package_id'])['name']
+        else:
+            notification['package'] = '*'
+        notification['success'] = ['no', 'yes'][notification['success_only']]
+        print(mask % notification)
+
+
+def handle_add_notification(goptions, session, args):
+    "[monitor] Add user's notification"
+    usage = _("usage: %prog add-notification [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--user", help=_("Add notifications for this user (admin-only)"))
+    parser.add_option("--package", help=_("Add notifications for this package"))
+    parser.add_option("--tag", help=_("Add notifications for this tag"))
+    parser.add_option("--success-only", action="store_true", default=False, help=_(""))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+
+    if not options.package and not options.tag:
+        parser.error(_("Command need at least one from --tag or --package options."))
+
+    activate_session(session, goptions)
+
+    if options.user and not session.hasPerm('admin'):
+        parser.error("--user requires admin permission")
+
+    if options.user:
+        user_id = session.getUser(options.user)['id']
+    else:
+        user_id = session.getLoggedInUser()['id']
+
+    if options.package:
+        package_id = session.getPackageID(options.package)
+        if package_id is None:
+            parser.error("Unknown package: %s" % options.package)
+    else:
+        package_id = None
+
+    if options.tag:
+        try:
+            tag_id = session.getTagID(options.tag, strict=True)
+        except koji.GenericError:
+            parser.error("Uknown tag: %s" % options.tag)
+    else:
+        tag_id = None
+
+    session.createNotification(user_id, package_id, tag_id, options.success_only)
+
+
+def handle_remove_notification(goptions, session, args):
+    "[monitor] Remove user's notifications"
+    usage = _("usage: %prog remove-notification [options] ID [ID2, ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    activate_session(session, goptions)
+
+    if len(args) < 1:
+        parser.error(_("At least one notification id has to be specified"))
+
+    try:
+        n_ids = [int(x) for x in args]
+    except ValueError as e:
+        parser.error(_("All notification ids has to be integers"))
+
+    for n_id in n_ids:
+        session.deleteNotification(n_id)
+        if not goptions.quiet:
+            print(_("Notification %s successfully removed.") % n_id)
+
+
+def handle_edit_notification(goptions, session, args):
+    "[monitor] Edit user's notification"
+    usage = _("usage: %prog edit-notification [options] ID")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--package",
+            help=_("Notifications for this package, '*' for all"))
+    parser.add_option("--tag",
+            help=_("Notifications for this tag, '*' for all"))
+    parser.add_option("--success-only", action="store_true", default=None,
+            dest='success_only', help=_("Notify only on successful events"))
+    parser.add_option("--no-success-only", action="store_false",
+            default=None, dest='success_only', help=_("Notify on all events"))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error(_("Only argument is notification ID"))
+
+    try:
+        n_id = int(args[0])
+    except ValueError as e:
+        parser.error(_("Notification ID has to be numeric"))
+
+    if not options.package and not options.tag and options.success_only is None:
+        parser.error(_("Command need at least one option"))
+
+    activate_session(session, goptions)
+
+    old = session.getBuildNotification(n_id)
+
+    if options.package == '*':
+        package_id = None
+    elif options.package:
+        package_id = session.getPackageID(options.package)
+        if package_id is None:
+            parser.error("Unknown package: %s" % options.package)
+    else:
+        package_id = old['package_id']
+
+    if options.tag == '*':
+        tag_id = None
+    elif options.tag:
+        try:
+            tag_id = session.getTagID(options.tag, strict=True)
+        except koji.GenericError:
+            parser.error("Uknown tag: %s" % options.tag)
+    else:
+        tag_id = old['tag_id']
+
+    if options.success_only is not None:
+        success_only = options.success_only
+    else:
+        success_only = old['success_only']
+
+    session.updateNotification(n_id, package_id, tag_id, success_only)

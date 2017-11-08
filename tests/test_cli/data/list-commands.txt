@@ -123,6 +123,10 @@ miscellaneous commands:
         moshimoshi                Introduce yourself
 
 monitor commands:
+        add-notification          Add user's notification
+        edit-notification         Edit user's notification
+        list-notifications        List user's notifications
+        remove-notification       Remove user's notifications
         wait-repo                 Wait for a repo to be regenerated
         watch-logs                Watch logs in realtime
         watch-task                Track progress of particular tasks
