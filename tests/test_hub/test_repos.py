@@ -49,9 +49,27 @@ class TestRepoFunctions(unittest.TestCase):
         kojihub.repo_expire_older(mock.sentinel.tag_id, mock.sentinel.event_id)
         self.assertEqual(len(self.updates), 1)
         update = self.updates[0]
-        query = str(update)
         self.assertEqual(update.table, 'repo')
         self.assertEqual(update.data, {'state': koji.REPO_EXPIRED})
         self.assertEqual(update.rawdata, {})
-        self.assertEqual(update.values, {'event_id': mock.sentinel.event_id,
-                'st_ready': koji.REPO_READY, 'tag_id': mock.sentinel.tag_id})
+        self.assertEqual(update.values['event_id'], mock.sentinel.event_id)
+        self.assertEqual(update.values['tag_id'], mock.sentinel.tag_id)
+        self.assertEqual(update.values['dist'], None)
+        if 'dist = %(dist)s' in update.clauses:
+            raise Exception('Unexpected dist condition')
+
+        # and with dist specified
+        for dist in True, False:
+            self.updates = []
+            kojihub.repo_expire_older(mock.sentinel.tag_id, mock.sentinel.event_id,
+                                      dist=dist)
+            self.assertEqual(len(self.updates), 1)
+            update = self.updates[0]
+            self.assertEqual(update.table, 'repo')
+            self.assertEqual(update.data, {'state': koji.REPO_EXPIRED})
+            self.assertEqual(update.rawdata, {})
+            self.assertEqual(update.values['event_id'], mock.sentinel.event_id)
+            self.assertEqual(update.values['tag_id'], mock.sentinel.tag_id)
+            self.assertEqual(update.values['dist'], dist)
+            if 'dist = %(dist)s' not in update.clauses:
+                raise Exception('Missing dist condition')

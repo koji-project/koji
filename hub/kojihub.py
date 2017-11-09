@@ -2551,15 +2551,19 @@ def repo_delete(repo_id):
     return len(references)
 
 
-def repo_expire_older(tag_id, event_id):
-    """Expire repos for tag older than event"""
+def repo_expire_older(tag_id, event_id, dist=None):
+    """Expire repos for tag older than event
+
+    If dist is not None, then only expire repos with the given dist value
+    """
     st_ready = koji.REPO_READY
-    update = UpdateProcessor(
-            'repo',
-            clauses=['tag_id = %(tag_id)s',
-                     'create_event < %(event_id)s',
-                     'state = %(st_ready)s'],
-            values=locals())
+    clauses=['tag_id = %(tag_id)s',
+             'create_event < %(event_id)s',
+             'state = %(st_ready)s']
+    if dist is not None:
+        dist = bool(dist)
+        clauses.append('dist = %(dist)s')
+    update = UpdateProcessor('repo', values=locals(), clauses=clauses)
     update.set(state=koji.REPO_EXPIRED)
     update.execute()
 
@@ -12609,7 +12613,7 @@ class HostExports(object):
             return
         #else:
         repo_ready(repo_id)
-        repo_expire_older(rinfo['tag_id'], rinfo['create_event'])
+        repo_expire_older(rinfo['tag_id'], rinfo['create_event'], rinfo['dist'])
 
         #make a latest link
         if rinfo['dist']:
