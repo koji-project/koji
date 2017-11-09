@@ -2550,15 +2550,19 @@ def repo_delete(repo_id):
         repo_set_state(repo_id, koji.REPO_DELETED)
     return len(references)
 
+
 def repo_expire_older(tag_id, event_id):
     """Expire repos for tag older than event"""
     st_ready = koji.REPO_READY
-    st_expired = koji.REPO_EXPIRED
-    q = """UPDATE repo SET state=%(st_expired)i
-    WHERE tag_id = %(tag_id)i
-        AND create_event < %(event_id)i
-        AND state = %(st_ready)i"""
-    _dml(q, locals())
+    update = UpdateProcessor(
+            'repo',
+            clauses=['tag_id = %(tag_id)s',
+                     'create_event < %(event_id)s',
+                     'state = %(st_ready)s'],
+            values=locals())
+    update.set(state=koji.REPO_EXPIRED)
+    update.execute()
+
 
 def repo_references(repo_id):
     """Return a list of buildroots that reference the repo"""
