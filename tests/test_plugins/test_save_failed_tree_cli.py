@@ -1,5 +1,5 @@
 import mock
-import StringIO
+import six
 import unittest
 
 import koji
@@ -120,7 +120,7 @@ class TestSaveFailedTree(unittest.TestCase):
                                                              poll_interval=options.poll_interval,
                                                              quiet=options.quiet)
 
-    @mock.patch('sys.stdout', new_callable=StringIO.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_save_failed_tree_errors(self, stdout):
         # koji save-failed-tree 123 456
         arguments = [123, 456]
