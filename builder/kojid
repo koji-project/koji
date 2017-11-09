@@ -4938,6 +4938,8 @@ Status: %(status)s\r
         if six.PY3:
             message = message.encode('utf8')
         server = smtplib.SMTP(self.options.smtphost)
+        if self.options.smtp_user is not None and self.options.smtp_pass is not None:
+            server.login(self.options.smtp_user, self.options.smtp_pass)
         #server.set_debuglevel(True)
 
         server.sendmail(from_addr, recipients, message)
@@ -5150,6 +5152,8 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         if six.PY3:
             message = message.encode('utf8')
         server = smtplib.SMTP(self.options.smtphost)
+        if self.options.smtp_user is not None and self.options.smtp_pass is not None:
+            server.login(self.options.smtp_user, self.options.smtp_pass)
         # server.set_debuglevel(True)
         server.sendmail(from_addr, recipients, message)
         server.quit()
@@ -6184,6 +6188,8 @@ def get_options():
                 'distribution': 'Koji',
                 'mockhost': 'koji-linux-gnu',
                 'smtphost': 'example.com',
+                'smtp_user': None,
+                'smtp_pass': None,
                 'from_addr': 'Koji Build System <buildsys@example.com>',
                 'krb_principal': None,
                 'host_principal_format': 'compile/%s@EXAMPLE.COM',
