@@ -973,7 +973,7 @@ def anon_handle_mock_config(goptions, session, args):
         else:
             repo = session.getRepo(target['build_tag'])
             if not repo:
-                print(_("Could not get a repo for tag: %(name)s") % opts['tag_name'])
+                print(_("Could not get a repo for tag: %s") % opts['tag_name'])
                 return 1
             opts['repoid'] = repo['id']
     else:
