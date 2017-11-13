@@ -556,8 +556,11 @@ class RepoManager(object):
         """Determine which tags currently need regeneration"""
 
         n_need = len(self.needed_tags)
-        self.build_tags = set(
-                [t['build_tag']for t in self.session.getBuildTargets()])
+        ignore = self.options.ignore_tags.split()
+        self.build_tags = set([
+            t['build_tag'] for t in self.session.getBuildTargets()
+            if not koji.util.multi_fnmatch(t['build_tag_name'], ignore)
+            ])
         #index repos by tag
         tag_repos = {}
         for repo in self.repos.values():
@@ -811,6 +814,7 @@ def get_options():
     defaults = {'with_src': False,
                 'debuginfo_tags': '',
                 'source_tags': '',
+                'ignore_tags': '',
                 'verbose': False,
                 'debug': False,
                 'ignore_stray_repos': False,
@@ -847,7 +851,8 @@ def get_options():
                     'max_delete_processes', 'max_repo_tasks_maven',
                     'delete_batch_size', 'dist_repo_lifetime', 'sleeptime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
-                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
+                    'cert', 'ca', 'serverca', 'debuginfo_tags',
+                    'source_tags', 'ignore_tags')  # FIXME: remove ca here
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',
                      'krb_rdns', 'krb_canon_host', 'no_ssl_verify')
         for name in config.options(section):
