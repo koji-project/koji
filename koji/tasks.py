@@ -21,6 +21,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 import koji
+import koji.plugin
 import koji.util
 import os
 import logging
