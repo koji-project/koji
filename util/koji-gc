@@ -76,6 +76,10 @@ def get_options():
                       help=_("show xmlrpc debug output"))
     parser.add_option("--smtp-host", metavar="HOST",
                       help=_("specify smtp server for notifications"))
+    parser.add_option("--smtp-user", dest="smtp_user", metavar="USER",
+                      help=_("specify smtp username for notifications"))
+    parser.add_option("--smtp-pass", dest="smtp_pass", metavar="PASSWORD",
+                      help=optparse.SUPPRESS_HELP) # do not allow passwords on a command line
     parser.add_option("--no-mail", action='store_false', default=True, dest="mail",
                       help=_("don't send notifications"))
     parser.add_option("--send-mail", action='store_true', dest="mail",
@@ -138,6 +142,8 @@ def get_options():
         ['server', None, 'string'],
         ['weburl', None, 'string'],
         ['smtp_host', None, 'string'],
+            ['smtp_user', None, 'string'],
+            ['smtp_pass', None, 'string'],
         ['from_addr', None, 'string'],
         ['email_template', None, 'string'],
         ['email_domain', None, 'string'],
@@ -416,6 +422,8 @@ Build: %%(name)s-%%(version)s-%%(release)s
             print("Sending warning notice to %s" % msg['To'])
         try:
             s = smtplib.SMTP(options.smtp_host)
+            if options.smtp_user is not None and options.smtp_pass is not None:
+                s.login(options.smtp_user, options.smtp_pass)
             s.sendmail(msg['From'], msg['To'], msg.as_string())
             s.quit()
         except:
