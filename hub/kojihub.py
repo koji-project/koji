@@ -9102,9 +9102,24 @@ class RootExports(object):
     changeBuildVolume = staticmethod(change_build_volume)
 
     def getVolume(self, volume, strict=False):
+        """Lookup the given volume
+
+        Returns a dictionary containing the name and id of the matching
+        volume, or None if no match.
+        If strict is true, raises an error if no match.
+        """
         return lookup_name('volume', volume, strict=strict)
 
     def applyVolumePolicy(self, build, strict=False):
+        """Apply the volume policy to a given build
+
+        The volume policy is normally applied at import time, but it can
+        also be applied with this call.
+
+        Parameters:
+            build: the build to apply the policy to
+            strict: if True, raises on exception on policy issues
+        """
         context.session.assertPerm('admin')
         build = get_build(build, strict=True)
         return apply_volume_policy(build, strict)
