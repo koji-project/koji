@@ -1,40 +1,143 @@
 Storage Volumes
 ===============
 
-Each build now has a volume attribute that indicates which volume it is
-stored on. The default volume is named 'DEFAULT' and corresponds to the
-same storage paths under /mnt/koji that we have always used.
 
-Additional volumes can be set up by creating the directory
-/mnt/koji/vol/NAME (where NAME is the name of the volume). The
-expectation is that this will be a mount point, but it doesn't have to be.
+Introduction
+------------
+
+Since version 1.7.0, Koji has had the ability to store builds on
+multiple volumes.
+
+Each build in Koji has a volume field that indicates which volume it is
+stored on. The default volume is named ``DEFAULT`` and corresponds to the
+original paths under ``/mnt/koji`` that predate this feature.
+
+Additional volumes correspond to paths under
+``/mnt/koji/vol/NAME`` (where NAME is the name of the volume). All builds
+associated with such a volume will be stored under this directory.
+The expectation is that this directory will map to a different file system.
+
+
+.. hint::
+    | If ``koji-1.13.0-1`` is on the DEFAULT volume, its path will be:
+    | /mnt/koji/packages/koji/1.13.0/1
+
+    | If ``koji-1.13.0-1`` is on the volume named "test", its path will be:
+    | /mnt/koji/vol/test/packages/koji/1.13.0/1
+
+Adding a new volume
+-------------------
 
 The new volume directory should initially contain a packages/
 subdirectory, and the permissions should be the same as the default
 packages directory.
 
 Assuming you do use a mount for a vol/NAME directory, you will want to
-ensure that the same mounts are created on any builders in the
-createrepo group, any hosts running kojira or similar maintenance, and
-any hosts that rely on the topdir option rather than the topurl option.
+ensure that the same mounts are created on all systems that interface with
+``/mnt/koji``,  such as builders that run createrepo tasks, hosts running
+kojira or similar maintenance, and any hosts that rely on the topdir option
+rather than the topurl option.
 
 Once you have the directory set up, you can tell Koji about it by
-running 'koji add-volume NAME' (which will fail if the hub can't find
-the directory). You can get a list of known volumes with the 'koji
-list-volumes' command, and you can move a build to a different volume
-with the 'koji set-build-volume' command. Like all koji subcommands,
-these have a --help option.
+running ``koji add-volume NAME``. This call will fail if the hub can't find
+the directory.
+
+Moving builds onto other volumes
+--------------------------------
+
+By default, all builds live on the DEFAULT volume.
+
+An admin can move a build to a different volume by using the
+``koji set-build-volume`` command, or by using the underlying
+``changeBuildVolume`` api call.
 
 Moving a build across volumes will cause kojira to trigger repo
-regenerations, if appropriate. When the volume is not DEFAULT, koji will
+regenerations, if appropriate. When the new volume is not DEFAULT, Koji will
 create a relative symlink to the new build directory on the default
 volume. Moving builds across volumes may immediately break repos (until
 the regen occurs), so use caution.
 
-Policies involving builds (e.g. gc policy, tag policy), can test a
-build's volume (by name) with the 'volume' test.
+Consider the following example:
 
-That's pretty much it. It is a very simplistic system. There is no
-automation. It is up to the administrator to manage the mount points and
-to manage which builds are stored on which volumes. All new builds are
-stored on the default volume until they are moved elsewhere.
+::
+
+    # mypkg-1.1-20 initially on default volume
+    $ file /mnt/koji/packages/mypkg/1.1/20
+    /mnt/koji/packages/mypkg/1.1/20: directory
+
+    # move it to test volume
+    $ koji set-build-volume test mypkg-1.1-20
+    $ file /mnt/koji/vol/test/packages/mypkg/1.1/20
+    /mnt/koji/vol/test/packages/mypkg/1.1/20: directory
+
+    # original location is now a symlink
+    $ file /mnt/koji/packages/mypkg/1.1/20
+    /mnt/koji/packages/mypkg/1.1/20: symbolic link to ../../../vol/test/packages/mypkg/1.1/20
+
+
+Using the volume in policy checks
+---------------------------------
+
+Policies involving builds (e.g. gc policy, tag policy), can test a
+build's volume with the ``volume`` test. This is a pattern match
+test against the volume name.
+
+Setting a volume policy
+-----------------------
+
+The Koji 1.14.0 release adds the ability to set a volume policy on the hub.
+This policy is used at import time to determine which volume the build should
+be assigned to. This provides a systematic way to distribute builds
+across multiple volumes without manual intervention.
+
+There is relatively limited data available to the volume policy. Tests that are
+expected to work include:
+
+- user based tests (the user performing the build or running the import)
+- package based tests (e.g. ``is_new_package`` or ``package``)
+- cg match tests
+- the buildtag test
+
+The action value for the volume policy should be simply the name of the volume
+to use.
+
+The default volume policy is ``all :: DEFAULT``.
+
+If the volume policy contains errors, or does not return a result, then the
+DEFAULT volume is used.
+
+For more information about Koji policies see:
+:doc:`Defining hub policies <defining_hub_policies>`
+
+
+CLI commands
+------------
+
+``add-volume``
+    adds a new volume (directory must already be set up)
+``list-volumes``
+    prints a list of known volumes
+``set-build-volume``
+    moves a build to different volume
+
+
+API calls
+---------
+
+``addVolume(name, strict=True)``
+    Add a new storage volume in the database
+
+``applyVolumePolicy(build, strict=False)``
+    Apply the volume policy to a given build
+
+``changeBuildVolume(build, volume, strict=True)``
+    Move a build to a different storage volume
+
+``getVolume(volume, strict=False)``
+    Lookup the given volume
+
+``listVolumes()``
+    List storage volumes
+
+``removeVolume(volume)``
+    Remove unused storage volume from the database

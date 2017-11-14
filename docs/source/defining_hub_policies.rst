@@ -119,6 +119,8 @@ The system currently looks for the following policies
   requested
 * package_list : checked when the package list for a tag is modified
 * channel : consulted when a task is created
+* cg_import : consulted during content generator imports
+* volume : determine which volume a build should live on
 
 These policies are set by assigning a rule set to the given name in the policy
 section.
