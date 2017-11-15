@@ -34,6 +34,7 @@ Contents
     using_the_koji_build_system
     profiles
     plugins
+    volumes
     writing_a_plugin
     writing_koji_code
     content_generators
