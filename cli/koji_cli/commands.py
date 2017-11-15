@@ -3277,7 +3277,7 @@ def handle_clone_tag(goptions, session, args):
                               locked=srctag['locked'],
                               maven_support=srctag['maven_support'],
                               maven_include_all=srctag['maven_include_all'])
-            newtag = session.getTag(args[1]) # store the new tag, need its asigned id.
+            newtag = session.getTag(args[1], strict=True) # store the new tag, need its asigned id.
         # get pkglist of src-tag, including inherited packages.
         if options.pkgs:
             srcpkgs = session.listPackages(tagID=srctag['id'], inherited=True, event=event.get('id'))
@@ -4769,7 +4769,7 @@ def handle_lock_tag(goptions, session, args):
         if not selected:
             print(_("No tags matched"))
     else:
-        selected = [session.getTag(name) for name in args]
+        selected = [session.getTag(name, strict=True) for name in args]
     for tag in selected:
         if options.master:
             #set the master lock
@@ -6847,7 +6847,7 @@ def handle_regen_repo(options, session, args):
             parser.error(_("No matching build target: " + tag))
             assert False  # pragma: no cover
         tag = info['build_tag_name']
-        info = session.getTag(tag)
+        info = session.getTag(tag, strict=True)
     else:
         info = session.getTag(tag)
         if not info:
