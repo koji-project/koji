@@ -218,9 +218,11 @@ class TaskWatcher(object):
         state = koji.TASK_STATES[self.info['state']]
         return (state in ['CLOSED','CANCELED','FAILED'])
 
-    def is_success(self):
+    def is_success(self, ignore_child=True):
         if self.info is None:
             return False
+        if ignore_child and self.level != 0:
+            return True
         state = koji.TASK_STATES[self.info['state']]
         return (state == 'CLOSED')
 
@@ -285,7 +287,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
     try:
         tasks = {}
         for task_id in tasklist:
-            tasks[task_id] = TaskWatcher(task_id,session,quiet=quiet)
+            tasks[task_id] = TaskWatcher(task_id, session, quiet=quiet)
         while True:
             all_done = True
             for task_id, task in list(tasks.items()):
