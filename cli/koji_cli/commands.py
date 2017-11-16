@@ -7005,9 +7005,12 @@ def anon_handle_search(options, session, args):
     parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
     parser.add_option("--exact", action="store_true", help=_("exact matches only"))
     (options, args) = parser.parse_args(args)
-    if not args:
-        parser.print_help()
-        return
+    if len(args) < 1:
+        parser.error(_("Please specify search type"))
+        assert False  # pragma: no cover
+    if len(args) < 2:
+        parser.error(_("Please specify search pattern"))
+        assert False  # pragma: no cover
     type = args[0]
     if type not in _search_types:
         parser.error(_("Unknown search type: %s") % type)
