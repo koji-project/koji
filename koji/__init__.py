@@ -23,6 +23,7 @@
 
 
 from __future__ import absolute_import
+import copy
 import sys
 from six.moves import range
 from six.moves import zip
@@ -2126,16 +2127,15 @@ class ClientSession(object):
         principal.  The principal must be in the "ProxyPrincipals" list on
         the server side."""
 
-        if principal is None and keytab is None and ccache is None:
-            try:
-                # Silently try GSSAPI first
-                if self.gssapi_login(proxyuser=proxyuser):
-                    return True
-            except:
-                if krbV:
-                    pass
-                else:
-                    raise
+        try:
+            # Silently try GSSAPI first
+            if self.gssapi_login(principal, keytab, ccache, proxyuser=proxyuser):
+                return True
+        except:
+            if krbV:
+                pass
+            else:
+                raise
 
         if not krbV:
             raise PythonImportError(
@@ -2224,7 +2224,7 @@ class ClientSession(object):
         # else
         return host
 
-    def gssapi_login(self, proxyuser=None):
+    def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
         if not HTTPKerberosAuth:
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
@@ -2241,10 +2241,18 @@ class ClientSession(object):
 
         # 60 second timeout during login
         sinfo = None
+        old_env = copy.copy(os.environ)
         old_opts = self.opts
         self.opts = old_opts.copy()
         self.opts['timeout'] = 60
-        self.opts['auth'] = HTTPKerberosAuth()
+        kwargs = {}
+        if keytab:
+            os.environ['KRB5_CLIENT_KTNAME'] = keytab
+        if ccache:
+            os.environ['KRB5CCNAME'] = ccache
+        if principal:
+            kwargs['principal'] = principal
+        self.opts['auth'] = HTTPKerberosAuth(**kwargs)
         try:
             try:
                 # Depending on the server configuration, we might not be able to
@@ -2256,6 +2264,7 @@ class ClientSession(object):
                 self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
+            os.environ = old_env
         if not sinfo:
             raise AuthError('unable to obtain a session')
 
