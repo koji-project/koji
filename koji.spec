@@ -62,7 +62,6 @@ contains shared libraries and the command-line interface.
 Summary: Build system tools python library
 %{?python_provide:%python_provide python2-%{name}}
 BuildRequires: python-devel
-Requires: python-krbV >= 1.0.13
 %if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
@@ -70,7 +69,11 @@ Requires: rpm-python
 %endif
 Requires: pyOpenSSL
 Requires: python-requests
+%if 0%{?fedora} >= 23 || 0%{?rhel} >= 7
 Requires: python-requests-kerberos
+%else
+Requires: python-krbV >= 1.0.13
+%endif
 Requires: python-dateutil
 Requires: python-six
 
@@ -247,13 +250,13 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %else
 Requires: mod_auth_kerb
+Requires: python-krbV >= 1.0.13
 %endif
 Requires: python-psycopg2
 Requires: python-cheetah
 Requires: %{name} = %{version}-%{release}
 # we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
-Requires: python-krbV >= 1.0.13
 
 %description web
 koji-web is a web UI to the Koji system.
