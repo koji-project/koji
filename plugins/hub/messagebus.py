@@ -14,7 +14,10 @@ import qpid.messaging.transports
 from ssl import wrap_socket
 import socket
 import os
-import krbV
+try:
+    import krbV
+except ImportError:  # pragma: no cover
+    krbV = None
 
 MAX_KEY_LENGTH = 255
 CONFIG_FILE = '/etc/koji-hub/plugins/messagebus.conf'
@@ -105,6 +108,9 @@ def get_sender():
         url += config.get('broker', 'username') + '/'
         url += config.get('broker', 'password') + '@'
     elif auth == 'GSSAPI':
+        if krbV is None:
+            # TODO: port this to python-gssapi
+            raise PluginError('krbV module not installed')
         ccname = 'MEMORY:messagebus'
         os.environ['KRB5CCNAME'] = ccname
         ctx = krbV.default_context()

@@ -9,7 +9,7 @@
 try:
     import krbV
 except ImportError:  # pragma: no cover
-    pass
+    krbV = None
 import koji
 from koji.util import LazyDict, LazyValue
 import koji.policy
@@ -345,7 +345,7 @@ def ensure_connection(session):
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
 
 def has_krb_creds():
-    if 'krbV' not in sys.modules:
+    if krbV is None or 'krbV' not in sys.modules:
         return False
     try:
         ctx = krbV.default_context()
