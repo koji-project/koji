@@ -1,43 +1,27 @@
 from __future__ import absolute_import
 import mock
-import os
 import six
-import sys
 import unittest
 
 from koji_cli.commands import handle_maven_chain
+from . import utils
 
 
-class TestMavenChain(unittest.TestCase):
+class TestMavenChain(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
 
     def setUp(self):
-        self.progname = os.path.basename(sys.argv[0]) or 'koji'
         self.target = 'target'
         self.config = 'config'
         self.task_id = 101
 
-    def format_error_message(self, message):
-        return """Usage: %s maven-chain [options] target config...
+        self.error_format = """Usage: %s maven-chain [options] target config...
 (Specify the --help global option for a list of other help options)
 
-%s: error: %s
-""" % (self.progname, self.progname, message)
-
-    def assert_console_output(self, device, expected, wipe=True, regex=False):
-        if not isinstance(device, six.StringIO):
-            raise TypeError('Not a StringIO object')
-
-        output = device.getvalue()
-        if not regex:
-            self.assertMultiLineEqual(output, expected)
-        else:
-            six.assertRegex(self, output, expected)
-        if wipe:
-            device.truncate(0)
-            device.seek(0)
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -75,40 +59,48 @@ class TestMavenChain(unittest.TestCase):
         }
 
         # Unknonw target test
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
-        expected = self.format_error_message("Unknown build target: %s" %
-                                             self.target)
-        self.assert_console_output(stderr, expected)
-        self.assertEqual(cm.exception.code, 2)
+        expected = self.format_error_message(
+            "Unknown build target: %s" % self.target)
+        self.assert_system_exit(
+            handle_maven_chain,
+            options,
+            session,
+            arguments,
+            stderr=expected)
 
         # Unknow destination tag test
         session.getBuildTarget.return_value = target_info
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
-        expected = self.format_error_message("Unknown destination tag: %s" %
-                                             target_info['dest_tag_name'])
-        self.assert_console_output(stderr, expected)
-        self.assertEqual(cm.exception.code, 2)
+        expected = self.format_error_message(
+            "Unknown destination tag: %s" % target_info['dest_tag_name'])
+        self.assert_system_exit(
+            handle_maven_chain,
+            options,
+            session,
+            arguments,
+            stderr=expected)
 
         # Distination is locked and --scratch is not specified
         session.getTag.return_value = tag_info
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
-        expected = self.format_error_message("Destination tag %s is locked" %
-                                             tag_info['name'])
-        self.assert_console_output(stderr, expected)
-        self.assertEqual(cm.exception.code, 2)
+        expected = self.format_error_message(
+            "Destination tag %s is locked" % tag_info['name'])
+        self.assert_system_exit(
+            handle_maven_chain,
+            options,
+            session,
+            arguments,
+            stderr=expected)
 
         # Test ValueError exception asserted in parse_maven_chain
         arguments.extend(['--skip-tag', '--scratch',
                           '--force', '--background'])
         parse_maven_chain_mock.side_effect = ValueError('fake-value-error')
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
         expected = self.format_error_message("fake-value-error")
-        self.assert_console_output(stderr, expected)
-        self.assertEqual(cm.exception.code, 2)
+        self.assert_system_exit(
+            handle_maven_chain,
+            options,
+            session,
+            arguments,
+            stderr=expected)
 
         # Background or --nowait is true
         parse_maven_chain_mock.side_effect = None
@@ -117,7 +109,7 @@ class TestMavenChain(unittest.TestCase):
         expected = "Created task: %d\n" % self.task_id
         expected += "Task info: %s/taskinfo?taskID=%s\n" % \
                     (options.weburl, self.task_id)
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # reset  mocks to run full test
         activate_session_mock.reset_mock()
@@ -131,7 +123,7 @@ class TestMavenChain(unittest.TestCase):
         expected = "Created task: %d\n" % self.task_id
         expected += "Task info: %s/taskinfo?taskID=%s\n" % \
                     (options.weburl, self.task_id)
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_with(session, options)
@@ -149,12 +141,12 @@ class TestMavenChain(unittest.TestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_maven_chain_help_compat(
+    def test_handle_maven_no_argument_error(
             self,
             activate_session_mock,
             stderr,
             stdout):
-        """Test handle_maven_chain help message compact output"""
+        """Test handle_maven_chain no argument error"""
         arguments = []
         options = mock.MagicMock()
 
@@ -162,33 +154,25 @@ class TestMavenChain(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
-        expected_stderr = self.format_error_message(
+        expected = self.format_error_message(
             "Two arguments (a build target and a config file) are required")
-        self.assert_console_output(stdout, '')
-        self.assert_console_output(stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_maven_chain,
+            options,
+            session,
+            arguments,
+            stdout='',
+            stderr=expected,
+            activate_session=None)
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_maven_chain_help_full(
-            self, activate_session_mock, stderr, stdout):
+    def test_handle_maven_chain_help(self):
         """Test handle_maven_chain help message full output"""
-        arguments = ['--help']
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            handle_maven_chain(options, session, arguments)
-        expected_stdout = """Usage: %s maven-chain [options] target config...
+        self.assert_help(
+            handle_maven_chain,
+            """Usage: %s maven-chain [options] target config...
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -199,13 +183,8 @@ Options:
   --force       Force rebuilds of all packages
   --nowait      Don't wait on build
   --background  Run the build at a lower priority
-""" % (self.progname)
-        self.assert_console_output(stdout, expected_stdout)
-        self.assert_console_output(stderr, '')
+""" % (self.progname))
 
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 0)
 
 if __name__ == '__main__':
     unittest.main()

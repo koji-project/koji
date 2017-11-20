@@ -1,41 +1,24 @@
 from __future__ import absolute_import
 import mock
-import os
 import six
-import sys
 import unittest
 import json
 
 from koji_cli.commands import handle_call
+from . import utils
 
 
-class TestCall(unittest.TestCase):
+class TestCall(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
 
     def setUp(self):
-        self.progname = os.path.basename(sys.argv[0]) or 'koji'
-
-    def format_error_message(self, message):
-        return """Usage: %s call [options] name [arg...]
+        self.error_format = """Usage: %s call [options] name [arg...]
 (Specify the --help global option for a list of other help options)
 
-%s: error: %s
-""" % (self.progname, self.progname, message)
-
-    def assert_console_output(self, device, expected, wipe=True, regex=False):
-        if not isinstance(device, six.StringIO):
-            raise TypeError('Not a StringIO object')
-
-        output = device.getvalue()
-        if not regex:
-            self.assertMultiLineEqual(output, expected)
-        else:
-            six.assertRegex(self, output, expected)
-        if wipe:
-            device.truncate(0)
-            device.seek(0)
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -52,7 +35,7 @@ class TestCall(unittest.TestCase):
         handle_call(options, session, arguments)
         activate_session_mock.assert_called_with(session, options)
         session.ssl_login.assert_called_with('debug', cert='/etc/pki/cert')
-        self.assert_console_output(stdout, "'%s'\n" % response)
+        self.assert_console_message(stdout, "'%s'\n" % response)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -75,7 +58,7 @@ class TestCall(unittest.TestCase):
         handle_call(options, session, arguments)
         activate_session_mock.assert_called_with(session, options)
         session.ssl_login.assert_called_with(cert='/etc/pki/cert')
-        self.assert_console_output(stdout, "'%s'\n" % response[1])
+        self.assert_console_message(stdout, "'%s'\n" % response[1])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -102,7 +85,7 @@ class TestCall(unittest.TestCase):
         session.ssl_login.assert_called_with(cert='/etc/pki/cert')
 
         expect = json.dumps(response, indent=2, separators=(',', ': '))
-        self.assert_console_output(stdout, '%s\n' % expect)
+        self.assert_console_message(stdout, '%s\n' % expect)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -116,13 +99,16 @@ class TestCall(unittest.TestCase):
 
         # Run it and check immediate output
         # argument is empty
-        with self.assertRaises(SystemExit) as cm:
-            handle_call(options, session, arguments)
         expected = self.format_error_message(
                     "Please specify the name of the XML-RPC method")
-        self.assert_console_output(stderr, expected)
+        self.assert_system_exit(
+            handle_call,
+            options,
+            session,
+            arguments,
+            stderr=expected,
+            activate_session=None)
         activate_session_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
 
         arguments = ['ssl_login', '--python', '--json-output']
 
@@ -136,26 +122,15 @@ class TestCall(unittest.TestCase):
                  self.assertRaises(SystemExit) as cm:
                 handle_call(options, session, arguments)
             expected = self.format_error_message(msg)
-            self.assert_console_output(stderr, expected)
+            self.assert_console_message(stderr, expected)
             activate_session_mock.assert_not_called()
             self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_call_help(
-            self, activate_session_mock, stderr, stdout):
-        """Test handle_call help message full output"""
-        arguments = ['--help']
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            handle_call(options, session, arguments)
-        expected = """Usage: %s call [options] name [arg...]
+    def test_handle_call_help(self):
+        """Test handle_call help message"""
+        self.assert_help(
+            handle_call,
+            """Usage: %s call [options] name [arg...]
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -164,13 +139,8 @@ Options:
   --kwargs=KWARGS  Specify keyword arguments as a dictionary (implies
                    --python)
   --json-output    Use JSON syntax for output
-""" % (self.progname)
-        self.assert_console_output(stdout, expected)
-        self.assert_console_output(stderr, '')
+""" % (self.progname))
 
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 0)
 
 if __name__ == '__main__':
     unittest.main()

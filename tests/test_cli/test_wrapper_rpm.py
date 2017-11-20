@@ -1,37 +1,28 @@
 from __future__ import absolute_import
 import mock
-import os
 import six
-import sys
 import unittest
 
 from koji_cli.commands import handle_wrapper_rpm
+from . import utils
 
 
-class TestWrapperRpm(unittest.TestCase):
+class TestWrapperRpm(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
 
     def setUp(self):
-        self.progname = os.path.basename(sys.argv[0]) or 'koji'
         self.target = 'target'
         self.build = '1'
         self.scm_url = 'git+https://github.com/project/test#12345'
         self.task_id = 1
 
-    def assert_console_output(self, device, expected, wipe=True, regex=False):
-        if not isinstance(device, six.StringIO):
-            raise TypeError('Not a StringIO object')
+        self.error_format = """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
+(Specify the --help global option for a list of other help options)
 
-        output = device.getvalue()
-        if not regex:
-            self.assertMultiLineEqual(output, expected)
-        else:
-            six.assertRegex(self, output, expected)
-        if wipe:
-            device.truncate(0)
-            device.seek(0)
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -63,24 +54,24 @@ class TestWrapperRpm(unittest.TestCase):
 
         arguments.extend(['--create-build', '--skip-tag', '--scratch'])
         self.assertEqual(None, handle_wrapper_rpm(options, session, arguments))
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # Background off but --nowait is specified
         running_in_bg_mock.return_value = False
 
         args = arguments + ['--nowait']
         self.assertEqual(None, handle_wrapper_rpm(options, session, args))
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # proirity test
         args = arguments + ['--nowait', '--background']
         self.assertEqual(None, handle_wrapper_rpm(options, session, args))
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # watch task case
         watch_tasks_mock.return_value = True
         self.assertTrue(handle_wrapper_rpm(options, session, arguments))
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_with(session, options)
@@ -134,47 +125,56 @@ class TestWrapperRpm(unittest.TestCase):
             self.scm_url,
             '--ini=/etc/koji.ini'
         ]
-        with self.assertRaises(SystemExit) as cm:
-            handle_wrapper_rpm(options, session, arguments)
-        expected_stderr = """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
-(Specify the --help global option for a list of other help options)
-
-%s: error: Exactly one argument (a build target) is required
-""" % (self.progname, self.progname)
-        self.assert_console_output(stdout, '')
-        self.assert_console_output(stderr, expected_stderr)
+        expected = self.format_error_message(
+            "Exactly one argument (a build target) is required")
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stdout='',
+            stderr=expected,
+            activate_session=None)
 
         # If koji.util.parse_maven_param has troubles
         # ValueError exception
         arguments = [self.target, '--ini=/etc/koji.ini']
-        with self.assertRaises(SystemExit) as cm:
-            parse_maven_mock.side_effect = ValueError('fake-value-error')
-            handle_wrapper_rpm(options, session, arguments)
-        self.assert_console_output(
-            stderr, '.*error: fake-value-error', regex=True)
-        self.assertEqual(cm.exception.code, 2)
+        parse_maven_mock.side_effect = ValueError('fake-value-error')
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stderr={'message': '.*error: fake-value-error',
+                    'regex': True}
+        )
 
         parse_maven_mock.side_effect = None
 
         # type != wrapper case
-        with self.assertRaises(SystemExit) as cm:
-            bad_param = {'pkg1': maven_param['pkg1'].copy()}
-            bad_param['pkg1']['type'] = 'undefined'
-            parse_maven_mock.return_value = bad_param
-            handle_wrapper_rpm(options, session, arguments)
-        self.assert_console_output(
-            stderr,
-            'Section .* does not contain a wrapper-rpm config',
-            regex=True)
+        bad_param = {'pkg1': maven_param['pkg1'].copy()}
+        bad_param['pkg1']['type'] = 'undefined'
+        parse_maven_mock.return_value = bad_param
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stderr={'message': 'Section .* does not contain a wrapper-rpm config',
+                    'regex': True}
+        )
 
         # Lastest build does not exist case
         parse_maven_mock.return_value = maven_param
-        with self.assertRaises(SystemExit) as cm:
-            handle_wrapper_rpm(options, session, arguments)
-        self.assert_console_output(
-            stderr,
-            '.*error: No build of .* in %s' % target_info['dest_tag_name'],
-            regex=True)
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stderr={'message': '.*error: No build of .* in %s' %
+                    target_info['dest_tag_name'],
+                    'regex': True}
+        )
 
         # Check everything should work fine
         session.getLatestBuilds.return_value = [{'nvr': 'r1'}]
@@ -182,7 +182,7 @@ class TestWrapperRpm(unittest.TestCase):
         expected = "Created task: %d\n" % self.task_id
         expected += "Task info: %s/taskinfo?taskID=%s\n" % \
                     (options.weburl, self.task_id)
-        self.assert_console_output(stdout, expected)
+        self.assert_console_message(stdout, expected)
 
         activate_session_mock.assert_called_with(session, options)
         watch_tasks_mock.assert_called_with(
@@ -192,8 +192,8 @@ class TestWrapperRpm(unittest.TestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_wrapper_rpm_help(self, activate_session_mock,
-                                     stderr, stdout):
+    def test_handle_wrapper_rpm_argument_error(
+            self, activate_session_mock, stderr, stdout):
         """Test  handle_wrapper_rpm help message output"""
         arguments = []
         options = mock.MagicMock()
@@ -202,19 +202,39 @@ class TestWrapperRpm(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            handle_wrapper_rpm(options, session, arguments)
-        expected_stderr = """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
-(Specify the --help global option for a list of other help options)
-
-%s: error: You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment
-""" % (self.progname, self.progname)
-        self.assert_console_output(stdout, '')
-        self.assert_console_output(stderr, expected_stderr)
+        expected = self.format_error_message(
+            "You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment")
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stdout='',
+            stderr=expected,
+            activate_session=None)
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+
+    def test_handle_wrapper_rpm_help(self):
+        """Test  handle_wrapper_rpm help message output"""
+        self.assert_help(
+            handle_wrapper_rpm,
+            """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --create-build        Create a new build to contain wrapper rpms
+  --ini=CONFIG          Pass build parameters via a .ini file
+  -s SECTION, --section=SECTION
+                        Get build parameters from this section of the .ini
+  --skip-tag            If creating a new build, don't tag it
+  --scratch             Perform a scratch build
+  --nowait              Don't wait on build
+  --background          Run the build at a lower priority
+""" % self.progname)
+
 
 if __name__ == '__main__':
     unittest.main()
