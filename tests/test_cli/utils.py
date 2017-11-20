@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import six
@@ -35,6 +36,8 @@ class CliTestCase(unittest.TestCase):
     # public attribute
     progname = os.path.basename(sys.argv[0]) or 'koji'
     error_format = None
+    STDOUT = sys.stdout
+    STDERR = sys.stderr
 
     #
     # private methods
@@ -51,8 +54,16 @@ class CliTestCase(unittest.TestCase):
         return self.error_format.format(message=error_message) \
             if self.error_format else error_message
 
+    def print_message(self, *args, **kwargs):
+        """Print message on sys.stdout
+
+           This function will not be influenced when sys.stdout is mocked.
+        """
+        kwargs['file'] = self.STDOUT
+        print(" ".join(map(str, args)), **kwargs)
+
     def assert_function_wrapper(self, callableObj, *args, **kwargs):
-        """wrapper func with anonymous funtion without argument"""
+        """Wrapper func with anonymous funtion without argument"""
         self.__assert_callable(callableObj)
         return lambda: callableObj(*args, **kwargs)
 
@@ -188,11 +199,8 @@ class CliTestCase(unittest.TestCase):
         activate_session_mock.assert_not_called()
 
 
-#
-# Open /dev/stdout and write message directly.
-# This function is useful when sys.stdout is redirected
-#
-def debug_print(message):
-    with open('/dev/stdout', 'w') as stdout:
-        stdout.write(message)
-        stdout.write('\n')
+def get_builtin_open():
+    if six.PY2:
+        return '__builtin__.open'
+    else:
+        return 'builtins.open'
