@@ -4517,7 +4517,7 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
     if recurse:
         level += 1
         children = session.getTaskChildren(task_id, request=True)
-        children.sort(cmp=lambda a, b: cmp(a['id'], b['id']))
+        children.sort(key=lambda x: x['id'])
         for child in children:
             _printTaskInfo(session, child['id'], topdir, level, verbose=verbose)
 
