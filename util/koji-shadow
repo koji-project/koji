@@ -320,7 +320,7 @@ def activate_session(session):
     elif options.user:
         #authenticate using user/password
         session.login()
-    elif krbV and 'krbV' in sys.modules:
+    elif krbV:
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)

@@ -1099,7 +1099,7 @@ if __name__ == "__main__":
             quit("Error: Unable to log in. Bad credentials?")
         except xmlrpclib.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
-    elif krbV and 'krbV' in sys.modules:
+    elif krbV:
         krb_principal = options.krb_principal
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()
