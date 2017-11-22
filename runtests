@@ -1,0 +1,44 @@
+#!/usr/bin/python
+
+from multiprocessing import Pool
+import subprocess
+import tempfile
+
+
+def explode_ref(ref, dest):
+    """Write contents from ref to dest dir"""
+    p1 = subprocess.Popen(['git', 'archive', ref], stdout=subprocess.PIPE)
+    p2 = subprocess.Popen(['tar', '-x'], cwd=dest, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
+
+
+def checkout_run(cmd, ref='HEAD'):
+    """Run command in a fresh checkout of ref and return output"""
+    tempdir = tempfile.mkdtemp()
+    explode_ref(ref, tempdir)
+    output = subprocess.check_output(cmd, cwd=tempdir,
+                stderr=subprocess.STDOUT)
+    return output
+
+
+def run_test():
+    return checkout_run(['make', 'test'])
+
+
+def run_test3():
+    return checkout_run(['make', 'test3'])
+
+
+def main():
+    """Run our test targets in parallel using fresh checkouts of HEAD"""
+    print("Running tests...")
+    p = Pool(2)
+    results = [p.apply_async(f) for f in [run_test, run_test3]]
+    for r in results:
+        print(r.get().decode('utf-8'))
+    p.close()
+
+
+if __name__ == '__main__':
+    main()
