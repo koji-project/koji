@@ -93,11 +93,30 @@ class TestWatchTasks(unittest.TestCase):
 ''')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
 
+    @mock.patch('time.sleep')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_watch_tasks_with_keyboardinterrupt(self, stdout):
+    def test_watch_tasks_with_keyboardinterrupt(self, stdout, sleep):
         """Raise KeyboardInterrupt inner watch_tasks.
         Raising it by SIGNAL might be better"""
-        pass  # TODO
+        cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
+        with open(cfile) as fp:
+            cdata = json.load(fp)
+        self.session.load_calls(cdata)
+        sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
+        with self.assertRaises(KeyboardInterrupt):
+            # watch_tasks catches and re-raises it to display a message
+            watch_tasks(self.session, [1208], quiet=False, poll_interval=5)
+        expected = ('''Watching tasks (this may be safely interrupted)...
+1208 build (f24, /users/mikem/fake.git:master): free
+1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free -> open (builder-01)
+Tasks still running. You can continue to watch with the 'nosetests watch-task' command.
+Running Tasks:
+1208 build (f24, /users/mikem/fake.git:master): open (builder-01)
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): open (builder-01)
+''')
+        self.assertMultiLineEqual(stdout.getvalue(), expected)
 
 
 if __name__ == '__main__':
