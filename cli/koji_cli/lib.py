@@ -285,7 +285,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
     try:
         tasks = {}
         for task_id in tasklist:
-            tasks[task_id] = TaskWatcher(task_id,session,quiet=quiet)
+            tasks[task_id] = TaskWatcher(task_id, session, quiet=quiet)
         while True:
             all_done = True
             for task_id, task in list(tasks.items()):
@@ -297,7 +297,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
                         # task is done and state just changed
                         if not quiet:
                             display_tasklist_status(tasks)
-                    if not task.is_success():
+                    if task.level == 0 and not task.is_success():
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
