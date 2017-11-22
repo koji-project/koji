@@ -17,8 +17,12 @@ def checkout_run(cmd, ref='HEAD'):
     """Run command in a fresh checkout of ref and return output"""
     tempdir = tempfile.mkdtemp()
     explode_ref(ref, tempdir)
-    output = subprocess.check_output(cmd, cwd=tempdir,
-                stderr=subprocess.STDOUT)
+    try:
+        output = subprocess.check_output(cmd, cwd=tempdir,
+                    stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        print("Command failed with code %s" % e.returncode)
+        output = e.output
     return output
 
 
