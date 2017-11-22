@@ -111,11 +111,11 @@ class TestWatchTasks(unittest.TestCase):
 1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)
   1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free
   1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free -> open (builder-01)
-Tasks still running. You can continue to watch with the 'nosetests watch-task' command.
+Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 1208 build (f24, /users/mikem/fake.git:master): open (builder-01)
   1209 buildSRPMFromSCM (/users/mikem/fake.git:master): open (builder-01)
-''')
+''' % (os.path.basename(sys.argv[0]) or 'koji'))
         self.assertMultiLineEqual(stdout.getvalue(), expected)
 
 

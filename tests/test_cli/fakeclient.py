@@ -22,7 +22,7 @@ class BaseFakeClientSession(koji.ClientSession):
             try:
                 result = self._callMethod(method, args, kwargs)
                 ret.append(result)
-            except Fault, fault:
+            except Fault as fault:
                 if strict:
                     raise
                 else:
@@ -114,12 +114,12 @@ class RecordingClientSession(BaseFakeClientSession):
                             kwargs, retry)
             call['result'] = result
             return result
-        except Fault, fault:
+        except Fault as fault:
             err = {'faultCode': fault.faultCode,
                    'faultString': fault.faultString}
             call['fault'] = err
             raise
-        except koji.GenericError, e:
+        except koji.GenericError as e:
             err = {'faultCode': e.faultCode,
                    'faultString': str(e)}
             call['fault'] = err
