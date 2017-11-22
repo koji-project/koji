@@ -7252,9 +7252,20 @@ def get_notification_recipients(build, tag_id, state):
     notifications on the package or tag (or both), as well as the package owner
     for this tag and the user who submitted the build.  The list will not contain
     duplicates.
+
+    Only active 'human' users will be in this list.
     """
 
-    clauses = []
+    joins = ['JOIN users ON build_notifications.user_id = users.id']
+    users_status = koji.USER_STATUS['NORMAL']
+    users_usertypes = [koji.USERTYPES['NORMAL'], koji.USERTYPES['GROUP']]
+    clauses = [
+        'status = %(users_status)i',
+        'usertype IN %(users_usertype)s',
+    ]
+
+    if not build and tag_id:
+        raise koji.GenericError('Invalid call')
 
     if build:
         package_id = build['package_id']
@@ -7269,14 +7280,14 @@ def get_notification_recipients(build, tag_id, state):
         clauses.append('success_only = FALSE')
 
     query = QueryProcessor(columns=('email',), tables=['build_notifications'],
-                           clauses=clauses, values=locals(),
+                           joins=joins, clauses=clauses, values=locals(),
                            opts={'asList':True})
     emails = [result[0] for result in query.execute()]
 
     email_domain = context.opts['EmailDomain']
     notify_on_success = context.opts['NotifyOnSuccess']
 
-    if notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']:
+    if build and (notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']):
         # user who submitted the build
         emails.append('%s@%s' % (build['owner_name'], email_domain))
 
@@ -7287,12 +7298,14 @@ def get_notification_recipients(build, tag_id, state):
             # If the package list has changed very recently it is possible we
             # will get no result.
             if pkgdata and not pkgdata['blocked']:
-                emails.append('%s@%s' % (pkgdata['owner_name'], email_domain))
+                owner = get_user(pkgdata['owner_id'], strict=True)
+                if owner['status'] == koji.USER_STATUS['NORMAL'] and \
+                   owner['usertype'] == koji.USERTYPES['NORMAL']:
+                    emails.append('%s@%s' % (owner['name'], email_domain))
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
-    emails_uniq = dict([(x, 1) for x in emails]).keys()
-    return emails_uniq
+    return list(set(emails))
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
     if context.opts.get('DisableNotifications'):
