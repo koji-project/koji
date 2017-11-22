@@ -88,6 +88,9 @@ class RecordingClientSession(BaseFakeClientSession):
         super(RecordingClientSession, self).__init__(*a, **kw)
         self._calldata = []
 
+    def get_calls(self):
+        return self._calldata
+
     def _callMethod(self, name, args, kwargs=None, retry=True):
         if self.multicall:
             return super(RecordingClientSession, self)._callMethod(name, args,
