@@ -36,6 +36,7 @@ class FakeClientSession(BaseFakeClientSession):
     def __init__(self, *a, **kw):
         super(FakeClientSession, self).__init__(*a, **kw)
         self._calldata = {}
+        self._offsets = {}
 
     def load_calls(self, data):
         """Load call data
@@ -51,14 +52,21 @@ class FakeClientSession(BaseFakeClientSession):
 
         for call in data:
             key = self._munge([call['method'], call['args'], call['kwargs']])
-            self._calldata[key] = call
+            self._calldata.setdefault(key, []).append(call)
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
         if self.multicall:
             return super(FakeClientSession, self)._callMethod(name, args,
                             kwargs, retry)
         key = self._munge([name, args, kwargs])
-        call = self._calldata.get(key)
+        # we may have a series of calls for each key
+        calls = self._calldata.get(key)
+        ofs = self._offsets.get(key, 0)
+        call = calls[ofs]
+        ofs += 1
+        if ofs < len(calls):
+            # don't go past the end
+            self._offsets[key] = ofs
         if call:
             if 'fault' in call:
                 fault = Fault(call['fault']['faultCode'],
