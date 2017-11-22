@@ -5747,8 +5747,6 @@ def _build_image(options, task_opts, session, args, img_type):
         print('')
 
     hub_opts = {}
-    if hasattr(task_opts, 'optional_arches'):
-        hub_opts['optional_arches'] = task_opts.optional_arches.split(',')
     passthru_opts = [
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
@@ -5759,6 +5757,9 @@ def _build_image(options, task_opts, session, args, img_type):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
+
+    if hasattr(hub_opts, 'optional_arches'):
+        hub_opts['optional_arches'] = hub_opts['optional_arches'].split(',')
 
     # finally, create the task.
     task_id = session.buildImage(args[0], args[1], arch, target, ksfile,
