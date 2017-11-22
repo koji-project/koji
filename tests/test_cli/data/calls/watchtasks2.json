@@ -1,0 +1,1346 @@
+[
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": null, 
+            "start_ts": null, 
+            "state": 0, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": null, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": null, 
+            "start_ts": null, 
+            "state": 0, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": null, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": null, 
+            "start_ts": null, 
+            "state": 0, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": null, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "comment": null, 
+            "capacity": 2.0, 
+            "name": "builder-01", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 0.2, 
+            "ready": true, 
+            "user_id": 4, 
+            "id": 1, 
+            "description": null
+        }, 
+        "args": [
+            1
+        ], 
+        "method": "getHost", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": null, 
+                "start_ts": null, 
+                "state": 0, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": null, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": null, 
+            "start_ts": null, 
+            "state": 0, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": null, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "comment": null, 
+            "capacity": 2.0, 
+            "name": "builder-01", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 1.0, 
+            "ready": true, 
+            "user_id": 4, 
+            "id": 1, 
+            "description": null
+        }, 
+        "args": [
+            1
+        ], 
+        "method": "getHost", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 1, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": true, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": null, 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 1, 
+                "awaited": true, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": null, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": null, 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 1, 
+            "awaited": true, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": null, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": "2017-11-22 12:07:24.398330", 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:37.208472", 
+            "start_ts": 1511352397.20847, 
+            "state": 5, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": false, 
+            "create_time": "2017-11-22 12:02:08.035091", 
+            "id": 1208, 
+            "create_ts": 1511352128.03509, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": 1511352444.39833, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "comment": null, 
+            "capacity": 2.0, 
+            "name": "builder-01", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 0.0, 
+            "ready": true, 
+            "user_id": 4, 
+            "id": 1, 
+            "description": null
+        }, 
+        "args": [
+            1
+        ], 
+        "method": "getHost", 
+        "kwargs": {}
+    }, 
+    {
+        "fault": {
+            "faultCode": 1000, 
+            "faultString": "Build already exists (id=425, state=COMPLETE): {'name': 'fake', 'task_id': 1208, 'extra': None, 'pkg_id': 298, 'epoch': 7, 'completion_time': None, 'state': 0, 'version': '1.1', 'source': None, 'volume_id': 0, 'owner': 1, 'release': '22', 'start_time': 'NOW'}"
+        }, 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskResult", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1208, 
+                "completion_time": "2017-11-22 12:07:22.441883", 
+                "start_time": "2017-11-22 12:06:42.843815", 
+                "start_ts": 1511352402.84382, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-22 12:06:37.753112", 
+                "id": 1209, 
+                "create_ts": 1511352397.75311, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": 1511352442.44188, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }
+        ], 
+        "args": [
+            1208
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1208, 
+            "completion_time": "2017-11-22 12:07:22.441883", 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#master", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-22 12:06:42.843815", 
+            "start_ts": 1511352402.84382, 
+            "state": 2, 
+            "awaited": false, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-22 12:06:37.753112", 
+            "id": 1209, 
+            "create_ts": 1511352397.75311, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": 1511352442.44188, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "comment": null, 
+            "capacity": 2.0, 
+            "name": "builder-01", 
+            "enabled": true, 
+            "arches": "i386 x86_64", 
+            "task_load": 0.0, 
+            "ready": true, 
+            "user_id": 4, 
+            "id": 1, 
+            "description": null
+        }, 
+        "args": [
+            1
+        ], 
+        "method": "getHost", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1209
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }
+]

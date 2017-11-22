@@ -69,6 +69,30 @@ class TestWatchTasks(unittest.TestCase):
 ''')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
 
+    @mock.patch('time.sleep')
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_watch_tasks_fail(self, stdout, sleep):
+        # self.setup_record('foo.json')
+        cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
+        with open(cfile) as fp:
+            cdata = json.load(fp)
+        self.session.load_calls(cdata)
+        rv = watch_tasks(self.session, [1208], quiet=False, poll_interval=5)
+        self.assertEqual(rv, 1)
+        expected = ('''Watching tasks (this may be safely interrupted)...
+1208 build (f24, /users/mikem/fake.git:master): free
+1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free -> open (builder-01)
+1208 build (f24, /users/mikem/fake.git:master): open (builder-01) -> FAILED: GenericError: Build already exists (id=425, state=COMPLETE): {'name': 'fake', 'task_id': 1208, 'extra': None, 'pkg_id': 298, 'epoch': 7, 'completion_time': None, 'state': 0, 'version': '1.1', 'source': None, 'volume_id': 0, 'owner': 1, 'release': '22', 'start_time': 'NOW'}
+  0 free  1 open  0 done  1 failed
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): open (builder-01) -> closed
+  0 free  0 open  1 done  1 failed
+
+1208 build (f24, /users/mikem/fake.git:master) failed
+''')
+        self.assertMultiLineEqual(stdout.getvalue(), expected)
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_watch_tasks_with_keyboardinterrupt(self, stdout):
         """Raise KeyboardInterrupt inner watch_tasks.
