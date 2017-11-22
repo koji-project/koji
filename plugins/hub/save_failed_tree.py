@@ -42,7 +42,7 @@ def saveFailedTree(buildrootID, full=False, **opts):
     elif allowed_methods != '*' and task_info['method'] not in allowed_methods:
         raise koji.PreBuildError("Only %s tasks can upload their buildroots (Task %s is %s)." % \
                (', '.join(allowed_methods), task_info['id'], task_info['method']))
-    elif task_info["owner"] != context.session.user_id and not context.session.assertPerm('admin'):
+    elif task_info["owner"] != context.session.user_id and not context.session.hasPerm('admin'):
         raise koji.ActionNotAllowed("Only owner of failed task or 'admin' can run this task.")
     elif not kojihub.get_host(task_info['host_id'])['enabled']:
         raise koji.PreBuildError("Host is disabled.")
