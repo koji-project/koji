@@ -1,0 +1,234 @@
+[
+    {
+        "result": {
+            "weight": 0.2, 
+            "parent": null, 
+            "completion_time": "2017-11-03 13:07:59.523083", 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#adaf62586b4b4a23b24394da5586abd7cd9f679e", 
+                "f24", 
+                {
+                    "skip_tag": true
+                }
+            ], 
+            "start_time": "2017-11-03 12:57:50.379573", 
+            "start_ts": 1509713870.37957, 
+            "state": 2, 
+            "awaited": null, 
+            "label": null, 
+            "priority": 20, 
+            "channel_id": 1, 
+            "waiting": false, 
+            "create_time": "2017-11-03 12:57:49.431179", 
+            "id": 1188, 
+            "create_ts": 1509713869.43118, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": 1509714479.52308, 
+            "arch": "noarch", 
+            "method": "build"
+        }, 
+        "args": [
+            1188
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1188, 
+                "completion_time": "2017-11-03 13:07:22.801298", 
+                "start_time": "2017-11-03 12:57:50.548111", 
+                "start_ts": 1509713870.54811, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-03 12:57:50.492870", 
+                "id": 1189, 
+                "create_ts": 1509713870.49287, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": 1509714442.8013, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }, 
+            {
+                "weight": 1.520466868125, 
+                "parent": 1188, 
+                "completion_time": "2017-11-03 13:07:58.740688", 
+                "start_time": "2017-11-03 13:07:28.384349", 
+                "start_ts": 1509714448.38435, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "noarch", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-03 13:07:23.275379", 
+                "id": 1190, 
+                "create_ts": 1509714443.27538, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": 1509714478.74069, 
+                "arch": "noarch", 
+                "method": "buildArch"
+            }
+        ], 
+        "args": [
+            1188
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": {
+            "weight": 1.0, 
+            "parent": 1188, 
+            "completion_time": "2017-11-03 13:07:22.801298", 
+            "request": [
+                "git://git.engineering.redhat.com/users/mikem/fake.git#adaf62586b4b4a23b24394da5586abd7cd9f679e", 
+                2, 
+                {
+                    "scratch": null, 
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-03 12:57:50.548111", 
+            "start_ts": 1509713870.54811, 
+            "state": 2, 
+            "awaited": false, 
+            "label": "srpm", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-03 12:57:50.492870", 
+            "id": 1189, 
+            "create_ts": 1509713870.49287, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": 1509714442.8013, 
+            "arch": "noarch", 
+            "method": "buildSRPMFromSCM"
+        }, 
+        "args": [
+            1189
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": {
+            "weight": 1.520466868125, 
+            "parent": 1188, 
+            "completion_time": "2017-11-03 13:07:58.740688", 
+            "request": [
+                "tasks/1189/1189/fake-1.1-21.src.rpm", 
+                2, 
+                "noarch", 
+                true, 
+                {
+                    "repo_id": 132
+                }
+            ], 
+            "start_time": "2017-11-03 13:07:28.384349", 
+            "start_ts": 1509714448.38435, 
+            "state": 2, 
+            "awaited": false, 
+            "label": "noarch", 
+            "priority": 19, 
+            "channel_id": 1, 
+            "waiting": null, 
+            "create_time": "2017-11-03 13:07:23.275379", 
+            "id": 1190, 
+            "create_ts": 1509714443.27538, 
+            "owner": 1, 
+            "host_id": 1, 
+            "completion_ts": 1509714478.74069, 
+            "arch": "noarch", 
+            "method": "buildArch"
+        }, 
+        "args": [
+            1190
+        ], 
+        "method": "getTaskInfo", 
+        "kwargs": {
+            "request": true
+        }
+    }, 
+    {
+        "result": [
+            {
+                "weight": 1.0, 
+                "parent": 1188, 
+                "completion_time": "2017-11-03 13:07:22.801298", 
+                "start_time": "2017-11-03 12:57:50.548111", 
+                "start_ts": 1509713870.54811, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "srpm", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-03 12:57:50.492870", 
+                "id": 1189, 
+                "create_ts": 1509713870.49287, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": 1509714442.8013, 
+                "arch": "noarch", 
+                "method": "buildSRPMFromSCM"
+            }, 
+            {
+                "weight": 1.520466868125, 
+                "parent": 1188, 
+                "completion_time": "2017-11-03 13:07:58.740688", 
+                "start_time": "2017-11-03 13:07:28.384349", 
+                "start_ts": 1509714448.38435, 
+                "state": 2, 
+                "awaited": false, 
+                "label": "noarch", 
+                "priority": 19, 
+                "channel_id": 1, 
+                "waiting": null, 
+                "create_time": "2017-11-03 13:07:23.275379", 
+                "id": 1190, 
+                "create_ts": 1509714443.27538, 
+                "owner": 1, 
+                "host_id": 1, 
+                "completion_ts": 1509714478.74069, 
+                "arch": "noarch", 
+                "method": "buildArch"
+            }
+        ], 
+        "args": [
+            1188
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1189
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }, 
+    {
+        "result": [], 
+        "args": [
+            1190
+        ], 
+        "method": "getTaskChildren", 
+        "kwargs": {}
+    }
+]
