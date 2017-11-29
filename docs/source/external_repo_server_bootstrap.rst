@@ -29,13 +29,13 @@ help with these tasks, see the :doc:`server_howto`.
 
     $ koji add-external-repo -t dist-foo-build dist-foo-external-repo http://repo-server.example.com/path/to/repo/for/foo/\$arch/
 
-.. note::
+  .. note::
     If you are adding multiple external repos, koji assigns a priority to each
     repo in FIFO order. This may cause updated packages to not be visible if a
     repo with older packages is ranked at a higher priority (lower numeric
     value). Use the ``-p`` flag to set specific repo priorities.
 
-.. note::
+  .. note::
     This uses $arch NOT $basearch
 
 * Create a build target that includes the tags you've already created. ::
