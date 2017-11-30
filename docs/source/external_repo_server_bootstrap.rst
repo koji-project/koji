@@ -29,18 +29,37 @@ help with these tasks, see the :doc:`server_howto`.
 
     $ koji add-external-repo -t dist-foo-build dist-foo-external-repo http://repo-server.example.com/path/to/repo/for/foo/\$arch/
 
-.. note::
+  .. note::
     If you are adding multiple external repos, koji assigns a priority to each
     repo in FIFO order. This may cause updated packages to not be visible if a
     repo with older packages is ranked at a higher priority (lower numeric
     value). Use the ``-p`` flag to set specific repo priorities.
 
-.. note::
+  .. note::
     This uses $arch NOT $basearch
 
 * Create a build target that includes the tags you've already created. ::
 
     $ koji add-target dist-foo dist-foo-build
+
+  At this point you can verify that your external repository is set with the
+  "taginfo" command. You should see it listed under "External repos". Here is
+  an example with several CentOS external repos::
+
+    $ koji taginfo dist-foo-build
+      Tag: dist-foo-build [740]
+      Arches: x86_64
+      Groups: build, srpm-build
+      Tag options:
+      This tag is a buildroot for one or more targets
+      Current repo: repo#55077: 2017-11-29 03:34:18.847127
+      Targets that build from this tag:
+        dist-foo
+      External repos:
+          2 centos7-cr (http://mirror.centos.org/centos/7/cr/$arch/)
+          3 centos7-extras (http://mirror.centos.org/centos/7/extras/$arch/)
+          5 centos7-updates (http://mirror.centos.org/centos/7/updates/$arch/)
+         10 centos7-os (http://mirror.centos.org/centos/7/os/$arch/)
 
 * Create a ''build'' and ''srpm-build'' group associated with your build tag. ::
 
