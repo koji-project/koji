@@ -80,7 +80,7 @@ test3:
 	    tests/test_lib tests/test_cli
 	coverage report
 	coverage html
-	@echo Full coverage report in htmlcov/index.html
+	@echo Full coverage report at file://${PWD}/htmlcov/index.html
 
 test-tarball:
 	@rm -rf .koji-$(VERSION)
