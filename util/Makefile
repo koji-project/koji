@@ -7,6 +7,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
+	rm -rf __pycache__
 	for b in $(BINFILES); do rm -f $${b}c; done
 
 _install:

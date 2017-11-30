@@ -8,6 +8,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~ kojidc
+	rm -rf __pycache__
 
 
 _install:

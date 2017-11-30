@@ -61,29 +61,39 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~ koji*.bz2 koji*.src.rpm
+	rm -rf __pycache__
+	rm -rf devtools/fakehubc devtools/fakewebc devtools/__pycache__
 	rm -rf koji-$(VERSION)
 	for d in $(SUBDIRS); do make -s -C $$d clean; done
-	coverage erase ||:
+	find ./tests -name "__pycache__" -exec rm -rf {} \; ||:
+	find ./tests -name "*.pyc" -exec rm -f {} \;
+	rm -rf docs/source/__pycache__ docs/source/*.pyc
+	coverage2 erase ||:
+	coverage3 erase --rcfile .coveragerc3 ||:
+	rm -rf htmlcov
 
 git-clean:
 	@git clean -d -q -x
 
-test:
+test: test2 test3
+	@echo "All tests are finished for python 2&3"
+
+test2:
 	coverage2 erase
 	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage2 run \
 	    --source . /usr/bin/nosetests
 	coverage2 report
 	coverage2 html
-	@echo Full coverage report at file://$(CURDIR)/htmlcov/index.html
+	@echo Full coverage report at file://${CURDIR}/htmlcov/py2/index.html
 
 test3:
-	coverage3 erase
+	coverage3 erase --rcfile .coveragerc3
 	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage3 run \
 	    --rcfile .coveragerc3 --source . \
 	    /usr/bin/nosetests-3
-	coverage3 report --rcfile .coveragerc3
-	coverage3 html --rcfile .coveragerc3
-	@echo Full coverage report at file://$(CURDIR)/htmlcov/index.html
+	coverage report --rcfile .coveragerc3
+	coverage html --rcfile .coveragerc3
+	@echo Full coverage report at file://${CURDIR}/htmlcov/py3/index.html
 
 test-tarball:
 	@rm -rf .koji-$(VERSION)

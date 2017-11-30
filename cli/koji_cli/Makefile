@@ -11,6 +11,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
+	rm -rf __pycache__
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \

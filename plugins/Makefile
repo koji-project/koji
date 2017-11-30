@@ -21,7 +21,8 @@ _default:
 	@echo "nothing to make.  try make install"
 
 clean:
-	rm -f *.o *.so *.pyc *.pyo *~
+	find . -name "__pycache__" -exec rm -rf {} \; ||:
+	find . -name "*.pyc" -exec rm -f {} \;
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \

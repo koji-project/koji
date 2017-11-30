@@ -10,6 +10,7 @@ util/koji-shadowc
 #
 # coverage artifacts
 .coverage
+.coverage[23]
 htmlcov/
 *,cover
 #

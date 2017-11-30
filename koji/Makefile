@@ -12,7 +12,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
-	for d in $(SUBDIRS); do make -s -C $$d clean; done
+	rm -rf __pycache__
 
 install:
 	mkdir -p $(DESTDIR)/$(PKGDIR)

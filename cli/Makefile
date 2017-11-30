@@ -13,6 +13,8 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~ kojic
+	rm -rf __pycache__
+	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \
