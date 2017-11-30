@@ -64,6 +64,9 @@
     <tr>
       <th><label title="The MD5 digest of the combined header and payload contents. You can query it by `rpmkeys -Kv foo.rpm`">SIGMD5</label></th><td>$rpm.payloadhash</td>
     </tr>
+    <tr>
+      <th>License</th><td>$license</td>
+    </tr>
     #if $builtInRoot
     <tr>
       <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$builtInRoot.id">$util.brLabel($builtInRoot)</a></td>
