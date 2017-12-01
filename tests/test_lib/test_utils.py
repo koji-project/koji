@@ -515,7 +515,7 @@ class MavenUtilTestCase(unittest.TestCase):
                 }
                ]
         expect = (
-u'''* Wed Oct 25 2017 Happy Koji User <user1@example.com> - 1.1-1
+'''* Wed Oct 25 2017 Happy Koji User <user1@example.com> - 1.1-1
 - Line 1
 - Line 2
 
