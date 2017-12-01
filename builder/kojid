@@ -5227,12 +5227,15 @@ class createDistRepoTask(CreaterepoTask):
         groupdata = os.path.join(
             self.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
             'groups', 'comps.xml')
-        #set up our output dir
+
+        # set up our output dir
         self.repodir = '%s/repo' % self.workdir
         koji.ensuredir(self.repodir)
         self.outdir = self.repodir  # workaround create_local_repo use
         self.datadir = '%s/repodata' % self.repodir
         self.sigmap = {}
+
+        # gather oldpkgs data if delta option in use
         oldpkgs = []
         if opts.get('delta'):
             # should be a list of repo ids to delta against
@@ -5246,6 +5249,8 @@ class createDistRepoTask(CreaterepoTask):
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
                 oldpkgs.append(path)
+
+        # sort out our package list
         self.uploadpath = self.getUploadDir()
         self.pkglist = self.make_pkglist(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
@@ -5256,11 +5261,15 @@ class createDistRepoTask(CreaterepoTask):
             os.path.basename(self.pkglist))
         if os.path.getsize(self.pkglist) == 0:
             self.pkglist = None
+
+        # generate the repodata
         self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
         if self.pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
+
+        # upload repo files
         files = ['pkglist', 'kojipkgs']
         for f in os.listdir(self.datadir):
             files.append(f)
@@ -5272,6 +5281,7 @@ class createDistRepoTask(CreaterepoTask):
                 files.append(f)
                 self.session.uploadWrapper('%s/%s' % (ddir, f),
                     self.uploadpath, f)
+
         return [self.uploadpath, files, self.sigmap.items()]
 
     def do_multilib(self, arch, ml_arch, conf):
