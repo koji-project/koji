@@ -2246,16 +2246,16 @@ class ClientSession(object):
         old_env = copy.copy(os.environ)
         old_opts = self.opts
         self.opts = old_opts.copy()
-        self.opts['timeout'] = 60
-        kwargs = {}
-        if keytab:
-            os.environ['KRB5_CLIENT_KTNAME'] = keytab
-        if ccache:
-            os.environ['KRB5CCNAME'] = ccache
-        if principal:
-            kwargs['principal'] = principal
-        self.opts['auth'] = HTTPKerberosAuth(**kwargs)
         try:
+            self.opts['timeout'] = 60
+            kwargs = {}
+            if keytab:
+                os.environ['KRB5_CLIENT_KTNAME'] = keytab
+            if ccache:
+                os.environ['KRB5CCNAME'] = ccache
+            if principal:
+                kwargs['principal'] = principal
+            self.opts['auth'] = HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
