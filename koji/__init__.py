@@ -2261,7 +2261,9 @@ class ClientSession(object):
                 # connect without client certificate, which means that the conn
                 # will fail with a handshake failure, which is retried by default.
                 sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
-            except:
+            except Exception as e:
+                e_str = ''.join(traceback.format_exception_only(type(e), e))
+                self.logger.debug('gssapi auth failed: %s', e_str)
                 # Auth with https didn't work. Restore for the next attempt.
                 self.baseurl = old_baseurl
         finally:
