@@ -1432,7 +1432,7 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
-    values['show_rpm_components'] = archive.get('rootid', False)
+    values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit':1})
     values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit':1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
