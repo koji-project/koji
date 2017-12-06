@@ -62,8 +62,8 @@ def formatChangelog(entries):
 %s
 
 """ % (_changelogDate(entry['date']),
-       koji.fixPrint(entry['author']),
-       koji.fixPrint(entry['text']))
+       koji._fix_print(entry['author']),
+       koji._fix_print(entry['text']))
     return result
 
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')

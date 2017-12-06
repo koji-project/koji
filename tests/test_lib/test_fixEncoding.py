@@ -46,15 +46,15 @@ class FixEncodingTestCase(unittest.TestCase):
             self.assertEqual(koji.fixEncoding(d, remove_nonprintable=True), b)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_fixPrint(self, stdout):
-        """Test the fixPrint function"""
+    def test_fix_print(self, stdout):
+        """Test the _fix_print function"""
         expected = ''
         for a, b in self.simple_values:
             if six.PY3:
-                self.assertEqual(koji.fixPrint(b), a)
+                self.assertEqual(koji._fix_print(b), a)
             else:
-                self.assertEqual(koji.fixPrint(b), b)
-            print(koji.fixPrint(b))
+                self.assertEqual(koji._fix_print(b), b)
+            print(koji._fix_print(b))
             if six.PY3:
                 expected = expected + a + '\n'
             else:

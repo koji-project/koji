@@ -2966,15 +2966,20 @@ def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     return value.translate(None, NONPRINTABLE_CHARS)
 
-def fixPrint(value):
-    if not value:
-        return str('')
-    elif six.PY2 and isinstance(value, six.text_type):
+
+def _fix_print(value):
+    """Fix a string so it is suitable to print
+
+    In python2, this means we return a utf8 encoded str
+    In python3, this means we return unicode
+    """
+    if six.PY2 and isinstance(value, six.text_type):
         return value.encode('utf8')
     elif six.PY3 and isinstance(value, six.binary_type):
         return value.decode('utf8')
     else:
         return value
+
 
 def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
