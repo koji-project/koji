@@ -23,7 +23,6 @@
 
 
 from __future__ import absolute_import
-import copy
 import sys
 from six.moves import range
 from six.moves import zip
@@ -2243,15 +2242,17 @@ class ClientSession(object):
 
         # 60 second timeout during login
         sinfo = None
-        old_env = copy.copy(os.environ)
+        old_env = {}
         old_opts = self.opts
         self.opts = old_opts.copy()
         try:
             self.opts['timeout'] = 60
             kwargs = {}
             if keytab:
+                old_env['KRB5_CLIENT_KTNAME'] = os.environ.get('KRB5_CLIENT_KTNAME')
                 os.environ['KRB5_CLIENT_KTNAME'] = keytab
             if ccache:
+                old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
                 kwargs['principal'] = principal
@@ -2268,7 +2269,11 @@ class ClientSession(object):
                 self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
-            os.environ = old_env
+            for key in old_env:
+                if old_env[key] is None:
+                    del os.environ[key]
+                else:
+                    os.environ[key] = old_env[key]
         if not sinfo:
             raise AuthError('unable to obtain a session')
 
