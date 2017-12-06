@@ -6255,9 +6255,9 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
-        archivefp = open(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
         if not fileinfo or not getattr(fileinfo, 'hub.checked_md5'):
+            archivefp = open(filepath)
             m = md5_constructor()
             while True:
                 contents = archivefp.read(8192)
