@@ -937,7 +937,10 @@ class BuildTask(BaseTaskHandler):
                                             parent=self.id)
         # wait for subtask to finish
         result = self.wait(task_id)[task_id]
-        self.source = result['source']
+        if 'source' in result:
+            self.source = result['source']
+        else:
+            self.logger.warning('subtask did not provide source data')
         srpm = result['srpm']
         return srpm
 
