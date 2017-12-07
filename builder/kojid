@@ -870,7 +870,7 @@ class BuildTask(BaseTaskHandler):
         data['task_id'] = self.id
         if getattr(self, 'source', False):
             data['source'] = self.source['source']
-            data['extra'] = {'url': self.source['url']}
+            data['extra'] = {'source': {'original_url': self.source['url']}}
 
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)
