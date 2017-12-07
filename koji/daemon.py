@@ -505,7 +505,6 @@ class SCM(object):
         self.sourcedir = sourcedir
         return sourcedir
 
-## END kojikamid dup
     def get_source(self):
         r = {
             'url': self.url,
@@ -526,6 +525,7 @@ class SCM(object):
             query = self.module
             r['source'] = urlparse.urlunsplit([scheme, netloc, path, query, fragment])
         return r
+## END kojikamid dup
 
 
 class TaskManager(object):
