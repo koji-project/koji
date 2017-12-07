@@ -2126,16 +2126,17 @@ class ClientSession(object):
         principal.  The principal must be in the "ProxyPrincipals" list on
         the server side."""
 
-        if principal is None and keytab is None and ccache is None:
-            try:
-                # Silently try GSSAPI first
-                if self.gssapi_login(proxyuser=proxyuser):
-                    return True
-            except:
-                if krbV:
-                    pass
-                else:
-                    raise
+        try:
+            # Silently try GSSAPI first
+            if self.gssapi_login(principal, keytab, ccache, proxyuser=proxyuser):
+                return True
+        except Exception as e:
+            if krbV:
+                e_str = ''.join(traceback.format_exception_only(type(e), e))
+                self.logger.debug('gssapi auth failed: %s', e_str)
+                pass
+            else:
+                raise
 
         if not krbV:
             raise PythonImportError(
@@ -2224,7 +2225,7 @@ class ClientSession(object):
         # else
         return host
 
-    def gssapi_login(self, proxyuser=None):
+    def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
         if not HTTPKerberosAuth:
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
@@ -2241,21 +2242,38 @@ class ClientSession(object):
 
         # 60 second timeout during login
         sinfo = None
+        old_env = {}
         old_opts = self.opts
         self.opts = old_opts.copy()
-        self.opts['timeout'] = 60
-        self.opts['auth'] = HTTPKerberosAuth()
         try:
+            self.opts['timeout'] = 60
+            kwargs = {}
+            if keytab:
+                old_env['KRB5_CLIENT_KTNAME'] = os.environ.get('KRB5_CLIENT_KTNAME')
+                os.environ['KRB5_CLIENT_KTNAME'] = keytab
+            if ccache:
+                old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
+                os.environ['KRB5CCNAME'] = ccache
+            if principal:
+                kwargs['principal'] = principal
+            self.opts['auth'] = HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
                 # will fail with a handshake failure, which is retried by default.
                 sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
-            except:
+            except Exception as e:
+                e_str = ''.join(traceback.format_exception_only(type(e), e))
+                self.logger.debug('gssapi auth failed: %s', e_str)
                 # Auth with https didn't work. Restore for the next attempt.
                 self.baseurl = old_baseurl
         finally:
             self.opts = old_opts
+            for key in old_env:
+                if old_env[key] is None:
+                    del os.environ[key]
+                else:
+                    os.environ[key] = old_env[key]
         if not sinfo:
             raise AuthError('unable to obtain a session')
 
