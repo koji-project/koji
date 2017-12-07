@@ -148,9 +148,14 @@
         #end if
       </td>
     </tr>
-    #if 'rootid' in $archive and $archive.rootid
+    #if $show_rpm_components
     <tr>
-      <th colspan="2"><a href="rpmlist?imageID=$archive.id&amp;type=image" title="RPMs that where installed to the image">Installed RPMs</a></th>
+      <th colspan="2"><a href="rpmlist?imageID=$archive.id&amp;type=image" title="RPM components that are part of this archive">RPM components</a></th>
+    </tr>
+    #end if
+    #if $show_archive_components
+    <tr>
+      <th colspan="2"><a href="archivelist?imageID=$archive.id&amp;type=image" title="Archive components that are part of this archive">Archive components</a></th>
     </tr>
     #end if
   </table>
