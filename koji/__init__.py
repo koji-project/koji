@@ -2966,6 +2966,21 @@ def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     return value.translate(None, NONPRINTABLE_CHARS)
 
+
+def _fix_print(value):
+    """Fix a string so it is suitable to print
+
+    In python2, this means we return a utf8 encoded str
+    In python3, this means we return unicode
+    """
+    if six.PY2 and isinstance(value, six.text_type):
+        return value.encode('utf8')
+    elif six.PY3 and isinstance(value, six.binary_type):
+        return value.decode('utf8')
+    else:
+        return value
+
+
 def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
     Convert value to a 'str' object encoded as UTF-8.
@@ -2976,8 +2991,8 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
         return six.b('')
 
     if isinstance(value, six.text_type):
-        # value is already unicode, so just convert it
-        # to a utf8-encoded str
+        # value is already unicode(py3: str), so just convert it
+        # to a utf8-encoded str(py3: bytes)
         s = value.encode('utf8')
     else:
         # value is a str, but may be encoded in utf8 or some

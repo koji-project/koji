@@ -48,8 +48,10 @@ try:
 except ImportError:  # pragma: no cover
     from sha import new as sha1_constructor
 
+
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
+
 
 def formatChangelog(entries):
     """Format a list of changelog entries (dicts)
@@ -59,9 +61,9 @@ def formatChangelog(entries):
         result += """* %s %s
 %s
 
-""" % (_changelogDate(entry['date']), entry['author'].encode("utf-8"),
-       entry['text'].encode("utf-8"))
-
+""" % (_changelogDate(entry['date']),
+       koji._fix_print(entry['author']),
+       koji._fix_print(entry['text']))
     return result
 
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')

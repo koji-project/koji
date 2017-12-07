@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import absolute_import
 import mock
 import unittest
@@ -494,12 +495,39 @@ class MavenUtilTestCase(unittest.TestCase):
 
     def test_formatChangelog(self):
         """Test formatChangelog function"""
-        entries = {'date': datetime(2017, 10, 10, 12, 34, 56),
-                   'author': 'koji <kojiadmin@localhost.local>',
-                   'text': 'This is a test release'}
-        sample = "* Tue Oct 10 2017 {0}\n{1}\n\n".format(
-                entries['author'].encode('utf-8'), entries['text'].encode('utf-8'))
-        self.assertEqual(sample, koji.util.formatChangelog((entries,)))
+        data = [
+                {
+                    'author': 'Happy Koji User <user1@example.com> - 1.1-1',
+                    'date': '2017-10-25 08:00:00',
+                    'date_ts': 1508932800,
+                    'text': '- Line 1\n- Line 2',
+                },
+                {
+                    'author': u'Happy \u0138\u014dji \u016cs\u0259\u0155 <user2@example.com>',
+                    'date': '2017-08-28 08:00:00',
+                    'date_ts': 1503921600,
+                    'text': '- some changelog entry',
+                },
+                {
+                    'author': 'Koji Admin <admin@example.com> - 1.49-6',
+                    'date': datetime(2017, 10, 10, 12, 34, 56),
+                    'text': '- mass rebuild',
+                }
+               ]
+        expect = (
+'''* Wed Oct 25 2017 Happy Koji User <user1@example.com> - 1.1-1
+- Line 1
+- Line 2
+
+* Mon Aug 28 2017 Happy ĸōji Ŭsəŕ <user2@example.com>
+- some changelog entry
+
+* Tue Oct 10 2017 Koji Admin <admin@example.com> - 1.49-6
+- mass rebuild
+
+''')
+        result = koji.util.formatChangelog(data)
+        self.assertMultiLineEqual(expect, result)
 
     def test_parseTime(self):
         """Test parseTime function"""
