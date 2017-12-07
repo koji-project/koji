@@ -5578,6 +5578,29 @@ class CG_Importer(object):
             workdir = koji.pathinfo.work()
             path = os.path.join(workdir, self.directory, fileinfo.get('relpath', ''), fileinfo['filename'])
             fileinfo['hub.path'] = path
+
+            filesize = os.path.getsize(path)
+            if filesize != fileinfo['filesize']:
+                raise koji.GenericError("File size %s for %s (expected %s) doesn't match. Corrupted upload?" %
+                        (filesize, fileinfo['filename'], fileinfo['filesize']))
+
+            # checksum
+            if koji.CHECKSUM_TYPES[fileinfo['checksum_type']] != 'md5':
+                # XXX
+                # until we change the way we handle checksums, we have to limit this to md5
+                raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
+            with open(path) as fp:
+                m = md5_constructor()
+                while True:
+                    contents = fp.read(8192)
+                    if not contents:
+                        break
+                    m.update(contents)
+                if fileinfo['checksum'] != m.hexdigest():
+                    raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
+                            (fileinfo['filename'], fileinfo['checksum'], m.hexdigest()))
+            fileinfo['hub.checked_md5'] = True
+
             if fileinfo['buildroot_id'] not in self.br_prep:
                 raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" % fileinfo)
             if fileinfo['type'] not in ['rpm', 'log']:
@@ -6232,15 +6255,19 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
-        archivefp = open(filepath)
-        m = md5_constructor()
-        while True:
-            contents = archivefp.read(8192)
-            if not contents:
-                break
-            m.update(contents)
-        archivefp.close()
-        archiveinfo['checksum'] = m.hexdigest()
+        # trust values computed on hub (CG_Importer.prep_outputs)
+        if not fileinfo or not getattr(fileinfo, 'hub.checked_md5'):
+            archivefp = open(filepath)
+            m = md5_constructor()
+            while True:
+                contents = archivefp.read(8192)
+                if not contents:
+                    break
+                m.update(contents)
+            archivefp.close()
+            archiveinfo['checksum'] = m.hexdigest()
+        else:
+            archiveinfo['checksum'] = fileinfo['checksum']
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
         if fileinfo:
             # check against metadata
