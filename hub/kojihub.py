@@ -3958,6 +3958,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
       buildroot with that ID.
     If hostID is not null it will restrict the list to archives built on the host with that ID.
     If filename, size, and/or checksum are not null it will filter the results to entries matching the provided values.
+
     Returns a list of maps containing the following keys:
 
     id: unique id of the archive file (integer)
@@ -4316,15 +4317,17 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
         archive_info.update(image_archive)
         file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
                                  archive_info['filename'])
+    else:
+        # TODO: support other archive btypes
+        file_path = None
 
     result = []
 
-    if archive_type['name'] in ('zip', 'jar'):
+    if file_path and archive_type['name'] in ('zip', 'jar'):
         result = _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
-    elif archive_type['name'] == 'tar':
+    elif file_path and archive_type['name'] == 'tar':
         result = _applyQueryOpts(_get_tarball_list(archive_id, file_path), queryOpts)
     else:
-        # XXX support other archive types
         result = _applyQueryOpts(result, queryOpts)
 
     if strict and not result:
