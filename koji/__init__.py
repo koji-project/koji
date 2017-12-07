@@ -2130,7 +2130,7 @@ class ClientSession(object):
             # Silently try GSSAPI first
             if self.gssapi_login(principal, keytab, ccache, proxyuser=proxyuser):
                 return True
-        except Exception, e:
+        except Exception as e:
             if krbV:
                 e_str = ''.join(traceback.format_exception_only(type(e), e))
                 self.logger.debug('gssapi auth failed: %s', e_str)
