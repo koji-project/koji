@@ -5254,13 +5254,10 @@ class createDistRepoTask(BaseTaskHandler):
         self.logger.debug('package list is %s' % self.pkglist)
         self.session.uploadWrapper(self.pkglist, self.uploadpath,
             os.path.basename(self.pkglist))
-        if os.path.getsize(self.pkglist) == 0:
-            self.pkglist = None
 
         # generate the repodata
         self.do_createrepo(self.repodir, self.pkglist, groupdata, oldpkgs=oldpkgs)
-        if self.pkglist is None:
-            # can this happen?
+        if os.path.getsize(self.pkglist) == 0:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
