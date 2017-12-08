@@ -5258,8 +5258,9 @@ class createDistRepoTask(BaseTaskHandler):
             self.pkglist = None
 
         # generate the repodata
-        self.do_createrepo(self.rinfo, arch, self.pkglist, groupdata, oldpkgs=oldpkgs)
+        self.do_createrepo(self.repodir, self.pkglist, groupdata, oldpkgs=oldpkgs)
         if self.pkglist is None:
+            # can this happen?
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
@@ -5279,20 +5280,18 @@ class createDistRepoTask(BaseTaskHandler):
 
         return [self.uploadpath, files, self.sigmap.items()]
 
-    def do_createrepo(self, rinfo, arch, pkglist, groupdata, oldpkgs=None):
+    def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None, logname=None):
         """Run createrepo
 
         This is derived from CreaterepoTask.create_local_repo, but adapted to
         our requirements here
         """
-        koji.ensuredir(self.outdir)
+        koji.ensuredir(repodir)
         if self.options.use_createrepo_c:
             cmd = ['/usr/bin/createrepo_c']
         else:
             cmd = ['/usr/bin/createrepo']
-        cmd.extend(['-vd', '-o', self.outdir])
-        if pkglist is not None:
-            cmd.extend(['-i', pkglist])
+        cmd.extend(['-vd', '-i', pkglist])
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         # TODO: can we recycle data (with --update) as in create_local_repo?
@@ -5301,15 +5300,11 @@ class createDistRepoTask(BaseTaskHandler):
             cmd.append('--deltas')
             for op_dir in oldpkgs:
                 cmd.extend(['--oldpackagedirs', op_dir])
-        # note: we can't easily use a cachedir because we do not have write
-        # permission. The good news is that with --update we won't need to
-        # be scanning many rpms.
-        if pkglist is None:
-            cmd.append(self.outdir)
-        else:
-            cmd.append(self.repodir)
+        cmd.append(repodir)
 
-        logfile = '%s/createrepo.log' % self.workdir
+        if logname is None:
+            logname = 'createrepo'
+        logfile = '%s/%s.log' % (self.workdir, logname)
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
             raise koji.GenericError('failed to create repo: %s' \
