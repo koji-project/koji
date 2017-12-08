@@ -740,7 +740,7 @@ class BuildRoot(object):
         if within:
             return base
         else:
-            return "%s/%s" % (self.rootdir(), base)
+            return "%s%s" % (self.rootdir(), base)
 
     def expire(self):
         self.session.host.setBuildRootState(self.id,'EXPIRED')
