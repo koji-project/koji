@@ -5217,9 +5217,8 @@ class createDistRepoTask(BaseTaskHandler):
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
-        self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(
-            self.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
+            koji.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
             'groups', 'comps.xml')
 
         # set up our output dir
@@ -5307,11 +5306,10 @@ class createDistRepoTask(BaseTaskHandler):
                     % parseStatus(status, ' '.join(cmd)))
 
     def do_multilib(self, arch, ml_arch, conf):
-        pathinfo = koji.PathInfo(self.options.topdir)
-        repodir = pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
         ml_true = set()  # multilib packages we need to include before depsolve
-        ml_conf = os.path.join(self.pathinfo.work(), conf)
+        ml_conf = os.path.join(koji.pathinfo.work(), conf)
 
         # step 1: figure out which packages are multilib (should already exist)
         mlm = multilib.DevelMultilibMethod(ml_conf)
@@ -5471,7 +5469,7 @@ enabled=1
                 event=opts['event'], arch=a, latest=opts['latest'],
                 inherit=opts['inherit'], rpmsigs=True)
             for build in builds:
-                builddirs[build['id']] = self.pathinfo.build(build)
+                builddirs[build['id']] = koji.pathinfo.build(build)
             rpms += list(rpm_iter)
 
         # index by id and key
@@ -5508,11 +5506,11 @@ enabled=1
                     continue
                 # use the primary copy, if allowed (checked below)
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                    self.pathinfo.rpm(rpminfo))
+                    koji.pathinfo.rpm(rpminfo))
             else:
                 # use the signed copy
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                    self.pathinfo.signed(rpminfo, rpminfo['sigkey']))
+                    koji.pathinfo.signed(rpminfo, rpminfo['sigkey']))
             if not os.path.exists(pkgpath):
                 fs_missing.append(pkgpath)
                 # we'll raise an error below
