@@ -6915,6 +6915,7 @@ def handle_dist_repo(options, session, args):
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
+    parser.add_option("--with-src", action='store_true', help='Also generate a src repo')
     parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='REPO',default=[],
         action='append',
@@ -6996,9 +6997,10 @@ def handle_dist_repo(options, session, args):
         task_opts.multilib = os.path.join(stuffdir,
             os.path.basename(task_opts.multilib))
         print('')
-    for f in ('noarch', 'src'):
-        if f in task_opts.arch:
-            task_opts.arch.remove(f)
+    if 'noarch' in task_opts.arch:
+        task_opts.arch.remove('noarch')
+    if task_opts.with_src and 'src' not in task_opts.arch:
+        task_opts.arch.append('src')
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
