@@ -6911,7 +6911,7 @@ def handle_dist_repo(options, session, args):
         default=False,
         help=_('For RPMs not signed with a desired key, fall back to the '
             'primary copy'))
-    parser.add_option("--arch", action='append', default=[],
+    parser.add_option("-a", "--arch", action='append', default=[],
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
