@@ -2470,7 +2470,7 @@ def dist_repo_init(tag, keys, task_opts):
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
     event = task_opts.get('event')
-    arches = set([koji.canonArch(a) for a in task_opts['arch']])
+    arches = list(set([koji.canonArch(a) for a in task_opts['arch']]))
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
             with_debuginfo=False, event=event, repo_id=None,
