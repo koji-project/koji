@@ -5055,7 +5055,7 @@ class CreaterepoTask(BaseTaskHandler):
             self.session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
         return [uploadpath, files]
 
-    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo, oldpkgs=None):
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
         if self.options.use_createrepo_c:
             cmd = ['/usr/bin/createrepo_c']
@@ -5082,11 +5082,6 @@ class CreaterepoTask(BaseTaskHandler):
                 cmd.append('--update')
                 if self.options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
-        if oldpkgs:
-            # generate delta-rpms
-            cmd.append('--deltas')
-            for op_dir in oldpkgs:
-                cmd.extend(['--oldpackagedirs', op_dir])
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -5192,7 +5187,7 @@ class NewDistRepoTask(BaseTaskHandler):
         return 'Dist repository #%s successfully generated' % repo_id
 
 
-class createDistRepoTask(CreaterepoTask):
+class createDistRepoTask(BaseTaskHandler):
     Methods = ['createdistrepo']
     _taskWeight = 1.5
 
@@ -5263,7 +5258,7 @@ class createDistRepoTask(CreaterepoTask):
             self.pkglist = None
 
         # generate the repodata
-        self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
+        self.do_createrepo(self.rinfo, arch, self.pkglist, groupdata, oldpkgs=oldpkgs)
         if self.pkglist is None:
             fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
@@ -5283,6 +5278,42 @@ class createDistRepoTask(CreaterepoTask):
                     self.uploadpath, f)
 
         return [self.uploadpath, files, self.sigmap.items()]
+
+    def do_createrepo(self, rinfo, arch, pkglist, groupdata, oldpkgs=None):
+        """Run createrepo
+
+        This is derived from CreaterepoTask.create_local_repo, but adapted to
+        our requirements here
+        """
+        koji.ensuredir(self.outdir)
+        if self.options.use_createrepo_c:
+            cmd = ['/usr/bin/createrepo_c']
+        else:
+            cmd = ['/usr/bin/createrepo']
+        cmd.extend(['-vd', '-o', self.outdir])
+        if pkglist is not None:
+            cmd.extend(['-i', pkglist])
+        if os.path.isfile(groupdata):
+            cmd.extend(['-g', groupdata])
+        # TODO: can we recycle data (with --update) as in create_local_repo?
+        if oldpkgs:
+            # generate delta-rpms
+            cmd.append('--deltas')
+            for op_dir in oldpkgs:
+                cmd.extend(['--oldpackagedirs', op_dir])
+        # note: we can't easily use a cachedir because we do not have write
+        # permission. The good news is that with --update we won't need to
+        # be scanning many rpms.
+        if pkglist is None:
+            cmd.append(self.outdir)
+        else:
+            cmd.append(self.repodir)
+
+        logfile = '%s/createrepo.log' % self.workdir
+        status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
+        if not isSuccess(status):
+            raise koji.GenericError('failed to create repo: %s' \
+                    % parseStatus(status, ' '.join(cmd)))
 
     def do_multilib(self, arch, ml_arch, conf):
         self.repo_id = self.rinfo['id']
