@@ -5444,7 +5444,8 @@ enabled=1
         # get the rpm data
         rpms = []
         builddirs = {}
-        for a in self.compat[arch] + ('noarch',):
+        for a in self.compat[arch]:
+            # note: self.compat includes noarch for non-src already
             rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
                 event=opts['event'], arch=a, latest=opts['latest'],
                 inherit=opts['inherit'], rpmsigs=True)
