@@ -6916,6 +6916,8 @@ def handle_dist_repo(options, session, args):
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
     parser.add_option("--with-src", action='store_true', help='Also generate a src repo')
+    parser.add_option("--split-debuginfo", action='store_true', default=False,
+            help='Split debuginfo info a separate repo for each arch')
     parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='REPO',default=[],
         action='append',
@@ -7009,6 +7011,7 @@ def handle_dist_repo(options, session, args):
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
         'multilib': task_opts.multilib,
+        'split_debuginfo': task_opts.split_debuginfo,
         'skip_missing_signatures': task_opts.skip_missing_signatures,
         'allow_missing_signatures': task_opts.allow_missing_signatures
     }
