@@ -5217,7 +5217,6 @@ class createDistRepoTask(BaseTaskHandler):
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
-        self.repo_id = self.rinfo['id']
         self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(
             self.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
@@ -5308,7 +5307,6 @@ class createDistRepoTask(BaseTaskHandler):
                     % parseStatus(status, ' '.join(cmd)))
 
     def do_multilib(self, arch, ml_arch, conf):
-        self.repo_id = self.rinfo['id']
         pathinfo = koji.PathInfo(self.options.topdir)
         repodir = pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
