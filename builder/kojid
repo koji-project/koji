@@ -2910,7 +2910,7 @@ class ApplianceTask(ImageTask):
         cmd.extend(['--version', version, '--release', release])
 
         # Run appliance-creator
-        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         self.uploadFile(os.path.join(broot.rootdir(), app_log[1:]))
         if rv:
             raise koji.ApplianceError(
@@ -2920,7 +2920,7 @@ class ApplianceTask(ImageTask):
         results = []
         for directory, subdirs, files in os.walk(opath):
             for f in files:
-                results.append(os.path.join(broot.rootdir(), 'tmp',
+                results.append(os.path.join(broot.tmpdir(),
                                             directory, f))
         self.logger.debug('output: %s' % results)
         if len(results) == 0:
