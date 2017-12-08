@@ -8571,6 +8571,7 @@ class RootExports(object):
         channel: the channel to allocate the task to
         Returns the task id
         """
+        context.session.assertLogin()
         if not opts:
             opts = {}
         taskOpts = {}
@@ -8596,6 +8597,7 @@ class RootExports(object):
         channel: the channel to allocate the task to
         Returns a list of all the dependent task ids
         """
+        context.session.assertLogin()
         if not opts:
             opts = {}
         taskOpts = {}
@@ -8621,6 +8623,7 @@ class RootExports(object):
 
         Returns the task ID
         """
+        context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
         if not opts:
@@ -8651,6 +8654,7 @@ class RootExports(object):
 
         returns the task ID
         """
+        context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
 
@@ -8688,6 +8692,7 @@ class RootExports(object):
 
         Returns the task ID
         """
+        context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
         taskOpts = {}
@@ -8716,6 +8721,7 @@ class RootExports(object):
 
         Returns the task ID
         """
+        context.session.assertLogin()
         if not context.opts.get('EnableWin'):
             raise koji.GenericError("Windows support not enabled")
         targ_info = self.getBuildTarget(target)
@@ -9299,6 +9305,7 @@ class RootExports(object):
 
         The return value is the task id
         """
+        context.session.assertLogin()
         #first some lookups and basic sanity checks
         build = get_build(build, strict=True)
         tag = get_tag(tag, strict=True)
@@ -9348,6 +9355,7 @@ class RootExports(object):
         Unlike tagBuild, this does not create a task
         No return value"""
         #we can't staticmethod this one -- we're limiting the options
+        context.session.assertLogin()
         user_id = context.session.user_id
         tag_id = get_tag(tag, strict=True)['id']
         build_id = get_build(build, strict=True)['id']
@@ -9385,6 +9393,7 @@ class RootExports(object):
 
         Returns the task id of the task performing the move"""
 
+        context.session.assertLogin()
         #lookups and basic sanity checks
         pkg_id = get_package_id(package, strict=True)
         tag1_id = get_tag_id(tag1, strict=True)
@@ -9551,6 +9560,7 @@ class RootExports(object):
 
         If the build is associated with a task, cancel the task as well.
         Return True if the build was successfully canceled, False if not."""
+        context.session.assertLogin()
         build = get_build(buildID)
         if build == None:
             return False
@@ -9592,6 +9602,7 @@ class RootExports(object):
 
     def cancelTaskChildren(self, task_id):
         """Cancel a task's children, but not the task itself"""
+        context.session.assertLogin()
         task = Task(task_id)
         if not task.verifyOwner() and not task.verifyHost():
             if not context.session.hasPerm('admin'):
@@ -10598,6 +10609,7 @@ class RootExports(object):
     def resubmitTask(self, taskID):
         """Retry a canceled or failed task, using the same parameter as the original task.
         The logged-in user must be the owner of the original task or an admin."""
+        context.session.assertLogin()
         task = Task(taskID)
         if not (task.isCanceled() or task.isFailed()):
             raise koji.GenericError('only canceled or failed tasks may be resubmitted')
