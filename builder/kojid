@@ -5313,26 +5313,29 @@ class createDistRepoTask(BaseTaskHandler):
         ml_true = set()  # multilib packages we need to include before depsolve
         ml_conf = os.path.join(koji.pathinfo.work(), conf)
 
+        # read pkgs data from multilib repo
+        ml_pkgfile = os.path.join(mldir, 'kojipkgs')
+        ml_pkgs = json.load(open(ml_pkgfile, 'r'))
+
         # step 1: figure out which packages are multilib (should already exist)
         mlm = multilib.DevelMultilibMethod(ml_conf)
         fs_missing = set()
-        with open(self.pkglist) as pkglist:
-            for pkg in pkglist:
-                ppath = os.path.join(self.repodir, pkg.strip())
+        for bnp in self.kojipkgs:
+                rpminfo = self.kojipkgs[bnp]
+                ppath = rpminfo['_pkgpath']
                 po = yum.packages.YumLocalPackage(filename=ppath)
-                if mlm.select(po) and arch in self.archmap:
+                if mlm.select(po):
                     # we need a multilib package to be included
-                    # we assume the same signature level is available
-                    # XXX: what is a subarchitecture is the right answer?
-                    pl_path = pkg.replace(arch, self.archmap[arch]).strip()
-                    # assume this exists in the task results for the ml arch
-                    real_path = os.path.join(mldir, pl_path)
-                    if not os.path.exists(real_path):
-                        self.logger.error('%s (multilib) is not on the filesystem' % real_path)
-                        fs_missing.add(real_path)
+                    ml_bnp = bnp.replace(arch, self.archmap[arch])
+                    ml_path = os.path.join(mldir, ml_bnp[0].lower(), ml_bnp)
+                    # ^ XXX - should actually generate this
+                    if ml_bnp not in ml_pkgs:
+                        # not in our multilib repo
+                        self.logger.error('%s (multilib) is not on the filesystem' % ml_path)
+                        fs_missing.add(ml_path)
                         # we defer failure so can report all the missing deps
                         continue
-                    ml_true.add(real_path)
+                    ml_true.add(ml_path)
 
         # step 2: set up architectures for yum configuration
         self.logger.info("Resolving multilib for %s using method devel" % arch)
@@ -5422,10 +5425,6 @@ enabled=1
             raise koji.GenericError('multilib packages missing. '
                     'See missing_multilib.log')
 
-        # get rpm ids for ml pkgs
-        kpkgfile = os.path.join(mldir, 'kojipkgs')
-        kojipkgs = json.load(open(kpkgfile, 'r'))
-
         # step 5: add dependencies to our package list
         pkgwriter = open(self.pkglist, 'a')
         for dep_path in ml_needed:
@@ -5442,7 +5441,7 @@ enabled=1
             pkgwriter.write(bnplet + '/' + bnp + '\n')
             self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
             os.symlink(dep_path, dst)
-            rpminfo = kojipkgs[bnp]
+            rpminfo = ml_pkgs[bnp]
             self.sigmap[rpminfo['id']] = rpminfo['sigkey']
 
 
