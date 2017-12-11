@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.14.0
+Version: 1.15.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -478,6 +478,72 @@ fi
 %endif
 
 %changelog
+* Mon Dec 11 2017 Mike McLean <mikem at redhat.com> - 1.15.0-1
+- PR#602: don't use /tmp in chroot
+- PR#674: store git commit hash to build.source
+- PR#492: Setuptools support
+- PR#740: Check for login earlier
+- PR#708: Implement support for keytab in gssapi codepaths
+- PR#446: run checks earlier for cg_import
+- PR#610: show components for all archives
+- PR#578: cli: fix changelog encode for PY3
+- PR#533: Treat canceled tasks as failed for optional_archs
+- PR#686: Display license info in CLI's rpminfo and Web UI
+- PR#718: convenience script to run py2 and py3 tests in parallel
+- PR#722: docs: check external repos with taginfo
+- PR#675: refactory cli unittests, move share code pieces to utilities library
+- PR#714: Use task id as key to sort
+- PR#707: add argument detection to prevent array out of index error.
+- PR#717: Fix watch-tasks unit tests
+- PR#615: don't send notifications to disabled users or hosts
+- PR#698: set optional_arches to list
+- PR#703: cli: make return code of watch_task to always ignore sub-task failure
+- PR#704: cli: use strict with getTag call when appropriate
+- PR#710: use `hasPerm` to check permission in save_failed_tree
+- PR#699: Add documentation for storage volumes
+- PR#693: Import koji.plugin explicitly
+- PR#647: Don't check non-existing file
+- PR#664: make grab_session_options to accept dict directly
+- PR#673: functions for parsing task parameters
+- PR#681: use six.StringIO everywhere
+- PR#684: correct format and fix issue #682
+- PR#646: Improve test coverage in koji/util
+- PR#677: handle DateTime objects in encode_datetime
+- PR#670: Create repo without --deltas if no old package dir is set
+- PR#666: Few cheap python3 compatibilities
+- PR#662: mock koji.commands._running_in_bg function to run unittest in background
+- PR#645: don't fail on CLI plugins without docstrings
+- PR#655: fix unreachable code
+- PR#656: remove unused calls
+- PR#652: add unittests for koji commands
+- PR#658: consolidate safe_rmtree, rmtree and shutil.rmtree
+- PR#660: more runroot tests
+- PR#633: unify runroot CLI interface
+- PR#649: delete build directory if cg_import fails
+- PR#653: Add krb_canon_host option
+- PR#657: protonmsg: include the arch in the headers of rpm sign messages
+- PR#651: protonmsg: don't send rpm.sign messages when the sigkey is empty
+- PR#654: Update links in docs to point to correct pages
+- PR#631: cg_import fails immediately if build directory already exists
+- PR#601: replace pycurl with requests
+- PR#608: tests for handling user groups
+- PR#637: set timezone to US/Eastern when test_build_notification executing
+- PR#636: use urlparse.parse_qs instead of deprecated cgi.parse_qs
+- PR#628: add a unit test for buildNotification task
+- PR#620: some tests for koji.auth
+- PR#625: watch-logs --mine --follow
+- PR#629: fix wrong mock.patch target
+- PR#598: kojira: speed up repo dist check
+- PR#622: basic volume policy support
+- PR#624: fix formatTime for DateTime
+- PR#537: messagebus plugin: deferred sending and test mode
+- PR#605: update docstring
+- PR#611: the split_cli.py script is no longer needed
+- PR#617: display suid bit in web ui
+- PR#619: cleanup unnecessary subdir phony
+- PR#606: drop importBuildInPlace call
+- PR#609: move spin-livemedia to build section
+
 * Mon Sep 25 2017 Mike McLean <mikem at redhat.com> - 1.14.0-1
 - PR#597: use_old_ssl is deprecated
 - PR#591: Normalize paths for scms
