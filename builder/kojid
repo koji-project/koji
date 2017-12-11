@@ -732,6 +732,16 @@ class BuildRoot(object):
     def rootdir(self):
         return "%s/%s/root" % (self.options.mockdir, self.name)
 
+    def tmpdir(self, within=False):
+        # mock 1.4+ /tmp is tmpfs mounted on each run, different
+        # directory is needed for persistency
+        # 'within' is equivalent to broot.path_without_to_within(broot.tmpdir())
+        base = "/builddir/tmp"
+        if within:
+            return base
+        else:
+            return "%s%s" % (self.rootdir(), base)
+
     def expire(self):
         self.session.host.setBuildRootState(self.id,'EXPIRED')
 
@@ -1755,7 +1765,7 @@ class WrapperRPMTask(BaseBuildTask):
         buildroot.init()
 
         logfile = os.path.join(self.workdir, 'checkout.log')
-        scmdir = buildroot.rootdir() + '/tmp/scmroot'
+        scmdir = buildroot.tmpdir() + '/scmroot'
         koji.ensuredir(scmdir)
         self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         specdir = scm.checkout(scmdir, self.session, self.getUploadDir(), logfile)
@@ -2690,7 +2700,7 @@ class ImageTask(BaseTaskHandler):
             build_tag: build tag name
         @returns: absolute path to the retrieved kickstart file
         """
-        scmdir = os.path.join(broot.rootdir(), 'tmp')
+        scmdir = broot.tmpdir()
         koji.ensuredir(scmdir)
         self.logger.debug("ksfile = %s" % ksfile)
         if self.opts.get('ksurl'):
@@ -2784,18 +2794,18 @@ class ImageTask(BaseTaskHandler):
 
         # Write out the new ks file. Note that things may not be in the same
         # order and comments in the original ks file may be lost.
-        kskoji = os.path.join('/tmp', 'koji-image-%s-%i.ks' %
+        kskoji = os.path.join(broot.tmpdir(), 'koji-image-%s-%i.ks' %
                               (target_info['build_tag_name'], self.id))
-        kojikspath = os.path.join(broot.rootdir(), kskoji[1:])
-        outfile = open(kojikspath, 'w')
+        koji.ensuredir(broot.tmpdir())
+        outfile = open(kskoji, 'w')
         outfile.write(str(self.ks.handler))
         outfile.close()
 
         # put the new ksfile in the output directory
-        if not os.path.exists(kojikspath):
-            raise koji.LiveCDError("KS file missing: %s" % kojikspath)
-        self.uploadFile(kojikspath)
-        return kskoji # absolute path within chroot
+        if not os.path.exists(kskoji):
+            raise koji.LiveCDError("KS file missing: %s" % kskoji)
+        self.uploadFile(kskoji)
+        return broot.path_without_to_within(kskoji) # absolute path within chroot
 
     def getImagePackages(self, cachepath):
         """
@@ -2883,9 +2893,10 @@ class ApplianceTask(ImageTask):
         # Figure out appliance-creator arguments, let it fail if something
         # is wrong.
         odir = 'app-output'
-        opath = os.path.join(broot.rootdir(), 'tmp', odir)
-        cachedir = '/tmp/koji-appliance'   # arbitrary paths in chroot
-        app_log = '/tmp/appliance.log'
+        opath = os.path.join(broot.tmpdir(), odir)
+        # arbitrary paths in chroot
+        cachedir = broot.tmpdir(within=True) + '/koji-appliance'
+        app_log = broot.tmpdir(within=True) + '/appliance.log'
         os.mkdir(opath)
 
         cmd = ['/usr/bin/appliance-creator', '-c', kskoji, '-d', '-v',
@@ -2899,7 +2910,7 @@ class ApplianceTask(ImageTask):
         cmd.extend(['--version', version, '--release', release])
 
         # Run appliance-creator
-        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         self.uploadFile(os.path.join(broot.rootdir(), app_log[1:]))
         if rv:
             raise koji.ApplianceError(
@@ -2909,7 +2920,7 @@ class ApplianceTask(ImageTask):
         results = []
         for directory, subdirs, files in os.walk(opath):
             for f in files:
-                results.append(os.path.join(broot.rootdir(), 'tmp',
+                results.append(os.path.join(broot.tmpdir(),
                                             directory, f))
         self.logger.debug('output: %s' % results)
         if len(results) == 0:
@@ -3030,24 +3041,25 @@ class LiveCDTask(ImageTask):
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
-        cachedir = '/tmp/koji-livecd'   # arbitrary paths in chroot
-        livecd_log = '/tmp/livecd.log'
+        # arbitrary paths in chroot
+        cachedir = broot.tmpdir(within=True) + '/koji-livecd'
+        livecd_log = broot.tmpdir(within=True) + '/livecd.log'
         cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v',
                '--logfile', livecd_log, '--cache', cachedir]
         isoname = '%s-%s-%s' % (name, version, release)
         cmd.extend(['-f', self._shortenVolID(name, version, release)])
 
         # Run livecd-creator
-        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         self.uploadFile(os.path.join(broot.rootdir(), livecd_log[1:]))
         if rv:
             raise koji.LiveCDError(
                 'Could not create LiveCD: %s' % parseStatus(rv, 'livecd-creator') + '; see root.log or livecd.log for more information')
 
         # Find the resultant iso
-        # The cwd of the livecd-creator process is /tmp in the chroot, so
+        # The cwd of the livecd-creator process is tmpdir() in the chroot, so
         # that is where it writes the .iso
-        files = os.listdir(os.path.join(broot.rootdir(), 'tmp'))
+        files = os.listdir(broot.tmpdir())
         isofile = None
         for afile in files:
             if afile.endswith('.iso'):
@@ -3057,7 +3069,7 @@ class LiveCDTask(ImageTask):
                     raise koji.LiveCDError('multiple .iso files found: %s and %s' % (isofile, afile))
         if not isofile:
             raise koji.LiveCDError('could not find iso file in chroot')
-        isosrc = os.path.join(broot.rootdir(), 'tmp', isofile)
+        isosrc = os.path.join(broot.tmpdir(), isofile)
 
         # copy the iso out of the chroot. If we were given an isoname,
         # this is where the renaming happens.
@@ -3121,7 +3133,7 @@ class LiveMediaTask(ImageTask):
         scm = SCM(self.opts['lorax_url'])
         scm.assert_allowed(self.options.allowed_scms)
         logfile = os.path.join(self.workdir, 'lorax-templates-checkout.log')
-        checkout_dir = scm.checkout(os.path.join(build_root.rootdir(), 'tmp'),
+        checkout_dir = scm.checkout(build_root.tmpdir(),
                                     self.session, self.getUploadDir(), logfile)
         return os.path.join(build_root.path_without_to_within(checkout_dir),
                             self.opts['lorax_dir'])
@@ -3205,9 +3217,9 @@ class LiveMediaTask(ImageTask):
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
 
-        cachedir = '/tmp/koji-livemedia'   # arbitrary paths in chroot
-        livemedia_log = '/tmp/lmc-logs/livemedia-out.log'
-        resultdir = '/tmp/lmc'
+        # arbitrary paths in chroot
+        livemedia_log = broot.tmpdir(within=True) + '/lmc-logs/livemedia-out.log'
+        resultdir = broot.tmpdir(within=True) + '/lmc'
 
 
         # Common LMC command setup, needs extending
@@ -3245,12 +3257,12 @@ class LiveMediaTask(ImageTask):
 
 
         # Run livemedia-creator
-        rv = broot.mock(['--cwd', '/tmp', '--chroot', '--'] + cmd)
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
 
         # upload logs
         logdirs = [
-            os.path.join(broot.rootdir(), 'tmp/lmc-logs'),
-            os.path.join(broot.rootdir(), 'tmp/lmc-logs/anaconda'),
+            os.path.join(broot.tmpdir(), 'lmc-logs'),
+            os.path.join(broot.tmpdir(), 'lmc-logs/anaconda'),
             ]
         for logdir in logdirs:
             if not os.path.isdir(logdir):
@@ -3273,7 +3285,7 @@ class LiveMediaTask(ImageTask):
                 'Could not create LiveMedia: %s' % parseStatus(rv, 'livemedia-creator') + '; see root.log or livemedia-out.log for more information')
 
         # Find the resultant iso
-        # The cwd of the livemedia-creator process is /tmp in the chroot, so
+        # The cwd of the livemedia-creator process is broot.tmpdir() in the chroot, so
         # that is where it writes the .iso
         rootresultsdir = os.path.join(broot.rootdir(), resultdir.lstrip('/'))
         files = os.listdir(rootresultsdir)
@@ -4502,7 +4514,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         # Setup files and directories for SRPM creation
         # We can't put this under the mock homedir because that directory
         # is completely blown away and recreated on every mock invocation
-        scmdir = broot.rootdir() + '/tmp/scmroot'
+        scmdir = broot.tmpdir() + '/scmroot'
         koji.ensuredir(scmdir)
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
