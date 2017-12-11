@@ -5245,7 +5245,9 @@ class createDistRepoTask(BaseTaskHandler):
 
         # sort out our package list
         self.uploadpath = self.getUploadDir()
-        self.pkglist = self.make_pkglist(tag, arch, keys, opts)
+        self.make_pkglist(tag, arch, keys, opts)
+        self.pkglist = self.write_pkglist()
+        self.link_pkgs()
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
         self.write_kojipkgs()
@@ -5458,7 +5460,6 @@ enabled=1
                 best_idx = idx
         return best
 
-
     def make_pkglist(self, tag_id, arch, keys, opts):
         # get the rpm data
         rpms = []
@@ -5492,9 +5493,7 @@ enabled=1
             else:
                 selected[rpm_id] = rpm_idx[rpm_id][best_key]
 
-        #generate pkglist files
-        pkgfile = os.path.join(self.repodir, 'pkglist')
-        pkglist = file(pkgfile, 'w')
+        # generate kojipkgs data and note missing files
         fs_missing = []
         sig_missing = []
         kojipkgs = {}
@@ -5516,15 +5515,9 @@ enabled=1
                 # we'll raise an error below
             else:
                 bnp = os.path.basename(pkgpath)
-                bnplet = bnp[0].lower()
-                pkglist.write(bnplet + '/' + bnp + '\n')
-                koji.ensuredir(os.path.join(self.repodir, bnplet))
                 self.sigmap[rpminfo['id']] = rpminfo['sigkey']
-                dst = os.path.join(self.repodir, bnplet, bnp)
-                self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
-                os.symlink(pkgpath, dst)
+                rpminfo['_pkgpath'] = pkgpath
                 kojipkgs[bnp] = rpminfo
-        pkglist.close()
         self.kojipkgs = kojipkgs
 
         # report problems
@@ -5562,8 +5555,24 @@ enabled=1
                         and not opts['allow_missing_signatures']):
                 raise koji.GenericError('Unsigned packages found. See '
                         'missing_signatures.log')
-        return pkgfile
 
+    def link_pkgs(self):
+        for bnp in self.kojipkgs:
+            bnplet = bnp[0].lower()
+            koji.ensuredir(os.path.join(self.repodir, bnplet))
+            dst = os.path.join(self.repodir, bnplet, bnp)
+            pkgpath = self.kojipkgs[bnp]['_pkgpath']
+            self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
+            os.symlink(pkgpath, dst)
+
+    def write_pkglist(self):
+        pkgfile = os.path.join(self.repodir, 'pkglist')
+        pkglist = file(pkgfile, 'w')
+        for bnp in self.kojipkgs:
+            bnplet = bnp[0].lower()
+            pkglist.write(bnplet + '/' + bnp + '\n')
+        pkglist.close()
+        return pkgfile
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
