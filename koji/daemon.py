@@ -32,6 +32,7 @@ import urlparse
 from fnmatch import fnmatch
 import base64
 import time
+import subprocess
 import sys
 import traceback
 import errno
@@ -501,8 +502,26 @@ class SCM(object):
                 rel_path = '../' * len(path_comps.split('/'))
                 os.symlink(rel_path + 'common', '%s/../common' % sourcedir)
 
+        self.sourcedir = sourcedir
         return sourcedir
 
+    def get_source(self):
+        r = {
+            'url': self.url,
+            'source': '',
+        }
+        if self.scmtype.startswith('GIT'):
+            cmd = ['git', 'rev-parse', 'HEAD']
+            fragment = subprocess.check_output(cmd, cwd=self.sourcedir).strip()
+            scheme = self.scheme[:-3]
+            netloc = self.host
+            path = self.repository
+            query = self.module
+            r['source'] = urlparse.urlunsplit([scheme, netloc, path, query, fragment])
+        else:
+            # just use the same url
+            r['source'] = self.url
+        return r
 ## END kojikamid dup
 
 
