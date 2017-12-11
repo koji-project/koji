@@ -114,6 +114,43 @@ The web UI will now display the setuid bit when displaying rpm/archive file cont
 Builder changes
 ---------------
 
+Use alternate tmpdir in mock chroots
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/602
+
+
+Recent versions of mock (1.4+) default to use_nspawn=True, which results
+in /tmp being a fresh tmpfs mount on every run. This means the /tmp
+directory no longer persists outside of the mock invocation.
+
+Now, the builder will use /builddir/tmp instead of /tmp for persistent data.
+
+
+Store git commit hash in build.source
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/674
+
+A build in Koji can be triggered from an scm url in a variety of
+formats, for example:
+
+    - git://pkgs.fedoraproject.org/<namespec>/<package>?#<git hash>
+    - git://pkgs.fedoraproject.org/<namespec>/<package>?#<branch>
+    - git://pkgs.fedoraproject.org/<namespec>/<package>
+
+Previously, this source url was not properly stored for rpm builds. It
+appeared in the task parameters, but the build.source field remained blank.
+If a symbolic git ref (e.g. HEAD) was given in the url, the underlying
+sha1 value was only recorded in the task logs.
+
+With this change:
+
+    * the scm url is stored in build.source
+    * for git, the ref portion is resolved to its sha1 hash
+    * the original scm url is saved in build.extra
+
+
 
 
 System changes
