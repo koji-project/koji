@@ -80,6 +80,35 @@ The `watch-logs` command now supports the following new options:
   --follow    Follow spawned child tasks
 
 
+Web UI changes
+--------------
+
+Show components for all archives
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/610
+
+Previously, the Web UI only displayed component lists for image builds.
+However, new build types can also have component lists.
+
+Now the interface will display components for any archive that has them.
+
+
+Display License Info
+^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/686
+
+
+The `rpminfo` page now displays the `License` field from the rpm.
+
+
+Show suid bit in web UI
+^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/617
+
+The web UI will now display the setuid bit when displaying rpm/archive file contents.
 
 
 Builder changes
