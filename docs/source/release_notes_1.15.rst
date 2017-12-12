@@ -1,8 +1,8 @@
 Koji 1.15 Release Notes
 =======================
 
-Migrating from the last release
--------------------------------
+Migrating from the previous release
+-----------------------------------
 
 For details on migrating see :doc:`migrating_to_1.15`
 
@@ -11,22 +11,22 @@ Client Changes
 --------------
 
 
-Display License Info
+Display license Info
 ^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/686
 
 
-The `rpminfo` command now displays the `License` field from the rpm.
+The ``rpminfo`` command now displays the ``License`` field from the rpm.
 
 
-Support keytabs for GSSAPI authentication
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Keytabs for GSSAPI authentication
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/708
 
 Previously keytabs were only supported by the older kerberos auth method, which
-is not supported on Python 3. Now the gssapi method supports them as well.
+is not available on Python 3. Now the gssapi method supports them as well.
 
 
 Add krb_canon_host option
@@ -34,29 +34,42 @@ Add krb_canon_host option
 
 | PR: https://pagure.io/koji/pull-request/653
 
-Adds a new option `krb_canon_host` that tells Koji clients to get the dns canonical hostname for kerberos auth.
-The existing `krb_rdns` option was an attempt to solve the same sort of issue, but caused problems for some network configurations.
+This release adds a ``krb_canon_host`` option that tells Koji clients
+to use the dns canonical hostname for kerberos auth.
+
+This option allows kerberos authentication to work in situations where
+the hub is accessed via a cname, but the hub's credentials are under
+its canonical hostname.
+
+If specified, this option takes precedence over the older
+option named ``krb_rdns``. That option caused Koji clients to perform a
+reverse name lookup for kerberos auth.
+
+When configuring kojiweb (in web.conf), the option is named ``KrbCanonHost``.
+
+Both options only affect the older kerberos authentication path, and not
+gssapi.
 
 
-The watch-task return code ignores sub-task failures
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Watch-task return code
+^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/703
 
-Previously, the watch-task command would return a non-zero exit status
+Previously, the ``watch-task`` command would return a non-zero exit status
 if any subtask failed, even if this did not cause the parent task to fail.
 
-Now that we have cases where subtasks are optional, this no longer makes sense,
-so the exit code of the watch-task command is based solely on the results of
+Now that we have cases where subtasks are optional, this no longer makes sense.
+The exit code is now based solely on the results of
 the top level tasks it is asked to watch.
 
 
-Unify runroot CLI interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+New runroot options
+^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/633
 
-The `runroot` command now supports options similar to the various build commands. These new
+The ``runroot`` command now supports options similar to the various build commands. These new
 options are:
 
 
@@ -67,12 +80,12 @@ options are:
   --quiet               Do not print the task information
 
 
-New args for watch-logs command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+New watch-logs options
+^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/625
 
-The `watch-logs` command now supports the following new options:
+The ``watch-logs`` command now supports the following new options:
 
 .. code-block:: text
 
@@ -83,77 +96,85 @@ The `watch-logs` command now supports the following new options:
 Web UI changes
 --------------
 
-Show components for all archives
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Archive component display
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/610
 
-Previously, the Web UI only displayed component lists for image builds.
+Previously, the web UI only displayed component lists for image builds.
 However, new build types can also have component lists.
 
 Now the interface will display components for any archive that has them.
 
 
-Display License Info
+Display license Info
 ^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/686
 
 
-The `rpminfo` page now displays the `License` field from the rpm.
+The ``rpminfo`` page now displays the ``License`` field from the rpm.
 
 
-Show suid bit in web UI
-^^^^^^^^^^^^^^^^^^^^^^^
+Show suid bit
+^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/617
 
 The web UI will now display the setuid bit when displaying rpm/archive file contents.
 
 
+
+
 Builder changes
 ---------------
 
-Use alternate tmpdir in mock chroots
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Alternate tmpdir for mock chroots
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/602
 
 
-Recent versions of mock (1.4+) default to use_nspawn=True, which results
+Recent versions of mock (1.4+) default to ``use_nspawn=True``, which results
 in /tmp being a fresh tmpfs mount on every run. This means the /tmp
 directory no longer persists outside of the mock invocation.
 
 Now, the builder will use /builddir/tmp instead of /tmp for persistent data.
 
 
-Store git commit hash in build.source
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Store git commit hash
+^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/674
 
-A build in Koji can be triggered from an scm url in a variety of
-formats, for example:
+In Koji, for builds from an SCM, the source is specified as an
+scm url.
+For git urls, the revision in that url can be anything that git
+will recognize, including:
 
-    - git://pkgs.fedoraproject.org/<namespec>/<package>?#<git hash>
-    - git://pkgs.fedoraproject.org/<namespec>/<package>?#<branch>
-    - git://pkgs.fedoraproject.org/<namespec>/<package>
+    - a sha1 ref
+    - an abbreviated sha1 ref
+    - a branch name
+    - a tag
+    - HEAD
+
+With this change:
+
+    * the revision is replaced with the full sha1 ref for git urls
+    * the scm url is stored in build.source
+    * the original scm url is saved in build.extra
 
 Previously, this source url was not properly stored for rpm builds. It
 appeared in the task parameters, but the build.source field remained blank.
 If a symbolic git ref (e.g. HEAD) was given in the url, the underlying
 sha1 value was only recorded in the task logs.
 
-With this change:
-
-    * the scm url is stored in build.source
-    * for git, the ref portion is resolved to its sha1 hash
-    * the original scm url is saved in build.extra
-
 
 
 System changes
 --------------
+
 
 Volume policy support
 ^^^^^^^^^^^^^^^^^^^^^
@@ -173,27 +194,26 @@ This feature:
 The hub consults the volume policy at various points to
 determine where a build should live. This allows admins to make rules like:
 
-    all kernel builds go to the volume named kstore
-    all builds built from the epel-7-build tag go to the volume named epel7
-    all builds from the osbs content generator go to the volume named osbs
+    - all kernel builds go to the volume named kstore
+    - all builds built from the epel-7-build tag go to the volume named epel7
+    - all builds from the osbs content generator go to the volume named osbs
 
-The default policy would places all builds on the default volume.
+The default policy places all builds on the default volume.
 
 See also: :doc:`volumes`
 
-messagebus plugin changes
+Messagebus plugin changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/537
 
-There are two notable changes to the messagebus plugin this release.
+There are two notable changes to the messagebus plugin this release:
 
 
 Deferred sending
 """"""""""""""""
 
-
-Similar to the current behavior of the protonmsg plugin. Messages are queued
+Similar to the current behavior of the protonmsg plugin, messages are queued
 up during hub calls and only sent out during the ``postCommit`` callback.
 
 This avoids sending messages about failed calls, which can be confusing to
@@ -209,20 +229,8 @@ possible to enable the plugin in test environments without having to set up a
 separate message bus.
 
 
-No notifications for disabled users or hosts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-| PR: https://pagure.io/koji/pull-request/615
-
-
-Koji will no longer send out email notifications to disabled users or
-to users corresponding to a host.
-
-
 Protonmsg plugin changes
 ^^^^^^^^^^^^^^^^^^^^^^^^
-
-protonmsg: include the arch in the headers of rpm sign messages
 
 | PR: https://pagure.io/koji/pull-request/657
 | PR: https://pagure.io/koji/pull-request/651
@@ -234,6 +242,16 @@ There are two changes to how the protonmsg plugin handles rpmsign events:
 
 
 
+No notifications for disabled users or hosts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/615
+
+
+Koji will no longer send out email notifications to disabled users or
+to users corresponding to a host.
+
+
 Replace pycurl with requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -243,7 +261,7 @@ All uses of the pycurl library have been replaced with calls
 to python-requests, so pycurl is no longer required.
 
 
-drop importBuildInPlace call
+Drop importBuildInPlace call
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | PR: https://pagure.io/koji/pull-request/606
@@ -251,6 +269,6 @@ drop importBuildInPlace call
 The deprecated ``importBuildInPlace`` call has been dropped.
 
 This call was an artifact of a particular bootstrap event that happened a long
-time ago. It was never not really documented or recommended for use.
+time ago. It was never really documented or recommended for use.
 
 
