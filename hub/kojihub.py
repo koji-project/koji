@@ -54,6 +54,7 @@ import traceback
 import time
 import xmlrpclib
 import zipfile
+import functools
 
 import koji.xmlrpcplus
 from koji.context import context
@@ -2416,7 +2417,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
     # Sort the list so that the highest version number comes last.
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
-    artifacts = sorted(artifacts, cmp=lambda a, b: rpm.labelCompare(a, b))
+    artifacts = sorted(artifacts, key=functools.cmp_to_key(rpm.labelCompare))
     artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     contents = """<?xml version="1.0"?>
