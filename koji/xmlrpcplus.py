@@ -50,11 +50,6 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
             return xmlrpc_client.Marshaller.dump_int(self, value, write)
     dispatch[int] = dump_int
 
-    # we always want to allow None
-    def dump_nil(self, value, write):
-        write("<value><nil/></value>")
-    dispatch[type(None)] = dump_nil
-
 
 if six.PY2:
     ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int
@@ -82,9 +77,9 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
         encoding = "utf-8"
 
     if marshaller is not None:
-        m = marshaller(encoding)
+        m = marshaller(encoding, allow_none=True)
     else:
-        m = ExtendedMarshaller(encoding)
+        m = ExtendedMarshaller(encoding, allow_none=True)
 
     data = m.dumps(params)
 
