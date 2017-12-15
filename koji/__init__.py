@@ -64,8 +64,10 @@ import random
 import re
 import requests
 try:
+    import requests_kerberos
     from requests_kerberos import HTTPKerberosAuth
 except ImportError:  #pragma: no cover
+    requests_kerberos = None
     HTTPKerberosAuth = None
 import rpm
 import shutil
@@ -2206,7 +2208,7 @@ class ClientSession(object):
         return host
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
-        if not HTTPKerberosAuth:
+        if not HTTPKerberosAuth or not requests_kerberos:
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
@@ -2234,7 +2236,13 @@ class ClientSession(object):
                 old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
-                kwargs['principal'] = principal
+                if int(requests_kerberos.__version__.split('.')[0]) == 0 \
+                   and int(requests_kerberos.__version__.split('.')[1]) < 9:
+                    e_str = 'version of python-requests-kerberos(%s) should >= 0.9.0' % requests_kerberos.__version__
+                    self.logger.debug(e_str)
+                    raise PythonImportError(e_str)
+                else:
+                    kwargs['principal'] = principal
             self.opts['auth'] = HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to

@@ -29,7 +29,9 @@ class TestGSSAPI(unittest.TestCase):
                 retry=False)
         self.assertEqual(old_environ, dict(**os.environ))
 
-    def test_gssapi_login_keytab(self):
+    @mock.patch('koji.requests_kerberos.__version__', new='0.9.0')
+    @mock.patch('koji.HTTPKerberosAuth')
+    def test_gssapi_login_keytab(self, HTTPKerberosAuth_mock):
         principal = 'user@EXAMPLE.COM'
         keytab = '/path/to/keytab'
         ccache = '/path/to/cache'
@@ -37,6 +39,19 @@ class TestGSSAPI(unittest.TestCase):
         self.session.gssapi_login(principal, keytab, ccache)
         self.session._callMethod.assert_called_once_with('sslLogin', [None],
                 retry=False)
+        self.assertEqual(old_environ, dict(**os.environ))
+
+    @mock.patch('koji.requests_kerberos.__version__', new='0.7.0')
+    def test_gssapi_login_keytab_unsupported_requests_kerberos_version(self):
+        principal = 'user@EXAMPLE.COM'
+        keytab = '/path/to/keytab'
+        ccache = '/path/to/cache'
+        old_environ = dict(**os.environ)
+        with self.assertRaises(koji.PythonImportError) as cm:
+            self.session.gssapi_login(principal, keytab, ccache)
+        self.assertEqual(cm.exception.args[0],
+                         'version of python-requests-kerberos(0.7.0) should >= 0.9.0')
+        self.session._callMethod.assert_not_called()
         self.assertEqual(old_environ, dict(**os.environ))
 
     def test_gssapi_login_error(self):
