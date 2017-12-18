@@ -5,10 +5,19 @@ import six
 import unittest
 
 from koji_cli.commands import handle_block_group
+from . import utils
 
-class TestBlockGroup(unittest.TestCase):
+
+class TestBlockGroup(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
+
+    def setUp(self):
+        self.error_format = """Usage: %s block-group <tag> <group>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -67,7 +76,7 @@ class TestBlockGroup(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_block_group_nonexistent_group(self, activate_session_mock, stdout):
+    def test_handle_block_group(self, activate_session_mock, stdout):
         tag = 'tag'
         group = 'group'
         arguments = [tag, group]
@@ -93,3 +102,28 @@ class TestBlockGroup(unittest.TestCase):
         session.getTagGroups.assert_called_once_with(tag, inherit=False)
         session.groupListBlock.assert_called_once_with(tag, group)
         self.assertEqual(rv, None)
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_block_group_error_handling(self, activate_session_mock, stdout):
+        session = mock.MagicMock()
+        options = mock.MagicMock()
+
+        expected = self.format_error_message(
+                        "Please specify a tag name and a group name")
+        for args in [[], ['tag'], ['tag', 'grp', 'etc']]:
+            self.assert_system_exit(
+                handle_block_group,
+                options,
+                session,
+                args,
+                stderr=expected,
+                activate_session=None)
+
+        # if we don't have 'admin' permission
+        session.hasPerm.return_value = False
+        rv = handle_block_group(options, session, ['tag', 'grp'])
+        self.assert_console_message(
+            stdout, 'This action requires admin privileges\n')
+        self.assertEqual(rv, 1)
+        activate_session_mock.assert_called_with(session, options)

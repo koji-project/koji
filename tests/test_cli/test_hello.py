@@ -1,11 +1,31 @@
+# coding=utf-8
 from __future__ import absolute_import
 import mock
 import six
 import unittest
 import koji
 
-from koji_cli.commands import handle_moshimoshi
+from koji_cli.commands import handle_moshimoshi, _printable_unicode
 from . import utils
+
+
+class TestPrintUnicode(utils.CliTestCase):
+
+    greetings = ('hello',
+                 'bonjour',
+                u'céad míle fáilte',
+                u'hylô',
+                u'你好',
+                u'こんにちは',
+                u'안녕하세요')
+
+    def test_printable_unicode(self):
+        for s in self.greetings:
+            result = _printable_unicode(s)
+            if six.PY2:
+                self.assertEqual(type(result), type(str()))
+            else:
+                self.assertEqual(type(result), type(str()))
 
 
 class TestHello(utils.CliTestCase):
