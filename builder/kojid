@@ -30,10 +30,7 @@ import koji.plugin
 import koji.util
 import koji.tasks
 import glob
-try:
-    import json
-except ImportError:  # pragma: no cover
-    import simplejson as json
+import json
 import logging
 import logging.handlers
 from koji.daemon import incremental_upload, log_output, TaskManager, SCM

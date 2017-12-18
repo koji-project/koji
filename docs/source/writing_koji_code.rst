@@ -674,7 +674,6 @@ You will need to install the following packages to actually run the tests.
  * ``python-coverage``
  * ``python-krbV``
  * ``python-mock``
- * ``python-simplejson``
  * ``python-psycopg2``
  * ``python-requests``
  * ``python-qpid-proton``
