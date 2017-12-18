@@ -6942,7 +6942,7 @@ def handle_dist_repo(options, session, args):
                     rinfo = session.getRepo(repo,
                             state=koji.REPO_STATES['EXPIRED'], dist=True)
                 if not rinfo:
-                    parser.errpr(_("Can't find repo for tag: %s") % repo)
+                    parser.error(_("Can't find repo for tag: %s") % repo)
             old_repos.append(rinfo['id'])
     tag = args[0]
     keys = args[1:]
@@ -6952,7 +6952,7 @@ def handle_dist_repo(options, session, args):
     if len(task_opts.arch) == 0:
         arches = taginfo['arches'] or ''
         task_opts.arch = arches.split()
-        if task_opts.arch == None:
+        if not task_opts.arch:
             parser.error(_('No arches given and no arches associated with tag'))
     else:
         for a in task_opts.arch:
@@ -6972,11 +6972,9 @@ def handle_dist_repo(options, session, args):
         task_opts.multilib = os.path.join(stuffdir,
             os.path.basename(task_opts.multilib))
         print('')
-    try:
-        task_opts.arch.remove('noarch') # handled specifically
-        task_opts.arch.remove('src') # ditto
-    except ValueError:
-        pass
+    for f in ('noarch', 'src'):
+        if f in task_opts.arch:
+            task_opts.arch.remove(f)
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
