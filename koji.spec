@@ -478,7 +478,7 @@ fi
 %endif
 
 %changelog
-* Mon Dec 11 2017 Mike McLean <mikem at redhat.com> - 1.15.0-1
+* Mon Dec 18 2017 Mike McLean <mikem at redhat.com> - 1.15.0-1
 - PR#602: don't use /tmp in chroot
 - PR#674: store git commit hash to build.source
 - PR#492: Setuptools support
