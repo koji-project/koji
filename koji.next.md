@@ -40,7 +40,7 @@ Warning to the reader:
   - allow for use cases that require multiple builds of the same NVR (or NVRA)
 - refactor task scheduling
 - extend content generator support
-  - content generators will land in 1.x fairly soon, but in 2.0 they will be more integral
+  - content generators are available in 1.x, but in 2.0 they will be more integral
   - refactor kojid to use content generator calls
   - (possibly) tighter integration in the db
 - unify handling of rpms with other build types in the db
