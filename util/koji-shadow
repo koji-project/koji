@@ -31,7 +31,6 @@ import ConfigParser
 import fnmatch
 import optparse
 import os
-import pprint
 import random
 import shutil
 import socket   # for socket.error and socket.setdefaulttimeout
@@ -39,7 +38,6 @@ import string
 import sys
 import time
 import urllib2
-import urlgrabber.grabber as grabber
 import xmlrpclib  # for ProtocolError and Fault
 import rpm
 
