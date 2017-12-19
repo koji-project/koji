@@ -315,16 +315,16 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{python2_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
-#%%dir %{_sysconfdir}/koji/plugins
-#%%config(noreplace) %{_sysconfdir}/koji/plugins/*.conf
+#%%dir %%{_sysconfdir}/koji/plugins
+#%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf
 
 %if 0%{with python3}
 %files -n python%{python3_pkgversion}-%{name}-cli-plugins
 %defattr(-,root,root)
 %{python3_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
-#%%dir %{_sysconfdir}/koji/plugins
-#%%config(noreplace) %{_sysconfdir}/koji/plugins/*.conf
+#%%dir %%{_sysconfdir}/koji/plugins
+#%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf
 %endif
 
 %files hub
@@ -421,7 +421,7 @@ fi
 %files vm
 %defattr(-,root,root)
 %{_sbindir}/kojivmd
-#dir %{_datadir}/kojivmd
+#dir %%{_datadir}/kojivmd
 %{_datadir}/kojivmd/kojikamid
 %if %{use_systemd}
 %{_unitdir}/kojivmd.service
