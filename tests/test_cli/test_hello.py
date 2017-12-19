@@ -11,21 +11,19 @@ from . import utils
 
 class TestPrintUnicode(utils.CliTestCase):
 
-    greetings = ('hello',
-                 'bonjour',
-                u'céad míle fáilte',
-                u'hylô',
-                u'你好',
-                u'こんにちは',
-                u'안녕하세요')
+    greetings = (u'céad míle fáilte',
+                 u'hylô',
+                 u'你好',
+                 u'こんにちは',
+                 u'안녕하세요')
 
     def test_printable_unicode(self):
         for s in self.greetings:
-            result = _printable_unicode(s)
+            # make sure the type is unicode before convert in python2
             if six.PY2:
-                self.assertEqual(type(result), type(str()))
-            else:
-                self.assertEqual(type(result), type(str()))
+                self.assertEqual(type(s), type(unicode()))
+            result = _printable_unicode(s)
+            self.assertEqual(type(result), type(str()))
 
 
 class TestHello(utils.CliTestCase):
