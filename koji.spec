@@ -129,9 +129,6 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
-%if 0%{?rhel} == 5
-Requires: python-simplejson
-%endif
 Requires: %{name} = %{version}-%{release}
 # we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
@@ -148,9 +145,6 @@ Requires: %{name}-hub = %{version}-%{release}
 Requires: python-qpid >= 0.7
 %if 0%{?rhel} >= 6
 Requires: python-qpid-proton
-%endif
-%if 0%{?rhel} == 5
-Requires: python-ssl
 %endif
 Requires: cpio
 
@@ -193,12 +187,6 @@ Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: python-cheetah
-%if 0%{?rhel} == 5
-Requires: createrepo >= 0.4.11-2
-Requires: python-hashlib
-Requires: python-createrepo
-Requires: python-simplejson
-%endif
 %if 0%{?fedora} >= 9
 Requires: createrepo >= 0.9.2
 %endif
