@@ -78,8 +78,8 @@ test3:
 	    --rcfile .coveragerc3 --source . \
 	    /usr/bin/nosetests-3 \
 	    tests/test_lib tests/test_cli
-	coverage report
-	coverage html
+	coverage report --rcfile .coveragerc3
+	coverage html --rcfile .coveragerc3
 	@echo Full coverage report at file://${PWD}/htmlcov/index.html
 
 test-tarball:

@@ -10,3 +10,9 @@ omit =
     koji/ssl/*
     koji/daemon.py
     koji/tasks.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    no cover 3.x
+    if six.PY2

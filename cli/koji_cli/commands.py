@@ -43,7 +43,7 @@ from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
 def _printable_unicode(s):
     if six.PY2:
         return s.encode('utf-8')
-    else:
+    else: # no cover: 2.x
         return s
 
 
@@ -1223,7 +1223,7 @@ def handle_import(goptions, session, args):
 
         if need_build:
             # if we're doing this here, we weren't given the matching srpm
-            if not options.create_build:
+            if not options.create_build: # pragma: no cover
                 if binfo:
                     # should have caught this earlier, but just in case...
                     b_state = koji.BUILD_STATES[binfo['state']]
@@ -1373,7 +1373,7 @@ def _import_comps(session, filename, tag, options):
         # libcomps does not support metapkgs
 
 
-def _import_comps_alt(session, filename, tag, options):
+def _import_comps_alt(session, filename, tag, options): # no cover 3.x
     """Import comps data using yum.comps module"""
     print('WARN: yum.comps does not support the biarchonly of group and basearchonly of package')
     comps = yumcomps.Comps()
