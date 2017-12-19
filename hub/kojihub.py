@@ -9509,7 +9509,7 @@ class RootExports(object):
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
-                   volumeID=None,
+                   volumeID=None, source=None,
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None, queryOpts=None):
         """List package builds.
@@ -9518,6 +9518,8 @@ class RootExports(object):
         If taskID is specfied, restrict the results to builds with the given task ID.  If taskID is -1,
            restrict the results to builds with a non-null taskID.
         If volumeID is specified, restrict the results to builds stored on that volume
+        If source is specified, restrict the results to builds with given
+        CVS source. Source could be given as 'glob' string.
         One or more of packageID, userID, volumeID, and taskID may be specified.
         If prefix is specified, restrict the results to builds whose package name starts with that
         prefix.
@@ -9549,6 +9551,7 @@ class RootExports(object):
           - owner_name
           - volume_id
           - volume_name
+          - source
           - creation_event_id
           - creation_time
           - creation_ts
@@ -9597,6 +9600,9 @@ class RootExports(object):
                 clauses.append('build.task_id IS NOT NULL')
             else:
                 clauses.append('build.task_id = %(taskID)i')
+        if source is not None:
+            source = self._prepareSearchTerms(source, 'glob')
+            clauses.append('build.source ilike %(source)s')
         if prefix:
             clauses.append("package.name ilike %(prefix)s || '%%'")
         if state != None:
