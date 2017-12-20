@@ -2145,7 +2145,7 @@ class ClientSession(object):
         sprinc = krbV.Principal(name=self._serverPrincipal(cprinc), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
+        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
         ac.rcache = ctx.default_rcache()
 
         # create and encode the authentication request
@@ -2156,7 +2156,6 @@ class ClientSession(object):
 
         # ask the server to authenticate us
         (rep_enc, sinfo_enc, addrinfo) = self.callMethod('krbLogin', req_enc, proxyuser)
-
         # Set the addrinfo we received from the server
         # (necessary before calling rd_priv())
         # addrinfo is in (serveraddr, serverport, clientaddr, clientport)
@@ -2234,8 +2233,7 @@ class ClientSession(object):
                 old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
-                if int(requests_kerberos.__version__.split('.')[0]) == 0 \
-                   and int(requests_kerberos.__version__.split('.')[1]) < 9:
+                if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
                     e_str = 'version of python-requests-kerberos(%s) should >= 0.9.0' % requests_kerberos.__version__
                     self.logger.debug(e_str)
                     raise PythonImportError(e_str)
