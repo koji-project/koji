@@ -41,6 +41,7 @@ from koji.util import sha1_constructor
 from koji.util import dslice
 from koji.util import multi_fnmatch
 from koji.util import safer_move
+import json
 import os
 import re
 import rpm
@@ -58,11 +59,6 @@ import zipfile
 
 import koji.xmlrpcplus
 from koji.context import context
-
-try:
-    import json
-except ImportError:  # pragma: no cover
-    import simplejson as json
 
 
 logger = logging.getLogger('koji.hub')
