@@ -2234,9 +2234,9 @@ class ClientSession(object):
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
                 if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
-                    e_str = 'version of python-requests-kerberos(%s) should >= 0.9.0' % requests_kerberos.__version__
-                    self.logger.debug(e_str)
-                    raise PythonImportError(e_str)
+                    raise PythonImportError(
+                        'version of python-requests-kerberos(%s) should >= 0.9.0' % requests_kerberos.__version__
+                    )
                 else:
                     kwargs['principal'] = principal
             self.opts['auth'] = requests_kerberos.HTTPKerberosAuth(**kwargs)
