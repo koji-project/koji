@@ -2411,12 +2411,12 @@ class ClientSession(object):
         if timeout:
             callopts['timeout'] = timeout
         if self.opts.get('debug_xmlrpc', False):
-            print("url: %s" % handler)
+            self.logger.debug("url: %s" % handler)
             for _key in callopts:
                 _val = callopts[_key]
                 if _key == 'data' and len(_val) > 1024:
                     _val = _val[:1024] + '...'
-                print("%s: %r" % (_key, _val))
+                self.logger.debug("%s: %r" % (_key, _val))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
@@ -2431,7 +2431,7 @@ class ClientSession(object):
         p, u = getparser()
         for chunk in response.iter_content(8192):
             if self.opts.get('debug_xmlrpc', False):
-                print("body: %r" % chunk)
+                self.logger.debug("body: %r" % chunk)
             p.feed(chunk)
         p.close()
         result = u.close()
