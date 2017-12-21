@@ -17,7 +17,7 @@ class TestGSSAPI(unittest.TestCase):
 
     maxDiff = None
 
-    @mock.patch('koji.HTTPKerberosAuth', new=None)
+    @mock.patch('koji.requests_kerberos', new=None)
     def test_gssapi_disabled(self):
         with self.assertRaises(ImportError):
             self.session.gssapi_login()
@@ -29,8 +29,8 @@ class TestGSSAPI(unittest.TestCase):
                 retry=False)
         self.assertEqual(old_environ, dict(**os.environ))
 
-    @mock.patch('koji.requests_kerberos.__version__', new='0.9.0')
-    @mock.patch('koji.HTTPKerberosAuth')
+    @mock.patch('requests_kerberos.__version__', new='0.9.0')
+    @mock.patch('requests_kerberos.HTTPKerberosAuth')
     def test_gssapi_login_keytab(self, HTTPKerberosAuth_mock):
         principal = 'user@EXAMPLE.COM'
         keytab = '/path/to/keytab'
@@ -41,7 +41,7 @@ class TestGSSAPI(unittest.TestCase):
                 retry=False)
         self.assertEqual(old_environ, dict(**os.environ))
 
-    @mock.patch('koji.requests_kerberos.__version__', new='0.7.0')
+    @mock.patch('requests_kerberos.__version__', new='0.7.0')
     def test_gssapi_login_keytab_unsupported_requests_kerberos_version(self):
         principal = 'user@EXAMPLE.COM'
         keytab = '/path/to/keytab'

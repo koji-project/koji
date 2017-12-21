@@ -50,7 +50,7 @@ from koji.util import md5_constructor
 SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
-except Exception:  #pragma: no cover
+except Exception:  # pragma: no cover
     # the hub imports koji, and sometimes this import fails there
     # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine
     # unfortunately the workaround at the above link does not always work, so
@@ -65,10 +65,8 @@ import re
 import requests
 try:
     import requests_kerberos
-    from requests_kerberos import HTTPKerberosAuth
-except ImportError:  #pragma: no cover
+except ImportError:  # pragma: no cover
     requests_kerberos = None
-    HTTPKerberosAuth = None
 import rpm
 import shutil
 import signal
@@ -2208,7 +2206,7 @@ class ClientSession(object):
         return host
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
-        if not HTTPKerberosAuth or not requests_kerberos:
+        if not requests_kerberos:
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
@@ -2243,7 +2241,7 @@ class ClientSession(object):
                     raise PythonImportError(e_str)
                 else:
                     kwargs['principal'] = principal
-            self.opts['auth'] = HTTPKerberosAuth(**kwargs)
+            self.opts['auth'] = requests_kerberos.HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
