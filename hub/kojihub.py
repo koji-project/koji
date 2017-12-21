@@ -4352,11 +4352,9 @@ def get_archive_file(archive_id, filename, strict=False):
     for file_info in files:
         if file_info['name'] == filename:
             return file_info
-    else:
-        if strict:
-            raise koji.GenericError('No such file: %s in archive#%s' % (filename, archive_id))
-        else:
-            return None
+    if strict:
+        raise koji.GenericError('No such file: %s in archive#%s' % (filename, archive_id))
+    return None
 
 
 def list_task_output(taskID, stat=False, all_volumes=False):
