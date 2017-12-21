@@ -153,7 +153,8 @@ class TestProtonMsg(unittest.TestCase):
                        user='test-user', **build)
 
     def test_prep_repo_init(self):
-        protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag'}, repo_id=1234)
+        protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag',
+            'arches': set(['x86_64', 'i386'])}, repo_id=1234)
         self.assertMsg('repo.init', type='RepoInit', tag='test-tag', repo_id=1234)
 
     def test_prep_repo_done(self):
