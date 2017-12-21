@@ -9865,6 +9865,10 @@ class RootExports(object):
         - digest_algo
         - size
         - flags
+        - user
+        - group
+        - mtime
+        - mode
 
         If no such file exists, an empty map will be returned.
         """
