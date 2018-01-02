@@ -56,6 +56,8 @@ import koji.policy
 import koji.xmlrpcplus
 from koji.context import context
 from koji.util import dslice
+import imp
+_rpmdiff = imp.load_source('_rpmdiff', '/usr/libexec/koji-hub/rpmdiff')
 from koji.util import md5_constructor
 from koji.util import multi_fnmatch
 from koji.util import safer_move
@@ -8358,21 +8360,13 @@ def rpmdiff(basepath, rpmlist):
         # ignore differences in file size, md5sum, and mtime
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
-        args = ['/usr/libexec/koji-hub/rpmdiff',
-                '--ignore', 'S', '--ignore', '5',
-                '--ignore', 'T', '--ignore', 'N',
-                os.path.join(basepath, first_rpm),
-                os.path.join(basepath, other_rpm)]
-        proc = subprocess.Popen(args,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                close_fds=True)
-        output = proc.communicate()[0]
-        status = proc.wait()
-        if os.WIFSIGNALED(status) or \
-                (os.WEXITSTATUS(status) != 0):
+        d = _rpmdiff.Rpmdiff(os.path.join(basepath, first_rpm),
+            os.path.join(basepath, other_rpm), ignore='S5TN')
+        if d.differs():
             raise koji.BuildError(
                 'The following noarch package built differently on different architectures: %s\n'
-                'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), output))
+                'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), d.textdiff()))
+
 
 def importImageInternal(task_id, build_id, imgdata):
     """

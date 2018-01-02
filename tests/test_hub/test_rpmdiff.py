@@ -8,30 +8,30 @@ import kojihub
 
 class TestRPMDiff(unittest.TestCase):
 
-    @mock.patch('kojihub.subprocess')
-    def test_rpmdiff_empty_invocation(self, subprocess):
-        process = mock.MagicMock()
-        subprocess.Popen.return_value = process
+    @mock.patch('kojihub._rpmdiff.Rpmdiff')
+    def test_rpmdiff_empty_invocation(self, Rpmdiff):
         kojihub.rpmdiff('basepath', [])
-        self.assertEquals(len(subprocess.Popen.mock_calls), 0)
+        Rpmdiff.assert_not_called()
         kojihub.rpmdiff('basepath', ['foo'])
-        self.assertEquals(len(subprocess.Popen.mock_calls), 0)
+        Rpmdiff.assert_not_called()
 
-    @mock.patch('kojihub.subprocess')
-    def test_rpmdiff_simple_success(self, subprocess):
-        process = mock.MagicMock()
-        subprocess.Popen.return_value = process
-        process.wait.return_value = 0
-        kojihub.rpmdiff('basepath', ['foo', 'bar'])
-        self.assertEquals(len(subprocess.Popen.call_args_list), 1)
+    @mock.patch('kojihub._rpmdiff.Rpmdiff')
+    def test_rpmdiff_simple_success(self, Rpmdiff):
+        d = mock.MagicMock()
+        d.differs.return_value = False
+        Rpmdiff.return_value = d
+        self.assertFalse(kojihub.rpmdiff('basepath', ['foo', 'bar']))
+        Rpmdiff.assert_called_once_with('basepath/foo', 'basepath/bar', ignore='S5TN')
 
-    @mock.patch('kojihub.subprocess')
-    def test_rpmdiff_simple_failure(self, subprocess):
-        process = mock.MagicMock()
-        subprocess.Popen.return_value = process
-        process.wait.return_value = 1
+    @mock.patch('kojihub._rpmdiff.Rpmdiff')
+    def test_rpmdiff_simple_failure(self, Rpmdiff):
+        d = mock.MagicMock()
+        d.differs.return_value = True
+        Rpmdiff.return_value = d
         with self.assertRaises(koji.BuildError):
             kojihub.rpmdiff('basepath', ['foo', 'bar'])
+        Rpmdiff.assert_called_once_with('basepath/foo', 'basepath/bar', ignore='S5TN')
+        d.textdiff.assert_called_once_with()
 
 class TestCheckNoarchRpms(unittest.TestCase):
     @mock.patch('kojihub.rpmdiff')
