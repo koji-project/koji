@@ -10825,6 +10825,21 @@ class RootExports(object):
             raise koji.GenericError('user %i cannot update notifications for user %i' % \
                   (currentUser['id'], orig_notif['user_id']))
 
+        # sanitize input
+        if package_id is not None:
+            package_id = get_package_id(package_id)
+        if tag_id is not None:
+            tag_id = get_tag_id(tag_id)
+        success_only = bool(success_only)
+
+        # check existing notifications to not have same twice
+        for notification in get_build_notifications(orig_notif['user_id']):
+            if notification['package_id'] == package_id and \
+               notification['tag_id'] == tag_id and \
+               notification['success_only'] == success_only and \
+               notification['email'] == email:
+                raise koji.GenericError('notification already exists')
+
         update = """UPDATE build_notifications
         SET package_id = %(package_id)s,
         tag_id = %(tag_id)s,
@@ -10849,7 +10864,24 @@ class RootExports(object):
             raise koji.GenericError('user %s cannot create notifications for user %s' % \
                   (currentUser['name'], notificationUser['name']))
 
+        # sanitize input
+        user_id = notificationUser['id']
+        if package_id is not None:
+            package_id = get_package_id(package_id)
+        if tag_id is not None:
+            tag_id = get_tag_id(tag_id)
+        success_only = bool(success_only)
+
         email = '%s@%s' % (notificationUser['name'], context.opts['EmailDomain'])
+
+        # check existing notifications to not have same twice
+        for notification in get_build_notifications(user_id):
+            if notification['package_id'] == package_id and \
+               notification['tag_id'] == tag_id and \
+               notification['success_only'] == success_only and \
+               notification['email'] == email:
+                raise koji.GenericError('notification already exists')
+
         insert = """INSERT INTO build_notifications
         (user_id, package_id, tag_id, success_only, email)
         VALUES
