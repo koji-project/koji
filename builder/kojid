@@ -381,12 +381,18 @@ class BuildRoot(object):
             uploadpath = self.getUploadPath()
             logs = {}
 
+            ts_file = None
+            ts_state = {}
             finished = False
             while not finished:
                 time.sleep(1)
                 status = os.waitpid(pid, os.WNOHANG)
                 if status[0] != 0:
                     finished = True
+
+                if ts_file is None and os.path.exists(resultdir):
+                    ts_file = open(os.path.join(resultdir, 'ts.log'), 'wt')
+                    ts_file.write('filename,timestamp,offset\n')
 
                 try:
                     results = os.listdir(resultdir)
@@ -421,7 +427,22 @@ class BuildRoot(object):
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
                         continue
 
+                    if ts_file and fname != 'ts.log':
+                        # race condition against incremental_upload's tell,
+                        # but with enough precision for ts.log purposes
+                        position = fd.tell()
+                        ts_state.setdefault(fname, 0)
+                        if ts_state[fname] < position:
+                            ts_file.write('%s %f %i\n' % (fname, time.time(), position))
+                            ts_state[fname] = position
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
+
+            # flush ts.log as it could be changed during previous iteration
+            # but not uploaded.
+            if ts_file:
+                ts_file.close()
+                incremental_upload(self.session, 'ts.log', logs['ts.log'][0], uploadpath, logger=self.logger)
+
             #clean up and return exit status of command
             for (fname, (fd, inode, size, fpath)) in logs.items():
                 if fd:
