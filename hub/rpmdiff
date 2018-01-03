@@ -20,6 +20,8 @@
 # This library and program is heavily based on rpmdiff from the rpmlint package
 # It was modified to be used as standalone library for the Koji project.
 
+import hashlib
+import json
 import rpm
 import os
 import itertools
@@ -77,6 +79,8 @@ class Rpmdiff:
     def __init__(self, old, new, ignore=None):
         self.result = []
         self.ignore = ignore
+        self.old_data = { 'tags': {} }
+        self.new_data = { 'tags': {} }
         if self.ignore is None:
             self.ignore = []
 
@@ -94,6 +98,8 @@ class Rpmdiff:
         for tag in self.TAGS:
             old_tag = old[tag]
             new_tag = new[tag]
+            self.old_data['tags']['tag'] = old[tag]
+            self.new_data['tags']['tag'] = new[tag]
             if old_tag != new_tag:
                 tagname = rpm.tagnames[tag]
                 if old_tag == None:
@@ -114,6 +120,8 @@ class Rpmdiff:
         files = list(set(itertools.chain(old_files_dict.iterkeys(),
                                          new_files_dict.iterkeys())))
         files.sort()
+        self.old_data['files'] = old_files_dict
+        self.new_data['files'] = new_files_dict
 
         for f in files:
             diff = 0
@@ -177,6 +185,8 @@ class Rpmdiff:
 
         o = zip(old[name], oldflags, old[name[:-1]+'VERSION'])
         n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
+        self.old_data[name] = sorted(o)
+        self.new_data[name] = sorted(n)
 
         if name == 'PROVIDES': # filter our self provide
             oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
@@ -211,6 +221,14 @@ class Rpmdiff:
             result[filedata[0]] = filedata[1:]
         return result
 
+    def kojihash(self, new=False):
+        """return hashed data for use in koji"""
+        if new:
+            s = json.dumps(self.new_data, sort_keys=True)
+        else:
+            s = json.dumps(self.old_data, sort_keys=True)
+        return hashlib.sha256(s).hexdigest()
+
 def _usage(exit=1):
     print("Usage: %s [<options>] <old package> <new package>" % sys.argv[0])
     print("Options:")
@@ -225,7 +243,7 @@ def main():
     ignore_tags = []
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
-    except getopt.GetoptError, e:
+    except getopt.GetoptError as e:
         print("Error: %s" % e)
         _usage()
 

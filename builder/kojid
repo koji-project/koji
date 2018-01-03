@@ -64,6 +64,9 @@ from yum import repoMDObject
 import yum.packages
 import yum.Errors
 
+import imp
+_rpmdiff = imp.load_source('_rpmdiff', '/usr/libexec/koji-hub/rpmdiff')
+
 #imports for LiveCD, LiveMedia, and Appliance handler
 image_enabled = False
 try:
@@ -434,7 +437,7 @@ class BuildRoot(object):
                 if workdir:
                     outfile = os.path.join(workdir, mocklog)
                     flags = os.O_CREAT | os.O_WRONLY | os.O_APPEND
-                    fd = os.open(outfile, flags, 0666)
+                    fd = os.open(outfile, flags, 0o666)
                     os.dup2(fd, 1)
                     os.dup2(fd, 2)
                 if os.getuid() == 0 and hasattr(self.options,"mockuser"):
@@ -1247,6 +1250,21 @@ class BuildArchTask(BaseBuildTask):
             f = os.path.join(broot.workdir, mocklog)
             if os.path.exists(f):
                 log_files.append(os.path.basename(f))
+
+        # for noarch rpms compute rpmdiff hash
+        rpmdiff_hash = {self.id: {}}
+        for rpmf in rpm_files:
+            if rpmf.endswith('.noarch.rpm'):
+                fpath = os.path.join(resultdir, rpmf)
+                d = _rpmdiff.Rpmdiff(fpath, fpath, ignore='S5TN')
+                rpmdiff_hash[self.id][rpmf] = d.kojihash()
+        if rpmdiff_hash[self.id]:
+            log_name = 'noarch_rpmdiff.json'
+            noarch_hash_path = os.path.join(broot.workdir, log_name)
+            with open(noarch_hash_path, 'wt') as f:
+                json.dump(rpmdiff_hash, f, indent=2, sort_keys=True)
+                log_files.append(log_name)
+
         self.logger.debug("rpms: %r" % rpm_files)
         self.logger.debug("srpms: %r" % srpm_files)
         self.logger.debug("logs: %r" % log_files)
@@ -1277,6 +1295,8 @@ class BuildArchTask(BaseBuildTask):
         else:
             ret['srpms'] = []
         ret['logs'] = [ "%s/%s" % (uploadpath,f) for f in log_files ]
+        if rpmdiff_hash[self.id]:
+            self.uploadFile(noarch_hash_path)
 
         ret['brootid'] = broot.id
 
