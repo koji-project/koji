@@ -2772,9 +2772,9 @@ def anon_handle_list_hosts(goptions, session, args):
         host['arches'] = ','.join(host['arches'].split())
 
     if not options.quiet:
-        print("Hostname                     Enb Rdy Load/Cap Arches           Last Update")
+        print("Hostname                     Enb Rdy Load/Cap  Arches           Last Update")
     for host in hosts:
-        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host)
+        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-4.1f %(arches)-16s %(update)s" % host)
 
 
 def anon_handle_list_pkgs(goptions, session, args):
@@ -4027,6 +4027,13 @@ def _print_histline(entry, **kwargs):
             fmt = "added tag option %(key)s for tag %(tag.name)s"
         else:
             fmt = "tag option %(key)s removed for %(tag.name)s"
+    elif table == 'host_config':
+        if edit:
+            fmt = "host configuration for %(host.name)s altered"
+        elif create:
+            fmt = "new host: %(host.name)s"
+        else:
+            fmt = "host deleted: %(host.name)s"
     elif table == 'build_target_config':
         if edit:
             fmt = "build target configuration for %(build_target.name)s updated"
@@ -4141,6 +4148,7 @@ _table_keys = {
     'tag_extra' : ['tag_id', 'key'],
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
+    'host_config': ['host_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
     'tag_listing' : ['build_id', 'tag_id'],
     'tag_packages' : ['package_id', 'tag_id'],
