@@ -23,7 +23,7 @@ CREATE TABLE host_config (
 		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
 		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
 	PRIMARY KEY (create_event, host_id),
-	UNIQUE (host_id,active)
+	UNIQUE (host_id, active)
 ) WITHOUT OIDS;
 
 -- copy starting data
