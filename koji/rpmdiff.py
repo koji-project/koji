@@ -224,9 +224,12 @@ class Rpmdiff:
     def kojihash(self, new=False):
         """return hashed data for use in koji"""
         if new:
-            s = json.dumps(self.new_data, sort_keys=True)
+            data = self.new_data
         else:
-            s = json.dumps(self.old_data, sort_keys=True)
+            data = self.old_data
+        if not data:
+            raise ValueError("rpm header data are empty")
+        s = json.dumps(self.old_data, sort_keys=True)
         return hashlib.sha256(s).hexdigest()
 
 def _usage(exit=1):
