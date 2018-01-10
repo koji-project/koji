@@ -98,8 +98,8 @@ class Rpmdiff:
         for tag in self.TAGS:
             old_tag = old[tag]
             new_tag = new[tag]
-            self.old_data['tags']['tag'] = old[tag]
-            self.new_data['tags']['tag'] = new[tag]
+            self.old_data['tags'][tag] = old[tag]
+            self.new_data['tags'][tag] = new[tag]
             if old_tag != new_tag:
                 tagname = rpm.tagnames[tag]
                 if old_tag == None:
