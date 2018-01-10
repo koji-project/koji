@@ -24,6 +24,7 @@
 
 import base64
 import calendar
+import koji.rpmdiff
 import datetime
 import errno
 import fcntl
@@ -55,13 +56,10 @@ import koji.policy
 import koji.xmlrpcplus
 from koji.context import context
 from koji.util import dslice
-import imp
-_rpmdiff = imp.load_source('_rpmdiff', '/usr/libexec/koji-hub/rpmdiff')
 from koji.util import md5_constructor
 from koji.util import multi_fnmatch
 from koji.util import safer_move
 from koji.util import sha1_constructor
-
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):
@@ -8379,7 +8377,7 @@ def rpmdiff(basepath, rpmlist, hashes):
         # ignore differences in file size, md5sum, and mtime
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
-        d = _rpmdiff.Rpmdiff(os.path.join(basepath, first_rpm),
+        d = koji.rpmdiff.Rpmdiff(os.path.join(basepath, first_rpm),
             os.path.join(basepath, other_rpm), ignore='S5TN')
         if d.differs():
             raise koji.BuildError(

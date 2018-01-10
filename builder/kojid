@@ -27,6 +27,7 @@ except ImportError:  # pragma: no cover
     krbV = None
 import koji
 import koji.plugin
+import koji.rpmdiff
 import koji.util
 import koji.tasks
 import glob
@@ -63,9 +64,6 @@ from optparse import OptionParser, SUPPRESS_HELP
 from yum import repoMDObject
 import yum.packages
 import yum.Errors
-
-import imp
-_rpmdiff = imp.load_source('_rpmdiff', '/usr/libexec/koji-hub/rpmdiff')
 
 #imports for LiveCD, LiveMedia, and Appliance handler
 image_enabled = False
@@ -1256,7 +1254,7 @@ class BuildArchTask(BaseBuildTask):
         for rpmf in rpm_files:
             if rpmf.endswith('.noarch.rpm'):
                 fpath = os.path.join(resultdir, rpmf)
-                d = _rpmdiff.Rpmdiff(fpath, fpath, ignore='S5TN')
+                d = koji.rpmdiff.Rpmdiff(fpath, fpath, ignore='S5TN')
                 rpmdiff_hash[self.id][rpmf] = d.kojihash()
         if rpmdiff_hash[self.id]:
             log_name = 'noarch_rpmdiff.json'

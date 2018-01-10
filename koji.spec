@@ -321,7 +321,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-hub
 %dir %{_libexecdir}/koji-hub
-%{_libexecdir}/koji-hub/rpmdiff
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 %dir /etc/koji-hub
 %config(noreplace) /etc/koji-hub/hub.conf
