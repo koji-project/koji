@@ -25,6 +25,7 @@ CREATE TABLE host_config (
 	PRIMARY KEY (create_event, host_id),
 	UNIQUE (host_id, active)
 ) WITHOUT OIDS;
+CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled)
 
 -- copy starting data
 -- CREATE FUNCTION pg_temp.user() returns INTEGER as $$ select id from users where name='nobody' $$ language SQL;
