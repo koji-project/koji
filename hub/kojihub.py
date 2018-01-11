@@ -2135,10 +2135,12 @@ def get_ready_hosts():
     q = """
     SELECT %s FROM host
         JOIN sessions USING (user_id)
+        JOIN host_config ON host.id = host_config.host_id
     WHERE enabled = TRUE AND ready = TRUE
         AND expired = FALSE
         AND master IS NULL
         AND update_time > NOW() - '5 minutes'::interval
+        AND active IS TRUE
     """ % ','.join(fields)
     # XXX - magic number in query
     c.execute(q)
@@ -2152,7 +2154,7 @@ def get_ready_hosts():
 def get_all_arches():
     """Return a list of all (canonical) arches available from hosts"""
     ret = {}
-    for (arches,) in _fetchMulti('SELECT arches FROM host', {}):
+    for (arches,) in _fetchMulti('SELECT arches FROM host_config WHERE active IS TRUE', {}):
         if arches is None:
             continue
         for arch in arches.split():
@@ -11545,7 +11547,7 @@ class Host(object):
         id = self.id
         #get arch and channel info for host
         q = """
-        SELECT arches FROM host WHERE id = %(id)s
+        SELECT arches FROM host_config WHERE id = %(id)s AND active IS TRUE
         """
         c.execute(q, locals())
         arches = c.fetchone()[0].split()
@@ -11587,7 +11589,7 @@ class Host(object):
 
     def isEnabled(self):
         """Return whether this host is enabled or not."""
-        query = """SELECT enabled FROM host WHERE id = %(id)i"""
+        query = """SELECT enabled FROM host_config WHERE id = %(id)i AND active IS TRUE"""
         return _singleValue(query, {'id': self.id}, strict=True)
 
 class HostExports(object):
