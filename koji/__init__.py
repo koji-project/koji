@@ -62,10 +62,7 @@ import os.path
 import pwd
 import random
 import re
-try:
-    import requests
-except ImportError:  #pragma: no cover
-    requests = None
+import requests
 try:
     from requests_kerberos import HTTPKerberosAuth
 except ImportError:  #pragma: no cover
@@ -1638,7 +1635,6 @@ def read_config(profile_name, user_config=None):
         'anon_retry' : None,
         'offline_retry' : None,
         'offline_retry_interval' : None,
-        'use_old_ssl' : False,
         'keepalive' : True,
         'timeout' : None,
         'use_fast_upload': False,
@@ -1708,7 +1704,7 @@ def read_config(profile_name, user_config=None):
                 #not have a default value set in the option parser.
                 if name in result:
                     if name in ('anon_retry', 'offline_retry', 'keepalive',
-                                'use_fast_upload', 'krb_rdns', 'use_old_ssl',
+                                'use_fast_upload', 'krb_rdns', 'debug',
                                 'debug', 'debug_xmlrpc', 'krb_canon_host'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
@@ -1916,9 +1912,6 @@ pathinfo = PathInfo()
 def is_requests_cert_error(e):
     """Determine if a requests error is due to a bad cert"""
 
-    if requests is None:  #pragma: no cover
-        # We are not using requests, so this is not a requests cert error
-        return False
     if not isinstance(e, requests.exceptions.SSLError):
         return False
 
@@ -1982,22 +1975,21 @@ def is_conn_error(e):
         return False
     if isinstance(e, six.moves.http_client.BadStatusLine):
         return True
-    if requests is not None:
-        try:
-            if isinstance(e, requests.exceptions.ConnectionError):
-                # we see errors like this in keep alive timeout races
-                # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
-                e2 = getattr(e, 'args', [None])[0]
-                if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
-                    e3 = getattr(e2, 'args', [None, None])[1]
-                    if isinstance(e3, six.moves.http_client.BadStatusLine):
-                        return True
-                if isinstance(e2, socket.error):
-                    # same check as unwrapped socket error
-                    if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
-                        return True
-        except (TypeError, AttributeError):
-            pass
+    try:
+        if isinstance(e, requests.exceptions.ConnectionError):
+            # we see errors like this in keep alive timeout races
+            # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
+            e2 = getattr(e, 'args', [None])[0]
+            if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
+                e3 = getattr(e2, 'args', [None, None])[1]
+                if isinstance(e3, six.moves.http_client.BadStatusLine):
+                    return True
+            if isinstance(e2, socket.error):
+                # same check as unwrapped socket error
+                if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+                    return True
+    except (TypeError, AttributeError):
+        pass
     # otherwise
     return False
 
@@ -2035,7 +2027,6 @@ def grab_session_options(options):
         'upload_blocksize',
         'krb_rdns',
         'krb_canon_host',
-        'use_old_ssl',
         'no_ssl_verify',
         'serverca',
     )
@@ -2070,24 +2061,13 @@ class ClientSession(object):
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout',  60 * 60 * 12)
-        self._old_ssl_warning = False
 
 
     def new_session(self):
         self.logger.debug("Opening new requests session")
         if self.rsession:
             self.rsession.close()
-        if self.opts.get('use_old_ssl', False) or requests is None:
-            if not self._old_ssl_warning:
-                # only warn once per instance
-                self.logger.warn('The use_old_ssl option is deprecated')
-                self._old_ssl_warning = True
-            if not six.PY2:
-                raise GenericError('use_old_ssl is only supported on python2')
-            import koji.compatrequests
-            self.rsession = koji.compatrequests.Session()
-        else:
-            self.rsession = requests.Session()
+        self.rsession = requests.Session()
 
     def setSession(self, sinfo):
         """Set the session info
@@ -2230,7 +2210,6 @@ class ClientSession(object):
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
-
         # force https
         old_baseurl = self.baseurl
         uri = six.moves.urllib.parse.urlsplit(self.baseurl)

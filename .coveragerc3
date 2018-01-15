@@ -7,7 +7,6 @@ omit =
     tests/*
     hub/*
     util/*
-    koji/ssl/*
     koji/daemon.py
     koji/tasks.py
 

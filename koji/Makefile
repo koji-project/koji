@@ -8,7 +8,7 @@ ifeq ($(PYTHON), python3)
 else
     PYFILES = $(wildcard *.py)
     PYSCRIPTS = context.py
-    SUBDIRS = ssl
+    SUBDIRS =
 endif
 PYVER := $(shell $(PYTHON) -c 'import sys; print("%.3s" % (sys.version))')
 PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print(sys.prefix)')
