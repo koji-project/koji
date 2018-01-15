@@ -733,7 +733,7 @@ class BuildRoot(object):
         # mock 1.4+ /tmp is tmpfs mounted on each run, different
         # directory is needed for persistency
         # 'within' is equivalent to broot.path_without_to_within(broot.tmpdir())
-        base = self.options.tmpdir
+        base = self.options.chroot_tmpdir
         if within:
             return base
         else:
@@ -5579,7 +5579,7 @@ def get_options():
     parser.add_option("--topdir", help="Specify topdir")
     parser.add_option("--topurl", help="Specify topurl")
     parser.add_option("--workdir", help="Specify workdir")
-    parser.add_option("--tmpdir", help="Specify tmpdir")
+    parser.add_option("--chroot-tmpdir", help="Specify tmpdir in buildroot")
     parser.add_option("--pluginpath", help="Specify plugin search path")
     parser.add_option("--plugin", action="append", help="Load specified plugin")
     parser.add_option("--mockdir", help="Specify mockdir")
@@ -5608,7 +5608,7 @@ def get_options():
                 'topdir': '/mnt/koji',
                 'topurl': None,
                 'workdir': '/var/tmp/koji',
-                'tmpdir': '/tmpdir',
+                'chroot_tmpdir': '/chroot_tmpdir',
                 'pluginpath': '/usr/lib/koji-builder-plugins',
                 'mockdir': '/var/lib/mock',
                 'mockuser': 'kojibuilder',
