@@ -27,7 +27,6 @@ from koji.util import rmtree, parseStatus
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 import errno
-import fnmatch
 import logging
 import logging.handlers
 import pprint
@@ -198,6 +197,8 @@ class RepoManager(object):
         self.session = session
         self.repos = {}
         self.tasks = {}
+        self.other_tasks = {}
+        self.needed_tags = {}
         self.tag_use_stats = {}
         self.delete_pids = {}
         self.delete_queue = []
@@ -481,155 +482,35 @@ class RepoManager(object):
         return ret
 
     def updateRepos(self):
-        #check on tasks
-        running_tasks = 0
-        running_tasks_maven = 0
-        our_tasks = {}
-        for tag_id, task_id in self.tasks.items():
-            tinfo = self.session.getTaskInfo(task_id)
-            our_tasks[task_id] = tinfo
-            tstate = koji.TASK_STATES[tinfo['state']]
-            if tstate == 'CLOSED':
-                self.logger.info("Finished: newRepo task %s for tag %s" % (task_id, tag_id))
-                del self.tasks[tag_id]
-                continue
-            elif tstate in ('CANCELED', 'FAILED'):
-                self.logger.info("Problem: newRepo task %s for tag %s is %s" % (task_id, tag_id, tstate))
-                del self.tasks[tag_id]
-                continue
-            taginfo = getTag(self.session, tag_id)
-            if tinfo['waiting']:
-                self.logger.debug("Task %i is waiting", task_id)
-            else:
-                #the largest hub impact is from the first part of the newRepo task
-                #once it is waiting on subtasks, that part is over
-                running_tasks += 1
-                if taginfo.get('maven_support'):
-                    running_tasks_maven += 1
-            #TODO [?] - implement a timeout for active tasks?
-        #check for untracked newRepo tasks
-        repo_tasks = self.session.listTasks(opts={'method':'newRepo',
-                            'state':([koji.TASK_STATES[s] for s in ('FREE', 'OPEN')])})
-        other_tasks = []
-        for tinfo in repo_tasks:
-            if tinfo['id'] in our_tasks:
-                continue
-            other_tasks.append(tinfo)
-            if tinfo['waiting']:
-                self.logger.debug("Untracked task %i is waiting", tinfo['id'])
-            else:
-                running_tasks += 1
-                # TODO - determine tag and maven support
+        self.checkTasks()
         self.logger.debug("Current tasks: %r" % self.tasks)
-        if other_tasks:
-            self.logger.debug("Found %i untracked newRepo tasks" % len(other_tasks))
+        if self.other_tasks:
+            self.logger.debug("Found %i untracked newRepo tasks",
+                        len(self.other_tasks))
         self.logger.debug("Updating repos")
+
         self.readCurrentRepos()
-        #check for stale repos
+
+        # check for stale repos
         for repo in self.repos.values():
             if repo.stale():
                 repo.expire()
-        #find out which tags require repos
-        tags = {}
-        for target in self.session.getBuildTargets():
-            tag_id = target['build_tag']
-            tags[tag_id] = target['build_tag_name']
-        #index repos by tag
-        tag_repos = {}
-        for repo in self.repos.values():
-            tag_repos.setdefault(repo.tag_id, []).append(repo)
-        self.logger.debug("Needed tags: %r" % tags.keys())
-        self.logger.debug("Current tags: %r" % tag_repos.keys())
 
-        #we need to determine:
-        #  - which tags need a new repo
-        #  - if any repos seem to be broken
-        #self.checkCurrentRepos now runs continually in a separate thread
-        regen = []
-        expire_times = {}
-        for tag_id in tags.iterkeys():
-            covered = False
-            for repo in tag_repos.get(tag_id,[]):
-                if repo.current:
-                    covered = True
-                    break
-                elif repo.pending():
-                    #one on the way
-                    covered = True
-                    break
-            if covered:
-                continue
-            if tag_id in self.tasks:
-                #repo creation in progress
-                #TODO - implement a timeout
-                continue
-            #tag still appears to be uncovered
-            #figure out how old existing repo is
-            ts = 0
-            for repo in tag_repos.get(tag_id, []):
-                if repo.expire_ts:
-                    if repo.expire_ts > ts:
-                        ts = repo.expire_ts
-                else:
-                    self.logger.warning("No expire timestamp for repo: %s", repo.repo_id)
-            expire_times[tag_id] = ts
-            if ts == 0:
-                ts = time.time()
-            regen.append((ts, tag_id))
-        #factor in tag use stats
-        regen = self.adjustRegenOrder(regen)
-        self.logger.debug("order: %s", regen)
-        # i.e. tags with oldest (or no) repos get precedence
-        for score, tag_id in regen:
-            if running_tasks >= self.options.max_repo_tasks:
-                self.logger.info("Maximum number of repo tasks reached")
-                break
-            elif len(self.tasks) + len(other_tasks) >= self.options.repo_tasks_limit:
-                self.logger.info("Repo task limit reached")
-                break
-            tagname = tags[tag_id]
-            taskopts = {}
-            for pat in self.options.debuginfo_tags.split():
-                if fnmatch.fnmatch(tagname, pat):
-                    taskopts['debuginfo'] = True
-                    break
-            for pat in self.options.source_tags.split():
-                if fnmatch.fnmatch(tagname, pat):
-                    taskopts['src'] = True
-                    break
-            taginfo = getTag(self.session, tag_id)
-            if taginfo.get('maven_support'):
-                if running_tasks_maven >= self.options.max_repo_tasks_maven:
-                    continue
-            task_id = self.session.newRepo(tagname, **taskopts)
-            running_tasks += 1
-            if taginfo.get('maven_support'):
-                running_tasks_maven += 1
-            expire_ts = expire_times[tag_id]
-            if expire_ts == 0:
-                time_expired = '???'
-            else:
-                time_expired = "%.1f" % (time.time() - expire_ts)
-            self.logger.info("Created newRepo task %s for tag %s (%s), expired for %s sec" % (task_id, tag_id, tags[tag_id], time_expired))
-            self.tasks[tag_id] = task_id
-        if running_tasks_maven >= self.options.max_repo_tasks_maven:
-            self.logger.info("Maximum number of maven repo tasks reached")
-        #some cleanup
+        # find out which tags require repos
+        self.checkNeeded()
+
+        self.regenRepos()
+
+        # trigger deletes
         n_deletes = 0
-        for tag_id, repolist in tag_repos.items():
-            if tag_id not in tags:
-                #repos for these tags are no longer required
-                for repo in repolist:
-                    if repo.ready():
-                        repo.expire()
-            for repo in repolist:
-                if n_deletes >= self.options.delete_batch_size:
-                    break
-                if repo.expired():
-                    #try to delete
-                    if repo.tryDelete():
-                        n_deletes += 1
-                        del self.repos[repo.repo_id]
+        for repo in self.repos.values():
+            if n_deletes >= self.options.delete_batch_size:
+                break
+            if repo.expired():
+                #try to delete
+                if repo.tryDelete():
+                    n_deletes += 1
+                    del self.repos[repo.repo_id]
 
     def checkTasks(self):
         """Check on newRepo tasks
@@ -670,25 +551,21 @@ class RepoManager(object):
     def checkNeeded(self):
         """Determine which tags currently need regeneration"""
 
-        tags = {}
-        for target in self.session.getBuildTargets():
-            tag_id = target['build_tag']
-            tags[tag_id] = target['build_tag_name']
+        self.build_tags = set(
+                [t['build_tag']for t in self.session.getBuildTargets()])
         #index repos by tag
         tag_repos = {}
         for repo in self.repos.values():
             tag_repos.setdefault(repo.tag_id, []).append(repo)
-        self.logger.debug("Needed tags: %r" % tags.keys())
-        self.logger.debug("Current tags: %r" % tag_repos.keys())
 
-        for tag_id in tags.iterkeys():
+        for tag_id in self.build_tags:
             covered = False
             for repo in tag_repos.get(tag_id, []):
                 if repo.current:
                     covered = True
                     break
                 elif repo.pending():
-                    #one on the way
+                    # one on the way
                     covered = True
                     break
             if covered:
@@ -725,6 +602,14 @@ class RepoManager(object):
         # TODO - prioritize
         # regen = self.adjustRegenOrder(regen)
         # self.logger.debug("order: %s", regen)
+
+        # some cleanup
+        for tag_id, repolist in tag_repos.items():
+            if tag_id not in self.build_tags:
+                #repos for these tags are no longer required
+                for repo in repolist:
+                    if repo.ready():
+                        repo.expire()
 
     def regenRepos(self):
         """Trigger newRepo tasks for needed tags"""
