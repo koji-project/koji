@@ -602,8 +602,11 @@ class RepoManager(object):
                     covered = True
                     break
             if tag_id in self.needed_tags:
+                entry = self.needed_tags[tag_id]
                 if covered:
                     # no longer needed
+                    self.logger.info("Tag %(name)s has a current or in "
+                            "progress repo", entry['taginfo'])
                     del self.needed_tags[tag_id]
                 # if not covered, we already know
                 continue
