@@ -424,63 +424,6 @@ class RepoManager(object):
         self.logger.debug("tag %s recent use count: %i" % (tag_name, len(recent)))
         return stats
 
-    def adjustRegenOrder(self, data):
-        """Adjust repo regen order
-
-        data is list of (ts, tag_id) entries
-        We sort the tags by two factors
-            - age of current repo (passed in via data)
-            - last use in a buildroot (via tagUseStats)
-        Having and older repo or a higher use count give the repo
-        a higher priority for regen. The formula attempts to keep
-        the last use factor from overpowering, so that very old repos
-        still get regen priority.
-        """
-        if not data:
-            return []
-        n_maven = 0
-        for ts, tag_id in data:
-            taginfo = getTag(self.session, tag_id)
-            if taginfo.get('maven_support'):
-                n_maven += 1
-        self.logger.info("Got %i tags for regeneration (%i maven tags)", len(data), n_maven)
-        if len(data) == 1:
-            return data[:]
-        data = [(ts, tag_id, self.tagUseStats(tag_id)) for ts, tag_id in data]
-        max_n = max([s['n_recent'] for ts,tag,s in data])
-        if max_n == 0:
-            self.logger.info("No tags had recent use")
-            ret = [(ts,tag) for ts,tag,s in data]
-            ret.sort()
-            return ret
-        #XXX - need to make sure our times aren't far off, otherwise this
-        # adjustment could have the opposite of the desired effect
-        now = time.time()
-        ret = []
-        names = {}
-        for ts, tag_id, stats in data:
-            names[tag_id] = stats['tag_name']
-            #normalize use count
-            adj = stats ['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
-            sortvalue = (now-ts)*adj
-            ret.append(((now-ts)*adj, tag_id))
-            self.logger.debug("order adjustment: tag %s, ts %s, recent use %s, factor %s, new sort value %s",
-                    stats['tag_name'], ts, stats ['n_recent'], adj, sortvalue)
-            #so a day old unused repo gets about the regen same priority as a
-            #2.4-hour-old, very popular repo
-        ret.sort()
-        ret.reverse()
-        if self.logger.isEnabledFor(logging.INFO):
-            #show some stats
-            by_ts = [(ts,names[tag]) for ts,tag,s in data]
-            by_ts.sort()
-            self.logger.info("Newest repo: %s (%.2fhrs)", by_ts[-1][1], (now - by_ts[-1][0])/3600.)
-            self.logger.info("Oldest repo: %s (%.2fhrs)", by_ts[0][1], (now - by_ts[0][0])/3600.)
-            self.logger.info("Best score: %s (%.1f)", names[ret[0][1]], ret[0][0])
-            self.logger.info("Worst score: %s (%.1f)", names[ret[-1][1]], ret[-1][0])
-            self.logger.info("Order: %s", [names[x[1]] for x in ret])
-        return ret
-
     def setTagScore(self, entry):
         """Set score for needed_tag entry
 
