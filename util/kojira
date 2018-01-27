@@ -601,10 +601,13 @@ class RepoManager(object):
                     # one on the way
                     covered = True
                     break
-            if covered:
-                continue
             if tag_id in self.needed_tags:
-                # we already know
+                if covered:
+                    # no longer needed
+                    del self.needed_tags[tag_id]
+                # if not covered, we already know
+                continue
+            if covered:
                 continue
 
             # we haven't noted this need yet
@@ -635,9 +638,15 @@ class RepoManager(object):
             self.needed_tags[tag_id] = entry
 
         # some cleanup
+        for tag_id in list(self.needed_tags):
+            entry = self.needed_tags.get(tag_id)
+            if tag_id not in self.build_tags:
+                self.logger.info("Tag %(name)s is no longer a build tag",
+                        entry['taginfo'])
+                del self.needed_tags[tag_id]
         for tag_id, repolist in tag_repos.items():
             if tag_id not in self.build_tags:
-                #repos for these tags are no longer required
+                # repos for these tags are no longer required
                 for repo in repolist:
                     if repo.ready():
                         repo.expire()
