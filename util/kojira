@@ -481,6 +481,31 @@ class RepoManager(object):
             self.logger.info("Order: %s", [names[x[1]] for x in ret])
         return ret
 
+    def setTagScore(self, entry):
+        """Set score for needed_tag entry
+
+        We score the tags by two factors
+            - age of current repo
+            - last use in a buildroot
+        Having an older repo or a higher use count give the repo
+        a higher priority for regen. The formula attempts to keep
+        the last use factor from overpowering, so that very old repos
+        still get regen priority.
+        """
+
+        stats = self.tagUseStats(entry['taginfo']['id'])
+        # XXX - need to make sure our times aren't far off, otherwise this
+        # scoring could have the opposite of the desired effect
+        now = time.time()
+        #normalize use count
+        max_n = max([t.get('n_recent', 0) for t in self.needed_tags.values()])
+        adj = stats['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
+        ts = entry['expire_ts']
+        entry['score'] = (now - ts) * adj
+        self.logger.debug("Needed tag %s got score %.2f")
+        # so a day old unused repo gets about the regen same score as a
+        # 2.4-hour-old, very popular repo
+
     def updateRepos(self):
         self.checkTasks()
         self.logger.debug("Current tasks: %r" % self.tasks)
@@ -593,15 +618,13 @@ class RepoManager(object):
             if ts == 0:
                 ts = time.time()
 
-            self.needed_tags[tag_id] = {
+            entry = {
                     'taginfo': taginfo,
                     'expire_ts': ts,
                     'needed_since' : time.time(),
                     }
-
-        # TODO - prioritize
-        # regen = self.adjustRegenOrder(regen)
-        # self.logger.debug("order: %s", regen)
+            self.setTagScore(entry)
+            self.needed_tags[tag_id] = entry
 
         # some cleanup
         for tag_id, repolist in tag_repos.items():
