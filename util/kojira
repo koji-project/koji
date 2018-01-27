@@ -430,10 +430,10 @@ class RepoManager(object):
         We score the tags by two factors
             - age of current repo
             - last use in a buildroot
-        Having an older repo or a higher use count give the repo
-        a higher priority for regen. The formula attempts to keep
-        the last use factor from overpowering, so that very old repos
-        still get regen priority.
+
+        Having an older repo or a higher use count gives the tag a higher
+        priority for regen. The formula attempts to keep the last use factor
+        from overpowering, so that tags with very old repos still get priority
         """
 
         stats = self.tagUseStats(entry['taginfo']['id'])
