@@ -501,7 +501,11 @@ class RepoManager(object):
         max_n = max([t.get('n_recent', 0) for t in self.needed_tags.values()])
         adj = stats['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
         ts = entry['expire_ts']
-        entry['score'] = (now - ts) * adj
+        age = time.time() - ts
+        if age < 0:
+            self.logger.warning("Needed tag has future expire_ts: %r", entry)
+            age = 0
+        entry['score'] = age * adj
         self.logger.debug("Needed tag %s got score %.2f")
         # so a day old unused repo gets about the regen same score as a
         # 2.4-hour-old, very popular repo
