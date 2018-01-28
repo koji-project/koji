@@ -364,10 +364,13 @@ class RepoManager(object):
                 self.logger.debug("%s is not a directory, skipping", tagdir)
                 continue
             for repo_id in os.listdir(tagdir):
+                if repo_id == 'latest':
+                    # ignore latest symlinks
+                    continue
                 try:
                     repo_id = int(repo_id)
                 except ValueError:
-                    self.logger.debug("%s not an int, skipping", tagdir)
+                    self.logger.debug("%s/%s not an int, skipping", tagdir, repo_id)
                     continue
                 repodir = "%s/%s" % (tagdir, repo_id)
                 if not os.path.isdir(repodir):
@@ -375,7 +378,6 @@ class RepoManager(object):
                     continue
                 if repo_id in self.repos:
                     #we're already managing it, no need to deal with it here
-                    self.logger.debug("seen %s already, skipping", repodir)
                     continue
                 try:
                     dir_ts = os.stat(repodir).st_mtime
