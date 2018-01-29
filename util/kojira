@@ -459,6 +459,10 @@ class RepoManager(object):
         # so a day old unused repo gets about the regen same score as a
         # 2.4-hour-old, very popular repo
 
+    def updateTagScores(self):
+        for entry in self.needed_tags.values():
+            self.setTagScore(entry)
+
     def updateRepos(self):
         self.checkTasks()
         self.logger.debug("Current tasks: %r" % self.tasks)
@@ -478,6 +482,8 @@ class RepoManager(object):
         self.checkNeeded()
 
         self.regenRepos()
+
+        self.updateTagScores()
 
         # trigger deletes
         n_deletes = 0
