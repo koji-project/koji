@@ -5730,7 +5730,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
 
     # [!] Calling function should perform access checks
 
-    #sanity check rpminfo
+    # sanity check rpminfo
     dtypes = (
         ('name', basestring),
         ('version', basestring),
@@ -5746,37 +5746,47 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         if not isinstance(rpminfo[field], allowed):
             #this will catch unwanted NULLs
             raise koji.GenericError("Invalid value for %s: %r" % (field, rpminfo[field]))
-    #TODO: more sanity checks for payloadhash
+    # strip extra fields
+    rpminfo = dslice(rpminfo, [x[0] for x in dtypes])
+    # TODO: more sanity checks for payloadhash
 
-    #Check to see if we have it
-    data = rpminfo.copy()
-    data['location'] = external_repo
-    previous = get_rpm(data, strict=False)
+    def check_dup():
+        # Check to see if we have it
+        data = rpminfo.copy()
+        data['location'] = external_repo
+        previous = get_rpm(data, strict=False)
+        if previous:
+            disp = "%(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % previous
+            if strict:
+                raise koji.GenericError("external rpm already exists: %s" % disp)
+            elif data['payloadhash'] != previous['payloadhash']:
+                raise koji.GenericError("hash changed for external rpm: %s (%s -> %s)" \
+                        % (disp, previous['payloadhash'], data['payloadhash']))
+            else:
+                return previous
+
+    previous = check_dup()
     if previous:
-        disp = "%(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % previous
-        if strict:
-            raise koji.GenericError("external rpm already exists: %s" % disp)
-        elif data['payloadhash'] != previous['payloadhash']:
-            raise koji.GenericError("hash changed for external rpm: %s (%s -> %s)" \
-                    % (disp, previous['payloadhash'], data['payloadhash']))
-        else:
+        return previous
+
+    # add rpminfo entry
+    data = rpminfo.copy()
+    data['external_repo_id'] = get_external_repo_id(external_repo, strict=True)
+    data['id'] = nextval('rpminfo_id_seq')
+    data['build_id'] = None
+    data['buildroot_id'] = None
+    insert = InsertProcessor('rpminfo', data=data)
+    try:
+        insert.execute()
+    except Exception:
+        # check for dup again to work around a race
+        # see: https://pagure.io/koji/issue/788
+        previous = check_dup()
+        if previous:
             return previous
+        raise
 
-    #add rpminfo entry
-    rpminfo['external_repo_id'] = get_external_repo_id(external_repo, strict=True)
-    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
-    q = """INSERT INTO rpminfo (id, build_id, buildroot_id,
-            name, version, release, epoch, arch,
-            external_repo_id,
-            payloadhash, size, buildtime)
-    VALUES (%(id)i, NULL, NULL,
-            %(name)s, %(version)s, %(release)s, %(epoch)s, %(arch)s,
-            %(external_repo_id)i,
-            %(payloadhash)s, %(size)i, %(buildtime)i)
-    """
-    _dml(q, rpminfo)
-
-    return get_rpm(rpminfo['id'])
+    return get_rpm(data['id'])
 
 def import_build_log(fn, buildinfo, subdir=None):
     """Move a logfile related to a build to the right place"""
