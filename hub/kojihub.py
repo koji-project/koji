@@ -5776,11 +5776,13 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
     data['build_id'] = None
     data['buildroot_id'] = None
     insert = InsertProcessor('rpminfo', data=data)
+    savepoint = Savepoint('pre_insert')
     try:
         insert.execute()
     except Exception:
-        # check for dup again to work around a race
+        # if this failed, it likely duplicates one just inserted
         # see: https://pagure.io/koji/issue/788
+        savepoint.rollback()
         previous = check_dup()
         if previous:
             return previous
@@ -7393,6 +7395,16 @@ def nextval(sequence):
     """Get the next value for the given sequence"""
     data = {'sequence': sequence}
     return _singleValue("SELECT nextval(%(sequence)s)", data, strict=True)
+
+
+class Savepoint(object):
+
+    def __init__(self, name):
+        self.name = name
+        _dml("SAVEPOINT %s" % name, {})
+
+    def rollback(self):
+        _dml("ROLLBACK TO SAVEPOINT %s" % self.name, {})
 
 
 def parse_json(value, desc=None, errstr=None):
