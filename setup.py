@@ -7,13 +7,8 @@ def get_install_requires():
     #               glib2-devel sqlite-devel libxml2-devel python-devel \
     #               openssl-devel libffi-devel
 
-    # pycurl can come without ssl backend (or bad one). In such case use
-    # $ pip uninstall pycurl; pip install pycurl --global-option="--with-nss"
-    # or different backend mentioned in error message (openssl, ...)
-
     requires = [
         'pyOpenSSL',
-        'pycurl',
         'python-dateutil',
         'requests',
         'requests-kerberos',
