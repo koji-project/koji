@@ -388,14 +388,14 @@ class TestPrintTaskInfo(utils.CliTestCase):
 
         session.getTaskRequest.return_value = [1, 'x86_64', None]
         session.getTaskChildren.side_effect = [[children], []]
+        task_output = {
+            'mergerepos.log': ['DEFAULT'],
+            'createrepo.log': ['DEFAULT']
+        }
         list_task_output_mock.side_effect = [
             {},
-            {
-                'mergerepos.log': ['DEFAULT'],
-                'createrepo.log': ['DEFAULT']
-            }
+            task_output
         ]
-
         expected = """\
 Task: 1
 Type: newRepo
@@ -418,10 +418,11 @@ Finished: Thu Jan  1 00:50:00 1970
   Started: Thu Jan  1 00:33:20 1970
   Finished: Thu Jan  1 00:50:00 1970
   Log Files:
-    /mnt/koji/work/tasks/2/2/mergerepos.log
-    /mnt/koji/work/tasks/2/2/createrepo.log
+    %s
+    %s
 
-"""
+""" % tuple('/mnt/koji/work/tasks/2/2/' + k for k in task_output.keys())
+
         with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout, \
                 mock.patch('time.localtime', new=time.gmtime):
             _printTaskInfo(session, 1, '/mnt/koji')
