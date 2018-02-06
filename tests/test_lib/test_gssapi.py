@@ -10,7 +10,8 @@ import koji
 
 class TestGSSAPI(unittest.TestCase):
     def setUp(self):
-        self.session = koji.ClientSession('https://koji.example.com/kojihub', {})
+        self.session = koji.ClientSession('https://koji.example.com/kojihub',
+                                          {})
         self.session._callMethod = mock.MagicMock(name='_callMethod')
 
     def tearDown(self):
@@ -46,7 +47,8 @@ class TestGSSAPI(unittest.TestCase):
         for accepted_version in accepted_versions:
             koji.requests_kerberos.__version__ = accepted_version
             rv = self.session.gssapi_login(principal, keytab, ccache)
-            self.session._callMethod.assert_called_once_with('sslLogin', [None],
+            self.session._callMethod.assert_called_once_with('sslLogin',
+                                                             [None],
                                                              retry=False)
             self.assertEqual(old_environ, dict(**os.environ))
             self.assertTrue(rv)
@@ -72,7 +74,8 @@ class TestGSSAPI(unittest.TestCase):
             with self.assertRaises(koji.PythonImportError) as cm:
                 self.session.gssapi_login(principal, keytab, ccache)
             self.assertEqual(cm.exception.args[0],
-                             'version of python-requests-kerberos(%s) should >= 0.9.0' % old_version)
+                             'python-requests-kerberos >= 0.9.0 required for '
+                             'keytab auth')
             self.session._callMethod.assert_not_called()
             self.assertEqual(old_environ, dict(**os.environ))
         koji.requests_kerberos.__version__ = current_version
