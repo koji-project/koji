@@ -2235,7 +2235,8 @@ class ClientSession(object):
             if principal:
                 if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
                     raise PythonImportError(
-                        'version of python-requests-kerberos(%s) should >= 0.9.0' % requests_kerberos.__version__
+                            'python-requests-kerberos >= 0.9.0 required for '
+                            'keytab auth'
                     )
                 else:
                     kwargs['principal'] = principal
