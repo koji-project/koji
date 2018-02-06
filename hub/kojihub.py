@@ -10305,12 +10305,19 @@ class RootExports(object):
             opts = {}
         if not queryOpts:
             queryOpts = {}
+        countOnly = queryOpts.get('countOnly', False)
 
         tables = ['task']
-        joins = ['LEFT JOIN users ON task.owner = users.id']
+        if countOnly:
+            joins = []
+        else:
+            joins = ['LEFT JOIN users ON task.owner = users.id']
         flist = Task.fields + (
                     ('task.request', 'request'),
                     ('task.result', 'result'),
+                    )
+        if not countOnly:
+            flist += (
                     ('users.name', 'owner_name'),
                     ('users.usertype', 'owner_type'),
                     )
