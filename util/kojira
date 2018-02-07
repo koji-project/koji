@@ -734,7 +734,7 @@ def main(options, session):
                 curr_chk_thread = start_currency_checker(session, repomgr)
             if not regen_thread.isAlive():
                 logger.error("Currency checker thread died. Restarting it.")
-                rege_thread = start_regen_loop(session, repomgr)
+                regen_thread = start_regen_loop(session, repomgr)
         except KeyboardInterrupt:
             logger.warn("User exit")
             break
