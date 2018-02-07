@@ -343,6 +343,7 @@ class RepoManager(object):
     def currencyChecker(self, session):
         """Continually checks repos for currency. Runs as a separate thread"""
         self.session = session
+        self.logger = logging.getLogger("koji.repo.currency")
         self.logger.info('currencyChecker starting')
         try:
             while True:
@@ -357,6 +358,7 @@ class RepoManager(object):
     def regenLoop(self, session):
         """Triggers regens as needed/possible. Runs in a separate thread"""
         self.session = session
+        self.logger = logging.getLogger("koji.repo.regen")
         self.logger.info('regenLoop starting')
         try:
             while True:
