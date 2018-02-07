@@ -2418,8 +2418,10 @@ def _write_maven_repo_metadata(destdir, artifacts):
     # Sort the list so that the highest version number comes last.
     # group_id and artifact_id should be the same for all entries,
     # so we're really only comparing versions.
-    sort_param = {'key': functools.cmp_to_key(rpm.labelCompare)} if six.PY3 else \
-                    {'cmp': lambda a, b: rpm.labelCompare(a, b)}
+    if six.PY3:
+        sort_param = {'key': functools.cmp_to_key(rpm.labelCompare)}
+    else:
+        sort_param = {'cmp': lambda a, b: rpm.labelCompare(a, b)}
     artifacts = sorted(artifacts, **sort_param)
     artifactinfo = dict(zip(['group_id', 'artifact_id', 'version'], artifacts[-1]))
     artifactinfo['timestamp'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
