@@ -129,3 +129,40 @@ class RepoManagerTest(unittest.TestCase):
         self.mgr.setTagScore(entry)
         if score > entry['score']:
             raise Exception('score should have increased')
+
+    def test_check_needed(self):
+        self.session.getBuildTargets.return_value = [
+                {'build_tag': 1},
+                {'build_tag': 2},
+                {'build_tag': 3},
+                ]
+        # make two repo entries
+        repo1 = mock.MagicMock()
+        repo1.tag_id = 1
+        repo1.current = True
+        repo2 = mock.MagicMock()
+        repo2.tag_id = 2
+        repo2.current = False
+        repo2.pending.return_value = True
+        self.mgr.repos = {1: repo1, 2: repo2}
+
+        # more mocks
+        def my_get_tag(tag_id):
+            return {'id': tag_id, 'name': 'TAG %i' % tag_id}
+        self.session.getTag.side_effect = my_get_tag
+        self.mgr.logger = mock.MagicMock()
+        self.mgr.setTagScore = mock.MagicMock()
+
+        with mock.patch('time.time') as mytime:
+            mytime.side_effect = [1000, 1100]
+            self.mgr.checkNeeded()
+
+        # only the third tag should show up as needed
+        expected = {3:
+                {'expire_ts': 1000,
+                 'needed_since': 1100,
+                 'taginfo': {
+                        'id': 3,
+                        'name': 'TAG 3'
+                        }}}
+        self.assertEqual(self.mgr.needed_tags, expected)
