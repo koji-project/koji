@@ -837,7 +837,7 @@ def get_options():
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'max_repo_tasks_maven',
-                    'delete_batch_size', 'dist_repo_lifetime')
+                    'delete_batch_size', 'dist_repo_lifetime', 'sleeptime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags', 'source_tags')  # FIXME: remove ca here
         bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',
