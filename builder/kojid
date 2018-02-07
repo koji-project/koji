@@ -381,18 +381,13 @@ class BuildRoot(object):
             uploadpath = self.getUploadPath()
             logs = {}
 
-            ts_file = None
-            ts_state = {}
+            ts_offsets = {}
             finished = False
             while not finished:
                 time.sleep(1)
                 status = os.waitpid(pid, os.WNOHANG)
                 if status[0] != 0:
                     finished = True
-
-                if ts_file is None and os.path.exists(resultdir):
-                    ts_file = open(os.path.join(resultdir, 'ts.log'), 'wt')
-                    ts_file.write('filename,timestamp,offset\n')
 
                 try:
                     results = os.listdir(resultdir)
@@ -404,10 +399,35 @@ class BuildRoot(object):
                     if fname.endswith('.log') and fname not in logs:
                         fpath = os.path.join(resultdir, fname)
                         logs[fname] = (None, None, 0, fpath)
+                        if not fname.endswith('-ts.log'):
+                            ts_name = '%s-ts.log' % fname
+                            fpath = os.path.join(resultdir, ts_name)
+                            if os.path.exists(fpath):
+                                with open(fpath, 'rt') as ts_file:
+                                    lines = ts_file.readlines()
+                                    if lines:
+                                        last = int(lines[-1].split()[1])
+                                        ts_offsets[fname] = last
+                            else:
+                                with open(fpath, 'a') as ts_file:
+                                    ts_file.write('%.0f 0\n' % time.time())
+                            logs[ts_name] = (None, None, 0, fpath)
                 if workdir and mocklog not in logs:
                     fpath = os.path.join(workdir, mocklog)
                     if os.path.exists(fpath):
                         logs[mocklog] = (None, None, 0, fpath)
+                        ts_name = '%s-ts.log' % mocklog
+                        fpath = os.path.join(workdir, ts_name)
+                        if os.path.exists(fpath):
+                            with open(fpath, 'rt') as ts_file:
+                                lines = ts_file.readlines()
+                                if lines:
+                                    last = int(lines[-1].split()[1])
+                                    ts_offsets[mocklog] = last
+                        else:
+                            with open(fpath, 'a') as ts_file:
+                                ts_file.write('%.0f 0\n' % time.time())
+                        logs[ts_name] = (None, None, 0, fpath)
 
                 for (fname, (fd, inode, size, fpath)) in logs.items():
                     try:
@@ -420,33 +440,34 @@ class BuildRoot(object):
                                 self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
                                                  (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
-                            fd = file(fpath, 'r')
-                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size, fpath)
+                            fd = open(fpath, 'r')
+                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size or size, fpath)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
                         continue
 
-                    if ts_file and fname != 'ts.log':
+                    if not fname.endswith('-ts.log'):
                         # race condition against incremental_upload's tell,
                         # but with enough precision for ts.log purposes
                         position = fd.tell()
-                        ts_state.setdefault(fname, 0)
-                        if ts_state[fname] < position:
-                            ts_file.write('%s %f %i\n' % (fname, time.time(), position))
-                            ts_state[fname] = position
+                        ts_offsets.setdefault(fname, 0)
+                        if ts_offsets[fname] < position:
+                            fpath = os.path.join(resultdir, '%s-ts.log' % fname)
+                            with open(fpath, 'a') as ts_file:
+                                ts_file.write('%.0f %i\n' % (time.time(), position))
+                            ts_offsets[fname] = position
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
-
-            # flush ts.log as it could be changed during previous iteration
-            # but not uploaded.
-            if ts_file:
-                ts_file.close()
-                incremental_upload(self.session, 'ts.log', logs['ts.log'][0], uploadpath, logger=self.logger)
 
             #clean up and return exit status of command
             for (fname, (fd, inode, size, fpath)) in logs.items():
-                if fd:
-                    fd.close()
+                if not fd:
+                    continue
+                if fname.endswith('-ts.log'):
+                    # flush ts.log as it could be changed during previous iteration
+                    # but not uploaded.
+                    incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
+                fd.close()
             return status[1]
 
         else:
