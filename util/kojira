@@ -350,7 +350,7 @@ class RepoManager(object):
                 self.checkCurrentRepos()
                 time.sleep(self.options.sleeptime)
         except:
-            logger.exception('Error in currency checker thread')
+            self.logger.exception('Error in currency checker thread')
             raise
         finally:
             session.logout()
@@ -365,7 +365,7 @@ class RepoManager(object):
                 self.regenRepos()
                 time.sleep(self.options.sleeptime)
         except:
-            logger.exception('Error in regen thread')
+            self.logger.exception('Error in regen thread')
             raise
         finally:
             session.logout()
