@@ -50,7 +50,7 @@ from koji.util import md5_constructor
 SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
-except Exception:  #pragma: no cover
+except Exception:  # pragma: no cover
     # the hub imports koji, and sometimes this import fails there
     # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine
     # unfortunately the workaround at the above link does not always work, so
@@ -64,9 +64,9 @@ import random
 import re
 import requests
 try:
-    from requests_kerberos import HTTPKerberosAuth
-except ImportError:  #pragma: no cover
-    HTTPKerberosAuth = None
+    import requests_kerberos
+except ImportError:  # pragma: no cover
+    requests_kerberos = None
 import rpm
 import shutil
 import signal
@@ -2145,7 +2145,7 @@ class ClientSession(object):
         sprinc = krbV.Principal(name=self._serverPrincipal(cprinc), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
+        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
         ac.rcache = ctx.default_rcache()
 
         # create and encode the authentication request
@@ -2156,7 +2156,6 @@ class ClientSession(object):
 
         # ask the server to authenticate us
         (rep_enc, sinfo_enc, addrinfo) = self.callMethod('krbLogin', req_enc, proxyuser)
-
         # Set the addrinfo we received from the server
         # (necessary before calling rd_priv())
         # addrinfo is in (serveraddr, serverport, clientaddr, clientport)
@@ -2206,7 +2205,7 @@ class ClientSession(object):
         return host
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
-        if not HTTPKerberosAuth:
+        if not requests_kerberos:
             raise PythonImportError(
                 "Please install python-requests-kerberos to use GSSAPI."
             )
@@ -2234,8 +2233,14 @@ class ClientSession(object):
                 old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
-                kwargs['principal'] = principal
-            self.opts['auth'] = HTTPKerberosAuth(**kwargs)
+                if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
+                    raise PythonImportError(
+                            'python-requests-kerberos >= 0.9.0 required for '
+                            'keytab auth'
+                    )
+                else:
+                    kwargs['principal'] = principal
+            self.opts['auth'] = requests_kerberos.HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
