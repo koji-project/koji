@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import mock
+import time
 import unittest
 
 import koji
@@ -96,3 +97,35 @@ class RepoManagerTest(unittest.TestCase):
 
         self.assertEqual(self.mgr.regenRepos.call_count, 11)
         subsession.logout.assert_called_once()
+
+    def test_set_tag_score(self):
+        self.mgr.tagUseStats = mock.MagicMock()
+        self.mgr.tagUseStats.return_value = {
+                'n_recent': 5
+                }
+        self.mgr.needed_tags = {}
+        entry = {
+                'taginfo': {
+                    'id': 'TAGID',
+                    'name': 'TAGNAME',
+                    },
+                'expire_ts': time.time() - 300
+                }
+        self.mgr.setTagScore(entry)
+        score = entry['score']
+        if score < 0.0:
+            raise Exception('score too low')
+
+        _entry = entry.copy()
+        _entry['expire_ts'] -= 300
+        self.mgr.setTagScore(_entry)
+        if score > entry['score']:
+            raise Exception('score should have increased')
+
+        self.mgr.tagUseStats.return_value = {
+                'n_recent': 10
+                # higher than before
+                }
+        self.mgr.setTagScore(entry)
+        if score > entry['score']:
+            raise Exception('score should have increased')
