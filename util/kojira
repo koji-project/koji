@@ -639,18 +639,18 @@ class RepoManager(object):
                 if task['maven']:
                     running_tasks_maven += 1
 
-        if running_tasks >= self.options.max_repo_tasks:
-            self.logger.info("Maximum number of repo tasks reached")
-            return
-        elif (len(self.tasks) + len(self.other_tasks)
-                        >= self.options.repo_tasks_limit):
-            self.logger.info("Repo task limit reached")
-            return
         debuginfo_pat = self.options.debuginfo_tags.split()
         src_pat = self.options.source_tags.split()
         order = self.needed_tags.values()
         order.sort(key=lambda t:t['score'])
         for tag in order:
+            if running_tasks >= self.options.max_repo_tasks:
+                self.logger.info("Maximum number of repo tasks reached")
+                return
+            elif (len(self.tasks) + len(self.other_tasks)
+                            >= self.options.repo_tasks_limit):
+                self.logger.info("Repo task limit reached")
+                return
             tagname = tag['taginfo']['name']
             task_id = tag.get('task_id')
             if task_id:
