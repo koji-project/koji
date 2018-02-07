@@ -591,31 +591,31 @@ def _list_tasks(options, session):
         'decode' : True,
     }
 
-    if getattr(options, 'mine'):
-        if getattr(options, 'user'):
+    if getattr(options, 'mine', False):
+        if getattr(options, 'user', False):
             raise koji.GenericError("Can't specify 'mine' and 'user' in same time")
         user = session.getLoggedInUser()
         if not user:
             print("Unable to determine user")
             sys.exit(1)
         callopts['owner'] = user['id']
-    if getattr(options, 'user'):
+    if getattr(options, 'user', None):
         user = session.getUser(options.user)
         if not user:
             print("No such user: %s" % options.user)
             sys.exit(1)
         callopts['owner'] = user['id']
-    if getattr(options, 'arch'):
+    if getattr(options, 'arch', None):
         callopts['arch'] = parse_arches(options.arch, to_list=True)
-    if getattr(options, 'method'):
+    if getattr(options, 'method', None):
         callopts['method'] = options.method
-    if getattr(options, 'channel'):
+    if getattr(options, 'channel', None):
         chan = session.getChannel(options.channel)
         if not chan:
             print("No such channel: %s" % options.channel)
             sys.exit(1)
         callopts['channel_id'] = chan['id']
-    if getattr(options, 'host'):
+    if getattr(options, 'host', None):
         host = session.getHost(options.host)
         if not host:
             print("No such host: %s" % options.host)
