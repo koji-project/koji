@@ -555,6 +555,7 @@ class RepoManager(object):
     def checkNeeded(self):
         """Determine which tags currently need regeneration"""
 
+        n_need = len(self.needed_tags)
         self.build_tags = set(
                 [t['build_tag']for t in self.session.getBuildTargets()])
         #index repos by tag
@@ -624,6 +625,11 @@ class RepoManager(object):
                 for repo in repolist:
                     if repo.ready():
                         repo.expire()
+
+        if n_need != len(self.needed_tags):
+            self.logger.info('Needed tags count went from %i to %i', n_need,
+                             len(self.needed_tags))
+
 
     def regenRepos(self):
         """Trigger newRepo tasks for needed tags"""
