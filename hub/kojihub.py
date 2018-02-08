@@ -4545,7 +4545,7 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    if isinstance(hostInfo, int) or isinstance(hostInfo, long):
+    if isinstance(hostInfo, (int, long)):
         clauses.append("id = %(hostInfo)i")
     elif isinstance(hostInfo, str):
         clauses.append("name = %(hostInfo)s")
@@ -10613,7 +10613,7 @@ class RootExports(object):
         #host entry
         hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
         insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s"
-        _dml(insert, locals())
+        _dml(insert, dslice(locals(), ('hostID', 'userID', 'hostname')))
 
         insert = InsertProcessor('host_config')
         insert.set(host_id=hostID, arches=" ".join(arches))
@@ -10623,7 +10623,7 @@ class RootExports(object):
         #host_channels entry
         insert = """INSERT INTO host_channels (host_id, channel_id)
         VALUES (%(hostID)i, %(default_channel)i)"""
-        _dml(insert, locals())
+        _dml(insert, dslice(locals(), ('hostID', 'default_channel')))
         return hostID
 
     def enableHost(self, hostname):
