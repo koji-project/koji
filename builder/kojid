@@ -399,7 +399,7 @@ class BuildRoot(object):
                     if fname.endswith('.log') and fname not in logs:
                         fpath = os.path.join(resultdir, fname)
                         logs[fname] = (None, None, 0, fpath)
-                        if not fname.endswith('-ts.log'):
+                        if self.options.log_timestamps and not fname.endswith('-ts.log'):
                             ts_name = '%s-ts.log' % fname
                             fpath = os.path.join(resultdir, ts_name)
                             if os.path.exists(fpath):
@@ -416,18 +416,19 @@ class BuildRoot(object):
                     fpath = os.path.join(workdir, mocklog)
                     if os.path.exists(fpath):
                         logs[mocklog] = (None, None, 0, fpath)
-                        ts_name = '%s-ts.log' % mocklog
-                        fpath = os.path.join(workdir, ts_name)
-                        if os.path.exists(fpath):
-                            with open(fpath, 'rt') as ts_file:
-                                lines = ts_file.readlines()
-                                if lines:
-                                    last = int(lines[-1].split()[1])
-                                    ts_offsets[mocklog] = last
-                        else:
-                            with open(fpath, 'a') as ts_file:
-                                ts_file.write('%.0f 0\n' % time.time())
-                        logs[ts_name] = (None, None, 0, fpath)
+                        if self.options.log_timestamps:
+                            ts_name = '%s-ts.log' % mocklog
+                            fpath = os.path.join(workdir, ts_name)
+                            if os.path.exists(fpath):
+                                with open(fpath, 'rt') as ts_file:
+                                    lines = ts_file.readlines()
+                                    if lines:
+                                        last = int(lines[-1].split()[1])
+                                        ts_offsets[mocklog] = last
+                            else:
+                                with open(fpath, 'a') as ts_file:
+                                    ts_file.write('%.0f 0\n' % time.time())
+                            logs[ts_name] = (None, None, 0, fpath)
 
                 for (fname, (fd, inode, size, fpath)) in logs.items():
                     try:
@@ -447,7 +448,7 @@ class BuildRoot(object):
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
                         continue
 
-                    if not fname.endswith('-ts.log'):
+                    if self.options.log_timestamps and not fname.endswith('-ts.log'):
                         # race condition against incremental_upload's tell,
                         # but with enough precision for ts.log purposes
                         position = fd.tell()
@@ -464,8 +465,8 @@ class BuildRoot(object):
                 if not fd:
                     continue
                 if fname.endswith('-ts.log'):
-                    # flush ts.log as it could be changed during previous iteration
-                    # but not uploaded.
+                    # finish upload of ts.log as they could've been missed in
+                    # last iteration
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
                 fd.close()
             return status[1]
@@ -5709,6 +5710,7 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'keepalive' : True,
+                'log_timestamps': False,
                 'timeout' : None,
                 'no_ssl_verify' : False,
                 'use_fast_upload': True,
@@ -5738,7 +5740,7 @@ def get_options():
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
                           'createrepo_update', 'keepalive', 'use_fast_upload',
                           'support_rpm_source_layout', 'krb_rdns', 'krb_canon_host',
-                          'build_arch_can_fail', 'no_ssl_verify']:
+                          'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
