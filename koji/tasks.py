@@ -595,7 +595,7 @@ class WaitTestTask(BaseTaskHandler):
     def handler(self, count, seconds=10):
         tasks = []
         for i in xrange(count):
-            task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i), parent=self.id)
+            task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i))
             tasks.append(task_id)
         bad_task = self.subtask('sleep', ['BAD_ARG'], label='bad')
         tasks.append(bad_task)
