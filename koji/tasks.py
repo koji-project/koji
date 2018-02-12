@@ -42,8 +42,8 @@ def scan_mounts(topdir):
     for line in fo.readlines():
         path = line.split()[1]
         if path.startswith(topdir):
-            if path.endswith('\040(deleted)'):
-                path = path[:-10]
+            if path.endswith(r'\040(deleted)'):
+                path = path[:-13]
                 logger.warning('Found deleted mountpoint: %s' % path)
             mplist.append(path)
     fo.close()
