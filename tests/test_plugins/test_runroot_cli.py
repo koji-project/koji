@@ -18,6 +18,7 @@ class TestListCommands(unittest.TestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.options.debug = False
+        self.options.quiet = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.args = [
