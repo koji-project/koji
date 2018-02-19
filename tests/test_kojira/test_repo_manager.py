@@ -132,9 +132,9 @@ class RepoManagerTest(unittest.TestCase):
 
     def test_check_needed(self):
         self.session.getBuildTargets.return_value = [
-                {'build_tag': 1},
-                {'build_tag': 2},
-                {'build_tag': 3},
+                {'build_tag': 1, 'build_tag_name': 'tag 1'},
+                {'build_tag': 2, 'build_tag_name': 'tag 2'},
+                {'build_tag': 3, 'build_tag_name': 'tag 3'},
                 ]
         # make two repo entries
         repo1 = mock.MagicMock()
