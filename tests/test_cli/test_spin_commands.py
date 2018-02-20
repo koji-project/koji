@@ -55,6 +55,7 @@ APPLIANCE_OPTIONS = {
     "vmem": None,
 }
 
+
 class Options(object):
     def __init__(self, init_dict):
         for k, v in init_dict.items():
@@ -130,11 +131,10 @@ class TestBuildImage(utils.CliTestCase):
         args = [self.options, self.task_opts, self.session,
                 self.arguments, 'appliance']
         with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
-            _build_image(self.options, self.task_opts, self.session, self.arguments, 'appliance')
+            _build_image(*args)
         self.assert_console_message(stdout, expected)
         self.session.buildImage.assert_called_once()
         self.watch_tasks.assert_called_once()
-
 
     def test_build_image_livemedia(self):
         """Test _build_image function build livemedia"""
@@ -206,7 +206,7 @@ class TestBuildImage(utils.CliTestCase):
         self.task_opts = Options(LIVEMEDIA_OPTIONS)
 
         # Case 1. sanity check for image type
-        img_type = 'unknow_type'
+        img_type = 'unknown_type'
         expected = 'Unrecognized image type: %s' % img_type
         args = [self.options, self.task_opts, self.session,
                 self.arguments, img_type]
@@ -237,6 +237,7 @@ class TestBuildImage(utils.CliTestCase):
             _build_image(*args)
         self.assertEqual(str(cm.exception), expected)
         self.activate_session.assert_called_with(self.session, self.options)
+
 
 class TestSpinAppliance(utils.CliTestCase):
 
@@ -275,8 +276,8 @@ class TestSpinAppliance(utils.CliTestCase):
         """Test handle_spin_appliance function argument error"""
         # takes excatly 5 arguments
         expected = self.format_error_message(
-            "Five arguments are required: a name, a version, " + 
-            "an architecture, a build target, and a relative path" + 
+            "Five arguments are required: a name, a version, " +
+            "an architecture, a build target, and a relative path" +
             " to a kickstart file.")
         for args in [[], ['arg1', 'arg2', 'arg3', 'arg4'],
                      ['arg1', 'arg2', 'arg3', 'arg4', 'arg5', 'arg6']]:
@@ -342,7 +343,7 @@ class TestSpinLiveMedia(utils.CliTestCase):
     def test_handle_spin_livemedia(self, build_image_mock):
         """Test handle_spin_livemedia function"""
         args = ['name', 'version', 'target', 'arch', 'file.ks']
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+        with mock.patch('sys.stdout', new_callable=six.StringIO):
             handle_spin_livemedia(self.options, self.session, args)
         args, kwargs = build_image_mock.call_args
         empty_opts = dict((k, None) for k in LIVEMEDIA_OPTIONS)
@@ -355,8 +356,8 @@ class TestSpinLiveMedia(utils.CliTestCase):
         """Test handle_spin_livemedia function argument error"""
         # takes excatly 5 arguments
         expected = self.format_error_message(
-            "Five arguments are required: a name, a version, a" + 
-            " build target, an architecture, and a relative path to" + 
+            "Five arguments are required: a name, a version, a" +
+            " build target, an architecture, and a relative path to" +
             " a kickstart file.")
         for args in [[], ['arg1', 'arg2', 'arg3', 'arg4'],
                      ['arg1', 'arg2', 'arg3', 'arg4', 'arg5', 'arg6']]:
@@ -458,8 +459,8 @@ class TestSpinLiveCD(utils.CliTestCase):
         """Test handle_spin_livecd function argument error"""
         # takes excatly 5 arguments
         expected = self.format_error_message(
-            "Five arguments are required: a name, a version, " + 
-            "an architecture, a build target, and a relative path to " + 
+            "Five arguments are required: a name, a version, " +
+            "an architecture, a build target, and a relative path to " +
             "a kickstart file.")
         for args in [[], ['arg1', 'arg2', 'arg3', 'arg4'],
                      ['arg1', 'arg2', 'arg3', 'arg4', 'arg5', 'arg6']]:
