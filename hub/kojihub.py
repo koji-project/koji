@@ -6121,7 +6121,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
-        if not fileinfo or not getattr(fileinfo, 'hub.checked_md5'):
+        if not fileinfo or not fileinfo.get('hub.checked_md5'):
             archivefp = open(filepath)
             m = md5_constructor()
             while True:
