@@ -35,7 +35,6 @@ import errno
 import logging
 import fcntl
 import fnmatch
-import hashlib
 from koji.util import md5_constructor
 from koji.util import sha1_constructor
 from koji.util import dslice
@@ -53,7 +52,6 @@ import tarfile
 import tempfile
 import traceback
 import time
-import types
 import xmlrpclib
 import zipfile
 
@@ -10825,14 +10823,24 @@ class RootExports(object):
             raise koji.GenericError('user %i cannot update notifications for user %i' % \
                   (currentUser['id'], orig_notif['user_id']))
 
-        update = """UPDATE build_notifications
-        SET package_id = %(package_id)s,
-        tag_id = %(tag_id)s,
-        success_only = %(success_only)s
-        WHERE id = %(id)i
-        """
+        # sanitize input
+        if package_id is not None:
+            package_id = get_package_id(package_id, strict=True)
+        if tag_id is not None:
+            tag_id = get_tag_id(tag_id, strict=True)
+        success_only = bool(success_only)
 
-        _dml(update, locals())
+        # check existing notifications to not have same twice
+        for notification in get_build_notifications(orig_notif['user_id']):
+            if (notification['package_id'] == package_id and
+                notification['tag_id'] == tag_id and
+                notification['success_only'] == success_only):
+                raise koji.GenericError('notification already exists')
+
+        update = UpdateProcessor('build_notifications',
+                                 clauses=['id = %(id)i'], values=locals())
+        update.set(package_id=package_id, tag_id=tag_id, success_only=success_only)
+        update.execute()
 
     def createNotification(self, user_id, package_id, tag_id, success_only):
         """Create a new notification.  If the user_id does not match the currently logged-in user
@@ -10849,13 +10857,27 @@ class RootExports(object):
             raise koji.GenericError('user %s cannot create notifications for user %s' % \
                   (currentUser['name'], notificationUser['name']))
 
+        # sanitize input
+        user_id = notificationUser['id']
+        if package_id is not None:
+            package_id = get_package_id(package_id, strict=True)
+        if tag_id is not None:
+            tag_id = get_tag_id(tag_id, strict=True)
+        success_only = bool(success_only)
+
         email = '%s@%s' % (notificationUser['name'], context.opts['EmailDomain'])
-        insert = """INSERT INTO build_notifications
-        (user_id, package_id, tag_id, success_only, email)
-        VALUES
-        (%(user_id)i, %(package_id)s, %(tag_id)s, %(success_only)s, %(email)s)
-        """
-        _dml(insert, locals())
+
+        # check existing notifications to not have same twice
+        for notification in get_build_notifications(user_id):
+            if (notification['package_id'] == package_id and
+                notification['tag_id'] == tag_id and
+                notification['success_only'] == success_only):
+                raise koji.GenericError('notification already exists')
+
+        insert = InsertProcessor('build_notifications')
+        insert.set(user_id=user_id, package_id=package_id, tag_id=tag_id,
+                   success_only=success_only, email=email)
+        insert.execute()
 
     def deleteNotification(self, id):
         """Delete the notification with the given ID.  If the currently logged-in
