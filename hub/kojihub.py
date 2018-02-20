@@ -5579,7 +5579,7 @@ class CG_Importer(object):
                         (filesize, fileinfo['filename'], fileinfo['filesize']))
 
             # checksum
-            if koji.CHECKSUM_TYPES[fileinfo['checksum_type']] != 'md5':
+            if fileinfo['checksum_type'] != 'md5':
                 # XXX
                 # until we change the way we handle checksums, we have to limit this to md5
                 raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
