@@ -6189,14 +6189,20 @@ def anon_handle_watch_logs(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--log", help=_("Watch only a specific log"))
-    parser.add_option("--mine", action="store_true", help=_("Watch logs for all your tasks"))
+    parser.add_option("--mine", action="store_true", help=_("Watch logs for "
+        "all your tasks, task_id arguments are forbidden in this case."))
     parser.add_option("--follow", action="store_true", help=_("Follow spawned child tasks"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
 
     if options.mine:
+        if args:
+            parser.error(_("Selection options cannot be combined with a task list"))
         tasks = _list_tasks(options, session)
         tasks = [t['id'] for t in tasks]
+        if not tasks:
+            print(_("You've no active tasks."))
+            return
     else:
         tasks = []
         for task in args:
