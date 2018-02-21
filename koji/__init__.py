@@ -1538,12 +1538,16 @@ name=build
     parts.append("\n")
 
     if bind_opts:
-        # This line is REQUIRED for mock to work if bind_opts defined.
-        parts.append("config_opts['internal_dev_setup'] = False\n")
+        # disable internal_dev_setup unless opts explicitly say otherwise
+        opts.setdefault('internal_dev_setup', False)
         for key in bind_opts.keys():
             for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
                 parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
         parts.append("\n")
+
+    if 'internal_dev_setup' in opts:
+        parts.append("config_opts['internal_dev_setup'] = %r\n"
+                % bool(opts['internal_dev_setup']))
 
     for key, value in six.iteritems(macros):
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
