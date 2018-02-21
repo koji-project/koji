@@ -4546,9 +4546,9 @@ def get_host(hostInfo, strict=False, event=None):
     clauses = [eventCondition(event, table='host_config')]
 
     if isinstance(hostInfo, (int, long)):
-        clauses.append("id = %(hostInfo)i")
+        clauses.append("host.id = %(hostInfo)i")
     elif isinstance(hostInfo, str):
-        clauses.append("name = %(hostInfo)s")
+        clauses.append("host.name = %(hostInfo)s")
     else:
         raise koji.GenericError('invalid type for hostInfo: %s' % type(hostInfo))
 
@@ -10647,7 +10647,7 @@ class RootExports(object):
         host appears in the list, it will be included in the results.  If "ready" and "enabled"
         are specified, only hosts with the given value for the respective field will
         be included."""
-        clauses = ['active IS TRUE']
+        clauses = ['host_config.active IS TRUE']
         joins = ['host ON host.id = host_config.host_id']
         if arches is not None:
             if not arches:
