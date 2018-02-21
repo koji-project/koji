@@ -70,10 +70,6 @@ class TestAddHost(unittest.TestCase):
             mock.call("SELECT id FROM channels WHERE name = 'default'"),
             mock.call("SELECT nextval('host_id_seq')", strict=True)
         ])
-        self.assertEqual(_dml.call_count, 2)
-        _dml.assert_has_calls([
-            mock.call("INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s",
-                      {'hostID': 12, 'userID': 456, 'hostname': 'hostname'}),
-            mock.call("""INSERT INTO host_channels (host_id, channel_id)\n        VALUES (%(hostID)i, %(default_channel)i)""",
-                {'hostID': 12, 'default_channel': 333})
-        ])
+        self.assertEqual(_dml.call_count, 1)
+        _dml.assert_called_once_with("INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s)",
+                      {'hostID': 12, 'userID': 456, 'hostname': 'hostname'})

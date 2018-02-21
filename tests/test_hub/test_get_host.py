@@ -39,7 +39,7 @@ class TestSetHostEnabled(unittest.TestCase):
         joins = ['host ON host.id = host_config.host_id']
         aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
                 'arches', 'capacity', 'description', 'comment', 'enabled']
-        clauses = ['(host_config.active = TRUE)', 'name = %(hostInfo)s']
+        clauses = ['(host_config.active = TRUE)', 'host.name = %(hostInfo)s']
         values = {'hostInfo': 'hostname'}
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, joins)
@@ -61,7 +61,7 @@ class TestSetHostEnabled(unittest.TestCase):
         aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
                 'arches', 'capacity', 'description', 'comment', 'enabled']
         clauses = ['(host_config.create_event <= 345 AND ( host_config.revoke_event IS NULL OR 345 < host_config.revoke_event ))',
-                'id = %(hostInfo)i']
+                'host.id = %(hostInfo)i']
         values = {'hostInfo': 123}
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, joins)

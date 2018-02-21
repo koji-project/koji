@@ -2062,6 +2062,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
             raise koji.GenericError('host %s is already subscribed to the %s channel' % (hostname, channel_name))
     insert = InsertProcessor('host_channels')
     insert.set(host_id=host_id, channel_id=channel_id)
+    insert.make_create()
     insert.execute()
 
 def remove_host_from_channel(hostname, channel_name):
@@ -2081,9 +2082,13 @@ def remove_host_from_channel(hostname, channel_name):
             break
     if not found:
         raise koji.GenericError('host %s is not subscribed to the %s channel' % (hostname, channel_name))
-    c = context.cnx.cursor()
-    c.execute("""DELETE FROM host_channels WHERE host_id = %(host_id)d and channel_id = %(channel_id)d""", locals())
-    context.commit_pending = True
+
+    values = {'host_id': host_id, 'channel_id': channel_id}
+    clauses = ['host_id = %(host_id)i AND channel_id = %(channel_id)i']
+    update = UpdateProcessor('host_channels', values=values, clauses=clauses)
+    update.make_revoke()
+    update.execute()
+
 
 def rename_channel(old, new):
     """Rename a channel"""
@@ -2103,6 +2108,10 @@ def remove_channel(channel_name, force=False):
 
     Channel must have no hosts, unless force is set to True
     If a channel has associated tasks, it cannot be removed
+    and an exception will be raised.
+
+    Removing channel will remove also remove complete history
+    for that channel.
     """
     context.session.assertPerm('admin')
     channel_id = get_channel_id(channel_name, strict=True)
@@ -2146,7 +2155,7 @@ def get_ready_hosts():
     c.execute(q)
     hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
     for host in hosts:
-        q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s"""
+        q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s AND active IS TRUE"""
         c.execute(q, host)
         host['channels'] = [row[0] for row in c.fetchall()]
     return hosts
@@ -4706,16 +4715,28 @@ def get_buildroot(buildrootID, strict=False):
         raise koji.GenericError("More that one buildroot with id: %i" % buildrootID)
     return result[0]
 
-def list_channels(hostID=None):
+def list_channels(hostID=None, event=None):
     """List channels.  If hostID is specified, only list
     channels associated with the host with that ID."""
-    fields = ('id', 'name')
-    query = """SELECT %s FROM channels
-    """ % ', '.join(fields)
-    if hostID != None:
-        query += """JOIN host_channels ON channels.id = host_channels.channel_id
-        WHERE host_channels.host_id = %(hostID)i"""
-    return _multiRow(query, locals(), fields)
+    fields = {'channels.id': 'id', 'channels.name': 'name'}
+    columns, aliases = zip(*fields.items())
+    if hostID:
+        tables = ['host_channels']
+        joins = ['channels ON channels.id = host_channels.channel_id']
+        clauses = [
+                eventCondition(event, table='host_channels'),
+                'host_channels.host_id = %(host_id)s']
+        values = {'host_id': hostID}
+        query = QueryProcessor(tables=tables, aliases=aliases,
+                               columns=columns, joins=joins,
+                               clauses=clauses, values=values)
+    elif event:
+        raise koji.GenericError('list_channels with event and '
+                                'not host is not allowed.')
+    else:
+        query = QueryProcessor(tables=['channels'], aliases=aliases,
+                               columns=columns)
+    return query.execute()
 
 def new_package(name, strict=True):
     c = context.cnx.cursor()
@@ -6590,6 +6611,7 @@ def query_history(tables=None, **kwargs):
         'build_target_config': ['build_target_id', 'build_tag', 'dest_tag'],
         'external_repo_config': ['external_repo_id', 'url'],
         'host_config': ['host_id', 'arches', 'capacity', 'description', 'comment', 'enabled'],
+        'host_channels': ['host_id', 'channel_id'],
         'tag_external_repos': ['tag_id', 'external_repo_id', 'priority'],
         'tag_listing': ['build_id', 'tag_id'],
         'tag_packages': ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
@@ -6607,6 +6629,7 @@ def query_history(tables=None, **kwargs):
         #group_id is overloaded (special case below)
         'tag_id': ['tag'],
         'host_id': ['host'],
+        'channel_id': ['channels'],
         'parent_id': ['tag', 'parent'],
         'build_target_id': ['build_target'],
         'build_tag': ['tag', 'build_tag'],
@@ -10612,7 +10635,7 @@ class RootExports(object):
                                             krb_principal=krb_principal)
         #host entry
         hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
-        insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s"
+        insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s)"
         _dml(insert, dslice(locals(), ('hostID', 'userID', 'hostname')))
 
         insert = InsertProcessor('host_config')
@@ -10621,9 +10644,11 @@ class RootExports(object):
         insert.execute()
 
         #host_channels entry
-        insert = """INSERT INTO host_channels (host_id, channel_id)
-        VALUES (%(hostID)i, %(default_channel)i)"""
-        _dml(insert, dslice(locals(), ('hostID', 'default_channel')))
+        insert = InsertProcessor('host_channels')
+        insert.set(host_id=hostID, channel_id=default_channel)
+        insert.make_create()
+        insert.execute()
+
         return hostID
 
     def enableHost(self, hostname):
@@ -10662,6 +10687,7 @@ class RootExports(object):
             channelID = get_channel_id(channelID, strict=True)
             joins.append('host_channels ON host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
+            clauses.append('host_channels.active IS TRUE')
         if ready is not None:
             if ready:
                 clauses.append('ready IS TRUE')
@@ -11552,7 +11578,7 @@ class Host(object):
         c.execute(q, locals())
         arches = c.fetchone()[0].split()
         q = """
-        SELECT channel_id FROM host_channels WHERE host_id = %(id)s
+        SELECT channel_id FROM host_channels WHERE host_id = %(id)s AND active is TRUE
         """
         c.execute(q, locals())
         channels = [x[0] for x in c.fetchall()]

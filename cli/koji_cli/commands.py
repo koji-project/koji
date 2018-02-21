@@ -4034,6 +4034,11 @@ def _print_histline(entry, **kwargs):
             fmt = "new host: %(host.name)s"
         else:
             fmt = "host deleted: %(host.name)s"
+    elif table == 'host_channels':
+        if create:
+            fmt = "host %(host.name)s added to channel %(channels.name)s"
+        else:
+            fmt = "host %(host.name)s removed from channel %(channels.name)s"
     elif table == 'build_target_config':
         if edit:
             fmt = "build target configuration for %(build_target.name)s updated"
@@ -4149,6 +4154,7 @@ _table_keys = {
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
     'host_config': ['host_id'],
+    'host_channels': ['host_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
     'tag_listing' : ['build_id', 'tag_id'],
     'tag_packages' : ['package_id', 'tag_id'],

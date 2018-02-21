@@ -173,7 +173,17 @@ CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled)
 CREATE TABLE host_channels (
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	channel_id INTEGER NOT NULL REFERENCES channels(id),
-	UNIQUE (host_id,channel_id)
+-- versioned - see desc above
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, host_id, channel_id),
+	UNIQUE (host_id, channel_id, active)
 ) WITHOUT OIDS;
 
 
