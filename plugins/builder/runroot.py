@@ -55,8 +55,14 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
            'safe_roots': [],
            'path_subs': [],
            'paths': [],
+           'internal_dev_setup': None,
         }
 
+        # main options
+        if cp.has_option('runroot', 'internal_dev_setup'):
+            self.config['internal_dev_setup'] = cp.getboolean('runroot', 'internal_dev_setup')
+
+        # path options
         if cp.has_option('paths', 'default_mounts'):
             self.config['default_mounts'] = cp.get('paths', 'default_mounts').split(',')
         if cp.has_option('paths', 'safe_roots'):
@@ -149,7 +155,9 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                                            arglist=[root, None, None],
                                            parent=self.id)
             repo_info = self.wait(task_id)[task_id]
-        broot = BuildRoot(self.session, self.options, root, br_arch, self.id, repo_id=repo_info['id'], setup_dns=True)
+        broot = BuildRoot(self.session, self.options, root, br_arch, self.id,
+                repo_id=repo_info['id'], setup_dns=True,
+                internal_dev_setup=self.config['internal_dev_setup'])
         broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
