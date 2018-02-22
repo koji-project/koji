@@ -327,6 +327,7 @@ class TestHandler(unittest.TestCase):
         options.topurls = None
         self.t = runroot.RunRootTask(123, 'runroot', {}, self.session, options)
         self.t.config['default_mounts'] = ['default_mount']
+        self.t.config['internal_dev_setup'] = None
         self.t.do_mounts = mock.MagicMock()
         self.t.do_extra_mounts = mock.MagicMock()
         self.t.undo_mounts = mock.MagicMock()
@@ -370,7 +371,8 @@ class TestHandler(unittest.TestCase):
         self.session.repoInfo.assert_called_once_with(1, strict=True)
         self.session.host.subtask.assert_not_called()
         runroot.BuildRoot.assert_called_once_with(self.session, self.t.options,
-                'tag_name', 'x86_64', self.t.id, repo_id=1, setup_dns=True)
+                'tag_name', 'x86_64', self.t.id, repo_id=1, setup_dns=True,
+                internal_dev_setup=None)
         os_system.assert_called_once()
         self.session.host.setBuildRootState.assert_called_once_with(678, 'BUILDING')
         self.br.mock.assert_has_calls([
