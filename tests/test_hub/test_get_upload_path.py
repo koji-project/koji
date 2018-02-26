@@ -1,7 +1,11 @@
 import os
 import mock
 import shutil
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import kojihub
 from koji import GenericError
 

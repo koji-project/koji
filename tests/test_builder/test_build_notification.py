@@ -4,8 +4,10 @@ import mock
 import os
 import smtplib
 import tempfile
-import unittest
-
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import koji
 import koji.util
 from .loadkojid import kojid

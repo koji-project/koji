@@ -1,6 +1,10 @@
 from __future__ import absolute_import
 import datetime
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import six.moves.xmlrpc_client as xmlrpc_client
 
 from koji import formatTime, formatTimeLong

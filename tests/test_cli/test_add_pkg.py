@@ -4,7 +4,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from mock import call
 
@@ -172,7 +175,10 @@ class TestAddPkg(unittest.TestCase):
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag)])
-        self.assertEqual(cm.exception.code, 1)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 1)
+        else:
+            self.assertEqual(cm.exception.code, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -210,7 +216,10 @@ class TestAddPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListAdd.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -244,7 +253,10 @@ class TestAddPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListAdd.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,12 @@
 from __future__ import absolute_import
 import mock
 import six
-import unittest
-import koji
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
+import koji
 from koji_cli.commands import handle_restart_hosts
 from . import utils
 

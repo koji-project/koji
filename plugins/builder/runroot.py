@@ -251,39 +251,38 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         self.logger.info('New runroot')
         self.logger.info("Runroot mounts: %s" % mounts)
         fn = '%s/tmp/runroot_mounts' % rootdir
-        fslog = open(fn, 'a')
-        logfile = "%s/do_mounts.log" % self.workdir
-        uploadpath = self.getUploadDir()
-        error = None
-        for dev, path, type, opts in mounts:
-            if not path.startswith('/'):
-                raise koji.GenericError("invalid mount point: %s" % path)
-            mpoint = "%s%s" % (rootdir, path)
-            if opts is None:
-                opts = []
-            else:
-                opts = opts.split(',')
-            if 'bind' in opts:
-                #make sure dir exists
-                if not os.path.isdir(dev):
-                    error = koji.GenericError("No such directory or mount: %s" % dev)
+        with open(fn, 'a') as fslog:
+            logfile = "%s/do_mounts.log" % self.workdir
+            uploadpath = self.getUploadDir()
+            error = None
+            for dev, path, type, opts in mounts:
+                if not path.startswith('/'):
+                    raise koji.GenericError("invalid mount point: %s" % path)
+                mpoint = "%s%s" % (rootdir, path)
+                if opts is None:
+                    opts = []
+                else:
+                    opts = opts.split(',')
+                if 'bind' in opts:
+                    #make sure dir exists
+                    if not os.path.isdir(dev):
+                        error = koji.GenericError("No such directory or mount: %s" % dev)
+                        break
+                    type = 'none'
+                if 'bg' in opts:
+                    error = koji.GenericError("bad config: background mount not allowed")
                     break
-                type = 'none'
-            if 'bg' in opts:
-                error = koji.GenericError("bad config: background mount not allowed")
-                break
-            opts = ','.join(opts)
-            cmd = ['mount', '-t', type, '-o', opts, dev, mpoint]
-            self.logger.info("Mount command: %r" % cmd)
-            koji.ensuredir(mpoint)
-            status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
-            if not isSuccess(status):
-                error = koji.GenericError("Unable to mount %s: %s" \
-                        % (mpoint, parseStatus(status, cmd)))
-                break
-            fslog.write("%s\n" % mpoint)
-            fslog.flush()
-        fslog.close()
+                opts = ','.join(opts)
+                cmd = ['mount', '-t', type, '-o', opts, dev, mpoint]
+                self.logger.info("Mount command: %r" % cmd)
+                koji.ensuredir(mpoint)
+                status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
+                if not isSuccess(status):
+                    error = koji.GenericError("Unable to mount %s: %s" \
+                            % (mpoint, parseStatus(status, cmd)))
+                    break
+                fslog.write("%s\n" % mpoint)
+                fslog.flush()
         if error is not None:
             self.undo_mounts(rootdir, fatal=False)
             raise error
@@ -293,10 +292,9 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         mounts = set()
         fn = '%s/tmp/runroot_mounts' % rootdir
         if os.path.exists(fn):
-            fslog = open(fn, 'r')
-            for line in fslog.readlines():
-                mounts.add(line.strip())
-            fslog.close()
+            with open(fn, 'r') as fslog:
+                for line in fslog.readlines():
+                    mounts.add(line.strip())
         #also, check /proc/mounts just in case
         mounts |= set(scan_mounts(rootdir))
         mounts = sorted(mounts)

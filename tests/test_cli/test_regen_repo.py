@@ -1,9 +1,12 @@
 from __future__ import absolute_import
 from __future__ import print_function
+import copy
 import mock
 import six
-import unittest
-import copy
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_regen_repo
 from . import utils

@@ -1,8 +1,11 @@
 from __future__ import absolute_import
+import json
 import mock
 import six
-import unittest
-import json
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_call
 from . import utils
@@ -118,13 +121,16 @@ class TestCall(utils.CliTestCase):
         }
 
         for mod, msg in module.items():
-            with mock.patch('koji_cli.commands.%s' % mod, new=None), \
-                 self.assertRaises(SystemExit) as cm:
-                handle_call(options, session, arguments)
+            with mock.patch('koji_cli.commands.%s' % mod, new=None):
+                with self.assertRaises(SystemExit) as cm:
+                    handle_call(options, session, arguments)
             expected = self.format_error_message(msg)
             self.assert_console_message(stderr, expected)
             activate_session_mock.assert_not_called()
-            self.assertEqual(cm.exception.code, 2)
+            if isinstance(cm.exception, int):
+                self.assertEqual(cm.exception, 2)
+            else:
+                self.assertEqual(cm.exception.code, 2)
 
     def test_handle_call_help(self):
         """Test handle_call help message"""

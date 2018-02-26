@@ -1,5 +1,8 @@
 import datetime
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import koji.util
 from koji.xmlrpcplus import DateTime

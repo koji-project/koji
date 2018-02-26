@@ -1,9 +1,13 @@
 import six
-import unittest
-from mock import patch, MagicMock
 import protonmsg
-from koji.context import context
 import tempfile
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
+from mock import patch, MagicMock
+from koji.context import context
 from ConfigParser import SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):

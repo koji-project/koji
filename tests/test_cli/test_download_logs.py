@@ -88,7 +88,11 @@ class TestDownloadLogs(utils.CliTestCase):
         out_file = six.StringIO()
         self.custom_open['kojilogs/x86_64-123456/volume1/file1.log'] = out_file
 
-        with mock.patch('koji_cli.commands.open', new=self.mock_builtin_open):
+        if six.PY2:
+            target = '__builtin__.open'
+        else:
+            target = 'builtins.open'
+        with mock.patch(target, new=self.mock_builtin_open):
             anon_handle_download_logs(self.options, self.session, [str(task_id)])
 
         self.session.getTaskInfo.assert_called_once_with(task_id)

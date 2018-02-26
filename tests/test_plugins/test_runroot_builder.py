@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 import copy
-import unittest
 import mock
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import six.moves.configparser
 
 # inject builder data
@@ -11,6 +15,13 @@ __main__.BuildRoot = kojid.BuildRoot
 
 import koji
 import runroot
+
+def mock_open():
+    """Return the right patch decorator for open"""
+    if six.PY2:
+        return mock.patch('__builtin__.open')
+    else:
+        return mock.patch('builtins.open')
 
 
 CONFIG1 = {
@@ -95,7 +106,7 @@ class TestRunrootConfig(unittest.TestCase):
         options.workdir = '/tmp/nonexistentdirectory'
         with self.assertRaises(koji.GenericError) as cm:
             runroot.RunRootTask(123, 'runroot', {}, session, options)
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
             "bad config: missing options in path0 section")
 
     @mock.patch('ConfigParser.SafeConfigParser')
@@ -108,7 +119,7 @@ class TestRunrootConfig(unittest.TestCase):
         options.workdir = '/tmp/nonexistentdirectory'
         with self.assertRaises(koji.GenericError) as cm:
             runroot.RunRootTask(123, 'runroot', {}, session, options)
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
             "bad config: all paths (default_mounts, safe_roots, path_subs) needs to be absolute: ")
 
     @mock.patch('ConfigParser.SafeConfigParser')
@@ -178,10 +189,10 @@ class TestMounts(unittest.TestCase):
         self.assertEqual(self.t._get_path_params('/mnt/archive', 'rw'),
             ('archive.org:/vol/archive/', '/mnt/archive', 'nfs', 'rw,hard,intr,nosuid,nodev,noatime,tcp'))
 
+    @mock_open()
     @mock.patch('os.path.isdir')
-    @mock.patch('runroot.open')
     @mock.patch('runroot.log_output')
-    def test_do_mounts(self, log_output, file_mock, is_dir):
+    def test_do_mounts(self, log_output, is_dir, open_mock):
         log_output.return_value = 0 # successful mount
 
         # no mounts, don't do anything
@@ -192,7 +203,7 @@ class TestMounts(unittest.TestCase):
         # mountpoint has no absolute_path
         with self.assertRaises(koji.GenericError) as cm:
             self.t.do_mounts('rootdir', [('nfs:nfs', 'relative_path', 'nfs', '')])
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
                 "invalid mount point: relative_path")
 
         # cover missing opts
@@ -215,7 +226,7 @@ class TestMounts(unittest.TestCase):
         mounts = [self.t._get_path_params('/mnt/archive')]
         with self.assertRaises(koji.GenericError) as cm:
             self.t.do_mounts('rootdir', mounts)
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
             'Unable to mount rootdir/mnt/archive: mount -t nfs -o'
             ' ro,hard,intr,nosuid,nodev,noatime,tcp archive.org:/vol/archive/'
             ' rootdir/mnt/archive was killed by signal 1')
@@ -239,7 +250,7 @@ class TestMounts(unittest.TestCase):
         is_dir.return_value = False
         with self.assertRaises(koji.GenericError) as cm:
             self.t.do_mounts('rootdir', [mount])
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
             "No such directory or mount: archive.org:/vol/archive/")
 
         # bg option forbidden
@@ -249,7 +260,7 @@ class TestMounts(unittest.TestCase):
         is_dir.return_value = False
         with self.assertRaises(koji.GenericError) as cm:
             self.t.do_mounts('rootdir', [mount])
-        self.assertEqual(cm.exception.message,
+        self.assertEqual(cm.exception.args[0],
             "bad config: background mount not allowed")
 
     def test_do_extra_mounts(self):
@@ -279,19 +290,20 @@ class TestMounts(unittest.TestCase):
         self.t.do_mounts.assert_not_called()
 
 
+    @mock_open()
     @mock.patch('runroot.scan_mounts')
     @mock.patch('os.unlink')
     @mock.patch('commands.getstatusoutput')
     @mock.patch('os.path.exists')
-    def test_undo_mounts(self, path_exists, getstatusoutput, os_unlink, scan_mounts):
+    def test_undo_mounts(self, path_exists, getstatusoutput, os_unlink, scan_mounts, m_open):
         self.t.logger = mock.MagicMock()
         scan_mounts.return_value = ['mount_1', 'mount_2']
 
         # correct
         getstatusoutput.return_value = (0, 'ok')
         path_exists.return_value = True
-        with mock.patch('runroot.open', mock.mock_open(read_data = 'mountpoint')):
-            self.t.undo_mounts('rootdir')
+        m_open.return_value.__enter__.return_value.readlines.return_value = ['mountpoint']
+        self.t.undo_mounts('rootdir')
         self.t.logger.assert_has_calls([
             mock.call.debug('Unmounting runroot mounts'),
             mock.call.info("Unmounting (runroot): ['mountpoint', 'mount_2', 'mount_1']"),
@@ -302,11 +314,10 @@ class TestMounts(unittest.TestCase):
         os_unlink.reset_mock()
         getstatusoutput.return_value = (1, 'error')
         path_exists.return_value = True
-        with mock.patch('runroot.open', mock.mock_open(read_data = 'mountpoint')):
-            with self.assertRaises(koji.GenericError) as cm:
-                self.t.undo_mounts('rootdir')
-            self.assertEqual(cm.exception.message,
-                'Unable to unmount: mountpoint: error, mount_2: error, mount_1: error')
+        with self.assertRaises(koji.GenericError) as cm:
+            self.t.undo_mounts('rootdir')
+        self.assertEqual(cm.exception.args[0],
+            'Unable to unmount: mountpoint: error, mount_2: error, mount_1: error')
 
         os_unlink.assert_not_called()
 

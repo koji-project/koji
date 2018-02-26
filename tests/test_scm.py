@@ -1,11 +1,11 @@
-import mock
-import unittest
-
 import logging
+import mock
 import shutil
 import tempfile
-
-from pprint import pprint
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import koji
 import koji.daemon

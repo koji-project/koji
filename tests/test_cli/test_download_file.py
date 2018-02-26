@@ -3,7 +3,10 @@ import mock
 import six
 import shutil
 import tempfile
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.lib import download_file, _download_progress
 
@@ -45,7 +48,11 @@ class TestDownloadFile(unittest.TestCase):
         actual = self.stdout.getvalue()
         expected = 'Downloading: %s\n' % self.tempdir
         self.assertMultiLineEqual(actual, expected)
-        self.assertEqual(cm.exception.args, (21, 'Is a directory'))
+        if isinstance(cm.exception, tuple):
+            self.assertEqual(cm.exception[0], 21)
+            self.assertEqual(cm.exception[1], 'Is a directory')
+        else:
+            self.assertEqual(cm.exception.args, (21, 'Is a directory'))
         self.requests_get.assert_called_once()
 
     @mock_open()

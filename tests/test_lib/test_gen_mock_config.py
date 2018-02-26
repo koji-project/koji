@@ -1,7 +1,10 @@
 import ast
 import os
 import os.path
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import koji
 

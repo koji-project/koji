@@ -2,7 +2,10 @@ from __future__ import absolute_import
 from __future__ import print_function
 import mock
 import six
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_resubmit
 from . import utils

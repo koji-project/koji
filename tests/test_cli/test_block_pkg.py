@@ -3,7 +3,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from mock import call
 
@@ -178,7 +181,10 @@ class TestBlockPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListBlock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

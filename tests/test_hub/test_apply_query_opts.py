@@ -1,6 +1,8 @@
 import copy
-import unittest
-
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 from nose.tools import eq_
 
 import kojihub

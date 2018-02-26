@@ -4,7 +4,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 try:
     import libcomps
@@ -213,7 +216,10 @@ class TestImportComps(unittest.TestCase):
         session.getTag.assert_not_called()
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @unittest.skipIf(libcomps is None, "No libcomps")
     @mock.patch('sys.stdout', new_callable=six.StringIO)

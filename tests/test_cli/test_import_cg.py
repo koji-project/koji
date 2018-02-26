@@ -174,32 +174,32 @@ class TestImportCG(utils.CliTestCase):
         # is matched return the value we expected.
         self.custom_os_path_exists['/real/path/filename'] = False
 
-        with mock.patch(utils.get_builtin_open()), \
-                mock.patch('os.path.exists', new=self.mock_os_path_exists), \
-                mock.patch('koji_cli.commands.json') as json_mock:
+        with mock.patch(utils.get_builtin_open()):
+            with mock.patch('os.path.exists', new=self.mock_os_path_exists):
+                with mock.patch('koji_cli.commands.json') as json_mock:
 
-            # Case 3. metafile doesn't have output section
-            json_mock.load.return_value = {}
-            expected = "Metadata contains no output\n"
-            self.assert_system_exit(
-                handle_import_cg,
-                options,
-                session,
-                arguments,
-                stdout=expected,
-                exit_code=1)
+                    # Case 3. metafile doesn't have output section
+                    json_mock.load.return_value = {}
+                    expected = "Metadata contains no output\n"
+                    self.assert_system_exit(
+                        handle_import_cg,
+                        options,
+                        session,
+                        arguments,
+                        stdout=expected,
+                        exit_code=1)
 
-            # Case 4. path not exist
-            file_path = '%(relpath)s/%(filename)s' % metadata['output'][1]
-            json_mock.load.return_value = metadata
-            expected = self.format_error_message(
-                "No such file: %s" % file_path)
-            self.assert_system_exit(
-                handle_import_cg,
-                options,
-                session,
-                arguments,
-                stderr=expected)
+                    # Case 4. path not exist
+                    file_path = '%(relpath)s/%(filename)s' % metadata['output'][1]
+                    json_mock.load.return_value = metadata
+                    expected = self.format_error_message(
+                        "No such file: %s" % file_path)
+                    self.assert_system_exit(
+                        handle_import_cg,
+                        options,
+                        session,
+                        arguments,
+                        stderr=expected)
 
     def test_handle_import_cg_help(self):
         """Test handle_import_cg help message"""

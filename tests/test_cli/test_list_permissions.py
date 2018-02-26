@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 import mock
 import six
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 from koji_cli.commands import handle_list_permissions
 from . import utils
 

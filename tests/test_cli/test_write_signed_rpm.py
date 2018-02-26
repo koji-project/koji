@@ -1,11 +1,14 @@
 from __future__ import absolute_import
+import hashlib
 import mock
 import six
-import unittest
-import koji
-import hashlib
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from mock import call
+import koji
 from koji_cli.commands import handle_write_signed_rpm
 from . import utils
 

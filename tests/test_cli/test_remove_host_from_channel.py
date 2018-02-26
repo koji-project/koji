@@ -3,7 +3,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_remove_host_from_channel
 
@@ -134,7 +137,10 @@ class TestRemoveHostFromChannel(unittest.TestCase):
         session.getHost.assert_not_called()
         session.listChannels.assert_not_called()
         session.removeHostFromChannel.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

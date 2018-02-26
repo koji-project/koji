@@ -1,6 +1,9 @@
-import unittest
 import mock
 import six
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import kojihub
 

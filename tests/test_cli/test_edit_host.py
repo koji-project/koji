@@ -3,7 +3,11 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 from mock import call
 
 from koji_cli.commands import handle_edit_host
@@ -171,7 +175,10 @@ class TestEditHost(unittest.TestCase):
         session.getHost.assert_not_called()
         session.editHost.assert_not_called()
         session.multiCall.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')

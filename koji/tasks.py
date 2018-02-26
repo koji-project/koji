@@ -131,7 +131,7 @@ def parse_task_params(method, params):
             break
         except koji.ParameterError as e:
             if not err:
-                err = e.message
+                err = e.args[0]
     else:
         raise koji.ParameterError("Invalid signature for %s: %s" % (method, err))
 
