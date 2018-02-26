@@ -46,7 +46,6 @@ import six.moves.http_client
 import imp
 import logging
 import logging.handlers
-from koji.util import md5_constructor
 SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
@@ -75,11 +74,11 @@ import struct
 import tempfile
 import time
 import traceback
-from . import util
 import warnings
 import xml.sax
 import xml.sax.handler
 import six.moves.urllib
+from . import util
 from koji.xmlrpcplus import getparser, loads, dumps, Fault, xmlrpc_client
 
 
@@ -1412,8 +1411,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     """
     mockdir = opts.get('mockdir', '/var/lib/mock')
     if 'url' in opts:
-        from warnings import warn
-        warn('The url option for genMockConfig is deprecated', DeprecationWarning)
+        util.deprecated('The url option for genMockConfig is deprecated')
         urls = [opts['url']]
     else:
         if not (repoid and tag_name):
@@ -2418,23 +2416,14 @@ class ClientSession(object):
                 if _key == 'data' and len(_val) > 1024:
                     _val = _val[:1024] + '...'
                 print("%s: %r" % (_key, _val))
-        catcher = None
-        if hasattr(warnings, 'catch_warnings'):
-            # TODO: convert to a with statement when we drop 2.4.3 support
-            catcher = warnings.catch_warnings()
-            catcher.__enter__()
-        try:
-            if catcher:
-                warnings.simplefilter("ignore")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
             r.raise_for_status()
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
                 r.close()
-        finally:
-            if catcher:
-                catcher.__exit__()
         return ret
 
     def _read_xmlrpc_response(self, response):
@@ -2675,7 +2664,7 @@ class ClientSession(object):
         fo = open(localfile, "r")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        md5sum = md5_constructor()
+        md5sum = util.md5_constructor()
         debug = self.opts.get('debug', False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
@@ -2692,7 +2681,7 @@ class ClientSession(object):
                 sz = ofs
             else:
                 offset = ofs
-                digest = md5_constructor(contents).hexdigest()
+                digest = util.md5_constructor(contents).hexdigest()
                 sz = size
             del contents
             tries = 0

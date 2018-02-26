@@ -2343,7 +2343,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
         archdir = os.path.join(repodir, repoarch)
         koji.ensuredir(archdir)
         # Make a symlink to our topdir
-        top_relpath = koji.util.relpath(koji.pathinfo.topdir, archdir)
+        top_relpath = os.path.relpath(koji.pathinfo.topdir, archdir)
         top_link = os.path.join(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
         pkglist[repoarch] = open(os.path.join(archdir, 'pkglist'), 'w')
@@ -2402,7 +2402,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             if not dest_parent in created_dirs:
                 koji.ensuredir(dest_parent)
                 created_dirs.add(dest_parent)
-            relpath = koji.util.relpath(srcdir, dest_parent)
+            relpath = os.path.relpath(srcdir, dest_parent)
             try:
                 os.symlink(relpath, destlink)
             except:
@@ -3554,14 +3554,14 @@ def get_build_logs(build):
     """Return a list of log files for the given build"""
     buildinfo = get_build(build, strict=True)
     logdir = koji.pathinfo.build_logs(buildinfo)
-    logreldir = koji.util.relpath(logdir, koji.pathinfo.topdir)
+    logreldir = os.path.relpath(logdir, koji.pathinfo.topdir)
     if not os.path.exists(logdir):
         return []
     if not os.path.isdir(logdir):
         raise koji.GenericError("Not a directory: %s" % logdir)
     logs = []
     for dirpath, dirs, files in os.walk(logdir):
-        subdir = koji.util.relpath(dirpath, logdir)
+        subdir = os.path.relpath(dirpath, logdir)
         for fn in files:
             filepath = os.path.join(dirpath, fn)
             if os.path.islink(filepath):
@@ -4792,7 +4792,7 @@ def _set_build_volume(binfo, volinfo, strict=True):
         basedir = koji.pathinfo.build(base_binfo)
         if os.path.islink(basedir):
             os.unlink(basedir)
-        relpath = koji.util.relpath(newdir, os.path.dirname(basedir))
+        relpath = os.path.relpath(newdir, os.path.dirname(basedir))
         os.symlink(relpath, basedir)
 
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)

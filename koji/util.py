@@ -37,6 +37,7 @@ import six.moves.configparser
 from zlib import adler32
 from six.moves import range
 import six
+import warnings
 
 # imported from kojiweb and kojihub
 try:
@@ -48,6 +49,12 @@ try:
 except ImportError:  # pragma: no cover
     from sha import new as sha1_constructor
 
+
+def deprecated(message):
+    """Print deprecation warning"""
+    with warnings.catch_warnings():
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(message, DeprecationWarning)
 
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
@@ -442,27 +449,11 @@ def safer_move(src, dst):
     shutil.move(src, dst)
 
 
-def _relpath(path, start=getattr(os.path, 'curdir', '.')):
-    """Backport of os.path.relpath for python<2.6"""
+def relpath(*args, **kwargs):
+    deprecated("koji.util.relpath() is deprecated and will be removed in a "
+        "future version. See: https://pagure.io/koji/issue/834")
+    return os.path.relpath(*args, **kwargs)
 
-    sep = getattr(os.path, 'sep', '/')
-    pardir = getattr(os.path, 'pardir', '..')
-    if not path:
-        raise ValueError("no path specified")
-    start_list = [x for x in os.path.abspath(start).split(sep) if x]
-    path_list = [x for x in os.path.abspath(path).split(sep) if x]
-    i = -1
-    for i in range(min(len(start_list), len(path_list))):
-        if start_list[i] != path_list[i]:
-            break
-    else:
-        i += 1
-    rel_list = [pardir] * (len(start_list)-i) + path_list[i:]
-    if not rel_list:
-        return getattr(os.path, 'curdir', '.')
-    return os.path.join(*rel_list)
-
-relpath = getattr(os.path, 'relpath', _relpath)
 
 def eventFromOpts(session, opts):
     """Determine event id from standard cli options

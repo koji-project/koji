@@ -843,17 +843,6 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertEqual('[value hidden]', str(hv2))
         self.assertEqual('HiddenValue()', repr(hv2))
 
-    def test_relpath(self):
-        """Test _relpath function"""
-        self.assertRaises(ValueError, koji.util._relpath, None)
-        self.assertRaises(ValueError, koji.util._relpath, "")
-
-        # _relpath is a backport of os.path.relpath
-        # their behaviors and outputs should be the same.
-        for p in ["/", ".", "..", "/bin", "\0", "\n", "\t/tmp"]:
-            for s in [os.curdir, '/tmp']:
-                self.assertEqual(os.path.relpath(p, s), koji.util._relpath(p, s))
-
     def test_eventFromOpts(self):
         """Test eventFromOpts function"""
         timestamp = datetime.now().strftime('%s')
