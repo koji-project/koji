@@ -5760,7 +5760,7 @@ def _build_image(options, task_opts, session, args, img_type):
         if val is not None:
             hub_opts[opt] = val
 
-    if hasattr(hub_opts, 'optional_arches'):
+    if 'optional_arches' in hub_opts:
         hub_opts['optional_arches'] = hub_opts['optional_arches'].split(',')
 
     # finally, create the task.
