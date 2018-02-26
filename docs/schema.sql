@@ -736,6 +736,7 @@ insert into archivetypes (name, description, extensions) values ('zip', 'Zip fil
 insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management file', 'pom');
 insert into archivetypes (name, description, extensions) values ('tar', 'Tar file', 'tar tar.gz tar.bz2 tar.xz');
 insert into archivetypes (name, description, extensions) values ('xml', 'XML file', 'xml');
+insert into archivetypes (name, description, extensions) values ('xml', 'Compressed XML file', 'xml.gz xml.bz2 xml.xz');
 insert into archivetypes (name, description, extensions) values ('xsd', 'XML Schema Definition', 'xsd');
 insert into archivetypes (name, description, extensions) values ('spec', 'RPM spec file', 'spec');
 insert into archivetypes (name, description, extensions) values ('exe', 'Windows executable', 'exe');
