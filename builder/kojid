@@ -538,6 +538,8 @@ class BuildRoot(object):
         if rv:
             self.expire()
             raise koji.BuildrootError("could not init mock buildroot, %s" % self._mockResult(rv))
+        # log kernel version
+        self.mock(['--chroot', 'uname', '-r'])
         self.session.host.setBuildRootList(self.id,self.getPackageList())
 
     def _mockResult(self, rv, logfile=None):
