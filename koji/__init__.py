@@ -2198,7 +2198,7 @@ class ClientSession(object):
                 self.logger.warning('python-dns missing -- cannot resolve hostname')
             else:
                 answer = dns_resolver.query(host, 'A')
-                return answer.canonical_name.to_text()
+                return answer.canonical_name.to_text(omit_final_dot=True)
         if self.opts.get('krb_rdns', True):
             return socket.getfqdn(host)
         # else
