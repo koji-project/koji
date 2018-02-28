@@ -45,7 +45,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(q.columns, ('email',))
         self.assertEqual(q.tables, ['build_notifications'])
         self.assertEqual(q.clauses, [ 'status = %(users_status)i',
-                                     'usertype IN %(users_usertype)s',
+                                     'usertype IN %(users_usertypes)s',
                                      'package_id IS NULL',
                                      'tag_id IS NULL',
                                      'success_only = FALSE'])
@@ -69,7 +69,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(q.columns, ('email',))
         self.assertEqual(q.tables, ['build_notifications'])
         self.assertEqual(q.clauses, ['status = %(users_status)i',
-                                     'usertype IN %(users_usertype)s',
+                                     'usertype IN %(users_usertypes)s',
                                      'package_id = %(package_id)i OR package_id IS NULL',
                                      'tag_id IS NULL',
                                      'success_only = FALSE'])
@@ -113,7 +113,7 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(q.columns, ('email',))
         self.assertEqual(q.tables, ['build_notifications'])
         self.assertEqual(q.clauses, ['status = %(users_status)i',
-                                     'usertype IN %(users_usertype)s',
+                                     'usertype IN %(users_usertypes)s',
                                      'package_id = %(package_id)i OR package_id IS NULL',
                                      'tag_id = %(tag_id)i OR tag_id IS NULL',
                                      'success_only = FALSE'])
