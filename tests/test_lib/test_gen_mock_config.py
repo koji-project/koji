@@ -1,4 +1,4 @@
-import json
+import ast
 import os
 import os.path
 import unittest
@@ -14,11 +14,12 @@ class TestGenMockConfig(unittest.TestCase):
         datadir = os.path.join(os.path.dirname(__file__), 'data/mock')
         count = 0
         for fn in os.listdir(datadir):
-            if not fn.endswith('.json'):
+            if not fn.endswith('.data'):
                 continue
             path = os.path.join(datadir, fn)
             with open(path) as fo:
-                params = json.load(fo)
+                s = fo.read()
+                params = ast.literal_eval(s)
             with open(path[:-5] + '.out') as fo:
                 expected = fo.read()
             output = koji.genMockConfig(**params)

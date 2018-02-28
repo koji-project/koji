@@ -1,8 +1,8 @@
 {
     "name": "ROOTNAME",
     "arch": "x86_64",
-    "managed": false,
+    "managed": False,
     "repoid": 99,
     "tag_name": "TAG",
-    "internal_dev_setup": true
+    "internal_dev_setup": False
 }
