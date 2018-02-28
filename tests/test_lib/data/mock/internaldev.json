@@ -3,5 +3,6 @@
     "arch": "x86_64",
     "managed": false,
     "repoid": 99,
-    "tag_name": "TAG"
+    "tag_name": "TAG",
+    "internal_dev_setup": false
 }

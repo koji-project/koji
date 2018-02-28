@@ -8,6 +8,8 @@ import koji
 
 class TestGenMockConfig(unittest.TestCase):
 
+    maxDiff = None
+
     def test_gen_mock_config(self):
         datadir = os.path.join(os.path.dirname(__file__), 'data/mock')
         count = 0
