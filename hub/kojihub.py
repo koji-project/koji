@@ -7153,7 +7153,7 @@ def get_notification_recipients(build, tag_id, state):
     users_usertypes = [koji.USERTYPES['NORMAL'], koji.USERTYPES['GROUP']]
     clauses = [
         'status = %(users_status)i',
-        'usertype IN %(users_usertype)s',
+        'usertype IN %(users_usertypes)s',
     ]
 
     if not build and tag_id:
