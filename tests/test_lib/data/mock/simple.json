@@ -1,0 +1,8 @@
+{
+    "name": "ROOTNAME",
+    "arch": "x86_64",
+    "managed": false,
+    "repoid": 99,
+    "tag_name": "TAG",
+    "opts": {}
+}
