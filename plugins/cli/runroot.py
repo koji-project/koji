@@ -25,8 +25,10 @@ def handle_runroot(options, session, args):
             help=_("Print the ID of the runroot task"))
     parser.add_option("--use-shell", action="store_true", default=False,
             help=_("Run command through a shell, otherwise uses exec"))
-    parser.add_option("--new-chroot", action="store_true", default=False,
+    parser.add_option("--new-chroot", action="store_true", default=None,
             help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
+    parser.add_option("--old-chroot", action="store_false", default=None, dest='new_chroot',
+            help=_("Run command with the --old-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
     parser.add_option("--nowait", action="store_false", dest="wait",
             default=True, help=_("Do not wait on task"))
@@ -57,8 +59,8 @@ def handle_runroot(options, session, args):
                    'weight':        opts.weight }
         # Only pass this kwarg if it is true - this prevents confusing older
         # builders with a different function signature
-        if opts.new_chroot:
-            kwargs['new_chroot'] = True
+        if opts.new_chroot is not None:
+            kwargs['new_chroot'] = opts.new_chroot
 
         task_id = session.runroot(tag, arch, command, **kwargs)
     except koji.GenericError as e:
