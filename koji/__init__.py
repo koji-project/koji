@@ -1529,6 +1529,13 @@ name=build
 # Koji tag: %(tag_name)s
 """ % locals())
 
+    if bind_opts:
+        # disable internal_dev_setup unless opts explicitly say otherwise
+        opts.setdefault('internal_dev_setup', False)
+
+    if 'internal_dev_setup' in opts:
+        config_opts['internal_dev_setup'] = opts['internal_dev_setup']
+
     parts.append("\n")
     for key in sorted(config_opts):
         value = config_opts[key]
@@ -1540,16 +1547,10 @@ name=build
     parts.append("\n")
 
     if bind_opts:
-        # disable internal_dev_setup unless opts explicitly say otherwise
-        opts.setdefault('internal_dev_setup', False)
         for key in bind_opts.keys():
             for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
                 parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
         parts.append("\n")
-
-    if 'internal_dev_setup' in opts:
-        parts.append("config_opts['internal_dev_setup'] = %r\n"
-                % bool(opts['internal_dev_setup']))
 
     for key in sorted(macros):
         value = macros[key]
