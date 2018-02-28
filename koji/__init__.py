@@ -1530,10 +1530,12 @@ name=build
 """ % locals())
 
     parts.append("\n")
-    for key, value in six.iteritems(config_opts):
+    for key in sorted(config_opts):
+        value = config_opts[key]
         parts.append("config_opts[%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in six.iteritems(plugin_conf):
+    for key in sorted(plugin_conf):
+        value = plugin_conf[key]
         parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
 
@@ -1549,10 +1551,12 @@ name=build
         parts.append("config_opts['internal_dev_setup'] = %r\n"
                 % bool(opts['internal_dev_setup']))
 
-    for key, value in six.iteritems(macros):
+    for key in sorted(macros):
+        value = macros[key]
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in six.iteritems(files):
+    for key in sorted(files):
+        value = files[key]
         parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)
