@@ -1529,26 +1529,35 @@ name=build
 # Koji tag: %(tag_name)s
 """ % locals())
 
+    if bind_opts:
+        # disable internal_dev_setup unless opts explicitly say otherwise
+        opts.setdefault('internal_dev_setup', False)
+
+    if 'internal_dev_setup' in opts:
+        config_opts['internal_dev_setup'] = opts['internal_dev_setup']
+
     parts.append("\n")
-    for key, value in six.iteritems(config_opts):
+    for key in sorted(config_opts):
+        value = config_opts[key]
         parts.append("config_opts[%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in six.iteritems(plugin_conf):
+    for key in sorted(plugin_conf):
+        value = plugin_conf[key]
         parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
 
     if bind_opts:
-        # This line is REQUIRED for mock to work if bind_opts defined.
-        parts.append("config_opts['internal_dev_setup'] = False\n")
         for key in bind_opts.keys():
             for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
                 parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
         parts.append("\n")
 
-    for key, value in six.iteritems(macros):
+    for key in sorted(macros):
+        value = macros[key]
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
-    for key, value in six.iteritems(files):
+    for key in sorted(files):
+        value = files[key]
         parts.append("config_opts['files'][%r] = %r\n" % (key, value))
 
     return ''.join(parts)

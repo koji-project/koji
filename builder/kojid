@@ -181,7 +181,8 @@ class BuildRoot(object):
         self.config = self.session.getBuildConfig(self.tag_id, event=self.event_id)
 
     def _new(self, tag, arch, task_id, repo_id=None, install_group='build',
-             setup_dns=False, bind_opts=None, maven_opts=None, maven_envs=None, deps=None):
+             setup_dns=False, bind_opts=None, maven_opts=None, maven_envs=None,
+             deps=None, internal_dev_setup=None):
         """Create a brand new repo"""
         if not repo_id:
             raise koji.BuildrootError("A repo id must be provided")
@@ -223,6 +224,7 @@ class BuildRoot(object):
         self.maven_opts = maven_opts
         self.maven_envs = maven_envs
         self.deps = deps
+        self.internal_dev_setup = internal_dev_setup
         self._writeMockConfig()
 
     def _writeMockConfig(self):
@@ -247,6 +249,8 @@ class BuildRoot(object):
         opts['target_arch'] = self.target_arch
         if 'mock.package_manager' in self.config['extra']:
             opts['package_manager'] = self.config['extra']['mock.package_manager']
+        if self.internal_dev_setup is not None:
+            opts['internal_dev_setup'] = bool(self.internal_dev_setup)
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
