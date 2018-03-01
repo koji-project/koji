@@ -3943,7 +3943,7 @@ def add_btype(name):
 
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None, type=None,
                   filename=None, size=None, checksum=None, typeInfo=None, queryOpts=None, imageID=None,
-                  archiveID=None):
+                  archiveID=None, strict=False):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -4001,8 +4001,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     For the 'maven' type, this dict may contain one or more of group_id, artifact_id, or version,
       and the output will be restricted to archives with matching attributes.
 
-    If there are no archives matching the selection criteria,
-    an empty list is returned.
+    If there are no archives matching the selection criteria, if strict is False,
+    an empty list is returned, otherwise GenericError is raised.
     """
     values = {}
 
@@ -4100,6 +4100,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         joins.append('image_archives ON archiveinfo.id = image_archives.archive_id')
         fields.append(['image_archives.arch', 'arch'])
         if typeInfo and typeInfo.get('arch'):
+            key = 'arch'
             clauses.append('image_archives.%s = %%(%s)s' % (key, key))
             values[key] = typeInfo[key]
     else:
@@ -4116,6 +4117,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
                           transform=_fix_archive_row,
                           clauses=clauses, values=values, opts=queryOpts).execute()
+    if strict and not ret:
+        raise koji.GenericError('No archives found.')
     return ret
 
 
