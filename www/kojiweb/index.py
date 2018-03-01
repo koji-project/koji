@@ -683,7 +683,7 @@ def taskinfo(environ, taskID):
     paths = [] # (volume, relpath) tuples
     for relname, volumes in server.listTaskOutput(task['id'], all_volumes=True).iteritems():
         paths += [(volume, relname) for volume in volumes]
-    values['output'] = sorted(paths, cmp = _sortByExtAndName)
+    values['output'] = sorted(paths, key = _sortByExtAndName)
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
@@ -721,11 +721,10 @@ def canceltask(environ, taskID):
     server.cancelTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % taskID)
 
-def _sortByExtAndName(a, b):
-    """Sort two filename tuples, first by extension, and then by name."""
-    aRoot, aExt = os.path.splitext(os.path.basename(a[1]))
-    bRoot, bExt = os.path.splitext(os.path.basename(b[1]))
-    return cmp(aExt, bExt) or cmp(aRoot, bRoot)
+def _sortByExtAndName(item):
+    """Sort filename tuples key function, first by extension, and then by name."""
+    kRoot, kExt = os.path.splitext(os.path.basename(item[1]))
+    return (kExt, kRoot)
 
 def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
     server = _getServer(environ)
