@@ -5,6 +5,8 @@ import koji
 from koji.plugin import export_cli
 from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
                          list_task_output_all_volumes
+import six
+
 
 @export_cli
 def handle_runroot(options, session, args):
@@ -91,7 +93,12 @@ def handle_runroot(options, session, args):
         if 'runroot.log' in output:
             for volume in output['runroot.log']:
                 log = session.downloadTaskOutput(task_id, 'runroot.log', volume=volume)
-                sys.stdout.write(log)
+                # runroot output, while normally text, can be *anything*, so
+                # treat it as binary
+                if six.PY3:
+                    sys.stdout.buffer.write(log)
+                else:
+                    sys.stdout.write(log)
     info = session.getTaskInfo(task_id)
     if info is None:
         sys.exit(1)
