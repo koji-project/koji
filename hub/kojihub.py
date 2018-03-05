@@ -24,42 +24,42 @@
 
 import base64
 import calendar
-import urlparse
-import koji
-import koji.auth
-import koji.db
-import koji.plugin
-import koji.policy
 import datetime
 import errno
-import logging
 import fcntl
 import fnmatch
-from koji.util import md5_constructor
-from koji.util import sha1_constructor
-from koji.util import dslice
-from koji.util import multi_fnmatch
-from koji.util import safer_move
+import functools
 import json
+import logging
 import os
 import re
-import rpm
 import shutil
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
-import traceback
 import time
+import traceback
+import urlparse
 import xmlrpclib
 import zipfile
-import functools
+
+import rpm
 import six
 
+import koji
+import koji.auth
+import koji.db
+import koji.plugin
+import koji.policy
 import koji.xmlrpcplus
 from koji.context import context
-
+from koji.util import dslice
+from koji.util import md5_constructor
+from koji.util import multi_fnmatch
+from koji.util import safer_move
+from koji.util import sha1_constructor
 
 logger = logging.getLogger('koji.hub')
 
@@ -4322,21 +4322,25 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
         file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
                                  archive_info['filename'])
     else:
-        # TODO: support other archive btypes
-        file_path = None
+        # TODO: support other build types
+        if strict:
+            raise koji.GenericError("Unsupported build type")
+        return _applyQueryOpts([], queryOpts)
 
-    result = []
-
-    if file_path and archive_type['name'] in ('zip', 'jar'):
-        result = _applyQueryOpts(_get_zipfile_list(archive_id, file_path), queryOpts)
-    elif file_path and archive_type['name'] == 'tar':
-        result = _applyQueryOpts(_get_tarball_list(archive_id, file_path), queryOpts)
+    if archive_type['name'] in ('zip', 'jar'):
+        filelist = _get_zipfile_list(archive_id, file_path)
+    elif archive_type['name'] == 'tar':
+        filelist = _get_tarball_list(archive_id, file_path)
     else:
-        result = _applyQueryOpts(result, queryOpts)
+        # TODO: support other archive types
+        if strict:
+            raise koji.GenericError(
+                "Unsupported archive type: %s" % archive_type['name'])
+        filelist = []
 
-    if strict and not result:
+    if strict and not filelist:
         raise koji.GenericError("Archive#%s doesn't contain any files" % archive_id)
-    return result
+    return _applyQueryOpts(filelist, queryOpts)
 
 
 def get_archive_file(archive_id, filename, strict=False):
