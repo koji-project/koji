@@ -4331,7 +4331,7 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
         result = _applyQueryOpts(result, queryOpts)
 
     if strict and not result:
-        raise koji.GenericError('Archive#%s doesn\'t contain any files' % archive_id)
+        raise koji.GenericError("Archive#%s doesn't contain any files" % archive_id)
     return result
 
 
