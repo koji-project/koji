@@ -4292,7 +4292,11 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
     name: name of the file (string)
     size: uncompressed size of the file (integer)
 
-    if strict is True, it will raise GenericError when there is no files found for specified archive_id.
+    If strict is True, raise GenericError if:
+      - there are no files found for the archive
+      - the archive is not a type we are able to expand
+
+    Regardless of strict, an error will be raised if the archive_id is invalid
     """
     archive_info = get_archive(archive_id, strict=True)
 
@@ -4345,8 +4349,11 @@ def get_archive_file(archive_id, filename, strict=False):
     name: name of the file (string)
     size: uncompressed size of the file (integer)
 
-    if strict is True, it will raise GenericError when there is no files found for specified archive_id,
-    else returns None.
+    If strict is True, raise GenericError if:
+      - this file is not found in the archive
+      - the archive is not a type we are able to expand
+
+    Regardless of strict, an error will be raised if the archive_id is invalid
     """
     files = list_archive_files(archive_id, strict=strict)
     for file_info in files:
