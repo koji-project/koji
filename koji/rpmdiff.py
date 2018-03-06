@@ -229,7 +229,7 @@ class Rpmdiff:
             data = self.old_data
         if not data:
             raise ValueError("rpm header data are empty")
-        s = json.dumps(self.old_data, sort_keys=True)
+        s = json.dumps(data, sort_keys=True)
         return hashlib.sha256(s).hexdigest()
 
 def _usage(exit=1):
@@ -261,7 +261,11 @@ def main():
 
     d = Rpmdiff(args[0], args[1], ignore=ignore_tags)
     print(d.textdiff())
-    sys.exit(int(d.differs()))
+    rv = d.differs()
+    chk = (d.kojihash() != d.kojihash(new=True))
+    if rv != chk:
+        raise Exception('hash compare disagrees with rpmdiff')
+    sys.exit(int(rv))
 
 if __name__ == '__main__':
     main()
