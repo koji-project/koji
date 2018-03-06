@@ -9509,30 +9509,43 @@ class RootExports(object):
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
-                   volumeID=None,
+                   volumeID=None, source=None,
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None, queryOpts=None):
-        """List package builds.
-        If packageID is specified, restrict the results to builds of the specified package.
-        If userID is specified, restrict the results to builds owned by the given user.
-        If taskID is specfied, restrict the results to builds with the given task ID.  If taskID is -1,
-           restrict the results to builds with a non-null taskID.
-        If volumeID is specified, restrict the results to builds stored on that volume
-        One or more of packageID, userID, volumeID, and taskID may be specified.
-        If prefix is specified, restrict the results to builds whose package name starts with that
-        prefix.
-        If createdBefore and/or createdAfter are specified, restrict the results to builds whose
-        creation_time is before and/or after the given time.
-        If completeBefore and/or completeAfter are specified, restrict the results to builds whose
-        completion_time is before and/or after the given time.
-        The time may be specified as a floating point value indicating seconds since the Epoch (as
-        returned by time.time()) or as a string in ISO format ('YYYY-MM-DD HH24:MI:SS').
-        If type is not None, only list builds of the associated type.  Currently the supported types are 'maven' and 'win'.
-        if typeInfo is not None, only list builds with matching type-specific info.  Must be used in conjunction with
-           the type parameter.
-             Currently the only supported type is 'maven', and typeInfo is a dict containing
-             one or more of group_id, artifact_id, and/or version.  Output will be restricted to builds with
-             matching Maven metadata.
+        """Return a list of builds that match the given parameters
+
+        Filter parameters
+            - packageID: only builds of the specified package (numeric id)
+            - userID: only builds owned by the given user (numeric id)
+            - taskID: only builds with the given task ID
+                If taskID is -1, only builds with a non-null task id
+            - volumeID: only builds stored on the given volume (numeric id)
+            - source: only builds where the source field matches (glob pattern)
+            - prefix: only builds whose package name starts with that prefix
+            - state: only builds in the given state (numeric value)
+
+        Timestamp filter parameters
+            - these limit the results to builds where the corresponding
+                timestamp is before or after the given time
+            - the time value may be specified as seconds since the epoch or
+                in ISO format ('YYYY-MM-DD HH24:MI:SS')
+            - filters for creation_time:
+                - createdBefore
+                - createdAfter
+            - filters for completion_time:
+                - completeBefore
+                - completeAfter
+
+        Build type parameters:
+            - type: only builds of the given btype (such as maven or image)
+            - typeInfo: only builds with matching type-specific info (given
+                as a dictionary). Can only be used in conjunction with the
+                type parameter. Only limited types are supported.
+
+                For type=maven, the provided group_id, artifact_id, and/or version
+                fields are matched
+
+                For type=win, the provided platform fields are matched
 
         Returns a list of maps.  Each map contains the following keys:
 
@@ -9549,6 +9562,7 @@ class RootExports(object):
           - owner_name
           - volume_id
           - volume_name
+          - source
           - creation_event_id
           - creation_time
           - creation_ts
@@ -9557,12 +9571,17 @@ class RootExports(object):
           - completion_time
           - completion_ts
           - task_id
+          - extra
 
         If type == 'maven', each map will also contain the following keys:
 
           - maven_group_id
           - maven_artifact_id
           - maven_version
+
+        If type == 'win', each map will also contain the following key:
+
+            - platform
 
         If no builds match, an empty list is returned.
         """
@@ -9597,6 +9616,9 @@ class RootExports(object):
                 clauses.append('build.task_id IS NOT NULL')
             else:
                 clauses.append('build.task_id = %(taskID)i')
+        if source is not None:
+            source = self._prepareSearchTerms(source, 'glob')
+            clauses.append('build.source ilike %(source)s')
         if prefix:
             clauses.append("package.name ilike %(prefix)s || '%%'")
         if state != None:

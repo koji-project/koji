@@ -6825,8 +6825,6 @@ def anon_handle_wait_repo(options, session, args):
                     print("Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
                 return
 
-_search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm', 'maven', 'win')
-
 
 def handle_regen_repo(options, session, args):
     "[admin] Force a repo to be regenerated"
@@ -7001,6 +6999,9 @@ def handle_dist_repo(options, session, args):
         return watch_tasks(session, [task_id], quiet=options.quiet,
                 poll_interval=options.poll_interval)
 
+
+_search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm',
+                 'maven', 'win')
 
 def anon_handle_search(options, session, args):
     "[search] Search the system"
