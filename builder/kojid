@@ -2832,25 +2832,35 @@ class ImageTask(BaseTaskHandler):
         return hdrlist
 
     def _shortenVolID(self, name, version, release):
-        # Based on code from pungi
+        # Duplicated with pungi-fedora fedora.conf
+        # see https://pagure.io/koji/pull-request/817
         substitutions = {
-            'MATE_Compiz': 'MATE',
-            'Security': 'Sec',
-            'Electronic_Lab': 'Elec',
-            'Robotics': 'Robo',
-            'Scientific_KDE': 'SciK',
-            'Design_suite': 'Dsgn',
-            'Games': 'Game',
-            'Jam_KDE': 'Jam',
-            'Workstation': 'WS',
-            'Server': 'S',
-            'Cloud': 'C',
-            'Alpha': 'A',
-            'Beta': 'B',
-            'TC': 'T',
+                         'Beta': 'B',
+                      'Rawhide': 'rawh',
+                'Astronomy_KDE': 'AstK',
+                       'Atomic': 'AH',
+                     'Cinnamon': 'Cinn',
+                        'Cloud': 'C',
+                 'Design_suite': 'Dsgn',
+               'Electronic_Lab': 'Elec',
+                   'Everything': 'E',
+                        'Games': 'Game',
+                       'Images': 'img',
+                      'Jam_KDE': 'Jam',
+                  'MATE_Compiz': 'MATE',
+             # Note https://pagure.io/pungi-fedora/issue/533
+             'Python-Classroom': 'Clss',
+             'Python_Classroom': 'Clss',
+                     'Robotics': 'Robo',
+               'Scientific_KDE': 'SciK',
+                     'Security': 'Sec',
+                       'Server': 'S',
+                  'Workstation': 'WS',
+            'WorkstationOstree': 'WS',
         }
 
-        for k, v in substitutions.iteritems():
+        # Duplicated with pungi/util.py _apply_substitutions
+        for k, v in sorted(substitutions.items(), key=lambda x: len(x[0]), reverse=True):
             if k in name:
                 name = name.replace(k, v)
             if k in version:
@@ -2859,6 +2869,8 @@ class ImageTask(BaseTaskHandler):
                 release = release.replace(k, v)
 
         volid = "%s-%s-%s" % (name, version, release)
+        # Difference: pungi treats result more than 32 characters long as
+        # fatal and raises an error
         return volid[:32]
 
 
