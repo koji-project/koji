@@ -2833,6 +2833,7 @@ class ImageTask(BaseTaskHandler):
 
     def _shortenVolID(self, name, version, release):
         # Duplicated with pungi-fedora fedora.conf
+        # see https://pagure.io/koji/pull-request/817
         substitutions = {
                          'Beta': 'B',
                       'Rawhide': 'rawh',
