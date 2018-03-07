@@ -135,7 +135,9 @@ def json_serialize(o):
     """JSON helper to encode otherwise unserializable data types"""
     if isinstance(o, set):
         return list(o)
-    raise TypeError(repr(o) + " is not JSON serializable")
+    log = logging.getLogger('koji.plugin.protonmsg')
+    log.error("Not JSON serializable data: %s" % repr(o))
+    return {"error": "Can't serialize", "type": str(type(o))}
 
 
 def queue_msg(address, props, data):
