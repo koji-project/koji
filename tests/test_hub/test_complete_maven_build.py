@@ -126,7 +126,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
         # make sure we wrote the files we expect
         files = []
         for dirpath, dirnames, filenames in os.walk(self.tempdir + '/packages'):
-            relpath = koji.util.relpath(dirpath, self.tempdir)
+            relpath = os.path.relpath(dirpath, self.tempdir)
             files.extend([os.path.join(relpath, fn) for fn in filenames])
         self.assertEqual(set(files), set(self.expected_files))
         # check callbacks
