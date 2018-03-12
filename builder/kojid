@@ -5225,8 +5225,11 @@ class createDistRepoTask(BaseTaskHandler):
         self.repodir = '%s/repo' % self.workdir
         koji.ensuredir(self.repodir)
         self.outdir = self.repodir  # workaround create_local_repo use
-        self.datadir = '%s/repodata' % self.repodir
+        datadir = '%s/repodata' % self.repodir
         self.sigmap = {}
+        if opts['split_debuginfo']:
+            debugdir = '%s/debug' % self.repodir
+            koji.ensuredir(debugdir)
 
         # gather oldpkgs data if delta option in use
         oldpkgs = []
@@ -5241,32 +5244,42 @@ class createDistRepoTask(BaseTaskHandler):
                 path = koji.pathinfo.distrepo(repo_id, oldrepo['tag_name'])
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
+                # note: since we're using the top level dir, this will handle
+                #       split debuginfo as well
                 oldpkgs.append(path)
 
         # sort out our package list
         self.uploadpath = self.getUploadDir()
-        self.make_pkglist(tag, arch, keys, opts)
-        self.pkglist = self.write_pkglist()
-        self.link_pkgs()
+        self.get_rpms(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
+        self.write_pkglist(opts)
         self.write_kojipkgs()
-        self.logger.debug('package list is %s' % self.pkglist)
-        self.session.uploadWrapper(self.pkglist, self.uploadpath,
-            os.path.basename(self.pkglist))
+        self.link_pkgs()
+        self.session.uploadWrapper('%s/pkglist' % self.repodir,
+                    self.uploadpath, 'pkglist')
+        if opts['split_debuginfo']:
+            self.session.uploadWrapper('%s/debug/pkglist' % self.repodir,
+                        self.uploadpath, 'debug_pkglist')
 
         # generate the repodata
-        self.do_createrepo(self.repodir, self.pkglist, groupdata, oldpkgs=oldpkgs)
-        if os.path.getsize(self.pkglist) == 0:
-            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+        self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
+                    groupdata, oldpkgs=oldpkgs)
+        if opts['split_debuginfo']:
+            self.do_createrepo(debugdir, '%s/pkglist' % debugdir, None,
+                    oldpkgs=oldpkgs)
+        if len(self.kojipkgs) == 0:
+            fo = file(os.path.join(datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
 
         # upload repo files
         files = ['pkglist', 'kojipkgs']
-        for f in os.listdir(self.datadir):
+        if opts['split_debuginfo']:
+            files.append('debug_pkglist')
+        for f in os.listdir(datadir):
             files.append(f)
-            self.session.uploadWrapper('%s/%s' % (self.datadir, f),
+            self.session.uploadWrapper('%s/%s' % (datadir, f),
                 self.uploadpath, f)
         if opts['delta']:
             ddir = os.path.join(self.repodir, 'drpms')
@@ -5289,7 +5302,7 @@ class createDistRepoTask(BaseTaskHandler):
         else:
             cmd = ['/usr/bin/createrepo']
         cmd.extend(['-vd', '-i', pkglist])
-        if os.path.isfile(groupdata):
+        if groupdata and os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         # TODO: can we recycle data (with --update) as in create_local_repo?
         if oldpkgs:
@@ -5425,23 +5438,22 @@ enabled=1
             raise koji.GenericError('multilib packages missing. '
                     'See missing_multilib.log')
 
-        # step 5: add dependencies to our package list
-        pkgwriter = open(self.pkglist, 'a')
+        # step 5: update kojipkgs
         for dep_path in ml_needed:
             tspkg = ml_needed[dep_path]
             bnp = os.path.basename(dep_path)
-            bnplet = bnp[0].lower()
-            koji.ensuredir(os.path.join(self.repodir, bnplet))
-            dst = os.path.join(self.repodir, bnplet, bnp)
-            if os.path.exists(dst):
+            if bnp in self.kojipkgs:
                 # we expect duplication with noarch, but not other arches
                 if tspkg.arch != 'noarch':
-                    self.logger.warning("Path exists: %r", dst)
+                    self.logger.warning("Multilib duplicate: %s", bnp)
                 continue
-            pkgwriter.write(bnplet + '/' + bnp + '\n')
-            self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
-            os.symlink(dep_path, dst)
-            rpminfo = ml_pkgs[bnp]
+            rpminfo = ml_pkgs[bnp].copy()
+            # fix _pkgpath, which comes from another task and could be wrong
+            # for us
+            # TODO: would be better if we could use the proper path here
+            rpminfo['_pkgpath'] = dep_path
+            rpminfo['_multilib'] = True
+            self.kojipkgs[bnp] = rpminfo
             self.sigmap[rpminfo['id']] = rpminfo['sigkey']
 
 
@@ -5459,7 +5471,7 @@ enabled=1
                 best_idx = idx
         return best
 
-    def make_pkglist(self, tag_id, arch, keys, opts):
+    def get_rpms(self, tag_id, arch, keys, opts):
         # get the rpm data
         rpms = []
         builddirs = {}
@@ -5564,20 +5576,31 @@ enabled=1
             self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
             os.symlink(pkgpath, dst)
 
-    def write_pkglist(self):
-        pkgfile = os.path.join(self.repodir, 'pkglist')
-        pkglist = file(pkgfile, 'w')
+    def write_pkglist(self, opts):
+        pkgs = []
+        debug_pkgs = []
         for bnp in self.kojipkgs:
+            rpminfo = self.kojipkgs[bnp]
             bnplet = bnp[0].lower()
-            pkglist.write(bnplet + '/' + bnp + '\n')
-        pkglist.close()
-        return pkgfile
+            if opts['split_debuginfo'] and rpminfo.get('_multilib'):
+                # note the ../
+                debug_pkgs.append('../%s/%s\n' % (bnplet, bnp))
+            else:
+                pkgs.append('%s/%s\n' % (bnplet, bnp))
+
+        with open('%s/pkglist' % self.repodir, 'w') as fo:
+            for line in pkgs:
+                fo.write(line)
+        if opts['split_debuginfo']:
+            with open('%s/debug/pkglist' % self.repodir, 'w') as fo:
+                for line in debug_pkgs:
+                    fo.write(line)
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
         datafile = file(filename, 'w')
         try:
-            json.dump(self.kojipkgs, datafile, indent=4)
+            json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
         finally:
             datafile.close()
         # and upload too
