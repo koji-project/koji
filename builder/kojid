@@ -5227,9 +5227,7 @@ class createDistRepoTask(BaseTaskHandler):
         self.outdir = self.repodir  # workaround create_local_repo use
         datadir = '%s/repodata' % self.repodir
         self.sigmap = {}
-        if opts['split_debuginfo']:
-            debugdir = '%s/debug' % self.repodir
-            koji.ensuredir(debugdir)
+        self.subrepos = set()
 
         # gather oldpkgs data if delta option in use
         oldpkgs = []
@@ -5253,14 +5251,11 @@ class createDistRepoTask(BaseTaskHandler):
         self.get_rpms(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
-        self.write_pkglist(opts)
-        self.write_kojipkgs()
-        self.link_pkgs()
-        self.session.uploadWrapper('%s/pkglist' % self.repodir,
-                    self.uploadpath, 'pkglist')
         if opts['split_debuginfo']:
-            self.session.uploadWrapper('%s/debug/pkglist' % self.repodir,
-                        self.uploadpath, 'debug_pkglist')
+            self.split_debuginfo()
+        self.write_kojipkgs()
+        self.write_pkglist()
+        self.link_pkgs()
 
         # generate the repodata
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
@@ -5276,7 +5271,7 @@ class createDistRepoTask(BaseTaskHandler):
         # upload repo files
         files = ['pkglist', 'kojipkgs']
         if opts['split_debuginfo']:
-            files.append('debug_pkglist')
+            files.append('debug/pkglist')
         for f in os.listdir(datadir):
             files.append(f)
             self.session.uploadWrapper('%s/%s' % (datadir, f),
@@ -5576,25 +5571,41 @@ enabled=1
             self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
             os.symlink(pkgpath, dst)
 
-    def write_pkglist(self, opts):
+    def split_debuginfo(self):
+        for rpminfo in self.kojipkgs.values():
+            if koji.is_debuginfo(rpminfo['name']):
+                rpminfo['_subrepo'] = 'debug'
+
+    def write_pkglist(self):
         pkgs = []
-        debug_pkgs = []
+        subrepo_pkgs = {}
         for bnp in self.kojipkgs:
             rpminfo = self.kojipkgs[bnp]
             bnplet = bnp[0].lower()
-            if opts['split_debuginfo'] and koji.is_debuginfo(rpminfo['name']):
+            subrepo = rpminfo.get('_subrepo')
+            if subrepo:
                 # note the ../
-                debug_pkgs.append('../%s/%s\n' % (bnplet, bnp))
+                subrepo_pkgs.setdefault(subrepo, []).append(
+                        '../%s/%s\n' % (bnplet, bnp))
             else:
                 pkgs.append('%s/%s\n' % (bnplet, bnp))
 
         with open('%s/pkglist' % self.repodir, 'w') as fo:
             for line in pkgs:
                 fo.write(line)
-        if opts['split_debuginfo']:
-            with open('%s/debug/pkglist' % self.repodir, 'w') as fo:
-                for line in debug_pkgs:
+        for subrepo in subrepo_pkgs:
+            koji.ensuredir('%s/%s' % (self.repodir, subrepo))
+            with open('%s/%s/pkglist' % (self.repodir, subrepo), 'w') as fo:
+                for line in subrepo_pkgs[subrepo]:
                     fo.write(line)
+
+        # and upload too
+        self.session.uploadWrapper('%s/pkglist' % self.repodir,
+                    self.uploadpath, 'pkglist')
+        for subrepo in subrepo_pkgs:
+            self.session.uploadWrapper(
+                    '%s/%s/pkglist' % (self.repodir, subrepo),
+                    '%s/%s' % (self.uploadpath, subrepo), 'pkglist')
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
