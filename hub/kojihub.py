@@ -12665,6 +12665,7 @@ class HostExports(object):
         koji.ensuredir(datadir)
 
         pkglist = set()
+        debuglist = set()
         for fn in files:
             src = "%s/%s/%s" % (workdir, uploadpath, fn)
             if fn.endswith('.drpm'):
@@ -12677,10 +12678,14 @@ class HostExports(object):
             if not os.path.exists(src):
                 raise koji.GenericError("uploaded file missing: %s" % src)
             if fn.endswith('pkglist'):
+                if fn.endswith('debug_pkglist'):
+                    tracker = debuglist
+                else:
+                    tracker = pkglist
                 with open(src) as pkgfile:
                     for pkg in pkgfile:
                         pkg = os.path.basename(pkg.strip())
-                        pkglist.add(pkg)
+                        tracker.add(pkg)
             safer_move(src, dst)
 
         # get rpms
@@ -12705,9 +12710,9 @@ class HostExports(object):
 
         # sanity check
         for fn in rpmdata:
-            if fn not in pkglist:
+            if fn not in pkglist and fn not in debuglist:
                 raise koji.GenericError("No signature data for: %s" % fn)
-        for fn in pkglist:
+        for fn in pkglist.union(debuglist):
             if fn  not in rpmdata:
                 raise koji.GenericError("RPM missing from pkglist: %s" % fn)
 
