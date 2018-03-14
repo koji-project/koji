@@ -512,7 +512,14 @@ class SCM(object):
         }
         if self.scmtype.startswith('GIT'):
             cmd = ['git', 'rev-parse', 'HEAD']
-            fragment = subprocess.check_output(cmd, cwd=self.sourcedir).strip()
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    cwd=self.sourcedir,
+                                    shell=True)
+            out, _ = proc.communicate()
+            status = proc.wait()
+            if status != 0:
+                raise koji.GenericError('Error getting commit hash for git')
+            fragment = out.strip()
             scheme = self.scheme[:-3]
             netloc = self.host
             path = self.repository
