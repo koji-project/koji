@@ -513,8 +513,7 @@ class SCM(object):
         if self.scmtype.startswith('GIT'):
             cmd = ['git', 'rev-parse', 'HEAD']
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                    cwd=self.sourcedir,
-                                    shell=True)
+                                    cwd=self.sourcedir,)
             out, _ = proc.communicate()
             status = proc.wait()
             if status != 0:
