@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright (C) 2006 Mandriva; 2009-2014 Red Hat, Inc.
 # Authors: Frederic Lepied, Florian Festi
 #
@@ -25,9 +23,6 @@ import json
 import rpm
 import os
 import itertools
-
-import sys, getopt
-
 
 class Rpmdiff:
 
@@ -231,43 +226,3 @@ class Rpmdiff:
             raise ValueError("rpm header data are empty")
         s = json.dumps(data, sort_keys=True)
         return hashlib.sha256(s).hexdigest()
-
-def _usage(exit=1):
-    print("Usage: %s [<options>] <old package> <new package>" % sys.argv[0])
-    print("Options:")
-    print("  -h, --help            Output this message and exit")
-    print("  -i, --ignore          Tag to ignore when calculating differences")
-    print("                          (may be used multiple times)")
-    print("                        Valid values are: SM5DNLVUGFT")
-    sys.exit(exit)
-
-def main():
-
-    ignore_tags = []
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
-    except getopt.GetoptError as e:
-        print("Error: %s" % e)
-        _usage()
-
-    for option, argument in opts:
-        if option in ("-h", "--help"):
-            _usage(0)
-        if option in ("-i", "--ignore"):
-            ignore_tags.append(argument)
-
-    if len(args) != 2:
-        _usage()
-
-    d = Rpmdiff(args[0], args[1], ignore=ignore_tags)
-    print(d.textdiff())
-    rv = d.differs()
-    chk = (d.kojihash() != d.kojihash(new=True))
-    if rv != chk:
-        raise Exception('hash compare disagrees with rpmdiff')
-    sys.exit(int(rv))
-
-if __name__ == '__main__':
-    main()
-
-# rpmdiff ends here
