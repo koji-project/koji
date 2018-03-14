@@ -5243,16 +5243,15 @@ class createDistRepoTask(BaseTaskHandler):
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
                 # note: since we're using the top level dir, this will handle
-                #       split debuginfo as well
+                #       split repos as well
                 oldpkgs.append(path)
 
-        # sort out our package list
+        # sort out our package list(s)
         self.uploadpath = self.getUploadDir()
         self.get_rpms(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
-        if opts['split_debuginfo']:
-            self.split_debuginfo()
+        self.split_pkgs(opts)
         self.write_kojipkgs()
         self.write_pkglist()
         self.link_pkgs()
@@ -5260,9 +5259,12 @@ class createDistRepoTask(BaseTaskHandler):
         # generate the repodata
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
                     groupdata, oldpkgs=oldpkgs)
-        if opts['split_debuginfo']:
-            self.do_createrepo(debugdir, '%s/pkglist' % debugdir, None,
-                    oldpkgs=oldpkgs, logname='createrepo_debug')
+        for subrepo in self.subrepos:
+            self.do_createrepo(
+                    '%s/%s' % (self.repodir, subrepo),
+                    '%s/%s/pkglist' % (self.repodir, subrepo),
+                    groupdata, oldpkgs=oldpkgs,
+                    logname='createrepo_%s' % subrepo)
         if len(self.kojipkgs) == 0:
             fo = file(os.path.join(datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
@@ -5270,9 +5272,10 @@ class createDistRepoTask(BaseTaskHandler):
 
         # upload repo files
         files = ['pkglist', 'kojipkgs']
-        if opts['split_debuginfo']:
-            files.append('debug/pkglist')
+        for subrepo in self.subrepos:
+            files.append('%s/pkglist' % subrepo)
         for f in os.listdir(datadir):
+            # repo metadata files
             files.append(f)
             self.session.uploadWrapper('%s/%s' % (datadir, f),
                 self.uploadpath, f)
@@ -5571,10 +5574,12 @@ enabled=1
             self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
             os.symlink(pkgpath, dst)
 
-    def split_debuginfo(self):
+    def split_pkgs(self, opts):
+        '''Direct rpms to subrepos if needed'''
         for rpminfo in self.kojipkgs.values():
-            if koji.is_debuginfo(rpminfo['name']):
+            if opts['split_debuginfo'] and koji.is_debuginfo(rpminfo['name']):
                 rpminfo['_subrepo'] = 'debug'
+                self.subrepos.add('debug')
 
     def write_pkglist(self):
         pkgs = []
