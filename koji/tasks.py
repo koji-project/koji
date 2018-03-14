@@ -366,7 +366,10 @@ class BaseTaskHandler(object):
         """
 
         if canfail is None:
-            canfail = []
+            checked = set()
+        else:
+            # canfail task are marked as checked
+            checked = set(canfail)
         if isinstance(subtasks, int):
             # allow single integer w/o enclosing list
             subtasks = [subtasks]
@@ -381,23 +384,18 @@ class BaseTaskHandler(object):
             elif len(finished) > 0:
                 if all:
                     if failany:
-                        failed = False
-                        for task in finished:
-                            if task in canfail:
-                                # no point in checking
-                                continue
+                        # we care only about tasks which are not correctly
+                        # finished and in same time not in canfail list
+                        for task in set(finished) - checked:
                             try:
                                 self.session.getTaskResult(task)
-                            except (koji.GenericError, xmlrpclib.Fault) as task_error:
-                                self.logger.info("task %s failed or was canceled" % task)
-                                failed = True
-                                break
-                        if failed:
-                            self.logger.info("at least one task failed or was canceled, cancelling unfinished tasks")
-                            self.session.cancelTaskChildren(self.id)
-                            # reraise the original error now, rather than waiting for
-                            # an error in taskWaitResults()
-                            raise task_error
+                                checked.add(task)
+                            except (koji.GenericError, xmlrpclib.Fault) as ex:
+                                self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
+                                self.session.cancelTaskChildren(self.id)
+                                # reraise the original error now, rather than waiting for
+                                # an error in taskWaitResults()
+                                raise
                 else:
                     # at least one done
                     break
