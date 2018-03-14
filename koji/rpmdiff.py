@@ -74,8 +74,8 @@ class Rpmdiff:
     def __init__(self, old, new, ignore=None):
         self.result = []
         self.ignore = ignore
-        self.old_data = { 'tags': {} }
-        self.new_data = { 'tags': {} }
+        self.old_data = { 'tags': {}, 'ignore': ignore }
+        self.new_data = { 'tags': {}, 'ignore': ignore }
         if self.ignore is None:
             self.ignore = []
 
