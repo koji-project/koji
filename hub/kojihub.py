@@ -12591,6 +12591,8 @@ class HostExports(object):
         In sigmap, use sig=None to use the primary copy of the rpm instead of a
         signed copy.
         """
+        host = Host()
+        host.verify()
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
         repodir = koji.pathinfo.distrepo(repo_id, rinfo['tag_name'])
