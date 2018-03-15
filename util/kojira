@@ -377,6 +377,12 @@ class RepoManager(object):
         if self.delete_pids:
             #skip
             return
+        if not os.path.exists(topdir):
+            self.logger.warn("%s doesn't exist, skipping", topdir)
+            return
+        if os.path.isfile(topdir):
+            self.logger.warn("%s is not directory, skipping", topdir)
+            return
         self.logger.debug("Scanning %s for repos", topdir)
         self.logger.debug('max age allowed: %s seconds (from %s)',
                 getattr(self.options, timername), timername)
