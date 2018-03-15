@@ -71,6 +71,10 @@ class Session(object):
         self.exclusive = False
         self.lockerror = None
         self.callnum = None
+        # we look up perms, groups, and host_id on demand, see __getattr__
+        self._perms = None
+        self._groups = None
+        self._host_id = ''
         #get session data from request
         if args is None:
             environ = getattr(context, 'environ', {})
@@ -203,10 +207,6 @@ class Session(object):
         self.master = session_data['master']
         self.session_data = session_data
         self.user_data = user_data
-        # we look up perms, groups, and host_id on demand, see __getattr__
-        self._perms = None
-        self._groups = None
-        self._host_id = ''
         self.logged_in = True
 
     def __getattr__(self, name):
