@@ -12635,8 +12635,7 @@ class HostExports(object):
 
     def distRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
         """
-        Move a dist repo into its final location
-
+        Move one arch of a dist repo into its final location
 
         Unlike normal repos (which are moved into place by repoDone), dist
         repos have all their content linked (or copied) into place.
@@ -12661,11 +12660,28 @@ class HostExports(object):
         archdir = "%s/%s" % (repodir, koji.canonArch(arch))
         if not os.path.isdir(archdir):
             raise koji.GenericError("Repo arch directory missing: %s" % archdir)
-        datadir = "%s/repodata" % archdir
-        koji.ensuredir(datadir)
+        repo_state = koji.REPO_STATES[rinfo['state']]
+        if repo_state != 'INIT':
+            raise koji.GenericError('Repo is in state: %s' % repo_state)
 
-        pkglist = set()
-        debuglist = set()
+        # Read package data
+        fn = '%s/%s/kojipkgs' % (workdir, uploadpath)
+        if not os.path.isfile(fn):
+            raise koji.GenericError('Missing kojipkgs file')
+        with open(fn) as fp:
+            kojipkgs = json.load(fp)
+
+        # Figure out subrepos
+        subrepos = set()
+        for bnp in kojipkgs:
+            rpminfo = kojipkgs[bnp]
+            subrepo = rpminfo.get('_subrepo')
+            if subrepo:
+                subrepos.add(subrepo)
+
+        # Figure out where to send the uploaded files
+        file_moves = []
+        datadir = "%s/repodata" % archdir
         for fn in files:
             src = "%s/%s/%s" % (workdir, uploadpath, fn)
             if fn.endswith('.drpm'):
@@ -12677,16 +12693,15 @@ class HostExports(object):
                 dst = "%s/%s" % (datadir, fn)
             if not os.path.exists(src):
                 raise koji.GenericError("uploaded file missing: %s" % src)
-            if fn.endswith('pkglist'):
-                if fn.endswith('debug_pkglist'):
-                    tracker = debuglist
-                else:
-                    tracker = pkglist
-                with open(src) as pkgfile:
-                    for pkg in pkgfile:
-                        pkg = os.path.basename(pkg.strip())
-                        tracker.add(pkg)
+            file_moves.append([src, dst])
+
+        dirnames = set([os.path.dirname(fm[1]) for fm in file_moves])
+        for dirname in dirnames:
+            koji.ensuredir(dirname)
+        for src, dst in file_moves:
             safer_move(src, dst)
+
+        koji.ensuredir(datadir)
 
         # get rpms
         build_dirs = {}
