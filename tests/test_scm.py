@@ -379,3 +379,40 @@ class TestSCMCheckouts(unittest.TestCase):
                         self.uploadpath, cwd=self.tempdir, logerror=1,
                         append=False, env=None)
         self.log_output.assert_has_calls([call1])
+
+    @mock.patch('subprocess.Popen')
+    def test_get_source_git(self, popen):
+        popen.return_value.wait.return_value = 0
+        popen.return_value.communicate = mock.MagicMock()
+        popen.return_value.communicate.return_value = ('hash ', 'any')
+
+        url = "git://default/koji.git#asdasd"
+        scm = SCM(url)
+        scm.assert_allowed(self.config)
+        scm.checkout(self.tempdir, session=self.session,
+                uploadpath=self.uploadpath, logfile=self.logfile)
+
+        source = scm.get_source()
+        self.assertEqual(source, {'url': url,
+                                  'source': 'git://default/koji.git#hash'})
+
+        popen.return_value.wait.return_value = 1
+        with self.assertRaises(koji.GenericError) as cm:
+            source = scm.get_source()
+        self.assertEqual(cm.exception.args[0],
+                         'Error getting commit hash for git')
+
+    @mock.patch('subprocess.Popen')
+    def test_get_source_other(self, popen):
+        popen.return_value.wait.return_value = 0
+        popen.return_value.communicate = mock.MagicMock()
+        popen.return_value.communicate.return_value = ('hash ', 'any')
+
+        url = "svn+ssh://user@nocommon/dist?rpms/foo/EL3#revision"
+        scm = SCM(url)
+        scm.assert_allowed(self.config)
+        scm.checkout(self.tempdir, session=self.session,
+                     uploadpath=self.uploadpath, logfile=self.logfile)
+
+        source = scm.get_source()
+        self.assertEqual(source, {'url': url, 'source': url})
