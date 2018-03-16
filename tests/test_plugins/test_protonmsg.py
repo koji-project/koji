@@ -27,6 +27,12 @@ class TestProtonMsg(unittest.TestCase):
         protonmsg.queue_msg('test.msg', {'testheader': 1}, 'test body')
         self.assertMsg('test.msg', body='"test body"', testheader=1)
 
+    def test_queue_msg_not_serializable(self):
+        # mostly just testing that encoder does not error on data that cannot
+        # be json encoded
+        protonmsg.queue_msg('koji@example.com', {'testheader': 1}, object())
+        self.assertMsg('koji@example.com', body=None, testheader=1)
+
     def test_prep_package_list_change_add(self):
         protonmsg.prep_package_list_change('postPackageListChange',
                                            action='add', tag={'name': 'test-tag'},
