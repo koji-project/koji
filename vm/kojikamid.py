@@ -59,6 +59,12 @@ koji = fakemodule()
 koji.GenericError = GenericError
 koji.BuildError = BuildError
 
+def encode_int(n):
+    """If n is too large for a 32bit signed, convert it to a string"""
+    if n <= 2147483647:
+        return n
+    #else
+    return str(n)
 
 class WindowsBuild(object):
 
