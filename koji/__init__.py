@@ -2149,6 +2149,7 @@ class ClientSession(object):
             # We're trying to log ourself in.  Connect using existing credentials.
             cprinc = ccache.principal()
 
+        self.logger.debug('Authenticating as: %s', cprinc.name)
         sprinc = krbV.Principal(name=self._serverPrincipal(cprinc), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
