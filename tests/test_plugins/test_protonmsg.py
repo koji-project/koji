@@ -27,6 +27,12 @@ class TestProtonMsg(unittest.TestCase):
         protonmsg.queue_msg('test.msg', {'testheader': 1}, 'test body')
         self.assertMsg('test.msg', body='"test body"', testheader=1)
 
+    def test_queue_msg_not_serializable(self):
+        # mostly just testing that encoder does not error on data that cannot
+        # be json encoded
+        protonmsg.queue_msg('koji@example.com', {'testheader': 1}, object())
+        self.assertMsg('koji@example.com', body=None, testheader=1)
+
     def test_prep_package_list_change_add(self):
         protonmsg.prep_package_list_change('postPackageListChange',
                                            action='add', tag={'name': 'test-tag'},
@@ -153,7 +159,8 @@ class TestProtonMsg(unittest.TestCase):
                        user='test-user', **build)
 
     def test_prep_repo_init(self):
-        protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag'}, repo_id=1234)
+        protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag',
+            'arches': set(['x86_64', 'i386'])}, repo_id=1234)
         self.assertMsg('repo.init', type='RepoInit', tag='test-tag', repo_id=1234)
 
     def test_prep_repo_done(self):

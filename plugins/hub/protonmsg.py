@@ -130,12 +130,22 @@ class TimeoutHandler(MessagingHandler):
             self.timeout_task.cancel()
             self.timeout_task = None
 
+
+def json_serialize(o):
+    """JSON helper to encode otherwise unserializable data types"""
+    if isinstance(o, set):
+        return list(o)
+    log = logging.getLogger('koji.plugin.protonmsg')
+    log.error("Not JSON serializable data: %s" % repr(o))
+    return {"error": "Can't serialize", "type": str(type(o))}
+
+
 def queue_msg(address, props, data):
     msgs = getattr(context, 'protonmsg_msgs', None)
     if msgs is None:
         msgs = []
         context.protonmsg_msgs = msgs
-    body = json.dumps(data)
+    body = json.dumps(data, default=json_serialize)
     msgs.append((address, props, body))
 
 @convert_datetime
