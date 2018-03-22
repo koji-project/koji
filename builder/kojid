@@ -1255,7 +1255,7 @@ class BuildArchTask(BaseBuildTask):
             if rpmf.endswith('.noarch.rpm'):
                 fpath = os.path.join(resultdir, rpmf)
                 d = koji.rpmdiff.Rpmdiff(fpath, fpath, ignore='S5TN')
-                rpmdiff_hash[self.id][rpmf] = d.kojihash(ignore='S5TN')
+                rpmdiff_hash[self.id][rpmf] = d.kojihash()
         if rpmdiff_hash[self.id]:
             log_name = 'noarch_rpmdiff.json'
             noarch_hash_path = os.path.join(broot.workdir, log_name)
