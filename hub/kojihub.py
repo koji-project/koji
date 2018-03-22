@@ -4293,8 +4293,8 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
     size: uncompressed size of the file (integer)
 
     If strict is True, raise GenericError if:
-      - there are no files found for the archive
-      - the archive is not a type we are able to expand
+      - build btype of this archive belong to is not maven, win or image
+      - archive_type is not that we are able to expand
 
     Regardless of strict, an error will be raised if the archive_id is invalid
     """
@@ -4337,9 +4337,6 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
             raise koji.GenericError(
                 "Unsupported archive type: %s" % archive_type['name'])
         filelist = []
-
-    if strict and not filelist:
-        raise koji.GenericError("Archive#%s doesn't contain any files" % archive_id)
     return _applyQueryOpts(filelist, queryOpts)
 
 
@@ -4355,7 +4352,8 @@ def get_archive_file(archive_id, filename, strict=False):
 
     If strict is True, raise GenericError if:
       - this file is not found in the archive
-      - the archive is not a type we are able to expand
+      - build btype of this archive belong to is not maven, win or image
+      - archive_type is not that we are able to expand
 
     Regardless of strict, an error will be raised if the archive_id is invalid
     """

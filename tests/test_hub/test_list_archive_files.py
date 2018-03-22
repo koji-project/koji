@@ -42,18 +42,39 @@ class TestListArchiveFiles(unittest.TestCase):
         self.mm.get_image_build.assert_called_once_with(2)
         self.assertListEqual(rv, [])
 
-    def test_simple_strict(self):
+    @mock.patch('kojihub.get_maven_archive',
+                return_value={'archive_id': 1,
+                              'group_id': 'gid',
+                              'artifact_id': 'aid',
+                              'version': '1.0.0'})
+    @mock.patch('kojihub._get_zipfile_list', return_value=[])
+    def test_simple_strict_empty(self, get_zipfile_list, get_maven_archive):
+        self.mm.get_maven_build.return_value = {'build_id': 2,
+                                                'group_id': 'gid',
+                                                'artifact_id': 'aid',
+                                                'version': '1.0.0'}
+        rv = kojihub.list_archive_files(1, strict=True)
+        self.assertListEqual(rv, [])
+
+    def test_simple_strict_bad_btype(self):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.list_archive_files(1, strict=True)
-        self.mm.get_archive.assert_called_once_with(1, strict=True)
-        self.mm.get_archive_type.assert_called_once_with(type_id=3,
-                                                         strict=True)
-        self.mm.get_build.assert_called_once_with(2, strict=True)
-        self.mm.get_maven_build.assert_called_once_with(2)
-        self.mm.get_win_build.assert_called_once_with(2)
-        self.mm.get_image_build.assert_called_once_with(2)
-        self.assertEqual(cm.exception.args[0],
-                         "Archive#1 doesn't contain any files")
+        self.assertEqual(cm.exception.args[0], "Unsupported build type")
+
+    @mock.patch('kojihub.get_maven_archive',
+                return_value={'archive_id': 1,
+                              'group_id': 'gid',
+                              'artifact_id': 'aid',
+                              'version': '1.0.0'})
+    def test_simple_strict_bad_archive_type(self, get_maven_archive):
+        self.mm.get_archive_type.return_value = {'id': 9, 'name': 'txt'}
+        self.mm.get_maven_build.return_value = {'build_id': 2,
+                                                'group_id': 'gid',
+                                                'artifact_id': 'aid',
+                                                'version': '1.0.0'}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.list_archive_files(1, strict=True)
+        self.assertEqual(cm.exception.args[0], "Unsupported archive type: txt")
 
     @mock.patch('kojihub.get_maven_archive',
                 return_value={'archive_id': 1,
