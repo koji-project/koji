@@ -1069,6 +1069,10 @@ def handle_restart_hosts(options, session, args):
                       help=_("Time out after N seconds"))
     (my_opts, args) = parser.parse_args(args)
 
+    if len(args) > 0:
+        parser.error(_("restart-hosts does not accept arguments"))
+        assert False  # pragma: no cover
+
     activate_session(session, options)
 
     # check for existing restart tasks
