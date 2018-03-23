@@ -5060,7 +5060,8 @@ def handle_add_tag_inheritance(goptions, session, args):
     parser.add_option("--intransitive", action="store_true", help=_("Set intransitive"))
     parser.add_option("--noconfig", action="store_true", help=_("Set to packages only"))
     parser.add_option("--pkg-filter", help=_("Specify the package filter"))
-    parser.add_option("--force", help=_("Force adding a parent to a tag that already has that parent tag"))
+    parser.add_option("--force", action="store_true",
+                      help=_("Force adding a parent to a tag that already has that parent tag"))
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
