@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.15.0
+Version: 1.15.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -478,6 +478,16 @@ fi
 %endif
 
 %changelog
+* Thu Mar 29 2018 Mike McLean <mikem at redhat.com> - 1.15.1-1
+- Backport fix for CVE-2018-1002150
+- Backport PR#848: use subprocess.Popen instead of subprocess.check_output
+- Backport PR#769: handle None in place of string in buildNotification
+- Backport PR#787: builder: make temp dir to be configured
+- Backport PR#804: hub: fix KeyError in `get_notification_recipients`
+- Backport PR#743: Fix key access mechanism in _build_image
+- Backport PR#812: Fix AttributeError during archive import
+- Backport PR#796: Fix comparison with Enum value
+
 * Mon Dec 18 2017 Mike McLean <mikem at redhat.com> - 1.15.0-1
 - PR#602: don't use /tmp in chroot
 - PR#674: store git commit hash to build.source
