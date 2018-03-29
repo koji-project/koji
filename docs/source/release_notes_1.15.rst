@@ -1,6 +1,11 @@
 Koji 1.15 Release Notes
 =======================
 
+Updates
+-------
+
+- :doc:`Koji 1.15.1 <release_notes_1.15.1>` is a security update for Koji 1.15
+
 Migrating from the previous release
 -----------------------------------
 
