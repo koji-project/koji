@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.14.0
+Version: 1.14.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -480,6 +480,9 @@ fi
 %endif
 
 %changelog
+* Mon Apr  2 2018 Mike McLean <mikem at redhat.com> - 1.14.1-1
+- Backport fix for CVE-2018-1002150
+
 * Mon Sep 25 2017 Mike McLean <mikem at redhat.com> - 1.14.0-1
 - PR#597: use_old_ssl is deprecated
 - PR#591: Normalize paths for scms
