@@ -25,7 +25,7 @@
 try:
     import krbV
 except ImportError:  # pragma: no cover
-    pass
+    krbV = None
 import koji
 import ConfigParser
 import fnmatch
@@ -320,7 +320,7 @@ def activate_session(session):
     elif options.user:
         #authenticate using user/password
         session.login()
-    elif 'krbV' in sys.modules:
+    elif krbV:
         try:
             if options.keytab and options.principal:
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
