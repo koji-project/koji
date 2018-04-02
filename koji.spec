@@ -15,7 +15,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.12.0
+Version: 1.12.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -352,6 +352,9 @@ fi
 %endif
 
 %changelog
+* Mon Apr  2 2018 Mike McLean <mikem at redhat.com> - 1.12.1-1
+- Backport fix for CVE-2018-1002150
+
 * Tue Apr 18 2017 Mike McLean <mikem at redhat.com> - 1.12.0-1
 - PR#373 backward-compatible try/except
 - PR#365 handle buildroots with state=None
