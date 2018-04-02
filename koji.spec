@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.13.0
+Version: 1.13.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # koji.ssl libs (from plague) are GPLv2+
@@ -472,6 +472,9 @@ fi
 %endif
 
 %changelog
+* Mon Apr  2 2018 Mike McLean <mikem at redhat.com> - 1.13.1-1
+- Backport fix for CVE-2018-1002150
+
 * Fri Jun 30 2017 Mike McLean <mikem at redhat.com> - 1.13.0-1
 - PR#496 Makefile/spec fixes for building on el6
 - PR#491 epel-compatible macro in spec
