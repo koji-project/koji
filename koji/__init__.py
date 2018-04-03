@@ -2331,7 +2331,19 @@ class ClientSession(object):
         """Forget session information, but do not close the session
 
         This is intended to be used after a fork to prevent the subprocess
-        from affecting the session accidentally."""
+        from affecting the session accidentally.
+
+        Unfortunately the term session is overloaded. We forget:
+          - the login session
+          - the underlying python-requests session
+
+        But the ClientSession instance (i.e. self) persists
+        """
+
+        # forget our requests session
+        self.new_session()
+
+        # forget our login session, if any
         if not self.logged_in:
             return
         self.setSession(None)
