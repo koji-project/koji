@@ -364,6 +364,7 @@ def handle_block_pkg(goptions, session, args):
     usage = _("usage: %prog block-pkg [options] tag package [package2 ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--force", action='store_true', default=False, help=_("Override blocks and owner if necessary"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
@@ -386,7 +387,7 @@ def handle_block_pkg(goptions, session, args):
         return ret
     session.multicall = True
     for package in args[1:]:
-        session.packageListBlock(tag, package)
+        session.packageListBlock(tag, package, force=options.force)
     session.multiCall(strict=True)
 
 
