@@ -1417,7 +1417,7 @@ class BuildMavenTask(BaseBuildTask):
         repo_info = self.session.repoInfo(repo_id, strict=True)
         event_id = repo_info['create_event']
 
-        br_arch = self.find_arch('noarch', self.session.host.getHost(), session.getBuildConfig(build_tag['id'], event=event_id))
+        br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
         maven_opts = opts.get('jvm_options')
         if not maven_opts:
             maven_opts = []
