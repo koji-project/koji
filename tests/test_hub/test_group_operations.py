@@ -201,3 +201,41 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(actual, q)
         self.assertEqual(len(self.updates), 0)
         self.assertEqual(len(self.inserts), 0)
+
+    def test_readTagGroups_empty(self):
+        self.get_tag_groups.return_value = {}
+
+        r = kojihub.readTagGroups('tag')
+        self.assertEqual(r, [])
+
+        self.get_tag_groups.assert_called_once_with('tag', None, True, True, True)
+
+    def test_readTagGroups(self):
+        group = {
+            'name': 'a',
+            'packagelist': {},
+            'grouplist': {},
+            'blocked': False,
+        }
+        self.get_tag_groups.return_value = {1: group}
+
+        r = kojihub.readTagGroups('tag')
+        self.assertEqual(r, [{'name': 'a', 'packagelist': [], 'grouplist': [], 'blocked': False}])
+
+    def test_readTagGroups_blocked(self):
+        group = {
+            'name': 'a',
+            'packagelist': {},
+            'grouplist': {},
+            'blocked': True,
+        }
+        self.get_tag_groups.return_value = {1: group.copy()}
+
+        # without blocked
+        r = kojihub.readTagGroups('tag')
+        self.assertEqual(r, [])
+
+        # with blocked
+        self.get_tag_groups.return_value = {1: group.copy()}
+        r = kojihub.readTagGroups('tag', incl_blocked=True)
+        self.assertEqual(r, [{'name': 'a', 'packagelist': [], 'grouplist': [], 'blocked': True}])

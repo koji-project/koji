@@ -2013,20 +2013,32 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
 
     return groups
 
-def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True):
+def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True, incl_blocked=False):
     """Return group data for the tag with blocked entries removed
 
     Also scrubs data into an xmlrpc-safe format (no integer keys)
+
+    Blocked packages/groups can alternatively also be listed if incl_blocked is set to True
     """
     groups = get_tag_groups(tag, event, inherit, incl_pkgs, incl_reqs)
-    for group in groups.values():
+    groups = list(groups.values())
+    for group in groups:
         #filter blocked entries and collapse to a list
         if 'packagelist' in group:
-            group['packagelist'] = [x for x in group['packagelist'].values() if not x['blocked']]
+            if incl_blocked:
+                group['packagelist'] = list(group['packagelist'].values())
+            else:
+                group['packagelist'] = [x for x in group['packagelist'].values() if not x['blocked']]
         if 'grouplist' in group:
-            group['grouplist'] = [x for x in group['grouplist'].values() if not x['blocked']]
+            if incl_blocked:
+                group['grouplist'] = list(group['grouplist'].values())
+            else:
+                group['grouplist'] = [x for x in group['grouplist'].values() if not x['blocked']]
     #filter blocked entries and collapse to a list
-    return [x for x in groups.values() if not x['blocked']]
+    if incl_blocked:
+        return groups
+    else:
+        return [x for x in groups if not x['blocked']]
 
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')
