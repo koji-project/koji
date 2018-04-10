@@ -54,3 +54,4 @@ Related Software
 * [Mash](https://pagure.io/mash)
 * [Koji Tools](https://pagure.io/koji-tools): Various utilities for Koji
 * [Kojiji](https://github.com/release-engineering/kojiji): Koji Java Interface
+* [txkoji](https://github.com/ktdreyer/txkoji): Async interface to Koji, using Twisted
