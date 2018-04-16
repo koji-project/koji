@@ -307,7 +307,7 @@ Requires(postun): systemd
 %description utils
 Utilities for the Koji system
 
-%package web
+%package -n python2-%{name}-web
 Summary: Koji Web UI
 Group: Applications/Internet
 License: LGPLv2
@@ -320,13 +320,31 @@ Requires: mod_auth_kerb
 Requires: python-krbV >= 1.0.13
 %endif
 Requires: python-psycopg2
-Requires: python-cheetah
-Requires: %{name} = %{version}-%{release}
+Requires: python2-cheetah
 # we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 
-%description web
+%description -n python2-%{name}-web
 koji-web is a web UI to the Koji system.
+
+%if 0%{with python3}
+%package -n python%{python3_pkgversion}-%{name}-web
+Summary: Koji Web UI
+Group: Applications/Internet
+License: LGPLv2
+Requires: httpd
+Requires: python%{python3_pkgversion}-mod_wsgi
+Requires: mod_auth_gssapi
+Requires: python%{python3_pkgversion}-psycopg2
+Requires: python%{python3_pkgversion}-cheetah
+# we need the python3 lib here
+Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
+# for now it has to be in conflict with python2 hub
+Conflicts: koji-hub
+
+%description -n python%{python3_pkgversion}-%{name}-web
+koji-web is a web UI to the Koji system.
+%endif
 
 %prep
 %setup -q
@@ -443,13 +461,23 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
 
-%files web
+%files -n python2-%{name}-web
 %defattr(-,root,root)
 %{_datadir}/koji-web
 %dir /etc/kojiweb
 %config(noreplace) /etc/kojiweb/web.conf
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
 %dir /etc/kojiweb/web.conf.d
+
+%if 0%{with python3}
+%files -n python%{python3_pkgversion}-%{name}-web
+%defattr(-,root,root)
+%{_datadir}/koji-web
+%dir /etc/kojiweb
+%config(noreplace) /etc/kojiweb/web.conf
+%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
+%dir /etc/kojiweb/web.conf.d
+%endif
 
 %files builder
 %defattr(-,root,root)
