@@ -4,7 +4,7 @@
 #include "includes/header.chtml"
 
   <div class="pageHeader">$welcomeMessage</div>
-  
+
   <div class="dataHeader noPaginate" id="buildlist">#if $user then 'Your ' else ''#Recent Builds</div>
   <table class="data-list">
     <tr class="list-header">
@@ -36,7 +36,7 @@
   </table>
 
   <br/>
-  
+
   <div class="dataHeader noPaginate" id="tasklist">#if $user then 'Your ' else ''#Recent Tasks</div>
   <table class="data-list">
     <tr class="list-header">

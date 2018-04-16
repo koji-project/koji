@@ -43,7 +43,7 @@ from six.moves import range
 import six
 
 # Convenience definition of a commonly-used sort function
-_sortbyname = kojiweb.util.sortByKeyFunc('name')
+_sortbyname = lambda x: x['name']
 
 #loggers
 authlogger = logging.getLogger('koji.auth')
@@ -304,7 +304,7 @@ def index(environ, packageOrder='package_name', packageStart=None):
                                      start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
 
         notifs = server.getBuildNotifications(user['id'])
-        notifs.sort(kojiweb.util.sortByKeyFunc('id'))
+        notifs.sort(key=lambda x: x['id'])
         # XXX Make this a multicall
         for notif in notifs:
             notif['package'] = None
@@ -898,9 +898,9 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
         tagsByChild[child_id].append(child_id)
 
     srcTargets = server.getBuildTargets(buildTagID=tag['id'])
-    srcTargets.sort(_sortbyname)
+    srcTargets.sort(key=_sortbyname)
     destTargets = server.getBuildTargets(destTagID=tag['id'])
-    destTargets.sort(_sortbyname)
+    destTargets.sort(key=_sortbyname)
 
     values['tag'] = tag
     values['tagID'] = tag['id']
@@ -1108,9 +1108,9 @@ def buildinfo(environ, buildID):
     values['title'] = koji.buildLabel(build) + ' | Build Info'
 
     tags = server.listTags(build['id'])
-    tags.sort(_sortbyname)
+    tags.sort(key=_sortbyname)
     rpms = server.listBuildRPMs(build['id'])
-    rpms.sort(_sortbyname)
+    rpms.sort(key=_sortbyname)
     typeinfo = server.getBuildType(buildID)
     archiveIndex = {}
     for btype in typeinfo:
@@ -1365,23 +1365,23 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
     if rpm['external_repo_id'] == 0:
         values['provides'] = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
-        values['provides'].sort(_sortbyname)
+        values['provides'].sort(key=_sortbyname)
         values['obsoletes'] = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
-        values['obsoletes'].sort(_sortbyname)
+        values['obsoletes'].sort(key=_sortbyname)
         values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
-        values['conflicts'].sort(_sortbyname)
+        values['conflicts'].sort(key=_sortbyname)
         values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
-        values['requires'].sort(_sortbyname)
+        values['requires'].sort(key=_sortbyname)
         if koji.RPM_SUPPORTS_OPTIONAL_DEPS:
             values['optional_deps'] = True
             values['recommends'] = server.getRPMDeps(rpm['id'], koji.DEP_RECOMMEND)
-            values['recommends'].sort(_sortbyname)
+            values['recommends'].sort(key=_sortbyname)
             values['suggests'] = server.getRPMDeps(rpm['id'], koji.DEP_SUGGEST)
-            values['suggests'].sort(_sortbyname)
+            values['suggests'].sort(key=_sortbyname)
             values['supplements'] = server.getRPMDeps(rpm['id'], koji.DEP_SUPPLEMENT)
-            values['supplements'].sort(_sortbyname)
+            values['supplements'].sort(key=_sortbyname)
             values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
-            values['enhances'].sort(_sortbyname)
+            values['enhances'].sort(key=_sortbyname)
         else:
             values['optional_deps'] = False
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description', 'license'])
@@ -1544,10 +1544,10 @@ def hostinfo(environ, hostID=None, userID=None):
     values['title'] = host['name'] + ' | Host Info'
 
     channels = server.listChannels(host['id'])
-    channels.sort(_sortbyname)
+    channels.sort(key=_sortbyname)
     buildroots = server.listBuildroots(hostID=host['id'],
                                        state=[state[1] for state in koji.BR_STATES.items() if state[0] != 'EXPIRED'])
-    buildroots.sort(kojiweb.util.sortByKeyFunc('-create_event_time'))
+    buildroots.sort(key=lambda x: x['create_event_time'], reverse=True)
 
     values['host'] = host
     values['channels'] = channels
@@ -1603,7 +1603,7 @@ def hostedit(environ, hostID):
 
         values['host'] = host
         allChannels = server.listChannels()
-        allChannels.sort(_sortbyname)
+        allChannels.sort(key=_sortbyname)
         values['allChannels'] = allChannels
         values['hostChannels'] = server.listChannels(hostID=host['id'])
 
@@ -1646,7 +1646,7 @@ def channelinfo(environ, channelID):
                              queryOpts={'countOnly': True})
 
     hosts = server.listHosts(channelID=channelID)
-    hosts.sort(_sortbyname)
+    hosts.sort(key=_sortbyname)
 
     values['channel'] = channel
     values['hosts'] = hosts
@@ -1843,7 +1843,7 @@ def buildtargetedit(environ, targetID):
     else:
         values = _initValues(environ, 'Edit Build Target', 'buildtargets')
         tags = server.listTags()
-        tags.sort(_sortbyname)
+        tags.sort(key=_sortbyname)
 
         values['target'] = target
         values['tags'] = tags
@@ -1877,7 +1877,7 @@ def buildtargetcreate(environ):
         values = _initValues(environ, 'Add Build Target', 'builtargets')
 
         tags = server.listTags()
-        tags.sort(_sortbyname)
+        tags.sort(key=_sortbyname)
 
         values['target'] = None
         values['tags'] = tags
@@ -2163,7 +2163,7 @@ def recentbuilds(environ, user=None, tag=None, package=None):
     if tagObj != None:
         builds = server.listTagged(tagObj['id'], inherit=True, package=(packageObj and packageObj['name'] or None),
                                    owner=(userObj and userObj['name'] or None))
-        builds.sort(kojiweb.util.sortByKeyFunc('-completion_time', noneGreatest=True))
+        builds.sort(key=kojiweb.util.sortByKeyFuncNoneGreatest('completion_time'), reverse=True)
         builds = builds[:20]
     else:
         kwargs = {}

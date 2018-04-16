@@ -184,7 +184,7 @@ class Dispatcher(object):
                 name = 'koji' + name
             elif not name.startswith('koji'):
                 name = 'koji.' + name
-            level_code = logging._levelNames[level]
+            level_code = logging.getLevelName(level)
             logging.getLogger(name).setLevel(level_code)
         logger = logging.getLogger("koji")
         # if KojiDebug is set, force main log level to DEBUG
@@ -350,7 +350,15 @@ class Dispatcher(object):
             ('Content-Length', str(len(result))),
             ('Content-Type', 'text/html'),
         ]
-        return [result], headers
+        return self._tobytes(result), headers
+
+    def _tobytes(self, result):
+        if isinstance(result, six.string_types):
+            if six.PY2:
+                result = [result]
+            else:
+                result = [bytes(result, encoding='utf-8')]
+        return result
 
     def handle_request(self, environ, start_response):
         if self.startup_error:
@@ -405,9 +413,7 @@ class Dispatcher(object):
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)
-        if isinstance(result, six.string_types):
-            result = [result]
-        return result
+        return self._tobytes(result)
 
     def application(self, environ, start_response):
         """wsgi handler"""
