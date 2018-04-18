@@ -4910,7 +4910,8 @@ def new_build(data):
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
+    new_binfo = get_build(data['id'], strict=True)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=None, new=data['state'], info=new_binfo)
     #return build_id
     return data['id']
 
@@ -4974,8 +4975,9 @@ def recycle_build(old, data):
     builddir = koji.pathinfo.build(data)
     if os.path.exists(builddir):
         koji.util.rmtree(builddir)
+    buildinfo = get_build(data['id'], strict=True)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
-                old=old['state'], new=data['state'], info=data)
+                old=old['state'], new=data['state'], info=buildinfo)
 
 
 def check_noarch_rpms(basepath, rpms):

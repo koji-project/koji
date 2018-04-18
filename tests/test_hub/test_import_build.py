@@ -242,8 +242,9 @@ class TestImportBuild(unittest.TestCase):
             'id': 12345,
         }
         # get_build called once to check for existing,
-        # then later to get the build info
-        get_build.side_effect = [None, binfo]
+        # if it doesn't exist, called another time after creating
+        # then 3rd later to get the build info
+        get_build.side_effect = [None, binfo, binfo]
 
         kojihub.import_build(self.src_filename, [self.filename])
 
