@@ -96,7 +96,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             if not path.startswith('/'):
                 raise koji.GenericError("bad config: all paths (default_mounts, safe_roots, path_subs) needs to be absolute: %s" % path)
 
-    def handler(self, root, arch, command, keep=False, packages=[], mounts=[], repo_id=None, skip_setarch=False, weight=None, upload_logs=None, new_chroot=False):
+    def handler(self, root, arch, command, keep=False, packages=[], mounts=[], repo_id=None, skip_setarch=False, weight=None, upload_logs=None, new_chroot=None):
         """Create a buildroot and run a command (as root) inside of it
 
         Command may be a string or a list.
@@ -193,6 +193,8 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             mock_cmd = ['chroot']
             if new_chroot:
                 mock_cmd.append('--new-chroot')
+            elif new_chroot is False: # None -> no option added
+                mock_cmd.append('--old-chroot')
             if skip_setarch:
                 #we can't really skip it, but we can set it to the current one instead of of the chroot one
                 myarch = platform.uname()[5]
