@@ -4293,8 +4293,8 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
     size: uncompressed size of the file (integer)
 
     If strict is True, raise GenericError if:
-      - build btype of this archive belong to is not maven, win or image
-      - archive_type is not that we are able to expand
+      - the btype of this archive is not maven, win or image
+      - archive_type is not one that we are able to expand
 
     Regardless of strict, an error will be raised if the archive_id is invalid
     """
