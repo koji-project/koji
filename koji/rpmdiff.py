@@ -83,7 +83,8 @@ class Rpmdiff:
         for tag in self.ignore:
             for entry in FILEIDX:
                 if tag == entry[0]:
-                    entry[1] = None
+                    # store marked position for erasing data
+                    entry[1] = -entry[1]
                     break
 
         old = self.__load_pkg(old)
@@ -131,10 +132,15 @@ class Rpmdiff:
             else:
                 format = ''
                 for entry in FILEIDX:
-                    if entry[1] != None and \
+                    if entry[1] >= 0 and \
                             old_file[entry[1]] != new_file[entry[1]]:
                         format = format + entry[0]
                         diff = 1
+                    elif entry[1] < 0:
+                        # erase fields which are ignored
+                        old_file[-entry[1]] = None
+                        new_file[-entry[1]] = None
+                        format = format + '.'
                     else:
                         format = format + '.'
                 if diff:
@@ -213,7 +219,7 @@ class Rpmdiff:
     def __fileIteratorToDict(self, fi):
         result = {}
         for filedata in fi:
-            result[filedata[0]] = filedata[1:]
+            result[filedata[0]] = list(filedata[1:])
         return result
 
     def kojihash(self, new=False):
