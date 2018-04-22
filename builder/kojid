@@ -276,6 +276,7 @@ class BuildRoot(object):
             opts['module_hotfixes'] = self.config['extra']['mock.yum.module_hotfixes']
         if self.internal_dev_setup is not None:
             opts['internal_dev_setup'] = bool(self.internal_dev_setup)
+        opts['tag_macros'] = dict([ _ for _ in self.config['extra'].items() if _[0].startswith('%') ])
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
