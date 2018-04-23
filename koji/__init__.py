@@ -2522,7 +2522,7 @@ class ClientSession(object):
                     time.sleep(interval)
             #not reached
 
-    def multiCall(self, strict=False):
+    def multiCall(self, strict=False, batch=0):
         """Execute a multicall (multiple function calls passed to the server
         and executed at the same time, with results being returned in a batch).
         Before calling this method, the self.multicall field must have
@@ -2534,7 +2534,8 @@ class ClientSession(object):
         for each method added to the multicall, in the order it was added to the multicall.
         Each element of the list will be either a one-element list containing the result of the
         method call, or a map containing "faultCode" and "faultString" keys, describing the
-        error that occurred during the method call."""
+        error that occurred during the method call.
+        if batch is bigger than 0, calls will be separated into chunks of calls."""
         if not self.multicall:
             raise GenericError('ClientSession.multicall must be set to True before calling multiCall()')
         self.multicall = False
@@ -2543,7 +2544,16 @@ class ClientSession(object):
 
         calls = self._calls
         self._calls = []
-        ret = self._callMethod('multiCall', (calls,), {})
+        if batch > 0:
+            ret = []
+            callgrp = [calls[i:i + batch] for i in
+                       range(0, len(calls), batch)]
+            self.logger.debug("MultiCall with batch size %s, calls/groups(%s/%s)",
+                              batch, len(calls), len(callgrp))
+            for c in callgrp:
+                ret.extend(self._callMethod('multiCall', (c,), {}))
+        else:
+            ret = self._callMethod('multiCall', (calls,), {})
         if strict:
             #check for faults and raise first one
             for entry in ret:
