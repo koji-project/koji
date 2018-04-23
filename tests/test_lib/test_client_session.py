@@ -7,6 +7,7 @@ except ImportError:
     import unittest
 
 import koji
+from koji.xmlrpcplus import Fault
 
 
 class TestClientSession(unittest.TestCase):
@@ -170,3 +171,59 @@ class TestFastUpload(unittest.TestCase):
             kwargs = call[0][2]
             self.assertTrue('volume' in kwargs)
             self.assertEqual(kwargs['volume'], 'foobar')
+
+
+class TestMultiCall(unittest.TestCase):
+
+    def setUp(self):
+        self.ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        # mocks
+        self.ksession._sendCall = mock.MagicMock()
+
+    def tearDown(self):
+        del self.ksession
+
+    def test_multiCall_disable(self):
+        with self.assertRaises(koji.GenericError) as cm:
+            self.ksession.multiCall()
+        self.assertEqual(cm.exception.args[0],
+                         "ClientSession.multicall must be set to True"
+                         " before calling multiCall()")
+
+    def test_multiCall_empty(self):
+        self.ksession.multicall = True
+        ret = self.ksession.multiCall()
+        self.assertEqual([], ret)
+        self.ksession._sendCall.assert_not_called()
+
+    def test_multiCall_strict(self):
+        self.ksession._sendCall.return_value = [[], {'faultCode': 1000,
+                                               'faultString': 'msg'}]
+        self.ksession.multicall = True
+        self.ksession.methodA('a', 'b', c='c')
+        self.ksession.methodB(1, 2, 3)
+        with self.assertRaises(koji.GenericError):
+            self.ksession.multiCall(strict=True)
+
+    def test_multiCall_not_strict(self):
+        self.ksession._sendCall.return_value = [[], {'faultCode': 1000,
+                                                     'faultString': 'msg'}]
+        self.ksession.multicall = True
+        self.ksession.methodA('a', 'b', c='c')
+        self.ksession.methodB(1, 2, 3)
+        ret = self.ksession.multiCall()
+        self.assertFalse(self.ksession.multicall)
+        self.assertEqual([[], {'faultCode': 1000, 'faultString': 'msg'}], ret)
+
+    def test_multiCall_batch(self):
+        self.ksession._sendCall.side_effect = [[['a', 'b', 'c']],
+                                               [{'faultCode': 1000,
+                                                 'faultString': 'msg'}]]
+        self.ksession.multicall = True
+        self.ksession.methodA('a', 'b', c='c')
+        self.ksession.methodB(1, 2, 3)
+        ret = self.ksession.multiCall(batch=1)
+        self.assertFalse(self.ksession.multicall)
+        self.assertEqual(2, self.ksession._sendCall.call_count)
+        self.assertEqual([['a', 'b', 'c'],
+                          {'faultCode': 1000, 'faultString': 'msg'}], ret)
