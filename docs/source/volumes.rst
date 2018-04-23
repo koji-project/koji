@@ -48,16 +48,26 @@ If you are using the Koji python api, things should **just work**.
     >>> mykoji.pathinfo.build(binfo)
     '/mnt/koji/vol/vol3/packages/fake/1.0/21'
 
-If you are not using the Koji python api, then you may need to do a little
-work.
+If you are constructing these paths yourself, then you may need to do
+a little work.
 
-If you have build data from a Koji instance, then that data should include
-the volume. Hub calls that return build data include ``volume_name`` and
-``volume_id`` fields in their return.
+    * Look for volume information in build data. Hub calls that return build
+      data include ``volume_name`` and ``volume_id`` fields in their return.
+    * If the volume is ``DEFAULT``, then the path is the "normal" path.
+    * Otherwise, you need to insert ``/vol/<volume_name>`` after the
+      top directory (normally /mnt/koji).
 
-If the volume is ``DEFAULT``, then the path is the "normal" path. Otherwise,
-the ``/vol/<volume_name>/`` needs to be inserted after the top directory
-(normally /mnt/koji).
+
+Symlinks on default volume
+--------------------------
+
+For backwards compatibility, Koji maintains symlinks on the default volume
+for builds on other volumes.
+
+::
+
+    $ file /mnt/koji/packages/fake/1.0/21
+    /mnt/koji/packages/fake/1.0/21: symbolic link to ../../../vol/vol3/packages/fake/1.0/21
 
 
 Adding a new volume
