@@ -3701,6 +3701,42 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
         user['krb_principals'] = list_user_krb_principals(user['id'])
     return user
 
+def edit_user(userInfo, name=None, krb_principal=None):
+    """Edit information for an existing user.
+
+    userInfo specifies the user to edit
+    fields changes are provided as keyword arguments:
+        name: rename the user
+        krb_principal: change user's kerberos principal
+    """
+
+    context.session.assertPerm('admin')
+    _edit_user(userInfo, name=name, krb_principal=krb_principal)
+
+
+def _edit_user(userInfo, name=None, krb_principal=None):
+    """Edit information for an existing user."""
+    user = get_user(userInfo, strict=True)
+    if name and user['name'] != name:
+        # attempt to update user name
+        values = {
+            'name': name,
+            'userID': user['id']
+            }
+        q = """SELECT id FROM users WHERE name=%(name)s"""
+        id = _singleValue(q, values, strict=False)
+        if id is not None:
+            # new name is taken
+            raise koji.GenericError("Name %s already taken by user %s" % (name, id))
+        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
+        update.set(name=name)
+        update.execute()
+    if krb_principal and user['krb_principal'] != krb_principal:
+        # attempt to update kerberos principal
+        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
+        update.set(krb_principal=krb_principal)
+        update.execute()
+
 
 def list_user_krb_principals(user_info=None):
     """Return kerberos principal list of a user.
@@ -10942,6 +10978,7 @@ class RootExports(object):
         return pkgs.get(pkg_id, None)
 
     getUser = staticmethod(get_user)
+    editUser = staticmethod(edit_user)
 
     def grantPermission(self, userinfo, permission, create=False):
         """Grant a permission to a user"""
