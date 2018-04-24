@@ -1580,12 +1580,12 @@ def _grplist_add(taginfo, grpinfo, block, force, **opts):
     """grplist_add without permission check"""
     tag = get_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, create=True)
-    block = bool(block)
+    opts['blocked'] = bool(block)
     # check current group status (incl inheritance)
     groups = get_tag_groups(tag['id'], inherit=True, incl_pkgs=False, incl_reqs=False)
     previous = groups.get(group['id'], None)
     cfg_fields = ('exported', 'display_name', 'is_default', 'uservisible',
-                  'description', 'langonly', 'biarchonly',)
+                  'description', 'langonly', 'biarchonly', 'blocked')
     #prevent user-provided opts from doing anything strange
     opts = dslice(opts, cfg_fields, strict=False)
     if previous is not None:
@@ -1612,7 +1612,6 @@ def _grplist_add(taginfo, grpinfo, block, force, **opts):
     # XXX ^^^
     opts['tag_id'] = tag['id']
     opts['group_id'] = group['id']
-    opts['blocked'] = block
     #revoke old entry (if present)
     update = UpdateProcessor('group_config', values=opts,
                 clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s'])
