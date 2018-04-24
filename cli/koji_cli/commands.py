@@ -7164,7 +7164,7 @@ def handle_remove_notification(goptions, session, args):
 
     try:
         n_ids = [int(x) for x in args]
-    except ValueError as e:
+    except ValueError:
         parser.error(_("All notification ids has to be integers"))
 
     for n_id in n_ids:
@@ -7193,7 +7193,7 @@ def handle_edit_notification(goptions, session, args):
 
     try:
         n_id = int(args[0])
-    except ValueError as e:
+    except ValueError:
         parser.error(_("Notification ID has to be numeric"))
 
     if not options.package and not options.tag and options.success_only is None:
