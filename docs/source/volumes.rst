@@ -25,6 +25,51 @@ The expectation is that this directory will map to a different file system.
     | If ``koji-1.13.0-1`` is on the volume named "test", its path will be:
     | /mnt/koji/vol/test/packages/koji/1.13.0/1
 
+
+Constructing the path
+---------------------
+
+If you are using the Koji python api, things should **just work**.
+
+::
+
+    >>> import koji
+    >>> mykoji = koji.get_profile_module('mykoji')
+    >>> opts = mykoji.grab_session_options(mykoji.config)
+    >>> session = mykoji.ClientSession(mykoji.config.server, opts)
+    >>> binfo = session.getBuild('test-1-1')
+    >>> binfo['volume_name']
+    'DEFAULT'
+    >>> mykoji.pathinfo.build(binfo)
+    '/mnt/koji/packages/test/1/1'
+    >>> binfo = session.getBuild('fake-1.0-21')
+    >>> binfo['volume_name']
+    'vol3'
+    >>> mykoji.pathinfo.build(binfo)
+    '/mnt/koji/vol/vol3/packages/fake/1.0/21'
+
+If you are constructing these paths yourself, then you may need to do
+a little work.
+
+    * Look for volume information in build data. Hub calls that return build
+      data include ``volume_name`` and ``volume_id`` fields in their return.
+    * If the volume is ``DEFAULT``, then the path is the "normal" path.
+    * Otherwise, you need to insert ``/vol/<volume_name>`` after the
+      top directory (normally /mnt/koji).
+
+
+Symlinks on default volume
+--------------------------
+
+For backwards compatibility, Koji maintains symlinks on the default volume
+for builds on other volumes.
+
+::
+
+    $ file /mnt/koji/packages/fake/1.0/21
+    /mnt/koji/packages/fake/1.0/21: symbolic link to ../../../vol/vol3/packages/fake/1.0/21
+
+
 Adding a new volume
 -------------------
 
