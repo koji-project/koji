@@ -186,8 +186,6 @@ class Rpmdiff:
 
         o = zip(old[name], oldflags, old[name[:-1]+'VERSION'])
         n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
-        self.old_data[name] = sorted(o)
-        self.new_data[name] = sorted(n)
 
         if name == 'PROVIDES': # filter our self provide
             oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
@@ -196,6 +194,9 @@ class Rpmdiff:
                      "%s-%s" % (new['version'], new['release']))
             o = [entry for entry in o if entry != oldNV]
             n = [entry for entry in n if entry != newNV]
+
+        self.old_data[name] = sorted(o)
+        self.new_data[name] = sorted(n)
 
         for oldentry in o:
             if not oldentry in n:
