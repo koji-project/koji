@@ -2522,7 +2522,7 @@ class ClientSession(object):
                     time.sleep(interval)
             #not reached
 
-    def multiCall(self, strict=False, batch=0):
+    def multiCall(self, strict=False, batch=None):
         """Execute a multicall (multiple function calls passed to the server
         and executed at the same time, with results being returned in a batch).
         Before calling this method, the self.multicall field must have
@@ -2544,12 +2544,11 @@ class ClientSession(object):
 
         calls = self._calls
         self._calls = []
-        if batch > 0:
+        if batch is not None and batch > 0:
             ret = []
-            callgrp = [calls[i:i + batch] for i in
-                       range(0, len(calls), batch)]
-            self.logger.debug("MultiCall with batch size %s, calls/groups(%s/%s)",
-                              batch, len(calls), len(callgrp))
+            callgrp = (calls[i:i + batch] for i in range(0, len(calls), batch))
+            self.logger.debug("MultiCall with batch size %i, calls/groups(%i/%i)",
+                              batch, len(calls), round(len(calls) / batch))
             for c in callgrp:
                 ret.extend(self._callMethod('multiCall', (c,), {}))
         else:
