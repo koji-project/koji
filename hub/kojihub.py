@@ -1283,7 +1283,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
             ]
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
-    clauses = [eventCondition(event), 'tag_id=%(tagid)s']
+    clauses = [eventCondition(event, 'tag_listing'), 'tag_id=%(tagid)s']
     data = {}  #tagid added later
     if package:
         joins.append('build ON rpminfo.build_id = build.id')
