@@ -12680,12 +12680,14 @@ class HostExports(object):
         # get rpms
         build_dirs = {}
         rpmdata = {}
+        rpm_check_keys = ['name', 'version', 'release', 'arch', 'epoch',
+                'size', 'payloadhash', 'build_id']
         for bnp in kojipkgs:
             rpminfo = kojipkgs[bnp]
             rpm_id = rpminfo['id']
             sigkey = rpminfo['sigkey']
             _rpminfo = get_rpm(rpm_id, strict=True)
-            for key in _rpminfo:
+            for key in rpm_check_keys:
                 if key not in rpminfo or rpminfo[key] != _rpminfo[key]:
                     raise koji.GenericError(
                             'kojipkgs entry does not match db: file %s, key %s'
