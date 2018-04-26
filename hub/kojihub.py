@@ -12633,7 +12633,7 @@ class HostExports(object):
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
 
-    def distRepoMove(self, repo_id, uploadpath, files, arch, sigmap):
+    def distRepoMove(self, repo_id, uploadpath, files, arch):
         """
         Move one arch of a dist repo into its final location
 
@@ -12644,13 +12644,10 @@ class HostExports(object):
         uploadpath - where the uploaded files are
         files - a list of the uploaded file names
         arch - the arch of the repo
-        sigmap - a list of [rpm_id, sig] pairs
 
-        The rpms from sigmap should match the contents of the uploaded pkglist
-        file.
-
-        In sigmap, use sig=None to use the primary copy of the rpm instead of a
-        signed copy.
+        The uploaded files should include:
+            - kojipkgs: json file with information about the component rpms
+            - repo metadata files
         """
         host = Host()
         host.verify()
@@ -12671,43 +12668,28 @@ class HostExports(object):
         with open(fn) as fp:
             kojipkgs = json.load(fp)
 
-        # Figure out subrepos
-        subrepos = set()
-        for bnp in kojipkgs:
-            rpminfo = kojipkgs[bnp]
-            subrepo = rpminfo.get('_subrepo')
-            if subrepo:
-                subrepos.add(subrepo)
-
         # Figure out where to send the uploaded files
         file_moves = []
-        datadir = "%s/repodata" % archdir
-        for fn in files:
-            src = "%s/%s/%s" % (workdir, uploadpath, fn)
-            if fn.endswith('.drpm'):
-                koji.ensuredir(os.path.join(archdir, 'drpms'))
-                dst = "%s/drpms/%s" % (archdir, fn)
-            elif fn.endswith('pkglist') or fn.endswith('kojipkgs'):
-                dst = '%s/%s' % (archdir, fn)
-            else:
-                dst = "%s/%s" % (datadir, fn)
+        for relpath in files:
+            src = "%s/%s/%s" % (workdir, uploadpath, relpath)
+            dst = "%s/%s" % (archdir, relpath)
             if not os.path.exists(src):
                 raise koji.GenericError("uploaded file missing: %s" % src)
             file_moves.append([src, dst])
 
-        dirnames = set([os.path.dirname(fm[1]) for fm in file_moves])
-        for dirname in dirnames:
-            koji.ensuredir(dirname)
-        for src, dst in file_moves:
-            safer_move(src, dst)
-
-        koji.ensuredir(datadir)
-
         # get rpms
         build_dirs = {}
         rpmdata = {}
-        for rpm_id, sigkey in sigmap:
-            rpminfo = get_rpm(rpm_id, strict=True)
+        for bnp in kojipkgs:
+            rpminfo = kojipkgs[bnp]
+            rpm_id = rpminfo['id']
+            sigkey = rpminfo['sigkey']
+            _rpminfo = get_rpm(rpm_id, strict=True)
+            for key in _rpminfo:
+                if key not in rpminfo or rpminfo[key] != _rpminfo[key]:
+                    raise koji.GenericError(
+                            'kojipkgs entry does not match db: file %s, key %s'
+                            % (bnp, key))
             if sigkey is None or sigkey == '':
                 relpath = koji.pathinfo.rpm(rpminfo)
             else:
@@ -12720,20 +12702,18 @@ class HostExports(object):
                 builddir = koji.pathinfo.build(binfo)
                 build_dirs[rpminfo['build_id']] = builddir
             rpminfo['_fullpath'] = os.path.join(builddir, relpath)
-            basename = os.path.basename(relpath)
-            rpmdata[basename] = rpminfo
+            rpmdata[bnp] = rpminfo
 
-        # sanity check
-        for fn in rpmdata:
-            if fn not in pkglist and fn not in debuglist:
-                raise koji.GenericError("No signature data for: %s" % fn)
-        for fn in pkglist.union(debuglist):
-            if fn  not in rpmdata:
-                raise koji.GenericError("RPM missing from pkglist: %s" % fn)
+        # move the uploaded files
+        dirnames = set([os.path.dirname(fm[1]) for fm in file_moves])
+        for dirname in dirnames:
+            koji.ensuredir(dirname)
+        for src, dst in file_moves:
+            safer_move(src, dst)
 
+        # hardlink or copy the rpms into the final repodir
+        # TODO: properly consider split-volume functionality
         for fn in rpmdata:
-            # hardlink or copy the rpms into the final repodir
-            # TODO: properly consider split-volume functionality
             rpminfo = rpmdata[fn]
             rpmpath = rpminfo['_fullpath']
             bnp = fn

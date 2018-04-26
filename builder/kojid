@@ -5160,9 +5160,9 @@ class NewDistRepoTask(BaseTaskHandler):
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
-                upload, files, sigmap = results[subtasks[arch]]
+                upload, files = results[subtasks[arch]]
                 self.session.host.distRepoMove(
-                    repo_id, upload, files, arch, sigmap)
+                    repo_id, upload, files, arch)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
@@ -5180,9 +5180,9 @@ class NewDistRepoTask(BaseTaskHandler):
                 # already moved above
                 continue
             #else
-            upload, files, sigmap = results[subtasks[arch]]
+            upload, files = results[subtasks[arch]]
             self.session.host.distRepoMove(
-                repo_id, upload, files, arch, sigmap)
+                repo_id, upload, files, arch)
         self.session.host.repoDone(repo_id, data, expire=False)
         return 'Dist repository #%s successfully generated' % repo_id
 
@@ -5223,10 +5223,8 @@ class createDistRepoTask(BaseTaskHandler):
 
         # set up our output dir
         self.repodir = '%s/repo' % self.workdir
+        self.repo_files = []
         koji.ensuredir(self.repodir)
-        self.outdir = self.repodir  # workaround create_local_repo use
-        datadir = '%s/repodata' % self.repodir
-        self.sigmap = {}
         self.subrepos = set()
 
         # gather oldpkgs data if delta option in use
@@ -5266,27 +5264,36 @@ class createDistRepoTask(BaseTaskHandler):
                     groupdata, oldpkgs=oldpkgs,
                     logname='createrepo_%s' % subrepo)
         if len(self.kojipkgs) == 0:
-            fo = file(os.path.join(datadir, "EMPTY_REPO"), 'w')
-            fo.write("This repo is empty because its tag has no content for this arch\n")
-            fo.close()
+            fn = os.path.join(self.repodir, "repodata", "EMPTY_REPO")
+            with open(fn, 'w') as fp:
+                fp.write("This repo is empty because its tag has no content "
+                         "for this arch\n")
 
         # upload repo files
-        files = ['pkglist', 'kojipkgs']
-        for subrepo in self.subrepos:
-            files.append('%s/pkglist' % subrepo)
-        for f in os.listdir(datadir):
+        for f in os.listdir('%s/repodata' % self.repodir):
             # repo metadata files
-            files.append(f)
-            self.session.uploadWrapper('%s/%s' % (datadir, f),
-                self.uploadpath, f)
+            self.upload_repo_file("repodata/%s" % f)
         if opts['delta']:
-            ddir = os.path.join(self.repodir, 'drpms')
-            for f in os.listdir(ddir):
-                files.append(f)
-                self.session.uploadWrapper('%s/%s' % (ddir, f),
-                    self.uploadpath, f)
+            for f in os.listdir('%s/drpms' % self.repodir):
+                self.upload_repo_file("drpms/%s" % f)
 
-        return [self.uploadpath, files, self.sigmap.items()]
+        return [self.uploadpath, self.repo_files]
+
+    def upload_repo_file(self, relpath):
+        """Upload a file from the repo
+
+        relpath should be relative to self.repodir
+        """
+        localpath = '%s/%s' % (self.repodir, relpath)
+        reldir = os.path.dirname(relpath)
+        if reldir:
+            uploadpath = "%s/%s" % (self.uploadpath, reldir)
+            fn = os.path.basename(relpath)
+        else:
+            uploadpath = self.uploadpath
+            fn = relpath
+        self.session.uploadWrapper(localpath, uploadpath, fn)
+        self.repo_files.append(relpath)
 
     def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None, logname=None):
         """Run createrepo
@@ -5452,8 +5459,6 @@ enabled=1
             rpminfo['_pkgpath'] = dep_path
             rpminfo['_multilib'] = True
             self.kojipkgs[bnp] = rpminfo
-            self.sigmap[rpminfo['id']] = rpminfo['sigkey']
-
 
     def pick_key(self, keys, avail_keys):
         best = None
@@ -5524,7 +5529,6 @@ enabled=1
                 # we'll raise an error below
             else:
                 bnp = os.path.basename(pkgpath)
-                self.sigmap[rpminfo['id']] = rpminfo['sigkey']
                 rpminfo['_pkgpath'] = pkgpath
                 kojipkgs[bnp] = rpminfo
         self.kojipkgs = kojipkgs
@@ -5605,12 +5609,9 @@ enabled=1
                     fo.write(line)
 
         # and upload too
-        self.session.uploadWrapper('%s/pkglist' % self.repodir,
-                    self.uploadpath, 'pkglist')
+        self.upload_repo_file('pkglist')
         for subrepo in subrepo_pkgs:
-            self.session.uploadWrapper(
-                    '%s/%s/pkglist' % (self.repodir, subrepo),
-                    '%s/%s' % (self.uploadpath, subrepo), 'pkglist')
+            self.upload_repo_file('%s/pkglist' % subrepo)
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
@@ -5620,8 +5621,7 @@ enabled=1
         finally:
             datafile.close()
         # and upload too
-        self.session.uploadWrapper(filename, self.uploadpath, 'kojipkgs')
-
+        self.upload_repo_file('kojipkgs')
 
 
 class WaitrepoTask(BaseTaskHandler):
