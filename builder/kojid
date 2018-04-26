@@ -5271,8 +5271,10 @@ class createDistRepoTask(BaseTaskHandler):
 
         # upload repo files
         for f in os.listdir('%s/repodata' % self.repodir):
-            # repo metadata files
             self.upload_repo_file("repodata/%s" % f)
+        for subrepo in self.subrepos:
+            for f in os.listdir('%s/%s/repodata' % (self.repodir, subrepo)):
+                self.upload_repo_file("%s/repodata/%s" % (subrepo, f))
         if opts['delta']:
             for f in os.listdir('%s/drpms' % self.repodir):
                 self.upload_repo_file("drpms/%s" % f)
