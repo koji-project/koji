@@ -12574,14 +12574,21 @@ class HostExports(object):
                 safer_move(filepath, dst)
 
     def repoDone(self, repo_id, data, expire=False):
-        """Move repo data into place, mark as ready, and expire earlier repos
+        """Finalize a repo
 
         repo_id: the id of the repo
-        data: a dictionary of the form { arch: (uploadpath, files), ...}
-        expire(optional): if set to true, mark the repo expired immediately*
+        data: a dictionary of repo files in the form:
+              { arch: [uploadpath, [file1, file2, ...]], ...}
+        expire: if set to true, mark the repo expired immediately [*]
 
-        If this is a dist repo, also hardlink the rpms in the final
-        directory.
+        Actions:
+        * Move uploaded repo files into place
+        * Mark repo ready
+        * Expire earlier repos
+        * Move/create 'latest' symlink
+
+        For dist repos, the move step is skipped (that is handled in
+        distRepoMove).
 
         * This is used when a repo from an older event is generated
         """
@@ -12637,8 +12644,8 @@ class HostExports(object):
         """
         Move one arch of a dist repo into its final location
 
-        Unlike normal repos (which are moved into place by repoDone), dist
-        repos have all their content linked (or copied) into place.
+        Unlike normal repos, dist repos have all their content linked (or
+        copied) into place.
 
         repo_id - the repo to move
         uploadpath - where the uploaded files are
