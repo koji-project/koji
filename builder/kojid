@@ -5160,9 +5160,8 @@ class NewDistRepoTask(BaseTaskHandler):
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
-                upload, files = results[subtasks[arch]]
-                self.session.host.distRepoMove(
-                    repo_id, upload, files, arch)
+                upload = results[subtasks[arch]]
+                self.session.host.distRepoMove(repo_id, upload, arch)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
@@ -5180,9 +5179,8 @@ class NewDistRepoTask(BaseTaskHandler):
                 # already moved above
                 continue
             #else
-            upload, files = results[subtasks[arch]]
-            self.session.host.distRepoMove(
-                repo_id, upload, files, arch)
+            upload = results[subtasks[arch]]
+            self.session.host.distRepoMove(repo_id, upload, arch)
         self.session.host.repoDone(repo_id, data, expire=False)
         return 'Dist repository #%s successfully generated' % repo_id
 
@@ -5270,23 +5268,18 @@ class createDistRepoTask(BaseTaskHandler):
                          "for this arch\n")
 
         # upload repo files
-        for f in os.listdir('%s/repodata' % self.repodir):
-            self.upload_repo_file("repodata/%s" % f)
-        for subrepo in self.subrepos:
-            for f in os.listdir('%s/%s/repodata' % (self.repodir, subrepo)):
-                self.upload_repo_file("%s/repodata/%s" % (subrepo, f))
-        if opts['delta']:
-            for f in os.listdir('%s/drpms' % self.repodir):
-                self.upload_repo_file("drpms/%s" % f)
+        self.upload_repo()
+        self.upload_repo_manifest()
 
-        return [self.uploadpath, self.repo_files]
+        return self.uploadpath
 
-    def upload_repo_file(self, relpath):
+    def upload_repo_file(self, relpath, localpath=None, record=True):
         """Upload a file from the repo
 
         relpath should be relative to self.repodir
         """
-        localpath = '%s/%s' % (self.repodir, relpath)
+        if localpath is None:
+            localpath = '%s/%s' % (self.repodir, relpath)
         reldir = os.path.dirname(relpath)
         if reldir:
             uploadpath = "%s/%s" % (self.uploadpath, reldir)
@@ -5295,7 +5288,29 @@ class createDistRepoTask(BaseTaskHandler):
             uploadpath = self.uploadpath
             fn = relpath
         self.session.uploadWrapper(localpath, uploadpath, fn)
-        self.repo_files.append(relpath)
+        if record:
+            self.repo_files.append(relpath)
+
+    def upload_repo(self):
+        """Traverse the repo and upload needed files
+
+        We omit the symlinks we made for the rpms
+        """
+        for dirpath, dirs, files in os.walk(self.repodir):
+            reldir = os.path.relpath(dirpath, self.repodir)
+            for filename in files:
+                path = "%s/%s" % (dirpath, filename)
+                if os.path.islink(path):
+                    continue
+                relpath = "%s/%s" % (reldir, filename)
+                self.upload_repo_file(relpath)
+
+    def upload_repo_manifest(self):
+        """Upload a list of the repo files we've uploaded"""
+        fn = '%s/repo_manifest' % self.workdir
+        with open(fn, 'w') as fp:
+            json.dump(self.repo_files, fp, indent=4)
+        self.session.uploadWrapper(fn, self.uploadpath)
 
     def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None, logname=None):
         """Run createrepo
@@ -5610,11 +5625,6 @@ enabled=1
                 for line in subrepo_pkgs[subrepo]:
                     fo.write(line)
 
-        # and upload too
-        self.upload_repo_file('pkglist')
-        for subrepo in subrepo_pkgs:
-            self.upload_repo_file('%s/pkglist' % subrepo)
-
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
         datafile = file(filename, 'w')
@@ -5622,8 +5632,6 @@ enabled=1
             json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
         finally:
             datafile.close()
-        # and upload too
-        self.upload_repo_file('kojipkgs')
 
 
 class WaitrepoTask(BaseTaskHandler):

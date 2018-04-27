@@ -12633,7 +12633,7 @@ class HostExports(object):
         koji.plugin.run_callbacks('postRepoDone', repo=rinfo, data=data, expire=expire)
 
 
-    def distRepoMove(self, repo_id, uploadpath, files, arch):
+    def distRepoMove(self, repo_id, uploadpath, arch):
         """
         Move one arch of a dist repo into its final location
 
@@ -12642,8 +12642,9 @@ class HostExports(object):
 
         repo_id - the repo to move
         uploadpath - where the uploaded files are
-        files - a list of the uploaded file names
         arch - the arch of the repo
+
+        uploadpath should contain a repo_manifest file
 
         The uploaded files should include:
             - kojipkgs: json file with information about the component rpms
@@ -12660,6 +12661,13 @@ class HostExports(object):
         repo_state = koji.REPO_STATES[rinfo['state']]
         if repo_state != 'INIT':
             raise koji.GenericError('Repo is in state: %s' % repo_state)
+
+        # read manifest
+        fn = '%s/%s/repo_manifest' % (workdir, uploadpath)
+        if not os.path.isfile(fn):
+            raise koji.GenericError('Missing repo manifest')
+        with open(fn) as fp:
+            files = json.load(fp)
 
         # Read package data
         fn = '%s/%s/kojipkgs' % (workdir, uploadpath)
