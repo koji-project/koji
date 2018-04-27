@@ -6925,7 +6925,7 @@ def handle_dist_repo(options, session, args):
             'or the name of a tag that has a dist repo. May be specified '
             'multiple times.'))
     parser.add_option('--event', type='int',
-        help=_('create a dist repository based on a Brew event'))
+        help=_('Use tag content at event'))
     parser.add_option('--non-latest', dest='latest', default=True,
         action='store_false', help='Include older builds, not just the latest')
     parser.add_option('--multilib', default=None, metavar="CONFIG",
