@@ -5273,13 +5273,13 @@ class createDistRepoTask(BaseTaskHandler):
 
         return self.uploadpath
 
-    def upload_repo_file(self, relpath, localpath=None, record=True):
+    def upload_repo_file(self, relpath):
         """Upload a file from the repo
 
         relpath should be relative to self.repodir
         """
-        if localpath is None:
-            localpath = '%s/%s' % (self.repodir, relpath)
+
+        localpath = '%s/%s' % (self.repodir, relpath)
         reldir = os.path.dirname(relpath)
         if reldir:
             uploadpath = "%s/%s" % (self.uploadpath, reldir)
@@ -5288,8 +5288,7 @@ class createDistRepoTask(BaseTaskHandler):
             uploadpath = self.uploadpath
             fn = relpath
         self.session.uploadWrapper(localpath, uploadpath, fn)
-        if record:
-            self.repo_files.append(relpath)
+        self.repo_files.append(relpath)
 
     def upload_repo(self):
         """Traverse the repo and upload needed files
