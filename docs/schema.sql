@@ -146,7 +146,7 @@ CREATE TABLE host (
 	user_id INTEGER NOT NULL REFERENCES users (id),
 	name VARCHAR(128) UNIQUE NOT NULL,
 	task_load FLOAT CHECK (NOT task_load < 0) NOT NULL DEFAULT 0.0,
-	ready BOOLEAN NOT NULL DEFAULT 'false',
+	ready BOOLEAN NOT NULL DEFAULT 'false'
 ) WITHOUT OIDS;
 
 CREATE TABLE host_config (
@@ -168,7 +168,7 @@ CREATE TABLE host_config (
 	PRIMARY KEY (create_event, host_id),
 	UNIQUE (host_id, active)
 ) WITHOUT OIDS;
-CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled)
+CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled);
 
 CREATE TABLE host_channels (
 	host_id INTEGER NOT NULL REFERENCES host(id),

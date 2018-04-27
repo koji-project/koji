@@ -25,7 +25,7 @@ CREATE TABLE host_config (
         PRIMARY KEY (create_event, host_id),
         UNIQUE (host_id, active)
 ) WITHOUT OIDS;
-CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled)
+CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled);
 
 -- copy starting data
 -- CREATE FUNCTION pg_temp.user() returns INTEGER as $$ select id from users where name='nobody' $$ language SQL;
@@ -46,7 +46,7 @@ ALTER TABLE host DROP COLUMN comment;
 ALTER TABLE host DROP COLUMN enabled;
 
 -- history for host_channels
-SELECT 'Adding versions to host_channels'
+SELECT 'Adding versions to host_channels';
 ALTER TABLE host_channels ADD COLUMN create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event();
 ALTER TABLE host_channels ADD COLUMN revoke_event INTEGER REFERENCES events(id);
 -- we need some default for alter table, but drop it after
