@@ -50,7 +50,7 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def test_enableHost_valid(self):
         kojihub.get_host = mock.MagicMock()
-        kojihub.get_host.return_value = {
+        hostinfo = {
             'id': 123,
             'user_id': 234,
             'name': 'hostname',
@@ -60,6 +60,7 @@ class TestSetHostEnabled(unittest.TestCase):
             'comment': 'comment',
             'enabled': False,
         }
+        kojihub.get_host.return_value = hostinfo
         self.context.event_id = 42
         self.context.session.user_id = 23
 
@@ -84,12 +85,14 @@ class TestSetHostEnabled(unittest.TestCase):
 
         # insert
         insert = self.inserts[0]
-        data = kojihub.get_host.return_value
+        data = hostinfo
         data['create_event'] = 42
         data['creator_id'] = 23
         data['enabled'] = True
         data['host_id'] = data['id']
         del data['id']
+        del data['name']
+        del data['user_id']
         rawdata = {}
         self.assertEqual(insert.table, 'host_config')
         self.assertEqual(insert.data, data)
@@ -99,7 +102,7 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def test_disableHost_valid(self):
         kojihub.get_host = mock.MagicMock()
-        kojihub.get_host.return_value = {
+        hostinfo = {
             'id': 123,
             'user_id': 234,
             'name': 'hostname',
@@ -109,6 +112,7 @@ class TestSetHostEnabled(unittest.TestCase):
             'comment': 'comment',
             'enabled': True,
         }
+        kojihub.get_host.return_value = hostinfo
         self.context.event_id = 42
         self.context.session.user_id = 23
 
@@ -133,12 +137,14 @@ class TestSetHostEnabled(unittest.TestCase):
 
         # insert
         insert = self.inserts[0]
-        data = kojihub.get_host.return_value
+        data = hostinfo
         data['create_event'] = 42
         data['creator_id'] = 23
         data['enabled'] = False
         data['host_id'] = data['id']
         del data['id']
+        del data['name']
+        del data['user_id']
         rawdata = {}
         self.assertEqual(insert.table, 'host_config')
         self.assertEqual(insert.data, data)
