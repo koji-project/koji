@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright (C) 2006 Mandriva; 2009-2014 Red Hat, Inc.
 # Authors: Frederic Lepied, Florian Festi
 #
@@ -20,12 +18,11 @@
 # This library and program is heavily based on rpmdiff from the rpmlint package
 # It was modified to be used as standalone library for the Koji project.
 
+import hashlib
+import json
 import rpm
 import os
 import itertools
-
-import sys, getopt
-
 
 class Rpmdiff:
 
@@ -77,6 +74,8 @@ class Rpmdiff:
     def __init__(self, old, new, ignore=None):
         self.result = []
         self.ignore = ignore
+        self.old_data = { 'tags': {}, 'ignore': ignore }
+        self.new_data = { 'tags': {}, 'ignore': ignore }
         if self.ignore is None:
             self.ignore = []
 
@@ -84,7 +83,8 @@ class Rpmdiff:
         for tag in self.ignore:
             for entry in FILEIDX:
                 if tag == entry[0]:
-                    entry[1] = None
+                    # store marked position for erasing data
+                    entry[1] = -entry[1]
                     break
 
         old = self.__load_pkg(old)
@@ -94,6 +94,8 @@ class Rpmdiff:
         for tag in self.TAGS:
             old_tag = old[tag]
             new_tag = new[tag]
+            self.old_data['tags'][tag] = old[tag]
+            self.new_data['tags'][tag] = new[tag]
             if old_tag != new_tag:
                 tagname = rpm.tagnames[tag]
                 if old_tag == None:
@@ -114,6 +116,8 @@ class Rpmdiff:
         files = list(set(itertools.chain(old_files_dict.iterkeys(),
                                          new_files_dict.iterkeys())))
         files.sort()
+        self.old_data['files'] = old_files_dict
+        self.new_data['files'] = new_files_dict
 
         for f in files:
             diff = 0
@@ -128,10 +132,15 @@ class Rpmdiff:
             else:
                 format = ''
                 for entry in FILEIDX:
-                    if entry[1] != None and \
+                    if entry[1] >= 0 and \
                             old_file[entry[1]] != new_file[entry[1]]:
                         format = format + entry[0]
                         diff = 1
+                    elif entry[1] < 0:
+                        # erase fields which are ignored
+                        old_file[-entry[1]] = None
+                        new_file[-entry[1]] = None
+                        format = format + '.'
                     else:
                         format = format + '.'
                 if diff:
@@ -186,6 +195,9 @@ class Rpmdiff:
             o = [entry for entry in o if entry != oldNV]
             n = [entry for entry in n if entry != newNV]
 
+        self.old_data[name] = sorted(o)
+        self.new_data[name] = sorted(n)
+
         for oldentry in o:
             if not oldentry in n:
                 if name == 'REQUIRES' and oldentry[1] & self.PREREQ_FLAG:
@@ -208,41 +220,16 @@ class Rpmdiff:
     def __fileIteratorToDict(self, fi):
         result = {}
         for filedata in fi:
-            result[filedata[0]] = filedata[1:]
+            result[filedata[0]] = list(filedata[1:])
         return result
 
-def _usage(exit=1):
-    print("Usage: %s [<options>] <old package> <new package>" % sys.argv[0])
-    print("Options:")
-    print("  -h, --help            Output this message and exit")
-    print("  -i, --ignore          Tag to ignore when calculating differences")
-    print("                          (may be used multiple times)")
-    print("                        Valid values are: SM5DNLVUGFT")
-    sys.exit(exit)
-
-def main():
-
-    ignore_tags = []
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hi:", ["help", "ignore="])
-    except getopt.GetoptError, e:
-        print("Error: %s" % e)
-        _usage()
-
-    for option, argument in opts:
-        if option in ("-h", "--help"):
-            _usage(0)
-        if option in ("-i", "--ignore"):
-            ignore_tags.append(argument)
-
-    if len(args) != 2:
-        _usage()
-
-    d = Rpmdiff(args[0], args[1], ignore=ignore_tags)
-    print(d.textdiff())
-    sys.exit(int(d.differs()))
-
-if __name__ == '__main__':
-    main()
-
-# rpmdiff ends here
+    def kojihash(self, new=False):
+        """return hashed data for use in koji"""
+        if new:
+            data = self.new_data
+        else:
+            data = self.old_data
+        if not data:
+            raise ValueError("rpm header data are empty")
+        s = json.dumps(data, sort_keys=True)
+        return hashlib.sha256(s).hexdigest()

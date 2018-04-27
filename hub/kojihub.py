@@ -24,6 +24,7 @@
 
 import base64
 import calendar
+import koji.rpmdiff
 import datetime
 import errno
 import fcntl
@@ -35,7 +36,6 @@ import os
 import re
 import shutil
 import stat
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -60,7 +60,6 @@ from koji.util import md5_constructor
 from koji.util import multi_fnmatch
 from koji.util import safer_move
 from koji.util import sha1_constructor
-
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):
@@ -5002,7 +5001,7 @@ def recycle_build(old, data):
                 old=old['state'], new=data['state'], info=buildinfo)
 
 
-def check_noarch_rpms(basepath, rpms):
+def check_noarch_rpms(basepath, rpms, logs=None):
     """
     If rpms contains any noarch rpms with identical names,
     run rpmdiff against the duplicate rpms.
@@ -5011,6 +5010,8 @@ def check_noarch_rpms(basepath, rpms):
     """
     result = []
     noarch_rpms = {}
+    if logs is None:
+        logs = {}
     for relpath in rpms:
         if relpath.endswith('.noarch.rpm'):
             filename = os.path.basename(relpath)
@@ -5024,8 +5025,18 @@ def check_noarch_rpms(basepath, rpms):
         else:
             result.append(relpath)
 
+    hashes = {}
+    for arch in logs:
+        for log in logs[arch]:
+            if os.path.basename(log) == 'noarch_rpmdiff.json':
+                task_hash = json.load(open(os.path.join(basepath, log), 'rt'))
+                for task_id in task_hash:
+                    hashes[task_id] = task_hash[task_id]
+
     for noarch_list in noarch_rpms.values():
-        rpmdiff(basepath, noarch_list)
+        if len(noarch_list) < 2:
+            continue
+        rpmdiff(basepath, noarch_list, hashes=hashes)
 
     return result
 
@@ -5051,7 +5062,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         if not os.path.exists(fn):
             raise koji.GenericError("no such file: %s" % fn)
 
-    rpms = check_noarch_rpms(uploadpath, rpms)
+    rpms = check_noarch_rpms(uploadpath, rpms, logs=logs)
 
     #verify buildroot ids from brmap
     found = {}
@@ -8349,30 +8360,30 @@ def assert_policy(name, data, default='deny'):
     """
     check_policy(name, data, default=default, strict=True)
 
-def rpmdiff(basepath, rpmlist):
+def rpmdiff(basepath, rpmlist, hashes):
     "Diff the first rpm in the list against the rest of the rpms."
     if len(rpmlist) < 2:
         return
     first_rpm = rpmlist[0]
+    task_id = first_rpm.split('/')[1]
+    first_hash = hashes.get(task_id, {}).get(os.path.basename(first_rpm), False)
     for other_rpm in rpmlist[1:]:
+        if first_hash:
+            task_id = other_rpm.split('/')[1]
+            other_hash = hashes[task_id][os.path.basename(other_rpm)]
+            if first_hash == other_hash:
+                logger.debug("Skipping noarch rpmdiff for %s vs %s" % (first_rpm, other_rpm))
+                continue
         # ignore differences in file size, md5sum, and mtime
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
-        args = ['/usr/libexec/koji-hub/rpmdiff',
-                '--ignore', 'S', '--ignore', '5',
-                '--ignore', 'T', '--ignore', 'N',
-                os.path.join(basepath, first_rpm),
-                os.path.join(basepath, other_rpm)]
-        proc = subprocess.Popen(args,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                close_fds=True)
-        output = proc.communicate()[0]
-        status = proc.wait()
-        if os.WIFSIGNALED(status) or \
-                (os.WEXITSTATUS(status) != 0):
+        d = koji.rpmdiff.Rpmdiff(os.path.join(basepath, first_rpm),
+            os.path.join(basepath, other_rpm), ignore='S5TN')
+        if d.differs():
             raise koji.BuildError(
                 'The following noarch package built differently on different architectures: %s\n'
-                'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), output))
+                'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), d.textdiff()))
+
 
 def importImageInternal(task_id, build_id, imgdata):
     """
@@ -11668,7 +11679,7 @@ class HostExports(object):
             if not os.path.exists(fn):
                 raise koji.GenericError("no such file: %s" % fn)
 
-        rpms = check_noarch_rpms(uploadpath, rpms)
+        rpms = check_noarch_rpms(uploadpath, rpms, logs=logs)
 
         #figure out storage location
         #  <scratchdir>/<username>/task_<id>
