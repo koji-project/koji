@@ -2038,7 +2038,8 @@ def set_host_enabled(hostname, enabled=True):
     update.make_revoke()
     update.execute()
 
-    insert = InsertProcessor('host_config', data=dslice(host, ('user_id', 'name', 'arches', 'capacity', 'description', 'comment', 'enabled')))
+    fields = ('arches', 'capacity', 'description', 'comment', 'enabled')
+    insert = InsertProcessor('host_config', data=dslice(host, fields))
     insert.set(host_id=host['id'], enabled=enabled)
     insert.make_create()
     insert.execute()
