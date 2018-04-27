@@ -5156,12 +5156,12 @@ class NewDistRepoTask(BaseTaskHandler):
                 method='createdistrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
         if len(subtasks) > 0 and task_opts['multilib']:
-            results = self.wait(subtasks.values(), all=True, failany=True)
+            self.wait(subtasks.values(), all=True, failany=True)
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
-                upload = results[subtasks[arch]]
-                self.session.host.distRepoMove(repo_id, upload, arch)
+                upload_dir = koji.pathinfo.taskrelpath(subtasks[arch])
+                self.session.host.distRepoMove(repo_id, upload_dir, arch)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
@@ -5170,18 +5170,14 @@ class NewDistRepoTask(BaseTaskHandler):
                     method='createdistrepo', arglist=arglist, label=arch,
                     parent=self.id, arch='noarch')
         # wait for 64-bit subtasks to finish
-        data = {}
-        results = self.wait(subtasks.values(), all=True, failany=True)
+        self.wait(subtasks.values(), all=True, failany=True)
         for (arch, task_id) in subtasks.iteritems():
-            data[arch] = results[task_id]
-            self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
             if task_opts['multilib'] and arch in arch32s:
                 # already moved above
                 continue
-            #else
-            upload = results[subtasks[arch]]
-            self.session.host.distRepoMove(repo_id, upload, arch)
-        self.session.host.repoDone(repo_id, data, expire=False)
+            upload_dir = koji.pathinfo.taskrelpath(subtasks[arch])
+            self.session.host.distRepoMove(repo_id, upload_dir, arch)
+        self.session.host.repoDone(repo_id, {}, expire=False)
         return 'Dist repository #%s successfully generated' % repo_id
 
 
@@ -5270,8 +5266,6 @@ class createDistRepoTask(BaseTaskHandler):
         # upload repo files
         self.upload_repo()
         self.upload_repo_manifest()
-
-        return self.uploadpath
 
     def upload_repo_file(self, relpath):
         """Upload a file from the repo
