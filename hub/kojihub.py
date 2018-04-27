@@ -6719,6 +6719,18 @@ def query_history(tables=None, **kwargs):
                     break
                 data['build_id'] = get_build(value, strict=True)['id']
                 clauses.append("build.id = %(build_id)i")
+            elif arg == 'host':
+                if 'host' not in joined:
+                    skip = True
+                    break
+                data['host_id'] = get_id('host', value, strict=False)
+                clauses.append("host.id = %(host_id)i")
+            elif arg == 'channel':
+                if 'channels' not in joined:
+                    skip = True
+                    break
+                data['channel_id'] = get_id('channels', value, strict=False)
+                clauses.append("channels.id = %(channel_id)i")
             elif arg == 'package':
                 pkg_field_name = "%s.package" % table
                 if 'package' in joined:

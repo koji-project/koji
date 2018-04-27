@@ -4180,6 +4180,8 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--external-repo", "--erepo", help=_("Only show entries relating to a given external repo"))
     parser.add_option("--build-target", "--target", help=_("Only show entries relating to a given build target"))
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
+    parser.add_option("--host", help=_("Only show entries related to given host"))
+    parser.add_option("--channel", help=_("Only show entries related to given channel"))
     parser.add_option("--before", metavar="TIMESTAMP", help=_("Only show entries before timestamp"))
     parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
@@ -4217,7 +4219,7 @@ def anon_handle_list_history(goptions, session, args):
             parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
-                'after'):
+                'after', 'host', 'channel'):
         val = getattr(options, opt)
         if val:
             kwargs[opt] = val
