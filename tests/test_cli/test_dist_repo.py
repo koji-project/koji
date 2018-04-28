@@ -261,7 +261,7 @@ Options:
   --delta-rpms=REPO     Create delta rpms. REPO can be the id of another dist
                         repo or the name of a tag that has a dist repo. May be
                         specified multiple times.
-  --event=EVENT         create a dist repository based on a Brew event
+  --event=EVENT         Use tag content at event
   --non-latest          Include older builds, not just the latest
   --multilib=CONFIG     Include multilib packages in the repository using the
                         given config file
