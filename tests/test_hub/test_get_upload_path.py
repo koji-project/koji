@@ -1,6 +1,7 @@
 import os
 import mock
 import shutil
+import tempfile
 try:
     import unittest2 as unittest
 except ImportError:
@@ -12,6 +13,13 @@ from koji import GenericError
 
 class TestGetUploadPath(unittest.TestCase):
 
+    def setUp(self):
+        self.topdir = tempfile.mkdtemp()
+        mock.patch('koji.pathinfo._topdir', new=self.topdir).start()
+
+    def tearDown(self):
+        shutil.rmtree(self.topdir)
+        mock.patch.stopall()
 
     def test_get_upload_path_invalid_filename(self):
         with self.assertRaises(GenericError):
@@ -30,14 +38,12 @@ class TestGetUploadPath(unittest.TestCase):
             kojihub.get_upload_path(reldir='tasks/1/should_be_number', name='error', create=True)
 
     @mock.patch('kojihub.context')
-    @mock.patch('koji.pathinfo.work')
     @mock.patch('kojihub.Host')
-    def test_get_upload_path_invalid_upload_dir_owner(self, host, work, context):
-        work.return_value = '/tmp'
+    def test_get_upload_path_invalid_upload_dir_owner(self, host, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
         reldir = 'fake/1/1'
-        fullpath = '{0}/{1}'.format(work.return_value, reldir)
+        fullpath = '%s/work/%s' % (self.topdir, reldir)
         os.makedirs(fullpath)
 
         with open('{0}/.user'.format(fullpath), 'wb') as f:
@@ -46,12 +52,8 @@ class TestGetUploadPath(unittest.TestCase):
         with self.assertRaises(GenericError):
             kojihub.get_upload_path(reldir=reldir, name='error', create=True)
 
-        shutil.rmtree('/tmp/fake')
-
-    @mock.patch('koji.pathinfo.work')
     @mock.patch('kojihub.Host')
-    def test_get_upload_path_invalid_upload_no_dir_owner(self, host, work):
-        work.return_value = '/tmp'
+    def test_get_upload_path_invalid_upload_no_dir_owner(self, host):
         dir = kojihub.get_upload_path(reldir='tasks/1/1', name='error', create=False)
-        assert dir == '/tmp/tasks/1/1/error'
+        assert dir == '%s/work/tasks/1/1/error' % self.topdir
 
