@@ -28,6 +28,7 @@ Contents
     misc
     release_notes
     migrations
+    CVEs
     runs_here
     server_bootstrap
     server_howto
