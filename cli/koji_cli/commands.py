@@ -2772,9 +2772,9 @@ def anon_handle_list_hosts(goptions, session, args):
         host['arches'] = ','.join(host['arches'].split())
 
     if not options.quiet:
-        print("Hostname                     Enb Rdy Load/Cap Arches           Last Update")
+        print("Hostname                     Enb Rdy Load/Cap  Arches           Last Update")
     for host in hosts:
-        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-3.1f %(arches)-16s %(update)s" % host)
+        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-4.1f %(arches)-16s %(update)s" % host)
 
 
 def anon_handle_list_pkgs(goptions, session, args):
@@ -4027,6 +4027,18 @@ def _print_histline(entry, **kwargs):
             fmt = "added tag option %(key)s for tag %(tag.name)s"
         else:
             fmt = "tag option %(key)s removed for %(tag.name)s"
+    elif table == 'host_config':
+        if edit:
+            fmt = "host configuration for %(host.name)s altered"
+        elif create:
+            fmt = "new host: %(host.name)s"
+        else:
+            fmt = "host deleted: %(host.name)s"
+    elif table == 'host_channels':
+        if create:
+            fmt = "host %(host.name)s added to channel %(channels.name)s"
+        else:
+            fmt = "host %(host.name)s removed from channel %(channels.name)s"
     elif table == 'build_target_config':
         if edit:
             fmt = "build target configuration for %(build_target.name)s updated"
@@ -4141,6 +4153,8 @@ _table_keys = {
     'tag_extra' : ['tag_id', 'key'],
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
+    'host_config': ['host_id'],
+    'host_channels': ['host_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
     'tag_listing' : ['build_id', 'tag_id'],
     'tag_packages' : ['package_id', 'tag_id'],
@@ -4166,6 +4180,8 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--external-repo", "--erepo", help=_("Only show entries relating to a given external repo"))
     parser.add_option("--build-target", "--target", help=_("Only show entries relating to a given build target"))
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
+    parser.add_option("--host", help=_("Only show entries related to given host"))
+    parser.add_option("--channel", help=_("Only show entries related to given channel"))
     parser.add_option("--before", metavar="TIMESTAMP", help=_("Only show entries before timestamp"))
     parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
@@ -4203,7 +4219,7 @@ def anon_handle_list_history(goptions, session, args):
             parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
-                'after'):
+                'after', 'host', 'channel'):
         val = getattr(options, opt)
         if val:
             kwargs[opt] = val

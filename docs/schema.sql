@@ -145,20 +145,45 @@ CREATE TABLE host (
 	id SERIAL NOT NULL PRIMARY KEY,
 	user_id INTEGER NOT NULL REFERENCES users (id),
 	name VARCHAR(128) UNIQUE NOT NULL,
-	arches TEXT,
 	task_load FLOAT CHECK (NOT task_load < 0) NOT NULL DEFAULT 0.0,
+	ready BOOLEAN NOT NULL DEFAULT 'false'
+) WITHOUT OIDS;
+
+CREATE TABLE host_config (
+        host_id INTEGER NOT NULL REFERENCES host(id),
+	arches TEXT,
 	capacity FLOAT CHECK (capacity > 1) NOT NULL DEFAULT 2.0,
 	description TEXT,
 	comment TEXT,
-	ready BOOLEAN NOT NULL DEFAULT 'false',
-	enabled BOOLEAN NOT NULL DEFAULT 'true'
+	enabled BOOLEAN NOT NULL DEFAULT 'true',
+-- versioned - see desc above
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, host_id),
+	UNIQUE (host_id, active)
 ) WITHOUT OIDS;
-CREATE INDEX HOST_IS_READY_AND_ENABLED ON host(enabled, ready) WHERE (enabled IS TRUE AND ready IS TRUE);
+CREATE INDEX host_config_by_active_and_enabled ON host_config(active, enabled);
 
 CREATE TABLE host_channels (
 	host_id INTEGER NOT NULL REFERENCES host(id),
 	channel_id INTEGER NOT NULL REFERENCES channels(id),
-	UNIQUE (host_id,channel_id)
+-- versioned - see desc above
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, host_id, channel_id),
+	UNIQUE (host_id, channel_id, active)
 ) WITHOUT OIDS;
 
 

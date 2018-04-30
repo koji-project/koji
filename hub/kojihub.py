@@ -2030,11 +2030,19 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True)
 
 def set_host_enabled(hostname, enabled=True):
     context.session.assertPerm('admin')
-    if not get_host(hostname):
+    host = get_host(hostname)
+    if not host:
         raise koji.GenericError('host does not exist: %s' % hostname)
-    c = context.cnx.cursor()
-    c.execute("""UPDATE host SET enabled = %(enabled)s WHERE name = %(hostname)s""", locals())
-    context.commit_pending = True
+
+    update = UpdateProcessor('host_config', values=host, clauses=['host_id = %(id)i'])
+    update.make_revoke()
+    update.execute()
+
+    fields = ('arches', 'capacity', 'description', 'comment', 'enabled')
+    insert = InsertProcessor('host_config', data=dslice(host, fields))
+    insert.set(host_id=host['id'], enabled=enabled)
+    insert.make_create()
+    insert.execute()
 
 def add_host_to_channel(hostname, channel_name, create=False):
     """Add the host to the specified channel
@@ -2055,6 +2063,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
             raise koji.GenericError('host %s is already subscribed to the %s channel' % (hostname, channel_name))
     insert = InsertProcessor('host_channels')
     insert.set(host_id=host_id, channel_id=channel_id)
+    insert.make_create()
     insert.execute()
 
 def remove_host_from_channel(hostname, channel_name):
@@ -2074,9 +2083,13 @@ def remove_host_from_channel(hostname, channel_name):
             break
     if not found:
         raise koji.GenericError('host %s is not subscribed to the %s channel' % (hostname, channel_name))
-    c = context.cnx.cursor()
-    c.execute("""DELETE FROM host_channels WHERE host_id = %(host_id)d and channel_id = %(channel_id)d""", locals())
-    context.commit_pending = True
+
+    values = {'host_id': host_id, 'channel_id': channel_id}
+    clauses = ['host_id = %(host_id)i AND channel_id = %(channel_id)i']
+    update = UpdateProcessor('host_channels', values=values, clauses=clauses)
+    update.make_revoke()
+    update.execute()
+
 
 def rename_channel(old, new):
     """Rename a channel"""
@@ -2096,6 +2109,10 @@ def remove_channel(channel_name, force=False):
 
     Channel must have no hosts, unless force is set to True
     If a channel has associated tasks, it cannot be removed
+    and an exception will be raised.
+
+    Removing channel will remove also remove complete history
+    for that channel.
     """
     context.session.assertPerm('admin')
     channel_id = get_channel_id(channel_name, strict=True)
@@ -2128,16 +2145,18 @@ def get_ready_hosts():
     q = """
     SELECT %s FROM host
         JOIN sessions USING (user_id)
+        JOIN host_config ON host.id = host_config.host_id
     WHERE enabled = TRUE AND ready = TRUE
         AND expired = FALSE
         AND master IS NULL
         AND update_time > NOW() - '5 minutes'::interval
+        AND active IS TRUE
     """ % ','.join(fields)
     # XXX - magic number in query
     c.execute(q)
     hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
     for host in hosts:
-        q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s"""
+        q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s AND active IS TRUE"""
         c.execute(q, host)
         host['channels'] = [row[0] for row in c.fetchall()]
     return hosts
@@ -2145,7 +2164,7 @@ def get_ready_hosts():
 def get_all_arches():
     """Return a list of all (canonical) arches available from hosts"""
     ret = {}
-    for (arches,) in _fetchMulti('SELECT arches FROM host', {}):
+    for (arches,) in _fetchMulti('SELECT arches FROM host_config WHERE active IS TRUE', {}):
         if arches is None:
             continue
         for arch in arches.split():
@@ -4504,7 +4523,7 @@ def _dml(operation, values):
     context.commit_pending = True
     return ret
 
-def get_host(hostInfo, strict=False):
+def get_host(hostInfo, strict=False, event=None):
     """Get information about the given host.  hostInfo may be
     either a string (hostname) or int (host id).  A map will be returned
     containing the following data:
@@ -4520,18 +4539,39 @@ def get_host(hostInfo, strict=False):
     - ready
     - enabled
     """
-    fields = ('id', 'user_id', 'name', 'arches', 'task_load',
-              'capacity', 'description', 'comment', 'ready', 'enabled')
-    query = """SELECT %s FROM host
-    WHERE """ % ', '.join(fields)
-    if isinstance(hostInfo, int) or isinstance(hostInfo, long):
-        query += """id = %(hostInfo)i"""
+    tables = ['host_config']
+    joins = ['host ON host.id = host_config.host_id']
+
+    fields = {'host.id': 'id',
+              'host.user_id': 'user_id',
+              'host.name': 'name',
+              'host.ready': 'ready',
+              'host.task_load': 'task_load',
+              'host_config.arches': 'arches',
+              'host_config.capacity': 'capacity',
+              'host_config.description': 'description',
+              'host_config.comment': 'comment',
+              'host_config.enabled': 'enabled',
+              }
+    clauses = [eventCondition(event, table='host_config')]
+
+    if isinstance(hostInfo, (int, long)):
+        clauses.append("host.id = %(hostInfo)i")
     elif isinstance(hostInfo, str):
-        query += """name = %(hostInfo)s"""
+        clauses.append("host.name = %(hostInfo)s")
     else:
         raise koji.GenericError('invalid type for hostInfo: %s' % type(hostInfo))
 
-    return _singleRow(query, locals(), fields, strict)
+    data = {'hostInfo': hostInfo}
+    fields, aliases = zip(*fields.items())
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
+                           joins=joins, clauses=clauses, values=data)
+    result = query.executeOne()
+    if not result:
+        if strict:
+            raise koji.GenericError('Invalid hostInfo: %s' % hostInfo)
+        return None
+    return result
 
 def edit_host(hostInfo, **kw):
     """Edit information for an existing host.
@@ -4553,19 +4593,22 @@ def edit_host(hostInfo, **kw):
     changes = []
     for field in fields:
         if field in kw and kw[field] != host[field]:
-            if field == 'capacity':
-                # capacity is a float, so set the substitution format appropriately
-                changes.append('%s = %%(%s)f' % (field, field))
-            else:
-                changes.append('%s = %%(%s)s' % (field, field))
+            changes.append(field)
 
     if not changes:
         return False
 
-    update = 'UPDATE host set ' + ', '.join(changes) + ' where id = %(id)i'
-    data = kw.copy()
-    data['id'] = host['id']
-    _dml(update, data)
+    update = UpdateProcessor('host_config', values=host, clauses=['host_id = %(id)i'])
+    update.make_revoke()
+    update.execute()
+
+    insert = InsertProcessor('host_config', data=dslice(host, ('arches', 'capacity', 'description', 'comment', 'enabled')))
+    insert.set(host_id=host['id'])
+    for change in changes:
+        insert.set(**{change: kw[change]})
+    insert.make_create()
+    insert.execute()
+
     return True
 
 def get_channel(channelInfo, strict=False):
@@ -4673,16 +4716,28 @@ def get_buildroot(buildrootID, strict=False):
         raise koji.GenericError("More that one buildroot with id: %i" % buildrootID)
     return result[0]
 
-def list_channels(hostID=None):
+def list_channels(hostID=None, event=None):
     """List channels.  If hostID is specified, only list
     channels associated with the host with that ID."""
-    fields = ('id', 'name')
-    query = """SELECT %s FROM channels
-    """ % ', '.join(fields)
-    if hostID != None:
-        query += """JOIN host_channels ON channels.id = host_channels.channel_id
-        WHERE host_channels.host_id = %(hostID)i"""
-    return _multiRow(query, locals(), fields)
+    fields = {'channels.id': 'id', 'channels.name': 'name'}
+    columns, aliases = zip(*fields.items())
+    if hostID:
+        tables = ['host_channels']
+        joins = ['channels ON channels.id = host_channels.channel_id']
+        clauses = [
+                eventCondition(event, table='host_channels'),
+                'host_channels.host_id = %(host_id)s']
+        values = {'host_id': hostID}
+        query = QueryProcessor(tables=tables, aliases=aliases,
+                               columns=columns, joins=joins,
+                               clauses=clauses, values=values)
+    elif event:
+        raise koji.GenericError('list_channels with event and '
+                                'not host is not allowed.')
+    else:
+        query = QueryProcessor(tables=['channels'], aliases=aliases,
+                               columns=columns)
+    return query.execute()
 
 def new_package(name, strict=True):
     c = context.cnx.cursor()
@@ -6556,6 +6611,8 @@ def query_history(tables=None, **kwargs):
         'tag_extra': ['tag_id', 'key', 'value'],
         'build_target_config': ['build_target_id', 'build_tag', 'dest_tag'],
         'external_repo_config': ['external_repo_id', 'url'],
+        'host_config': ['host_id', 'arches', 'capacity', 'description', 'comment', 'enabled'],
+        'host_channels': ['host_id', 'channel_id'],
         'tag_external_repos': ['tag_id', 'external_repo_id', 'priority'],
         'tag_listing': ['build_id', 'tag_id'],
         'tag_packages': ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
@@ -6572,6 +6629,8 @@ def query_history(tables=None, **kwargs):
         'cg_id': ['content_generator'],
         #group_id is overloaded (special case below)
         'tag_id': ['tag'],
+        'host_id': ['host'],
+        'channel_id': ['channels'],
         'parent_id': ['tag', 'parent'],
         'build_target_id': ['build_target'],
         'build_tag': ['tag', 'build_tag'],
@@ -6661,6 +6720,18 @@ def query_history(tables=None, **kwargs):
                     break
                 data['build_id'] = get_build(value, strict=True)['id']
                 clauses.append("build.id = %(build_id)i")
+            elif arg == 'host':
+                if 'host' not in joined:
+                    skip = True
+                    break
+                data['host_id'] = get_id('host', value, strict=False)
+                clauses.append("host.id = %(host_id)i")
+            elif arg == 'channel':
+                if 'channels' not in joined:
+                    skip = True
+                    break
+                data['channel_id'] = get_id('channels', value, strict=False)
+                clauses.append("channels.id = %(channel_id)i")
             elif arg == 'package':
                 pkg_field_name = "%s.package" % table
                 if 'package' in joined:
@@ -10577,14 +10648,20 @@ class RootExports(object):
                                             krb_principal=krb_principal)
         #host entry
         hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
-        arches = " ".join(arches)
-        insert = """INSERT INTO host (id, user_id, name, arches)
-        VALUES (%(hostID)i, %(userID)i, %(hostname)s, %(arches)s)"""
-        _dml(insert, locals())
+        insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s)"
+        _dml(insert, dslice(locals(), ('hostID', 'userID', 'hostname')))
+
+        insert = InsertProcessor('host_config')
+        insert.set(host_id=hostID, arches=" ".join(arches))
+        insert.make_create()
+        insert.execute()
+
         #host_channels entry
-        insert = """INSERT INTO host_channels (host_id, channel_id)
-        VALUES (%(hostID)i, %(default_channel)i)"""
-        _dml(insert, locals())
+        insert = InsertProcessor('host_channels')
+        insert.set(host_id=hostID, channel_id=default_channel)
+        insert.make_create()
+        insert.execute()
+
         return hostID
 
     def enableHost(self, hostname):
@@ -10608,11 +10685,8 @@ class RootExports(object):
         host appears in the list, it will be included in the results.  If "ready" and "enabled"
         are specified, only hosts with the given value for the respective field will
         be included."""
-        fields = ('id', 'user_id', 'name', 'arches', 'task_load',
-                  'capacity', 'description', 'comment', 'ready', 'enabled')
-
-        clauses = []
-        joins = []
+        clauses = ['host_config.active IS TRUE']
+        joins = ['host ON host.id = host_config.host_id']
         if arches is not None:
             if not arches:
                 raise koji.GenericError('arches option cannot be empty')
@@ -10624,25 +10698,38 @@ class RootExports(object):
             clauses.append('(' + ' OR '.join(archClause) + ')')
         if channelID is not None:
             channelID = get_channel_id(channelID, strict=True)
-            joins.append('host_channels on host.id = host_channels.host_id')
+            joins.append('host_channels ON host.id = host_channels.host_id')
             clauses.append('host_channels.channel_id = %(channelID)i')
+            clauses.append('host_channels.active IS TRUE')
         if ready is not None:
             if ready:
-                clauses.append('ready is true')
+                clauses.append('ready IS TRUE')
             else:
-                clauses.append('ready is false')
+                clauses.append('ready IS FALSE')
         if enabled is not None:
             if enabled:
-                clauses.append('enabled is true')
+                clauses.append('enabled IS TRUE')
             else:
-                clauses.append('enabled is false')
+                clauses.append('enabled IS FALSE')
         if userID is not None:
             userID = get_user(userID, strict=True)['id']
             clauses.append('user_id = %(userID)i')
 
-        query = QueryProcessor(columns=fields, tables=['host'],
-                               joins=joins, clauses=clauses,
-                               values=locals(), opts=queryOpts)
+        fields = {'host.id': 'id',
+              'host.user_id': 'user_id',
+              'host.name': 'name',
+              'host.ready': 'ready',
+              'host.task_load': 'task_load',
+              'host_config.arches': 'arches',
+              'host_config.capacity': 'capacity',
+              'host_config.description': 'description',
+              'host_config.comment': 'comment',
+              'host_config.enabled': 'enabled',
+              }
+        tables = ['host_config']
+        fields, aliases = zip(*fields.items())
+        query = QueryProcessor(columns=fields, aliases=aliases,
+                tables=tables, joins=joins, clauses=clauses, values=locals())
         return query.execute()
 
     def getLastHostUpdate(self, hostID):
@@ -11499,12 +11586,12 @@ class Host(object):
         id = self.id
         #get arch and channel info for host
         q = """
-        SELECT arches FROM host WHERE id = %(id)s
+        SELECT arches FROM host_config WHERE id = %(id)s AND active IS TRUE
         """
         c.execute(q, locals())
         arches = c.fetchone()[0].split()
         q = """
-        SELECT channel_id FROM host_channels WHERE host_id = %(id)s
+        SELECT channel_id FROM host_channels WHERE host_id = %(id)s AND active is TRUE
         """
         c.execute(q, locals())
         channels = [x[0] for x in c.fetchall()]
@@ -11541,7 +11628,7 @@ class Host(object):
 
     def isEnabled(self):
         """Return whether this host is enabled or not."""
-        query = """SELECT enabled FROM host WHERE id = %(id)i"""
+        query = """SELECT enabled FROM host_config WHERE id = %(id)i AND active IS TRUE"""
         return _singleValue(query, {'id': self.id}, strict=True)
 
 class HostExports(object):

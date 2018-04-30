@@ -29,9 +29,9 @@ class TestListHosts(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, [])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE',])
 
     @mock.patch('kojihub.get_user')
     def test_list_hosts_user_id(self, get_user):
@@ -40,9 +40,9 @@ class TestListHosts(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, ['user_id = %(userID)i'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE', 'user_id = %(userID)i'])
 
     @mock.patch('kojihub.get_channel_id')
     def test_list_hosts_channel_id(self, get_channel_id):
@@ -51,27 +51,32 @@ class TestListHosts(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, ['host_channels on host.id = host_channels.host_id'])
-        self.assertEqual(query.clauses, ['host_channels.channel_id = %(channelID)i'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id',
+                                       'host_channels ON host.id = host_channels.host_id'])
+        self.assertEqual(query.clauses, [
+            'host_config.active IS TRUE',
+            'host_channels.channel_id = %(channelID)i',
+            'host_channels.active IS TRUE',
+            ])
 
     def test_list_hosts_single_arch(self):
         self.exports.listHosts(arches='x86_64')
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, [r"""(arches ~ E'\\mx86_64\\M')"""])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE',r"""(arches ~ E'\\mx86_64\\M')"""])
 
     def test_list_hosts_multi_arch(self):
         self.exports.listHosts(arches=['x86_64', 's390'])
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, [r"""(arches ~ E'\\mx86_64\\M' OR arches ~ E'\\ms390\\M')"""])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE',r"""(arches ~ E'\\mx86_64\\M' OR arches ~ E'\\ms390\\M')"""])
 
     def test_list_hosts_bad_arch(self):
         with self.assertRaises(koji.GenericError):
@@ -82,33 +87,33 @@ class TestListHosts(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, ['ready is true'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE','ready IS TRUE'])
 
     def test_list_hosts_nonready(self):
         self.exports.listHosts(ready=0)
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, ['ready is false'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE','ready IS FALSE'])
 
     def test_list_hosts_enabled(self):
         self.exports.listHosts(enabled=1)
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, ['enabled is true'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE','enabled IS TRUE'])
 
     def test_list_hosts_disabled(self):
         self.exports.listHosts(enabled=0)
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        self.assertEqual(query.tables, ['host'])
-        self.assertEqual(query.joins, [])
-        self.assertEqual(query.clauses, ['enabled is false'])
+        self.assertEqual(query.tables, ['host_config'])
+        self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE','enabled IS FALSE'])
