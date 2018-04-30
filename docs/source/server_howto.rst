@@ -739,7 +739,7 @@ needed.
     cd /mnt
     mkdir koji
     cd koji
-    mkdir {packages,repos,work,scratch}
+    mkdir {packages,repos,work,scratch,repos-dist}
     chown apache.apache *
 
 SELinux Configuration
