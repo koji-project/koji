@@ -12735,8 +12735,9 @@ class HostExports(object):
             rpmpath = rpminfo['_fullpath']
             bnp = fn
             bnplet = bnp[0].lower()
-            koji.ensuredir(os.path.join(archdir, bnplet))
-            l_dst = os.path.join(archdir, bnplet, bnp)
+            ddir = os.path.join(archdir, 'Packages', bnplet)
+            koji.ensuredir(ddir)
+            l_dst = os.path.join(ddir, bnp)
             if os.path.exists(l_dst):
                 raise koji.GenericError("File already in repo: %s", l_dst)
             logger.debug("os.link(%r, %r)", rpmpath, l_dst)
@@ -12744,8 +12745,7 @@ class HostExports(object):
                 os.link(rpmpath, l_dst)
             except OSError as ose:
                 if ose.errno == 18:
-                    shutil.copy2(
-                        rpmpath, os.path.join(archdir, bnplet, bnp))
+                    shutil.copy2(rpmpath, l_dst)
                 else:
                     raise
 

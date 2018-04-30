@@ -153,7 +153,7 @@ class TestDistRepoMove(unittest.TestCase):
                     fo.write('%s' % basename)
                 f_pkglist.write(path)
                 f_pkglist.write('\n')
-                self.expected.append('x86_64/%s/%s' % (basename[0], basename))
+                self.expected.append('x86_64/Packages/%s/%s' % (basename[0], basename))
                 build_id = len(self.builds) + 10000
                 rpm_id = len(self.rpms) + 20000
                 binfo['id'] = build_id

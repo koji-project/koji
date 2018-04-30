@@ -5582,8 +5582,9 @@ enabled=1
     def link_pkgs(self):
         for bnp in self.kojipkgs:
             bnplet = bnp[0].lower()
-            koji.ensuredir(os.path.join(self.repodir, bnplet))
-            dst = os.path.join(self.repodir, bnplet, bnp)
+            ddir = os.path.join(self.repodir, 'Packages', bnplet)
+            koji.ensuredir(ddir)
+            dst = os.path.join(ddir, bnp)
             pkgpath = self.kojipkgs[bnp]['_pkgpath']
             self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
             os.symlink(pkgpath, dst)
@@ -5605,9 +5606,9 @@ enabled=1
             if subrepo:
                 # note the ../
                 subrepo_pkgs.setdefault(subrepo, []).append(
-                        '../%s/%s\n' % (bnplet, bnp))
+                        '../Packages/%s/%s\n' % (bnplet, bnp))
             else:
-                pkgs.append('%s/%s\n' % (bnplet, bnp))
+                pkgs.append('Packages/%s/%s\n' % (bnplet, bnp))
 
         with open('%s/pkglist' % self.repodir, 'w') as fo:
             for line in pkgs:
