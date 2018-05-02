@@ -9260,16 +9260,9 @@ class RootExports(object):
         of entries will affect which build is the latest)
         """
         context.session.assertPerm('admin')
-        user_id = context.session.user_id
-        try:
-            _tag_build(tag, build, force=force)
-            if notify:
-                tag_notification(True, None, tag, build, user_id)
-        except Exception:
-            exctype, value = sys.exc_info()[:2]
-            if notify:
-                tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
-            raise
+        _tag_build(tag, build, force=force)
+        if notify:
+            tag_notification(True, None, tag, build, context.session.user_id)
 
     def tagBuild(self, tag, build, force=False, fromtag=None):
         """Request that a build be tagged
@@ -9364,16 +9357,9 @@ class RootExports(object):
         Unlike tagBuild, this does not create a task
         No return value"""
         context.session.assertPerm('admin')
-        user_id = context.session.user_id
-        try:
-            _untag_build(tag, build, strict=strict, force=force)
-            if notify:
-                tag_notification(True, None, tag, build, user_id)
-        except Exception:
-            exctype, value = sys.exc_info()[:2]
-            if notify:
-                tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
-            raise
+        _untag_build(tag, build, strict=strict, force=force)
+        if notify:
+            tag_notification(True, None, tag, build, context.session.user_id)
 
     def moveBuild(self, tag1, tag2, build, force=False):
         """Move a build from tag1 to tag2
