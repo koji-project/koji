@@ -3563,7 +3563,7 @@ class OzImageTask(BaseTaskHandler):
             'imgdir': os.path.join(self.workdir, 'scratch_images'),
             'tmpdir': os.path.join(self.workdir, 'oz-tmp'),
             'verbose': True,
-            'timeout': self.options.oz_install_timeout,
+            'timeout': self.options.oz_install_timeout or None,
             'output': 'log',
             'raw': False,
             'debug': True,
@@ -5725,7 +5725,7 @@ def get_options():
                                      'resolver-status.properties *.lastUpdated',
                 'failed_buildroot_lifetime' : 3600 * 4,
                 'rpmbuild_timeout' : 3600 * 24,
-                'oz_install_timeout': None,
+                'oz_install_timeout': 0,
                 'cert': None,
                 'ca': '',  # FIXME: Unused, remove in next major release
                 'serverca': None}

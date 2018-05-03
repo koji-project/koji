@@ -661,9 +661,9 @@ ImageFactory/Oz Preparation
     #.  VMDKStream => 0.2
     #.  pykickstart
 #.  Edit ``/etc/kojid/kojid.conf``, and set an second value, eg: 7200 for
-    ``oz_install_timeout``. It's a timeout waiting guest installing. If it's
-    not specified, oz will use its default value. Since ``oz-0.16.0`` it can be
-    configured in ``/etc/oz/oz.cfg`` as ``install`` in the ``[timeouts]``
+    ``oz_install_timeout``. It's a timeout waiting guest installing. Default
+    value is 0, that means oz will use its default value. Since ``oz-0.16.0``,
+    it can be configured in ``/etc/oz/oz.cfg`` as ``install`` in ``[timeouts]``
     section.
 #.  Edit ``/etc/oz/oz.cfg``, and set the memory value in the ``[libvirt]``
     section to at least 2048. Set ``safe_generation`` under ``[icicle]`` to yes.
