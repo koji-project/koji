@@ -122,18 +122,18 @@ def parse_task_params(method, params):
     args, kwargs = koji.decode_args(*params)
 
     if method not in LEGACY_SIGNATURES:
-        raise TypeError, "No legacy signature for %s" % method
+        raise TypeError("No legacy signature for %s" % method)
 
     err = None
     for argspec in LEGACY_SIGNATURES[method]:
         try:
             params = koji.util.apply_argspec(argspec, args, kwargs)
             break
-        except koji.ParameterError, e:
+        except koji.ParameterError as e:
             if not err:
                 err = e.message
     else:
-        raise koji.ParameterError, "Invalid signature for %s: %s" % (method, err)
+        raise koji.ParameterError("Invalid signature for %s: %s" % (method, err))
 
     return params
 
