@@ -5711,8 +5711,8 @@ def get_options():
                 'offline_retry_interval': 120,
                 'keepalive': True,
                 'log_timestamps': False,
-                'timeout' : None,
-                'no_ssl_verify' : False,
+                'timeout': None,
+                'no_ssl_verify': False,
                 'use_fast_upload': True,
                 'use_createrepo_c': False,
                 'createrepo_skip_stat': True,
@@ -5723,8 +5723,8 @@ def get_options():
                 'yum_proxy': None,
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
                                      'resolver-status.properties *.lastUpdated',
-                'failed_buildroot_lifetime' : 3600 * 4,
-                'rpmbuild_timeout' : 3600 * 24,
+                'failed_buildroot_lifetime': 3600 * 4,
+                'rpmbuild_timeout': 3600 * 24,
                 'oz_install_timeout': 0,
                 'cert': None,
                 'ca': '',  # FIXME: Unused, remove in next major release
@@ -5733,7 +5733,7 @@ def get_options():
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
                         'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime',
-                        'timeout', 'rpmbuild_timeout', 'oz_install_timeout',]:
+                        'timeout', 'rpmbuild_timeout', 'oz_install_timeout']:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
