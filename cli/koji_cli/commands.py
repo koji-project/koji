@@ -6911,10 +6911,13 @@ def handle_dist_repo(options, session, args):
         default=False,
         help=_('For RPMs not signed with a desired key, fall back to the '
             'primary copy'))
-    parser.add_option("--arch", action='append', default=[],
+    parser.add_option("-a", "--arch", action='append', default=[],
         help=_("Indicate an architecture to consider. The default is all " +
             "architectures associated with the given tag. This option may " +
             "be specified multiple times."))
+    parser.add_option("--with-src", action='store_true', help='Also generate a src repo')
+    parser.add_option("--split-debuginfo", action='store_true', default=False,
+            help='Split debuginfo info a separate repo for each arch')
     parser.add_option('--comps', help='Include a comps file in the repodata')
     parser.add_option('--delta-rpms', metavar='REPO',default=[],
         action='append',
@@ -6922,7 +6925,7 @@ def handle_dist_repo(options, session, args):
             'or the name of a tag that has a dist repo. May be specified '
             'multiple times.'))
     parser.add_option('--event', type='int',
-        help=_('create a dist repository based on a Brew event'))
+        help=_('Use tag content at event'))
     parser.add_option('--non-latest', dest='latest', default=True,
         action='store_false', help='Include older builds, not just the latest')
     parser.add_option('--multilib', default=None, metavar="CONFIG",
@@ -6996,9 +6999,10 @@ def handle_dist_repo(options, session, args):
         task_opts.multilib = os.path.join(stuffdir,
             os.path.basename(task_opts.multilib))
         print('')
-    for f in ('noarch', 'src'):
-        if f in task_opts.arch:
-            task_opts.arch.remove(f)
+    if 'noarch' in task_opts.arch:
+        task_opts.arch.remove('noarch')
+    if task_opts.with_src and 'src' not in task_opts.arch:
+        task_opts.arch.append('src')
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
@@ -7007,6 +7011,7 @@ def handle_dist_repo(options, session, args):
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
         'multilib': task_opts.multilib,
+        'split_debuginfo': task_opts.split_debuginfo,
         'skip_missing_signatures': task_opts.skip_missing_signatures,
         'allow_missing_signatures': task_opts.allow_missing_signatures
     }

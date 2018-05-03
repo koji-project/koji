@@ -1,5 +1,6 @@
 
 import unittest
+import json
 import mock
 import os
 import shutil
@@ -106,7 +107,7 @@ class TestDistRepoMove(unittest.TestCase):
             'create_ts': 1487256924.72718,
             'creation_time': '2017-02-16 14:55:24.727181',
             'id': 47,
-            'state': 1,
+            'state': 0,  # INIT
             'tag_id': 2,
             'tag_name': 'my-tag'}
         self.arch = 'x86_64'
@@ -123,19 +124,18 @@ class TestDistRepoMove(unittest.TestCase):
         os.makedirs(uploaddir)
 
         # place some test files
-        self.files = ['foo.drpm', 'repomd.xml']
+        self.files = ['drpms/foo.drpm', 'repodata/repomd.xml']
         self.expected = ['x86_64/drpms/foo.drpm', 'x86_64/repodata/repomd.xml']
         for fn in self.files:
             path = os.path.join(uploaddir, fn)
             koji.ensuredir(os.path.dirname(path))
             with open(path, 'w') as fo:
-                fo.write('%s' % fn)
+                fo.write('%s' % os.path.basename(fn))
 
-        # generate pkglist file and sigmap
+        # generate pkglist file
         self.files.append('pkglist')
         plist = os.path.join(uploaddir, 'pkglist')
         nvrs = ['aaa-1.0-2', 'bbb-3.0-5', 'ccc-8.0-13','ddd-21.0-34']
-        self.sigmap = []
         self.rpms = {}
         self.builds ={}
         self.key = '4c8da725'
@@ -153,15 +153,30 @@ class TestDistRepoMove(unittest.TestCase):
                     fo.write('%s' % basename)
                 f_pkglist.write(path)
                 f_pkglist.write('\n')
-                self.expected.append('x86_64/%s/%s' % (basename[0], basename))
+                self.expected.append('x86_64/Packages/%s/%s' % (basename[0], basename))
                 build_id = len(self.builds) + 10000
                 rpm_id = len(self.rpms) + 20000
                 binfo['id'] = build_id
                 rpminfo['build_id'] = build_id
                 rpminfo['id'] = rpm_id
+                rpminfo['sigkey'] = self.key
+                rpminfo['size'] = 1024
+                rpminfo['payloadhash'] = 'helloworld'
                 self.builds[build_id] = binfo
                 self.rpms[rpm_id] = rpminfo
-                self.sigmap.append([rpm_id, self.key])
+
+        # write kojipkgs
+        kojipkgs = {}
+        for rpminfo in self.rpms.values():
+            bnp = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % rpminfo
+            kojipkgs[bnp] = rpminfo
+        with open("%s/kojipkgs" % uploaddir, "w") as fp:
+            json.dump(kojipkgs, fp, indent=4)
+        self.files.append('kojipkgs')
+
+        # write manifest
+        with open("%s/repo_manifest" % uploaddir, "w") as fp:
+            json.dump(self.files, fp, indent=4)
 
         # mocks
         self.repo_info = mock.patch('kojihub.repo_info').start()
@@ -187,8 +202,7 @@ class TestDistRepoMove(unittest.TestCase):
 
     def test_distRepoMove(self):
         exports = kojihub.HostExports()
-        exports.distRepoMove(self.rinfo['id'], self.uploadpath,
-                list(self.files), self.arch, self.sigmap)
+        exports.distRepoMove(self.rinfo['id'], self.uploadpath, self.arch)
         # check result
         repodir = self.topdir + '/repos-dist/%(tag_name)s/%(id)s' % self.rinfo
         for relpath in self.expected:

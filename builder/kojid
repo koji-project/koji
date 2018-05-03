@@ -5055,7 +5055,7 @@ class CreaterepoTask(BaseTaskHandler):
             self.session.uploadWrapper('%s/%s' % (self.datadir, f), uploadpath, f)
         return [uploadpath, files]
 
-    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo, oldpkgs=None):
+    def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
         if self.options.use_createrepo_c:
             cmd = ['/usr/bin/createrepo_c']
@@ -5082,11 +5082,6 @@ class CreaterepoTask(BaseTaskHandler):
                 cmd.append('--update')
                 if self.options.createrepo_skip_stat:
                     cmd.append('--skip-stat')
-        if oldpkgs:
-            # generate delta-rpms
-            cmd.append('--deltas')
-            for op_dir in oldpkgs:
-                cmd.extend(['--oldpackagedirs', op_dir])
         # note: we can't easily use a cachedir because we do not have write
         # permission. The good news is that with --update we won't need to
         # be scanning many rpms.
@@ -5139,10 +5134,9 @@ class NewDistRepoTask(BaseTaskHandler):
 
     def handler(self, tag, repo_id, keys, task_opts):
         tinfo = self.session.getTag(tag, strict=True, event=task_opts['event'])
-        path = koji.pathinfo.distrepo(repo_id, tinfo['name'])
         if len(task_opts['arch']) == 0:
-             arches = tinfo['arches'] or ''
-             task_opts['arch'] = arches.split()
+            arches = tinfo['arches'] or ''
+            task_opts['arch'] = arches.split()
         if len(task_opts['arch']) == 0:
             raise koji.GenericError('No arches specified nor for the tag!')
         subtasks = {}
@@ -5162,13 +5156,12 @@ class NewDistRepoTask(BaseTaskHandler):
                 method='createdistrepo', arglist=arglist, label=arch,
                 parent=self.id, arch='noarch')
         if len(subtasks) > 0 and task_opts['multilib']:
-            results = self.wait(subtasks.values(), all=True, failany=True)
+            self.wait(subtasks.values(), all=True, failany=True)
             for arch in arch32s:
                 # move the 32-bit task output to the final resting place
                 # so the 64-bit arches can use it for multilib
-                upload, files, sigmap = results[subtasks[arch]]
-                self.session.host.distRepoMove(
-                    repo_id, upload, files, arch, sigmap)
+                upload_dir = koji.pathinfo.taskrelpath(subtasks[arch])
+                self.session.host.distRepoMove(repo_id, upload_dir, arch)
         for arch in canonArches:
             # do the other arches
             if arch not in arch32s:
@@ -5177,23 +5170,18 @@ class NewDistRepoTask(BaseTaskHandler):
                     method='createdistrepo', arglist=arglist, label=arch,
                     parent=self.id, arch='noarch')
         # wait for 64-bit subtasks to finish
-        data = {}
-        results = self.wait(subtasks.values(), all=True, failany=True)
+        self.wait(subtasks.values(), all=True, failany=True)
         for (arch, task_id) in subtasks.iteritems():
-            data[arch] = results[task_id]
-            self.logger.debug("DEBUG: %r : %r " % (arch, data[arch]))
             if task_opts['multilib'] and arch in arch32s:
                 # already moved above
                 continue
-            #else
-            upload, files, sigmap = results[subtasks[arch]]
-            self.session.host.distRepoMove(
-                repo_id, upload, files, arch, sigmap)
-        self.session.host.repoDone(repo_id, data, expire=False)
+            upload_dir = koji.pathinfo.taskrelpath(subtasks[arch])
+            self.session.host.distRepoMove(repo_id, upload_dir, arch)
+        self.session.host.repoDone(repo_id, {}, expire=False)
         return 'Dist repository #%s successfully generated' % repo_id
 
 
-class createDistRepoTask(CreaterepoTask):
+class createDistRepoTask(BaseTaskHandler):
     Methods = ['createdistrepo']
     _taskWeight = 1.5
 
@@ -5223,17 +5211,17 @@ class createDistRepoTask(CreaterepoTask):
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
-        self.repo_id = self.rinfo['id']
-        self.pathinfo = koji.PathInfo(self.options.topdir)
         groupdata = os.path.join(
-            self.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
+            koji.pathinfo.distrepo(repo_id, self.rinfo['tag_name']),
             'groups', 'comps.xml')
-        #set up our output dir
+
+        # set up our output dir
         self.repodir = '%s/repo' % self.workdir
+        self.repo_files = []
         koji.ensuredir(self.repodir)
-        self.outdir = self.repodir # workaround create_local_repo use
-        self.datadir = '%s/repodata' % self.repodir
-        self.sigmap = {}
+        self.subrepos = set()
+
+        # gather oldpkgs data if delta option in use
         oldpkgs = []
         if opts.get('delta'):
             # should be a list of repo ids to delta against
@@ -5246,63 +5234,136 @@ class createDistRepoTask(CreaterepoTask):
                 path = koji.pathinfo.distrepo(repo_id, oldrepo['tag_name'])
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
+                # note: since we're using the top level dir, this will handle
+                #       split repos as well
                 oldpkgs.append(path)
+
+        # sort out our package list(s)
         self.uploadpath = self.getUploadDir()
-        self.pkglist = self.make_pkglist(tag, arch, keys, opts)
+        self.get_rpms(tag, arch, keys, opts)
         if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
+        self.split_pkgs(opts)
         self.write_kojipkgs()
-        self.logger.debug('package list is %s' % self.pkglist)
-        self.session.uploadWrapper(self.pkglist, self.uploadpath,
-            os.path.basename(self.pkglist))
-        if os.path.getsize(self.pkglist) == 0:
-            self.pkglist = None
-        self.create_local_repo(self.rinfo, arch, self.pkglist, groupdata, None, oldpkgs=oldpkgs)
-        if self.pkglist is None:
-            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
-            fo.write("This repo is empty because its tag has no content for this arch\n")
-            fo.close()
-        files = ['pkglist', 'kojipkgs']
-        for f in os.listdir(self.datadir):
-            files.append(f)
-            self.session.uploadWrapper('%s/%s' % (self.datadir, f),
-                self.uploadpath, f)
-        if opts['delta']:
-            ddir = os.path.join(self.repodir, 'drpms')
-            for f in os.listdir(ddir):
-                files.append(f)
-                self.session.uploadWrapper('%s/%s' % (ddir, f),
-                    self.uploadpath, f)
-        return [self.uploadpath, files, self.sigmap.items()]
+        self.write_pkglist()
+        self.link_pkgs()
+
+        # generate the repodata
+        self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
+                    groupdata, oldpkgs=oldpkgs)
+        for subrepo in self.subrepos:
+            self.do_createrepo(
+                    '%s/%s' % (self.repodir, subrepo),
+                    '%s/%s/pkglist' % (self.repodir, subrepo),
+                    groupdata, oldpkgs=oldpkgs,
+                    logname='createrepo_%s' % subrepo)
+        if len(self.kojipkgs) == 0:
+            fn = os.path.join(self.repodir, "repodata", "EMPTY_REPO")
+            with open(fn, 'w') as fp:
+                fp.write("This repo is empty because its tag has no content "
+                         "for this arch\n")
+
+        # upload repo files
+        self.upload_repo()
+        self.upload_repo_manifest()
+
+    def upload_repo_file(self, relpath):
+        """Upload a file from the repo
+
+        relpath should be relative to self.repodir
+        """
+
+        localpath = '%s/%s' % (self.repodir, relpath)
+        reldir = os.path.dirname(relpath)
+        if reldir:
+            uploadpath = "%s/%s" % (self.uploadpath, reldir)
+            fn = os.path.basename(relpath)
+        else:
+            uploadpath = self.uploadpath
+            fn = relpath
+        self.session.uploadWrapper(localpath, uploadpath, fn)
+        self.repo_files.append(relpath)
+
+    def upload_repo(self):
+        """Traverse the repo and upload needed files
+
+        We omit the symlinks we made for the rpms
+        """
+        for dirpath, dirs, files in os.walk(self.repodir):
+            reldir = os.path.relpath(dirpath, self.repodir)
+            for filename in files:
+                path = "%s/%s" % (dirpath, filename)
+                if os.path.islink(path):
+                    continue
+                relpath = "%s/%s" % (reldir, filename)
+                self.upload_repo_file(relpath)
+
+    def upload_repo_manifest(self):
+        """Upload a list of the repo files we've uploaded"""
+        fn = '%s/repo_manifest' % self.workdir
+        with open(fn, 'w') as fp:
+            json.dump(self.repo_files, fp, indent=4)
+        self.session.uploadWrapper(fn, self.uploadpath)
+
+    def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None, logname=None):
+        """Run createrepo
+
+        This is derived from CreaterepoTask.create_local_repo, but adapted to
+        our requirements here
+        """
+        koji.ensuredir(repodir)
+        if self.options.use_createrepo_c:
+            cmd = ['/usr/bin/createrepo_c']
+        else:
+            cmd = ['/usr/bin/createrepo']
+        cmd.extend(['-vd', '-i', pkglist])
+        if groupdata and os.path.isfile(groupdata):
+            cmd.extend(['-g', groupdata])
+        # TODO: can we recycle data (with --update) as in create_local_repo?
+        if oldpkgs:
+            # generate delta-rpms
+            cmd.append('--deltas')
+            for op_dir in oldpkgs:
+                cmd.extend(['--oldpackagedirs', op_dir])
+        cmd.append(repodir)
+
+        if logname is None:
+            logname = 'createrepo'
+        logfile = '%s/%s.log' % (self.workdir, logname)
+        status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
+        if not isSuccess(status):
+            raise koji.GenericError('failed to create repo: %s' \
+                    % parseStatus(status, ' '.join(cmd)))
 
     def do_multilib(self, arch, ml_arch, conf):
-        self.repo_id = self.rinfo['id']
-        pathinfo = koji.PathInfo(self.options.topdir)
-        repodir = pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
-        ml_true = set() # multilib packages we need to include before depsolve
-        ml_conf = os.path.join(self.pathinfo.work(), conf)
+        ml_true = set()  # multilib packages we need to include before depsolve
+        ml_conf = os.path.join(koji.pathinfo.work(), conf)
+
+        # read pkgs data from multilib repo
+        ml_pkgfile = os.path.join(mldir, 'kojipkgs')
+        ml_pkgs = json.load(open(ml_pkgfile, 'r'))
 
         # step 1: figure out which packages are multilib (should already exist)
         mlm = multilib.DevelMultilibMethod(ml_conf)
         fs_missing = set()
-        with open(self.pkglist) as pkglist:
-            for pkg in pkglist:
-                ppath = os.path.join(self.repodir, pkg.strip())
+        for bnp in self.kojipkgs:
+                rpminfo = self.kojipkgs[bnp]
+                ppath = rpminfo['_pkgpath']
                 po = yum.packages.YumLocalPackage(filename=ppath)
-                if mlm.select(po) and arch in self.archmap:
+                if mlm.select(po):
                     # we need a multilib package to be included
-                    # we assume the same signature level is available
-                    # XXX: what is a subarchitecture is the right answer?
-                    pl_path = pkg.replace(arch, self.archmap[arch]).strip()
-                    # assume this exists in the task results for the ml arch
-                    real_path = os.path.join(mldir, pl_path)
-                    if not os.path.exists(real_path):
-                        self.logger.error('%s (multilib) is not on the filesystem' % real_path)
-                        fs_missing.add(real_path)
+                    ml_bnp = bnp.replace(arch, self.archmap[arch])
+                    ml_path = os.path.join(mldir, ml_bnp[0].lower(), ml_bnp)
+                    # ^ XXX - should actually generate this
+                    if ml_bnp not in ml_pkgs:
+                        # not in our multilib repo
+                        self.logger.error('%s (multilib) is not on the filesystem' % ml_path)
+                        fs_missing.add(ml_path)
                         # we defer failure so can report all the missing deps
                         continue
-                    ml_true.add(real_path)
+                    ml_true.add(ml_path)
 
         # step 2: set up architectures for yum configuration
         self.logger.info("Resolving multilib for %s using method devel" % arch)
@@ -5392,29 +5453,22 @@ enabled=1
             raise koji.GenericError('multilib packages missing. '
                     'See missing_multilib.log')
 
-        # get rpm ids for ml pkgs
-        kpkgfile = os.path.join(mldir, 'kojipkgs')
-        kojipkgs = json.load(open(kpkgfile, 'r'))
-
-        # step 5: add dependencies to our package list
-        pkgwriter = open(self.pkglist, 'a')
+        # step 5: update kojipkgs
         for dep_path in ml_needed:
             tspkg = ml_needed[dep_path]
             bnp = os.path.basename(dep_path)
-            bnplet = bnp[0].lower()
-            koji.ensuredir(os.path.join(self.repodir, bnplet))
-            dst = os.path.join(self.repodir, bnplet, bnp)
-            if os.path.exists(dst):
+            if bnp in self.kojipkgs:
                 # we expect duplication with noarch, but not other arches
                 if tspkg.arch != 'noarch':
-                    self.logger.warning("Path exists: %r", dst)
+                    self.logger.warning("Multilib duplicate: %s", bnp)
                 continue
-            pkgwriter.write(bnplet + '/' + bnp + '\n')
-            self.logger.debug("os.symlink(%r, %r)", dep_path, dst)
-            os.symlink(dep_path, dst)
-            rpminfo = kojipkgs[bnp]
-            self.sigmap[rpminfo['id']] = rpminfo['sigkey']
-
+            rpminfo = ml_pkgs[bnp].copy()
+            # fix _pkgpath, which comes from another task and could be wrong
+            # for us
+            # TODO: would be better if we could use the proper path here
+            rpminfo['_pkgpath'] = dep_path
+            rpminfo['_multilib'] = True
+            self.kojipkgs[bnp] = rpminfo
 
     def pick_key(self, keys, avail_keys):
         best = None
@@ -5430,21 +5484,20 @@ enabled=1
                 best_idx = idx
         return best
 
-
-    def make_pkglist(self, tag_id, arch, keys, opts):
+    def get_rpms(self, tag_id, arch, keys, opts):
         # get the rpm data
         rpms = []
         builddirs = {}
-        for a in self.compat[arch] + ('noarch',):
+        for a in self.compat[arch]:
+            # note: self.compat includes noarch for non-src already
             rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
                 event=opts['event'], arch=a, latest=opts['latest'],
                 inherit=opts['inherit'], rpmsigs=True)
             for build in builds:
-                builddirs[build['id']] = self.pathinfo.build(build)
+                builddirs[build['id']] = koji.pathinfo.build(build)
             rpms += list(rpm_iter)
 
         # index by id and key
-        preferred = {}
         rpm_idx = {}
         for rpminfo in rpms:
             sigidx = rpm_idx.setdefault(rpminfo['id'], {})
@@ -5464,9 +5517,7 @@ enabled=1
             else:
                 selected[rpm_id] = rpm_idx[rpm_id][best_key]
 
-        #generate pkglist files
-        pkgfile = os.path.join(self.repodir, 'pkglist')
-        pkglist = file(pkgfile, 'w')
+        # generate kojipkgs data and note missing files
         fs_missing = []
         sig_missing = []
         kojipkgs = {}
@@ -5478,25 +5529,18 @@ enabled=1
                     continue
                 # use the primary copy, if allowed (checked below)
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                    self.pathinfo.rpm(rpminfo))
+                    koji.pathinfo.rpm(rpminfo))
             else:
                 # use the signed copy
                 pkgpath = '%s/%s' % (builddirs[rpminfo['build_id']],
-                    self.pathinfo.signed(rpminfo, rpminfo['sigkey']))
+                    koji.pathinfo.signed(rpminfo, rpminfo['sigkey']))
             if not os.path.exists(pkgpath):
                 fs_missing.append(pkgpath)
                 # we'll raise an error below
             else:
                 bnp = os.path.basename(pkgpath)
-                bnplet = bnp[0].lower()
-                pkglist.write(bnplet + '/' + bnp + '\n')
-                koji.ensuredir(os.path.join(self.repodir, bnplet))
-                self.sigmap[rpminfo['id']] = rpminfo['sigkey']
-                dst = os.path.join(self.repodir, bnplet, bnp)
-                self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
-                os.symlink(pkgpath, dst)
+                rpminfo['_pkgpath'] = pkgpath
                 kojipkgs[bnp] = rpminfo
-        pkglist.close()
         self.kojipkgs = kojipkgs
 
         # report problems
@@ -5534,19 +5578,54 @@ enabled=1
                         and not opts['allow_missing_signatures']):
                 raise koji.GenericError('Unsigned packages found. See '
                         'missing_signatures.log')
-        return pkgfile
 
+    def link_pkgs(self):
+        for bnp in self.kojipkgs:
+            bnplet = bnp[0].lower()
+            ddir = os.path.join(self.repodir, 'Packages', bnplet)
+            koji.ensuredir(ddir)
+            dst = os.path.join(ddir, bnp)
+            pkgpath = self.kojipkgs[bnp]['_pkgpath']
+            self.logger.debug("os.symlink(%r, %r(", pkgpath, dst)
+            os.symlink(pkgpath, dst)
+
+    def split_pkgs(self, opts):
+        '''Direct rpms to subrepos if needed'''
+        for rpminfo in self.kojipkgs.values():
+            if opts['split_debuginfo'] and koji.is_debuginfo(rpminfo['name']):
+                rpminfo['_subrepo'] = 'debug'
+                self.subrepos.add('debug')
+
+    def write_pkglist(self):
+        pkgs = []
+        subrepo_pkgs = {}
+        for bnp in self.kojipkgs:
+            rpminfo = self.kojipkgs[bnp]
+            bnplet = bnp[0].lower()
+            subrepo = rpminfo.get('_subrepo')
+            if subrepo:
+                # note the ../
+                subrepo_pkgs.setdefault(subrepo, []).append(
+                        '../Packages/%s/%s\n' % (bnplet, bnp))
+            else:
+                pkgs.append('Packages/%s/%s\n' % (bnplet, bnp))
+
+        with open('%s/pkglist' % self.repodir, 'w') as fo:
+            for line in pkgs:
+                fo.write(line)
+        for subrepo in subrepo_pkgs:
+            koji.ensuredir('%s/%s' % (self.repodir, subrepo))
+            with open('%s/%s/pkglist' % (self.repodir, subrepo), 'w') as fo:
+                for line in subrepo_pkgs[subrepo]:
+                    fo.write(line)
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
         datafile = file(filename, 'w')
         try:
-            json.dump(self.kojipkgs, datafile, indent=4)
+            json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
         finally:
             datafile.close()
-        # and upload too
-        self.session.uploadWrapper(filename, self.uploadpath, 'kojipkgs')
-
 
 
 class WaitrepoTask(BaseTaskHandler):

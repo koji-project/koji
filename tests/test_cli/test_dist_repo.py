@@ -252,14 +252,16 @@ Options:
   --allow-missing-signatures
                         For RPMs not signed with a desired key, fall back to
                         the primary copy
-  --arch=ARCH           Indicate an architecture to consider. The default is
+  -a ARCH, --arch=ARCH  Indicate an architecture to consider. The default is
                         all architectures associated with the given tag. This
                         option may be specified multiple times.
+  --with-src            Also generate a src repo
+  --split-debuginfo     Split debuginfo info a separate repo for each arch
   --comps=COMPS         Include a comps file in the repodata
   --delta-rpms=REPO     Create delta rpms. REPO can be the id of another dist
                         repo or the name of a tag that has a dist repo. May be
                         specified multiple times.
-  --event=EVENT         create a dist repository based on a Brew event
+  --event=EVENT         Use tag content at event
   --non-latest          Include older builds, not just the latest
   --multilib=CONFIG     Include multilib packages in the repository using the
                         given config file
