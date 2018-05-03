@@ -9250,7 +9250,7 @@ class RootExports(object):
         add_external_rpm(rpminfo, external_repo, strict=strict)
 
     def tagBuildBypass(self, tag, build, force=False, notify=True):
-        """Tag a build without running post checks or notifications
+        """Tag a build without running post checks
 
         This is a short circuit function for imports.
         Admin permission required.
