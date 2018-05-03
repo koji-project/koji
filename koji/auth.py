@@ -85,7 +85,7 @@ class Session(object):
             args = urlparse.parse_qs(args, strict_parsing=True)
         hostip = self.get_remote_ip(override=hostip)
         try:
-            id = long(args['session-id'][0])
+            id = int(args['session-id'][0])
             key = args['session-key'][0]
         except KeyError as field:
             raise koji.AuthError('%s not specified in session args' % field)
