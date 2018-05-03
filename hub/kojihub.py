@@ -9249,8 +9249,8 @@ class RootExports(object):
         context.session.assertPerm('admin')
         add_external_rpm(rpminfo, external_repo, strict=strict)
 
-    def tagBuildBypass(self, tag, build, force=False):
-        """Tag a build without running post checks or notifications
+    def tagBuildBypass(self, tag, build, force=False, notify=True):
+        """Tag a build without running post checks
 
         This is a short circuit function for imports.
         Admin permission required.
@@ -9261,6 +9261,8 @@ class RootExports(object):
         """
         context.session.assertPerm('admin')
         _tag_build(tag, build, force=force)
+        if notify:
+            tag_notification(True, None, tag, build, context.session.user_id)
 
     def tagBuild(self, tag, build, force=False, fromtag=None):
         """Request that a build be tagged
@@ -9347,8 +9349,8 @@ class RootExports(object):
             tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
             raise
 
-    def untagBuildBypass(self, tag, build, strict=True, force=False):
-        """Untag a build without any checks or notifications
+    def untagBuildBypass(self, tag, build, strict=True, force=False, notify=True):
+        """Untag a build without any checks
 
         Admins only. Intended for syncs/imports.
 
@@ -9356,6 +9358,8 @@ class RootExports(object):
         No return value"""
         context.session.assertPerm('admin')
         _untag_build(tag, build, strict=strict, force=force)
+        if notify:
+            tag_notification(True, None, tag, build, context.session.user_id)
 
     def moveBuild(self, tag1, tag2, build, force=False):
         """Move a build from tag1 to tag2
