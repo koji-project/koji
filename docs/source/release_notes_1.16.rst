@@ -1,0 +1,221 @@
+Koji 1.16.0 Release notes
+=========================
+
+
+Security Fixes
+--------------
+
+CVE-2018-1002150 - distRepoMove missing access check
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This release includes the fix for :doc:`CVE-2018-1002150`.
+
+
+Client Changes
+--------------
+
+CLI commands to manage notifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/688
+
+The change adds new cli sub-commands:
+
+    - list-notifications
+    - add-notification
+    - remove-notification
+    - edit-notification
+
+Previously this functionality was only available through the web ui or
+by making direct api calls.
+
+
+Add --old-chroot option to runroot command
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/823
+
+
+Fix runroot output on py3
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/828
+
+The runroot command should now work under python3.
+
+
+Honor runroot --quiet
+^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/806
+
+The ``--quiet`` option was added to the runroot command in version 1.15,
+but it only took effect when the ``--watch`` option was given. Now it is
+honored in all cases.
+
+
+Print debug and error messages to stderr
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/770
+
+
+Drop old ssl code
+^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/498
+
+The old ``koji.ssl`` module has been removed, and the ``use_old_ssl`` option
+has been removed from client code.
+
+Because these files (which were originally from Plague) were the only parts
+of Koji that were licensed as GPLv2+, Koji is now simply licensed as
+LGPLv2.
+
+
+Builder Changes
+---------------
+
+Configure install timeout for imagefactory
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/841
+
+
+Record log timestamps
+^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/777
+
+
+Builder option: chroot_tmpdir
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/787
+
+The new ``chroot_tmpdir`` option controls which directory within buildroots
+is used for various temporary data by the Koji builder daemon.
+Previously with was hardcoded to ``/builddir/tmp``, which created problems
+with modern versions of mock.
+The default value is ``/builddir/tmp``.
+
+
+Add internal_dev_setup option to runroot config
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/824
+
+The ``internal_dev_setup`` config option for the runroot builder plugin
+controls whether the mock option of the same name is set for runroot
+tasks.
+
+
+
+System Changes
+--------------
+
+
+Add option to configure DB port
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/884
+
+The hub now accepts a ``DBPort`` option in ``hub.conf``, which specifies
+which ip port the hub should use when connecting to the database.
+
+
+Dist repo updates
+^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/914
+
+
+Notifications in [un]tagBuildBypass
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/691
+
+Previously the ``tagBuildBypass`` and ``untagBuildBypass`` calls did not trigger
+notifications. Now they will do so by default. The call now accepts a
+``notify`` option (defaults to True) which controls the behavior.
+
+
+Track history for host data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/778
+
+Koji now tracks changes to host data similarly to the way it tracks
+changes for other data. This includes
+
+    - enabled state
+    - arches
+    - capacity
+    - description & comment
+    - channels
+
+The ``list-history`` cli command now supports ``--host`` and ``--channel``
+options to select history entries for a host or channel.
+
+The versioned host data is stored in the ``host_config`` and ``host_channels``
+tables.
+
+
+Fix block-group functionality
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/678
+
+The ``block-group`` command and its underlying api call now actually work.
+
+
+Strict option for archive listing calls
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/734
+| PR: https://pagure.io/koji/pull-request/748
+
+The ``list_archives``, ``get_archive_file()``, and ``list_archive_files()``
+hub functions now accept a strict option, which defaults to False. When
+the option is True, the call will raise an exception if there is no
+match.
+
+
+Search build by source
+^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/765
+
+The ``listBuilds()`` api call now supports a source option. This is
+treated as a glob pattern and matched against the ``source`` field of the build.
+
+
+Option to ignore tags in kojira
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/695
+
+Kojira now supports an ``ignore_tags`` option. This is treated as a
+space-separated list of glob patterns. Tags that match are ignored
+by kojira (it will not generate newRepo tasks for them).
+
+
+Improve kojira throughput
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/797
+
+Kojira should be much more responsive in triggering ``newRepo`` tasks.
+
+
+Drop migrateImage call
+^^^^^^^^^^^^^^^^^^^^^^
+
+| PR: https://pagure.io/koji/pull-request/632
+
+The ``migrateImage`` call hub call has been removed.
+
+This call was added in version 1.8 (April 2013)
+as a one-time tool for migrating images from the old model (no build entry)
+to the new model (image build type). It was only available if the
+EnableImageMigration is set on the hub.
