@@ -400,7 +400,7 @@ def load_config(environ):
         ['DBUser', 'string', None],
         ['DBHost', 'string', None],
         ['DBhost', 'string', None],   # alias for backwards compatibility
-        ['DBPort', 'integer', 5432],
+        ['DBPort', 'integer', None],
         ['DBPass', 'string', None],
         ['KojiDir', 'string', None],
 
@@ -667,7 +667,7 @@ def server_setup(environ):
                               user=opts["DBUser"],
                               password=opts.get("DBPass", None),
                               host=opts.get("DBHost", None),
-                              port=opts.get("DBPort", 5432))
+                              port=opts.get("DBPort", None))
     except Exception:
         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
         logger.error(tb_str)
