@@ -42,12 +42,13 @@ import tarfile
 import tempfile
 import time
 import traceback
-import urlparse
 import six.moves.xmlrpc_client
 import zipfile
 
 import rpm
 import six
+
+from six.moves.urllib.parse import parse_qs
 
 import koji
 import koji.auth
@@ -12972,7 +12973,7 @@ def handle_upload(environ):
     start = time.time()
     if not context.session.logged_in:
         raise koji.ActionNotAllowed('you must be logged-in to upload a file')
-    args = urlparse.parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
+    args = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
     #XXX - already parsed by auth
     name = args['filename'][0]
     path = args.get('filepath', ('',))[0]
