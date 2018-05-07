@@ -11036,23 +11036,15 @@ class RootExports(object):
         else:
             return 1
 
-    def _sortByKeyFunc(self, key, noneGreatest=True):
+    def _sortByKeyFuncNoneGreatest(key):
         """Return a function to sort a list of maps by the given key.
-        If the key starts with '-', sort in reverse order.  If noneGreatest
-        is True, None will sort higher than all other values (instead of lower).
+        None will sort higher than all other values (instead of lower).
         """
-        if noneGreatest:
-            # Normally None evaluates to be less than every other value
-            # Invert the comparison so it always evaluates to greater
-            cmpFunc = lambda a, b: (a is None or b is None) and -(cmp(a, b)) or cmp(a, b)
-        else:
-            cmpFunc = cmp
-
-        if key.startswith('-'):
-            key = key[1:]
-            return lambda a, b: cmpFunc(b[key], a[key])
-        else:
-            return lambda a, b: cmpFunc(a[key], b[key])
+        def internal_key(obj):
+            v = obj[key]
+            # Nones has priority, others are second
+            return (v is None, v)
+        return internal_key
 
     def filterResults(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and filter the results
@@ -11107,7 +11099,15 @@ class RootExports(object):
 
         order = filterOpts.get('order')
         if order:
-            results.sort(self._sortByKeyFunc(order, filterOpts.get('noneGreatest', True)))
+            if order.startswith('-'):
+                reverse = True
+                order = order[1:]
+            else:
+                reverse = False
+            if filterOpts.get('noneGreatest', True):
+                results.sort(self._sortByKeyFuncNoneGreatest(order), reverse=reverse)
+            else:
+                results.sort(key=order, reverse=reverse)
 
         offset = filterOpts.get('offset')
         if offset is not None:
