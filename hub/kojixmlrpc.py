@@ -51,7 +51,10 @@ class Marshaller(ExtendedMarshaller):
     def dump_datetime(self, value, write):
         # For backwards compatibility, we return datetime objects as strings
         value = value.isoformat(' ')
-        self.dump_string(value, write)
+        if six.PY2:
+            self.dump_string(value, write)
+        else:
+            self.dump_unicode(value, write)
     dispatch[datetime.datetime] = dump_datetime
 
 
