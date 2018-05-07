@@ -215,12 +215,31 @@ installed.
 Notifications
 ^^^^^^^^^^^^^
 
-When authenticated with the Koji web interface, you can setup a
-notification requests to make sure you do not miss when a package you
-care about gets built. Login and scroll to the bottom of the page, there
-you should find a *`Add a
-notification <https://koji.fedoraproject.org/koji/notificationcreate>`__*
-link and a list of your configured notifications.
+Koji supports a limited number of email notifications:
+
+    - build notifications: when builds complete or fail
+    - tag notifications: when builds are tagged or untagged
+
+These mails are sent to:
+
+    - the owner of the build in question
+    - (for tag notifications) the owner of the package for the tag
+    - any user who as subscribed to notifications for that package or tag
+
+Users can manage their notification subscriptions in the web interface.
+To do so, they need to be logged in. The main page (Summary) will list
+their subscriptions at the bottom. Each entry includes an "edit" and
+"delete" link. Below that table is an "Add a notification" link for adding
+new notifications.
+
+Starting in Koji version 1.16.0, users can also manage these subscriptions
+on the command line. The relevant commands are:
+
+    - add-notification
+    - edit-notification
+    - list-notifications
+    - remove-notification
+
 
 Building with fedpkg targets
 ----------------------------
