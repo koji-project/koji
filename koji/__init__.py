@@ -2175,6 +2175,8 @@ def is_conn_error(e):
 
 
 class VirtualMethod(object):
+    # cache for api documentation
+    _apidoc = None
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
     # supports named arguments (if server does)
@@ -2185,6 +2187,31 @@ class VirtualMethod(object):
         return type(self)(self.__func, "%s.%s" % (self.__name, name))
     def __call__(self, *args, **opts):
         return self.__func(self.__name, args, opts)
+
+    @property
+    def __doc__(self):
+        # try to fetch API docs
+        if VirtualMethod._apidoc is None:
+            try:
+                VirtualMethod._apidoc = dict(
+                    [(f["name"], f) for f in self.__func("_listapi", [], {})]
+                )
+            except:
+                VirtualMethod._apidoc = {}
+
+        funcdoc = VirtualMethod._apidoc.get(self.__name)
+        if funcdoc:
+            # add argument description to docstring since the
+            # call signature is not updated, yet
+            argdesc = funcdoc["name"] + funcdoc["argdesc"] + "\n"
+            doc = funcdoc["doc"]
+            if doc:
+                return argdesc + doc
+            else:
+                return argdesc
+        else:
+            return None
+
 
 
 def grab_session_options(options):
