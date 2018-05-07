@@ -4353,7 +4353,10 @@ def _get_zipfile_list(archive_id, zippath):
         return result
     with zipfile.ZipFile(zippath, 'r') as archive:
         for entry in archive.infolist():
-            filename = koji.fixEncoding(entry.filename)
+            if six.PY2:
+                filename = koji.fixEncoding(entry.filename)
+            else:
+                filename = entry.filename
             result.append({'archive_id': archive_id,
                            'name': filename,
                            'size': entry.file_size,
@@ -4378,7 +4381,10 @@ def _get_tarball_list(archive_id, tarpath):
         return result
     with tarfile.open(tarpath, 'r') as archive:
         for entry in archive:
-            filename = koji.fixEncoding(entry.name)
+            if six.PY2:
+                filename = koji.fixEncoding(entry.name)
+            else:
+                filename = entry.name
             result.append({'archive_id': archive_id,
                            'name': filename,
                            'size': entry.size,
@@ -6352,7 +6358,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     archiveinfo = {'buildroot_id': buildroot_id}
     archiveinfo['build_id'] = buildinfo['id']
     if metadata_only:
-        filename = koji.fixEncoding(fileinfo['filename'])
+        if six.PY2:
+            filename = koji.fixEncoding(fileinfo['filename'])
+        else:
+            filename = fileinfo['filename']
         archiveinfo['filename'] = filename
         archiveinfo['size'] = fileinfo['filesize']
         archiveinfo['checksum'] = fileinfo['checksum']
@@ -6363,7 +6372,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
         archiveinfo['metadata_only'] = True
     else:
-        filename = koji.fixEncoding(os.path.basename(filepath))
+        if six.PY2:
+            filename = koji.fixEncoding(os.path.basename(filepath))
+        else:
+            filename = os.path.basename(filepath)
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
@@ -6484,8 +6496,10 @@ def _import_archive_file(filepath, destdir):
     A symlink pointing from the old location to the new location will
     be created.
     """
-    final_path = "%s/%s" % (destdir,
-                            koji.fixEncoding(os.path.basename(filepath)))
+    fname = os.path.basename(filepath)
+    if six.PY2:
+        fname = koji.fixEncoding(fname)
+    final_path = "%s/%s" % (destdir, fname)
     if os.path.exists(final_path):
         raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
     if os.path.islink(filepath) or not os.path.isfile(filepath):
@@ -7669,7 +7683,10 @@ def parse_json(value, desc=None, errstr=None):
     if value is None:
         return value
     try:
-        return koji.fixEncodingRecurse(json.loads(value))
+        if six.PY2:
+            return koji.fixEncodingRecurse(json.loads(value))
+        else:
+            return json.loads(value)
     except Exception:
         if errstr is None:
             if desc is None:
@@ -9658,8 +9675,9 @@ class RootExports(object):
         for (cltime, clname, cltext) in zip(fields['changelogtime'], fields['changelogname'],
                                             fields['changelogtext']):
             cldate = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-            clname = koji.fixEncoding(clname)
-            cltext = koji.fixEncoding(cltext)
+            if six.PY2:
+                clname = koji.fixEncoding(clname)
+                cltext = koji.fixEncoding(cltext)
 
             if author and author != clname:
                 continue
@@ -9674,7 +9692,10 @@ class RootExports(object):
                 results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
 
         results = _applyQueryOpts(results, queryOpts)
-        return koji.fixEncodingRecurse(results, remove_nonprintable=True)
+        if six.PY2:
+            return koji.fixEncodingRecurse(results, remove_nonprintable=True)
+        else:
+            return results
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
