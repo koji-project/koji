@@ -111,6 +111,35 @@ def handle_block_group(goptions, session, args):
 
     session.groupListBlock(tag, group)
 
+
+def handle_remove_group(goptions, session, args):
+    "[admin] Remove group from tag"
+    usage = _("usage: %prog remove-group <tag> <group>")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error(_("Please specify a tag name and a group name"))
+        assert False  # pragma: no cover
+    tag = args[0]
+    group = args[1]
+
+    activate_session(session, goptions)
+    if not session.hasPerm('admin'):
+        error(_("This action requires admin privileges"))
+
+    dsttag = session.getTag(tag)
+    if not dsttag:
+        error(_("Unknown tag: %s" % tag))
+
+    groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
+    group_id = groups.get(group, None)
+    if group_id is None:
+        error(_("Group %s doesn't exist within tag %s" % (group, tag)))
+
+    session.groupListRemove(tag, group)
+
+
 def handle_assign_task(goptions, session, args):
     "[admin] Assign a task to a host"
     usage = _('usage: %prog assign-task task_id hostname')
