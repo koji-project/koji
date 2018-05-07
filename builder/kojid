@@ -681,10 +681,6 @@ class BuildRoot(object):
             self.expire()
             raise koji.BuildrootError('error building Maven package, %s' % self._mockResult(rv, logfile='root.log'))
 
-    def scrub(self):
-        "Non-mock implementation of clean"
-        raise koji.FunctionDeprecated("no longer needed and deprecated. use clean()")
-
     def markExternalRPMs(self, rpmlist):
         """Check rpms against pkgorigins and add external repo data to the external ones
 
