@@ -6155,16 +6155,16 @@ def merge_scratch(task_id):
         raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' % \
               (task_info['request'][0], build_task_info['request'][0]))
     build_arches = set()
-    for rpm in list_rpms(buildID=build['id']):
-        if rpm['arch'] == 'src':
-            build_srpm = '%s.src.rpm' % rpm['nvr']
+    for rpminfo in list_rpms(buildID=build['id']):
+        if rpminfo['arch'] == 'src':
+            build_srpm = '%s.src.rpm' % rpminfo['nvr']
             if srpm != build_srpm:
                 raise koji.ImportError('task and build srpm names do not match: %s, %s' % \
                       (srpm, build_srpm))
-        elif rpm['arch'] == 'noarch':
+        elif rpminfo['arch'] == 'noarch':
             continue
         else:
-            build_arches.add(rpm['arch'])
+            build_arches.add(rpminfo['arch'])
     if not build_arches:
         raise koji.ImportError('no arch-specific rpms found for %s' % build['nvr'])
     task_arches = set([t['arch'] for t in tasks.values()])
