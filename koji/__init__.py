@@ -890,6 +890,22 @@ def get_rpm_header(f, ts=None):
     return hdr
 
 
+def _decode_item(item):
+    """Decode rpm header byte strings to str in py3"""
+    if six.PY2:
+        return item
+    elif isinstance(item, bytes):
+        try:
+            return item.decode()
+        except UnicodeDecodeError:
+            # typically signatures
+            return item
+    elif isinstance(item, list):
+        return [_decode_item(x) for x in item]
+    else:
+        return item
+
+
 def get_header_field(hdr, name, src_arch=False):
     """Extract named field from an rpm header"""
     name = name.upper()
@@ -913,12 +929,6 @@ def get_header_field(hdr, name, src_arch=False):
             result = []
         elif isinstance(result, six.integer_types):
             result = [result]
-    if six.PY3 and isinstance(result, bytes):
-        try:
-            result = result.decode('utf-8')
-        except UnicodeDecodeError:
-            # typically signatures
-            pass
 
     sizetags = ('SIZE', 'ARCHIVESIZE', 'FILESIZES', 'SIGSIZE')
     if name in sizetags and (result is None or result == []):
@@ -928,7 +938,7 @@ def get_header_field(hdr, name, src_arch=False):
             # no such header
             pass
 
-    return result
+    return _decode_item(result)
 
 
 def _get_header_field(hdr, name):
