@@ -73,6 +73,16 @@ def log_error(msg):
     logger.error(msg)
 
 
+def move_and_symlink(src, dst, relative=False, create_dir=False):
+    """Move src to dest and create symlink instead of original file"""
+    if create_dir:
+        koji.ensuredir(os.path.dirname(dst))
+    safer_move(src, dst)
+    if relative:
+        dst = os.path.relpath(dst, os.path.dirname(src))
+    os.symlink(dst, src)
+
+
 class Task(object):
     """A task for the build hosts"""
 
@@ -6036,8 +6046,7 @@ def import_build_log(fn, buildinfo, subdir=None):
         raise koji.GenericError("Error importing build log. %s already exists." % final_path)
     if os.path.islink(fn) or not os.path.isfile(fn):
         raise koji.GenericError("Error importing build log. %s is not a regular file." % fn)
-    safer_move(fn, final_path)
-    os.symlink(final_path, fn)
+    move_and_symlink(fn, final_path, relative=True)
 
 def import_rpm_file(fn, buildinfo, rpminfo):
     """Move the rpm file into the proper place
@@ -6482,9 +6491,7 @@ def _import_archive_file(filepath, destdir):
         raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
     if os.path.islink(filepath) or not os.path.isfile(filepath):
         raise koji.GenericError("Error importing archive file, %s is not a regular file" % filepath)
-    koji.ensuredir(destdir)
-    safer_move(filepath, final_path)
-    os.symlink(final_path, filepath)
+    move_and_symlink(filepath, final_path, relative=True, create_dir=True)
 
 def _generate_maven_metadata(mavendir):
     """
@@ -8653,8 +8660,7 @@ def importImageInternal(task_id, build_id, imgdata):
             raise koji.GenericError("Error importing build log. %s already exists." % final_path)
         if os.path.islink(logsrc) or not os.path.isfile(logsrc):
             raise koji.GenericError("Error importing build log. %s is not a regular file." % logsrc)
-        safer_move(logsrc, final_path)
-        os.symlink(final_path, logsrc)
+        move_and_symlink(logsrc, final_path, relative=True, create_dir=True)
 
     # record all of the RPMs installed in the image(s)
     # verify they were built in Koji or in an external repo
@@ -11938,8 +11944,7 @@ class HostExports(object):
         for relpath in [srpm] + rpms:
             fn = "%s/%s" % (uploadpath, relpath)
             dest = "%s/%s" % (dir, os.path.basename(fn))
-            safer_move(fn, dest)
-            os.symlink(dest, fn)
+            move_and_symlink(fn, dest, relative=True)
         if logs:
             for key, files in six.iteritems(logs):
                 if key:
@@ -11950,8 +11955,7 @@ class HostExports(object):
                 for relpath in files:
                     fn = "%s/%s" % (uploadpath, relpath)
                     dest = "%s/%s" % (logdir, os.path.basename(fn))
-                    safer_move(fn, dest)
-                    os.symlink(dest, fn)
+                    move_and_symlink(fn, dest, relative=True)
 
     def moveMavenBuildToScratch(self, task_id, results, rpm_results):
         "Move a completed Maven scratch build into place (not imported)"
@@ -11972,18 +11976,14 @@ class HostExports(object):
                     relpath = filename
                 src = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
                 dest = os.path.join(destdir, relpath)
-                koji.ensuredir(os.path.dirname(dest))
-                safer_move(src, dest)
-                os.symlink(dest, src)
+                move_and_symlink(src, dest, relative=True, create_dir=True)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
                 src = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
                                    relpath)
                 dest = os.path.join(destdir, 'rpms', relpath)
-                koji.ensuredir(os.path.dirname(dest))
-                safer_move(src, dest)
-                os.symlink(dest, src)
+                move_and_symlink(src, dest, relative=True, create_dir=True)
 
     def moveWinBuildToScratch(self, task_id, results, rpm_results):
         "Move a completed Windows scratch build into place (not imported)"
@@ -11999,18 +11999,14 @@ class HostExports(object):
         for relpath in to_list(results['output'].keys()) + results['logs']:
             filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
             dest = os.path.join(destdir, relpath)
-            koji.ensuredir(os.path.dirname(dest))
-            safer_move(filename, dest)
-            os.symlink(dest, filename)
+            move_and_symlink(filename, dest, relative=True, create_dir=True)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
                 filename = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
                                         relpath)
                 dest = os.path.join(destdir, 'rpms', relpath)
-                koji.ensuredir(os.path.dirname(dest))
-                safer_move(filename, dest)
-                os.symlink(dest, filename)
+                move_and_symlink(filename, dest, relative=True, create_dir=True)
 
     def moveImageBuildToScratch(self, task_id, results):
         """move a completed image scratch build into place"""
@@ -12031,10 +12027,8 @@ class HostExports(object):
             for img in sub_results['files'] + sub_results['logs']:
                 src = os.path.join(workdir, img)
                 dest = os.path.join(destdir, img)
-                koji.ensuredir(destdir)
                 logger.debug('renaming %s to %s' % (src, dest))
-                safer_move(src, dest)
-                os.symlink(dest, src)
+                move_and_symlink(src, dest, relative=True, create_dir=True)
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
@@ -12042,9 +12036,7 @@ class HostExports(object):
                     src = os.path.join(koji.pathinfo.task(
                         rpm_results['task_id']), relpath)
                     dest = os.path.join(destdir, 'rpms', relpath)
-                    koji.ensuredir(os.path.dirname(dest))
-                    safer_move(src, dest)
-                    os.symlink(dest, src)
+                    move_and_symlink(src, dest, relative=True, create_dir=True)
 
     def initBuild(self, data):
         """Create a stub (rpm) build entry.
