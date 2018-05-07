@@ -633,7 +633,7 @@ def setup_logging2(opts):
             name = 'koji' + name
         elif not name.startswith('koji'):
             name = 'koji.' + name
-        level_code = logging._levelNames[level]
+        level_code = logging.getLevelName(level)
         logging.getLogger(name).setLevel(level_code)
     logger = logging.getLogger("koji")
     # if KojiDebug is set, force main log level to DEBUG
