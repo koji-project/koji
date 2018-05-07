@@ -2391,9 +2391,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
     comps = koji.generate_comps(groups, expand_groups=True)
-    fo = open("%s/comps.xml" % groupsdir, 'w')
-    fo.write(comps)
-    fo.close()
+    with open("%s/comps.xml" % groupsdir, 'w') as fo:
+        fo.write(comps)
 
     #get build dirs
     relpathinfo = koji.PathInfo(topdir='toplink')
@@ -2506,9 +2505,8 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    mdfile = open(os.path.join(destdir, 'maven-metadata.xml'), 'w')
-    mdfile.write(contents)
-    mdfile.close()
+    with open(os.path.join(destdir, 'maven-metadata.xml'), 'w') as mdfile:
+        mdfile.write(contents)
     _generate_maven_metadata(destdir)
 
 def dist_repo_init(tag, keys, task_opts):
@@ -4353,14 +4351,13 @@ def _get_zipfile_list(archive_id, zippath):
     result = []
     if not os.path.exists(zippath):
         return result
-    archive = zipfile.ZipFile(zippath, 'r')
-    for entry in archive.infolist():
-        filename = koji.fixEncoding(entry.filename)
-        result.append({'archive_id': archive_id,
-                       'name': filename,
-                       'size': entry.file_size,
-                       'mtime': int(time.mktime(entry.date_time + (0, 0, -1)))})
-    archive.close()
+    with zipfile.ZipFile(zippath, 'r') as archive:
+        for entry in archive.infolist():
+            filename = koji.fixEncoding(entry.filename)
+            result.append({'archive_id': archive_id,
+                           'name': filename,
+                           'size': entry.file_size,
+                           'mtime': int(time.mktime(entry.date_time + (0, 0, -1)))})
     return result
 
 def _get_tarball_list(archive_id, tarpath):
@@ -4379,17 +4376,16 @@ def _get_tarball_list(archive_id, tarpath):
     result = []
     if not os.path.exists(tarpath):
         return result
-    archive = tarfile.open(tarpath, 'r')
-    for entry in archive:
-        filename = koji.fixEncoding(entry.name)
-        result.append({'archive_id': archive_id,
-                       'name': filename,
-                       'size': entry.size,
-                       'mtime': entry.mtime,
-                       'mode': entry.mode,
-                       'user': entry.uname,
-                       'group': entry.gname})
-    archive.close()
+    with tarfile.open(tarpath, 'r') as archive:
+        for entry in archive:
+            filename = koji.fixEncoding(entry.name)
+            result.append({'archive_id': archive_id,
+                           'name': filename,
+                           'size': entry.size,
+                           'mtime': entry.mtime,
+                           'mode': entry.mode,
+                           'user': entry.uname,
+                           'group': entry.gname})
     return result
 
 def list_archive_files(archive_id, queryOpts=None, strict=False):
@@ -5516,9 +5512,8 @@ class CG_Importer(object):
             path = os.path.join(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            fo = open(path, 'rb')
-            metadata = fo.read()
-            fo.close()
+            with open(path, 'rt') as fo:
+                metadata = fo.read()
         self.raw_metadata = metadata
         self.metadata = parse_json(metadata, desc='metadata')
         return self.metadata
@@ -5658,11 +5653,8 @@ class CG_Importer(object):
         builddir = koji.pathinfo.build(self.buildinfo)
         koji.ensuredir(builddir)
         path = os.path.join(builddir, 'metadata.json')
-        fo = open(path, 'w')
-        try:
+        with open(path, 'w') as fo:
             fo.write(self.raw_metadata)
-        finally:
-            fo.close()
 
 
     def prep_brs(self):
@@ -6376,14 +6368,13 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
         if not fileinfo or not fileinfo.get('hub.checked_md5'):
-            archivefp = open(filepath)
-            m = md5_constructor()
-            while True:
-                contents = archivefp.read(8192)
-                if not contents:
-                    break
-                m.update(contents)
-            archivefp.close()
+            with open(filepath, 'rb') as archivefp:
+                m = md5_constructor()
+                while True:
+                    contents = archivefp.read(8192)
+                    if not contents:
+                        break
+                    m.update(contents)
             archiveinfo['checksum'] = m.hexdigest()
         else:
             archiveinfo['checksum'] = fileinfo['checksum']
@@ -6516,16 +6507,14 @@ def _generate_maven_metadata(mavendir):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
                 sum = sum_constr()
-                fobj = open('%s/%s' % (mavendir, mavenfile))
-                while True:
-                    content = fobj.read(8192)
-                    if not content:
-                        break
-                    sum.update(content)
-                fobj.close()
-                sumobj = open('%s/%s' % (mavendir, sumfile), 'w')
-                sumobj.write(sum.hexdigest())
-                sumobj.close()
+                with open('%s/%s' % (mavendir, mavenfile), 'rb') as fobj:
+                    while True:
+                        content = fobj.read(8192)
+                        if not content:
+                            break
+                        sum.update(content)
+                with open('%s/%s' % (mavendir, sumfile), 'w') as sumobj:
+                    sumobj.write(sum.hexdigest())
 
 def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
@@ -6579,9 +6568,8 @@ def add_rpm_sig(an_rpm, sighdr):
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
-    fo = open(sigpath, 'wb')
-    fo.write(sighdr)
-    fo.close()
+    with open(sigpath, 'wb') as fo:
+        fo.write(sighdr)
     koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
 
 def _scan_sighdr(sighdr, fn):
@@ -6632,9 +6620,8 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         koji.splice_rpm_sighdr(sighdr, rpm_path, temp)
         ts = rpm.TransactionSet()
         ts.setVSFlags(0)  #full verify
-        fo = open(temp, 'rb')
-        hdr = ts.hdrFromFdno(fo.fileno())
-        fo.close()
+        with open(temp, 'rb') as fo:
+            hdr = ts.hdrFromFdno(fo.fileno())
     except:
         try:
             os.unlink(temp)
@@ -6695,9 +6682,8 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
         else:
             os.unlink(signedpath)
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
-    fo = open(sigpath, 'rb')
-    sighdr = fo.read()
-    fo.close()
+    with open(sigpath, 'rb') as fo:
+        sighdr = fo.read()
     koji.ensuredir(os.path.dirname(signedpath))
     koji.splice_rpm_sighdr(sighdr, rpm_path, signedpath)
 
@@ -9195,15 +9181,14 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        f = open(filePath, 'r')
-        if isinstance(offset, str):
-            offset = int(offset)
-        if offset != None and offset > 0:
-            f.seek(offset, 0)
-        elif offset != None and offset < 0:
-            f.seek(offset, 2)
-        contents = f.read(size)
-        f.close()
+        with open(filePath, 'r') as f:
+            if isinstance(offset, str):
+                offset = int(offset)
+            if offset != None and offset > 0:
+                f.seek(offset, 0)
+            elif offset != None and offset < 0:
+                f.seek(offset, 2)
+            contents = f.read(size)
         return base64.encodestring(contents)
 
     listTaskOutput = staticmethod(list_task_output)
@@ -12951,9 +12936,8 @@ def get_upload_path(reldir, name, create=False, volume=None):
                 if context.session.user_id != user_id:
                     raise koji.GenericError("Invalid upload directory, not owner: %s" % orig_reldir)
             else:
-                fo = open(u_fn, 'w')
-                fo.write(str(context.session.user_id))
-                fo.close()
+                with open(u_fn, 'w') as fo:
+                    fo.write(str(context.session.user_id))
     return os.path.join(udir, name)
 
 def get_verify_class(verify):
