@@ -76,18 +76,18 @@ class TestImportRPM(unittest.TestCase):
         _singleValue.return_value = 9876
         kojihub.import_rpm(self.filename)
         fields = [
-            'build_id',
-            'name',
             'arch',
-            'buildtime',
-            'payloadhash',
-            'epoch',
-            'version',
+            'build_id',
             'buildroot_id',
-            'release',
+            'buildtime',
+            'epoch',
             'external_repo_id',
             'id',
+            'name',
+            'payloadhash',
+            'release',
             'size',
+            'version',
         ]
         statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
             ", ".join(fields),
@@ -135,18 +135,18 @@ class TestImportRPM(unittest.TestCase):
         _singleValue.return_value = 9876
         kojihub.import_rpm(self.src_filename)
         fields = [
-            'build_id',
-            'name',
             'arch',
-            'buildtime',
-            'payloadhash',
-            'epoch',
-            'version',
+            'build_id',
             'buildroot_id',
-            'release',
+            'buildtime',
+            'epoch',
             'external_repo_id',
             'id',
+            'name',
+            'payloadhash',
+            'release',
             'size',
+            'version',
         ]
         statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
             ", ".join(fields),
@@ -253,19 +253,19 @@ class TestImportBuild(unittest.TestCase):
         kojihub.import_build(self.src_filename, [self.filename])
 
         fields = [
-            'task_id',
-            'extra',
-            'start_time',
-            'epoch',
             'completion_time',
-            'state',
-            'version',
-            'source',
-            'volume_id',
-            'owner',
-            'release',
-            'pkg_id',
+            'epoch',
+            'extra',
             'id',
+            'owner',
+            'pkg_id',
+            'release',
+            'source',
+            'start_time',
+            'state',
+            'task_id',
+            'version',
+            'volume_id',
         ]
         statement = 'INSERT INTO build (%s) VALUES (%s)' % (
             ", ".join(fields),

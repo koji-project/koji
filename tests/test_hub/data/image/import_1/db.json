@@ -1,205 +1,205 @@
 {
     "inserts": [
         [
-            "INSERT INTO archiveinfo (build_id, archive_id, type_id, checksum, filename, checksum_type, btype_id, buildroot_id, id, size) VALUES (%(build_id)s, %(archive_id)s, %(type_id)s, %(checksum)s, %(filename)s, %(checksum_type)s, %(btype_id)s, %(buildroot_id)s, %(id)s, %(size)s)", 
+            "INSERT INTO archiveinfo (archive_id, btype_id, build_id, buildroot_id, checksum, checksum_type, filename, id, size, type_id) VALUES (%(archive_id)s, %(btype_id)s, %(build_id)s, %(buildroot_id)s, %(checksum)s, %(checksum_type)s, %(filename)s, %(id)s, %(size)s, %(type_id)s)",
             {
-                "build_id": 137, 
-                "archive_id": "ARCHIVE_ID", 
-                "type_id": "ARCHIVETYPE", 
-                "checksum": "19a674d997af7098a444b60d7b51cee6", 
-                "filename": "tdl-x86_64.xml", 
-                "checksum_type": 0, 
-                "btype_id": "BTYPEID:image", 
-                "buildroot_id": null, 
-                "id": 1001, 
+                "build_id": 137,
+                "archive_id": "ARCHIVE_ID",
+                "type_id": "ARCHIVETYPE",
+                "checksum": "19a674d997af7098a444b60d7b51cee6",
+                "filename": "tdl-x86_64.xml",
+                "checksum_type": 0,
+                "btype_id": "BTYPEID:image",
+                "buildroot_id": null,
+                "id": 1001,
                 "size": 36
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO image_archives (archive_id, arch) VALUES (%(archive_id)s, %(arch)s)", 
+            "INSERT INTO image_archives (arch, archive_id) VALUES (%(arch)s, %(archive_id)s)",
             {
-                "archive_id": 1001, 
+                "archive_id": 1001,
                 "arch": "x86_64"
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archiveinfo (build_id, archive_id, type_id, checksum, filename, checksum_type, btype_id, buildroot_id, id, size) VALUES (%(build_id)s, %(archive_id)s, %(type_id)s, %(checksum)s, %(filename)s, %(checksum_type)s, %(btype_id)s, %(buildroot_id)s, %(id)s, %(size)s)", 
+            "INSERT INTO archiveinfo (archive_id, btype_id, build_id, buildroot_id, checksum, checksum_type, filename, id, size, type_id) VALUES (%(archive_id)s, %(btype_id)s, %(build_id)s, %(buildroot_id)s, %(checksum)s, %(checksum_type)s, %(filename)s, %(id)s, %(size)s, %(type_id)s)",
             {
-                "build_id": 137, 
-                "archive_id": "ARCHIVE_ID", 
-                "type_id": "ARCHIVETYPE", 
-                "checksum": "a5114a20d790cf17eca1b1115a4546f8", 
-                "filename": "image.ks", 
-                "checksum_type": 0, 
-                "btype_id": "BTYPEID:image", 
-                "buildroot_id": null, 
-                "id": 1002, 
+                "build_id": 137,
+                "archive_id": "ARCHIVE_ID",
+                "type_id": "ARCHIVETYPE",
+                "checksum": "a5114a20d790cf17eca1b1115a4546f8",
+                "filename": "image.ks",
+                "checksum_type": 0,
+                "btype_id": "BTYPEID:image",
+                "buildroot_id": null,
+                "id": 1002,
                 "size": 30
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO image_archives (archive_id, arch) VALUES (%(archive_id)s, %(arch)s)", 
+            "INSERT INTO image_archives (arch, archive_id) VALUES (%(arch)s, %(archive_id)s)",
             {
-                "archive_id": 1002, 
+                "archive_id": 1002,
                 "arch": "x86_64"
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archiveinfo (build_id, archive_id, type_id, checksum, filename, checksum_type, btype_id, buildroot_id, id, size) VALUES (%(build_id)s, %(archive_id)s, %(type_id)s, %(checksum)s, %(filename)s, %(checksum_type)s, %(btype_id)s, %(buildroot_id)s, %(id)s, %(size)s)", 
+            "INSERT INTO archiveinfo (archive_id, btype_id, build_id, buildroot_id, checksum, checksum_type, filename, id, size, type_id) VALUES (%(archive_id)s, %(btype_id)s, %(build_id)s, %(buildroot_id)s, %(checksum)s, %(checksum_type)s, %(filename)s, %(id)s, %(size)s, %(type_id)s)",
             {
-                "build_id": 137, 
-                "archive_id": "ARCHIVE_ID", 
-                "type_id": "ARCHIVETYPE", 
-                "checksum": "9828cf75d9d17ac8e79e53ed71c6a71c", 
-                "filename": "image-base.ks", 
-                "checksum_type": 0, 
-                "btype_id": "BTYPEID:image", 
-                "buildroot_id": null, 
-                "id": 1003, 
+                "build_id": 137,
+                "archive_id": "ARCHIVE_ID",
+                "type_id": "ARCHIVETYPE",
+                "checksum": "9828cf75d9d17ac8e79e53ed71c6a71c",
+                "filename": "image-base.ks",
+                "checksum_type": 0,
+                "btype_id": "BTYPEID:image",
+                "buildroot_id": null,
+                "id": 1003,
                 "size": 35
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO image_archives (archive_id, arch) VALUES (%(archive_id)s, %(arch)s)", 
+            "INSERT INTO image_archives (arch, archive_id) VALUES (%(arch)s, %(archive_id)s)",
             {
-                "archive_id": 1003, 
+                "archive_id": 1003,
                 "arch": "x86_64"
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archiveinfo (build_id, archive_id, type_id, checksum, filename, checksum_type, btype_id, buildroot_id, id, size) VALUES (%(build_id)s, %(archive_id)s, %(type_id)s, %(checksum)s, %(filename)s, %(checksum_type)s, %(btype_id)s, %(buildroot_id)s, %(id)s, %(size)s)", 
+            "INSERT INTO archiveinfo (archive_id, btype_id, build_id, buildroot_id, checksum, checksum_type, filename, id, size, type_id) VALUES (%(archive_id)s, %(btype_id)s, %(build_id)s, %(buildroot_id)s, %(checksum)s, %(checksum_type)s, %(filename)s, %(id)s, %(size)s, %(type_id)s)",
             {
-                "build_id": 137, 
-                "archive_id": "ARCHIVE_ID", 
-                "type_id": "ARCHIVETYPE", 
-                "checksum": "f601c0f647d7cdd4c92aa511876f8533", 
-                "filename": "foo-x86_64.xml", 
-                "checksum_type": 0, 
-                "btype_id": "BTYPEID:image", 
-                "buildroot_id": null, 
-                "id": 1004, 
+                "build_id": 137,
+                "archive_id": "ARCHIVE_ID",
+                "type_id": "ARCHIVETYPE",
+                "checksum": "f601c0f647d7cdd4c92aa511876f8533",
+                "filename": "foo-x86_64.xml",
+                "checksum_type": 0,
+                "btype_id": "BTYPEID:image",
+                "buildroot_id": null,
+                "id": 1004,
                 "size": 36
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO image_archives (archive_id, arch) VALUES (%(archive_id)s, %(arch)s)", 
+            "INSERT INTO image_archives (arch, archive_id) VALUES (%(arch)s, %(archive_id)s)",
             {
-                "archive_id": 1004, 
+                "archive_id": 1004,
                 "arch": "x86_64"
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archiveinfo (build_id, archive_id, type_id, checksum, filename, checksum_type, btype_id, buildroot_id, id, size) VALUES (%(build_id)s, %(archive_id)s, %(type_id)s, %(checksum)s, %(filename)s, %(checksum_type)s, %(btype_id)s, %(buildroot_id)s, %(id)s, %(size)s)", 
+            "INSERT INTO archiveinfo (archive_id, btype_id, build_id, buildroot_id, checksum, checksum_type, filename, id, size, type_id) VALUES (%(archive_id)s, %(btype_id)s, %(build_id)s, %(buildroot_id)s, %(checksum)s, %(checksum_type)s, %(filename)s, %(id)s, %(size)s, %(type_id)s)",
             {
-                "build_id": 137, 
-                "archive_id": "ARCHIVE_ID", 
-                "type_id": "ARCHIVETYPE", 
-                "checksum": "84547200ef5002292ecdd50c62de518e", 
-                "filename": "my-image-7.4.2-2.x86_64.ova", 
-                "checksum_type": 0, 
-                "btype_id": "BTYPEID:image", 
-                "buildroot_id": null, 
-                "id": 1005, 
+                "build_id": 137,
+                "archive_id": "ARCHIVE_ID",
+                "type_id": "ARCHIVETYPE",
+                "checksum": "84547200ef5002292ecdd50c62de518e",
+                "filename": "my-image-7.4.2-2.x86_64.ova",
+                "checksum_type": 0,
+                "btype_id": "BTYPEID:image",
+                "buildroot_id": null,
+                "id": 1005,
                 "size": 49
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO image_archives (archive_id, arch) VALUES (%(archive_id)s, %(arch)s)", 
+            "INSERT INTO image_archives (arch, archive_id) VALUES (%(arch)s, %(archive_id)s)",
             {
-                "archive_id": 1005, 
+                "archive_id": 1005,
                 "arch": "x86_64"
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1002, 
+                "archive_id": 1002,
                 "rpm_id": 1000
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1002, 
+                "archive_id": 1002,
                 "rpm_id": 1001
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1002, 
+                "archive_id": 1002,
                 "rpm_id": 1002
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1003, 
+                "archive_id": 1003,
                 "rpm_id": 1000
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1003, 
+                "archive_id": 1003,
                 "rpm_id": 1001
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1003, 
+                "archive_id": 1003,
                 "rpm_id": 1002
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1005, 
+                "archive_id": 1005,
                 "rpm_id": 1000
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1005, 
+                "archive_id": 1005,
                 "rpm_id": 1001
-            }, 
+            },
             {}
-        ], 
+        ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)", 
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
             {
-                "archive_id": 1005, 
+                "archive_id": 1005,
                 "rpm_id": 1002
-            }, 
+            },
             {}
         ]
-    ], 
+    ],
     "updates": [
         [
-            "UPDATE build SET state = %(data.state)s, id = %(data.id)s, completion_time = (now())\nWHERE ( id=%(build_id)i )", 
+            "UPDATE build SET completion_time = (now()), id = %(data.id)s, state = %(data.state)s\nWHERE ( id=%(build_id)i )",
             {
-                "state": 1, 
+                "state": 1,
                 "id": "BUILD_ID"
-            }, 
+            },
             {
                 "completion_time": "now()"
             }

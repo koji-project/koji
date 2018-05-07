@@ -7724,8 +7724,7 @@ class InsertProcessor(object):
         if not self.data and not self.rawdata:
             return "-- incomplete update: no assigns"
         parts = ['INSERT INTO %s ' % self.table]
-        columns = to_list(self.data.keys())
-        columns.extend(to_list(self.rawdata.keys()))
+        columns = sorted(to_list(self.data.keys()) + to_list(self.rawdata.keys()))
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
@@ -7811,10 +7810,10 @@ class UpdateProcessor(object):
         parts = ['UPDATE %s SET ' % self.table]
         assigns = ["%s = %%(data.%s)s" % (key, key) for key in self.data]
         assigns.extend(["%s = (%s)" % (key, self.rawdata[key]) for key in self.rawdata])
-        parts.append(', '.join(assigns))
+        parts.append(', '.join(sorted(assigns)))
         if self.clauses:
             parts.append('\nWHERE ')
-            parts.append(' AND '.join(["( %s )" % c for c in self.clauses]))
+            parts.append(' AND '.join(["( %s )" % c for c in sorted(self.clauses)]))
         return ''.join(parts)
 
     def __repr__(self):
@@ -7887,12 +7886,23 @@ class QueryProcessor(object):
         if columns and aliases:
             if len(columns) != len(aliases):
                 raise Exception('column and alias lists must be the same length')
-            self.colsByAlias = dict(zip(aliases, columns))
+            # reorder
+            alias_table = sorted(zip(aliases, columns))
+            self.aliases = [x[0] for x in alias_table]
+            self.columns = [x[1] for x in alias_table]
+            self.colsByAlias = dict(alias_table)
         else:
             self.colsByAlias = {}
+            if columns:
+                self.columns = sorted(columns)
+            if aliases:
+                self.aliases = sorted(aliases)
         self.tables = tables
         self.joins = joins
-        self.clauses = clauses
+        if clauses:
+            self.clauses = sorted(clauses)
+        else:
+            self.clauses = clauses
         self.cursors = 0
         if values:
             self.values = values
@@ -7930,7 +7940,7 @@ SELECT %(col_str)s
                 col_str = 'count(*)'
         else:
             col_str = self._seqtostr(self.columns)
-        table_str = self._seqtostr(self.tables)
+        table_str = self._seqtostr(self.tables, sort=True)
         join_str = self._joinstr()
         clause_str = self._seqtostr(self.clauses, sep=')\n   AND (')
         if clause_str:
@@ -7951,8 +7961,10 @@ SELECT %(col_str)s
         return '<QueryProcessor: columns=%r, aliases=%r, tables=%r, joins=%r, clauses=%r, values=%r, opts=%r>' % \
                (self.columns, self.aliases, self.tables, self.joins, self.clauses, self.values, self.opts)
 
-    def _seqtostr(self, seq, sep=', '):
+    def _seqtostr(self, seq, sep=', ', sort=False):
         if seq:
+            if sort:
+                seq = sorted(seq)
             return sep.join(seq)
         else:
             return ''

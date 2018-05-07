@@ -59,9 +59,9 @@ class TestListHosts(unittest.TestCase):
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id',
                                        'host_channels ON host.id = host_channels.host_id'])
         self.assertEqual(query.clauses, [
-            'host_config.active IS TRUE',
-            'host_channels.channel_id = %(channelID)i',
             'host_channels.active IS TRUE',
+            'host_channels.channel_id = %(channelID)i',
+            'host_config.active IS TRUE',
             ])
 
     def test_list_hosts_single_arch(self):
@@ -71,7 +71,8 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE',r"""(arches ~ E'\\mx86_64\\M')"""])
+        self.assertEqual(query.clauses, [r"""(arches ~ E'\\mx86_64\\M')""",
+                                             'host_config.active IS TRUE'])
 
     def test_list_hosts_multi_arch(self):
         self.exports.listHosts(arches=['x86_64', 's390'])
@@ -80,7 +81,9 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE',r"""(arches ~ E'\\mx86_64\\M' OR arches ~ E'\\ms390\\M')"""])
+        self.assertEqual(query.clauses, [
+            r"""(arches ~ E'\\mx86_64\\M' OR arches ~ E'\\ms390\\M')""",
+            'host_config.active IS TRUE'])
 
     def test_list_hosts_bad_arch(self):
         with self.assertRaises(koji.GenericError):
@@ -111,7 +114,7 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE','enabled IS TRUE'])
+        self.assertEqual(query.clauses, ['enabled IS TRUE', 'host_config.active IS TRUE'])
 
     def test_list_hosts_disabled(self):
         self.exports.listHosts(enabled=0)
@@ -120,4 +123,4 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE','enabled IS FALSE'])
+        self.assertEqual(query.clauses, ['enabled IS FALSE', 'host_config.active IS TRUE'])
