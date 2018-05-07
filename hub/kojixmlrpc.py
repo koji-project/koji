@@ -363,6 +363,8 @@ def offline_reply(start_response, msg=None):
     else:
         faultString = msg
     response = dumps(Fault(faultCode, faultString))
+    if six.PY3:
+        response = response.encode()
     headers = [
         ('Content-Length', str(len(response))),
         ('Content-Type', "text/xml"),
@@ -699,6 +701,8 @@ def application(environ, start_response):
         ]
         start_response('405 Method Not Allowed', headers)
         response = "Method Not Allowed\nThis is an XML-RPC server. Only POST requests are accepted."
+        if six.PY3:
+            response = response.encode()
         headers = [
             ('Content-Length', str(len(response))),
             ('Content-Type', "text/plain"),
@@ -728,6 +732,8 @@ def application(environ, start_response):
                 response = h._wrap_handler(h.handle_upload, environ)
             else:
                 response = h._wrap_handler(h.handle_rpc, environ)
+            if six.PY3:
+                response = response.encode()
             headers = [
                 ('Content-Length', str(len(response))),
                 ('Content-Type', "text/xml"),
