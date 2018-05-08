@@ -2669,10 +2669,18 @@ def set_tag_update(tag_id, utype, event_id=None, user_id=None):
     insert = InsertProcessor('tag_updates', data=data)
     insert.execute()
 
+def _validate_build_target_name(name):
+    """ A helper function that validates a build target name. """
+    max_name_length = 256
+    if len(name) > max_name_length:
+        raise koji.GenericError("Build target name %s is too long. Max length "
+                                "is %s characters" % (name, max_name_length))
+
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
 
     context.session.assertPerm('admin')
+    _validate_build_target_name(name)
 
     # Does a target with this name already exist?
     if get_build_targets(info=name):
@@ -2702,6 +2710,7 @@ def create_build_target(name, build_tag, dest_tag):
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
     context.session.assertPerm('admin')
+    _validate_build_target_name(name)
 
     target = lookup_build_target(buildTargetInfo)
     if not target:

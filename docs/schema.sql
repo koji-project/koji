@@ -408,7 +408,7 @@ CREATE INDEX tag_updates_by_event ON tag_updates (update_event);
 -- and how to tag it afterwards.
 CREATE TABLE build_target (
 	id SERIAL NOT NULL PRIMARY KEY,
-	name VARCHAR(50) UNIQUE NOT NULL
+	name TEXT UNIQUE NOT NULL
 ) WITHOUT OIDS;
 
 
