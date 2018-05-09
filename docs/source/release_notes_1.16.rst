@@ -5,8 +5,7 @@ Koji 1.16.0 Release notes
 Security Fixes
 --------------
 
-CVE-2018-1002150 - distRepoMove missing access check
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**CVE-2018-1002150 - distRepoMove missing access check**
 
 This release includes the fix for :doc:`CVE-2018-1002150`.
 
@@ -14,8 +13,7 @@ This release includes the fix for :doc:`CVE-2018-1002150`.
 Client Changes
 --------------
 
-CLI commands to manage notifications
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**CLI commands to manage notifications**
 
 | PR: https://pagure.io/koji/pull-request/688
 
@@ -30,8 +28,7 @@ Previously this functionality was only available through the web ui or
 by making direct api calls.
 
 
-Add --old-chroot option to runroot command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Add --old-chroot option to runroot command**
 
 | PR: https://pagure.io/koji/pull-request/823
 
@@ -40,16 +37,14 @@ to the mock command. Newer versions of mock use systemd nspawn
 by default.
 
 
-Fix runroot output on py3
-^^^^^^^^^^^^^^^^^^^^^^^^^
+**Fix runroot output on py3**
 
 | PR: https://pagure.io/koji/pull-request/828
 
 The runroot command should now work under python3.
 
 
-Honor runroot --quiet
-^^^^^^^^^^^^^^^^^^^^^
+**Honor runroot --quiet**
 
 | PR: https://pagure.io/koji/pull-request/806
 
@@ -58,8 +53,7 @@ but it only took effect when the ``--watch`` option was given. Now it is
 honored in all cases.
 
 
-Drop old ssl code
-^^^^^^^^^^^^^^^^^
+**Drop old ssl code**
 
 | PR: https://pagure.io/koji/pull-request/498
 
@@ -74,8 +68,7 @@ LGPLv2.
 Builder Changes
 ---------------
 
-Configure install timeout for imagefactory
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Configure install timeout for imagefactory**
 
 | PR: https://pagure.io/koji/pull-request/841
 
@@ -86,8 +79,7 @@ setting the ``oz_install_timeout`` option in ``kojid.conf``.
 A value of ``0`` will disable the timeout.
 
 
-Record log timestamps
-^^^^^^^^^^^^^^^^^^^^^
+**Record log timestamps**
 
 | PR: https://pagure.io/koji/pull-request/777
 
@@ -103,8 +95,7 @@ The format of the timestamp log is plain text with each line showing
 a numeric timestamp and a line offset.
 
 
-Builder option: chroot_tmpdir
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Builder option: chroot_tmpdir**
 
 | PR: https://pagure.io/koji/pull-request/787
 
@@ -116,8 +107,7 @@ with modern versions of mock.
 The default value is ``/chroot_tmpdir``.
 
 
-Add internal_dev_setup option to runroot config
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Add internal_dev_setup option to runroot config**
 
 | PR: https://pagure.io/koji/pull-request/824
 
@@ -131,8 +121,7 @@ System Changes
 --------------
 
 
-Add option to configure DB port
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Add option to configure DB port**
 
 | PR: https://pagure.io/koji/pull-request/884
 
@@ -140,8 +129,7 @@ The hub now accepts a ``DBPort`` option in ``hub.conf``, which specifies
 which port the hub should use when connecting to the database.
 
 
-Split debuginfo for dist repos
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Split debuginfo for dist repos**
 
 | PR: https://pagure.io/koji/pull-request/914
 
@@ -162,8 +150,7 @@ Regardless of the split, all the rpms are located in the top level
 ``Packages`` directory.
 
 
-Notifications in [un]tagBuildBypass
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Notifications in [un]tagBuildBypass**
 
 | PR: https://pagure.io/koji/pull-request/691
 
@@ -172,8 +159,7 @@ notifications. Now they will do so by default. The call now accepts a
 ``notify`` option (defaults to True) which controls the behavior.
 
 
-Track history for host data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Track history for host data**
 
 | PR: https://pagure.io/koji/pull-request/778
 
@@ -193,16 +179,14 @@ The versioned host data is stored in the ``host_config`` and ``host_channels``
 tables.
 
 
-Fix block-group functionality
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Fix block-group functionality**
 
 | PR: https://pagure.io/koji/pull-request/678
 
 The ``block-group`` command and its underlying api call now actually work.
 
 
-Strict option for archive listing calls
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Strict option for archive listing calls**
 
 | PR: https://pagure.io/koji/pull-request/734
 | PR: https://pagure.io/koji/pull-request/748
@@ -213,8 +197,7 @@ the option is True, the call will raise an exception if there is no
 match.
 
 
-Search build by source
-^^^^^^^^^^^^^^^^^^^^^^
+**Search build by source**
 
 | PR: https://pagure.io/koji/pull-request/765
 
@@ -222,8 +205,7 @@ The ``listBuilds()`` api call now supports a source option. This is
 treated as a glob pattern and matched against the ``source`` field of the build.
 
 
-Option to ignore tags in kojira
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Option to ignore tags in kojira**
 
 | PR: https://pagure.io/koji/pull-request/695
 
@@ -232,16 +214,14 @@ space-separated list of glob patterns. Tags that match are ignored
 by kojira (it will not generate newRepo tasks for them).
 
 
-Improve kojira throughput
-^^^^^^^^^^^^^^^^^^^^^^^^^
+**Improve kojira throughput**
 
 | PR: https://pagure.io/koji/pull-request/797
 
 Kojira should be much more responsive in triggering ``newRepo`` tasks.
 
 
-Drop migrateImage call
-^^^^^^^^^^^^^^^^^^^^^^
+**Drop migrateImage call**
 
 | PR: https://pagure.io/koji/pull-request/632
 
