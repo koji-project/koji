@@ -2,6 +2,13 @@ Koji 1.16.0 Release notes
 =========================
 
 
+Migrating from Koji 1.15
+------------------------
+
+For details on migrating see :doc:`migrating_to_1.16`
+
+
+
 Security Fixes
 --------------
 
