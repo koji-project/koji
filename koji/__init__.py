@@ -2858,6 +2858,36 @@ class ClientSession(object):
         return base64.b64decode(result)
 
 
+class MultiCallNotReady(Exception):
+    """Raised when a multicall result is accessed before the multicall"""
+    pass
+
+
+class VirtualCall(object):
+    """Represents a call within a multicall"""
+
+    def __init__(self, method, params):
+        self.method = method
+        self.params = params
+        self._result = MultiCallInProgress()
+
+    def format(self):
+        '''return the call in the format needed for multiCall'''
+        return {'methodName': self.method, 'params': self.params}
+
+    @property
+    def result(self):
+        result = self._result
+        if isinstance(result, MultiCallInProgress):
+            raise MultiCallNotReady()
+        if isinstance(result, dict):
+            fault = Fault(result['faultCode'], result['faultString'])
+            err = convertFault(fault)
+            raise err
+        # otherwise should be a singleton
+        return result[0]
+
+
 class MultiCallSession(object):
 
     """Manages a single multicall, acts like a session"""
@@ -2872,13 +2902,14 @@ class MultiCallSession(object):
         return VirtualMethod(self._callMethod, name)
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
-        """Make a call to the hub with retries and other niceties"""
+        """Add a new call to the multicall"""
 
         if kwargs is None:
             kwargs = {}
         args = encode_args(*args, **kwargs)
-        self._calls.append({'methodName': name, 'params': args})
-        return MultiCallInProgress
+        ret = VirtualCall(name, args)
+        self._calls.append(ret)
+        return ret
 
     def callMethod(self, name, *args, **opts):
         """compatibility wrapper for _callMethod"""
@@ -2898,15 +2929,18 @@ class MultiCallSession(object):
 
         calls = self._calls
         self._calls = []
-        ret = self._callMethod('multiCall', (calls,), {})
+        args = ([c.format() for c in calls],)
+        results = self._session._callMethod('multiCall', args, {})
+        for call, result in zip(calls, results):
+            call._result = result
         if strict:
             #check for faults and raise first one
-            for entry in ret:
+            for entry in results:
                 if isinstance(entry, dict):
                     fault = Fault(entry['faultCode'], entry['faultString'])
                     err = convertFault(fault)
                     raise err
-        return ret
+        return results
 
     # alias for compatibility with ClientSession
     multiCall = call_all
