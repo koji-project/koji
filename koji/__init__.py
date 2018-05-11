@@ -2945,6 +2945,16 @@ class MultiCallSession(object):
     # alias for compatibility with ClientSession
     multiCall = call_all
 
+    # implement a context manager
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _type, value, traceback):
+        if _type is None:
+            self.call_all()
+        # don't eat exceptions
+        return False
+
 
 class DBHandler(logging.Handler):
     """
