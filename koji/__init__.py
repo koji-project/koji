@@ -2858,6 +2858,60 @@ class ClientSession(object):
         return base64.b64decode(result)
 
 
+class MultiCallSession(object):
+
+    """Manages a single multicall, acts like a session"""
+
+    def __init__(self, session):
+        self._session = session
+        self._calls = []
+
+    def __getattr__(self, name):
+        #if name[:1] == '_':
+        #    raise AttributeError("no attribute %r" % name)
+        return VirtualMethod(self._callMethod, name)
+
+    def _callMethod(self, name, args, kwargs=None, retry=True):
+        """Make a call to the hub with retries and other niceties"""
+
+        if kwargs is None:
+            kwargs = {}
+        args = encode_args(*args, **kwargs)
+        self._calls.append({'methodName': name, 'params': args})
+        return MultiCallInProgress
+
+    def callMethod(self, name, *args, **opts):
+        """compatibility wrapper for _callMethod"""
+        return self._callMethod(name, args, opts)
+
+    def call_all(self, strict=False):
+        """Perform all calls in a single multicall
+
+        Returns a the hub's multiCall result, which is a list of results for
+        each call. For successful calls, the entry will be a singleton list.
+        For calls that raised a fault, the entry will be a dictionary with
+        keys "faultCode", "faultString", and "traceback".
+        """
+
+        if len(self._calls) == 0:
+            return []
+
+        calls = self._calls
+        self._calls = []
+        ret = self._callMethod('multiCall', (calls,), {})
+        if strict:
+            #check for faults and raise first one
+            for entry in ret:
+                if isinstance(entry, dict):
+                    fault = Fault(entry['faultCode'], entry['faultString'])
+                    err = convertFault(fault)
+                    raise err
+        return ret
+
+    # alias for compatibility with ClientSession
+    multiCall = call_all
+
+
 class DBHandler(logging.Handler):
     """
     A handler class which writes logging records, appropriately formatted,
