@@ -2421,11 +2421,18 @@ def anon_handle_list_tagged(goptions, session, args):
     if options.type:
         opts['type'] = options.type
     event = koji.util.eventFromOpts(session, options)
+    event_id = None
     if event:
         opts['event'] = event['id']
+        event_id = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         if not options.quiet:
             print("Querying at event %(id)i (%(timestr)s)" % event)
+
+    # check if tag exist(s|ed)
+    taginfo = session.getTag(tag, event=event_id)
+    if not taginfo:
+        parser.error(_("No such tag: %s" % tag))
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
