@@ -2132,13 +2132,27 @@ class ClientSession(object):
         self.opts = opts
         self.authtype = None
         self.setSession(sinfo)
-        self.multicall = False
+        self._multicall = MultiCallHack(self)
         self._calls = []
         self.logger = logging.getLogger('koji')
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
 
+    @property
+    def multicall(self):
+        """The multicall property acts as a settable boolean or a callable
+
+        This setup allows preserving the original multicall interface
+        alongside the new one without adding yet another similar sounding
+        attribute to the session (we already have both multicall and
+        multiCall).
+        """
+        return self._multicall
+
+    @multicall.setter
+    def multicall(self, value):
+        self._multicall.value = value
 
     def new_session(self):
         self.logger.debug("Opening new requests session")
@@ -2856,6 +2870,26 @@ class ClientSession(object):
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.b64decode(result)
+
+
+class MultiCallHack(object):
+    """Workaround of a terribly overloaded namespace
+
+    This allows session.multicall to act as a boolean value or a callable
+    """
+
+    def __init__(self, session):
+        self.value = False
+        self.session = session
+
+    def __nonzero__(self):
+        return self.value
+
+    def __bool__(self):
+        return self.value
+
+    def __call__(self, **kw):
+        return MultiCallSession(self.session, **kw)
 
 
 class MultiCallNotReady(Exception):
