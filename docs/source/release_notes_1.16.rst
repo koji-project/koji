@@ -40,8 +40,13 @@ by making direct api calls.
 | PR: https://pagure.io/koji/pull-request/823
 
 This option causes the runroot handler to pass the same-named option
-to the mock command. Newer versions of mock use systemd nspawn
-by default.
+to the mock command. This complements the existing ``--new-chroot``
+option.
+
+If neither ``--old-chroot`` or ``--new-chroot`` is given, then mock will
+follow its default behavior. This default varies across mock versions.
+For newer versions of mock, ``--new-chroot`` is the default (uses a
+systemd nspawn container).
 
 
 **Fix runroot output on py3**
@@ -67,7 +72,8 @@ honored in all cases.
 The old ``koji.ssl`` module has been removed, and the ``use_old_ssl`` option
 has been removed from client code.
 
-Because these files (which were originally from Plague) were the only parts
+Because these files (which were originally from 
+`Plague <https://fedoraproject.org/wiki/Plague>`_) were the only parts
 of Koji that were licensed as GPLv2+, Koji is now simply licensed as
 LGPLv2.
 
@@ -148,10 +154,13 @@ When this option is in effect, the main repo will be in the normal location.
 The debuginfo repo will be in the ``debug`` subdirectory. So, you will
 see a directory structure like:
 
-Packages/
-repodata/
-debug/
-debug/repodata
+.. code-block:: text
+
+
+    Packages/
+    repodata/
+    debug/
+    debug/repodata
 
 Regardless of the split, all the rpms are located in the top level
 ``Packages`` directory.
