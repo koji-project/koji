@@ -2926,8 +2926,9 @@ class MultiCallSession(object):
 
     """Manages a single multicall, acts like a session"""
 
-    def __init__(self, session):
+    def __init__(self, session, strict=False):
         self._session = session
+        self.strict = strict
         self._calls = []
 
     def __getattr__(self, name):
@@ -2949,7 +2950,7 @@ class MultiCallSession(object):
         """compatibility wrapper for _callMethod"""
         return self._callMethod(name, args, opts)
 
-    def call_all(self, strict=False):
+    def call_all(self, strict=None):
         """Perform all calls in a single multicall
 
         Returns a the hub's multiCall result, which is a list of results for
@@ -2957,6 +2958,9 @@ class MultiCallSession(object):
         For calls that raised a fault, the entry will be a dictionary with
         keys "faultCode", "faultString", and "traceback".
         """
+
+        if strict is None:
+            strict = self.strict
 
         if len(self._calls) == 0:
             return []
