@@ -467,7 +467,7 @@ fi
 %endif
 
 %changelog
-* Fri May 10 2018 Mike McLean <mikem at redhat.com> - 1.16.0-1
+* Tue May 15 2018 Mike McLean <mikem at redhat.com> - 1.16.0-1
 - Fix CVE-2018-1002150 - distRepoMove missing access check
 - PR#884: Add option to configure DB port
 - PR#914: dist repo updates
