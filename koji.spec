@@ -31,7 +31,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.15.0
+Version: 1.16.0
 Release: %{release}%{?dist}
 License: LGPLv2
 Summary: Build system tools
@@ -467,6 +467,81 @@ fi
 %endif
 
 %changelog
+* Fri May 10 2018 Mike McLean <mikem at redhat.com> - 1.16.0-1
+- Fix CVE-2018-1002150 - distRepoMove missing access check
+- PR#884: Add option to configure DB port
+- PR#914: dist repo updates
+- PR#843: make py2 files parseable with py3
+- PR#841: kojid: make install timeout of imagefactory conf configurable
+- PR#777: add debug timestamp log for logs
+- PR#904: replace long with int
+- PR#911: readTaggedRPMS: passing table 'tag_listing' in eventCondition
+- PR#691: option for notifications in untagBuildBypass
+- PR#869: also forget requests session in _forget()
+- PR#874: Update URL for Open Science Grid Koji instance
+- PR#883: Doc: add repos-dist to koji filesystem skeleton
+- PR#894: tests for download_logs
+- PR#909: Docs for CVE-2018-1002150
+- PR#778: add history to edit_host
+- PR#774: Cache rpmdiff results and don't spawn special process
+- PR#908: Fix typo in deleted mount check
+- PR#770: print debug and error messages to stderr
+- PR#688: CLI commands for notifications
+- PR#901: Add more path info to volume documentation
+- PR#678: fix grplist_block
+- PR#734: hub: add strict behavior in `get_archive_file()` and `list_archive_files()`
+- PR#726: pass full buildinfo obtained by get_build to postBuildStateChange callbacks
+- PR#823: Add --old-chroot option to runroot command
+- PR#881: add txkoji to related projects
+- PR#822: Don't show license for external rpms
+- PR#779: drop cascade in schema-clear
+- PR#860: mavenBuild uses wrong session
+- PR#858: restart-hosts fails if provided arguments
+- PR#853: Show the krb principal name in debug log
+- PR#711: Drop explicit python-krbV dependency for modern platforms
+- PR#768: json serialize additional types in protonmsg
+- PR#849: kojira: sanity check in pruneLocalRepos
+- PR#848: use subprocess.Popen instead of subprocess.check_output
+- PR#819: Drop pre-2.6 compat function koji.util._relpath
+- PR#828: fix runroot output on py3
+- PR#765: search build by source
+- PR#817: Update the volume ID substitutions list and application
+- PR#744: Replace cmp= with key= for python3 support
+- PR#748: hub: make list_archives to accept strict argument
+- PR#769: handle None in place of string in buildNotification
+- PR#824: Add internal_dev_setup option to runroot config
+- PR#804: hub: fix KeyError in `get_notification_recipients`
+- PR#802: omit the last dot of cname when krb_canon_host=True
+- PR#820: compressed xml archive type
+- PR#743: Fix key access mechanism in _build_image
+- PR#800: Don't allow combination of --mine and task-ids
+- PR#812: Fix AttributeError during archive import
+- PR#796: Fix comparison with Enum value
+- PR#695: blacklist tags for kojira
+- PR#773: create/edit notification checks for duplicity
+- PR#799: Fix values for non-existent options
+- PR#805: fix duplicated args "parent" in waittest task
+- PR#806: honour runroot --quiet for old-style call
+- PR#767: update docs for listRPMFile
+- PR#797: Move kojira's regen loop into dedicated thread
+- PR#794: Work around race in add_external_rpm
+- PR#753: check python-requests-kerberos version before gssapi login
+- PR#783: don't join users table if countOnly
+- PR#775: drop pycurl dependency
+- PR#733: ut: [cli] fix unexcepted order problem in test_taskinfo
+- PR#730: add unit test for cli commands, coverage(40%)
+- PR#787: builder: make temp dir to be configured
+- PR#498: remove old ssl library
+- PR#755: remove simplejson imports
+- PR#731: koji.next.md: Content Generators are available
+- PR#754: drop rhel5 cases from spec
+- PR#761: proper comments of unused spec macros
+- PR#762: remove unused import in koji-shadow
+- PR#764: incorrect py3 syntax
+- PR#757: Force coverage3 read correct rc file.
+- PR#632: drop migrateImage call
+- PR#759: cli: fix issues in dist-repo command
+
 * Mon Dec 18 2017 Mike McLean <mikem at redhat.com> - 1.15.0-1
 - PR#602: don't use /tmp in chroot
 - PR#674: store git commit hash to build.source

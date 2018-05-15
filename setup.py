@@ -25,7 +25,7 @@ def get_install_requires():
 
 setup(
     name="koji",
-    version="1.15.0",
+    version="1.16.0",
     description=("Koji is a system for building and tracking RPMS. The base"
                  " package contains shared libraries and the command-line"
                  " interface."),
@@ -45,7 +45,7 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Topic :: Utilities"
     ],
-    packages=['koji', 'koji.ssl', 'koji_cli'],
+    packages=['koji', 'koji_cli'],
     package_dir={
         'koji': 'koji',
         'koji_cli': 'cli/koji_cli',
