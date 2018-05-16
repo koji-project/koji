@@ -2751,9 +2751,9 @@ class ClientSession(object):
             if t2 <= 0:
                 t2 = 1
             if debug:
-                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size//t1//1024))
+                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size / t1 / 1024.0))
             if debug:
-                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs//t2//1024))
+                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs / t2 / 1024.0))
             if callback:
                 callback(ofs, totalsize, size, t1, t2)
         fo.close()

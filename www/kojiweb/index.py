@@ -1922,7 +1922,7 @@ def buildsbyuser(environ, start=None, order='-builds'):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxBuilds'] = maxBuilds
-    values['increment'] = graphWidth // maxBuilds
+    values['increment'] = graphWidth / maxBuilds
     kojiweb.util.paginateList(values, users, start, 'userBuilds', 'userBuild', order)
 
     return _genHTML(environ, 'buildsbyuser.chtml')
@@ -1963,7 +1963,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxRPMs'] = maxRPMs
-    values['increment'] = graphWidth // maxRPMs
+    values['increment'] = graphWidth / maxRPMs
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
     return _genHTML(environ, 'rpmsbyhost.chtml')
@@ -1992,7 +1992,7 @@ def packagesbyuser(environ, start=None, order=None):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxPackages'] = maxPackages
-    values['increment'] = graphWidth // maxPackages
+    values['increment'] = graphWidth / maxPackages
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
     return _genHTML(environ, 'packagesbyuser.chtml')
@@ -2028,7 +2028,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxTasks'] = maxTasks
-    values['increment'] = graphWidth // maxTasks
+    values['increment'] = graphWidth / maxTasks
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
     return _genHTML(environ, 'tasksbyhost.chtml')
@@ -2056,7 +2056,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxTasks'] = maxTasks
-    values['increment'] = graphWidth // maxTasks
+    values['increment'] = graphWidth / maxTasks
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
     return _genHTML(environ, 'tasksbyuser.chtml')
@@ -2092,7 +2092,7 @@ def buildsbystatus(environ, days='7'):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxBuilds'] = maxBuilds
-    values['increment'] = graphWidth // maxBuilds
+    values['increment'] = graphWidth / maxBuilds
 
     return _genHTML(environ, 'buildsbystatus.chtml')
 
@@ -2131,7 +2131,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
     graphWidth = 400.0
     values['graphWidth'] = graphWidth
     values['maxBuilds'] = maxBuilds
-    values['increment'] = graphWidth // maxBuilds
+    values['increment'] = graphWidth / maxBuilds
 
     return _genHTML(environ, 'buildsbytarget.chtml')
 

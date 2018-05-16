@@ -651,7 +651,7 @@ def load_scripts(environ):
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
-    statm = [pagesize*int(y)//1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    statm = [pagesize * int(y) // 1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 
