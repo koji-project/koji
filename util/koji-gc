@@ -13,7 +13,7 @@ try:
 except ImportError:  # pragma: no cover
     krbV = None
 import koji
-from koji.util import LazyDict, LazyValue
+from koji.util import LazyDict, LazyValue, to_list
 import koji.policy
 import six.moves.configparser
 from email.MIMEText import MIMEText
@@ -537,7 +537,7 @@ def handle_trash():
     by_owner = {}
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
-    owners = list(by_owner.keys())
+    owners = to_list(by_owner.keys())
     owners.sort()
     for owner_name in owners:
         builds = [(b['nvr'], b) for b in by_owner[owner_name]]
@@ -772,7 +772,7 @@ def get_build_sigs(build, cache=False):
             for sig in sigs:
                 if sig['sigkey']:
                     keys.setdefault(sig['sigkey'], 1)
-    ret = build_sig_cache[build] = list(keys.keys())
+    ret = build_sig_cache[build] = to_list(keys.keys())
     return ret
 
 def handle_prune():
@@ -832,7 +832,7 @@ def handle_prune():
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
-        pkgs = list(pkghist.keys())
+        pkgs = to_list(pkghist.keys())
         pkgs.sort()
         for pkg in pkgs:
             if not check_package(pkg):

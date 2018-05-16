@@ -24,6 +24,8 @@ import logging
 import koji
 import six
 
+from koji.util import to_list
+
 
 class BaseSimpleTest(object):
     """Abstract base class for simple tests"""
@@ -294,7 +296,7 @@ class SimpleRuleSet(object):
                     index[name] = 1
         index = {}
         _recurse(self.ruleset, index)
-        return list(index.keys())
+        return to_list(index.keys())
 
     def _apply(self, rules, data, top=False):
         for tests, negate, action in rules:

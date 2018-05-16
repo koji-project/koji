@@ -182,7 +182,7 @@ class DataWalker(object):
         if isinstance(value, tuple):
             value = tuple([self._walk(x) for x in value])
         elif isinstance(value, list):
-            value = list([self._walk(x) for x in value])
+            value = [self._walk(x) for x in value]
         elif isinstance(value, dict):
             ret = {}
             for k in value:
@@ -730,3 +730,17 @@ def parse_maven_chain(confs, scratch=False):
     except ValueError:
         raise ValueError('No possible build order, missing/circular dependencies')
     return builds
+
+def to_list(l):
+    """
+    Helper function for py2/py3 compatibility used e.g. in
+    list(dict.keys())
+
+    Don't use it for structures like list(zip(x, y)), where six.moves.zip is
+    used, so it is always an iterator.
+    """
+
+    if isinstance(l, list):
+        return l
+    else:
+        return list(l)

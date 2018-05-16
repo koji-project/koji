@@ -25,7 +25,7 @@ from __future__ import division
 import sys
 import os
 import koji
-from koji.util import rmtree, parseStatus
+from koji.util import rmtree, parseStatus, to_list
 from optparse import OptionParser
 from six.moves.configparser import ConfigParser
 import errno
@@ -86,7 +86,7 @@ class ManagedRepo(object):
             tags = {self.tag_id : 1}
             for x in order:
                 tags[x['parent_id']] = 1
-            self.taglist = list(tags.keys())
+            self.taglist = to_list(tags.keys())
 
     @property
     def dist(self):
@@ -315,7 +315,7 @@ class RepoManager(object):
     def checkCurrentRepos(self):
         """Determine which repos are current"""
         to_check = []
-        repo_ids = list(self.repos.keys())
+        repo_ids = to_list(self.repos.keys())
         for repo_id in repo_ids:
             repo = self.repos.get(repo_id)
             if repo is None:
@@ -661,8 +661,7 @@ class RepoManager(object):
 
         debuginfo_pat = self.options.debuginfo_tags.split()
         src_pat = self.options.source_tags.split()
-        order = list(self.needed_tags.values())
-        order.sort(key=lambda t:t['score'])
+        order = sorted(self.needed_tags.values(), key=lambda t: t['score'])
         for tag in order:
             if running_tasks >= self.options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached")

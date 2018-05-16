@@ -30,6 +30,7 @@ try:
 except ImportError:  # pragma: no cover
     krbV = None
 import koji
+from koji.util import import to_list
 import six.moves.configparser
 import fnmatch
 import optparse
@@ -498,7 +499,7 @@ class TrackedBuild(object):
             log("Warning: some rpms for %s lacked buildroots:" % self.nvr)
             for rinfo in bad:
                 log("    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo)
-        return list(brs.keys())
+        return to_list(brs.keys())
 
     def getDeps(self):
         buildroots = self.getBuildroots()
@@ -557,12 +558,12 @@ class TrackedBuild(object):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, list(tags.keys())))
+            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, to_list(tags.keys())))
             counts = [(n, tag) for tag, n in six.iteritems(tags)]
             sort(counts)
             tag = counts[-1][1]
         else:
-            tag = list(tags.keys())[0]
+            tag = to_list(tags.keys())[0]
         # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
         if len(builds) == 0:
             self.setState("noroot")
@@ -1122,7 +1123,7 @@ class BuildTracker(object):
         log("-- %s --" % time.asctime())
         self.report_brief()
         for state in ('broken', 'noroot', 'blocked'):
-            builds = list(self.state_idx[state].values())
+            builds = to_list(self.state_idx[state].values())
             not_replaced = [b for b in builds if not b.substitute]
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
@@ -1163,8 +1164,7 @@ class BuildTracker(object):
 
     def report_brief(self):
         N = len(self.builds)
-        states = list(self.state_idx.keys())
-        states.sort()
+        states = sorted(self.state_idx.keys())
         parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
         parts.append("total: %i" % N)
         log (' '.join(parts))

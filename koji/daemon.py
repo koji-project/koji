@@ -26,7 +26,8 @@ import koji
 import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, adler32_constructor, parseStatus, dslice
+from koji.util import md5_constructor, adler32_constructor, parseStatus, \
+                      dslice, to_list
 import os
 import signal
 import logging
@@ -584,7 +585,7 @@ class TaskManager(object):
         """Attempt to shut down cleanly"""
         for task_id in self.pids.keys():
             self.cleanupTask(task_id)
-        self.session.host.freeTasks(list(self.tasks.keys()))
+        self.session.host.freeTasks(to_list(self.tasks.keys()))
         self.session.host.updateHost(task_load=0.0, ready=False)
 
     def updateBuildroots(self, nolocal=False):
@@ -615,7 +616,7 @@ class TaskManager(object):
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, list(self.tasks.keys())))
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, to_list(self.tasks.keys())))
                 self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:

@@ -968,6 +968,19 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertNotEqual(copy.digest(), chksum.digest())
         self.assertEqual(614401368, chksum.digest())
 
+    def test_to_list(self):
+        l = [1, 2, 3]
+
+        r = koji.util.to_list(l)
+        self.assertEqual(l, r)
+
+        it = iter(l)
+        r = koji.util.to_list(it)
+        self.assertEqual(l, r)
+
+        with self.assertRaises(TypeError):
+            koji.util.to_list(1)
+
 
 class TestRmtree(unittest.TestCase):
     @patch('koji.util._rmtree')

@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover
     krbV = None
 
 import koji
+from koji.util import to_list
 
 # fix OptionParser for python 2.3 (optparse verion 1.4.1+)
 # code taken from optparse version 1.5a2
@@ -94,7 +95,7 @@ categories = {
 def get_epilog_str(progname=None):
     if progname is None:
         progname = os.path.basename(sys.argv[0]) or 'koji'
-    categories_ordered=', '.join(sorted(['all'] + list(categories.keys())))
+    categories_ordered=', '.join(sorted(['all'] + to_list(categories.keys())))
     epilog_str = '''
 Try "%(progname)s --help" for help about global options
 Try "%(progname)s help" to get all available commands
@@ -301,7 +302,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60):
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
-                    if not child_id in list(tasks.keys()):
+                    if not child_id in tasks.keys():
                         tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,

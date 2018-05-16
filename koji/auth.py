@@ -34,6 +34,7 @@ from .context import context
 from six.moves import range
 from six.moves import zip
 import six
+from .util import to_list
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -108,7 +109,7 @@ class Session(object):
             'user_id': 'user_id',
             }
         # sort for stability (unittests)
-        fields, aliases = list(zip(*list(sorted(list(fields.items()), key=lambda x: x[1]))))
+        fields, aliases = zip(*sorted(fields.items(), key=lambda x: x[1]))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i
@@ -120,7 +121,7 @@ class Session(object):
         row = c.fetchone()
         if not row:
             raise koji.AuthError('Invalid session or bad credentials')
-        session_data = dict(list(zip(aliases, row)))
+        session_data = dict(zip(aliases, row))
         #check for expiration
         if session_data['expired']:
             raise koji.AuthExpired('session "%i" has expired' % id)
@@ -158,7 +159,7 @@ class Session(object):
         fields = ('name', 'status', 'usertype')
         q = """SELECT %s FROM users WHERE id=%%(user_id)s""" % ','.join(fields)
         c.execute(q, session_data)
-        user_data = dict(list(zip(fields, c.fetchone())))
+        user_data = dict(zip(fields, c.fetchone()))
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
@@ -537,7 +538,7 @@ class Session(object):
     def getPerms(self):
         if not self.logged_in:
             return []
-        return list(self.perms.keys())
+        return to_list(self.perms.keys())
 
     def hasPerm(self, name):
         if not self.logged_in:
@@ -709,7 +710,7 @@ def get_user_data(user_id):
     row = c.fetchone()
     if not row:
         return None
-    return dict(list(zip(fields, row)))
+    return dict(zip(fields, row))
 
 def login(*args, **opts):
     return context.session.login(*args, **opts)

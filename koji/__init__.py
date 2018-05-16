@@ -450,7 +450,7 @@ def decode_args2(args, names, strict=True):
     args, opts = decode_args(*args)
     if strict and len(names) < len(args):
         raise TypeError("Expecting at most %i arguments" % len(names))
-    ret = dict(list(zip(names, args)))
+    ret = dict(zip(names, args))
     ret.update(opts)
     return ret
 
@@ -1166,7 +1166,7 @@ def parse_pom(path=None, contents=None):
         xml.sax.parseString(contents, handler)
 
     for field in fields:
-        if field not in list(values.keys()):
+        if field not in util.to_list(values.keys()):
             raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
@@ -2179,7 +2179,7 @@ class ClientSession(object):
         # decode and decrypt the login info
         sinfo_priv = base64.decodestring(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
-        sinfo = dict(list(zip(['session-id', 'session-key'], sinfo_str.split())))
+        sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
 
         if not sinfo:
             self.logger.warn('No session info received')
@@ -3061,7 +3061,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     if isinstance(value, tuple):
         return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, list):
-        return list([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
+        return [fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value]
     elif isinstance(value, dict):
         ret = {}
         for k in value:

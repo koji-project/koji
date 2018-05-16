@@ -32,7 +32,7 @@ import traceback
 
 from six.moves.configparser import RawConfigParser
 from koji.server import ServerError, ServerRedirect
-from koji.util import dslice
+from koji.util import dslice, to_list
 import six
 
 
@@ -401,7 +401,7 @@ class Dispatcher(object):
         if isinstance(result, six.string_types):
             headers.setdefault('content-length', ('Content-Length', str(len(result))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
-        headers = list(headers.values()) + extra
+        headers = to_list(headers.values()) + extra
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)

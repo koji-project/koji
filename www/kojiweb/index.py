@@ -33,6 +33,7 @@ import logging
 import time
 import koji
 import kojiweb.util
+from koji.util import to_list
 from koji.server import ServerRedirect
 from kojiweb.util import _initValues
 from kojiweb.util import _genHTML
@@ -2124,7 +2125,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
         if builds > maxBuilds:
             maxBuilds = builds
 
-    kojiweb.util.paginateList(values, list(targets.values()), start, 'targets', 'target', order)
+    kojiweb.util.paginateList(values, to_list(targets.values()), start, 'targets', 'target', order)
 
     values['order'] = order
 
