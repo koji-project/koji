@@ -613,7 +613,7 @@ def eventCondition(event, table=None):
         table += '.'
     if event is None:
         return """(%(table)sactive = TRUE)""" % locals()
-    elif isinstance(event, int) or isinstance(event, long):
+    elif isinstance(event, six.integer_types):
         return """(%(table)screate_event <= %(event)d AND ( %(table)srevoke_event IS NULL OR %(event)d < %(table)srevoke_event ))""" \
             % locals()
     else:
@@ -1053,7 +1053,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
         q += """
         AND users.id = %%(userID)i"""
     if pkgID != None:
-        if isinstance(pkgID, int) or isinstance(pkgID, long):
+        if isinstance(pkgID, six.integer_types):
             q += """
             AND package.id = %%(pkgID)i"""
         else:
@@ -1182,7 +1182,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
 
-    if not isinstance(latest, (int, long, float)):
+    if not isinstance(latest, list(six.integer_types) + [float]):
         latest = bool(latest)
 
     taglist = [tag]
@@ -2831,7 +2831,7 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
     if info:
         if isinstance(info, str):
             clauses.append('build_target.name = %(info)s')
-        elif isinstance(info, int) or isinstance(info, long):
+        elif isinstance(info, six.integer_types):
             clauses.append('build_target.id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
@@ -2874,7 +2874,7 @@ def lookup_name(table, info, strict=False, create=False):
     create option will fail.
     """
     fields = ('id', 'name')
-    if isinstance(info, int) or isinstance(info, long):
+    if isinstance(info, six.integer_types):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
@@ -3506,7 +3506,7 @@ def get_user(userInfo=None, strict=False):
     fields = ['id', 'name', 'status', 'usertype', 'krb_principal']
     #fields, aliases = zip(*fields.items())
     data = {'info' : userInfo}
-    if isinstance(userInfo, int) or isinstance(userInfo, long):
+    if isinstance(userInfo, six.integer_types):
         clauses = ['id = %(info)i']
     elif isinstance(userInfo, str):
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
@@ -3521,7 +3521,7 @@ def get_user(userInfo=None, strict=False):
 
 
 def find_build_id(X, strict=False):
-    if isinstance(X, int) or isinstance(X, long):
+    if isinstance(X, six.integer_types):
         return X
     elif isinstance(X, str):
         data = koji.parse_NVR(X)
@@ -4676,7 +4676,7 @@ def get_channel(channelInfo, strict=False):
     fields = ('id', 'name')
     query = """SELECT %s FROM channels
     WHERE """ % ', '.join(fields)
-    if isinstance(channelInfo, int) or isinstance(channelInfo, long):
+    if isinstance(channelInfo, six.integer_types):
         query += """id = %(channelInfo)i"""
     elif isinstance(channelInfo, str):
         query += """name = %(channelInfo)s"""
@@ -8933,7 +8933,7 @@ class RootExports(object):
         values = {}
         q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
         if before is not None:
-            if not isinstance(before, (int, long, float)):
+            if not isinstance(before, list(six.integer_types) + [float]):
                 raise koji.GenericError('invalid type for before: %s' % type(before))
             # use the repr() conversion because it retains more precision than the
             # string conversion
@@ -10896,7 +10896,7 @@ class RootExports(object):
                 ts = time.mktime(time.strptime(str(ts), '%Y%m%dT%H:%M:%S'))
             except ValueError:
                 raise koji.GenericError("Invalid time: %s" % ts)
-        elif not isinstance(ts, (int, long, float)):
+        elif not isinstance(ts, list(six.integer_types) + [float]):
             raise koji.GenericError("Invalid type for timestamp")
         koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
         buildid = buildinfo['id']
