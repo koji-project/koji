@@ -2406,7 +2406,7 @@ def anon_handle_list_tagged(goptions, session, args):
         package = args[1]
     tag = args[0]
     opts = {}
-    for key in ('latest','inherit'):
+    for key in ('latest', 'inherit'):
         opts[key] = getattr(options, key)
     if options.latest_n is not None:
         opts['latest'] = options.latest_n
