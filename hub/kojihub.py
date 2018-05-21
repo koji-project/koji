@@ -7545,7 +7545,11 @@ def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None)
     package: only for given package
     build: only for given build
     tag: only for given tag
+
+    Deprecated; will be removed in a future version
+    See: https://pagure.io/koji/issue/836
     """
+    logger.warning("The tag_history call is deprecated and will be removed in a future version.")
     fields = ('build.id', 'package.name', 'build.version', 'build.release',
               'tag.id', 'tag.name', 'tag_listing.active',
               'tag_listing.create_event', 'tag_listing.revoke_event',
