@@ -88,7 +88,7 @@ class TestCliListTagged(utils.CliTestCase):
     def test_list_tagged_rpms(self, activate_session_mock,
                               event_from_opts_mock):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms', '--sigs',
-                '--arch=x86_64']
+                '--arch=x86_64', '--arch=noarch']
 
         anon_handle_list_tagged(self.options, self.session, args)
         activate_session_mock.assert_called_once_with(self.session,
@@ -99,7 +99,8 @@ class TestCliListTagged(utils.CliTestCase):
                                                             inherit=None,
                                                             latest=3,
                                                             rpmsigs=True,
-                                                            arch='x86_64')
+                                                            arch=['x86_64',
+                                                                  'noarch'])
         self.session.listTagged.assert_not_called()
         self.assert_console_message(sys.stdout,
                                     'sigkey rpmA-0.0.1-1.el6.noarch\n'

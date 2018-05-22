@@ -2379,7 +2379,7 @@ def anon_handle_list_tagged(goptions, session, args):
     usage = _("usage: %prog list-tagged [options] tag [package]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--arch", help=_("List rpms for this arch"))
+    parser.add_option("--arch", action="append", default=[], help=_("List rpms for this arch"))
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
