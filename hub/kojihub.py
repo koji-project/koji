@@ -6905,11 +6905,12 @@ def merge_scratch(task_id):
     # Intentionally skip checking the build task state.
     # There are cases where the build can be valid even though the task has failed,
     # e.g. tagging failures.
-
-    # compare the task and build and make sure they are compatible with importing
-    if task_info['request'][0] != build_task_info['request'][0]:
-        raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' %
-                               (task_info['request'][0], build_task_info['request'][0]))
+    # Compare SCM URLs only if build from an SCM
+    if not task_info['request'][0].startswith('cli-build/'):
+        # compare the task and build and make sure they are compatible with importing
+        if task_info['request'][0] != build_task_info['request'][0]:
+            raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' % \
+                                   (task_info['request'][0], build_task_info['request'][0]))
     build_arches = set()
     for rpminfo in list_rpms(buildID=build['id']):
         if rpminfo['arch'] == 'src':
