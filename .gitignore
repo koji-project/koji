@@ -4,6 +4,9 @@
 *.pyo
 cli/kojic
 builder/kojidc
+util/kojirac
+util/koji-gcc
+util/koji-shadowc
 #
 # coverage artifacts
 .coverage
