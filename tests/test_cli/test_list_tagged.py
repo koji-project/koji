@@ -1,4 +1,6 @@
 import sys
+import os
+import time
 
 import mock
 
@@ -11,6 +13,9 @@ class TestCliListTagged(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
+        self.original_timezone = os.environ.get('TZ')
+        os.environ['TZ'] = 'US/Eastern'
+        time.tzset()
         self.error_format = """Usage: %s list-tagged [options] tag [package]
 (Specify the --help global option for a list of other help options)
 
@@ -48,6 +53,13 @@ class TestCliListTagged(utils.CliTestCase):
                                                  'tag_name': 'tag',
                                                  'owner_name': 'owner'}]
 
+    def tearDown(self):
+        if self.original_timezone is None:
+            del os.environ['TZ']
+        else:
+            os.environ['TZ'] = self.original_timezone
+        time.tzset()
+
     @mock.patch('koji.util.eventFromOpts', return_value={'id': 1000,
                                                          'ts': 1000000.11})
     @mock.patch('koji_cli.commands.activate_session')
@@ -66,7 +78,7 @@ class TestCliListTagged(utils.CliTestCase):
                                                         package='pkg')
         self.session.listTaggedRPMS.assert_not_called()
         self.assert_console_message(sys.stdout,
-                                    'Querying at event 1000 (Mon Jan 12 13:46:40 1970)\n'
+                                    'Querying at event 1000 (Mon Jan 12 08:46:40 1970)\n'
                                     'Build                                     Tag                   Built by\n'
                                     '----------------------------------------  --------------------  ----------------\n'
                                     'n-v-r                                     tag                   owner\n')
