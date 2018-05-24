@@ -39,7 +39,7 @@ from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, greetings, _list_tasks
+        warn, error, greetings, _list_tasks
 
 
 def _printable_unicode(s):
@@ -3262,6 +3262,9 @@ def handle_clone_tag(goptions, session, args):
 
     if options.batch <= 0:
         parser.error(_("batch size must be bigger than zero"))
+    elif options.batch > 0:
+        warn(_('WARNING: Please notice that using batch which separates one '
+               'multicall to many transactions may cause data inconsistency.'))
 
     if options.all:
         options.config = options.groups = options.pkgs = options.builds = True

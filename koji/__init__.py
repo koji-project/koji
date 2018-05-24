@@ -2535,7 +2535,10 @@ class ClientSession(object):
         Each element of the list will be either a one-element list containing the result of the
         method call, or a map containing "faultCode" and "faultString" keys, describing the
         error that occurred during the method call.
-        if batch is bigger than 0, calls will be separated into chunks of calls."""
+        If batch is bigger than 0, calls will be separated into chunks of calls.
+        Please notice that the operations in one multicall request will be executed
+        in one single DB transaction. Using batch which separates this transaction
+        to many, may cause data inconsistency."""
         if not self.multicall:
             raise GenericError('ClientSession.multicall must be set to True before calling multiCall()')
         self.multicall = False
