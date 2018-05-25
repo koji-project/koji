@@ -2708,22 +2708,20 @@ def anon_handle_list_channels(goptions, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print header information"))
-    parser.add_option("--ready", action="store_true",
-                help=_("List only ready builders"))
-    parser.add_option("--enabled", action="store_true",
-                help=_("List only enabled builders"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     channels = session.listChannels()
     session.multicall = True
     for channel in channels:
-        session.listHosts(channelID=channel['id'], ready=options.ready, enabled=options.enabled)
-    for channel, hosts in zip(channels, session.multiCall()):
-        channel['hosts'] = len(hosts[0])
+        session.listHosts(channelID=channel['id'])
+    for channel, [hosts] in zip(channels, session.multiCall()):
+        channel['enabled'] = len([x for x in hosts if x['enabled']])
+        channel['disabled'] = len(hosts) - channel['enabled']
+        channel['ready'] = len([x for x in hosts if x['ready']])
     if not options.quiet:
-        print('Channel         Hosts')
+        print('Channel           Enb   Rdy   Dis')
     for channel in channels:
-        print("%(name)-15s %(hosts) 5d" % channel)
+        print("%(name)-15s %(enabled)5d %(ready)5d %(disabled)5d" % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
