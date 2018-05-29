@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 from __future__ import division
+
 import ast
 import base64
-import dateutil.parser
+from collections import OrderedDict
 import fnmatch
 import json
 import logging
@@ -11,12 +12,13 @@ import os
 import pprint
 import random
 import re
-import six
 import stat
 import sys
 import time
 import traceback
 
+import dateutil.parser
+import six
 import six.moves.xmlrpc_client
 from six.moves import filter
 from six.moves import map
@@ -3303,9 +3305,10 @@ def handle_clone_tag(goptions, session, args):
                 session.multiCall()
         if options.builds:
             # get --all latest builds from src tag
-            builds = session.listTagged(srctag['id'], event=event.get('id'),
-                                        inherit=options.inherit_builds,
-                                        latest=options.latest_only)
+            builds = reversed(session.listTagged(srctag['id'],
+                                                 event=event.get('id'),
+                                                 inherit=options.inherit_builds,
+                                                 latest=options.latest_only))
             if not options.test:
                 session.multicall = True
             for build in builds:
@@ -3338,7 +3341,7 @@ def handle_clone_tag(goptions, session, args):
         # get fresh list of packages & builds into maps.
         srcpkgs = {}
         dstpkgs = {}
-        srclblds = {}
+        srclblds = OrderedDict()
         dstlblds = {}
         srcgroups = {}
         dstgroups = {}
@@ -3348,10 +3351,10 @@ def handle_clone_tag(goptions, session, args):
             for pkg in session.listPackages(tagID=dsttag['id'], inherited=True):
                 dstpkgs[pkg['package_name']] = pkg
         if options.builds:
-            src_builds = session.listTagged(srctag['id'],
-                                            event=event.get('id'),
-                                            inherit=options.inherit_builds,
-                                            latest=options.latest_only)
+            src_builds = list(reversed(session.listTagged(srctag['id'],
+                                                          event=event.get('id'),
+                                                          inherit=options.inherit_builds,
+                                                          latest=options.latest_only)))
             for build in src_builds:
                 srclblds[build['nvr']] = build
             for build in session.getLatestBuilds(dsttag['name']):
@@ -3377,7 +3380,7 @@ def handle_clone_tag(goptions, session, args):
             if nvr not in dstlblds:
                 baddlist.append(lbld)
         baddlist.sort(key = lambda x: x['package_name'])
-        bdellist = [] # list containing new builds to be removed from src tag
+        bdellist = [] # list containing new builds to be removed from dst tag
         for (nvr, lbld) in six.iteritems(dstlblds):
             if nvr not in srclblds:
                 bdellist.append(lbld)
