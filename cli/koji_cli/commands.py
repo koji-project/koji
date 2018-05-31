@@ -3243,8 +3243,8 @@ def handle_clone_tag(goptions, session, args):
     parser.add_option("-f","--force", action="store_true",
             help=_("override tag locks if necessary"))
     parser.add_option("-n","--test", action="store_true", help=_("test mode"))
-    parser.add_option("--batch", type='int', default=1000,
-                      help=_("batch size of multicalls"))
+    parser.add_option("--batch", type='int', default=1000, metavar='SIZE',
+            help=_("batch size of multicalls [0 to disable, default: %default]"))
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
@@ -3260,7 +3260,7 @@ def handle_clone_tag(goptions, session, args):
         sys.stdout.write('Source and destination tags must be different.\n')
         return
 
-    if options.batch <= 0:
+    if options.batch < 0:
         parser.error(_("batch size must be bigger than zero"))
 
     if options.all:
