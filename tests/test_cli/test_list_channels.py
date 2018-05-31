@@ -22,11 +22,22 @@ class TestListChannels(unittest.TestCase):
             {'id': 1, 'name': 'default'},
             {'id': 2, 'name': 'test'},
         ]
-        self.session.multiCall.return_value = [[[1,2,3]], [[4,5]]]
+        self.session.multiCall.return_value = [
+            [[
+                {'enabled': True, 'ready': True},
+                {'enabled': True, 'ready': False},
+                {'enabled': True, 'ready': False},
+            ]],
+            [[
+                {'enabled': True, 'ready': True},
+                {'enabled': False, 'ready': True},
+                {'enabled': True, 'ready': False},
+            ]],
+        ]
 
         anon_handle_list_channels(self.options, self.session, self.args)
 
         actual = stdout.getvalue()
-        expected = 'default             3\ntest                2\n'
+        expected = 'default             3     1     0\ntest                2     2     1\n'
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
