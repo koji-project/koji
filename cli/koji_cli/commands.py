@@ -2714,12 +2714,14 @@ def anon_handle_list_channels(goptions, session, args):
     session.multicall = True
     for channel in channels:
         session.listHosts(channelID=channel['id'])
-    for channel, hosts in zip(channels, session.multiCall()):
-        channel['hosts'] = len(hosts[0])
+    for channel, [hosts] in zip(channels, session.multiCall()):
+        channel['enabled'] = len([x for x in hosts if x['enabled']])
+        channel['disabled'] = len(hosts) - channel['enabled']
+        channel['ready'] = len([x for x in hosts if x['ready']])
     if not options.quiet:
-        print('Channel         Hosts')
+        print('Channel           Enb   Rdy   Dis')
     for channel in channels:
-        print("%(name)-15s %(hosts) 5d" % channel)
+        print("%(name)-15s %(enabled)5d %(ready)5d %(disabled)5d" % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
