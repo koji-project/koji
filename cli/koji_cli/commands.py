@@ -3502,7 +3502,7 @@ def handle_clone_tag(goptions, session, args):
         for pkg in ninhrtpdellist:
             # check if package have owned builds inside.
             session.listTagged(dsttag['name'], package=pkg['package_name'], inherit=False)
-        bump_builds = session.multiCall()
+        bump_builds = session.multiCall(batch=options.batch)
         if not options.test:
             session.multicall = True
         for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
