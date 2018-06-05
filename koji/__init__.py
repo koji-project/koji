@@ -2900,14 +2900,16 @@ class MultiCallNotReady(Exception):
 class VirtualCall(object):
     """Represents a call within a multicall"""
 
-    def __init__(self, method, params):
+    def __init__(self, method, args, kwargs):
         self.method = method
-        self.params = params
+        self.args = args
+        self.kwargs = kwargs
         self._result = MultiCallInProgress()
 
     def format(self):
         '''return the call in the format needed for multiCall'''
-        return {'methodName': self.method, 'params': self.params}
+        return {'methodName': self.method,
+                'params': encode_args(*self.args, **self.kwargs)}
 
     @property
     def result(self):
@@ -2941,8 +2943,7 @@ class MultiCallSession(object):
 
         if kwargs is None:
             kwargs = {}
-        args = encode_args(*args, **kwargs)
-        ret = VirtualCall(name, args)
+        ret = VirtualCall(name, args, kwargs)
         self._calls.append(ret)
         return ret
 
