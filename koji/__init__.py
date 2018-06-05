@@ -2934,8 +2934,6 @@ class MultiCallSession(object):
         self._calls = []
 
     def __getattr__(self, name):
-        #if name[:1] == '_':
-        #    raise AttributeError("no attribute %r" % name)
         return VirtualMethod(self._callMethod, name)
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
@@ -2973,7 +2971,7 @@ class MultiCallSession(object):
         for call, result in zip(calls, results):
             call._result = result
         if strict:
-            #check for faults and raise first one
+            # check for faults and raise first one
             for entry in results:
                 if isinstance(entry, dict):
                     fault = Fault(entry['faultCode'], entry['faultString'])
