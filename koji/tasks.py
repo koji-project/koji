@@ -390,7 +390,7 @@ class BaseTaskHandler(object):
                             try:
                                 self.session.getTaskResult(task)
                                 checked.add(task)
-                            except (koji.GenericError, xmlrpclib.Fault) as ex:
+                            except (koji.GenericError, xmlrpclib.Fault):
                                 self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
                                 self.session.cancelTaskChildren(self.id)
                                 # reraise the original error now, rather than waiting for
