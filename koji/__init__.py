@@ -111,13 +111,17 @@ RPM_FILEDIGESTALGO_IDS = {
     11:   'SHA224'
     }
 
-# rpm 4.12 introduces optional deps
-try:
-    RPM_SUPPORTS_OPTIONAL_DEPS = int(rpm.__version_info__[0]) > 4 or \
-                                 (int(rpm.__version_info__[0]) == 4 and int(rpm.__version_info__[1]) >= 12)
-except AttributeError:
-    # older versions don't even have __version_info__
-    RPM_SUPPORTS_OPTIONAL_DEPS = False
+# rpm 4.12 introduces optional deps, but they can also be backported in some
+# rpm installations. So, we need to check their real support, not only rpm
+# version.
+SUPPORTED_OPT_DEP_HDRS = {}
+for h in (
+        'SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
+        'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
+        'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
+        'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
+    SUPPORTED_OPT_DEP_HDRS[h] = hasattr(rpm, 'RPMTAG_%s' % h)
+
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -893,12 +897,8 @@ def get_rpm_header(f, ts=None):
 def get_header_field(hdr, name, src_arch=False):
     """Extract named field from an rpm header"""
     name = name.upper()
-    opt_dep_hdrs = (
-            'SUGGESTNAME', 'SUGGESTVERSION', 'SUGGESTFLAGS',
-            'ENHANCENAME', 'ENHANCEVERSION', 'ENHANCEFLAGS',
-            'SUPPLEMENTNAME', 'SUPPLEMENTVERSION', 'SUPPLEMENTFLAGS',
-            'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS')
-    if not RPM_SUPPORTS_OPTIONAL_DEPS and name in opt_dep_hdrs:
+    # if field is not supported by host's rpm (>4.12), return empty list
+    if not SUPPORTED_OPT_DEP_HDRS.get(name, True):
         return []
 
     if (src_arch and name == "ARCH"

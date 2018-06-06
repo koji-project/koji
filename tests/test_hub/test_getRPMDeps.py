@@ -19,7 +19,7 @@ class TestGetRPMDeps(unittest.TestCase):
         getRPMDeps = kojihub.RootExports().getRPMDeps
         res = getRPMDeps('')
         # limit test for rpm < 4.12
-        if koji.RPM_SUPPORTS_OPTIONAL_DEPS:
+        if any(koji.SUPPORTED_OPT_DEP_HDRS.values()):
             self.assertEqual(len(res), 22)
             types = set([x['type'] for x in res])
             self.assertEqual(set([koji.DEP_REQUIRE,

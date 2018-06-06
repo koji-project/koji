@@ -200,7 +200,7 @@ class HeaderTestCase(unittest.TestCase):
 
     @mock.patch('rpm.RPMTAG_NOSOURCE', new=None)
     @mock.patch('rpm.RPMTAG_NOPATCH', new=None)
-    @mock.patch('koji.RPM_SUPPORTS_OPTIONAL_DEPS', new=False)
+    @mock.patch('koji.SUPPORTED_OPT_DEP_HDRS', new={})
     def test_get_header_field_workarounds(self):
         srpm0 = os.path.join(self.rpmdir, 'test-src-1-1.fc24.src.rpm')
         srpm1 = os.path.join(self.rpmdir, 'test-nosrc-1-1.fc24.nosrc.rpm')
