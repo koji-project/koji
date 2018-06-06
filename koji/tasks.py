@@ -50,8 +50,7 @@ def scan_mounts(topdir):
             mplist.append(path)
     fo.close()
     #reverse sort so deeper dirs come first
-    mplist.sort()
-    mplist.reverse()
+    mplist.sort(reverse=True)
     return mplist
 
 def umount_all(topdir):

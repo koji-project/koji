@@ -283,7 +283,8 @@ def send_queued_msgs(cbtype, *args, **kws):
         for msg in msgs:
             log.debug('test mode: skipped msg: %r', msg)
         return
-    for url in sorted(urls, key=lambda k: random.random()):
+    random.shuffle(urls)
+    for url in urls:
         container = Container(TimeoutHandler(url, msgs, CONFIG))
         container.run()
         if msgs:

@@ -1154,8 +1154,7 @@ class BuildTracker(object):
                 problem_counts[nvr] += 1
         order = [(c, nvr) for (nvr, c) in six.iteritems(problem_counts)]
         if order:
-            order.sort()
-            order.reverse()
+            order.sort(reverse=True)
             #print top 5 problems
             log("-- top problems --")
             for (c, nvr) in order[:5]:

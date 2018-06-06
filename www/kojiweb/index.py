@@ -688,7 +688,7 @@ def taskinfo(environ, taskID):
     paths = [] # (volume, relpath) tuples
     for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
         paths += [(volume, relname) for volume in volumes]
-    values['output'] = sorted(paths, key = _sortByExtAndName)
+    values['output'] = sorted(paths, key=_sortByExtAndName)
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
