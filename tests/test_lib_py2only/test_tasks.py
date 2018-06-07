@@ -219,7 +219,7 @@ class TasksTestCase(unittest.TestCase):
         obj.session.host.taskWaitResults.return_value = taskWaitResults
         self.assertEquals(obj.wait([1551234, 1591234]), dict(taskWaitResults))
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=[])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=None)
 
     def test_BaseTaskHandler_wait_some_not_done(self):
         """ Tests that the wait function returns the one finished subtask results of
@@ -244,7 +244,7 @@ class TasksTestCase(unittest.TestCase):
         obj.session.host.taskWaitResults.return_value = taskWaitResults
         self.assertEquals(obj.wait([1551234, 1591234]), dict(taskWaitResults))
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234], canfail=[])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234], canfail=None)
 
     @patch('signal.pause', return_value=None)
     def test_BaseTaskHandler_wait_some_not_done_all_set(self, mock_signal_pause):
@@ -284,7 +284,7 @@ class TasksTestCase(unittest.TestCase):
         obj.session.host.taskSetWait.assert_called_once_with(12345678, [1551234, 1591234])
         obj.session.host.taskWait.assert_has_calls([call(12345678), call(12345678)])
         mock_signal_pause.assert_called_once_with()
-        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=[])
+        obj.session.host.taskWaitResults.assert_called_once_with(12345678, [1551234, 1591234], canfail=None)
 
     def test_BaseTaskHandler_wait_some_not_done_all_set_failany_set_failed_task(self):
         """ Tests that the wait function raises an exception when one of the subtask fails when the failany flag is set
