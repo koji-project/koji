@@ -4,7 +4,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_chain_build
 
@@ -119,7 +122,10 @@ Task info: weburl/taskinfo?taskID=1
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -163,7 +169,10 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 0)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 0)
+        else:
+            self.assertEqual(cm.exception.code, 0)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -212,7 +221,10 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -271,7 +283,10 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -453,7 +468,10 @@ Target target is not usable for a chain-build
 If there are no dependencies, use the build command instead
 """ % (progname, progname)
             self.assertMultiLineEqual(actual, expected)
-            self.assertEqual(cm.exception.code, 2)
+            if isinstance(cm.exception, int):
+                self.assertEqual(cm.exception, 2)
+            else:
+                self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')

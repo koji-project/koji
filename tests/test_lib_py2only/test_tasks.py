@@ -1,16 +1,20 @@
 from __future__ import absolute_import
 import random
 import shutil
+import six
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 from os import path, makedirs
 from tempfile import gettempdir
-from unittest import TestCase
 from mock import patch, MagicMock, Mock, call
 
 import koji
 from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, \
                        WaitTestTask, scan_mounts, umount_all, \
                        safe_rmtree
-import six
 
 
 def get_fake_mounts_file():
@@ -68,7 +72,7 @@ class BadTask(BaseTaskHandler):
     Methods = ['some_method']
 
 
-class TasksTestCase(TestCase):
+class TasksTestCase(unittest.TestCase):
 
     def tearDown(self):
         temp_dir_root = get_temp_dir_root()
@@ -700,7 +704,7 @@ class TasksTestCase(TestCase):
         # will be skipped as 'canfail'
         obj.session.getTaskResult.assert_has_calls([call(3)])
 
-class TestSafeRmtree(TestCase):
+class TestSafeRmtree(unittest.TestCase):
     @patch('os.path.exists', return_value=True)
     @patch('os.path.isfile', return_value=True)
     @patch('os.path.islink', return_value=False)

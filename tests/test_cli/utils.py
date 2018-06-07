@@ -1,9 +1,13 @@
 from __future__ import print_function
-import os
-import sys
-import six
 import mock
-import unittest
+import os
+import six
+import sys
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 
 
 """
@@ -174,16 +178,20 @@ class CliTestCase(unittest.TestCase):
         stdout_patch = mock.patch('sys.stdout', new_callable=six.StringIO)
         stderr_patch = mock.patch('sys.stderr', new_callable=six.StringIO)
 
-        with session_patch as session, \
-                stdout_patch as stdout, \
-                stderr_patch as stderr, \
-                self.assertRaises(SystemExit) as cm:
-            callableObj(*test_args, **test_kwargs)
+        with session_patch as session:
+            with stdout_patch as stdout:
+                with stderr_patch as stderr:
+                    with self.assertRaises(SystemExit) as cm:
+                        callableObj(*test_args, **test_kwargs)
         session.assert_called_once()
         self.assert_console_message(stdout, **message['stdout'])
         self.assert_console_message(stderr, **message['stderr'])
         assert_function()
-        self.assertEqual(cm.exception.code, exit_code)
+        if isinstance(cm.exception, int):
+            # python 2.6.6
+            self.assertEqual(cm.exception, exit_code)
+        else:
+            self.assertEqual(cm.exception.code, exit_code)
 
     @mock.patch('koji_cli.commands.activate_session')
     def assert_help(self, callableObj, message, activate_session_mock):

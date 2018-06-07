@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 import mock
 import six
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import koji
 
 from koji_cli.commands import handle_image_build_indirection, _build_image_indirection
@@ -145,10 +149,10 @@ class TestBuildImageIndirection(utils.CliTestCase):
             setattr(self.task_opts, r, None)
             expected = "Missing the following required options: "
             expected += "--" + r.replace('_', '-') + "\n"
-            with self.assertRaises(koji.GenericError) as cm, \
-                    mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
-                _build_image_indirection(
-                    self.options, self.task_opts, self.session, [])
+            with self.assertRaises(koji.GenericError) as cm:
+                with  mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+                    _build_image_indirection(
+                        self.options, self.task_opts, self.session, [])
             self.assert_console_message(stdout, expected)
             self.assertEqual(
                 str(cm.exception), "Missing required options specified above")

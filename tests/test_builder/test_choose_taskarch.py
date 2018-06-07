@@ -3,8 +3,11 @@ import unittest
 import mock
 import rpm
 import tempfile
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import koji
-
 from .loadkojid import kojid
 from six.moves import range
 

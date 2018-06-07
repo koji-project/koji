@@ -1,4 +1,8 @@
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import kojihub
 from koji import GenericError
 from koji.util import md5_constructor, adler32_constructor

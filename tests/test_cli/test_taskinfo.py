@@ -1,11 +1,14 @@
 from __future__ import absolute_import, print_function
+import collections
 import mock
 import six
-import unittest
-import koji
-import collections
 import time
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
+import koji
 from koji_cli.commands import anon_handle_taskinfo, \
     _printTaskInfo, _parseTaskParams
 
@@ -423,9 +426,9 @@ Finished: Thu Jan  1 00:50:00 1970
 
 """ % tuple('/mnt/koji/work/tasks/2/2/' + k for k in task_output.keys())
 
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout, \
-                mock.patch('time.localtime', new=time.gmtime):
-            _printTaskInfo(session, 1, '/mnt/koji')
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+            with mock.patch('time.localtime', new=time.gmtime):
+                _printTaskInfo(session, 1, '/mnt/koji')
         self.assert_console_message(stdout, expected)
 
     @mock.patch('koji_cli.commands.list_task_output_all_volumes')
@@ -563,9 +566,9 @@ Build: bash-4.4.12-5.fc26 (1)
   Host: kojibuilder
 
 """
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout, \
-                mock.patch('time.localtime', new=time.gmtime):
-            _printTaskInfo(session, 1, '/mnt/koji')
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+            with mock.patch('time.localtime', new=time.gmtime):
+                _printTaskInfo(session, 1, '/mnt/koji')
         self.assert_console_message(stdout, expected)
 
     def test_printTaskInfo_no_task(self):

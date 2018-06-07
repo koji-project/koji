@@ -2,16 +2,20 @@ from __future__ import absolute_import
 import mock
 import six
 import os
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 import koji
 
 from koji_cli.commands import handle_image_build, _build_image_oz
 from . import utils
 
+ConfigParser = six.moves.configparser.ConfigParser
 
 TASK_OPTIONS = {
     "background": None,
-    "config": "build-image-config.conf",
     "disk_size": "20",
     "distro": "Fedora-26",
     "factory_parameter": [
@@ -52,6 +56,13 @@ TASK_OPTIONS = {
     "specfile": "git://git.fedorahosted.org/git/spin-kickstarts.git?spec_templates/fedora26#68c40eb7",
     "wait": None,
 }
+
+def mock_open():
+    """Return the right patch decorator for open"""
+    if six.PY2:
+        return mock.patch('__builtin__.open')
+    else:
+        return mock.patch('builtins.open')
 
 
 class Options(object):
@@ -208,30 +219,10 @@ class TestImageBuild(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    def mock_os_path_exists(self, filepath):
-        if filepath in self.custom_os_path_exists:
-            return self.custom_os_path_exists[filepath]
-        return self.os_path_exists(filepath)
-
-    def mock_builtin_open(self, filepath, *args):
-        if filepath in self.custom_open:
-            return self.custom_open[filepath]
-        return self.builtin_open(filepath, *args)
-
     def setUp(self):
-        self.os_path_exists = os.path.exists
-        self.custom_os_path_exists = {}
-
-        self.builtin_open = None
-        if six.PY2:
-            self.builtin_open = __builtins__['open']
-        else:
-            import builtins
-            self.builtin_open = builtins.open
-        self.custom_open = {}
-
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
+        self.configparser = mock.patch('six.moves.configparser.ConfigParser').start()
 
         self.error_format = """Usage: %s image-build [options] <name> <version> <target> <install-tree-url> <arch> [<arch>...]
        %s image-build --config FILE
@@ -241,80 +232,43 @@ class TestImageBuild(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('koji_cli.commands._build_image_oz')
     def test_handle_image_build_with_config(self, build_image_oz_mock):
         """Test handle_image_build argument with --config cases"""
 
         # Case 1, config file not exist case
-        config_file = "build-image-config.conf"
-        expected = "%s not found!" % config_file
-
         self.assert_system_exit(
                 handle_image_build,
                 self.options,
                 self.session,
-                ['--config', config_file],
-                stderr=self.format_error_message(expected),
+                ['--config', '/nonexistent-file-755684354'],
+                stderr=self.format_error_message('/nonexistent-file-755684354 not found!'),
                 activate_session=None)
 
         # Case 2, no image-build section in config file
-        self.custom_os_path_exists[config_file] = True
-        self.custom_open[config_file] = six.StringIO('')
 
         expected = "single section called [%s] is required" % "image-build"
 
-        with mock.patch('os.path.exists', new=self.mock_os_path_exists), \
-                mock.patch('koji_cli.commands.open', new=self.mock_builtin_open):
-            self.assert_system_exit(
-                handle_image_build,
-                self.options,
-                self.session,
-                ['--config', config_file],
-                stderr=self.format_error_message(expected),
-                activate_session=None)
+        self.configparser.return_value = ConfigParser()
+        self.assert_system_exit(
+            handle_image_build,
+            self.options,
+            self.session,
+            ['--config', '/dev/null'],
+            stderr=self.format_error_message(expected),
+            activate_session=None)
 
-        fake_config = """
-[image-build]
-name = fedora-server-docker
-version = 26
-target = f26-candidate
-install_tree = https://alt.fedoraproject.org/pub/alt/releases/26/Cloud/$arch/os/
-arches = x86_64,ppc,arm64
-can_fail=ppc,arm64
-
-format = qcow2,rhevm-ova,vsphere-ova
-distro = Fedora-26
-repo = https://alt.fedoraproject.org/pub/alt/releases/26/Cloud/$arch/os/
-disk_size = 20
-
-ksversion = DEVEL
-kickstart = fedora-26-server-docker.ks
-ksurl = git://git.fedorahosted.org/git/spin-kickstarts.git?fedora26#68c40eb7
-specfile = git://git.fedorahosted.org/git/spin-kickstarts.git?spec_templates/fedora26#68c40eb7
-
-[ova-options]
-vsphere_product_version=26
-rhevm_description=Fedora Cloud 26
-vsphere_product_vendor_name=Fedora Project
-ovf_memory_mb=6144
-rhevm_default_display_type=1
-vsphere_product_name=Fedora Cloud 26
-ovf_cpu_count=4
-rhevm_os_descriptor=Fedora-26
-
-[factory-parameters]
-factory_test_ver=1.0
-"""
-        self.custom_open[config_file] = six.StringIO(fake_config)
-
-        with mock.patch('os.path.exists', new=self.mock_os_path_exists), \
-                mock.patch('koji_cli.commands.open', new=self.mock_builtin_open):
-            handle_image_build(
-                self.options,
-                self.session,
-                ['--config', config_file])
+        config_file = os.path.join(os.path.dirname(__file__), 'data/image-build-config.conf')
+        handle_image_build(
+            self.options,
+            self.session,
+            ['--config', config_file])
 
         args, kwargs = build_image_oz_mock.call_args
+        TASK_OPTIONS['config'] = config_file
         self.assertDictEqual(TASK_OPTIONS, args[1].__dict__)
 
     @mock.patch('koji_cli.commands.activate_session')

@@ -1,11 +1,13 @@
 from __future__ import absolute_import
 
 import base64
-import six
-import unittest
-
 # This is python-mock, not the rpm mock tool we know and love
 import mock
+import six
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import koji
 

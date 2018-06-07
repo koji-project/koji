@@ -3,7 +3,10 @@ import mock
 import os
 import six
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import handle_rename_channel
 
@@ -96,7 +99,11 @@ class TestRenameChannel(unittest.TestCase):
         activate_session_mock.assert_not_called()
         session.getChannel.assert_not_called()
         session.renameChannel.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            # python 2.6.6
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

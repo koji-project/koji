@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 import koji
 import mock
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 from six.moves import StringIO
 
 from koji_cli.commands import handle_remove_notification

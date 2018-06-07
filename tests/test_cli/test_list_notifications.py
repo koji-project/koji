@@ -1,5 +1,8 @@
 import mock
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 from six.moves import StringIO
 
 import koji
@@ -37,8 +40,8 @@ class TestListNotifications(unittest.TestCase):
         self.maxDiff=None
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
-        self.session.getTag.assert_has_calls((mock.call(1), mock.call(1)))
-        self.session.getPackage.assert_has_calls((mock.call(11), mock.call(11)))
+        self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
+        self.session.getPackage.assert_has_calls([mock.call(11), mock.call(11)])
         self.session.getUser.assert_not_called()
         self.session.getBuildNotifications.assert_called_once_with(None)
 
@@ -67,8 +70,8 @@ class TestListNotifications(unittest.TestCase):
         self.maxDiff=None
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
-        self.session.getTag.assert_has_calls((mock.call(1), mock.call(1)))
-        self.session.getPackage.assert_has_calls((mock.call(11), mock.call(11)))
+        self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
+        self.session.getPackage.assert_has_calls([mock.call(11), mock.call(11)])
         self.session.getUser.assert_called_once_with('random_name')
         self.session.getBuildNotifications.assert_called_once_with(321)
 

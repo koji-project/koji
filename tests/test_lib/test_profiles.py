@@ -1,12 +1,15 @@
 from __future__ import absolute_import
-import unittest
-
 import koji
 import sys
 import threading
 import traceback
 from six.moves import range
 import six
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 # XXX remove skip when Fedora bug is fixed
 @unittest.skipIf(six.PY3, "coverage bug Fedora, see rhbz#1452339")

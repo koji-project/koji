@@ -1,16 +1,19 @@
 # coding=utf-8
 from __future__ import absolute_import
+import calendar
 import mock
-import unittest
+import optparse
+import os
+import resource
+import six.moves.configparser
+import time
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
 from mock import call, patch
 from datetime import datetime
-
-import os
-import time
-import resource
-import optparse
-import calendar
-import six.moves.configparser
 import koji
 import koji.util
 
@@ -450,27 +453,27 @@ class MavenUtilTestCase(unittest.TestCase):
     def test_tsort(self):
         # success, one path
         parts = {
-            'p1': {'p2', 'p3'},
-            'p2': {'p3'},
+            'p1': set(['p2', 'p3']),
+            'p2': set(['p3']),
             'p3': set()
         }
         self.assertEqual(koji.util.tsort(parts),
-                         [{'p3'}, {'p2'}, {'p1'}])
+                         [set(['p3']), set(['p2']), set(['p1'])])
         # success, multi-path
         parts = {
-            'p1': {'p2'},
-            'p2': {'p4'},
-            'p3': {'p4'},
+            'p1': set(['p2']),
+            'p2': set(['p4']),
+            'p3': set(['p4']),
             'p4': set(),
             'p5': set()
         }
         self.assertEqual(koji.util.tsort(parts),
-                         [{'p4', 'p5'}, {'p2', 'p3'}, {'p1'}])
+                         [set(['p4', 'p5']), set(['p2', 'p3']), set(['p1'])])
         # failed, missing child 'p4'
         parts = {
-            'p1': {'p2'},
-            'p2': {'p3'},
-            'p3': {'p4'}
+            'p1': set(['p2']),
+            'p2': set(['p3']),
+            'p3': set(['p4'])
         }
         with self.assertRaises(ValueError) as cm:
             koji.util.tsort(parts)
@@ -478,9 +481,9 @@ class MavenUtilTestCase(unittest.TestCase):
 
         # failed, circular
         parts = {
-            'p1': {'p2'},
-            'p2': {'p3'},
-            'p3': {'p1'}
+            'p1': set(['p2']),
+            'p2': set(['p3']),
+            'p3': set(['p1'])
         }
         with self.assertRaises(ValueError) as cm:
             koji.util.tsort(parts)
@@ -624,17 +627,17 @@ class MavenUtilTestCase(unittest.TestCase):
 
     def test_isSuccess(self):
         """Test isSuccess function"""
-        with mock.patch('os.WIFEXITED') as m_exit, \
-                mock.patch('os.WEXITSTATUS') as m_exitst:
-            # True case
-            m_exit.return_value, m_exitst.return_value = True, 0
-            self.assertTrue(koji.util.isSuccess(0))
+        with mock.patch('os.WIFEXITED') as m_exit:
+            with mock.patch('os.WEXITSTATUS') as m_exitst:
+                # True case
+                m_exit.return_value, m_exitst.return_value = True, 0
+                self.assertTrue(koji.util.isSuccess(0))
 
-            # False cases
-            m_exit.return_value, m_exitst.return_value = True, 1
-            self.assertFalse(koji.util.isSuccess(0))
-            m_exit.return_value, m_exitst.return_value = False, 255
-            self.assertFalse(koji.util.isSuccess(0))
+                # False cases
+                m_exit.return_value, m_exitst.return_value = True, 1
+                self.assertFalse(koji.util.isSuccess(0))
+                m_exit.return_value, m_exitst.return_value = False, 255
+                self.assertFalse(koji.util.isSuccess(0))
 
     def test_call_with_argcheck(self):
         """Test call_wit_argcheck function"""
@@ -899,7 +902,7 @@ class MavenUtilTestCase(unittest.TestCase):
                }
 
         # create a resource token <--> id lookup table
-        rlimit_lookup = {getattr(resource, k): k for k in options}
+        rlimit_lookup = dict([(getattr(resource, k), k) for k in options])
 
         def _getrlimit(res):
             return (options.get(rlimit_lookup[res], None), 0)
@@ -907,47 +910,47 @@ class MavenUtilTestCase(unittest.TestCase):
         def _setrlimit(res, limits):
             results[rlimit_lookup[res]] = str(limits[0])
 
-        results = {k: '' for k, v in options.items()}
-        with mock.patch('resource.setrlimit') as m_set, \
-                mock.patch('resource.getrlimit') as m_get:
-            m_get.side_effect = ValueError('resource.getrlimit-value-error')
-            six.assertRaisesRegex(self, ValueError, 'resource.getrlimit-value-error',
-                                  koji.util.setup_rlimits, options, logger)
+        results = dict([(k, '') for k in options])
+        with mock.patch('resource.setrlimit') as m_set:
+            with mock.patch('resource.getrlimit') as m_get:
+                m_get.side_effect = ValueError('resource.getrlimit-value-error')
+                six.assertRaisesRegex(self, ValueError, 'resource.getrlimit-value-error',
+                                      koji.util.setup_rlimits, options, logger)
 
-            m_get.side_effect = _getrlimit
+                m_get.side_effect = _getrlimit
 
-            # logger.error test
-            koji.util.setup_rlimits({'RLIMIT_AS': 'abcde'}, logger)
-            logger.error.assert_called_with('Invalid resource limit: %s=%s',
-                                            'RLIMIT_AS',
-                                            'abcde')
+                # logger.error test
+                koji.util.setup_rlimits({'RLIMIT_AS': 'abcde'}, logger)
+                logger.error.assert_called_with('Invalid resource limit: %s=%s',
+                                                'RLIMIT_AS',
+                                                'abcde')
 
-            koji.util.setup_rlimits({'RLIMIT_AS': '1 2 3 4 5'}, logger)
-            logger.error.assert_called_with('Invalid resource limit: %s=%s',
-                                            'RLIMIT_AS',
-                                            '1 2 3 4 5')
+                koji.util.setup_rlimits({'RLIMIT_AS': '1 2 3 4 5'}, logger)
+                logger.error.assert_called_with('Invalid resource limit: %s=%s',
+                                                'RLIMIT_AS',
+                                                '1 2 3 4 5')
 
-            # exception and logger.error test
-            m_set.side_effect = ValueError('resource.setrlimit-value-error')
-            koji.util.setup_rlimits({'RLIMIT_AS': '0'}, logger)
-            logger.error.assert_called_with('Unable to set %s: %s',
-                                            'RLIMIT_AS',
-                                            m_set.side_effect)
+                # exception and logger.error test
+                m_set.side_effect = ValueError('resource.setrlimit-value-error')
+                koji.util.setup_rlimits({'RLIMIT_AS': '0'}, logger)
+                logger.error.assert_called_with('Unable to set %s: %s',
+                                                'RLIMIT_AS',
+                                                m_set.side_effect)
 
-            # run setrlimit test, the results should be equal to options
-            m_set.side_effect = _setrlimit
+                # run setrlimit test, the results should be equal to options
+                m_set.side_effect = _setrlimit
 
-            # make some noise in options
-            test_opt = dict(options)
-            test_opt.update({
-                'RLIMIT_CUSTOM':  'fake_rlimit_key',
-                'DBName':         'koji',
-                'DBUser':         'koji',
-                'KojiDir':        '/mnt/koji',
-                'KojiDebug':      True})
+                # make some noise in options
+                test_opt = dict(options)
+                test_opt.update({
+                    'RLIMIT_CUSTOM':  'fake_rlimit_key',
+                    'DBName':         'koji',
+                    'DBUser':         'koji',
+                    'KojiDir':        '/mnt/koji',
+                    'KojiDebug':      True})
 
-            koji.util.setup_rlimits(test_opt, logger)
-            six.assertCountEqual(self, results, options)
+                koji.util.setup_rlimits(test_opt, logger)
+                six.assertCountEqual(self, results, options)
 
     def test_adler32_constructor(self):
         """Test adler32_constructor function"""

@@ -3,9 +3,12 @@ import mock
 import os
 import six
 import sys
-import unittest
-import koji
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
+import koji
 from koji_cli.commands import handle_assign_task
 
 
@@ -102,7 +105,10 @@ class TestAssignTask(unittest.TestCase):
         activate_session_mock.assert_not_called()
         session.hasHost.assert_not_called()
         session.addHost.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

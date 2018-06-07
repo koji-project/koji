@@ -5,8 +5,10 @@ import os
 import os.path
 import shutil
 import tempfile
-import unittest
-
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import koji
 import koji.util
 import kojihub
@@ -94,9 +96,9 @@ class TestCompleteMavenBuild(unittest.TestCase):
             return mock.MagicMock()
         def my_ga(archive_id, **kw):
             return share['archiveinfo']
-        with mock.patch('kojihub.InsertProcessor', new=my_ip), \
-                    mock.patch('kojihub.get_archive', new=my_ga):
-            orig_import_archive_internal(*a, **kw)
+        with mock.patch('kojihub.InsertProcessor', new=my_ip):
+            with mock.patch('kojihub.get_archive', new=my_ga):
+                orig_import_archive_internal(*a, **kw)
 
     def set_up_callbacks(self):
         new_callbacks = copy.deepcopy(koji.plugin.callbacks)

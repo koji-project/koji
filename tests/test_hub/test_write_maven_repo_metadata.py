@@ -1,9 +1,11 @@
-from __future__ import absolute_import
-from __future__ import print_function
-import unittest
+from __future__ import absolute_import, with_statement
 import mock
 import os
 import datetime
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 import koji
 from kojihub import _write_maven_repo_metadata
@@ -29,10 +31,10 @@ class TestWriteMavenRepoMetadata(unittest.TestCase):
         artifacts.add(('0', '1', '1.3.11'))
 
         now = datetime.datetime.now()
-        with mock.patch('kojihub.open', create=True) as openf_mock, \
-                mock.patch('datetime.datetime') as datetime_mock:
-            datetime_mock.now.return_value = now
-            _write_maven_repo_metadata(destdir, artifacts)
+        with mock.patch('kojihub.open', create=True) as openf_mock:
+            with mock.patch('datetime.datetime') as datetime_mock:
+                datetime_mock.now.return_value = now
+                _write_maven_repo_metadata(destdir, artifacts)
 
         openf_mock.assert_called_with(
             os.path.join(destdir, 'maven-metadata.xml'), 'w')

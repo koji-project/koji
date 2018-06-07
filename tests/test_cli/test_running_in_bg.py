@@ -1,7 +1,9 @@
 from __future__ import absolute_import
-import unittest
-
 import mock
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.lib import _running_in_bg
 

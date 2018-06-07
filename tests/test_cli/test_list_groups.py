@@ -1,8 +1,11 @@
 from __future__ import absolute_import
 import mock
 import six
-import unittest
 import time
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from koji_cli.commands import anon_handle_list_groups
 from . import utils
