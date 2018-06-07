@@ -7,7 +7,7 @@ except ImportError:
 import koji
 import kojihub
 
-class TestPkglistBlock(unittest2.TestCase):
+class TestPkglistBlock(unittest.TestCase):
     def setUp(self):
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
