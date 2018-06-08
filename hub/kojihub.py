@@ -854,7 +854,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     tag_id = tag['id']
     pkg = lookup_package(pkginfo, strict=False)
     if not pkg:
-        if not isinstance(pkginfo, basestring):
+        if not isinstance(pkginfo, six.string_types):
             raise koji.GenericError("Invalid package: %s" % pkginfo)
     if owner is not None:
         owner = get_user(owner, strict=True)['id']
@@ -879,10 +879,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     pkglist = readPackageList(tag_id, pkgID=pkg['id'], inherit=True)
     previous = pkglist.get(pkg['id'], None)
     if previous is None:
-        if block is None:
-            block = False
-        else:
-            block = bool(block)
+        block = bool(block)
         if update and not force:
             #if update flag is true, require that there be a previous entry
             raise koji.GenericError("cannot update: tag %s has no data for package %s" \
@@ -945,9 +942,9 @@ def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
     koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
 
 
-def pkglist_block(taginfo, pkginfo):
+def pkglist_block(taginfo, pkginfo, force=False):
     """Block the package in tag"""
-    pkglist_add(taginfo, pkginfo, block=True)
+    pkglist_add(taginfo, pkginfo, block=True, force=force)
 
 def pkglist_unblock(taginfo, pkginfo, force=False):
     """Unblock the package in tag

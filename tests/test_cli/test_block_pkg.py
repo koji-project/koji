@@ -24,7 +24,7 @@ class TestBlockPkg(unittest.TestCase):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         package = 'package'
-        args = [tag, package]
+        args = [tag, package, '--force']
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
@@ -46,7 +46,7 @@ class TestBlockPkg(unittest.TestCase):
         session.listPackages.assert_called_once_with(
             tagID=dsttag['id'], inherited=True)
         session.packageListBlock.assert_called_once_with(
-            tag, package)
+            tag, package, force=True)
         session.multiCall.assert_called_once_with(strict=True)
         self.assertNotEqual(rv, 1)
 
@@ -80,12 +80,12 @@ class TestBlockPkg(unittest.TestCase):
         activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(
             session.mock_calls, [
-                call.getTag(tag), call.listPackages(
-                    tagID=dsttag['id'], inherited=True), call.packageListBlock(
-                    tag, packages[0]), call.packageListBlock(
-                    tag, packages[1]), call.packageListBlock(
-                        tag, packages[2]), call.multiCall(
-                            strict=True)])
+                call.getTag(tag),
+                call.listPackages(tagID=dsttag['id'], inherited=True),
+                call.packageListBlock(tag, packages[0], force=False),
+                call.packageListBlock(tag, packages[1], force=False),
+                call.packageListBlock(tag, packages[2], force=False),
+                call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
