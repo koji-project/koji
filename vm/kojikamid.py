@@ -305,28 +305,37 @@ class WindowsBuild(object):
         """Set the buildroot object to expired on the hub."""
         self.server.expireBuildroot(self.buildroot_id)
 
-    def fetchFile(self, basedir, buildinfo, fileinfo, type):
+    def fetchFile(self, basedir, buildinfo, fileinfo, brtype):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))
-        destfile = open(destpath, 'w')
-        offset = 0
-        checksum = hashlib.md5()
-        while True:
-            encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, type)
-            if not encoded:
-                break
-            data = base64.b64decode(encoded)
-            del encoded
-            destfile.write(data)
-            offset += len(data)
-            checksum.update(data)
-        destfile.close()
-        digest = checksum.hexdigest()
+        if 'checksum_type' in fileinfo:
+            if fileinfo['checksum_type'] == 'sha1':
+                checksum = hashlib.sha1()
+            elif fileinfo['checksum_type'] == 'sha256':
+                checksum = hashlib.sha256()
+            elif fileinfo['checksum_type'] == 'md5':
+                checksum = hashlib.md5()
+            else:
+                raise BuildError('Unknown checksum type %s for %f' % (
+                        fileinfo['checksum_type'],
+                        os.path.basename(fileinfo['localpath'])))
+        with open(destpath, 'w') as destfile:
+            offset = 0
+            while True:
+                encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, brtype)
+                if not encoded:
+                    break
+                data = base64.b64decode(encoded)
+                del encoded
+                destfile.write(data)
+                offset += len(data)
+                if 'checksum_type' in fileinfo:
+                    checksum.update(data)
         # rpms don't have a md5sum in the fileinfo, but check it for everything else
-        if ('md5sum' in fileinfo) and (digest != fileinfo['md5sum']):
-            raise BuildError('md5 checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (destpath, digest, fileinfo['md5sum']))
+        if 'checksum' in fileinfo and fileinfo['checksum'] != checksum.hexdigest():
+            raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
+                  (destpath, checksum.hexdigest(), fileinfo['checksum']))
         self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
