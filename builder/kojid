@@ -242,6 +242,8 @@ class BuildRoot(object):
             if hasattr(self.options, k):
                 opts[k] = getattr(self.options, k)
         opts['buildroot_id'] = self.id
+        if self.setup_dns:
+            opts['rpmbuild_networking'] = True
         opts['use_host_resolv'] = self.setup_dns
         opts['install_group'] = self.install_group
         opts['maven_opts'] = self.maven_opts
