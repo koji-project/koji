@@ -1,5 +1,5 @@
-# Enable Python 3 builds for Fedora
-%if 0%{?fedora}
+# Enable Python 3 builds for Fedora/RHEL8
+%if 0%{?fedora} || 0%{?rhel} >= 8
 %bcond_without python3
 # If the definition isn't available for python3_pkgversion, define it
 %{?!python3_pkgversion:%global python3_pkgversion 3}
