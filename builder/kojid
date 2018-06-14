@@ -5198,6 +5198,7 @@ class createDistRepoTask(BaseTaskHandler):
           "arm": ("arm", "armv4l", "armv4tl", "armv5tel", "armv5tejl", "armv6l", "armv7l", "noarch"),
           "armhfp": ("armv7hl", "armv7hnl", "noarch"),
           "aarch64": ("aarch64", "noarch"),
+          "riscv64": ("riscv64", "noarch"),
           "src": ("src",)
           }
 
