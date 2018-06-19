@@ -7026,6 +7026,8 @@ def handle_dist_repo(options, session, args):
         task_opts.arch.remove('noarch')
     if task_opts.with_src and 'src' not in task_opts.arch:
         task_opts.arch.append('src')
+    if not task_opts.arch:
+        parser.error(_('No arches left.'))
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
