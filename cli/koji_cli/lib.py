@@ -402,7 +402,7 @@ def list_task_output_all_volumes(session, task_id):
     return dict([fn, ['DEFAULT']] for fn in output)
 
 
-def _unique_path(prefix):
+def unique_path(prefix):
     """Create a unique path fragment by appending a path component
     to prefix.  The path component will consist of a string of letter and numbers
     that is unlikely to be a duplicate, but is not guaranteed to be unique."""
@@ -412,6 +412,12 @@ def _unique_path(prefix):
     # more digits of precision than str(time.time())
     return '%s/%r.%s' % (prefix, time.time(),
                       ''.join([random.choice(string.ascii_letters) for i in range(8)]))
+
+
+def _unique_path(prefix):
+    koji.util.deprecated('_unique_path is deprecated, use unique_path instead.'
+                         ' See: https://pagure.io/koji/issue/975')
+    return unique_path(prefix)
 
 
 def _format_size(size):

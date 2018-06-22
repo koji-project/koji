@@ -95,7 +95,7 @@ class TestImport(utils.CliTestCase):
         upload_rpm_mock = kwargs.get('upload_rpm_mock', session.uploadWrapper)
 
         with mock.patch('koji.get_header_fields') as get_header_fields_mock:
-            with mock.patch('koji_cli.commands._unique_path') as unique_path_mock:
+            with mock.patch('koji_cli.commands.unique_path') as unique_path_mock:
                 with mock.patch('koji_cli.commands.activate_session') as activate_session_mock:
                     with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
                         with upload_rpm_mock:
@@ -475,7 +475,7 @@ class TestImport(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.get_header_fields')
-    @mock.patch('koji_cli.commands._unique_path')
+    @mock.patch('koji_cli.commands.unique_path')
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_import_with_test_option(
             self,
@@ -524,7 +524,7 @@ class TestImport(utils.CliTestCase):
         expected = "Test mode -- would have created empty build: %s\n" % nvr()
         expected += "Test mode -- skipping import for %s\n" % arguments[0]
 
-        with mock.patch('koji_cli.commands._unique_path') as unique_path_mock:
+        with mock.patch('koji_cli.commands.unique_path') as unique_path_mock:
             handle_import(options, session, arguments)
         self.assert_console_message(stdout, expected)
         unique_path_mock.assert_not_called()
@@ -533,7 +533,7 @@ class TestImport(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.get_header_fields')
-    @mock.patch('koji_cli.commands._unique_path')
+    @mock.patch('koji_cli.commands.unique_path')
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_import_with_epoch_option(
             self,

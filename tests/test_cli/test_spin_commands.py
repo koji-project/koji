@@ -77,7 +77,7 @@ class TestBuildImage(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.arguments = ['test-image', '1', 'target', 'x86_64', 'image.ks']
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
-        self.unique_path = mock.patch('koji_cli.commands._unique_path').start()
+        self.unique_path = mock.patch('koji_cli.commands.unique_path').start()
         self.running_in_bg = mock.patch('koji_cli.commands._running_in_bg').start()
         self.watch_tasks = mock.patch('koji_cli.commands.watch_tasks').start()
 

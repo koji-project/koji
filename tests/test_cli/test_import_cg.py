@@ -31,7 +31,7 @@ class TestImportCG(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands._progress_callback')
-    @mock.patch('koji_cli.commands._unique_path')
+    @mock.patch('koji_cli.commands.unique_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.linked_upload')
     @mock.patch('koji_cli.commands.activate_session')

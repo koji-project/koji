@@ -53,7 +53,7 @@ class TestBuildImageIndirection(utils.CliTestCase):
         self.options.weburl = self.weburl
         self.session = mock.MagicMock()
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
-        self.unique_path = mock.patch('koji_cli.commands._unique_path').start()
+        self.unique_path = mock.patch('koji_cli.commands.unique_path').start()
 
         self.task_opts = Options(TASK_OPTIONS)
 

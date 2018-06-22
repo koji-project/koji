@@ -25,7 +25,7 @@ class TestBuild(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_from_srpm(
@@ -77,7 +77,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_from_scm(
@@ -127,7 +127,7 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_no_arg(
@@ -173,7 +173,7 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_help(
@@ -232,7 +232,7 @@ Options:
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_arch_override_denied(
@@ -280,7 +280,7 @@ Options:
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_none_tag(
@@ -326,7 +326,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_target_not_found(
@@ -373,7 +373,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_dest_tag_not_found(
@@ -424,7 +424,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_dest_tag_locked(
@@ -475,7 +475,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_arch_override(
@@ -531,7 +531,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_background(
@@ -580,7 +580,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=True)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_running_in_bg(
@@ -631,7 +631,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_noprogress(
@@ -684,7 +684,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_quiet(
@@ -734,7 +734,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_wait(
@@ -788,7 +788,7 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_nowait(
