@@ -680,14 +680,11 @@ class VMExecTask(BaseTaskHandler):
             else:
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
+            # closing needs to be used for requests < 2.18.0
             with closing(requests.get(remote_url, stream=True)) as response:
                 with open(localpath, 'wb') as f:
-                    length = response.headers.get('content-length')
-                    if length is None:
-                        f.write(response.content)
-                    else:
-                        for chunk in response.iter_content(chunk_size=65536):
-                            f.write(chunk)
+                    for chunk in response.iter_content(chunk_size=65536):
+                        f.write(chunk)
             if type == 'rpm':
                 # rpm, check sigmd5. It is enough, as if content is broken,
                 # rpm will fail later

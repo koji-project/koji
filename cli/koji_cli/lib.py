@@ -487,26 +487,20 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         else:
             print(_("Downloading: %s") % relpath)
 
-
+    # closing needs to be used for requests < 2.18.0
     with closing(requests.get(url, stream=True)) as response:
         # raise error if occured
         response.raise_for_status()
-        length = response.headers.get('content-length')
-        f = open(relpath, 'wb')
-        if length is None:
-            f.write(response.content)
-            length = len(response.content)
-            if not (quiet or noprogress):
-                _download_progress(length, length)
-        else:
+        length = int(response.headers.get('content-length') or 0)
+        with open(relpath, 'wb') as f:
             l = 0
-            length = int(length)
             for chunk in response.iter_content(chunk_size=65536):
                 l += len(chunk)
                 f.write(chunk)
                 if not (quiet or noprogress):
                     _download_progress(length, l)
-            f.close()
+            if not length and not (quiet or noprogress):
+                _download_progress(l, l)
 
     if not (quiet or noprogress):
         print('')
@@ -515,9 +509,10 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
 def _download_progress(download_t, download_d):
     if download_t == 0:
         percent_done = 0.0
+        percent_done_str = "???%"
     else:
         percent_done = float(download_d) / float(download_t)
-    percent_done_str = "%3d%%" % (percent_done * 100)
+        percent_done_str = "%3d%%" % (percent_done * 100)
     data_done = _format_size(download_d)
 
     sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str, data_done))

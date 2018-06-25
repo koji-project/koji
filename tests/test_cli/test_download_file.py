@@ -84,18 +84,18 @@ class TestDownloadFile(unittest.TestCase):
         response = mock.MagicMock()
         self.requests_get.return_value = response
         response.headers.get.return_value = None # content-length
-        response.content = 'abcdef'
+        response.iter_content.return_value = ['a' * 65536, 'b' * 65536]
 
         rv = download_file("http://url", self.filename)
 
         actual = self.stdout.getvalue()
-        expected = 'Downloading: %s\n[====================================] 100%%     6.00 B\r\n' % self.filename
+        expected = 'Downloading: %s\n[                                    ] ???%%  64.00 KiB\r[                                    ] ???%% 128.00 KiB\r[====================================] 100%% 128.00 KiB\r\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
 
         self.requests_get.assert_called_once()
         m_open.assert_called_once()
         response.headers.get.assert_called_once()
-        response.iter_content.assert_not_called()
+        response.iter_content.assert_called_once()
         self.assertIsNone(rv)
 
 
@@ -148,7 +148,7 @@ class TestDownloadProgress(unittest.TestCase):
         _download_progress(1024 * 1024 * 1024 * 35, 1024 * 1024 * 1024 * 30)
         _download_progress(318921, 318921)
         actual = self.stdout.getvalue()
-        expected = '[                                    ]   0%     0.00 B\r' + \
+        expected = '[                                    ] ???%     0.00 B\r' + \
                    '[                                    ]   1%   1.00 KiB\r' + \
                    '[=================                   ]  47%  11.00 MiB\r' + \
                    '[==============================      ]  85%  30.00 GiB\r' + \
