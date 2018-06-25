@@ -697,6 +697,9 @@ class VMExecTask(BaseTaskHandler):
                     raise koji.BuildError("Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" % (
                         os.path.basename(fileinfo['localpath']),
                         fileinfo['payloadhash'], payloadhash))
+                if not koji.util.check_sigmd5(localpath):
+                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" % \
+                        os.path.basename(fileinfo['localpath']))
             else:
                 self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']], localpath)
 

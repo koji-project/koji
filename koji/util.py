@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 import calendar
 import datetime
+import hashlib
 from koji.xmlrpcplus import DateTime
 from fnmatch import fnmatch
 import koji
@@ -32,6 +33,7 @@ import re
 import resource
 import shutil
 import stat
+import struct
 import sys
 import time
 import six.moves.configparser
@@ -504,6 +506,44 @@ def filedigestAlgo(hdr):
         digest_algo_id = None
     digest_algo = koji.RPM_FILEDIGESTALGO_IDS.get(digest_algo_id, 'unknown')
     return digest_algo.lower()
+
+
+def check_sigmd5(filename):
+    """Compare header's sigmd5 with actual md5 of hdr+payload without need of rpm"""
+    with open(filename, 'rb') as f:
+        leadsize = 96
+        # skip magic + reserved
+        o = leadsize + 8
+        f.seek(o)
+        data = f.read(8)
+        indexcount, storesize = struct.unpack('!II', data)
+        sig_o = 0
+        for idx in range(indexcount):
+            data = f.read(16)
+            tag, data_type, offset, count = struct.unpack('!IIII', data)
+            if tag == 1004: # SIGMD5
+                assert(data_type == 7) # binary data
+                assert(count == 16)   # 16 bytes of md5
+                break
+        # seek to location of md5
+        f.seek(o + 8 + indexcount * 16 + offset)
+        sigmd5 = f.read(16)
+
+        # seek to start of header
+        sigsize = 8 + 16 * indexcount + storesize
+        o += sigsize + (8 - (sigsize % 8)) % 8
+        f.seek(o)
+
+        # compute md5 of rest of file
+        md5 = hashlib.md5()
+        while True:
+            d = f.read(1024**2)
+            if not d:
+                break
+            md5.update(d)
+
+        return sigmd5 == md5.digest()
+
 
 def parseStatus(rv, prefix):
     if isinstance(prefix, (list, tuple)):
