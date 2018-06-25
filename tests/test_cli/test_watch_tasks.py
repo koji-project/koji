@@ -131,7 +131,7 @@ Running Tasks:
         self.session.load_calls(cdata)
         sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
         
-        def customized_handler(progname, tasks):
+        def customized_handler(progname, tasks, quiet):
             print('some output')
 
         with self.assertRaises(KeyboardInterrupt):

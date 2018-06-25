@@ -317,17 +317,18 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
             sys.stdout.flush()
             time.sleep(poll_interval)
     except KeyboardInterrupt:
-        if tasks and not quiet:
+        if tasks:
             progname = os.path.basename(sys.argv[0]) or 'koji'
             if ki_handler is None:
-                def ki_handler(progname, tasks):
-                    tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
-                             for t in tasks.values() if not t.is_done()]
-                    print(
+                def ki_handler(progname, tasks, quiet):
+                    if not quiet:
+                        tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
+                                 for t in tasks.values() if not t.is_done()]
+                        print(
 """Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 %s""" % (progname, '\n'.join(tlist)))
-            ki_handler(progname, tasks)
+            ki_handler(progname, tasks, quiet)
         raise
     return rv
 
