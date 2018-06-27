@@ -560,8 +560,7 @@ def make_task(method, arglist, **opts):
             policy_data['target'] = get_build_target(target, strict=True)['name']
         t_opts = params.get('opts', {})
         policy_data['scratch'] = t_opts.get('scratch', False)
-    else:
-        logger.warning("Proceeding with less data in channel policy.")
+
     ruleset = context.policy.get('channel')
     result = ruleset.apply(policy_data)
     if result is None:
