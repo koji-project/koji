@@ -2522,19 +2522,41 @@ class ClientSession(object):
                     time.sleep(interval)
             #not reached
 
-    def multiCall(self, strict=False):
-        """Execute a multicall (multiple function calls passed to the server
-        and executed at the same time, with results being returned in a batch).
-        Before calling this method, the self.multicall field must have
-        been set to True, and then one or more methods must have been called on
-        the current session (those method calls will return None).  On executing
-        the multicall, the self.multicall field will be reset to False
-        (so subsequent method calls will be executed immediately)
-        and results will be returned in a list.  The list will contain one element
-        for each method added to the multicall, in the order it was added to the multicall.
-        Each element of the list will be either a one-element list containing the result of the
-        method call, or a map containing "faultCode" and "faultString" keys, describing the
-        error that occurred during the method call."""
+    def multiCall(self, strict=False, batch=None):
+        """Execute a prepared multicall
+
+        In a multicall, a number of calls are combined into a single RPC call
+        and handled by the server in a batch. This can improve throughput.
+
+        The server handles a multicall as a single database transaction (though
+        see the note about the batch option below).
+
+        To prepare a multicall:
+          1. set the multicall attribute to True
+          2. issue one or more calls in the normal fashion
+
+        When multicall is True, the call parameters are stored rather than
+        passed to the server. Each call will return the special value
+        MultiCallInProgress, since the return is not yet known.
+
+        This method executes the prepared multicall, resets the multicall
+        attribute to False (so subsequent calls will work normally), and
+        returns the results of the calls as a list.
+
+        The result list will contain one element for each call added to the
+        multicall, in the order it was added. Each element will be either:
+          - a one-element list containing the result of the method call
+          - a map containing "faultCode" and "faultString" keys, describing
+            the error that occurred during the call.
+
+        If the strict option is set to True, then this call will raise the
+        first error it encounters, if any.
+
+        If the batch option is set to a number greater than zero, the calls
+        will be spread across multiple multicall batches of at most this
+        number. Note that each such batch will be a separate database
+        transaction.
+        """
         if not self.multicall:
             raise GenericError('ClientSession.multicall must be set to True before calling multiCall()')
         self.multicall = False
@@ -2543,7 +2565,15 @@ class ClientSession(object):
 
         calls = self._calls
         self._calls = []
-        ret = self._callMethod('multiCall', (calls,), {})
+        if batch is not None and batch > 0:
+            ret = []
+            callgrp = (calls[i:i + batch] for i in range(0, len(calls), batch))
+            self.logger.debug("MultiCall with batch size %i, calls/groups(%i/%i)",
+                              batch, len(calls), round(len(calls) / batch))
+            for c in callgrp:
+                ret.extend(self._callMethod('multiCall', (c,), {}))
+        else:
+            ret = self._callMethod('multiCall', (calls,), {})
         if strict:
             #check for faults and raise first one
             for entry in ret:

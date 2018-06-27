@@ -3243,6 +3243,8 @@ def handle_clone_tag(goptions, session, args):
     parser.add_option("-f","--force", action="store_true",
             help=_("override tag locks if necessary"))
     parser.add_option("-n","--test", action="store_true", help=_("test mode"))
+    parser.add_option("--batch", type='int', default=1000, metavar='SIZE',
+            help=_("batch size of multicalls [0 to disable, default: %default]"))
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
@@ -3257,6 +3259,9 @@ def handle_clone_tag(goptions, session, args):
     if args[0] == args[1]:
         sys.stdout.write('Source and destination tags must be different.\n')
         return
+
+    if options.batch < 0:
+        parser.error(_("batch size must be bigger than zero"))
 
     if options.all:
         options.config = options.groups = options.pkgs = options.builds = True
@@ -3309,7 +3314,7 @@ def handle_clone_tag(goptions, session, args):
                                            owner=pkgs['owner_name'],block=pkgs['blocked'],
                                            extra_arches=pkgs['extra_arches'])
             if not options.test:
-                session.multiCall()
+                session.multiCall(batch=options.batch)
         if options.builds:
             # get --all latest builds from src tag
             builds = reversed(session.listTagged(srctag['id'],
@@ -3327,7 +3332,7 @@ def handle_clone_tag(goptions, session, args):
                 if not options.test:
                     session.tagBuildBypass(newtag['name'], build, force=options.force)
             if not options.test:
-                session.multiCall()
+                session.multiCall(batch=options.batch)
         if options.groups:
             # Copy the group data
             srcgroups = session.getTagGroups(srctag['name'], event=event.get('id'))
@@ -3342,7 +3347,7 @@ def handle_clone_tag(goptions, session, args):
                                                     pkg['package'], block=pkg['blocked'])
                     chggrplist.append(('[new]', pkg['package'], group['name']))
             if not options.test:
-                session.multiCall()
+                session.multiCall(batch=options.batch)
     # case of existing dst-tag.
     if dsttag:
         # get fresh list of packages & builds into maps.
@@ -3433,7 +3438,7 @@ def handle_clone_tag(goptions, session, args):
                                        block=pkg['blocked'],
                                        extra_arches=pkg['extra_arches'])
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # ADD builds.
         if not options.test:
             session.multicall = True
@@ -3446,7 +3451,7 @@ def handle_clone_tag(goptions, session, args):
             if not options.test:
                 session.tagBuildBypass(dsttag['name'], build, force=options.force)
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # ADD groups.
         if not options.test:
             session.multicall = True
@@ -3458,7 +3463,7 @@ def handle_clone_tag(goptions, session, args):
                     session.groupPackageListAdd(dsttag['name'], group['name'], pkg['package'], force=options.force)
                 chggrplist.append(('[new]', pkg['package'], group['name']))
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # ADD group pkgs.
         if not options.test:
             session.multicall = True
@@ -3468,7 +3473,7 @@ def handle_clone_tag(goptions, session, args):
                 if not options.test:
                     session.groupPackageListAdd(dsttag['name'], group, pkg, force=options.force)
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # DEL builds.
         if not options.test:
             session.multicall = True
@@ -3483,7 +3488,7 @@ def handle_clone_tag(goptions, session, args):
                 if not options.test:
                     session.untagBuildBypass(dsttag['name'], build, force=options.force)
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # DEL packages.
         ninhrtpdellist = []
         inhrtpdellist = []
@@ -3497,7 +3502,7 @@ def handle_clone_tag(goptions, session, args):
         for pkg in ninhrtpdellist:
             # check if package have owned builds inside.
             session.listTagged(dsttag['name'], package=pkg['package_name'], inherit=False)
-        bump_builds = session.multiCall()
+        bump_builds = session.multiCall(batch=options.batch)
         if not options.test:
             session.multicall = True
         for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
@@ -3522,7 +3527,7 @@ def handle_clone_tag(goptions, session, args):
             if not options.test:
                 session.packageListBlock(dsttag['name'], pkg['package_name'])
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # DEL groups.
         if not options.test:
             session.multicall = True
@@ -3540,7 +3545,7 @@ def handle_clone_tag(goptions, session, args):
                 for pkg in group['packagelist']:
                     chggrplist.append(('[blk]', pkg['package'], group['name']))
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
         # DEL group pkgs.
         if not options.test:
             session.multicall = True
@@ -3556,7 +3561,7 @@ def handle_clone_tag(goptions, session, args):
                     if not options.test:
                         session.groupPackageListBlock(dsttag['name'], group, pkg)
         if not options.test:
-            session.multiCall()
+            session.multiCall(batch=options.batch)
     # print final list of actions.
     if options.verbose:
         pfmt='    %-7s %-28s %-10s %-10s %-10s\n'
