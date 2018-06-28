@@ -150,7 +150,7 @@ def get_options():
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
-            elif name in defaults.keys():
+            elif name in list(defaults.keys()):
                 defaults[name] = value
             else:
                 quit("unknown config option: %s" % name)
@@ -314,7 +314,7 @@ class WinBuildTask(MultiPlatformTask):
                                    strict=False)
         # winspec and patches options are urls
         # verify the urls before passing them to the VM
-        for url in [source_url] + subopts.values():
+        for url in [source_url] + list(subopts.values()):
             scm = SCM(url)
             scm.assert_allowed(self.options.allowed_scms)
 

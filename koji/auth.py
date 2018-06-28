@@ -108,7 +108,7 @@ class Session(object):
             'user_id': 'user_id',
             }
         # sort for stability (unittests)
-        fields, aliases = list(zip(*list(sorted(fields.items(), key=lambda x: x[1]))))
+        fields, aliases = list(zip(*list(sorted(list(fields.items()), key=lambda x: x[1]))))
         q = """
         SELECT %s FROM sessions
         WHERE id = %%(id)i

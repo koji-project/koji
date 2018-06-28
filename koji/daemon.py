@@ -38,6 +38,7 @@ import sys
 import traceback
 import errno
 from six.moves import range
+import six
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -582,7 +583,7 @@ class TaskManager(object):
         """Attempt to shut down cleanly"""
         for task_id in self.pids.keys():
             self.cleanupTask(task_id)
-        self.session.host.freeTasks(self.tasks.keys())
+        self.session.host.freeTasks(list(self.tasks.keys()))
         self.session.host.updateHost(task_load=0.0, ready=False)
 
     def updateBuildroots(self, nolocal=False):
@@ -613,14 +614,14 @@ class TaskManager(object):
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, self.tasks.keys()))
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, list(self.tasks.keys())))
                 self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in local_br.iterkeys() if id not in db_br]
+        local_only = [id for id in six.iterkeys(local_br) if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -852,7 +853,7 @@ class TaskManager(object):
             # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
-        for bin in bins.iterkeys():
+        for bin in six.iterkeys(bins):
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
             avail[bin].sort()
             avail[bin].reverse()

@@ -399,7 +399,7 @@ class Dispatcher(object):
         if isinstance(result, basestring):
             headers.setdefault('content-length', ('Content-Length', str(len(result))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
-        headers = headers.values() + extra
+        headers = list(headers.values()) + extra
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)

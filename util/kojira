@@ -20,6 +20,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 import sys
 import os
 import koji
@@ -34,6 +35,7 @@ import signal
 import time
 import threading
 import traceback
+import six
 
 
 
@@ -83,7 +85,7 @@ class ManagedRepo(object):
             tags = {self.tag_id : 1}
             for x in order:
                 tags[x['parent_id']] = 1
-            self.taglist = tags.keys()
+            self.taglist = list(tags.keys())
 
     @property
     def dist(self):
@@ -216,9 +218,9 @@ class RepoManager(object):
 
     def printState(self):
         self.logger.debug('Tracking %i repos, %i child processes', len(self.repos), len(self.delete_pids))
-        for tag_id, task_id in self.tasks.iteritems():
+        for tag_id, task_id in six.iteritems(self.tasks):
             self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
-        for pid, desc in self.delete_pids.iteritems():
+        for pid, desc in six.iteritems(self.delete_pids):
             self.logger.debug("Delete job %s: %r", pid, desc)
 
     def rmtree(self, path):
@@ -312,7 +314,7 @@ class RepoManager(object):
     def checkCurrentRepos(self):
         """Determine which repos are current"""
         to_check = []
-        repo_ids = self.repos.keys()
+        repo_ids = list(self.repos.keys())
         for repo_id in repo_ids:
             repo = self.repos.get(repo_id)
             if repo is None:
@@ -658,7 +660,7 @@ class RepoManager(object):
 
         debuginfo_pat = self.options.debuginfo_tags.split()
         src_pat = self.options.source_tags.split()
-        order = self.needed_tags.values()
+        order = list(self.needed_tags.values())
         order.sort(key=lambda t:t['score'])
         for tag in order:
             if running_tasks >= self.options.max_repo_tasks:

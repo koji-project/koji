@@ -17,10 +17,12 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 import fnmatch
 import logging
 
 import koji
+import six
 
 
 class BaseSimpleTest(object):
@@ -292,7 +294,7 @@ class SimpleRuleSet(object):
                     index[name] = 1
         index = {}
         _recurse(self.ruleset, index)
-        return index.keys()
+        return list(index.keys())
 
     def _apply(self, rules, data, top=False):
         for tests, negate, action in rules:
@@ -361,7 +363,7 @@ def findSimpleTests(namespace):
         namespace = (namespace,)
     ret = {}
     for ns in namespace:
-        for key, value in ns.iteritems():
+        for key, value in six.iteritems(ns):
             if value is BaseSimpleTest:
                 # skip this abstract base class if we encounter it
                 # this module contains generic tests, so it is valid to include it

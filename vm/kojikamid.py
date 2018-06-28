@@ -26,6 +26,7 @@
 #   kojiwind --install
 # in a cygwin shell.
 
+from __future__ import absolute_import
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 import os
@@ -42,6 +43,7 @@ import threading
 import re
 import glob
 import zipfile
+import six
 
 MANAGER_PORT = 7000
 
@@ -639,7 +641,7 @@ def stream_logs(server, handler, builds):
                 logpath = os.path.join(build.source_dir, relpath)
                 if logpath not in logs:
                     logs[logpath] = (relpath, None)
-        for log, (relpath, fd) in logs.iteritems():
+        for log, (relpath, fd) in six.iteritems(logs):
             if not fd:
                 if os.path.isfile(log):
                     try:

@@ -6,6 +6,8 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -535,7 +537,7 @@ def handle_trash():
     by_owner = {}
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
-    owners = by_owner.keys()
+    owners = list(by_owner.keys())
     owners.sort()
     for owner_name in owners:
         builds = [(b['nvr'], b) for b in by_owner[owner_name]]
@@ -557,7 +559,7 @@ def handle_trash():
                     #best we can do currently
                     owner = binfo['owner_id']
                 else:
-                    owner = max([(n, k) for k, n in count.iteritems()])[1]
+                    owner = max([(n, k) for k, n in six.iteritems(count)])[1]
                 session.packageListAdd(trashcan_tag, binfo['name'], owner)
                 session.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
 
@@ -770,7 +772,7 @@ def get_build_sigs(build, cache=False):
             for sig in sigs:
                 if sig['sigkey']:
                     keys.setdefault(sig['sigkey'], 1)
-    ret = build_sig_cache[build] = keys.keys()
+    ret = build_sig_cache[build] = list(keys.keys())
     return ret
 
 def handle_prune():
@@ -830,7 +832,7 @@ def handle_prune():
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
-        pkgs = pkghist.keys()
+        pkgs = list(pkghist.keys())
         pkgs.sort()
         for pkg in pkgs:
             if not check_package(pkg):

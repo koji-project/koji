@@ -487,7 +487,7 @@ Finished: Thu Jan  1 00:50:00 1970
         }
 
         # need ordered dict to get same results
-        files = collections.OrderedDict(sorted(files.items(),
+        files = collections.OrderedDict(sorted(list(files.items()),
                                         key=lambda t: t[0]))
 
         list_task_output_mock.side_effect = [[], files, {}]
