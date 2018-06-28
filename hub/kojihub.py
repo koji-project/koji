@@ -526,20 +526,17 @@ def make_task(method, arglist, **opts):
         logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
                        arglist, method, exc_info=True)
     if params:
-        # do not check newRepo task
-        if method != 'newRepo':
-            # src is the common signature of source
-            # spec_url for wrapperRPM task
-            # url for buildSRPMFromSCM, maven, etc
-            for k in ('src', 'spec_url', 'url'):
-                if k in params:
-                    policy_data['source'] = params.get(k)
-                    break
+        # parameters that indicate source for build
+        for k in ('src', 'spec_url', 'url'):
+            if method == 'newRepo':
+                # newRepo has a 'src' parameter that means something else
+                break
+            if k in params:
+                policy_data['source'] = params.get(k)
+                break
+        # parameters that indicate build target
         target = None
         hastarget = False
-        # target(str) is the common signature
-        # build_target(dict) for wrapperRPM task
-        # target_info(dict) for some image tasks
         for k in ('target', 'build_target', 'target_info'):
             if k in params:
                 target = params.get(k)
@@ -551,9 +548,7 @@ def make_task(method, arglist, **opts):
             elif isinstance(target, dict):
                 if 'name' not in target:
                     hastarget = False
-                    logger.warning("Bad build target: %s. It should contain "
-                                   "valid key: 'name'. Skipping putting "
-                                   "target into channel policy data", target)
+                    logger.warning("Bad build target parameter: %r", target)
                 else:
                     target = target.get('name')
         if hastarget:
