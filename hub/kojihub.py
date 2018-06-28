@@ -3053,7 +3053,7 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_include_all': 'maven_include_all'
              }
     clauses = [eventCondition(event, table='tag_config')]
-    if isinstance(tagInfo, (int, long)):
+    if isinstance(tagInfo, six.integer_types):
         clauses.append("tag.id = %(tagInfo)i")
     elif isinstance(tagInfo, six.string_types):
         clauses.append("tag.name = %(tagInfo)s")
@@ -3281,7 +3281,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     if info is not None:
         if isinstance(info, str):
             clauses.append('name = %(info)s')
-        elif isinstance(info, (int, long)):
+        elif isinstance(info, six.integer_types):
             clauses.append('id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
@@ -3752,7 +3752,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         )
     # we can look up by id or NVRA
     data = None
-    if isinstance(rpminfo, (int, long)):
+    if isinstance(rpminfo, six.integer_types):
         data = {'id': rpminfo}
     elif isinstance(rpminfo, str):
         data = koji.parse_NVRA(rpminfo)
@@ -4615,7 +4615,7 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    if isinstance(hostInfo, (int, long)):
+    if isinstance(hostInfo, six.integer_types):
         clauses.append("host.id = %(hostInfo)i")
     elif isinstance(hostInfo, str):
         clauses.append("host.name = %(hostInfo)s")
@@ -5896,7 +5896,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
         ('arch', six.string_types),
         ('payloadhash', str),
         ('size', int),
-        ('buildtime', (int, long)))
+        ('buildtime', six.integer_types))
     for field, allowed in dtypes:
         if field not in rpminfo:
             raise koji.GenericError("%s field missing: %r" % (field, rpminfo))
@@ -9555,7 +9555,7 @@ class RootExports(object):
                 before = calendar.timegm(before.utctimetuple())
             elif isinstance(before, (str, unicode)):
                 before = koji.util.parseTime(before)
-            elif isinstance(before, (int, long)):
+            elif isinstance(before, six.integer_types):
                 pass
             else:
                 raise koji.GenericError('invalid type for before: %s' % type(before))
@@ -9565,7 +9565,7 @@ class RootExports(object):
                 after = calendar.timegm(after.utctimetuple())
             elif isinstance(after, (str, unicode)):
                 after = koji.util.parseTime(after)
-            elif isinstance(after, (int, long)):
+            elif isinstance(after, six.integer_types):
                 pass
             else:
                 raise koji.GenericError('invalid type for after: %s' % type(after))
@@ -9656,7 +9656,7 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
@@ -9667,14 +9667,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             tag = get_tag_id(tag, strict=True)
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
@@ -9853,14 +9853,14 @@ class RootExports(object):
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
         """List latest builds for tag (inheritance enabled)"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
@@ -9920,13 +9920,13 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
@@ -9937,7 +9937,7 @@ class RootExports(object):
             stops = {}
         if jumps is None:
             jumps = {}
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
@@ -9964,7 +9964,7 @@ class RootExports(object):
         - buildroot_id
 
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
-        if not isinstance(build, (int, long)):
+        if not isinstance(build, six.integer_types):
             #lookup build id
             build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
@@ -10355,7 +10355,7 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None, dist=False):
-        if isinstance(tag, (int, long)):
+        if isinstance(tag, six.integer_types):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
@@ -12478,7 +12478,7 @@ class HostExports(object):
             extra_deps = []
         task_deps = {}
         for dep in extra_deps:
-            if isinstance(dep, (int, long)):
+            if isinstance(dep, six.integer_types):
                 task_output = list_task_output(dep, stat=True)
                 for filepath, filestats in six.iteritems(task_output):
                     if os.path.splitext(filepath)[1] in ['.log', '.md5', '.sha1']:
