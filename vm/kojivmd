@@ -20,6 +20,7 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager

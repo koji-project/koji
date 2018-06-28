@@ -1,5 +1,6 @@
+from __future__ import absolute_import
 import mock
-from utils import DBQueryTestCase
+from .utils import DBQueryTestCase
 
 import koji
 import kojihub

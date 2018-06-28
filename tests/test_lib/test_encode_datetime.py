@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import datetime
 try:
     import unittest2 as unittest

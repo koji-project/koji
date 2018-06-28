@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import imp
 import koji
 import logging

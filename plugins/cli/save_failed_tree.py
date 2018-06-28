@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import koji
 from koji.plugin import export_cli
 from koji_cli.lib import _, activate_session, OptionParser, watch_tasks

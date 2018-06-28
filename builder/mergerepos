@@ -21,6 +21,7 @@
 # Largely borrowed from the mergerepo script included in createrepo and
 # written by Seth Vidal
 
+from __future__ import absolute_import
 import createrepo
 import os.path
 import rpmUtils.miscutils
