@@ -39,7 +39,7 @@ from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, greetings, _list_tasks
+        error, greetings, _list_tasks, unique_path
 
 
 def _printable_unicode(s):
@@ -485,7 +485,7 @@ def handle_build(options, session, args):
         #treat source as an srpm and upload it
         if not build_opts.quiet:
             print("Uploading srpm: %s" % source)
-        serverdir = _unique_path('cli-build')
+        serverdir = unique_path('cli-build')
         if _running_in_bg() or build_opts.noprogress or build_opts.quiet:
             callback = None
         else:
@@ -1179,7 +1179,7 @@ def handle_import(goptions, session, args):
         if options.test:
             print(_("Test mode -- skipping import for %s") % path)
             return
-        serverdir = _unique_path('cli-import')
+        serverdir = unique_path('cli-import')
         if options.link:
             linked_upload(path, serverdir)
         else:
@@ -1299,7 +1299,7 @@ def handle_import_cg(goptions, session, args):
 
     # get upload path
     # XXX - need a better way
-    serverdir = _unique_path('cli-import')
+    serverdir = unique_path('cli-import')
 
     for localpath, info in to_upload:
         relpath = os.path.join(serverdir, info.get('relpath', ''))
@@ -2159,7 +2159,7 @@ def handle_import_archive(options, session, args):
     for filepath in args[1:]:
         filename = os.path.basename(filepath)
         print("Uploading archive: %s" % filename)
-        serverdir = _unique_path('cli-import')
+        serverdir = unique_path('cli-import')
         if _running_in_bg() or suboptions.noprogress:
             callback = None
         else:
@@ -5594,7 +5594,7 @@ def _build_image_indirection(options, task_opts, session, args):
             # only scratch builds can omit indirection_template_url
             raise koji.GenericError(_("Non-scratch builds must provide a URL for the indirection template"))
         templatefile = task_opts.indirection_template
-        serverdir = _unique_path('cli-image-indirection')
+        serverdir = unique_path('cli-image-indirection')
         session.uploadWrapper(templatefile, serverdir, callback=callback)
         task_opts.indirection_template = os.path.join('work', serverdir,
             os.path.basename(templatefile))
@@ -5791,7 +5791,7 @@ def _build_image(options, task_opts, session, args, img_type):
     ksfile = args[4]
 
     if not task_opts.ksurl:
-        serverdir = _unique_path('cli-' + img_type)
+        serverdir = unique_path('cli-' + img_type)
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         ksfile = os.path.join(serverdir, os.path.basename(ksfile))
         print('')
@@ -5867,7 +5867,7 @@ def _build_image_oz(options, task_opts, session, args):
             # only scratch builds can omit ksurl
             raise koji.GenericError(_("Non-scratch builds must provide ksurl"))
         ksfile = task_opts.kickstart
-        serverdir = _unique_path('cli-image')
+        serverdir = unique_path('cli-image')
         session.uploadWrapper(ksfile, serverdir, callback=callback)
         task_opts.kickstart = os.path.join('work', serverdir,
             os.path.basename(ksfile))
@@ -6975,7 +6975,7 @@ def handle_dist_repo(options, session, args):
         parser.error(_('allow_missing_signatures and skip_missing_signatures '
                 'are mutually exclusive'))
     activate_session(session, options)
-    stuffdir = _unique_path('cli-dist-repo')
+    stuffdir = unique_path('cli-dist-repo')
     if task_opts.comps:
         if not os.path.exists(task_opts.comps):
             parser.error(_('could not find %s') % task_opts.comps)

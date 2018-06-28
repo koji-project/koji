@@ -53,7 +53,7 @@ class TestDistRepo(utils.CliTestCase):
         self.setUpMocks()
 
     def setUpMocks(self):
-        self.unique_path = mock.patch('koji_cli.commands._unique_path').start()
+        self.unique_path = mock.patch('koji_cli.commands.unique_path').start()
         self.unique_path.return_value = '/path/to/cli-dist-repo'
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
 

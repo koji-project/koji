@@ -113,7 +113,7 @@ class TestBuildImageOz(utils.CliTestCase):
         # mocks
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
         self.watch_tasks = mock.patch('koji_cli.commands.watch_tasks').start()
-        self.unique_path = mock.patch('koji_cli.commands._unique_path').start()
+        self.unique_path = mock.patch('koji_cli.commands.unique_path').start()
         self.unique_path.return_value = '/path/to/cli-image'
         self.running_in_bg = mock.patch('koji_cli.commands._running_in_bg').start()
         self.running_in_bg.return_value = False

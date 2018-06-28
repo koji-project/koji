@@ -146,7 +146,7 @@ You can create progress bars as necessary with this snippet:
       callback = None
     else:
       callback = _progress_callback
-    serverdir = _unique_path('cli-image')   # create a unique path on the hub
+    serverdir = unique_path('cli-image')   # create a unique path on the hub
     session.uploadWrapper(somefile, serverdir, callback=callback)
 
 Task Arguments
