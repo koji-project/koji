@@ -2837,7 +2837,7 @@ class ImageTask(BaseTaskHandler):
         self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
         if opts.get('repo'):
             user_repos = opts['repo']
-            if isinstance(user_repos, basestring):
+            if isinstance(user_repos, six.string_types):
                 user_repos = user_repos.split(',')
             index = 0
             for user_repo in user_repos:
@@ -5658,7 +5658,7 @@ class WaitrepoTask(BaseTaskHandler):
         if not targets:
             raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
 
-        if isinstance(newer_than, basestring) and newer_than.lower() == "now":
+        if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
             newer_than = start
         if not isinstance(newer_than, (type(None), int, long, float)):
             raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
