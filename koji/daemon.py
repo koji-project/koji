@@ -20,6 +20,7 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import koji
 import koji.tasks
 import koji.xmlrpcplus
@@ -36,6 +37,7 @@ import subprocess
 import sys
 import traceback
 import errno
+from six.moves import range
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -719,7 +721,7 @@ class TaskManager(object):
             fo = open(fn, 'r')
             id = None
             name = None
-            for n in xrange(10):
+            for n in range(10):
                 # data should be in first few lines
                 line = fo.readline()
                 if line.startswith('# Koji buildroot id:'):

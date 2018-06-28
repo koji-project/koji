@@ -18,6 +18,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 from ConfigParser import RawConfigParser
 import datetime
 import inspect
@@ -38,6 +39,7 @@ import koji.util
 # import xmlrpclib functions from koji to use tweaked Marshaller
 from koji.xmlrpcplus import getparser, dumps, Fault, ExtendedMarshaller
 from koji.context import context
+from six.moves import range
 
 
 class Marshaller(ExtendedMarshaller):

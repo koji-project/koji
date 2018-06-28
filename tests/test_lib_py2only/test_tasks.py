@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import random
 import shutil
 import six
+from six.moves import range
 try:
     import unittest2 as unittest
 except ImportError:

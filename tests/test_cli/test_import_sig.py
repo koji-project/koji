@@ -5,6 +5,7 @@ import hashlib
 import mock
 import random
 import six
+from six.moves import range
 try:
     import unittest2 as unittest
 except ImportError:

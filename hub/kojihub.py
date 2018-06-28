@@ -22,6 +22,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
+from __future__ import absolute_import
 import base64
 import calendar
 import koji.rpmdiff
@@ -61,6 +62,7 @@ from koji.util import md5_constructor
 from koji.util import multi_fnmatch
 from koji.util import safer_move
 from koji.util import sha1_constructor
+from six.moves import range
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):

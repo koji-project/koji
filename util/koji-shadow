@@ -22,6 +22,8 @@
 #       Dennis Gilmore <dennis@ausil.us>
 #       Karsten Hopp <karsten@redhat.com>
 
+from __future__ import absolute_import
+from six.moves import range
 try:
     import krbV
 except ImportError:  # pragma: no cover
@@ -861,7 +863,7 @@ class BuildTracker(object):
         taginfo = remote.getTag(tag)
         builds = remote.listTagged(taginfo['id'], latest=True)
         for build in builds:
-            for retry in xrange(10):
+            for retry in range(10):
                 try:
                     self.scanBuild(build['id'], tag=tag)
                     if options.first_one:

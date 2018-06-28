@@ -20,6 +20,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 import Cheetah.Template
 import datetime
 import koji
@@ -32,6 +33,7 @@ from socket import sslerror as socket_sslerror
 from xmlrpclib import ProtocolError
 from xml.parsers.expat import ExpatError
 import cgi
+from six.moves import range
 
 class NoSuchException(Exception):
     pass

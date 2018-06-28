@@ -23,6 +23,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter
 from six.moves import map
 from six.moves import zip
+from six.moves import range
 
 try:
     import libcomps
