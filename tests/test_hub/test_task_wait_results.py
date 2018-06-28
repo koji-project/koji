@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 import mock
-import xmlrpclib
+import six.moves.xmlrpc_client
 try:
     import unittest2 as unittest
 except ImportError:
@@ -66,8 +66,8 @@ class TestTaskWaitResults(unittest.TestCase):
             task = self.getTask(t)
             task.getResult.return_value = "OK"
             task.isCanceled.return_value = False
-        self.tasks[6].getResult.side_effect = xmlrpclib.Fault(1, "error")
-        with self.assertRaises(xmlrpclib.Fault):
+        self.tasks[6].getResult.side_effect = six.moves.xmlrpc_client.Fault(1, "error")
+        with self.assertRaises(six.moves.xmlrpc_client.Fault):
             results = self.host_exports.taskWaitResults(parent, task_ids)
             self.assertEqual(results, [])
         self.tasks[6].getResult.side_effect = koji.GenericError('problem')

@@ -25,7 +25,7 @@
 #    - auth data
 
 from __future__ import absolute_import
-import thread
+import six.moves._thread
 from six.moves import range
 import six
 
@@ -38,7 +38,7 @@ class ThreadLocal(object):
 
     # should probably be getattribute, but easier to debug this way
     def __getattr__(self, key):
-        id = thread.get_ident()
+        id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             raise AttributeError(key)
@@ -46,7 +46,7 @@ class ThreadLocal(object):
         return object.__getattribute__(data, key)
 
     def __setattr__(self, key, value):
-        id = thread.get_ident()
+        id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             tdict[id] = _data()
@@ -54,7 +54,7 @@ class ThreadLocal(object):
         return object.__setattr__(data, key, value)
 
     def __delattr__(self, key):
-        id = thread.get_ident()
+        id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             raise AttributeError(key)
@@ -65,14 +65,14 @@ class ThreadLocal(object):
         return ret
 
     def __str__(self):
-        id = thread.get_ident()
+        id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         return "(current thread: %s) {" % id  + \
             ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
             "}"
 
     def _threadclear(self):
-        id = thread.get_ident()
+        id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
         if id not in tdict:
             return
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         print(context)
 
     for x in range(1, 10):
-        thread.start_new_thread(test, ())
+        six.moves._thread.start_new_thread(test, ())
 
     time.sleep(4)
     print('')

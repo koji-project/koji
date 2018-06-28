@@ -26,7 +26,7 @@ import koji.plugin
 import koji.util
 import os
 import logging
-import xmlrpclib
+import six.moves.xmlrpc_client
 import signal
 import shutil
 import random
@@ -392,7 +392,7 @@ class BaseTaskHandler(object):
                             try:
                                 self.session.getTaskResult(task)
                                 checked.add(task)
-                            except (koji.GenericError, xmlrpclib.Fault):
+                            except (koji.GenericError, six.moves.xmlrpc_client.Fault):
                                 self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
                                 self.session.cancelTaskChildren(self.id)
                                 # reraise the original error now, rather than waiting for

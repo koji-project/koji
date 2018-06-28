@@ -26,7 +26,7 @@ import os.path
 import re
 import sys
 import mimetypes
-import Cookie
+import six.moves.http_cookies
 import datetime
 import logging
 import time
@@ -56,7 +56,7 @@ def _setUserCookie(environ, user):
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     value = "%s:%s" % (shasum.hexdigest(), value)
-    cookies = Cookie.SimpleCookie()
+    cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
     c = cookies['user']  #morsel instance
     c['secure'] = True
@@ -69,7 +69,7 @@ def _setUserCookie(environ, user):
     environ['koji.headers'].append(['Cache-Control', 'no-cache="set-cookie"'])
 
 def _clearUserCookie(environ):
-    cookies = Cookie.SimpleCookie()
+    cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = ''
     c = cookies['user']  #morsel instance
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
@@ -79,7 +79,7 @@ def _clearUserCookie(environ):
 
 def _getUserCookie(environ):
     options = environ['koji.options']
-    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE', ''))
+    cookies = six.moves.http_cookies.SimpleCookie(environ.get('HTTP_COOKIE', ''))
     if 'user' not in cookies:
         return None
     value = cookies['user'].value

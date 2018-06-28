@@ -43,7 +43,7 @@ import tempfile
 import time
 import traceback
 import urlparse
-import xmlrpclib
+import six.moves.xmlrpc_client
 import zipfile
 
 import rpm
@@ -397,7 +397,7 @@ class Task(object):
         if xml_request.find('<?xml', 0, 10) == -1:
             #handle older base64 encoded data
             xml_request = base64.decodestring(xml_request)
-        params, method = xmlrpclib.loads(xml_request)
+        params, method = six.moves.xmlrpc_client.loads(xml_request)
         return params
 
     def getResult(self, raise_fault=True):
@@ -416,8 +416,8 @@ class Task(object):
         try:
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
-            result, method = xmlrpclib.loads(xml_result)
-        except xmlrpclib.Fault as fault:
+            result, method = six.moves.xmlrpc_client.loads(xml_result)
+        except six.moves.xmlrpc_client.Fault as fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -448,7 +448,7 @@ class Task(object):
                 if task['request'].find('<?xml', 0, 10) == -1:
                     #handle older base64 encoded data
                     task['request'] = base64.decodestring(task['request'])
-                task['request'] = xmlrpclib.loads(task['request'])[0]
+                task['request'] = six.moves.xmlrpc_client.loads(task['request'])[0]
         return results
 
     def runCallbacks(self, cbtype, old_info, attr, new_val):
@@ -10628,8 +10628,8 @@ class RootExports(object):
                         if val.find('<?xml', 0, 10) == -1:
                             #handle older base64 encoded data
                             val = base64.decodestring(val)
-                        data, method = xmlrpclib.loads(val)
-                    except xmlrpclib.Fault as fault:
+                        data, method = six.moves.xmlrpc_client.loads(val)
+                    except six.moves.xmlrpc_client.Fault as fault:
                         data = fault
                     task[f] = data
             yield task
@@ -10889,7 +10889,7 @@ class RootExports(object):
         buildinfo = get_build(build)
         if not buildinfo:
             raise koji.GenericError('build does not exist: %s' % build)
-        elif isinstance(ts, xmlrpclib.DateTime):
+        elif isinstance(ts, six.moves.xmlrpc_client.DateTime):
             #not recommended
             #the xmlrpclib.DateTime class is almost useless
             try:

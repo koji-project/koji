@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 import commands
 import koji
-import ConfigParser
+import six.moves.configparser
 import os
 import platform
 import re
@@ -49,7 +49,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         return res
 
     def _read_config(self):
-        cp = ConfigParser.SafeConfigParser()
+        cp = six.moves.configparser.SafeConfigParser()
         cp.read(CONFIG_FILE)
         self.config = {
            'default_mounts': [],
@@ -90,7 +90,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                     'fstype': cp.get(section_name, 'fstype'),
                     'options': cp.get(section_name, 'options'),
                 })
-            except ConfigParser.NoOptionError:
+            except six.moves.configparser.NoOptionError:
                 raise koji.GenericError("bad config: missing options in %s section" % section_name)
 
         for path in self.config['default_mounts'] + self.config['safe_roots'] + [x[0] for x in self.config['path_subs']]:

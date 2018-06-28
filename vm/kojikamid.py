@@ -28,13 +28,13 @@
 
 from __future__ import absolute_import
 from optparse import OptionParser
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 import os
 import subprocess
 import sys
 import tempfile
 import time
-import xmlrpclib
+import six.moves.xmlrpc_client
 import base64
 import hashlib
 import logging
@@ -588,13 +588,13 @@ def get_mgmt_server():
         macaddr, gateway = find_net_info()
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
-    server = xmlrpclib.ServerProxy('http://%s:%s/' %
+    server = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' %
                                    (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)
-    return xmlrpclib.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
+    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
 def get_options():
     """handle usage and parse options"""

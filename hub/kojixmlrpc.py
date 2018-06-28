@@ -19,7 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
-from ConfigParser import RawConfigParser
+from six.moves.configparser import RawConfigParser
 import datetime
 import inspect
 import logging

@@ -30,7 +30,7 @@ import stat
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from socket import sslerror as socket_sslerror
-from xmlrpclib import ProtocolError
+from six.moves.xmlrpc_client import ProtocolError
 from xml.parsers.expat import ExpatError
 import cgi
 from six.moves import range

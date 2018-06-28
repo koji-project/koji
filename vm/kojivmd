@@ -29,7 +29,7 @@ from koji.tasks import RestartTask, RestartVerifyTask
 import sys
 import logging
 import os
-import xmlrpclib
+import six.moves.xmlrpc_client
 import signal
 import time
 import subprocess
@@ -37,13 +37,13 @@ import libvirt
 import libxml2
 import random
 import socket
-import SimpleXMLRPCServer
+import six.moves.xmlrpc_server
 import threading
 import base64
 import pwd
 import requests
 import fnmatch
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 from contextlib import closing
 from optparse import OptionParser
 try:
@@ -246,14 +246,14 @@ def main(options, session):
 # Tasks for handling VM lifecycle
 ####################
 
-class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
+class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
     allow_reuse_address = True
 
     def __init__(self, addr, port):
         if sys.version_info[:2] <= (2, 4):
-            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
         else:
-            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
                                                            allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
@@ -261,7 +261,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
 
     def server_close(self):
         self.active = False
-        SimpleXMLRPCServer.SimpleXMLRPCServer.server_close(self)
+        six.moves.xmlrpc_server.SimpleXMLRPCServer.server_close(self)
 
     def handle_while_active(self):
         while self.active:
@@ -282,20 +282,20 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
         # Copy and paste from SimpleXMLRPCServer, with the addition of passing
         # allow_none=True to xmlrpclib.dumps()
         def _marshaled_dispatch(self, data, dispatch_method = None):
-            params, method = xmlrpclib.loads(data)
+            params, method = six.moves.xmlrpc_client.loads(data)
             try:
                 if dispatch_method is not None:
                     response = dispatch_method(method, params)
                 else:
                     response = self._dispatch(method, params)
                 response = (response,)
-                response = xmlrpclib.dumps(response, methodresponse=1, allow_none=True)
-            except xmlrpclib.Fault, fault:
-                response = xmlrpclib.dumps(fault)
+                response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
+            except six.moves.xmlrpc_client.Fault, fault:
+                response = six.moves.xmlrpc_client.dumps(fault)
             except:
                 # report exception back to server
-                response = xmlrpclib.dumps(
-                    xmlrpclib.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                response = six.moves.xmlrpc_client.dumps(
+                    six.moves.xmlrpc_client.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
                     )
             return response
 
@@ -417,7 +417,7 @@ class VMExecTask(BaseTaskHandler):
 
     def __init__(self, *args, **kw):
         super(VMExecTask, self).__init__(*args, **kw)
-        self.task_manager = xmlrpclib.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
+        self.task_manager = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
                                                   allow_none=True)
         self.port = None
         self.server = None
@@ -1090,7 +1090,7 @@ if __name__ == "__main__":
                               options.serverca)
         except koji.AuthError, e:
             quit("Error: Unable to log in: %s" % e)
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
@@ -1098,7 +1098,7 @@ if __name__ == "__main__":
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif krbV:
         krb_principal = options.krb_principal
@@ -1124,7 +1124,7 @@ if __name__ == "__main__":
     #make sure it works
     try:
         ret = session.echo("OK")
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
         quit("Error: incorrect server response: %r" % (ret))

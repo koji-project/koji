@@ -26,7 +26,7 @@ import os
 import koji
 from koji.util import rmtree, parseStatus
 from optparse import OptionParser
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 import errno
 import logging
 import logging.handlers
