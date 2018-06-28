@@ -119,7 +119,7 @@ class HandlerRegistry(object):
         if ret:
             return ret
         ret = tuple(inspect.getargspec(func))
-        if inspect.ismethod(func) and func.im_self:
+        if inspect.ismethod(func) and func.__self__:
             # bound method, remove first arg
             args, varargs, varkw, defaults = ret
             if args:
