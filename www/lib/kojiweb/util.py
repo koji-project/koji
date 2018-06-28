@@ -21,6 +21,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import Cheetah.Template
 import datetime
 import koji
@@ -151,7 +152,7 @@ def _genHTML(environ, fileName):
 def _truncTime():
     now = datetime.datetime.now()
     # truncate to the nearest 15 minutes
-    return now.replace(minute=(now.minute / 15 * 15), second=0, microsecond=0)
+    return now.replace(minute=(now.minute // 15 * 15), second=0, microsecond=0)
 
 def _genToken(environ, tstamp=None):
     if 'koji.currentLogin' in environ and environ['koji.currentLogin']:
@@ -356,9 +357,9 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     values[(prefix and prefix + 'Count' or 'count')] = count
     values[(prefix and prefix + 'Range' or 'range')] = pageSize
     values[(prefix and prefix + 'Order' or 'order')] = order
-    currentPage = start / pageSize
+    currentPage = start // pageSize
     values[(prefix and prefix + 'CurrentPage' or 'currentPage')] = currentPage
-    totalPages = totalRows / pageSize
+    totalPages = totalRows // pageSize
     if totalRows % pageSize > 0:
         totalPages += 1
     pages = [page for page in range(0, totalPages) if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]

@@ -21,6 +21,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
@@ -845,7 +846,7 @@ class VMExecTask(BaseTaskHandler):
             if self.success is None:
                 # task is still running
                 # make sure it hasn't exceeded the timeout
-                mins = (time.time() - start) / 60
+                mins = (time.time() - start) // 60
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
@@ -930,7 +931,7 @@ class VMTaskManager(TaskManager):
             raise IOError('No such directory: %s' % self.options.imagedir)
         fs_stat = os.statvfs(self.options.imagedir)
         available = fs_stat.f_bavail * fs_stat.f_bsize
-        availableMB = available / 1024 / 1024
+        availableMB = available // 1024 // 1024
         self.logger.debug('disk space available in %s: %i MB', self.options.imagedir, availableMB)
         if availableMB < self.options.minspace:
             self.status = 'Insufficient disk space: %i MB, %i MB required' % (availableMB, self.options.minspace)
@@ -939,7 +940,7 @@ class VMTaskManager(TaskManager):
         return True
 
     def checkMem(self):
-        phys_mem = os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') / 1024
+        phys_mem = os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') // 1024
         vm_mem = 0
         for vm_id in self.libvirt_conn.listDomainsID():
             vm = self.libvirt_conn.lookupByID(vm_id)

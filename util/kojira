@@ -21,6 +21,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import sys
 import os
 import koji
@@ -475,7 +476,7 @@ class RepoManager(object):
         if max_n == 0:
             # no recent use or missing data
             max_n = 1
-        adj = stats['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
+        adj = stats['n_recent'] * 9.0 // max_n + 1   # 1.0 to 10.0
         ts = entry['expire_ts']
         age = time.time() - ts
         # XXX - need to make sure our times aren't far off, otherwise this

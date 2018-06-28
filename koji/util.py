@@ -19,6 +19,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import calendar
 import datetime
 from koji.xmlrpcplus import DateTime
@@ -116,7 +117,7 @@ def checkForBuilds(session, tag, builds, event, latest=False):
 def duration(start):
     """Return the duration between start and now in MM:SS format"""
     elapsed = time.time() - start
-    mins = int(elapsed / 60)
+    mins = int(elapsed // 60)
     secs = int(elapsed % 60)
     return '%s:%02i' % (mins, secs)
 

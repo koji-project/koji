@@ -22,6 +22,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import six
 try:
     import krbV
@@ -1205,7 +1206,7 @@ class BuildArchTask(BaseBuildTask):
             self.logger.warn("Negative average build duration for %s: %s", name, avg)
             return
         # increase the task weight by 0.75 for every hour of build duration
-        adj = (avg / 4800.0)
+        adj = (avg // 4800.0)
         # cap the adjustment at +4.5
         weight = self.weight() + min(4.5, adj)
         self.session.host.setTaskWeight(self.id, weight)
