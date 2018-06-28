@@ -737,7 +737,7 @@ def read_policies(fn=None):
     The expected format as follows
         test [params] [&& test [params] ...] :: (keep|untag|skip)
     """
-    fo = file(fn, 'r')
+    fo = open(fn, 'r')
     tests = koji.policy.findSimpleTests(globals())
     ret = koji.policy.SimpleRuleSet(fo, tests)
     fo.close()

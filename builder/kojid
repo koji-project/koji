@@ -259,7 +259,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
-        fo = file(configfile,'w')
+        fo = open(configfile,'w')
         fo.write(output)
         fo.close()
 
@@ -359,7 +359,7 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        fo = file(self.rootdir() + destfile, 'w')
+        fo = open(self.rootdir() + destfile, 'w')
         fo.write(settings)
         fo.close()
 
@@ -1869,7 +1869,7 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        specfd = file(specfile, 'w')
+        specfd = open(specfile, 'w')
         specfd.write(contents)
         specfd.close()
 
@@ -5044,7 +5044,7 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            fo = file(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
+            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
             fo.write("This repo is empty because its tag has no content for this arch\n")
             fo.close()
 
@@ -5622,7 +5622,7 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        datafile = file(filename, 'w')
+        datafile = open(filename, 'w')
         try:
             json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
         finally:

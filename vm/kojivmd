@@ -689,7 +689,7 @@ class VMExecTask(BaseTaskHandler):
                 f.close()
 
 
-        return file(localpath, 'r')
+        return open(localpath, 'r')
 
     def getFile(self, buildinfo, archiveinfo, offset, length, type):
         """
@@ -718,7 +718,7 @@ class VMExecTask(BaseTaskHandler):
         if offset == 0:
             if os.path.exists(local_path):
                 raise koji.BuildError('cannot overwrite %s' % local_path)
-            fobj = file(local_path, 'w')
+            fobj = open(local_path, 'w')
         else:
             if not os.path.isfile(local_path):
                 raise koji.BuildError('% does not exist' % local_path)
@@ -726,7 +726,7 @@ class VMExecTask(BaseTaskHandler):
             if offset != size:
                 raise koji.BuildError('cannot write to %s at offset %s, size is %s' % \
                       (local_path, offset, size))
-            fobj = file(local_path, 'r+')
+            fobj = open(local_path, 'r+')
             fobj.seek(offset)
         data = base64.b64decode(contents)
         fobj.write(data)
@@ -756,7 +756,7 @@ class VMExecTask(BaseTaskHandler):
         else:
             raise koji.BuildError('unsupported checksum algorithm: %s' % algo)
 
-        fobj = file(local_path, 'r')
+        fobj = open(local_path, 'r')
         while True:
             data = fobj.read(1048576)
             if not data:

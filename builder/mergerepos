@@ -239,7 +239,7 @@ class RepoMerge(object):
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = file(pkgorigins, 'w')
+        origins = open(pkgorigins, 'w')
 
         seen_rpms = {}
         for repo in repos:
@@ -284,7 +284,7 @@ def main(args):
     opts = parse_args(args)
 
     if opts.blocked:
-        blocked_fo = file(opts.blocked)
+        blocked_fo = open(opts.blocked)
         blocked_list = blocked_fo.readlines()
         blocked_fo.close()
         blocked = dict([(b.strip(), 1) for b in blocked_list])
