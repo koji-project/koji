@@ -662,9 +662,9 @@ class BuildTracker(object):
                     return grey
         return default
 
-    def rpmvercmp(self, (e1, v1, r1), (e2, v2, r2)):
+    def rpmvercmp(self, nvr1, nvr2):
         """find out which build is newer"""
-        rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
+        rc = rpm.labelCompare(nvr1, nvr2)
         if rc == 1:
             #first evr wins
             return 1
