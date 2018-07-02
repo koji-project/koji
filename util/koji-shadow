@@ -883,7 +883,7 @@ class BuildTracker(object):
         if options.link_imports:
             #bit of a hack, but faster than uploading
             dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, fn)
-            old_umask = os.umask(002)
+            old_umask = os.umask(0o02)
             try:
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
@@ -1302,7 +1302,7 @@ def main(args):
     if options.logfile:
         filename = options.logfile
         try:
-            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0777)
+            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0o777)
         except:
             logfile = None
     if logfile is not None:
