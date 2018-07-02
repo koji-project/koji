@@ -291,7 +291,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                     response = self._dispatch(method, params)
                 response = (response,)
                 response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
-            except six.moves.xmlrpc_client.Fault, fault:
+            except six.moves.xmlrpc_client.Fault as fault:
                 response = six.moves.xmlrpc_client.dumps(fault)
             except:
                 # report exception back to server
@@ -830,7 +830,7 @@ class VMExecTask(BaseTaskHandler):
             self.setupTaskServer()
             vm.create()
             self.logger.info('Started VM %s', clone_name)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             self.logger.error('error starting VM %s', clone_name, exc_info=True)
             raise koji.PreBuildError('error starting VM %s, error was: %s' % \
                   (clone_name, e))
@@ -1089,7 +1089,7 @@ if __name__ == "__main__":
             # authenticate using SSL client certificates
             session.ssl_login(options.cert, None,
                               options.serverca)
-        except koji.AuthError, e:
+        except koji.AuthError as e:
             quit("Error: Unable to log in: %s" % e)
         except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
@@ -1109,9 +1109,9 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
         quit("No username/password supplied and Kerberos missing or not configured")

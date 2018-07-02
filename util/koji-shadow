@@ -330,9 +330,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             error(_("Kerberos authentication failed: '%s' (%s)") % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in"))

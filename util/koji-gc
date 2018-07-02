@@ -200,7 +200,7 @@ def get_options():
                 if len(parts) < 2:
                     continue
                 options.key_aliases[parts[0].upper()] = parts[1]
-    except ValueError, e:
+    except ValueError as e:
         print(e)
         parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
 
@@ -375,9 +375,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in, no authentication methods available"))
@@ -658,7 +658,7 @@ def handle_delete(just_salvage=False):
             session.untagBuildBypass(trashcan_tag,  binfo['id'])
             try:
                 session.deleteBuild(binfo['id'])
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
+            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                 print("Warning: deletion failed: %s" % e)
                 #server issue
                 pass
@@ -877,7 +877,7 @@ def handle_prune():
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
-                        except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
+                        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                             print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
@@ -911,7 +911,7 @@ def handle_prune():
                 print("Deleting untagged build: %s"  % nvr)
                 try:
                     session.deleteBuild(build_id, strict=False)
-                except (six.moves.xmlrpc_client.Fault, koji.GenericError), e:
+                except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                     print("Warning: deletion failed: %s" % e)
                     #server issue
                     pass

@@ -155,7 +155,7 @@ class ManagedRepo(object):
             #also check dir age. We do this because a repo can be created from an older event
             #and should not be removed based solely on that event's timestamp.
             mtime = os.stat(path).st_mtime
-        except OSError, e:
+        except OSError as e:
             if e.errno == 2:
                 # No such file or directory, so the repo either never existed,
                 # or has already been deleted, so allow it to be marked deleted.
@@ -247,7 +247,7 @@ class RepoManager(object):
         prefix = "pid %i (%s)" % (pid, self.delete_pids.get(pid))
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ECHILD:
                 #should not happen
                 raise
@@ -282,7 +282,7 @@ class RepoManager(object):
         for pid in self.delete_pids:
             try:
                 os.kill(pid, sig)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ESRCH:
                     logger.error("Unable to kill process %s", pid)
 
