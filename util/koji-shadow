@@ -559,8 +559,7 @@ class TrackedBuild(object):
                 base.append(name)
         if len(tags) > 1:
             log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, to_list(tags.keys())))
-            counts = [(n, tag) for tag, n in six.iteritems(tags)]
-            sort(counts)
+            counts = sorted([(n, tag) for tag, n in six.iteritems(tags)])
             tag = counts[-1][1]
         else:
             tag = to_list(tags.keys())[0]
