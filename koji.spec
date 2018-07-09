@@ -268,14 +268,14 @@ koji-web is a web UI to the Koji system.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=python2 %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
 %if 0%{with python3}
 cd koji
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
 cd ../cli
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
 cd ../plugins
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=python3 %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
 # alter python interpreter in koji CLI
 sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
 %endif
