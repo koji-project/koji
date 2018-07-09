@@ -1650,6 +1650,8 @@ def channelinfo(environ, channelID):
 
     values['channel'] = channel
     values['hosts'] = hosts
+    values['enabled_hosts'] = len([h for h in hosts if h['enabled']])
+    values['ready_hosts'] = len([h for h in hosts if h['ready']])
 
     return _genHTML(environ, 'channelinfo.chtml')
 

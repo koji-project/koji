@@ -17,13 +17,28 @@
     <tr>
       <th>Hosts</th>
       <td>
-        #if $len($hosts) > 0
-        #for $host in $hosts
-        <a href="hostinfo?hostID=$host.id">$host.name</a><br/>
-        #end for
-        #else
-        No hosts
-        #end if
+      #if $len($hosts) > 0
+      <table>
+        <tr>
+          <th>Hostname</th>
+          <th>Enabled</th>
+          <th>Ready</th>
+        </tr>
+      #for $host in $hosts
+        <tr>
+          <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
+          <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
+          <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
+        </tr>
+      #end for
+        <tr>
+          <th>Total</th>
+          <td>$enabled_hosts</td>
+          <td>$ready_hosts</td>
+        </tr>
+      #else
+      No hosts
+      #end if
       </td>
     </tr>
   </table>
