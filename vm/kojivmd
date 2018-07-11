@@ -20,6 +20,8 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
+from __future__ import division
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
@@ -28,7 +30,7 @@ from koji.tasks import RestartTask, RestartVerifyTask
 import sys
 import logging
 import os
-import xmlrpclib
+import six.moves.xmlrpc_client
 import signal
 import time
 import subprocess
@@ -36,13 +38,13 @@ import libvirt
 import libxml2
 import random
 import socket
-import SimpleXMLRPCServer
+import six.moves.xmlrpc_server
 import threading
 import base64
 import pwd
 import requests
 import fnmatch
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 from contextlib import closing
 from optparse import OptionParser
 try:
@@ -245,14 +247,14 @@ def main(options, session):
 # Tasks for handling VM lifecycle
 ####################
 
-class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
+class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
     allow_reuse_address = True
 
     def __init__(self, addr, port):
         if sys.version_info[:2] <= (2, 4):
-            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
         else:
-            SimpleXMLRPCServer.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
                                                            allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
@@ -260,7 +262,7 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
 
     def server_close(self):
         self.active = False
-        SimpleXMLRPCServer.SimpleXMLRPCServer.server_close(self)
+        six.moves.xmlrpc_server.SimpleXMLRPCServer.server_close(self)
 
     def handle_while_active(self):
         while self.active:
@@ -281,20 +283,20 @@ class DaemonXMLRPCServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
         # Copy and paste from SimpleXMLRPCServer, with the addition of passing
         # allow_none=True to xmlrpclib.dumps()
         def _marshaled_dispatch(self, data, dispatch_method = None):
-            params, method = xmlrpclib.loads(data)
+            params, method = six.moves.xmlrpc_client.loads(data)
             try:
                 if dispatch_method is not None:
                     response = dispatch_method(method, params)
                 else:
                     response = self._dispatch(method, params)
                 response = (response,)
-                response = xmlrpclib.dumps(response, methodresponse=1, allow_none=True)
-            except xmlrpclib.Fault, fault:
-                response = xmlrpclib.dumps(fault)
+                response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
+            except six.moves.xmlrpc_client.Fault as fault:
+                response = six.moves.xmlrpc_client.dumps(fault)
             except:
                 # report exception back to server
-                response = xmlrpclib.dumps(
-                    xmlrpclib.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                response = six.moves.xmlrpc_client.dumps(
+                    six.moves.xmlrpc_client.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
                     )
             return response
 
@@ -314,7 +316,7 @@ class WinBuildTask(MultiPlatformTask):
                                    strict=False)
         # winspec and patches options are urls
         # verify the urls before passing them to the VM
-        for url in [source_url] + subopts.values():
+        for url in [source_url] + koji.util.to_list(subopts.values()):
             scm = SCM(url)
             scm.assert_allowed(self.options.allowed_scms)
 
@@ -416,7 +418,7 @@ class VMExecTask(BaseTaskHandler):
 
     def __init__(self, *args, **kw):
         super(VMExecTask, self).__init__(*args, **kw)
-        self.task_manager = xmlrpclib.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
+        self.task_manager = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
                                                   allow_none=True)
         self.port = None
         self.server = None
@@ -688,7 +690,7 @@ class VMExecTask(BaseTaskHandler):
                 f.close()
 
 
-        return file(localpath, 'r')
+        return open(localpath, 'r')
 
     def getFile(self, buildinfo, archiveinfo, offset, length, type):
         """
@@ -717,7 +719,7 @@ class VMExecTask(BaseTaskHandler):
         if offset == 0:
             if os.path.exists(local_path):
                 raise koji.BuildError('cannot overwrite %s' % local_path)
-            fobj = file(local_path, 'w')
+            fobj = open(local_path, 'w')
         else:
             if not os.path.isfile(local_path):
                 raise koji.BuildError('% does not exist' % local_path)
@@ -725,7 +727,7 @@ class VMExecTask(BaseTaskHandler):
             if offset != size:
                 raise koji.BuildError('cannot write to %s at offset %s, size is %s' % \
                       (local_path, offset, size))
-            fobj = file(local_path, 'r+')
+            fobj = open(local_path, 'r+')
             fobj.seek(offset)
         data = base64.b64decode(contents)
         fobj.write(data)
@@ -755,7 +757,7 @@ class VMExecTask(BaseTaskHandler):
         else:
             raise koji.BuildError('unsupported checksum algorithm: %s' % algo)
 
-        fobj = file(local_path, 'r')
+        fobj = open(local_path, 'r')
         while True:
             data = fobj.read(1048576)
             if not data:
@@ -828,7 +830,7 @@ class VMExecTask(BaseTaskHandler):
             self.setupTaskServer()
             vm.create()
             self.logger.info('Started VM %s', clone_name)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             self.logger.error('error starting VM %s', clone_name, exc_info=True)
             raise koji.PreBuildError('error starting VM %s, error was: %s' % \
                   (clone_name, e))
@@ -844,7 +846,7 @@ class VMExecTask(BaseTaskHandler):
             if self.success is None:
                 # task is still running
                 # make sure it hasn't exceeded the timeout
-                mins = (time.time() - start) / 60
+                mins = (time.time() - start) // 60
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
@@ -929,7 +931,7 @@ class VMTaskManager(TaskManager):
             raise IOError('No such directory: %s' % self.options.imagedir)
         fs_stat = os.statvfs(self.options.imagedir)
         available = fs_stat.f_bavail * fs_stat.f_bsize
-        availableMB = available / 1024 / 1024
+        availableMB = available // 1024 // 1024
         self.logger.debug('disk space available in %s: %i MB', self.options.imagedir, availableMB)
         if availableMB < self.options.minspace:
             self.status = 'Insufficient disk space: %i MB, %i MB required' % (availableMB, self.options.minspace)
@@ -938,7 +940,7 @@ class VMTaskManager(TaskManager):
         return True
 
     def checkMem(self):
-        phys_mem = os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') / 1024
+        phys_mem = os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') // 1024
         vm_mem = 0
         for vm_id in self.libvirt_conn.listDomainsID():
             vm = self.libvirt_conn.lookupByID(vm_id)
@@ -1087,9 +1089,9 @@ if __name__ == "__main__":
             # authenticate using SSL client certificates
             session.ssl_login(options.cert, None,
                               options.serverca)
-        except koji.AuthError, e:
+        except koji.AuthError as e:
             quit("Error: Unable to log in: %s" % e)
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
@@ -1097,7 +1099,7 @@ if __name__ == "__main__":
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
-        except xmlrpclib.ProtocolError:
+        except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif krbV:
         krb_principal = options.krb_principal
@@ -1107,9 +1109,9 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
         quit("No username/password supplied and Kerberos missing or not configured")
@@ -1123,7 +1125,7 @@ if __name__ == "__main__":
     #make sure it works
     try:
         ret = session.echo("OK")
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
         quit("Error: incorrect server response: %r" % (ret))

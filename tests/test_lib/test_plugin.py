@@ -1,6 +1,8 @@
+from __future__ import absolute_import
 import copy
 import datetime
 import mock
+from six.moves import range
 try:
     import unittest2 as unittest
 except ImportError:

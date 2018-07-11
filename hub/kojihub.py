@@ -22,6 +22,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
+from __future__ import absolute_import
 import base64
 import calendar
 import koji.rpmdiff
@@ -42,7 +43,7 @@ import tempfile
 import time
 import traceback
 import urlparse
-import xmlrpclib
+import six.moves.xmlrpc_client
 import zipfile
 
 import rpm
@@ -61,6 +62,8 @@ from koji.util import md5_constructor
 from koji.util import multi_fnmatch
 from koji.util import safer_move
 from koji.util import sha1_constructor
+from koji.util import to_list
+from six.moves import range
 logger = logging.getLogger('koji.hub')
 
 def log_error(msg):
@@ -395,7 +398,7 @@ class Task(object):
         if xml_request.find('<?xml', 0, 10) == -1:
             #handle older base64 encoded data
             xml_request = base64.decodestring(xml_request)
-        params, method = xmlrpclib.loads(xml_request)
+        params, method = six.moves.xmlrpc_client.loads(xml_request)
         return params
 
     def getResult(self, raise_fault=True):
@@ -414,8 +417,8 @@ class Task(object):
         try:
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
-            result, method = xmlrpclib.loads(xml_result)
-        except xmlrpclib.Fault as fault:
+            result, method = six.moves.xmlrpc_client.loads(xml_result)
+        except six.moves.xmlrpc_client.Fault as fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -446,7 +449,7 @@ class Task(object):
                 if task['request'].find('<?xml', 0, 10) == -1:
                     #handle older base64 encoded data
                     task['request'] = base64.decodestring(task['request'])
-                task['request'] = xmlrpclib.loads(task['request'])[0]
+                task['request'] = six.moves.xmlrpc_client.loads(task['request'])[0]
         return results
 
     def runCallbacks(self, cbtype, old_info, attr, new_val):
@@ -611,7 +614,7 @@ def eventCondition(event, table=None):
         table += '.'
     if event is None:
         return """(%(table)sactive = TRUE)""" % locals()
-    elif isinstance(event, int) or isinstance(event, long):
+    elif isinstance(event, six.integer_types):
         return """(%(table)screate_event <= %(event)d AND ( %(table)srevoke_event IS NULL OR %(event)d < %(table)srevoke_event ))""" \
             % locals()
     else:
@@ -693,12 +696,12 @@ def _writeInheritanceData(tag_id, changes, clear=False):
                     data[parent_id] = link
                     break
     if clear:
-        for link in data.itervalues():
+        for link in six.itervalues(data):
             if not link.get('is_update'):
                 link['delete link'] = True
                 link['is_update'] = True
     changed = False
-    for link in data.itervalues():
+    for link in six.itervalues(data):
         if link.get('is_update'):
             changed = True
             break
@@ -708,17 +711,17 @@ def _writeInheritanceData(tag_id, changes, clear=False):
         return
     #check for duplicate priorities
     pri_index = {}
-    for link in data.itervalues():
+    for link in six.itervalues(data):
         if link.get('delete link'):
             continue
         pri_index.setdefault(link['priority'], []).append(link)
-    for pri, dups in pri_index.iteritems():
+    for pri, dups in six.iteritems(pri_index):
         if len(dups) <= 1:
             continue
         #oops, duplicate entries for a single priority
         dup_ids = [link['parent_id'] for link in dups]
         raise koji.GenericError("Inheritance priorities must be unique (pri %s: %r )" % (pri, dup_ids))
-    for parent_id, link in data.iteritems():
+    for parent_id, link in six.iteritems(data):
         if not link.get('is_update'):
             continue
         # revoke old values
@@ -726,7 +729,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
                     clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
         update.make_revoke()
         update.execute()
-    for parent_id, link in data.iteritems():
+    for parent_id, link in six.iteritems(data):
         if not link.get('is_update'):
             continue
         # skip rest if we are just deleting
@@ -1051,7 +1054,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
         q += """
         AND users.id = %%(userID)i"""
     if pkgID != None:
-        if isinstance(pkgID, int) or isinstance(pkgID, long):
+        if isinstance(pkgID, six.integer_types):
             q += """
             AND package.id = %%(pkgID)i"""
         else:
@@ -1180,7 +1183,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
 
-    if not isinstance(latest, (int, long, float)):
+    if not isinstance(latest, list(six.integer_types) + [float]):
         latest = bool(latest)
 
     taglist = [tag]
@@ -1322,7 +1325,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         joins.append('LEFT OUTER JOIN rpmsigs on rpminfo.id = rpmsigs.rpm_id')
     if arch:
         data['arch'] = arch
-        if isinstance(arch, basestring):
+        if isinstance(arch, six.string_types):
             clauses.append('rpminfo.arch = %(arch)s')
         elif isinstance(arch, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arch)s')
@@ -1991,7 +1994,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
             groups.setdefault(grp_id, group)
 
     if incl_pkgs:
-        for group in groups.itervalues():
+        for group in six.itervalues(groups):
             group['packagelist'] = {}
         fields = ('group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires')
         q = """
@@ -2013,7 +2016,7 @@ def get_tag_groups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True
 
     if incl_reqs:
         # and now the group reqs
-        for group in groups.itervalues():
+        for group in six.itervalues(groups):
             group['grouplist'] = {}
         fields = ('group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg', 'name')
         q = """SELECT %s FROM group_req_listing JOIN groups on req_id = id
@@ -2048,17 +2051,17 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True,
     Blocked packages/groups can alternatively also be listed if incl_blocked is set to True
     """
     groups = get_tag_groups(tag, event, inherit, incl_pkgs, incl_reqs)
-    groups = list(groups.values())
+    groups = to_list(groups.values())
     for group in groups:
         #filter blocked entries and collapse to a list
         if 'packagelist' in group:
             if incl_blocked:
-                group['packagelist'] = list(group['packagelist'].values())
+                group['packagelist'] = to_list(group['packagelist'].values())
             else:
                 group['packagelist'] = [x for x in group['packagelist'].values() if not x['blocked']]
         if 'grouplist' in group:
             if incl_blocked:
-                group['grouplist'] = list(group['grouplist'].values())
+                group['grouplist'] = to_list(group['grouplist'].values())
             else:
                 group['grouplist'] = [x for x in group['grouplist'].values() if not x['blocked']]
     #filter blocked entries and collapse to a list
@@ -2133,7 +2136,7 @@ def remove_host_from_channel(hostname, channel_name):
 def rename_channel(old, new):
     """Rename a channel"""
     context.session.assertPerm('admin')
-    if not isinstance(new, basestring):
+    if not isinstance(new, six.string_types):
         raise koji.GenericError("new channel name must be a string")
     cinfo = get_channel(old, strict=True)
     dup_check = get_channel(new, strict=False)
@@ -2210,7 +2213,7 @@ def get_all_arches():
             #in a perfect world, this list would only include canonical
             #arches, but not all admins will undertand that.
             ret[koji.canonArch(arch)] = 1
-    return ret.keys()
+    return to_list(ret.keys())
 
 def get_active_tasks(host=None):
     """Return data on tasks that are yet to be run"""
@@ -2463,7 +2466,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
                 os.symlink(relpath, destlink)
             except:
                 log_error('Error linking %s to %s' % (destlink, relpath))
-        for artifact_dir, artifacts in artifact_dirs.iteritems():
+        for artifact_dir, artifacts in six.iteritems(artifact_dirs):
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
@@ -2829,7 +2832,7 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
     if info:
         if isinstance(info, str):
             clauses.append('build_target.name = %(info)s')
-        elif isinstance(info, int) or isinstance(info, long):
+        elif isinstance(info, six.integer_types):
             clauses.append('build_target.id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
@@ -2872,11 +2875,11 @@ def lookup_name(table, info, strict=False, create=False):
     create option will fail.
     """
     fields = ('id', 'name')
-    if isinstance(info, int) or isinstance(info, long):
+    if isinstance(info, six.integer_types):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
-    elif isinstance(info, unicode):
+    elif six.PY2 and isinstance(info, unicode):
         info = koji.fixEncoding(info)
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
@@ -2994,7 +2997,7 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
 
     # add extra data
     if extra is not None:
-        for key, value in extra.iteritems():
+        for key, value in six.iteritems(extra):
             data = {
                 'tag_id': tag_id,
                 'key': key,
@@ -3051,9 +3054,9 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.maven_include_all': 'maven_include_all'
              }
     clauses = [eventCondition(event, table='tag_config')]
-    if isinstance(tagInfo, (int, long)):
+    if isinstance(tagInfo, six.integer_types):
         clauses.append("tag.id = %(tagInfo)i")
-    elif isinstance(tagInfo, basestring):
+    elif isinstance(tagInfo, six.string_types):
         clauses.append("tag.name = %(tagInfo)s")
     else:
         raise koji.GenericError('invalid type for tagInfo: %s' % type(tagInfo))
@@ -3279,7 +3282,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     if info is not None:
         if isinstance(info, str):
             clauses.append('name = %(info)s')
-        elif isinstance(info, (int, long)):
+        elif isinstance(info, six.integer_types):
             clauses.append('id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
@@ -3504,7 +3507,7 @@ def get_user(userInfo=None, strict=False):
     fields = ['id', 'name', 'status', 'usertype', 'krb_principal']
     #fields, aliases = zip(*fields.items())
     data = {'info' : userInfo}
-    if isinstance(userInfo, int) or isinstance(userInfo, long):
+    if isinstance(userInfo, six.integer_types):
         clauses = ['id = %(info)i']
     elif isinstance(userInfo, str):
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
@@ -3519,7 +3522,7 @@ def get_user(userInfo=None, strict=False):
 
 
 def find_build_id(X, strict=False):
-    if isinstance(X, int) or isinstance(X, long):
+    if isinstance(X, six.integer_types):
         return X
     elif isinstance(X, str):
         data = koji.parse_NVR(X)
@@ -3750,7 +3753,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         )
     # we can look up by id or NVRA
     data = None
-    if isinstance(rpminfo, (int, long)):
+    if isinstance(rpminfo, six.integer_types):
         data = {'id': rpminfo}
     elif isinstance(rpminfo, str):
         data = koji.parse_NVRA(rpminfo)
@@ -4613,7 +4616,7 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    if isinstance(hostInfo, (int, long)):
+    if isinstance(hostInfo, six.integer_types):
         clauses.append("host.id = %(hostInfo)i")
     elif isinstance(hostInfo, str):
         clauses.append("host.name = %(hostInfo)s")
@@ -4674,7 +4677,7 @@ def get_channel(channelInfo, strict=False):
     fields = ('id', 'name')
     query = """SELECT %s FROM channels
     WHERE """ % ', '.join(fields)
-    if isinstance(channelInfo, int) or isinstance(channelInfo, long):
+    if isinstance(channelInfo, six.integer_types):
         query += """id = %(channelInfo)i"""
     elif isinstance(channelInfo, str):
         query += """name = %(channelInfo)s"""
@@ -5196,7 +5199,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
 
     policy_data = {
             'package': build['name'],
-            'buildroots': brmap.values(),
+            'buildroots': to_list(brmap.values()),
             'import': True,
             'import_type': 'rpm',
             }
@@ -5236,7 +5239,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
-        for key, files in logs.iteritems():
+        for key, files in six.iteritems(logs):
             if not key:
                 key = None
             for relpath in files:
@@ -5411,7 +5414,7 @@ class CG_Importer(object):
         if metadata is None:
             #default to looking for uploaded file
             metadata = 'metadata.json'
-        if not isinstance(metadata, (str, unicode)):
+        if not isinstance(metadata, six.string_types):
             raise koji.GenericError("Invalid metadata value: %r" % metadata)
         if metadata.endswith('.json'):
             # handle uploaded metadata
@@ -5496,7 +5499,7 @@ class CG_Importer(object):
                 datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
             owner = metadata['build'].get('owner', None)
             if owner:
-                if not isinstance(owner, basestring):
+                if not isinstance(owner, six.string_types):
                     raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
                 buildinfo['owner'] = get_user(owner, strict=True)['id']
         self.buildinfo = buildinfo
@@ -5887,14 +5890,14 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
 
     # sanity check rpminfo
     dtypes = (
-        ('name', basestring),
-        ('version', basestring),
-        ('release', basestring),
+        ('name', six.string_types),
+        ('version', six.string_types),
+        ('release', six.string_types),
         ('epoch', (int, type(None))),
-        ('arch', basestring),
+        ('arch', six.string_types),
         ('payloadhash', str),
         ('size', int),
-        ('buildtime', (int, long)))
+        ('buildtime', six.integer_types))
     for field, allowed in dtypes:
         if field not in rpminfo:
             raise koji.GenericError("%s field missing: %r" % (field, rpminfo))
@@ -6849,7 +6852,7 @@ def query_history(tables=None, **kwargs):
                 fields['creator.id = %(editor)i'] = '_created_by'
                 fields['revoker.id = %(editor)i'] = '_revoked_by'
             elif arg == 'after':
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['after'] = value
                 clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
@@ -6864,7 +6867,7 @@ def query_history(tables=None, **kwargs):
                 fields[c_test] = '_created_after_event'
                 fields[r_test] = '_revoked_after_event'
             elif arg == 'before':
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['before'] = value
                 clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
@@ -7019,7 +7022,7 @@ def build_references(build_id, limit=None):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['rpms'] = idx.values()
+    ret['rpms'] = to_list(idx.values())
 
     ret['component_of'] = []
     # find images/archives that contain the build rpms
@@ -7050,7 +7053,7 @@ def build_references(build_id, limit=None):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['archives'] = idx.values()
+    ret['archives'] = to_list(idx.values())
 
     # find images/archives that contain the build archives
     fields = ['archive_id']
@@ -7392,7 +7395,7 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         from_tag = get_tag(from_id)
         for email in get_notification_recipients(build, from_tag['id'], state):
             recipients[email] = 1
-    recipients_uniq = recipients.keys()
+    recipients_uniq = to_list(recipients.keys())
     if len(recipients_uniq) > 0 and not (is_successful and ignore_success):
         task_id = make_task('tagNotification', [recipients_uniq, is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg])
         return task_id
@@ -7620,8 +7623,8 @@ class InsertProcessor(object):
         if not self.data and not self.rawdata:
             return "-- incomplete update: no assigns"
         parts = ['INSERT INTO %s ' % self.table]
-        columns = self.data.keys()
-        columns.extend(self.rawdata.keys())
+        columns = to_list(self.data.keys())
+        columns.extend(to_list(self.rawdata.keys()))
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
@@ -7664,7 +7667,7 @@ class InsertProcessor(object):
             del data['create_event']
             del data['creator_id']
         clauses = ["%s = %%(%s)s" % (k, k) for k in data]
-        query = QueryProcessor(columns=data.keys(), tables=[self.table],
+        query = QueryProcessor(columns=to_list(data.keys()), tables=[self.table],
                                clauses=clauses, values=data)
         if query.execute():
             return True
@@ -8043,7 +8046,7 @@ def policy_get_pkg(data):
         if not pkginfo:
             #for some operations (e.g. adding a new package), the package
             #entry may not exist yet
-            if isinstance(data['package'], basestring):
+            if isinstance(data['package'], six.string_types):
                 return {'id' : None, 'name' : data['package']}
             else:
                 raise koji.GenericError("Invalid package: %s" % data['package'])
@@ -8331,7 +8334,7 @@ class UserInGroupTest(koji.policy.BaseSimpleTest):
             return False
         groups = koji.auth.get_user_groups(user['id'])
         args = self.str.split()[1:]
-        for group_id, group in groups.iteritems():
+        for group_id, group in six.iteritems(groups):
             for pattern in args:
                 if fnmatch.fnmatch(group, pattern):
                     return True
@@ -8931,7 +8934,7 @@ class RootExports(object):
         values = {}
         q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
         if before is not None:
-            if not isinstance(before, (int, long, float)):
+            if not isinstance(before, list(six.integer_types) + [float]):
                 raise koji.GenericError('invalid type for before: %s' % type(before))
             # use the repr() conversion because it retains more precision than the
             # string conversion
@@ -8963,7 +8966,7 @@ class RootExports(object):
         # we will accept offset and size as strings to work around xmlrpc limits
         offset = koji.decode_int(offset)
         size = koji.decode_int(size)
-        if isinstance(md5sum, basestring):
+        if isinstance(md5sum, six.string_types):
             # this case is for backwards compatibility
             verify = "md5"
             digest = md5sum
@@ -9551,9 +9554,9 @@ class RootExports(object):
         if before:
             if isinstance(before, datetime.datetime):
                 before = calendar.timegm(before.utctimetuple())
-            elif isinstance(before, (str, unicode)):
+            elif isinstance(before, six.string_types):
                 before = koji.util.parseTime(before)
-            elif isinstance(before, (int, long)):
+            elif isinstance(before, six.integer_types):
                 pass
             else:
                 raise koji.GenericError('invalid type for before: %s' % type(before))
@@ -9561,9 +9564,9 @@ class RootExports(object):
         if after:
             if isinstance(after, datetime.datetime):
                 after = calendar.timegm(after.utctimetuple())
-            elif isinstance(after, (str, unicode)):
+            elif isinstance(after, six.string_types):
                 after = koji.util.parseTime(after)
-            elif isinstance(after, (int, long)):
+            elif isinstance(after, six.integer_types):
                 pass
             else:
                 raise koji.GenericError('invalid type for after: %s' % type(after))
@@ -9654,7 +9657,7 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
@@ -9665,14 +9668,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             tag = get_tag_id(tag, strict=True)
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
@@ -9851,14 +9854,14 @@ class RootExports(object):
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
         """List latest builds for tag (inheritance enabled)"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
         """List latest RPMS for tag (inheritance enabled)"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True, latest=True, rpmsigs=rpmsigs, type=type)
@@ -9918,13 +9921,13 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
@@ -9935,7 +9938,7 @@ class RootExports(object):
             stops = {}
         if jumps is None:
             jumps = {}
-        if not isinstance(tag, (int, long)):
+        if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
@@ -9962,7 +9965,7 @@ class RootExports(object):
         - buildroot_id
 
         If no build has the given ID, or the build generated no RPMs, an empty list is returned."""
-        if not isinstance(build, (int, long)):
+        if not isinstance(build, six.integer_types):
             #lookup build id
             build = self.findBuildID(build, strict=True)
         return self.listRPMs(buildID=build)
@@ -10187,9 +10190,9 @@ class RootExports(object):
                 userID = get_user(userID, strict=True)['id']
             if pkgID is not None:
                 pkgID = get_package_id(pkgID, strict=True)
-            result_list = readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
+            result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
                                           inherit=inherited, with_dups=with_dups,
-                                          event=event).values()
+                                          event=event).values())
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -10353,7 +10356,7 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None, dist=False):
-        if isinstance(tag, (int, long)):
+        if isinstance(tag, six.integer_types):
             id = tag
         else:
             id = get_tag_id(tag, strict=True)
@@ -10626,8 +10629,8 @@ class RootExports(object):
                         if val.find('<?xml', 0, 10) == -1:
                             #handle older base64 encoded data
                             val = base64.decodestring(val)
-                        data, method = xmlrpclib.loads(val)
-                    except xmlrpclib.Fault as fault:
+                        data, method = six.moves.xmlrpc_client.loads(val)
+                    except six.moves.xmlrpc_client.Fault as fault:
                         data = fault
                     task[f] = data
             yield task
@@ -10887,14 +10890,14 @@ class RootExports(object):
         buildinfo = get_build(build)
         if not buildinfo:
             raise koji.GenericError('build does not exist: %s' % build)
-        elif isinstance(ts, xmlrpclib.DateTime):
+        elif isinstance(ts, six.moves.xmlrpc_client.DateTime):
             #not recommended
             #the xmlrpclib.DateTime class is almost useless
             try:
                 ts = time.mktime(time.strptime(str(ts), '%Y%m%dT%H:%M:%S'))
             except ValueError:
                 raise koji.GenericError("Invalid time: %s" % ts)
-        elif not isinstance(ts, (int, long, float)):
+        elif not isinstance(ts, list(six.integer_types) + [float]):
             raise koji.GenericError("Invalid type for timestamp")
         koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
         buildid = buildinfo['id']
@@ -11842,7 +11845,7 @@ class HostExports(object):
             safer_move(fn, dest)
             os.symlink(dest, fn)
         if logs:
-            for key, files in logs.iteritems():
+            for key, files in six.iteritems(logs):
                 if key:
                     logdir = "%s/logs/%s" % (dir, key)
                 else:
@@ -11865,7 +11868,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
-        for reldir, files in results['files'].items() + [('', results['logs'])]:
+        for reldir, files in to_list(results['files'].items()) + [('', results['logs'])]:
             for filename in files:
                 if reldir:
                     relpath = os.path.join(reldir, filename)
@@ -11897,7 +11900,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
-        for relpath in results['output'].keys() + results['logs']:
+        for relpath in to_list(results['output'].keys()) + results['logs']:
             filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
             dest = os.path.join(destdir, relpath)
             koji.ensuredir(os.path.dirname(dest))
@@ -12086,7 +12089,7 @@ class HostExports(object):
         maven_task_id = maven_results['task_id']
         maven_buildroot_id = maven_results['buildroot_id']
         maven_task_dir = koji.pathinfo.task(maven_task_id)
-        for relpath, files in maven_results['files'].iteritems():
+        for relpath, files in six.iteritems(maven_results['files']):
             dir_maven_info = maven_info
             poms = [f for f in files if f.endswith('.pom')]
             if len(poms) == 0:
@@ -12250,7 +12253,7 @@ class HostExports(object):
 
         task_dir = koji.pathinfo.task(results['task_id'])
         # import the build output
-        for relpath, metadata in results['output'].iteritems():
+        for relpath, metadata in six.iteritems(results['output']):
             archivetype = get_archive_type(relpath)
             if not archivetype:
                 # Unknown archive type, fail the build
@@ -12476,9 +12479,9 @@ class HostExports(object):
             extra_deps = []
         task_deps = {}
         for dep in extra_deps:
-            if isinstance(dep, (int, long)):
+            if isinstance(dep, six.integer_types):
                 task_output = list_task_output(dep, stat=True)
-                for filepath, filestats in task_output.iteritems():
+                for filepath, filestats in six.iteritems(task_output):
                     if os.path.splitext(filepath)[1] in ['.log', '.md5', '.sha1']:
                         continue
                     tokens = filepath.split('/')
@@ -12564,7 +12567,7 @@ class HostExports(object):
                         if build_id:
                             build = get_build(build_id)
                             logger.error("g:a:v supplied by build %(nvr)s", build)
-                            logger.error("Build supplies %i archives: %r", len(build_archives), build_archives.keys())
+                            logger.error("Build supplies %i archives: %r", len(build_archives), to_list(build_archives.keys()))
                         if tag_archive:
                             logger.error("Size mismatch, br: %i, db: %i", fileinfo['size'], tag_archive['size'])
                         raise koji.BuildrootError('Unknown file in build environment: %s, size: %s' % \
@@ -12649,7 +12652,7 @@ class HostExports(object):
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
         if not rinfo['dist']:
-            for arch, (uploadpath, files) in data.iteritems():
+            for arch, (uploadpath, files) in six.iteritems(data):
                 archdir = "%s/%s" % (repodir, koji.canonArch(arch))
                 if not os.path.isdir(archdir):
                     raise koji.GenericError("Repo arch directory missing: %s" % archdir)

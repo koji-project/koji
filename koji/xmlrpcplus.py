@@ -2,6 +2,7 @@
 Custom xmlrpc handling for Koji
 """
 
+from __future__ import absolute_import
 import six
 import six.moves.xmlrpc_client as xmlrpc_client
 import types

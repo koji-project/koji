@@ -23,6 +23,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter
 from six.moves import map
 from six.moves import zip
+from six.moves import range
 
 try:
     import libcomps
@@ -34,7 +35,7 @@ except ImportError:  # pragma: no cover
         yumcomps = None
 
 import koji
-from koji.util import md5_constructor
+from koji.util import md5_constructor, to_list
 from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
@@ -653,9 +654,9 @@ def handle_maven_build(options, session, args):
                                                  section=build_opts.section)
         except ValueError as e:
             parser.error(e.args[0])
-        opts = list(params.values())[0]
+        opts = to_list(params.values())[0]
         if opts.pop('type', 'maven') != 'maven':
-            parser.error(_("Section %s does not contain a maven-build config") % list(params.keys())[0])
+            parser.error(_("Section %s does not contain a maven-build config") % to_list(params.keys())[0])
         source = opts.pop('scmurl')
     else:
         source = args[1]
@@ -714,9 +715,9 @@ def handle_wrapper_rpm(options, session, args):
                                                  section=build_opts.section)
         except ValueError as e:
             parser.error(e.args[0])
-        opts = list(params.values())[0]
+        opts = to_list(params.values())[0]
         if opts.get('type') != 'wrapper':
-            parser.error(_("Section %s does not contain a wrapper-rpm config") % list(params.keys())[0])
+            parser.error(_("Section %s does not contain a wrapper-rpm config") % to_list(params.keys())[0])
         url = opts['scmurl']
         package = opts['buildrequires'][0]
         target_info = session.getBuildTarget(target, strict=True)
@@ -1145,7 +1146,7 @@ def handle_import(goptions, session, args):
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
         to_import.setdefault(nvr,[]).append((path,data))
     builds_missing = False
-    nvrs = list(to_import.keys())
+    nvrs = to_list(to_import.keys())
     nvrs.sort()
     for nvr in nvrs:
         to_import[nvr].sort()
@@ -1373,7 +1374,7 @@ def _import_comps(session, filename, tag, options):
             for k in pkgopts.keys():
                 if six.PY2 and isinstance(pkgopts[k], unicode):
                     pkgopts[k] = str(pkgopts[k])
-            s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+            s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(pkgopts.keys())])
             print("  Package: %s: {%s}" % (pkg.name, s_opts))
             session.groupPackageListAdd(tag, group.id, pkg.name, force=force, **pkgopts)
         # libcomps does not support group dependencies
@@ -1406,7 +1407,7 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
                 for k in pkgopts.keys():
                     if six.PY2 and isinstance(pkgopts[k], unicode):
                         pkgopts[k] = str(pkgopts[k])
-                s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(list(pkgopts.keys()))])
+                s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(pkgopts.keys())])
                 print("  Package: %s: {%s}" % (pkg, s_opts))
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
         #yum.comps does not support group dependencies
@@ -1616,7 +1617,7 @@ def handle_prune_signed_copies(options, session, args):
             #that the build was recently untagged from
             tags.setdefault(entry['tag_name'], 1)
         if options.debug:
-            print("Tags: %s" % list(tags.keys()))
+            print("Tags: %s" % to_list(tags.keys()))
         for tag_name in tags:
             if tag_name == options.trashcan_tag:
                 if options.debug:
@@ -1833,7 +1834,7 @@ def handle_prune_signed_copies(options, session, args):
                     except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             if len(sigdirs) == 1:
-                dir = list(sigdirs.keys())[0]
+                dir = to_list(sigdirs.keys())[0]
                 if options.test:
                     print("Would have removed dir: %s" % dir)
                 else:
@@ -4133,7 +4134,7 @@ def _print_histline(entry, **kwargs):
         else:
             return '%s.name' % key
     if edit:
-        keys = list(x.keys())
+        keys = to_list(x.keys())
         keys.sort()
         y = other[-1]
         for key in keys:
@@ -4148,7 +4149,7 @@ def _print_histline(entry, **kwargs):
                 continue
             print("    %s: %s -> %s" % (key, x[key], y[key]))
     elif create and options.verbose and table != 'tag_listing':
-        keys = list(x.keys())
+        keys = to_list(x.keys())
         keys.sort()
         # the table keys have already been represented in the base format string
         also_hidden = list(_table_keys[table])
@@ -4635,9 +4636,7 @@ def anon_handle_taginfo(goptions, session, args):
             print("Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no'))
         if 'extra' in info:
             print("Tag options:")
-            keys = list(info['extra'].keys())
-            keys.sort()
-            for key in keys:
+            for key in sorted(info['extra'].keys()):
                 print("  %s : %s" % (key, pprint.pformat(info['extra'][key])))
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
@@ -6829,8 +6828,7 @@ def anon_handle_wait_repo(options, session, args):
             targets = session.getBuildTargets(destTagID=tag_info['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
-                maybe = list(maybe.keys())
-                maybe.sort()
+                maybe = sorted(maybe.keys())
                 print("Suggested tags: %s" % ', '.join(maybe))
             return 1
         tag_id = tag_info['id']

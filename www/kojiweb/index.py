@@ -20,22 +20,27 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
+from __future__ import division
 import os
 import os.path
 import re
 import sys
 import mimetypes
-import Cookie
+import six.moves.http_cookies
 import datetime
 import logging
 import time
 import koji
 import kojiweb.util
+from koji.util import to_list
 from koji.server import ServerRedirect
 from kojiweb.util import _initValues
 from kojiweb.util import _genHTML
 from kojiweb.util import _getValidTokens
 from koji.util import sha1_constructor
+from six.moves import range
+import six
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = kojiweb.util.sortByKeyFunc('name')
@@ -53,7 +58,7 @@ def _setUserCookie(environ, user):
     shasum = sha1_constructor(value)
     shasum.update(options['Secret'].value)
     value = "%s:%s" % (shasum.hexdigest(), value)
-    cookies = Cookie.SimpleCookie()
+    cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
     c = cookies['user']  #morsel instance
     c['secure'] = True
@@ -66,7 +71,7 @@ def _setUserCookie(environ, user):
     environ['koji.headers'].append(['Cache-Control', 'no-cache="set-cookie"'])
 
 def _clearUserCookie(environ):
-    cookies = Cookie.SimpleCookie()
+    cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = ''
     c = cookies['user']  #morsel instance
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
@@ -76,7 +81,7 @@ def _clearUserCookie(environ):
 
 def _getUserCookie(environ):
     options = environ['koji.options']
-    cookies = Cookie.SimpleCookie(environ.get('HTTP_COOKIE', ''))
+    cookies = six.moves.http_cookies.SimpleCookie(environ.get('HTTP_COOKIE', ''))
     if 'user' not in cookies:
         return None
     value = cookies['user'].value
@@ -681,7 +686,7 @@ def taskinfo(environ, taskID):
     values['pathinfo'] = pathinfo
 
     paths = [] # (volume, relpath) tuples
-    for relname, volumes in server.listTaskOutput(task['id'], all_volumes=True).iteritems():
+    for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
         paths += [(volume, relname) for volume in volumes]
     values['output'] = sorted(paths, key = _sortByExtAndName)
     if environ['koji.currentUser']:
@@ -700,8 +705,8 @@ def taskstatus(environ, taskID):
         return ''
     files = server.listTaskOutput(taskID, stat=True, all_volumes=True)
     output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
-    for filename, volumes_data in files.iteritems():
-        for volume, file_stats in volumes_data.iteritems():
+    for filename, volumes_data in six.iteritems(files):
+        for volume, file_stats in six.iteritems(volumes_data):
             output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 
@@ -809,7 +814,7 @@ def tags(environ, start=None, order=None, childID=None):
 
     return _genHTML(environ, 'tags.chtml')
 
-_PREFIX_CHARS = [chr(char) for char in range(48, 58) + range(97, 123)]
+_PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123))]
 
 def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
     values = _initValues(environ, 'Packages', 'packages')
@@ -2120,7 +2125,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
         if builds > maxBuilds:
             maxBuilds = builds
 
-    kojiweb.util.paginateList(values, targets.values(), start, 'targets', 'target', order)
+    kojiweb.util.paginateList(values, to_list(targets.values()), start, 'targets', 'target', order)
 
     values['order'] = order
 

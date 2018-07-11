@@ -20,12 +20,14 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
+from __future__ import division
 import sys
 import os
 import koji
-from koji.util import rmtree, parseStatus
+from koji.util import rmtree, parseStatus, to_list
 from optparse import OptionParser
-from ConfigParser import ConfigParser
+from six.moves.configparser import ConfigParser
 import errno
 import logging
 import logging.handlers
@@ -34,6 +36,7 @@ import signal
 import time
 import threading
 import traceback
+import six
 
 
 
@@ -83,7 +86,7 @@ class ManagedRepo(object):
             tags = {self.tag_id : 1}
             for x in order:
                 tags[x['parent_id']] = 1
-            self.taglist = tags.keys()
+            self.taglist = to_list(tags.keys())
 
     @property
     def dist(self):
@@ -152,7 +155,7 @@ class ManagedRepo(object):
             #also check dir age. We do this because a repo can be created from an older event
             #and should not be removed based solely on that event's timestamp.
             mtime = os.stat(path).st_mtime
-        except OSError, e:
+        except OSError as e:
             if e.errno == 2:
                 # No such file or directory, so the repo either never existed,
                 # or has already been deleted, so allow it to be marked deleted.
@@ -216,9 +219,9 @@ class RepoManager(object):
 
     def printState(self):
         self.logger.debug('Tracking %i repos, %i child processes', len(self.repos), len(self.delete_pids))
-        for tag_id, task_id in self.tasks.iteritems():
+        for tag_id, task_id in six.iteritems(self.tasks):
             self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
-        for pid, desc in self.delete_pids.iteritems():
+        for pid, desc in six.iteritems(self.delete_pids):
             self.logger.debug("Delete job %s: %r", pid, desc)
 
     def rmtree(self, path):
@@ -244,7 +247,7 @@ class RepoManager(object):
         prefix = "pid %i (%s)" % (pid, self.delete_pids.get(pid))
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ECHILD:
                 #should not happen
                 raise
@@ -279,7 +282,7 @@ class RepoManager(object):
         for pid in self.delete_pids:
             try:
                 os.kill(pid, sig)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.ESRCH:
                     logger.error("Unable to kill process %s", pid)
 
@@ -312,7 +315,7 @@ class RepoManager(object):
     def checkCurrentRepos(self):
         """Determine which repos are current"""
         to_check = []
-        repo_ids = self.repos.keys()
+        repo_ids = to_list(self.repos.keys())
         for repo_id in repo_ids:
             repo = self.repos.get(repo_id)
             if repo is None:
@@ -473,7 +476,7 @@ class RepoManager(object):
         if max_n == 0:
             # no recent use or missing data
             max_n = 1
-        adj = stats['n_recent'] * 9.0 / max_n + 1   # 1.0 to 10.0
+        adj = stats['n_recent'] * 9.0 // max_n + 1   # 1.0 to 10.0
         ts = entry['expire_ts']
         age = time.time() - ts
         # XXX - need to make sure our times aren't far off, otherwise this
@@ -658,8 +661,7 @@ class RepoManager(object):
 
         debuginfo_pat = self.options.debuginfo_tags.split()
         src_pat = self.options.source_tags.split()
-        order = self.needed_tags.values()
-        order.sort(key=lambda t:t['score'])
+        order = sorted(self.needed_tags.values(), key=lambda t: t['score'])
         for tag in order:
             if running_tasks >= self.options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached")

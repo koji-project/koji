@@ -7,6 +7,7 @@ import os
 import resource
 import six.moves.configparser
 import time
+import six
 try:
     import unittest2 as unittest
 except ImportError:
@@ -795,24 +796,24 @@ class MavenUtilTestCase(unittest.TestCase):
 
         name, release, date = 'fedora', 26, datetime.now().strftime('%Y%m%d')
         data = {'name': name, 'release': release, 'date': date}
-        six.assertCountEqual(self, data.items(), ldict.items())
-        six.assertCountEqual(self, data.items(), [v for v in ldict.iteritems()])
+        six.assertCountEqual(self, list(data.items()), list(ldict.items()))
+        six.assertCountEqual(self, list(data.items()), [v for v in six.iteritems(ldict)])
 
         name, release, date = 'rhel', 7, '20171012'
-        six.assertCountEqual(self, [name, release, date], ldict.values())
-        six.assertCountEqual(self, [name, release, date], [v for v in ldict.itervalues()])
+        six.assertCountEqual(self, [name, release, date], list(ldict.values()))
+        six.assertCountEqual(self, [name, release, date], [v for v in six.itervalues(ldict)])
 
         data = {'name': name, 'release': release, 'date': date}
         self.assertEqual(name, ldict.pop('name'))
         data.pop('name')
-        six.assertCountEqual(self, data.items(), ldict.items())
+        six.assertCountEqual(self, list(data.items()), list(ldict.items()))
 
         (key, value) = ldict.popitem()
         data.pop(key)
-        six.assertCountEqual(self, data.items(), ldict.items())
+        six.assertCountEqual(self, list(data.items()), list(ldict.items()))
 
         ldict_copy = ldict.copy()
-        six.assertCountEqual(self, data.items(), ldict_copy.items())
+        six.assertCountEqual(self, list(data.items()), list(ldict_copy.items()))
 
     def test_LazyRecord(self):
         """Test LazyRecord object"""
@@ -878,7 +879,7 @@ class MavenUtilTestCase(unittest.TestCase):
 
         actual = koji.util.eventFromOpts(session, opts)
         self.assertNotEqual(None, actual)
-        six.assertCountEqual(self, expect.items(), actual.items())
+        six.assertCountEqual(self, list(expect.items()), list(actual.items()))
 
         # no event is matched case
         opts = mock.MagicMock(event=0, ts=0, repo=0)
@@ -966,6 +967,19 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertNotEqual(300286872, chksum.digest())
         self.assertNotEqual(copy.digest(), chksum.digest())
         self.assertEqual(614401368, chksum.digest())
+
+    def test_to_list(self):
+        l = [1, 2, 3]
+
+        r = koji.util.to_list(l)
+        self.assertEqual(l, r)
+
+        it = iter(l)
+        r = koji.util.to_list(it)
+        self.assertEqual(l, r)
+
+        with self.assertRaises(TypeError):
+            koji.util.to_list(1)
 
 
 class TestRmtree(unittest.TestCase):

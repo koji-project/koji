@@ -80,7 +80,7 @@ class FakeConfigParser(object):
         return
 
     def sections(self):
-        return self.CONFIG.keys()
+        return list(self.CONFIG.keys())
 
     def has_option(self, section, key):
         return section in self.CONFIG and key in self.CONFIG[section]

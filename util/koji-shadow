@@ -22,12 +22,16 @@
 #       Dennis Gilmore <dennis@ausil.us>
 #       Karsten Hopp <karsten@redhat.com>
 
+from __future__ import absolute_import
+from six.moves import range
+import six
 try:
     import krbV
 except ImportError:  # pragma: no cover
     krbV = None
 import koji
-import ConfigParser
+from koji.util import to_list
+import six.moves.configparser
 import fnmatch
 import optparse
 import os
@@ -38,7 +42,7 @@ import string
 import sys
 import time
 import urllib2
-import xmlrpclib  # for ProtocolError and Fault
+import six.moves.xmlrpc_client  # for ProtocolError and Fault
 import rpm
 
 # koji.fp.o keeps stalling, probably network errors...
@@ -160,7 +164,7 @@ def get_options():
     (options, args) = parser.parse_args()
 
     defaults = parser.get_default_values()
-    config = ConfigParser.ConfigParser()
+    config = six.moves.configparser.ConfigParser()
     cf = getattr(options, 'config_file', None)
     if cf:
         if not os.access(cf, os.F_OK):
@@ -296,7 +300,7 @@ def warn(msg):
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except xmlrpclib.ProtocolError:
+    except six.moves.xmlrpc_client.ProtocolError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at "
@@ -326,9 +330,9 @@ def activate_session(session):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error, e:
+        except krbV.Krb5Error as e:
             error(_("Kerberos authentication failed: '%s' (%s)") % (e.args[1], e.args[0]))
-        except socket.error, e:
+        except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in"))
@@ -448,7 +452,7 @@ class TrackedBuild(object):
             fsrc = urllib2.urlopen(url)
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
-            fdst = file(fn, 'w')
+            fdst = open(fn, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
@@ -495,7 +499,7 @@ class TrackedBuild(object):
             log("Warning: some rpms for %s lacked buildroots:" % self.nvr)
             for rinfo in bad:
                 log("    %(name)s-%(version)s-%(release)s.%(arch)s" % rinfo)
-        return brs.keys()
+        return to_list(brs.keys())
 
     def getDeps(self):
         buildroots = self.getBuildroots()
@@ -544,7 +548,7 @@ class TrackedBuild(object):
         #        changes happened during the build startup and some subtasks got the old
         #        repo and others the new one.
         base = []
-        for name, brlist in bases.iteritems():
+        for name, brlist in six.iteritems(bases):
             #We want to determine for each name if that package was present
             #in /all/ the buildroots or just some.
             #Because brlist is constructed only from elements of buildroots, we
@@ -554,12 +558,11 @@ class TrackedBuild(object):
                 #each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, tags.keys()))
-            counts = [(n, tag) for tag, n in tags.iteritems()]
-            sort(counts)
+            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, to_list(tags.keys())))
+            counts = sorted([(n, tag) for tag, n in six.iteritems(tags)])
             tag = counts[-1][1]
         else:
-            tag = tags.keys()[0]
+            tag = to_list(tags.keys())[0]
         # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
         if len(builds) == 0:
             self.setState("noroot")
@@ -659,9 +662,9 @@ class BuildTracker(object):
                     return grey
         return default
 
-    def rpmvercmp(self, (e1, v1, r1), (e2, v2, r2)):
+    def rpmvercmp(self, nvr1, nvr2):
         """find out which build is newer"""
-        rc = rpm.labelCompare((e1, v1, r1), (e2, v2, r2))
+        rc = rpm.labelCompare(nvr1, nvr2)
         if rc == 1:
             #first evr wins
             return 1
@@ -861,7 +864,7 @@ class BuildTracker(object):
         taginfo = remote.getTag(tag)
         builds = remote.listTagged(taginfo['id'], latest=True)
         for build in builds:
-            for retry in xrange(10):
+            for retry in range(10):
                 try:
                     self.scanBuild(build['id'], tag=tag)
                     if options.first_one:
@@ -880,13 +883,13 @@ class BuildTracker(object):
         if options.link_imports:
             #bit of a hack, but faster than uploading
             dst = "%s/%s/%s" % (koji.pathinfo.work(), serverdir, fn)
-            old_umask = os.umask(002)
+            old_umask = os.umask(0o02)
             try:
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
                 log ("Downloading %s to %s" % (url, dst))
                 fsrc = urllib2.urlopen(url)
-                fdst = file(fn, 'w')
+                fdst = open(fn, 'w')
                 shutil.copyfileobj(fsrc, fdst)
                 fsrc.close()
                 fdst.close()
@@ -899,7 +902,7 @@ class BuildTracker(object):
             dst = "%s/%s" % (options.workpath, fn)
             log ("Downloading %s to %s..." % (url, dst))
             fsrc = urllib2.urlopen(url)
-            fdst = file(dst, 'w')
+            fdst = open(dst, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
@@ -1003,7 +1006,7 @@ class BuildTracker(object):
                 for pkg in session.listPackages(pkgID=name):
                     owners.setdefault(pkg['owner_id'], []).append(pkg)
                 if owners:
-                    order = [(len(v), k) for k, v in owners.iteritems()]
+                    order = [(len(v), k) for k, v in six.iteritems(owners)]
                     order.sort()
                     owner = order[-1][1]
                 else:
@@ -1119,7 +1122,7 @@ class BuildTracker(object):
         log("-- %s --" % time.asctime())
         self.report_brief()
         for state in ('broken', 'noroot', 'blocked'):
-            builds = self.state_idx[state].values()
+            builds = to_list(self.state_idx[state].values())
             not_replaced = [b for b in builds if not b.substitute]
             n_replaced = len(builds) - len(not_replaced)
             log("%s: %i (+%i replaced)" % (state, len(not_replaced), n_replaced))
@@ -1149,7 +1152,7 @@ class BuildTracker(object):
                     nvr = dep.substitute
                 problem_counts.setdefault(nvr, 0)
                 problem_counts[nvr] += 1
-        order = [(c, nvr) for (nvr, c) in problem_counts.iteritems()]
+        order = [(c, nvr) for (nvr, c) in six.iteritems(problem_counts)]
         if order:
             order.sort()
             order.reverse()
@@ -1160,8 +1163,7 @@ class BuildTracker(object):
 
     def report_brief(self):
         N = len(self.builds)
-        states = self.state_idx.keys()
-        states.sort()
+        states = sorted(self.state_idx.keys())
         parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
         parts.append("total: %i" % N)
         log (' '.join(parts))
@@ -1232,7 +1234,7 @@ class BuildTracker(object):
         ret = False
         if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
             return ret
-        missing = [(b.order, b.id, b) for b in self.state_idx['missing'].itervalues()]
+        missing = [(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])]
         missing.sort()
         for order, build_id, build in missing:
             if not self.checkBuildDeps(build):
@@ -1300,7 +1302,7 @@ def main(args):
     if options.logfile:
         filename = options.logfile
         try:
-            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0777)
+            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0o777)
         except:
             logfile = None
     if logfile is not None:

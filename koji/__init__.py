@@ -23,6 +23,7 @@
 
 
 from __future__ import absolute_import
+from __future__ import division
 import sys
 from six.moves import range
 from six.moves import zip
@@ -449,7 +450,7 @@ def decode_args2(args, names, strict=True):
     args, opts = decode_args(*args)
     if strict and len(names) < len(args):
         raise TypeError("Expecting at most %i arguments" % len(names))
-    ret = dict(list(zip(names, args)))
+    ret = dict(zip(names, args))
     ret.update(opts)
     return ret
 
@@ -1165,7 +1166,7 @@ def parse_pom(path=None, contents=None):
         xml.sax.parseString(contents, handler)
 
     for field in fields:
-        if field not in list(values.keys()):
+        if field not in util.to_list(values.keys()):
             raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
@@ -2178,7 +2179,7 @@ class ClientSession(object):
         # decode and decrypt the login info
         sinfo_priv = base64.decodestring(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
-        sinfo = dict(list(zip(['session-id', 'session-key'], sinfo_str.split())))
+        sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
 
         if not sinfo:
             self.logger.warn('No session info received')
@@ -2569,7 +2570,7 @@ class ClientSession(object):
             ret = []
             callgrp = (calls[i:i + batch] for i in range(0, len(calls), batch))
             self.logger.debug("MultiCall with batch size %i, calls/groups(%i/%i)",
-                              batch, len(calls), round(len(calls) / batch))
+                              batch, len(calls), round(len(calls) // batch))
             for c in callgrp:
                 ret.extend(self._callMethod('multiCall', (c,), {}))
         else:
@@ -2750,9 +2751,9 @@ class ClientSession(object):
             if t2 <= 0:
                 t2 = 1
             if debug:
-                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size/t1/1024))
+                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size / t1 / 1024.0))
             if debug:
-                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs/t2/1024))
+                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs / t2 / 1024.0))
             if callback:
                 callback(ofs, totalsize, size, t1, t2)
         fo.close()
@@ -3060,7 +3061,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     if isinstance(value, tuple):
         return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, list):
-        return list([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
+        return [fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value]
     elif isinstance(value, dict):
         ret = {}
         for k in value:

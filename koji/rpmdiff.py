@@ -18,11 +18,13 @@
 # This library and program is heavily based on rpmdiff from the rpmlint package
 # It was modified to be used as standalone library for the Koji project.
 
+from __future__ import absolute_import
 import hashlib
 import json
 import rpm
 import os
 import itertools
+import six
 
 class Rpmdiff:
 
@@ -113,8 +115,8 @@ class Rpmdiff:
 
         old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
         new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
-        files = list(set(itertools.chain(old_files_dict.iterkeys(),
-                                         new_files_dict.iterkeys())))
+        files = list(set(itertools.chain(six.iterkeys(old_files_dict),
+                                         six.iterkeys(new_files_dict))))
         files.sort()
         self.old_data['files'] = old_files_dict
         self.new_data['files'] = new_files_dict

@@ -1,8 +1,10 @@
 from __future__ import print_function
+from __future__ import absolute_import
 import mock
 import os
 import six
 import sys
+from six.moves import map
 try:
     import unittest2 as unittest
 except ImportError:

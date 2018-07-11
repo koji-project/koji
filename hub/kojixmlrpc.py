@@ -18,7 +18,9 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from ConfigParser import RawConfigParser
+from __future__ import absolute_import
+from __future__ import division
+from six.moves.configparser import RawConfigParser
 import datetime
 import inspect
 import logging
@@ -38,6 +40,8 @@ import koji.util
 # import xmlrpclib functions from koji to use tweaked Marshaller
 from koji.xmlrpcplus import getparser, dumps, Fault, ExtendedMarshaller
 from koji.context import context
+from six.moves import range
+import six
 
 
 class Marshaller(ExtendedMarshaller):
@@ -96,7 +100,7 @@ class HandlerRegistry(object):
 
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
-        for v in vars(plugin).itervalues():
+        for v in six.itervalues(vars(plugin)):
             if isinstance(v, type):
                 #skip classes
                 continue
@@ -116,7 +120,7 @@ class HandlerRegistry(object):
         if ret:
             return ret
         ret = tuple(inspect.getargspec(func))
-        if inspect.ismethod(func) and func.im_self:
+        if inspect.ismethod(func) and func.__self__:
             # bound method, remove first arg
             args, varargs, varkw, defaults = ret
             if args:
@@ -143,17 +147,17 @@ class HandlerRegistry(object):
 
     def _getFuncArgs(self, func):
         args = []
-        for x in range(0, func.func_code.co_argcount):
-            if x == 0 and func.func_code.co_varnames[x] == "self":
+        for x in range(0, func.__code__.co_argcount):
+            if x == 0 and func.__code__.co_varnames[x] == "self":
                 continue
-            if func.func_defaults and func.func_code.co_argcount - x <= len(func.func_defaults):
-                args.append((func.func_code.co_varnames[x], func.func_defaults[x - func.func_code.co_argcount + len(func.func_defaults)]))
+            if func.__defaults__ and func.__code__.co_argcount - x <= len(func.__defaults__):
+                args.append((func.__code__.co_varnames[x], func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
             else:
-                args.append(func.func_code.co_varnames[x])
+                args.append(func.__code__.co_varnames[x])
         return args
 
     def system_listMethods(self):
-        return self.funcs.keys()
+        return koji.util.to_list(self.funcs.keys())
 
     def system_methodSignature(self, method):
         #it is not possible to autogenerate this data
@@ -475,7 +479,7 @@ def load_config(environ):
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
-    for pname, text in _default_policies.iteritems():
+    for pname, text in six.iteritems(_default_policies):
         opts['policy'].setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
@@ -543,14 +547,14 @@ def get_policy(opts, plugins):
             continue
         alltests.append(koji.policy.findSimpleTests(vars(plugin)))
     policy = {}
-    for pname, text in opts['policy'].iteritems():
+    for pname, text in six.iteritems(opts['policy']):
         #filter/merge tests
         merged = {}
         for tests in alltests:
             # tests can be limited to certain policies by setting a class variable
-            for name, test in tests.iteritems():
+            for name, test in six.iteritems(tests):
                 if hasattr(test, 'policy'):
-                    if isinstance(test.policy, basestring):
+                    if isinstance(test.policy, six.string_types):
                         if pname != test.policy:
                             continue
                     elif pname not in test.policy:
@@ -647,7 +651,7 @@ def load_scripts(environ):
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
-    statm = [pagesize*int(y)/1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    statm = [pagesize * int(y) // 1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 

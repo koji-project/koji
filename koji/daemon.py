@@ -20,11 +20,14 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
+from __future__ import division
 import koji
 import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, adler32_constructor, parseStatus, dslice
+from koji.util import md5_constructor, adler32_constructor, parseStatus, \
+                      dslice, to_list
 import os
 import signal
 import logging
@@ -36,6 +39,8 @@ import subprocess
 import sys
 import traceback
 import errno
+from six.moves import range
+import six
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):
@@ -580,7 +585,7 @@ class TaskManager(object):
         """Attempt to shut down cleanly"""
         for task_id in self.pids.keys():
             self.cleanupTask(task_id)
-        self.session.host.freeTasks(self.tasks.keys())
+        self.session.host.freeTasks(to_list(self.tasks.keys()))
         self.session.host.updateHost(task_load=0.0, ready=False)
 
     def updateBuildroots(self, nolocal=False):
@@ -611,14 +616,14 @@ class TaskManager(object):
                 #task not running - expire the buildroot
                 #TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, self.tasks.keys()))
+                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, to_list(self.tasks.keys())))
                 self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in local_br.iterkeys() if id not in db_br]
+        local_only = [id for id in six.iterkeys(local_br) if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -719,7 +724,7 @@ class TaskManager(object):
             fo = open(fn, 'r')
             id = None
             name = None
-            for n in xrange(10):
+            for n in range(10):
                 # data should be in first few lines
                 line = fo.readline()
                 if line.startswith('# Koji buildroot id:'):
@@ -850,7 +855,7 @@ class TaskManager(object):
             # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
-        for bin in bins.iterkeys():
+        for bin in six.iterkeys(bins):
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
             avail[bin].sort()
             avail[bin].reverse()
@@ -882,7 +887,7 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail)-1)/2]
+                median = bin_avail[(len(bin_avail)-1)//2]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     #decline for now and give the upper half a chance
@@ -900,7 +905,7 @@ class TaskManager(object):
         Check our available capacity against the capacity of other hosts in this bin.
         Return True if we should take a task, False otherwise.
         """
-        median = bin_avail[(len(bin_avail)-1)/2]
+        median = bin_avail[(len(bin_avail)-1)//2]
         self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
         if avail >= median:
             return True
@@ -1093,7 +1098,7 @@ class TaskManager(object):
             raise IOError("No such directory: %s" % br_path)
         fs_stat = os.statvfs(br_path)
         available = fs_stat.f_bavail * fs_stat.f_bsize
-        availableMB = available / 1024 / 1024
+        availableMB = available // 1024 // 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < self.options.minspace:
             self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, self.options.minspace)

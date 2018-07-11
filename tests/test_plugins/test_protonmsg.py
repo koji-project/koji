@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import six
 import protonmsg
 import tempfile
@@ -8,7 +9,7 @@ except ImportError:
 
 from mock import patch, MagicMock
 from koji.context import context
-from ConfigParser import SafeConfigParser
+from six.moves.configparser import SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):
     def tearDown(self):

@@ -86,7 +86,7 @@ class RepoManagerTest(unittest.TestCase):
 
         self.mgr.checkTasks()
         # should have removed the close tasks
-        self.assertEqual(self.mgr.tasks.keys(), [101, 102])
+        self.assertEqual(list(self.mgr.tasks.keys()), [101, 102])
 
     @mock.patch('time.sleep')
     def test_regen_loop(self, sleep):

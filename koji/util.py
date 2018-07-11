@@ -19,6 +19,7 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+from __future__ import division
 import calendar
 import datetime
 from koji.xmlrpcplus import DateTime
@@ -116,7 +117,7 @@ def checkForBuilds(session, tag, builds, event, latest=False):
 def duration(start):
     """Return the duration between start and now in MM:SS format"""
     elapsed = time.time() - start
-    mins = int(elapsed / 60)
+    mins = int(elapsed // 60)
     secs = int(elapsed % 60)
     return '%s:%02i' % (mins, secs)
 
@@ -181,7 +182,7 @@ class DataWalker(object):
         if isinstance(value, tuple):
             value = tuple([self._walk(x) for x in value])
         elif isinstance(value, list):
-            value = list([self._walk(x) for x in value])
+            value = [self._walk(x) for x in value]
         elif isinstance(value, dict):
             ret = {}
             for k in value:
@@ -729,3 +730,17 @@ def parse_maven_chain(confs, scratch=False):
     except ValueError:
         raise ValueError('No possible build order, missing/circular dependencies')
     return builds
+
+def to_list(l):
+    """
+    Helper function for py2/py3 compatibility used e.g. in
+    list(dict.keys())
+
+    Don't use it for structures like list(zip(x, y)), where six.moves.zip is
+    used, so it is always an iterator.
+    """
+
+    if isinstance(l, list):
+        return l
+    else:
+        return list(l)

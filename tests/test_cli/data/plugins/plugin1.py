@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from koji.plugin import export_cli, export_as
 
 @export_as('foobar')

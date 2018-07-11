@@ -20,18 +20,20 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
+from __future__ import absolute_import
 import koji
 import koji.plugin
 import koji.util
 import os
 import logging
-import xmlrpclib
+import six.moves.xmlrpc_client
 import signal
 import shutil
 import random
 import time
 import pprint
 import six.moves.urllib.request
+from six.moves import range
 
 def scan_mounts(topdir):
     """Search path for mountpoints"""
@@ -390,7 +392,7 @@ class BaseTaskHandler(object):
                             try:
                                 self.session.getTaskResult(task)
                                 checked.add(task)
-                            except (koji.GenericError, xmlrpclib.Fault):
+                            except (koji.GenericError, six.moves.xmlrpc_client.Fault):
                                 self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
                                 self.session.cancelTaskChildren(self.id)
                                 # reraise the original error now, rather than waiting for
@@ -577,7 +579,7 @@ class SleepTask(BaseTaskHandler):
 class ForkTask(BaseTaskHandler):
     Methods = ['fork']
     def handler(self, n=5, m=37):
-        for i in xrange(n):
+        for i in range(n):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
 
 class WaitTestTask(BaseTaskHandler):
@@ -592,7 +594,7 @@ class WaitTestTask(BaseTaskHandler):
     _taskWeight = 0.1
     def handler(self, count, seconds=10):
         tasks = []
-        for i in xrange(count):
+        for i in range(count):
             task_id = self.subtask(method='sleep', arglist=[seconds], label=str(i))
             tasks.append(task_id)
         bad_task = self.subtask('sleep', ['BAD_ARG'], label='bad')

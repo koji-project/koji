@@ -19,6 +19,7 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+from __future__ import absolute_import
 import cgi
 import inspect
 import koji
@@ -29,9 +30,10 @@ import pprint
 import sys
 import traceback
 
-from ConfigParser import RawConfigParser
+from six.moves.configparser import RawConfigParser
 from koji.server import ServerError, ServerRedirect
-from koji.util import dslice
+from koji.util import dslice, to_list
+import six
 
 
 class URLNotFound(ServerError):
@@ -396,14 +398,14 @@ class Dispatcher(object):
             else:
                 # last one wins
                 headers[key] = (name, value)
-        if isinstance(result, basestring):
+        if isinstance(result, six.string_types):
             headers.setdefault('content-length', ('Content-Length', str(len(result))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
-        headers = headers.values() + extra
+        headers = to_list(headers.values()) + extra
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)
-        if isinstance(result, basestring):
+        if isinstance(result, six.string_types):
             result = [result]
         return result
 
