@@ -3,7 +3,7 @@ from __future__ import division
 
 import ast
 import base64
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 import fnmatch
 import json
 import logging
@@ -3248,11 +3248,11 @@ def handle_clone_tag(goptions, session, args):
             help=_('Clone tag at a specific event'))
     parser.add_option('--repo', type='int',
             help=_('Clone tag at a specific repo event'))
-    parser.add_option("-v","--verbose", action="store_true",
+    parser.add_option("-v", "--verbose", action="store_true",
             help=_("show changes"))
-    parser.add_option("-f","--force", action="store_true",
+    parser.add_option("-f", "--force", action="store_true",
             help=_("override tag locks if necessary"))
-    parser.add_option("-n","--test", action="store_true", help=_("test mode"))
+    parser.add_option("-n", "--test", action="store_true", help=_("test mode"))
     parser.add_option("--batch", type='int', default=1000, metavar='SIZE',
             help=_("batch size of multicalls [0 to disable, default: %default]"))
     (options, args) = parser.parse_args(args)
@@ -3263,12 +3263,11 @@ def handle_clone_tag(goptions, session, args):
     activate_session(session, goptions)
 
     if not session.hasPerm('admin') and not options.test:
-        print(_("This action requires admin privileges"))
+        parser.error(_("This action requires admin privileges"))
         return
 
     if args[0] == args[1]:
-        sys.stdout.write('Source and destination tags must be different.\n')
-        return
+        parser.error(_('Source and destination tags must be different.'))
 
     if options.batch < 0:
         parser.error(_("batch size must be bigger than zero"))
@@ -3285,12 +3284,10 @@ def handle_clone_tag(goptions, session, args):
     srctag = session.getTag(args[0])
     dsttag = session.getTag(args[1])
     if not srctag:
-        sys.stdout.write("Unknown src-tag: %s\n" % args[0])
-        return
+        parser.error(_("Unknown src-tag: %s" % args[0]))
     if (srctag['locked'] and not options.force) or (dsttag and dsttag['locked'] and not options.force):
-        print(_("Error: You are attempting to clone from or to a tag which is locked."))
-        print(_("Please use --force if this is what you really want to do."))
-        return
+        parser.error(_("Error: You are attempting to clone from or to a tag which is locked.\n"
+                       "Please use --force if this is what you really want to do."))
 
     # init debug lists.
     chgpkglist=[]
@@ -3299,8 +3296,7 @@ def handle_clone_tag(goptions, session, args):
     # case of brand new dst-tag.
     if not dsttag:
         if not options.config:
-            print(_('Cannot create tag without specifying --config'))
-            return
+            parser.error(_('Cannot create tag without specifying --config'))
         # create a new tag, copy srctag header.
         if not options.test:
             session.createTag(args[1], parent=None, arches=srctag['arches'],
@@ -3308,20 +3304,29 @@ def handle_clone_tag(goptions, session, args):
                               locked=srctag['locked'],
                               maven_support=srctag['maven_support'],
                               maven_include_all=srctag['maven_include_all'])
-            newtag = session.getTag(args[1], strict=True) # store the new tag, need its asigned id.
+            # store the new tag, need its assigned id.
+            newtag = session.getTag(args[1], strict=True)
         # get pkglist of src-tag, including inherited packages.
         if options.pkgs:
-            srcpkgs = session.listPackages(tagID=srctag['id'], inherited=True, event=event.get('id'))
-            srcpkgs.sort(key = lambda x: x['package_name'])
+            srcpkgs = session.listPackages(tagID=srctag['id'],
+                                           inherited=True,
+                                           event=event.get('id'))
+            srcpkgs.sort(key=lambda x: x['package_name'])
             if not options.test:
                 session.multicall = True
             for pkgs in srcpkgs:
                 # for each package add one entry in the new tag.
-                chgpkglist.append(('[new]',pkgs['package_name'],pkgs['blocked'],pkgs['owner_name'],pkgs['tag_name']))
+                chgpkglist.append(('[new]',
+                                   pkgs['package_name'],
+                                   pkgs['blocked'],
+                                   pkgs['owner_name'],
+                                   pkgs['tag_name']))
                 if not options.test:
                     # add packages.
-                    session.packageListAdd(newtag['name'],pkgs['package_name'],
-                                           owner=pkgs['owner_name'],block=pkgs['blocked'],
+                    session.packageListAdd(newtag['name'],
+                                           pkgs['package_name'],
+                                           owner=pkgs['owner_name'],
+                                           block=pkgs['blocked'],
                                            extra_arches=pkgs['extra_arches'])
             if not options.test:
                 session.multiCall(batch=options.batch)
@@ -3334,18 +3339,25 @@ def handle_clone_tag(goptions, session, args):
             if not options.test:
                 session.multicall = True
             for build in builds:
-                build['name'] = build['package_name'] # add missing 'name' field.
-                chgbldlist.append(('[new]', build['package_name'],
-                                    build['nvr'], koji.BUILD_STATES[build['state']],
-                                    build['owner_name'], build['tag_name']))
+                # add missing 'name' field.
+                build['name'] = build['package_name']
+                chgbldlist.append(('[new]',
+                                   build['package_name'],
+                                   build['nvr'],
+                                   koji.BUILD_STATES[build['state']],
+                                   build['owner_name'],
+                                   build['tag_name']))
                 # copy latest builds into new tag
                 if not options.test:
-                    session.tagBuildBypass(newtag['name'], build, force=options.force)
+                    session.tagBuildBypass(newtag['name'],
+                                           build,
+                                           force=options.force)
             if not options.test:
                 session.multiCall(batch=options.batch)
         if options.groups:
             # Copy the group data
-            srcgroups = session.getTagGroups(srctag['name'], event=event.get('id'))
+            srcgroups = session.getTagGroups(srctag['name'],
+                                             event=event.get('id'))
             if not options.test:
                 session.multicall = True
             for group in srcgroups:
@@ -3353,8 +3365,10 @@ def handle_clone_tag(goptions, session, args):
                     session.groupListAdd(newtag['name'], group['name'])
                 for pkg in group['packagelist']:
                     if not options.test:
-                        session.groupPackageListAdd(newtag['name'], group['name'],
-                                                    pkg['package'], block=pkg['blocked'])
+                        session.groupPackageListAdd(newtag['name'],
+                                                    group['name'],
+                                                    pkg['package'],
+                                                    block=pkg['blocked'])
                     chggrplist.append(('[new]', pkg['package'], group['name']))
             if not options.test:
                 session.multiCall(batch=options.batch)
@@ -3363,65 +3377,101 @@ def handle_clone_tag(goptions, session, args):
         # get fresh list of packages & builds into maps.
         srcpkgs = {}
         dstpkgs = {}
-        srclblds = OrderedDict()
-        dstlblds = {}
+        srcbldsbypkg = defaultdict(OrderedDict)
+        dstbldsbypkg = defaultdict(OrderedDict)
         srcgroups = {}
         dstgroups = {}
         if options.pkgs:
-            for pkg in session.listPackages(tagID=srctag['id'], inherited=True, event=event.get('id')):
+            for pkg in session.listPackages(tagID=srctag['id'],
+                                            inherited=True,
+                                            event=event.get('id')):
                 srcpkgs[pkg['package_name']] = pkg
-            for pkg in session.listPackages(tagID=dsttag['id'], inherited=True):
+            for pkg in session.listPackages(tagID=dsttag['id'],
+                                            inherited=True):
                 dstpkgs[pkg['package_name']] = pkg
         if options.builds:
-            src_builds = list(reversed(session.listTagged(srctag['id'],
-                                                          event=event.get('id'),
-                                                          inherit=options.inherit_builds,
-                                                          latest=options.latest_only)))
-            for build in src_builds:
-                srclblds[build['nvr']] = build
-            for build in session.getLatestBuilds(dsttag['name']):
-                dstlblds[build['nvr']] = build
+            for build in reversed(session.listTagged(srctag['id'],
+                                                     event=event.get('id'),
+                                                     inherit=options.inherit_builds,
+                                                     latest=options.latest_only)):
+                srcbldsbypkg[build['package_name']][build['nvr']] = build
+            # get builds in dsttag without inheritance
+            for build in reversed(session.listTagged(dsttag['id'],
+                                                     inherit=False,
+                                                     latest=options.latest_only)):
+                dstbldsbypkg[build['package_name']][build['nvr']] = build
         if options.groups:
-            for group in session.getTagGroups(srctag['name'], event=event.get('id')):
+            for group in session.getTagGroups(srctag['name'],
+                                              event=event.get('id')):
                 srcgroups[group['name']] = group
             for group in session.getTagGroups(dsttag['name']):
                 dstgroups[group['name']] = group
-        #construct to-do lists.
-        paddlist = [] # list containing new packages to be added from src tag
+        # construct to-do lists.
+        paddlist = []  # list containing new packages to be added from src tag
         for (package_name, pkg) in six.iteritems(srcpkgs):
             if package_name not in dstpkgs:
                 paddlist.append(pkg)
-        paddlist.sort(key = lambda x: x['package_name'])
-        pdellist = [] # list containing packages no more present in dst tag
+        paddlist.sort(key=lambda x: x['package_name'])
+        pdellist = []  # list containing packages no more present in dst tag
         for (package_name, pkg) in six.iteritems(dstpkgs):
             if package_name not in srcpkgs:
                 pdellist.append(pkg)
-        pdellist.sort(key = lambda x: x['package_name'])
-        baddlist = [] # list containing new builds to be added from src tag
-        for (nvr, lbld) in six.iteritems(srclblds):
-            if nvr not in dstlblds:
-                baddlist.append(lbld)
-        baddlist.sort(key = lambda x: x['package_name'])
-        bdellist = [] # list containing new builds to be removed from dst tag
-        for (nvr, lbld) in six.iteritems(dstlblds):
-            if nvr not in srclblds:
-                bdellist.append(lbld)
-        bdellist.sort(key = lambda x: x['package_name'])
+        pdellist.sort(key=lambda x: x['package_name'])
+        baddlist = []  # list containing new builds to be added from src tag
+        bdellist = []  # list containing new builds to be removed from dst tag
+        for (pkg, dstblds) in six.iteritems(dstbldsbypkg):
+            if pkg not in srcbldsbypkg:
+                bdellist.extend(dstblds.values())
+        for (pkg, srcblds) in six.iteritems(srcbldsbypkg):
+            dstblds = dstbldsbypkg[pkg]
+            ablds = []
+            dblds = []
+            # firstly, remove builds from dst tag
+            removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
+            dnvrs = []
+            for (dstnvr, dstbld) in six.iteritems(dstblds):
+                if dstnvr in removed_nvrs:
+                    dnvrs.append(dstnvr)
+                    dblds.append(dstbld)
+            for dnvr in dnvrs:
+                del dstblds[dnvr]
+            # secondly, add builds from src tag and adjust the order
+            for (nvr, srcbld) in six.iteritems(srcblds):
+                found = False
+                dnvrs = []
+                for (dstnvr, dstbld) in six.iteritems(dstblds):
+                    if nvr == dstnvr:
+                        found = True
+                        dnvrs.append(dstnvr)
+                        break
+                    # if latest_only, remove older builds, else keep them
+                    elif not options.latest_only:
+                        dnvrs.append(dstnvr)
+                        dblds.append(dstbld)
+                for dnvr in dnvrs:
+                    del dstblds[dnvr]
+                if not found:
+                    ablds.append(srcbld)
+            baddlist.extend(ablds)
+            bdellist.extend(dblds)
+        baddlist.sort(key=lambda x: x['package_name'])
+        bdellist.sort(key=lambda x: x['package_name'])
         gaddlist = [] # list containing new groups to be added from src tag
         for (grpname, group) in six.iteritems(srcgroups):
             if grpname not in dstgroups:
                 gaddlist.append(group)
-        gdellist = [] # list containing groups to be removed from src tag
+        gdellist = []  # list containing groups to be removed from src tag
         for (grpname, group) in six.iteritems(dstgroups):
             if grpname not in srcgroups:
                 gdellist.append(group)
-        grpchanges = {} # dict of changes to make in shared groups
+        grpchanges = {}  # dict of changes to make in shared groups
         for (grpname, group) in six.iteritems(srcgroups):
             if grpname in dstgroups:
+                dstgroup = dstgroups[grpname]
                 grpchanges[grpname] = {'adds':[], 'dels':[]}
                 # Store whether group is inherited or not
                 grpchanges[grpname]['inherited'] = False
-                if group['tag_id'] != dsttag['id']:
+                if dstgroup['tag_id'] != dsttag['id']:
                     grpchanges[grpname]['inherited'] = True
                 srcgrppkglist=[]
                 dstgrppkglist=[]
@@ -3439,27 +3489,57 @@ def handle_clone_tag(goptions, session, args):
         if not options.test:
             session.multicall = True
         for pkg in paddlist:
-            chgpkglist.append(('[add]', pkg['package_name'],
-                                pkg['blocked'], pkg['owner_name'],
-                                pkg['tag_name']))
+            chgpkglist.append(('[add]',
+                               pkg['package_name'],
+                               pkg['blocked'],
+                               pkg['owner_name'],
+                               pkg['tag_name']))
             if not options.test:
-                session.packageListAdd(dsttag['name'], pkg['package_name'],
+                session.packageListAdd(dsttag['name'],
+                                       pkg['package_name'],
                                        owner=pkg['owner_name'],
                                        block=pkg['blocked'],
                                        extra_arches=pkg['extra_arches'])
+        if not options.test:
+            session.multiCall(batch=options.batch)
+        # DEL builds. To keep the order we should untag builds at first
+        if not options.test:
+            session.multicall = True
+        for build in bdellist:
+            # don't delete an inherited build.
+            if build['tag_name'] == dsttag['name']:
+                # add missing 'name' field
+                build['name'] = build['package_name']
+                chgbldlist.append(('[del]',
+                                   build['package_name'],
+                                   build['nvr'],
+                                   koji.BUILD_STATES[build['state']],
+                                   build['owner_name'],
+                                   build['tag_name']))
+                # go on del builds from new tag.
+                if not options.test:
+                    session.untagBuildBypass(dsttag['name'],
+                                             build,
+                                             force=options.force)
         if not options.test:
             session.multiCall(batch=options.batch)
         # ADD builds.
         if not options.test:
             session.multicall = True
         for build in baddlist:
-            build['name'] = build['package_name'] # add missing 'name' field.
-            chgbldlist.append(('[add]', build['package_name'], build['nvr'],
-                                koji.BUILD_STATES[build['state']],
-                                build['owner_name'], build['tag_name']))
+            # add missing 'name' field.
+            build['name'] = build['package_name']
+            chgbldlist.append(('[add]',
+                               build['package_name'],
+                               build['nvr'],
+                               koji.BUILD_STATES[build['state']],
+                               build['owner_name'],
+                               build['tag_name']))
             # copy latest builds into new tag.
             if not options.test:
-                session.tagBuildBypass(dsttag['name'], build, force=options.force)
+                session.tagBuildBypass(dsttag['name'],
+                                       build,
+                                       force=options.force)
         if not options.test:
             session.multiCall(batch=options.batch)
         # ADD groups.
@@ -3467,10 +3547,15 @@ def handle_clone_tag(goptions, session, args):
             session.multicall = True
         for group in gaddlist:
             if not options.test:
-                session.groupListAdd(dsttag['name'], group['name'], force=options.force)
+                session.groupListAdd(dsttag['name'],
+                                     group['name'],
+                                     force=options.force)
             for pkg in group['packagelist']:
                 if not options.test:
-                    session.groupPackageListAdd(dsttag['name'], group['name'], pkg['package'], force=options.force)
+                    session.groupPackageListAdd(dsttag['name'],
+                                                group['name'],
+                                                pkg['package'],
+                                                force=options.force)
                 chggrplist.append(('[new]', pkg['package'], group['name']))
         if not options.test:
             session.multiCall(batch=options.batch)
@@ -3481,22 +3566,10 @@ def handle_clone_tag(goptions, session, args):
             for pkg in grpchanges[group]['adds']:
                 chggrplist.append(('[new]', pkg, group))
                 if not options.test:
-                    session.groupPackageListAdd(dsttag['name'], group, pkg, force=options.force)
-        if not options.test:
-            session.multiCall(batch=options.batch)
-        # DEL builds.
-        if not options.test:
-            session.multicall = True
-        for build in bdellist:
-            # dont delete an inherited build.
-            if build['tag_name'] == dsttag['name']:
-                build['name'] = build['package_name'] # add missing 'name' field.
-                chgbldlist.append(('[del]', build['package_name'], build['nvr'],
-                                    koji.BUILD_STATES[build['state']],
-                                    build['owner_name'], build['tag_name']))
-                # go on del builds from new tag.
-                if not options.test:
-                    session.untagBuildBypass(dsttag['name'], build, force=options.force)
+                    session.groupPackageListAdd(dsttag['name'],
+                                                group,
+                                                pkg,
+                                                force=options.force)
         if not options.test:
             session.multiCall(batch=options.batch)
         # DEL packages.
@@ -3511,29 +3584,45 @@ def handle_clone_tag(goptions, session, args):
         # delete only non-inherited packages.
         for pkg in ninhrtpdellist:
             # check if package have owned builds inside.
-            session.listTagged(dsttag['name'], package=pkg['package_name'], inherit=False)
+            session.listTagged(dsttag['name'],
+                               package=pkg['package_name'],
+                               inherit=False)
         bump_builds = session.multiCall(batch=options.batch)
         if not options.test:
             session.multicall = True
         for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
-            #remove all its builds first if there are any.
+            # remove all its builds first if there are any.
             for build in builds:
-                build['name'] = build['package_name'] #add missing 'name' field.
-                chgbldlist.append(('[del]', build['package_name'], build['nvr'],
-                                    koji.BUILD_STATES[build['state']],
-                                    build['owner_name'], build['tag_name']))
+                # add missing 'name' field.
+                build['name'] = build['package_name']
+                chgbldlist.append(('[del]',
+                                   build['package_name'],
+                                   build['nvr'],
+                                   koji.BUILD_STATES[build['state']],
+                                   build['owner_name'],
+                                   build['tag_name']))
                 # so delete latest build(s) from new tag.
                 if not options.test:
-                    session.untagBuildBypass(dsttag['name'], build, force=options.force)
-            # now safe to remove package itselfm since we resolved its builds.
-            chgpkglist.append(('[del]', pkg['package_name'], pkg['blocked'],
-                                pkg['owner_name'], pkg['tag_name']))
+                    session.untagBuildBypass(dsttag['name'],
+                                             build,
+                                             force=options.force)
+            # now safe to remove package itself since we resolved its builds.
+            chgpkglist.append(('[del]',
+                               pkg['package_name'],
+                               pkg['blocked'],
+                               pkg['owner_name'],
+                               pkg['tag_name']))
             if not options.test:
-                session.packageListRemove(dsttag['name'], pkg['package_name'], force=False)
+                session.packageListRemove(dsttag['name'],
+                                          pkg['package_name'],
+                                          force=False)
         # mark as blocked inherited packages.
         for pkg in inhrtpdellist:
-            chgpkglist.append(('[blk]', pkg['package_name'], pkg['blocked'],
-                                pkg['owner_name'], pkg['tag_name']))
+            chgpkglist.append(('[blk]',
+                               pkg['package_name'],
+                               pkg['blocked'],
+                               pkg['owner_name'],
+                               pkg['tag_name']))
             if not options.test:
                 session.packageListBlock(dsttag['name'], pkg['package_name'])
         if not options.test:
@@ -3545,7 +3634,9 @@ def handle_clone_tag(goptions, session, args):
             # Only delete a group that isn't inherited
             if group['tag_id'] == dsttag['id']:
                 if not options.test:
-                    session.groupListRemove(dsttag['name'], group['name'], force=options.force)
+                    session.groupListRemove(dsttag['name'],
+                                            group['name'],
+                                            force=options.force)
                 for pkg in group['packagelist']:
                     chggrplist.append(('[del]', pkg['package'], group['name']))
             # mark as blocked inherited groups.
@@ -3565,11 +3656,16 @@ def handle_clone_tag(goptions, session, args):
                 if not grpchanges[group]['inherited']:
                     chggrplist.append(('[del]', pkg, group))
                     if not options.test:
-                        session.groupPackageListRemove(dsttag['name'], group, pkg, force=options.force)
+                        session.groupPackageListRemove(dsttag['name'],
+                                                       group,
+                                                       pkg,
+                                                       force=options.force)
                 else:
                     chggrplist.append(('[blk]', pkg, group))
                     if not options.test:
-                        session.groupPackageListBlock(dsttag['name'], group, pkg)
+                        session.groupPackageListBlock(dsttag['name'],
+                                                      group,
+                                                      pkg)
         if not options.test:
             session.multiCall(batch=options.batch)
     # print final list of actions.
@@ -3583,7 +3679,7 @@ def handle_clone_tag(goptions, session, args):
         for changes in chgpkglist:
             sys.stdout.write(pfmt % changes)
         sys.stdout.write('\n')
-        sys.stdout.write(bfmt % ('Action', 'From/To Package', 'Latest Build(s)', 'State', 'Owner', 'From Tag'))
+        sys.stdout.write(bfmt % ('Action', 'From/To Package', 'Build(s)', 'State', 'Owner', 'From Tag'))
         sys.stdout.write(bfmt %  ('-'*7, '-'*28, '-'*40, '-'*10, '-'*10, '-'*10))
         for changes in chgbldlist:
             sys.stdout.write(bfmt % changes)
