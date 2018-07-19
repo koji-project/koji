@@ -81,7 +81,7 @@ class Rpmdiff:
         if self.ignore is None:
             self.ignore = []
 
-        FILEIDX = self.__FILEIDX
+        FILEIDX = [entry[:] for entry in self.__FILEIDX]
         for tag in self.ignore:
             for entry in FILEIDX:
                 if tag == entry[0]:
