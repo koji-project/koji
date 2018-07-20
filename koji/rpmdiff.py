@@ -86,7 +86,7 @@ class Rpmdiff:
             for entry in FILEIDX:
                 if tag == entry[0]:
                     # store marked position for erasing data
-                    entry[1] = -entry[1]
+                    entry[1] = -entry[1] - 100
                     break
 
         old = self.__load_pkg(old)
@@ -140,8 +140,8 @@ class Rpmdiff:
                         diff = 1
                     elif entry[1] < 0:
                         # erase fields which are ignored
-                        old_file[-entry[1]] = None
-                        new_file[-entry[1]] = None
+                        old_file[-entry[1] - 100] = None
+                        new_file[-entry[1] - 100] = None
                         format = format + '.'
                     else:
                         format = format + '.'

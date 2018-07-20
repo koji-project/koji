@@ -62,6 +62,27 @@ class TestRPMDiff(unittest.TestCase):
             d = koji.rpmdiff.Rpmdiff(rpm1, rpm2, ignore='S5TN')
             self.assertEqual(d.textdiff(), '')
 
+    def test_rpmdiff_size(self):
+        data_path = os.path.abspath("tests/test_hub/data/rpms")
+
+        # the only differences between rpm1 and rpm2 are 1) create time 2) file name
+        rpm1 = os.path.join(data_path, 'different_size_a.noarch.rpm')
+        rpm2 = os.path.join(data_path, 'different_size_b.noarch.rpm')
+
+        diff_output = "S.5.......T /bin/test"
+
+        # case 1. no ignore option, timestamp is different
+        # perform twice check to verify issue: #994
+        for _ in range(0, 2):
+            d = koji.rpmdiff.Rpmdiff(rpm1, rpm2)
+            self.assertEqual(d.textdiff(), diff_output)
+
+        # case 2. ignore timestamp, two rpms should be the same
+        # perform twice check to verify issue: #994
+        for r in range(0, 2):
+            d = koji.rpmdiff.Rpmdiff(rpm1, rpm2, ignore='S5TN')
+            self.assertEqual(d.textdiff(), '')
+
 class TestCheckNoarchRpms(unittest.TestCase):
     @mock.patch('kojihub.rpmdiff')
     def test_check_noarch_rpms_empty_invocation(self, rpmdiff):
