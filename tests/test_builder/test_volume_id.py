@@ -6,11 +6,69 @@ try:
 except ImportError:
     import unittest
 from .loadkojid import kojid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class TestChooseTaskarch(unittest.TestCase):
+class TestVolumeID(unittest.TestCase):
     version = '1'
     release = 'f27'
+
+    test_cases = {
+        't1': {
+            'name': 'Beta-Atomic-Fedora',
+            'expected-id': 'B-AH-Fedora-' + version + '-' + release
+        },
+        't2': {
+            'name': 'Beta-Fedora-Beta',
+            'expected-id': 'B-Fedora-B-' + version + '-' + release
+        },
+        't3': {
+            'name': 'Rawhide-Fedora-Astronomy_KDE-Cinnamon',
+            'expected-id': 'rawh-Fedora-AstK-Cinn-' + version + '-' + release
+        },
+        't4': {
+            'name': 'Cloud-Design_suite-Fedora-Electronic_Lab',
+            'expected-id': 'C-Dsgn-Fedora-Elec-' + version + '-' + release
+        },
+        't5': {
+            'name': 'Everything-Games-Images-Fedora',
+            'expected-id': 'E-Game-img-Fedora-' + version + '-' + release
+        },
+        't6': {
+            'name': 'Fedora-Jam_KDE-MATE_Compiz-Python-Classroom',
+            'expected-id': 'Fedora-Jam-MATE-Clss-' + version + '-' + release
+        },
+        't7': {
+            'name': 'MATE_Compiz-Python_Classroom-Python-Classroom',
+            'expected-id': 'MATE-Clss-Clss-' + version + '-' + release
+        },
+        't8': {
+            'name': 'Robotics-Scientific_KDE-Fedora-Security',
+            'expected-id': 'Robo-SciK-Fedora-Sec-' + version + '-' + release
+        },
+        't9': {
+            'name': 'Robotics-Workstation-Fedora',
+            'expected-id': 'Robo-WS-Fedora-' + version + '-' + release
+        },
+        't10': {
+            'name': 'Server-Fedora-Everything-Server',
+            'expected-id': 'S-Fedora-E-S-' + version + '-' + release
+        },
+        't11': {
+            'name': 'Fedora-WorkstationOstree-Images',
+            'expected-id': 'Fedora-WS-img-' + version + '-' + release
+        },
+        't12': {
+            'name': 'Workstation-Cloud-Beta-Cloud-Games-Cloud-MATE_Compiz-Cloud',
+            'expected-id': 'WS-C-B-C-Game-C-MATE-C-' + version + '-' + release
+        },
+        't13': {
+            'name': 'Astronomy_KDE-Python-Classroom-Robotics-Robotics-Games',
+            'expected-id': 'AstK-Clss-Robo-Robo-Game-' + version + '-' + release
+        }
+    }
 
     def setUp(self):
         # set up task handler
@@ -24,126 +82,13 @@ class TestChooseTaskarch(unittest.TestCase):
         self.handler = kojid.LiveCDTask(task_id, method, params, self.session,
                                         self.options, workdir)
 
-    def test_beta_atomic(self):
-        """Check that volume ID Beta-Atomic-Fedora
-        is shorten to B-AH-Fedora."""
-        name = 'Beta-Atomic-Fedora'
-        expected_vol_id = 'B-AH-Fedora-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_beta_beta(self):
-        """Check that volume ID Beta-Fedora-Beta
-        is shorten to B-Fedora-B."""
-        name = 'Beta-Fedora-Beta'
-        expected_vol_id = 'B-Fedora-B-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_rawhide_astronomy_cinnamon(self):
-        """Check that volume ID Rawhide-Fedora-Astronomy_KDE-Cinnamon
-        is shorten to rawh-Fedora-AstK-Cinn."""
-        name = 'Rawhide-Fedora-Astronomy_KDE-Cinnamon'
-        expected_vol_id = ('rawh-Fedora-AstK-Cinn-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_cloud_designsuite_electroniclab(self):
-        """Check that volume ID Cloud-Design_suite-Fedora-Electronic_Lab
-        is shorten to C-Dsgn-Fedora-Elec."""
-        name = 'Cloud-Design_suite-Fedora-Electronic_Lab'
-        expected_vol_id = ('C-Dsgn-Fedora-Elec-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_everything_games_images(self):
-        """Check that volume ID Everything-Games-Images-Fedora
-        is shorten to E-Game-img-Fedora."""
-        name = 'Everything-Games-Images-Fedora'
-        expected_vol_id = ('E-Game-img-Fedora-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_jamkde_matecompiz_pythonclassroom(self):
-        """Check that volume ID Fedora-Jam_KDE-MATE_Compiz-Python-Classroom
-        is shorten to Fedora-Jam-MATE-Clss."""
-        name = 'Fedora-Jam_KDE-MATE_Compiz-Python-Classroom'
-        expected_vol_id = ('Fedora-Jam-MATE-Clss-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_matecompiz_pythonclassroom_pythonclassroom(self):
-        """Check that volume ID MATE_Compiz-Python_Classroom-Python-Classroom
-        is shorten to MATE-Clss-Clss."""
-        name = 'MATE_Compiz-Python_Classroom-Python-Classroom'
-        expected_vol_id = 'MATE-Clss-Clss-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_robotics_scientifickde_security(self):
-        """Check that volume ID Robotics-Scientific_KDE-Fedora-Security
-        is shorten to Robo-SciK-Fedora-Sec."""
-        name = 'Robotics-Scientific_KDE-Fedora-Security'
-        expected_vol_id = ('Robo-SciK-Fedora-Sec-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_robotics_workstation(self):
-        """Check that volume ID Robotics-Workstation-Fedora
-        is shorten to Robo-WS-Fedora."""
-        name = 'Robotics-Workstation-Fedora'
-        expected_vol_id = 'Robo-WS-Fedora-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_everything_server(self):
-        """Check that volume ID Server-Fedora-Everything-Server
-        is shorten to S-Fedora-E-S."""
-        name = 'Server-Fedora-Everything-Server'
-        expected_vol_id = 'S-Fedora-E-S-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_images_workstationostree(self):
-        """Check that volume ID Fedora-WorkstationOstree-Images
-        is shorten to Fedora-WS-img."""
-        name = 'Fedora-WorkstationOstree-Images'
-        expected_vol_id = 'Fedora-WS-img-' + self.version + '-' + self.release
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_workstation_cloud_beta_cloud_games_cloud_matecompiz_cloud(self):
-        """Check that volume ID Workstation-Cloud-Beta-Cloud-Games-Cloud-MATE_Compiz-Cloud
-        is shorten to WS-C-B-C-Game-C-MATE-C."""
-        name = 'Workstation-Cloud-Beta-Cloud-Games-Cloud-MATE_Compiz-Cloud'
-        expected_vol_id = ('WS-C-B-C-Game-C-MATE-C-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
-
-    def test_astronomykde_pythonclassroom_robotics_robotics_robotics_games(self):
-        """Check that volume ID Astronomy_KDE-Python-Classroom-Robotics-Robotics-Games
-        is shorten to AstK-Clss-Robo-Robo-Game."""
-        name = 'Astronomy_KDE-Python-Classroom-Robotics-Robotics-Games'
-        expected_vol_id = ('AstK-Clss-Robo-Robo-Game-' + self.version + '-' +
-                           self.release)
-        result_vol_id = self.handler._shortenVolID(
-            name, self.version, self.release)
-        self.assertEqual(expected_vol_id, result_vol_id)
+    def test_volume_id_substiotutions(self):
+        """Check that volume ID is shorten corect by shortenVolID method."""
+        for test_name, values in self.test_cases.iteritems():
+            name = values['name']
+            expected_vol_id = values['expected-id']
+            result_vol_id = self.handler._shortenVolID(name, self.version, self.release)
+            logger.info("name '%s' expected vol id %s.", name, expected_vol_id)
+            self.assertEqual(expected_vol_id, result_vol_id,
+                             'Expected shorten volume id %s is not same as result of shortenVolID %s.'
+                             %(expected_vol_id, result_vol_id))
