@@ -440,8 +440,8 @@ def decode_args(*args):
     if len(args) > 0:
         last = args[-1]
         if isinstance(last, dict) and last.get('__starstar', False):
-            del last['__starstar']
-            opts = last
+            opts = last.copy()
+            del opts['__starstar']
             args = args[:-1]
     return args, opts
 
