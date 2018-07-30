@@ -406,6 +406,11 @@ List of changes:
                                                  'nvr': 'pkg2-1.0-1',
                                                  'state': 2,
                                                  'owner_name': 'b_owner',
+                                                 'tag_name': 'dst-tag'},
+                                                {'package_name': 'pkg3',
+                                                 'nvr': 'pkg3-1.0-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
                                                  'tag_name': 'dst-tag'}
                                                 ]]
         self.session.getTagGroups.side_effect = [[{'name': 'group1',
@@ -507,6 +512,12 @@ List of changes:
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'dst-tag',
                                            'name': 'pkg1'}, force=None),
+                                       call.untagBuildBypass('dst-tag', {
+                                           'owner_name': 'b_owner',
+                                           'nvr': 'pkg3-1.0-1',
+                                           'package_name': 'pkg3', 'state': 1,
+                                           'tag_name': 'dst-tag',
+                                           'name': 'pkg3'}, force=None),
                                        call.multiCall(batch=1000),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
@@ -553,11 +564,11 @@ List of changes:
                                        call.packageListBlock('dst-tag',
                                                              'dpkg'),
                                        call.multiCall(batch=1000),
-                                       call.groupListBlock('dst-tag',
-                                                           'group4'),
                                        call.groupListRemove('dst-tag',
                                                             'group3',
                                                             force=None),
+                                       call.groupListBlock('dst-tag',
+                                                           'group4'),
                                        call.multiCall(batch=1000),
                                        call.groupPackageListRemove('dst-tag',
                                                                    'group1',
@@ -581,6 +592,7 @@ List of changes:
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
     [del]   pkg1                         pkg1-2.1-2                               COMPLETE   b_owner    dst-tag   
     [del]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    dst-tag   
+    [del]   pkg3                         pkg3-1.0-1                               COMPLETE   b_owner    dst-tag   
     [add]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    src-tag   
     [add]   pkg1                         pkg1-1.0-2                               COMPLETE   b_owner    src-tag   
     [add]   pkg1                         pkg1-1.1-2                               COMPLETE   b_owner    src-tag   
@@ -591,10 +603,10 @@ List of changes:
     [new]   pkg3                         group1                      
     [new]   pkg4                         group1                      
     [new]   bpkg                         group2                      
-    [blk]   epkg                         group4                      
-    [blk]   fpkg                         group4                      
     [del]   cpkg                         group3                      
     [del]   dpkg                         group3                      
+    [blk]   epkg                         group4                      
+    [blk]   fpkg                         group4                      
     [del]   pkg5                         group1                      
     [blk]   cpkg                         group2                      
 """)

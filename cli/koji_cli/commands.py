@@ -3264,7 +3264,6 @@ def handle_clone_tag(goptions, session, args):
 
     if not session.hasPerm('admin') and not options.test:
         parser.error(_("This action requires admin privileges"))
-        return
 
     if args[0] == args[1]:
         parser.error(_('Source and destination tags must be different.'))
@@ -3379,8 +3378,8 @@ def handle_clone_tag(goptions, session, args):
         dstpkgs = {}
         srcbldsbypkg = defaultdict(OrderedDict)
         dstbldsbypkg = defaultdict(OrderedDict)
-        srcgroups = {}
-        dstgroups = {}
+        srcgroups = OrderedDict()
+        dstgroups = OrderedDict()
         if options.pkgs:
             for pkg in session.listPackages(tagID=srctag['id'],
                                             inherited=True,
@@ -3464,11 +3463,11 @@ def handle_clone_tag(goptions, session, args):
         for (grpname, group) in six.iteritems(dstgroups):
             if grpname not in srcgroups:
                 gdellist.append(group)
-        grpchanges = {}  # dict of changes to make in shared groups
+        grpchanges = OrderedDict()  # dict of changes to make in shared groups
         for (grpname, group) in six.iteritems(srcgroups):
             if grpname in dstgroups:
                 dstgroup = dstgroups[grpname]
-                grpchanges[grpname] = {'adds':[], 'dels':[]}
+                grpchanges[grpname] = {'adds': [], 'dels': []}
                 # Store whether group is inherited or not
                 grpchanges[grpname]['inherited'] = False
                 if dstgroup['tag_id'] != dsttag['id']:
@@ -3480,10 +3479,10 @@ def handle_clone_tag(goptions, session, args):
                 for pkg in dstgroups[grpname]['packagelist']:
                     dstgrppkglist.append(pkg['package'])
                 for pkg in srcgrppkglist:
-                    if not pkg in dstgrppkglist:
+                    if pkg not in dstgrppkglist:
                         grpchanges[grpname]['adds'].append(pkg)
                 for pkg in dstgrppkglist:
-                    if not pkg in srcgrppkglist:
+                    if pkg not in srcgrppkglist:
                         grpchanges[grpname]['dels'].append(pkg)
         # ADD new packages.
         if not options.test:
