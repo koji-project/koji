@@ -11004,15 +11004,11 @@ class RootExports(object):
 
 
     def getBuildNotifications(self, userID=None):
-        """Get build notifications for the user with the given ID.  If no ID
-        is specified, get the notifications for the currently logged-in user.  If
-        there is no currently logged-in user, raise a GenericError."""
-        if userID is None:
-            user = self.getLoggedInUser()
-            if user is None:
-                raise koji.GenericError('not logged-in')
-            else:
-                userID = user['id']
+        """Get build notifications for the user with the given ID, name or
+        Kerberos principal. If no user is specified, get the notifications for
+        the currently logged-in user. If there is no currently logged-in user,
+        raise a GenericError."""
+        userID = get_user(userID, strict=True)['id']
         return get_build_notifications(userID)
 
     def getBuildNotification(self, id):
