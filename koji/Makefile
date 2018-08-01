@@ -1,4 +1,3 @@
-PYTHON=python
 PACKAGE = $(shell basename `pwd`)
 ifeq ($(PYTHON), python3)
     # for python3 we fully support only basic library + CLI
