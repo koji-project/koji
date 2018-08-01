@@ -498,6 +498,8 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
 
 
     with closing(requests.get(url, stream=True)) as response:
+        # raise error if occured
+        response.raise_for_status()
         length = response.headers.get('content-length')
         f = open(relpath, 'wb')
         if length is None:
