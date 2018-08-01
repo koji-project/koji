@@ -82,7 +82,7 @@ class TestVolumeID(unittest.TestCase):
         self.handler = kojid.LiveCDTask(task_id, method, params, self.session,
                                         self.options, workdir)
 
-    def test_volume_id_substiotutions(self):
+    def test_volume_id_substitutions(self):
         """Check that volume ID is shorten corect by shortenVolID method."""
         for test_name, values in self.test_cases.iteritems():
             name = values['name']
@@ -90,5 +90,5 @@ class TestVolumeID(unittest.TestCase):
             result_vol_id = self.handler._shortenVolID(name, self.version, self.release)
             logger.info("name '%s' expected vol id %s.", name, expected_vol_id)
             self.assertEqual(expected_vol_id, result_vol_id,
-                             'Expected shorten volume id %s is not same as result of shortenVolID %s.'
+                             'Expected shortened volume id %s is not same as result of shortenVolID %s.'
                              %(expected_vol_id, result_vol_id))
