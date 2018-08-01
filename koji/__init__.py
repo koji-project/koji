@@ -1737,11 +1737,13 @@ def read_config(profile_name, user_config=None):
         }
     for name in cert_defaults:
         if result.get(name) is None:
-            fn = cert_defaults[name]
+            fn = os.path.expanduser(cert_defaults[name])
             if os.path.exists(fn):
                 result[name] = fn
             else:
                 result[name] = ''
+        else:
+            result[name] = os.path.expanduser(result[name])
 
     return result
 
