@@ -4914,6 +4914,40 @@ def _set_build_volume(binfo, volinfo, strict=True):
     koji.plugin.run_callbacks('postBuildStateChange', attribute='volume_id', old=old_binfo['volume_id'], new=volinfo['id'], info=binfo)
 
 
+def ensure_volume_symlink(binfo):
+    """Ensure that a build has a symlink on the default volume if needed"""
+
+    # basic checks
+    volname = binfo.get('volume_name')
+    if volname is None:
+        logger.warn('buildinfo has no volume data, cannot create symlink')
+        return
+    if volname == 'DEFAULT':
+        # nothing to do
+        return
+
+    # get the actual build dir
+    build_dir = koji.pathinfo.build(binfo)
+
+    # get the default volume location for the symlink
+    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+    base_binfo = binfo.copy()
+    base_binfo['volume_id'] = base_vol['id']
+    base_binfo['volume_name'] = base_vol['name']
+    basedir = koji.pathinfo.build(base_binfo)
+
+    # check/make the symlink
+    relpath = os.path.relpath(build_dir, os.path.dirname(basedir))
+    if os.path.islink(basedir):
+        if os.readlink(basedir) == relpath:
+            # already correct
+            return
+        os.unlink(basedir)
+    elif os.path.exists(basedir):
+        raise koji.GenericError('Unexpected build content: %s', basedir)
+    os.symlink(relpath, basedir)
+
+
 def check_volume_policy(data, strict=False, default=None):
     """Check volume policy for the given data
 
