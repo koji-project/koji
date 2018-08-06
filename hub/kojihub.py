@@ -5279,6 +5279,9 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             for relpath in files:
                 fn = "%s/%s" % (uploadpath, relpath)
                 import_build_log(fn, binfo, subdir=key)
+
+    ensure_volume_symlink(binfo)
+
     koji.plugin.run_callbacks('postImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
                               task_id=task_id, build_id=build_id, build=binfo, logs=logs)
     return binfo
@@ -5812,6 +5815,7 @@ class CG_Importer(object):
                 self.import_log(self.buildinfo, fileinfo)
             else:
                 self.import_archive(self.buildinfo, brinfo, fileinfo)
+        ensure_volume_symlink(self.buildinfo)
 
 
     def prep_archive(self, fileinfo):
@@ -12041,6 +12045,7 @@ class HostExports(object):
 
 
         self.importImage(task_id, build_id, results)
+        ensure_volume_symlink(build_info)
 
         st_complete = koji.BUILD_STATES['COMPLETE']
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
@@ -12164,6 +12169,8 @@ class HostExports(object):
 
         if rpm_results:
             _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
+
+        ensure_volume_symlink(build_info)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
@@ -12305,6 +12312,8 @@ class HostExports(object):
 
         if rpm_results:
             _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
+
+        ensure_volume_symlink(build_info)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
