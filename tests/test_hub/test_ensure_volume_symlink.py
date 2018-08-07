@@ -57,20 +57,34 @@ class TestEnsureVolumeSymlink(unittest.TestCase):
             logger.warn.assert_called_once()
 
     def test_volume_symlink_create(self):
+        basedir = self.pathinfo.build(self.buildinfo)  # default volume
         self.buildinfo['volume_name'] = 'test'
         self.buildinfo['volume_id'] = 1
         kojihub.ensure_volume_symlink(self.buildinfo)
-        # TODO: check files
+        files = list(find_files(self.tempdir))
+        expected = [
+                'packages',
+                'packages/some-image',
+                'packages/some-image/1.2.3.4',
+                'packages/some-image/1.2.3.4/3',
+                ]
+        self.assertEqual(files, expected)
+        relpath = ('../../../vol/test/packages/'
+                '%(name)s/%(version)s/%(release)s' % self.buildinfo)
+        self.assertEqual(os.readlink(basedir), relpath)
+
 
     def test_volume_symlink_exists(self):
         basedir = self.pathinfo.build(self.buildinfo)  # default volume
-        relpath = 'some/other/link'
+        oldpath = 'some/other/link'
         os.makedirs(os.path.dirname(basedir))
-        os.symlink(relpath, basedir)
+        os.symlink(oldpath, basedir)
         self.buildinfo['volume_name'] = 'test'
         self.buildinfo['volume_id'] = 1
         kojihub.ensure_volume_symlink(self.buildinfo)
-        # TODO: check files
+        relpath = ('../../../vol/test/packages/'
+                '%(name)s/%(version)s/%(release)s' % self.buildinfo)
+        self.assertEqual(os.readlink(basedir), relpath)
 
     def test_volume_symlink_exists_same(self):
         basedir = self.pathinfo.build(self.buildinfo)  # default volume
@@ -83,7 +97,14 @@ class TestEnsureVolumeSymlink(unittest.TestCase):
         with mock.patch('os.unlink') as unlink:
             kojihub.ensure_volume_symlink(self.buildinfo)
             unlink.assert_not_called()
-        # TODO: check files
+        files = list(find_files(self.tempdir))
+        expected = [
+                'packages',
+                'packages/some-image',
+                'packages/some-image/1.2.3.4',
+                'packages/some-image/1.2.3.4/3',
+                ]
+        self.assertEqual(files, expected)
 
     def test_volume_symlink_exists_error(self):
         basedir = self.pathinfo.build(self.buildinfo)  # default volume
