@@ -4966,6 +4966,9 @@ def ensure_volume_symlink(binfo):
         os.unlink(basedir)
     elif os.path.exists(basedir):
         raise koji.GenericError('Unexpected build content: %s', basedir)
+    else:
+        # parent dir might not exist
+        koji.ensuredir(os.path.dirname(basedir))
     os.symlink(relpath, basedir)
 
 
