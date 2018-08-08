@@ -11011,15 +11011,17 @@ class RootExports(object):
         userID = get_user(userID, strict=True)['id']
         return get_build_notifications(userID)
 
-    def getBuildNotification(self, id):
-        """Get the build notification with the given ID.  Return None
-        if there is no notification with the given ID."""
+    def getBuildNotification(self, id, strict=False):
+        """Get the build notification with the given ID.
+        If there is no notification with the given ID, when strict is True,
+        raise GenericError, else return None.
+        """
         fields = ('id', 'user_id', 'package_id', 'tag_id', 'success_only', 'email')
         query = """SELECT %s
         FROM build_notifications
         WHERE id = %%(id)i
         """ % ', '.join(fields)
-        return _singleRow(query, locals(), fields)
+        return _singleRow(query, locals(), fields, strict=strict)
 
     def updateNotification(self, id, package_id, tag_id, success_only):
         """Update an existing build notification with new data.  If the notification
