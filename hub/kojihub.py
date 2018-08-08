@@ -66,6 +66,9 @@ from koji.util import to_list
 from six.moves import range
 logger = logging.getLogger('koji.hub')
 
+
+NUMERIC_TYPES = tuple(list(six.integer_types) + [float])
+
 def log_error(msg):
     logger.error(msg)
 
@@ -1183,7 +1186,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
 
-    if not isinstance(latest, list(six.integer_types) + [float]):
+    if not isinstance(latest, NUMERIC_TYPES):
         latest = bool(latest)
 
     taglist = [tag]
@@ -3864,7 +3867,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(hostID)i')
     if arches != None:
-        if isinstance(arches, list) or isinstance(arches, tuple):
+        if isinstance(arches, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arches)s')
         elif isinstance(arches, str):
             clauses.append('rpminfo.arch = %(arches)s')
@@ -4734,7 +4737,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
 
     clauses = []
     if buildrootID != None:
-        if isinstance(buildrootID, list) or isinstance(buildrootID, tuple):
+        if isinstance(buildrootID, (list, tuple)):
             clauses.append('buildroot.id IN %(buildrootID)s')
         else:
             clauses.append('buildroot.id = %(buildrootID)i')
@@ -4743,7 +4746,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
     if tagID != None:
         clauses.append('tag.id = %(tagID)i')
     if state != None:
-        if isinstance(state, list) or isinstance(state, tuple):
+        if isinstance(state, (list, tuple)):
             clauses.append('standard_buildroot.state IN %(state)s')
         else:
             clauses.append('standard_buildroot.state = %(state)i')
@@ -8975,7 +8978,7 @@ class RootExports(object):
         values = {}
         q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
         if before is not None:
-            if not isinstance(before, list(six.integer_types) + [float]):
+            if not isinstance(before, NUMERIC_TYPES):
                 raise koji.GenericError('invalid type for before: %s' % type(before))
             # use the repr() conversion because it retains more precision than the
             # string conversion
@@ -10502,7 +10505,7 @@ class RootExports(object):
     def getTaskInfo(self, task_id, request=False):
         """Get information about a task"""
         single = True
-        if isinstance(task_id, list) or isinstance(task_id, tuple):
+        if isinstance(task_id, (list, tuple)):
             single = False
         else:
             task_id = [task_id]
@@ -10798,7 +10801,7 @@ class RootExports(object):
                 raise koji.GenericError('arches option cannot be empty')
             # include the regex constraints below so we can match 'ppc' without
             # matching 'ppc64'
-            if not (isinstance(arches, list) or isinstance(arches, tuple)):
+            if not isinstance(arches, (list, tuple)):
                 arches = [arches]
             archClause = [r"""arches ~ E'\\m%s\\M'""" % arch for arch in arches]
             clauses.append('(' + ' OR '.join(archClause) + ')')
@@ -10938,7 +10941,7 @@ class RootExports(object):
                 ts = time.mktime(time.strptime(str(ts), '%Y%m%dT%H:%M:%S'))
             except ValueError:
                 raise koji.GenericError("Invalid time: %s" % ts)
-        elif not isinstance(ts, list(six.integer_types) + [float]):
+        elif not isinstance(ts, NUMERIC_TYPES):
             raise koji.GenericError("Invalid type for timestamp")
         koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
         buildid = buildinfo['id']
@@ -10956,7 +10959,7 @@ class RootExports(object):
         result = getattr(self, methodName)(*args, **kw)
         if result == None:
             return 0
-        elif isinstance(result, list) or isinstance(result, tuple) or isinstance(result, dict):
+        elif isinstance(result, (list, tuple, dict)):
             return len(result)
         else:
             return 1

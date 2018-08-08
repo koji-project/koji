@@ -496,7 +496,7 @@ def filedigestAlgo(hdr):
     return digest_algo.lower()
 
 def parseStatus(rv, prefix):
-    if isinstance(prefix, list) or isinstance(prefix, tuple):
+    if isinstance(prefix, (list, tuple)):
         prefix = ' '.join(prefix)
     if os.WIFSIGNALED(rv):
         return '%s was killed by signal %i' % (prefix, os.WTERMSIG(rv))

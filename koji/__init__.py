@@ -130,7 +130,7 @@ class Enum(dict):
         super(Enum, self).__init__([(value, n) for n, value in enumerate(self._order)])
 
     def __getitem__(self, key):
-        if isinstance(key, int) or isinstance(key, slice):
+        if isinstance(key, (int, slice)):
             return self._order.__getitem__(key)
         else:
             return super(Enum, self).__getitem__(key)
