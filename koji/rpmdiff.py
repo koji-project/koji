@@ -75,19 +75,12 @@ class Rpmdiff:
 
     def __init__(self, old, new, ignore=None):
         self.result = []
-        self.ignore = ignore
         self.old_data = { 'tags': {}, 'ignore': ignore }
         self.new_data = { 'tags': {}, 'ignore': ignore }
-        if self.ignore is None:
-            self.ignore = []
-
-        FILEIDX = self.__FILEIDX
-        for tag in self.ignore:
-            for entry in FILEIDX:
-                if tag == entry[0]:
-                    # store marked position for erasing data
-                    entry[1] = -entry[1]
-                    break
+        if ignore is None:
+            ignore = set()
+        else:
+            ignore = set(ignore)
 
         old = self.__load_pkg(old)
         new = self.__load_pkg(new)
@@ -133,16 +126,16 @@ class Rpmdiff:
                 self.__add(self.FORMAT, (self.REMOVED, f))
             else:
                 format = ''
-                for entry in FILEIDX:
-                    if entry[1] >= 0 and \
-                            old_file[entry[1]] != new_file[entry[1]]:
+                for entry in self.__FILEIDX:
+                    # entry = [character, value]
+                    if entry[0] in ignore:
+                        # erase fields which are ignored
+                        old_file[entry[1]] = None
+                        new_file[entry[1]] = None
+                        format = format + '.'
+                    elif old_file[entry[1]] != new_file[entry[1]]:
                         format = format + entry[0]
                         diff = 1
-                    elif entry[1] < 0:
-                        # erase fields which are ignored
-                        old_file[-entry[1]] = None
-                        new_file[-entry[1]] = None
-                        format = format + '.'
                     else:
                         format = format + '.'
                 if diff:
