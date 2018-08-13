@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 # koji-shadow: a tool to shadow builds between koji instances
 # Copyright (c) 2007-2016 Red Hat, Inc.
