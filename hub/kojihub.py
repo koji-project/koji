@@ -54,6 +54,7 @@ import koji.db
 import koji.plugin
 import koji.policy
 import koji.xmlrpcplus
+import koji.tasks
 from koji.context import context
 from koji.util import dslice
 from koji.util import md5_constructor
@@ -514,18 +515,47 @@ def make_task(method, arglist, **opts):
     if 'channel' in opts:
         policy_data['req_channel'] = opts['channel']
         req_channel_id = get_channel_id(opts['channel'], strict=True)
-    if method == 'build':
-        # arglist = source, target, [opts]
-        args = koji.decode_args2(arglist, ('source', 'target', 'opts'))
-        policy_data['source'] = args['source']
-        if args['target'] is None:
-            #koji-shadow makes null-target builds
-            policy_data['target'] = None
-        else:
-            target = get_build_target(args['target'], strict=True)
-            policy_data['target'] = target['name']
-        t_opts = args.get('opts', {})
+    params = {}
+    try:
+        params = koji.tasks.parse_task_params(method, arglist)
+    except TypeError:
+        logger.warning("%s is not a standard koji task", method)
+    except koji.ParameterError:
+        logger.warning("Cannot parse parameters: %s of %s task", arglist, method)
+    except Exception:
+        logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
+                       arglist, method, exc_info=True)
+    if params:
+        # parameters that indicate source for build
+        for k in ('src', 'spec_url', 'url'):
+            if method == 'newRepo':
+                # newRepo has a 'src' parameter that means something else
+                break
+            if k in params:
+                policy_data['source'] = params.get(k)
+                break
+        # parameters that indicate build target
+        target = None
+        hastarget = False
+        for k in ('target', 'build_target', 'target_info'):
+            if k in params:
+                target = params.get(k)
+                hastarget = True
+                break
+        if hastarget:
+            if target is None:
+                policy_data['target'] = None
+            elif isinstance(target, dict):
+                if 'name' not in target:
+                    hastarget = False
+                    logger.warning("Bad build target parameter: %r", target)
+                else:
+                    target = target.get('name')
+        if hastarget:
+            policy_data['target'] = get_build_target(target, strict=True)['name']
+        t_opts = params.get('opts', {})
         policy_data['scratch'] = t_opts.get('scratch', False)
+
     ruleset = context.policy.get('channel')
     result = ruleset.apply(policy_data)
     if result is None:
