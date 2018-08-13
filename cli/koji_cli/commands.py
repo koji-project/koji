@@ -3474,33 +3474,42 @@ def handle_clone_tag(goptions, session, args):
         if not options.test:
             session.multiCall()
         # DEL packages.
+        ninhrtpdellist = []
+        inhrtpdellist = []
+        for pkg in pdellist:
+            if pkg['tag_name'] == dsttag['name']:
+                ninhrtpdellist.append(pkg)
+            else:
+                inhrtpdellist.append(pkg)
+        session.multicall = True
+        # delete only non-inherited packages.
+        for pkg in ninhrtpdellist:
+            # check if package have owned builds inside.
+            session.listTagged(dsttag['name'], package=pkg['package_name'], inherit=False)
+        bump_builds = session.multiCall()
         if not options.test:
             session.multicall = True
-        for pkg in pdellist:
-            # delete only non-inherited packages.
-            if build['tag_name'] == dsttag['name']:
-                # check if package have owned builds inside.
-                builds = session.listTagged(dsttag['name'], package=pkg['package_name'], inherit=False)
-                #remove all its builds first if there are any.
-                for build in builds:
-                    build['name'] = build['package_name'] #add missing 'name' field.
-                    chgbldlist.append(('[del]', build['package_name'], build['nvr'],
-                                        koji.BUILD_STATES[build['state']],
-                                        build['owner_name'], build['tag_name']))
-                    # so delete latest build(s) from new tag.
-                    if not options.test:
-                        session.untagBuildBypass(dsttag['name'], build, force=options.force)
-                # now safe to remove package itselfm since we resolved its builds.
-                chgpkglist.append(('[del]', pkg['package_name'], pkg['blocked'],
-                                    pkg['owner_name'], pkg['tag_name']))
+        for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
+            #remove all its builds first if there are any.
+            for build in builds:
+                build['name'] = build['package_name'] #add missing 'name' field.
+                chgbldlist.append(('[del]', build['package_name'], build['nvr'],
+                                    koji.BUILD_STATES[build['state']],
+                                    build['owner_name'], build['tag_name']))
+                # so delete latest build(s) from new tag.
                 if not options.test:
-                    session.packageListRemove(dsttag['name'], pkg['package_name'], force=False)
-            # mark as blocked inherited packages.
-            if build['tag_name'] != dsttag['name']:
-                chgpkglist.append(('[blk]', pkg['package_name'], pkg['blocked'],
-                                    pkg['owner_name'], pkg['tag_name']))
-                if not options.test:
-                    session.packageListBlock(dsttag['name'], pkg['package_name'])
+                    session.untagBuildBypass(dsttag['name'], build, force=options.force)
+            # now safe to remove package itselfm since we resolved its builds.
+            chgpkglist.append(('[del]', pkg['package_name'], pkg['blocked'],
+                                pkg['owner_name'], pkg['tag_name']))
+            if not options.test:
+                session.packageListRemove(dsttag['name'], pkg['package_name'], force=False)
+        # mark as blocked inherited packages.
+        for pkg in inhrtpdellist:
+            chgpkglist.append(('[blk]', pkg['package_name'], pkg['blocked'],
+                                pkg['owner_name'], pkg['tag_name']))
+            if not options.test:
+                session.packageListBlock(dsttag['name'], pkg['package_name'])
         if not options.test:
             session.multiCall()
         # DEL groups.
