@@ -9272,7 +9272,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         _tag_build(tag, build, force=force)
         if notify:
-            tag_notification(True, None, tag, build, context.session.user_id)
+            tag_notification(True, tag, None, build, context.session.user_id)
 
     def tagBuild(self, tag, build, force=False, fromtag=None):
         """Request that a build be tagged
