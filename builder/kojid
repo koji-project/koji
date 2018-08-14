@@ -5473,6 +5473,11 @@ class createDistRepoTask(BaseTaskHandler):
                 #       split repos as well
                 oldpkgs.append(path)
 
+        oldrepo = self.session.getRepo(tag, dist=True, state=koji.REPO_READY)
+        oldrepodata = None
+        if oldrepo:
+            oldrepodir = koji.pathinfo.distrepo(oldrepo['id'], tag)
+
         # sort out our package list(s)
         self.uploadpath = self.getUploadDir()
         self.get_rpms(tag, arch, keys, opts)
@@ -5487,13 +5492,17 @@ class createDistRepoTask(BaseTaskHandler):
         self.link_pkgs()
 
         # generate the repodata
+        if oldrepo:
+            oldrepodata = os.path.join(oldrepodir, arch, 'repodata')
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
-                    groupdata, oldpkgs=oldpkgs)
+                    groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata)
         for subrepo in self.subrepos:
+            if oldrepo:
+                oldrepodata = os.path.join(oldrepodir, arch, subrepo, 'repodata')
             self.do_createrepo(
                     '%s/%s' % (self.repodir, subrepo),
                     '%s/%s/pkglist' % (self.repodir, subrepo),
-                    groupdata, oldpkgs=oldpkgs,
+                    groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata,
                     logname='createrepo_%s' % subrepo)
         if len(self.kojipkgs) == 0:
             fn = os.path.join(self.repodir, "repodata", "EMPTY_REPO")
@@ -5543,7 +5552,8 @@ class createDistRepoTask(BaseTaskHandler):
             json.dump(self.repo_files, fp, indent=4)
         self.session.uploadWrapper(fn, self.uploadpath)
 
-    def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None, logname=None):
+    def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None,
+            logname=None, oldrepodata=None):
         """Run createrepo
 
         This is derived from CreaterepoTask.create_local_repo, but adapted to
@@ -5557,7 +5567,20 @@ class createDistRepoTask(BaseTaskHandler):
         cmd.extend(['-vd', '-i', pkglist])
         if groupdata and os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
-        # TODO: can we recycle data (with --update) as in create_local_repo?
+        if pkglist and oldrepodata and self.options.createrepo_update:
+            if not os.path.isdir(oldrepodata):
+                self.logger.warn("old repodata is missing: %s" % oldrepodata)
+            else:
+                datadir = os.path.join(repodir, 'repodata')
+                shutil.copytree(oldrepodata, datadir)
+                oldorigins = os.path.join(datadir, 'pkgorigins.gz')
+                if os.path.isfile(oldorigins):
+                    # remove any previous origins file and rely on mergerepos
+                    # to rewrite it (if we have external repos to merge)
+                    os.unlink(oldorigins)
+                cmd.append('--update')
+                if self.options.createrepo_skip_stat:
+                    cmd.append('--skip-stat')
         if oldpkgs:
             # generate delta-rpms
             cmd.append('--deltas')
