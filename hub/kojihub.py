@@ -543,16 +543,16 @@ def make_task(method, arglist, **opts):
                 hastarget = True
                 break
         if hastarget:
-            if target is None:
-                policy_data['target'] = None
-            elif isinstance(target, dict):
+            if isinstance(target, dict):
                 if 'name' not in target:
-                    hastarget = False
                     logger.warning("Bad build target parameter: %r", target)
+                    target = None
                 else:
                     target = target.get('name')
-        if hastarget:
-            policy_data['target'] = get_build_target(target, strict=True)['name']
+            if target is None:
+                policy_data['target'] = None
+            else:
+                policy_data['target'] = get_build_target(target, strict=True)['name']
         t_opts = params.get('opts', {})
         policy_data['scratch'] = t_opts.get('scratch', False)
 
