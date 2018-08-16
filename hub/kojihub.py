@@ -3661,10 +3661,17 @@ def get_build_logs(build):
 
 
 def get_next_release(build_info):
-    """find the last successful or deleted build of this N-V"""
-    values = {'name': build_info['name'],
-              'version': build_info['version'],
-              'states': (koji.BUILD_STATES['COMPLETE'], koji.BUILD_STATES['DELETED'])}
+    """find the last successful or deleted build of this N-V. If building is
+    specified, skip also builds in progress"""
+    values = {
+                  'name': build_info['name'],
+                  'version': build_info['version'],
+                  'states': (
+                      koji.BUILD_STATES['COMPLETE'],
+                      koji.BUILD_STATES['DELETED'],
+                      koji.BUILD_STATES['BUILDING']
+                  )
+             }
     query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
                            columns=['build.id', 'release'],
                            clauses=['name = %(name)s', 'version = %(version)s',
