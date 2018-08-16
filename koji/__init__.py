@@ -2874,6 +2874,13 @@ def _taskLabel(taskInfo):
             else:
                 module_info = os.path.basename(source)
             extra = '%s, %s' % (target, module_info)
+    elif method in ('indirectionimage',):
+        if 'request' in taskInfo:
+            if len(taskInfo['request']) == 1:
+                module_name = taskInfo['request'][0]['name']
+                module_version = taskInfo['request'][0]['version']
+                module_release = taskInfo['request'][0]['release']
+                extra = '%s, %s, %s' % (module_name, module_version, module_release)
     elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
         if 'request' in taskInfo:
             url = taskInfo['request'][0]
