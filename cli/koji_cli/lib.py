@@ -376,7 +376,11 @@ def watch_logs(session, tasklist, opts, poll_interval):
                                 sys.stdout.write("\n")
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
-                        sys.stdout.write(contents.decode('utf8'))
+                        if six.PY3:
+                            sys.stdout.buffer.write(contents)
+                        else:
+                            sys.stdout.write(contents)
+
 
             if opts.follow:
                 for child in session.getTaskChildren(task_id):
