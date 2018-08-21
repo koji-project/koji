@@ -103,6 +103,8 @@ class BoolTest(BaseSimpleTest):
         else:
             # expected when we are subclassed
             field = self.field
+        if field not in data:
+            return False
         return bool(data[field])
 
 
@@ -126,6 +128,8 @@ class MatchTest(BaseSimpleTest):
         else:
             # expected when we are subclassed
             field = self.field
+        if field not in data:
+            return False
         for pattern in args:
             if fnmatch.fnmatch(data[field], pattern):
                 return True
@@ -176,6 +180,8 @@ class CompareTest(BaseSimpleTest):
             self.value = float(value)
 
     def run(self, data):
+        if self.field not in data:
+            return False
         return self.func(data[self.field], self.value)
 
 
