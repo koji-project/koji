@@ -966,8 +966,11 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         pkg = lookup_package(pkginfo, create=True)
     # validate arches before running callbacks
     extra_arches = koji.parse_arches(extra_arches, strict=True, allow_none=True)
-    koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
-                              block=block, extra_arches=extra_arches, force=force, update=update)
+    user = get_user(context.session.user_id)
+    koji.plugin.run_callbacks('prePackageListChange', action=action,
+                              tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches,
+                              force=force, update=update, user=user)
     # first check to see if package is:
     #   already present (via inheritance)
     #   blocked
@@ -1012,8 +1015,10 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         _pkglist_add(tag_id, pkg['id'], owner, block, extra_arches)
     elif changed_owner:
         _pkglist_owner_add(tag_id, pkg['id'], owner)
-    koji.plugin.run_callbacks('postPackageListChange', action=action, tag=tag, package=pkg, owner=owner,
-                              block=block, extra_arches=extra_arches, force=force, update=update)
+    koji.plugin.run_callbacks('postPackageListChange', action=action,
+                              tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches,
+                              force=force, update=update, user=user)
 
 def pkglist_remove(taginfo, pkginfo, force=False):
     """Remove package from the list for tag
@@ -1036,9 +1041,10 @@ def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
         #don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             assert_policy('package_list', policy_data)
-    koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg)
+    user = get_user(context.session.user_id)
+    koji.plugin.run_callbacks('prePackageListChange', action='remove', tag=tag, package=pkg, user=user)
     _pkglist_remove(tag['id'], pkg['id'])
-    koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg)
+    koji.plugin.run_callbacks('postPackageListChange', action='remove', tag=tag, package=pkg, user=user)
 
 
 def pkglist_block(taginfo, pkginfo, force=False):
@@ -1064,7 +1070,8 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     #don't check policy for admins using force
     if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
-    koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg)
+    user = get_user(context.session.user_id)
+    koji.plugin.run_callbacks('prePackageListChange', action='unblock', tag=tag, package=pkg, user=user)
     tag_id = tag['id']
     pkg_id = pkg['id']
     pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
@@ -1084,7 +1091,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
         pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
         if pkg_id not in pkglist or pkglist[pkg_id]['blocked']:
             _pkglist_add(tag_id, pkg_id, previous['owner_id'], False, previous['extra_arches'])
-    koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg)
+    koji.plugin.run_callbacks('postPackageListChange', action='unblock', tag=tag, package=pkg, user=user)
 
 def pkglist_setowner(taginfo, pkginfo, owner, force=False):
     """Set the owner for package in tag"""

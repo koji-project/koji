@@ -158,7 +158,8 @@ def prep_package_list_change(cbtype, *args, **kws):
     props = {'type': cbtype[4:],
              'tag': kws['tag']['name'],
              'package': kws['package']['name'],
-             'action': kws['action']}
+             'action': kws['action'],
+             'user': kws['user']['name']}
     queue_msg(address, props, kws)
 
 @convert_datetime
