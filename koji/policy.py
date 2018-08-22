@@ -137,6 +137,18 @@ class MatchTest(BaseSimpleTest):
         return False
 
 
+class TargetTest(MatchTest):
+    """Matches target in the data against glob patterns
+
+    True if any of the expressions match, else False
+
+    Syntax:
+        target pattern1 [pattern2 ...]
+    """
+    name = 'target'
+    field = 'target'
+
+
 class CompareTest(BaseSimpleTest):
     """Simple numeric field comparison
 

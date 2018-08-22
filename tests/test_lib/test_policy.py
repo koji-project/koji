@@ -69,6 +69,14 @@ class TestBasicTests(unittest.TestCase):
         self.assertTrue(obj.run({'thing': 'elseplus'}))
         self.assertFalse(obj.run({}))
 
+    def test_target_test(self):
+        obj = koji.policy.TargetTest('target valid')
+        self.assertTrue(obj.run({'target': 'valid'}))
+        self.assertFalse(obj.run({'target': 'else'}))
+        obj = koji.policy.TargetTest('target valid else*')
+        self.assertTrue(obj.run({'target': 'valid'}))
+        self.assertTrue(obj.run({'target': 'elseplus'}))
+
     def test_compare_test(self):
         obj = koji.policy.CompareTest('compare thing > 2')
         self.assertFalse(obj.run({'thing': 1}))
@@ -120,6 +128,7 @@ class TestDiscovery(unittest.TestCase):
             'has': koji.policy.HasTest,
             'match': koji.policy.MatchTest,
             'none': koji.policy.NoneTest,
+            'target': koji.policy.TargetTest,
             'true': koji.policy.TrueTest,
         }
         self.assertDictEqual(expected, actual)
