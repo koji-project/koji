@@ -100,12 +100,16 @@ Configuration
   virtualenv --system-site-packages kojienv
   source kojienv/bin/activate
 
-  # install python requirements via pip, you can also specify exact versions here
-  # three steps are because of EL7 target. packaging is required by setuptools
-  # which are required by other packages. Not working in one transaction
-  pip install pip packaging --upgrade --ignore-installed
-  pip install setuptools --upgrade --ignore-installed
-  pip install nose psycopg2 python-qpid-proton mock coverage python-multilib --upgrade --ignore-installed
+  # install python requirements via pip, you can also specify exact versions
+  here
+  if [ $NODE_NAME == "EL6" ] ; then
+      pip install psycopg2\<2.7 --upgrade --ignore-installed
+  else
+      pip install pip packaging --upgrade --ignore-installed
+      pip install setuptools --upgrade --ignore-installed
+      pip install psycopg2 --upgrade --ignore-installed
+  fi
+  pip install nose python-qpid-proton mock coverage python-multilib Cheetah --upgrade --ignore-installed
   # rehash package to be sure updated versions are used
   hash -r
 
@@ -122,7 +126,7 @@ Configuration
 
   # remove possible coverage output and run tests
   coverage erase
-  PYTHONPATH=hub/.:cli/.:plugins/hub/.:plugins/cli/.:plugins/builder/. nosetests --with-coverage --cover-package .
+  PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:cli/plugins/cli/.:cli/.:www/lib/.  nosetests --with-coverage --cover-package .
   coverage xml --omit 'kojienv/*'
 
   # run additional tests if configured
