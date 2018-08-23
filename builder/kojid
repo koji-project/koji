@@ -2355,7 +2355,7 @@ class BuildBaseImageTask(BuildImageTask):
             # 1 results hash from the subtasks
             if 'kickstart' in opts:
                 saw_ks = False
-                for arch in results.keys():
+                for arch in results:
                     if arch in ignored_arches:
                         continue
                     ks = os.path.basename(opts.get('kickstart'))
@@ -3718,7 +3718,7 @@ class BaseImageTask(OzImageTask):
         if len(formats) == 0:
             # we only want a raw disk image (no format option given)
             f_dict['raw'] = True
-        elif 'raw' not in f_dict.keys():
+        elif 'raw' not in f_dict:
             f_dict['raw'] = False
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
@@ -3784,7 +3784,7 @@ class BaseImageTask(OzImageTask):
             that points to the path of the XML file for that image
         """
         imginfo = {}
-        for fmt in images.keys():
+        for fmt in images:
             imginfo[fmt] = images[fmt]
             lxml = self.fixImageXML(fmt, 'libvirt-%s-%s.xml' % (fmt, self.arch),
                 self.base_img.base_image.parameters['libvirt_xml'])
@@ -4169,7 +4169,7 @@ class BaseImageTask(OzImageTask):
             br.markExternalRPMs(imgdata['rpmlist'])
 
         # upload the results
-        for format in (f for f in self.formats.keys() if self.formats[f]):
+        for format in (f for f in self.formats if self.formats[f]):
             newimg = images[format]['image']
             if ('ova' in format or format in ('raw-xz', 'liveimg-squashfs', 'tar-gz')):
                 newname = self.imgname + '.' + format.replace('-', '.')
