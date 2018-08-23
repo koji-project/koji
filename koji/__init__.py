@@ -921,6 +921,7 @@ def get_header_field(hdr, name, src_arch=False):
             return "nosrc"
         return "src"
 
+    # REMOVED?
     result = _get_header_field(hdr, name)
 
     if name in ("NOSOURCE", "NOPATCH"):

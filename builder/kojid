@@ -23,46 +23,60 @@
 
 from __future__ import absolute_import
 from __future__ import division
-import six
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-import koji
-import koji.plugin
-import koji.rpmdiff
-import koji.util
-import koji.tasks
+
+import Cheetah.Template
+import copy
 import glob
+import grp
 import json
 import logging
 import logging.handlers
-from koji.daemon import incremental_upload, log_output, TaskManager, SCM
-from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
-from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
-import multilib.multilib as multilib
 import os
 import pwd
-import grp
 import random
 import re
 import rpm
 import shutil
 import signal
+import six
+import six.moves.xmlrpc_client
 import smtplib
 import socket
 import sys
 import time
 import traceback
 import xml.dom.minidom
-import six.moves.xmlrpc_client
 import zipfile
-import copy
-import Cheetah.Template
 from six.moves.configparser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
+
+from multilib import multilib
+import koji
+import koji.plugin
+import koji.rpmdiff
+import koji.util
+import koji.tasks
+from koji.daemon import incremental_upload, log_output, TaskManager, SCM
+from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
+from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
+
+try:
+    import krbV
+except ImportError:  # pragma: no cover
+    krbV = None
+
+try:
+    import librepo
+    import io
+except ImportError:
+    librepo = None
+
+try:
+    import dnf
+except ImportError:
+    dnf = None
 
 try:
     # yum
@@ -72,13 +86,9 @@ try:
     import yum.Errors
     yum_available = True
 except ImportError:
-    import dnf
-    import io
-    import librepo
     yum_available = False
 
 # imports for LiveCD, LiveMedia, and Appliance handler
-image_enabled = False
 try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
@@ -86,9 +96,8 @@ try:
     import iso9660 # from pycdio
     image_enabled = True
 except ImportError:  # pragma: no cover
-    pass
+    image_enabled = False
 
-ozif_enabled = False
 try:
     from imgfac.BuildDispatcher import BuildDispatcher
     from imgfac.Builder import Builder
@@ -104,7 +113,7 @@ try:
     from imgfac.FactoryUtils import qemu_convert_cmd
     ozif_enabled = True
 except ImportError:  # pragma: no cover
-    pass
+    ozif_enabled = False
 
 def main(options, session):
     logger = logging.getLogger("koji.build")
