@@ -72,6 +72,9 @@ try:
     import yum.Errors
     yum_available = True
 except ImportError:
+    import dnf
+    import io
+    import librepo
     yum_available = False
 
 # imports for LiveCD, LiveMedia, and Appliance handler
@@ -708,34 +711,53 @@ class BuildRoot(object):
             ext_url = erepo['url'].replace('$arch', self.br_arch)
             erepo_idx[ext_url] = erepo
         pathinfo = koji.PathInfo(topdir='')
-        #XXX - cheap hack to get relative paths
-        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
-        repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
 
+        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
         opts['tempdir'] = self.options.workdir
-        fo = koji.openRemoteFile(repomdpath, **opts)
-        try:
-            repodata = repoMDObject.RepoMD('ourrepo', fo)
-        except:
-            raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
-        data  = repodata.getData('origin')
-        pkgorigins  = data.location[1]
+
+        # prefer librepo
+        if not yum_available:
+            repo_url = os.path.join(repodir, self.br_arch)
+            # repo_url can start with '/', don't use os.path.join
+            if self.options.topurl:
+                repo_url = '%s/%s' % (self.options.topurl, repo_url)
+            elif self.options.topdir:
+                repo_url = '%s/%s' % (self.options.topdir, repo_url)
+            logging.error(repo_url)
+            # TODO: ?workdir
+            h = librepo.Handle()
+            r = librepo.Result()
+            h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
+            h.setopt(librepo.LRO_URLS, [repo_url])
+            h.perform(r)
+            pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
+        else:
+            #XXX - cheap hack to get relative paths
+            repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
+            fo = koji.openRemoteFile(repomdpath, **opts)
+            try:
+                repodata = repoMDObject.RepoMD('ourrepo', fo)
+            except:
+                raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
+            data  = repodata.getData('origin')
+            pkgorigins  = data.location[1]
 
         relpath = os.path.join(repodir, self.br_arch, pkgorigins)
         fo = koji.openRemoteFile(relpath, **opts)
         #at this point we know there were external repos at the create event,
         #so there should be an origins file.
         origin_idx = {}
-        fo2 = GzipFile(fileobj=fo, mode='r')
-        for line in fo2:
-            parts=line.split(None, 2)
-            if len(parts) < 2:
-                continue
-            #first field is formated by yum as [e:]n-v-r.a
-            nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
-            origin_idx[nvra] = parts[1]
-        fo2.close()
+        with GzipFile(fileobj=fo, mode='r') as fo2:
+            if six.PY3:
+                fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
+            for line in fo2:
+                parts=line.split(None, 2)
+                if len(parts) < 2:
+                    continue
+                #first field is formated by yum as [e:]n-v-r.a
+                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
+                origin_idx[nvra] = parts[1]
         fo.close()
         # mergerepo starts from a local repo in the task workdir, so internal
         # rpms have an odd-looking origin that we need to look for
@@ -1036,6 +1058,10 @@ class BuildTask(BaseTaskHandler):
         buildarchs = h[rpm.RPMTAG_BUILDARCHS]
         exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
         excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+        if six.PY3:
+            buildarchs = [a.decode() for a in buildarchs]
+            exclusivearch = [a.decode() for a in exclusivearch]
+            excludearch = [a.decode() for a in excludearch]
         if buildarchs:
             archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
@@ -1248,7 +1274,7 @@ class BuildArchTask(BaseBuildTask):
             raise koji.BuildError("SRPM file missing: %s" % fn)
         # peel E:N-V-R from package
         h = koji.get_rpm_header(fn)
-        name = h[rpm.RPMTAG_NAME]
+        name = str(h[rpm.RPMTAG_NAME])
         if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
             raise koji.BuildError("not a source package")
         # Disable checking for distribution in the initial SRPM because it

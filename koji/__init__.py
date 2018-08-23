@@ -2692,6 +2692,11 @@ class ClientSession(object):
             ("Content-length", str(size)),
         ]
         request = chunk
+        if six.PY3 and isinstance(chunk, str):
+            request = chunk.encode('utf-8')
+        else:
+            # py2 or bytes
+            request = chunk
         return handler, headers, request
 
     def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True, volume=None):

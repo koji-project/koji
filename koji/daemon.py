@@ -122,7 +122,10 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             if logerror:
                 os.dup2(fd, 2)
             # echo the command we're running into the logfile
-            os.write(fd, '$ %s\n' % ' '.join(args))
+            msg = '$ %s\n' % ' '.join(args)
+            if six.PY3:
+                msg = msg.encode('utf-8')
+            os.write(fd, msg)
             environ = os.environ.copy()
             if env:
                 environ.update(env)
@@ -131,7 +134,10 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             msg = ''.join(traceback.format_exception(*sys.exc_info()))
             if fd:
                 try:
-                    os.write(fd, msg)
+                    if six.PY3:
+                        os.write(fs, msg.encode('utf-8'))
+                    else:
+                        os.write(fd, msg)
                     os.close(fd)
                 except:
                     pass
@@ -893,7 +899,7 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail) - 1) // 2]
+                median = bin_avail[int((len(bin_avail) - 1) // 2)]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     if self.checkAvailDelay(task):
@@ -944,7 +950,7 @@ class TaskManager(object):
         Check our available capacity against the capacity of other hosts in this bin.
         Return True if we should take a task, False otherwise.
         """
-        median = bin_avail[(len(bin_avail)-1)//2]
+        median = bin_avail[int((len(bin_avail) - 1) // 2)]
         self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
         if avail >= median:
             return True

@@ -479,10 +479,9 @@ class BaseTaskHandler(object):
             fsrc = six.moves.urllib.request.urlopen(url)
             if not os.path.exists(os.path.dirname(fn)):
                 os.makedirs(os.path.dirname(fn))
-            fdst = open(fn, 'w')
-            shutil.copyfileobj(fsrc, fdst)
+            with open(fn, 'wb') as fdst:
+                shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
-            fdst.close()
         else:
             fn = "%s/%s" % (self.options.topdir, relpath)
         return fn
