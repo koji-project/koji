@@ -311,6 +311,7 @@ Utilities for the Koji system
 Summary: Koji Web UI
 Group: Applications/Internet
 License: LGPLv2
+%{?python_provide:%python_provide python2-%{name}-web}
 Requires: httpd
 Requires: mod_wsgi
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
@@ -320,7 +321,7 @@ Requires: mod_auth_kerb
 Requires: python-krbV >= 1.0.13
 %endif
 Requires: python-psycopg2
-Requires: python2-cheetah
+Requires: python-cheetah
 # we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 
@@ -332,6 +333,7 @@ koji-web is a web UI to the Koji system.
 Summary: Koji Web UI
 Group: Applications/Internet
 License: LGPLv2
+%{?python_provide:%python_provide python%{python3_pkgversion}-%{name}-web}
 Requires: httpd
 Requires: python%{python3_pkgversion}-mod_wsgi
 Requires: mod_auth_gssapi
