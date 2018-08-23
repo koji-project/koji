@@ -3252,7 +3252,7 @@ def get_external_repo_id(info, strict=False, create=False):
     """Get the id for a build target"""
     return get_id('external_repo', info, strict, create)
 
-def create_external_repo(name, url):
+def create_external_repo(name, url, merge_mode='koji'):
     """Create a new external repo with the given name and url.
     Return a map containing the id, name, and url
     of the new repo."""
@@ -3262,13 +3262,16 @@ def create_external_repo(name, url):
     if get_external_repos(info=name):
         raise koji.GenericError('An external repo named "%s" already exists' % name)
 
+    if merge_mode not in koji.REPO_MERGE_MODES:
+        raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
+
     id = get_external_repo_id(name, create=True)
     if not url.endswith('/'):
         # Ensure the url always ends with /
         url += '/'
-    values = {'id': id, 'name': name, 'url': url}
+    values = {'id': id, 'name': name, 'url': url, 'merge_mode': merge_mode}
     insert = InsertProcessor('external_repo_config')
-    insert.set(external_repo_id=id, url=url)
+    insert.set(external_repo_id=id, url=url, merge_mode=merge_mode)
     insert.make_create()
     insert.execute()
     return values
@@ -3278,7 +3281,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     string (name) or an integer (id).
     If url is not None, filter the list of repos to those matching the
     given url."""
-    fields = ['id', 'name', 'url']
+    fields = ['id', 'name', 'url', 'merge_mode']
     tables = ['external_repo']
     joins = ['external_repo_config ON external_repo_id = id']
     clauses = [eventCondition(event)]
@@ -3312,7 +3315,7 @@ def get_external_repo(info, strict=False, event=None):
         else:
             return None
 
-def edit_external_repo(info, name=None, url=None):
+def edit_external_repo(info, name=None, url=None, merge_mode=None):
     """Edit an existing external repo"""
 
     context.session.assertPerm('admin')
@@ -3320,6 +3323,20 @@ def edit_external_repo(info, name=None, url=None):
     repo = get_external_repo(info, strict=True)
     repo_id = repo['id']
 
+    # check repo changes
+    changes = {}
+    if url and url != repo['url']:
+        if not url.endswith('/'):
+            # Ensure the url always ends with /
+            url += '/'
+        changes['url'] = url
+    if merge_mode is not None:
+        if merge_mode not in koji.REPO_MERGE_MODES:
+            raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
+        if merge_mode != repo['merge_mode']:
+            changes['merge_mode'] = merge_mode
+
+    # deal with renames
     if name and name != repo['name']:
         existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
                                    locals(), strict=False)
@@ -3329,17 +3346,17 @@ def edit_external_repo(info, name=None, url=None):
         rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
         _dml(rename, locals())
 
-    if url and url != repo['url']:
-        if not url.endswith('/'):
-            # Ensure the url always ends with /
-            url += '/'
-
+    # apply changes
+    if changes:
         update = UpdateProcessor('external_repo_config', values=locals(),
                     clauses=['external_repo_id = %(repo_id)i'])
         update.make_revoke()
 
+        data = dslice(repo, ['url', 'merge_mode'])
+        data['external_repo_id'] = repo['id']
+        data.update(changes)
         insert = InsertProcessor('external_repo_config')
-        insert.set(external_repo_id=repo_id, url=url)
+        insert.set(**data)
         insert.make_create()
 
         update.execute()
@@ -3435,14 +3452,23 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     external_repo_id
     external_repo_name
     url
+    merge_mode
     priority
     """
     tables = ['tag_external_repos']
     joins = ['tag ON tag_external_repos.tag_id = tag.id',
              'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
              'external_repo_config ON external_repo.id = external_repo_config.external_repo_id']
-    columns = ['tag.id', 'tag.name', 'external_repo.id', 'external_repo.name', 'url', 'priority']
-    aliases = ['tag_id', 'tag_name', 'external_repo_id', 'external_repo_name', 'url', 'priority']
+    fields = {
+            'external_repo.id': 'external_repo_id',
+            'external_repo.name': 'external_repo_name',
+            'priority': 'priority',
+            'tag.id': 'tag_id',
+            'tag.name': 'tag_name',
+            'url': 'url',
+            'merge_mode': 'merge_mode',
+            }
+    columns, aliases = zip(*fields.items())
 
     clauses = [eventCondition(event, table='tag_external_repos'), eventCondition(event, table='external_repo_config')]
     if tag_info:
@@ -3474,6 +3500,7 @@ def get_external_repo_list(tag_info, event=None):
     external_repo_id
     external_repo_name
     url
+    merge_mode
     priority
     """
     tag = get_tag(tag_info, strict=True, event=event)
@@ -6722,7 +6749,7 @@ def query_history(tables=None, **kwargs):
         'tag_config': ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
         'tag_extra': ['tag_id', 'key', 'value'],
         'build_target_config': ['build_target_id', 'build_tag', 'dest_tag'],
-        'external_repo_config': ['external_repo_id', 'url'],
+        'external_repo_config': ['external_repo_id', 'url', 'merge_mode'],
         'host_config': ['host_id', 'arches', 'capacity', 'description', 'comment', 'enabled'],
         'host_channels': ['host_id', 'channel_id'],
         'tag_external_repos': ['tag_id', 'external_repo_id', 'priority'],
