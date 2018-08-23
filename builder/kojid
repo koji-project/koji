@@ -611,7 +611,7 @@ class BuildRoot(object):
         try:
             ts = rpm.TransactionSet()
             for h in ts.dbMatch():
-                pkg = koji.get_header_fields(h,fields)
+                pkg = koji.get_header_fields(h, fields)
                 #skip our fake packages
                 if pkg['name'] in ['buildsys-build', 'gpg-pubkey']:
                     #XXX config
@@ -712,7 +712,7 @@ class BuildRoot(object):
 
         repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
-        opts['tempdir'] = self.workdir
+        opts['tempdir'] = self.options.workdir
 
         # prefer librepo
         if not yum_available:
@@ -723,41 +723,42 @@ class BuildRoot(object):
             elif self.options.topdir:
                 repo_url = '%s/%s' % (self.options.topdir, repo_url)
             logging.error(repo_url)
-            # TODO: ?workdir
+            tmpdir = os.path.join(self.options.workdir, 'librepo-markExternalRPMs')
+            koji.ensuredir(tmpdir)
             h = librepo.Handle()
             r = librepo.Result()
             h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
             h.setopt(librepo.LRO_URLS, [repo_url])
-            h.setopt(librepo.LRO_DESTDIR, self.workdir)
+            h.setopt(librepo.LRO_DESTDIR, tmpdir)
             h.perform(r)
             pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
+            koji.util.rmtree(tmpdir)
         else:
             #XXX - cheap hack to get relative paths
             repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
-            fo = koji.openRemoteFile(repomdpath, **opts)
-            try:
-                repodata = repoMDObject.RepoMD('ourrepo', fo)
-            except:
-                raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
+            with koji.openRemoteFile(repomdpath, **opts) as fo:
+                try:
+                    repodata = repoMDObject.RepoMD('ourrepo', fo)
+                except:
+                    raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
             data  = repodata.getData('origin')
             pkgorigins  = data.location[1]
 
         relpath = os.path.join(repodir, self.br_arch, pkgorigins)
-        fo = koji.openRemoteFile(relpath, **opts)
-        #at this point we know there were external repos at the create event,
-        #so there should be an origins file.
-        origin_idx = {}
-        with GzipFile(fileobj=fo, mode='r') as fo2:
-            if six.PY3:
-                fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
-            for line in fo2:
-                parts=line.split(None, 2)
-                if len(parts) < 2:
-                    continue
-                #first field is formated by yum as [e:]n-v-r.a
-                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
-                origin_idx[nvra] = parts[1]
-        fo.close()
+        with koji.openRemoteFile(relpath, **opts) as fo:
+            #at this point we know there were external repos at the create event,
+            #so there should be an origins file.
+            origin_idx = {}
+            with GzipFile(fileobj=fo, mode='r') as fo2:
+                if six.PY3:
+                    fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
+                for line in fo2:
+                    parts=line.split(None, 2)
+                    if len(parts) < 2:
+                        continue
+                    #first field is formated by yum as [e:]n-v-r.a
+                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
+                    origin_idx[nvra] = parts[1]
         # mergerepo starts from a local repo in the task workdir, so internal
         # rpms have an odd-looking origin that we need to look for
         localtail = '/repo_%s_premerge/' % self.repo_info['id']
@@ -948,7 +949,7 @@ class BuildTask(BaseTaskHandler):
             self.event_id = self.session.getLastEvent()['id']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
-        data = koji.get_header_fields(h,['name','version','release','epoch'])
+        data = koji.get_header_fields(h, ['name','version','release','epoch'])
         data['task_id'] = self.id
         if getattr(self, 'source', False):
             data['source'] = self.source['source']
@@ -1032,10 +1033,9 @@ class BuildTask(BaseTaskHandler):
         relpath = "work/%s" % srpm
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
         opts['tempdir'] = self.workdir
-        fo = koji.openRemoteFile(relpath, **opts)
-        h = koji.get_rpm_header(fo)
-        fo.close()
-        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+        with koji.openRemoteFile(relpath, **opts) as fo:
+            h = koji.get_rpm_header(fo)
+        if not koji.get_header_field(h, 'sourcepackage'):
             raise koji.BuildError("%s is not a source package" % srpm)
         return h
 
@@ -1054,13 +1054,9 @@ class BuildTask(BaseTaskHandler):
         archlist = arches.split()
         self.logger.debug('base archlist: %r' % archlist)
         # - adjust arch list based on srpm macros
-        buildarchs = h[rpm.RPMTAG_BUILDARCHS]
-        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
-        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
-        if six.PY3:
-            buildarchs = [a.decode() for a in buildarchs]
-            exclusivearch = [a.decode() for a in exclusivearch]
-            excludearch = [a.decode() for a in excludearch]
+        buildarchs = koji.get_header_field(h, 'buildarchs')
+        exclusivearch = koji.get_header_field(h, 'exclusivearch')
+        excludearch = koji.get_header_field(h, 'excludearch')
         if buildarchs:
             archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
@@ -1101,8 +1097,8 @@ class BuildTask(BaseTaskHandler):
         # see https://pagure.io/koji/issue/19
 
         h = self.readSRPMHeader(srpm)
-        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
-        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+        exclusivearch = koji.get_header_field(h, 'exclusivearch')
+        excludearch = koji.get_header_field(h, 'excludearch')
 
         if exclusivearch or excludearch:
             # if one of the tag arches is filtered out, then we can't use a
@@ -1246,13 +1242,13 @@ class BuildArchTask(BaseBuildTask):
         return self.checkHostArch(tag, hostdata)
 
     def srpm_sanity_checks(self, filename):
-        header = koji.get_rpm_header(filename)
+        h_fields = koji.get_header_fields(filename, ['packager', 'vendor', 'distribution'])
 
-        if not header[rpm.RPMTAG_PACKAGER]:
+        if not h_fields['packager']:
             raise koji.BuildError("The build system failed to set the packager tag")
-        if not header[rpm.RPMTAG_VENDOR]:
+        if not h_fields['vendor']:
             raise koji.BuildError("The build system failed to set the vendor tag")
-        if not header[rpm.RPMTAG_DISTRIBUTION]:
+        if not h_fields['distribution']:
             raise koji.BuildError("The build system failed to set the distribution tag")
 
     def handler(self, pkg, root, arch, keep_srpm, opts=None):
@@ -1273,12 +1269,12 @@ class BuildArchTask(BaseBuildTask):
             raise koji.BuildError("SRPM file missing: %s" % fn)
         # peel E:N-V-R from package
         h = koji.get_rpm_header(fn)
-        name = str(h[rpm.RPMTAG_NAME])
-        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+        name = koji.get_header_field(h, 'name')
+        if koji.get_header_field('sourcepackage'):
             raise koji.BuildError("not a source package")
         # Disable checking for distribution in the initial SRPM because it
         # might have been built outside of the build system
-        # if not h[rpm.RPMTAG_DISTRIBUTION]:
+        # if not koji.get_header_field(h, 'distribution'):
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
 
         self.updateWeight(name)
@@ -3466,10 +3462,10 @@ class OzImageTask(BaseTaskHandler):
         else:
             tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
             tops['tempdir'] = self.workdir
-            ks_src = koji.openRemoteFile(ksfile, **tops)
-            kspath = os.path.join(self.workdir, os.path.basename(ksfile))
-            with open(kspath, 'w') as ks_dest:
-                ks_dest.write(ks_src.read())
+            with koji.openRemoteFile(ksfile, **tops) as ks_src:
+                kspath = os.path.join(self.workdir, os.path.basename(ksfile))
+                with open(kspath, 'w') as ks_dest:
+                    ks_dest.write(ks_src.read())
         self.logger.debug('uploading kickstart from here: %s' % kspath)
         self.uploadFile(kspath) # upload the original ks file
         return kspath # absolute path to the ks file
@@ -4275,10 +4271,10 @@ class BuildIndirectionImageTask(OzImageTask):
         else:
             tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
             tops['tempdir'] = self.workdir
-            remote_fileobj = koji.openRemoteFile(filepath, **tops)
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
-            with open(final_path, 'w') as final_fileobj:
-                final_fileobj.write(remote_fileobj.read())
+            with koji.openRemoteFile(filepath, **tops) as remote_fileobj:
+                with open(final_path, 'w') as final_fileobj:
+                    shutil.copyfileobj(remote_fileobj, final_fileobj)
         self.logger.debug('uploading retrieved file from here: %s' % final_path)
         self.uploadFile(final_path) # upload the original ks file
         return final_path # absolute path to the ks file
@@ -4656,9 +4652,9 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
 
         # check srpm name
         h = koji.get_rpm_header(srpm)
-        name = h[rpm.RPMTAG_NAME]
-        version = h[rpm.RPMTAG_VERSION]
-        release = h[rpm.RPMTAG_RELEASE]
+        name = koji.get_header_field(h, 'name')
+        version = koji.get_header_field(h, 'version')
+        release = koji.get_header_field(h, 'release')
         srpm_name = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
         if srpm_name != os.path.basename(srpm):
             raise koji.BuildError('srpm name mismatch: %s != %s' % (srpm_name, os.path.basename(srpm)))
