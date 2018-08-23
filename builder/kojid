@@ -47,7 +47,6 @@ import grp
 import random
 import re
 import rpm
-import rpmUtils.arch
 import shutil
 import signal
 import smtplib
@@ -64,11 +63,18 @@ from six.moves.configparser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
-from yum import repoMDObject
-import yum.packages
-import yum.Errors
 
-#imports for LiveCD, LiveMedia, and Appliance handler
+try:
+    # yum
+    import rpmUtils.arch
+    from yum import repoMDObject
+    import yum.packages
+    import yum.Errors
+    yum_available = True
+except ImportError:
+    yum_available = False
+
+# imports for LiveCD, LiveMedia, and Appliance handler
 image_enabled = False
 try:
     import pykickstart.parser as ksparser

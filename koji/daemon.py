@@ -31,7 +31,6 @@ from koji.util import md5_constructor, adler32_constructor, parseStatus, \
 import os
 import signal
 import logging
-from six.moves import urllib
 from fnmatch import fnmatch
 import base64
 import time
@@ -40,6 +39,7 @@ import sys
 import traceback
 import errno
 from six.moves import range
+from six.moves import urllib
 import six
 
 
@@ -588,7 +588,7 @@ class TaskManager(object):
 
     def shutdown(self):
         """Attempt to shut down cleanly"""
-        for task_id in self.pids.keys():
+        for task_id in self.pids:
             self.cleanupTask(task_id)
         self.session.host.freeTasks(to_list(self.tasks.keys()))
         self.session.host.updateHost(task_load=0.0, ready=False)
@@ -628,7 +628,7 @@ class TaskManager(object):
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in six.iterkeys(local_br) if id not in db_br]
+        local_only = [id for id in local_br if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -860,7 +860,7 @@ class TaskManager(object):
             # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
-        for bin in six.iterkeys(bins):
+        for bin in bins:
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
             avail[bin].sort()
             avail[bin].reverse()

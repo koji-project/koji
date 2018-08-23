@@ -19,21 +19,24 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
-
 from __future__ import absolute_import
+
+import logging
+import os
+import pprint
+import random
+import shutil
+import signal
+import time
+
+import six.moves.xmlrpc_client
+import six.moves.urllib.request
+from six.moves import range
+
 import koji
 import koji.plugin
 import koji.util
-import os
-import logging
-import six.moves.xmlrpc_client
-import signal
-import shutil
-import random
-import time
-import pprint
-import six.moves.urllib.request
-from six.moves import range
+
 
 def scan_mounts(topdir):
     """Search path for mountpoints"""
