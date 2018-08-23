@@ -714,7 +714,7 @@ class BuildRoot(object):
 
         repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
-        opts['tempdir'] = self.options.workdir
+        opts['tempdir'] = self.workdir
 
         # prefer librepo
         if not yum_available:
@@ -730,6 +730,7 @@ class BuildRoot(object):
             r = librepo.Result()
             h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
             h.setopt(librepo.LRO_URLS, [repo_url])
+            h.setopt(librepo.LRO_DESTDIR, self.workdir)
             h.perform(r)
             pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
         else:
