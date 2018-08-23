@@ -1244,9 +1244,6 @@ class BuildArchTask(BaseBuildTask):
         # peel E:N-V-R from package
         h = koji.get_rpm_header(fn)
         name = h[rpm.RPMTAG_NAME]
-        ver = h[rpm.RPMTAG_VERSION]
-        rel = h[rpm.RPMTAG_RELEASE]
-        epoch = h[rpm.RPMTAG_EPOCH]
         if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
             raise koji.BuildError("not a source package")
         # Disable checking for distribution in the initial SRPM because it
@@ -1959,8 +1956,8 @@ class WrapperRPMTask(BaseBuildTask):
             raise koji.BuildError('no rpms found')
 
         try:
-            for rpm in [srpm] + rpms:
-                self.uploadFile(os.path.join(resultdir, rpm))
+            for rpm_fn in [srpm] + rpms:
+                self.uploadFile(os.path.join(resultdir, rpm_fn))
         except (SystemExit, ServerExit, KeyboardInterrupt):
             raise
         except:
@@ -2228,8 +2225,8 @@ class TagBuildTask(BaseTaskHandler):
         task = self.session.getTaskInfo(self.id)
         user_id = task['owner']
         try:
-            build = self.session.getBuild(build_id, strict=True)
-            tag = self.session.getTag(tag_id, strict=True)
+            self.session.getBuild(build_id, strict=True)
+            self.session.getTag(tag_id, strict=True)
 
             #several basic sanity checks have already been run (and will be run
             #again when we make the final call). Our job is to perform the more
@@ -2337,7 +2334,6 @@ class BuildBaseImageTask(BuildImageTask):
                         ignored_arches.add(arch)
 
             # wrap in an RPM if asked
-            rpm_results = None
             spec_url = opts.get('specfile')
             for arch in arches:
                 # get around an xmlrpc limitation, use arches for keys instead
@@ -2442,7 +2438,6 @@ class BuildApplianceTask(BuildImageTask):
             self.logger.info('results: %s' % results)
 
             # wrap in an RPM if asked
-            rpm_results = None
             spec_url = opts.get('specfile')
             if spec_url:
                 results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
@@ -2528,7 +2523,6 @@ class BuildLiveCDTask(BuildImageTask):
 
             # wrap in an RPM if needed
             spec_url = opts.get('specfile')
-            rpm_results = None
             if spec_url:
                 results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
                     spec_url, create_task_id,
@@ -4141,8 +4135,8 @@ class BaseImageTask(OzImageTask):
         }
         # record the RPMs that were installed
         if not opts.get('scratch'):
-            fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
-                'payloadhash', 'buildtime')
+            #fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
+            #    'payloadhash', 'buildtime')
             icicle = xml.dom.minidom.parseString(images['raw']['icicle'])
             self.logger.debug('ICICLE: %s' % images['raw']['icicle'])
             for p in icicle.getElementsByTagName('extra'):
@@ -4386,8 +4380,6 @@ class BuildIndirectionImageTask(OzImageTask):
 
         # TODO: Copy-paste from BaseImage - refactor
         target_info = self.session.getBuildTarget(opts['target'], strict=True)
-        build_tag = target_info['build_tag']
-        repo_info = self.getRepo(build_tag)
 
         name = opts['name']
         version = opts['version']
