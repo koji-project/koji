@@ -450,6 +450,7 @@ INSERT INTO external_repo (id, name) VALUES (0, 'INTERNAL');
 create table external_repo_config (
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	url TEXT NOT NULL,
+        merge_mode TEXT DEFAULT 'koji',
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
