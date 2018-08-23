@@ -268,9 +268,8 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
-        fo = open(configfile,'w')
-        fo.write(output)
-        fo.close()
+        with open(configfile,'w') as fo:
+            fo.write(output)
 
     def _repositoryEntries(self, pi, plugin=False):
         entries = []
@@ -368,9 +367,8 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        fo = open(self.rootdir() + destfile, 'w')
-        fo.write(settings)
-        fo.close()
+        with open(self.rootdir() + destfile, 'w') as fo
+            fo.write(settings)
 
     def mock(self, args):
         """Run mock"""
@@ -1899,9 +1897,8 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        specfd = open(specfile, 'w')
-        specfd.write(contents)
-        specfd.close()
+        with open(specfile, 'w') as specfd:
+            specfd.write(contents)
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
         self.spec_sanity_checks(specfile)
@@ -2886,9 +2883,8 @@ class ImageTask(BaseTaskHandler):
         kskoji = os.path.join(broot.tmpdir(), 'koji-image-%s-%i.ks' %
                               (target_info['build_tag_name'], self.id))
         koji.ensuredir(broot.tmpdir())
-        outfile = open(kskoji, 'w')
-        outfile.write(str(self.ks.handler))
-        outfile.close()
+        with open(kskoji, 'w') as outfile:
+            outfile.write(str(self.ks.handler))
 
         # put the new ksfile in the output directory
         if not os.path.exists(kskoji):
@@ -3472,9 +3468,8 @@ class OzImageTask(BaseTaskHandler):
             tops['tempdir'] = self.workdir
             ks_src = koji.openRemoteFile(ksfile, **tops)
             kspath = os.path.join(self.workdir, os.path.basename(ksfile))
-            ks_dest = open(kspath, 'w')
-            ks_dest.write(ks_src.read())
-            ks_dest.close()
+            with open(kspath, 'w') as ks_dest:
+                ks_dest.write(ks_src.read())
         self.logger.debug('uploading kickstart from here: %s' % kspath)
         self.uploadFile(kspath) # upload the original ks file
         return kspath # absolute path to the ks file
@@ -3560,9 +3555,8 @@ class OzImageTask(BaseTaskHandler):
             an absolute path to the kickstart file we wrote
         """
         kspath = os.path.join(self.workdir, ksname)
-        outfile = open(kspath, 'w')
-        outfile.write(str(ksobj.handler))
-        outfile.close()
+        with open(kspath, 'w') as outfile:
+            outfile.write(str(ksobj.handler))
 
         # put the new ksfile in the output directory
         if not os.path.exists(kspath):
@@ -3694,9 +3688,8 @@ class OzImageTask(BaseTaskHandler):
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
         xml_path = os.path.join(self.workdir, filename)
-        xmlfd = open(xml_path, 'w')
-        xmlfd.write(newxml.toprettyxml())
-        xmlfd.close()
+        with open(xml_path, 'w') as xmlfd:
+            xmlfd.write(newxml.toprettyxml())
         return xml_path
 
     def getScreenshot(self):
@@ -4134,9 +4127,8 @@ class BaseImageTask(OzImageTask):
         ApplicationConfiguration(configuration=config)
 
         tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % self.arch)
-        tdl = open(tdl_path, 'w')
-        tdl.write(template)
-        tdl.close()
+        with open(tdl_path, 'w') as tdl:
+            tdl.write(template)
         self.uploadFile(tdl_path)
 
         # ImageFactory picks a port to the guest VM using a rolling integer.
@@ -4285,9 +4277,8 @@ class BuildIndirectionImageTask(OzImageTask):
             tops['tempdir'] = self.workdir
             remote_fileobj = koji.openRemoteFile(filepath, **tops)
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
-            final_fileobj = open(final_path, 'w')
-            final_fileobj.write(remote_fileobj.read())
-            final_fileobj.close()
+            with open(final_path, 'w') as final_fileobj:
+                final_fileobj.write(remote_fileobj.read())
         self.logger.debug('uploading retrieved file from here: %s' % final_path)
         self.uploadFile(final_path) # upload the original ks file
         return final_path # absolute path to the ks file
@@ -4495,8 +4486,8 @@ class BuildIndirectionImageTask(OzImageTask):
                     pim = PersistentImageManager.default_manager()
                     pim.add_image(target_image)
                     target.target_image = target_image
-                    open(target_image.data, "w").write("Mock build from task ID: %s" %
-                                                 (str(self.id)))
+                    with open(target_image.data, "w") as f:
+                        f.write("Mock build from task ID: %s" % self.id)
                     target_image.status='COMPLETE'
                 else:
                     target = bd.builder_for_target_image('indirection',
@@ -5069,9 +5060,8 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
-            fo.write("This repo is empty because its tag has no content for this arch\n")
-            fo.close()
+            with open(os.path.join(self.datadir, "EMPTY_REPO"), 'w') as fo:
+                fo.write("This repo is empty because its tag has no content for this arch\n")
 
         uploadpath = self.getUploadDir()
         files = []
@@ -5452,9 +5442,8 @@ enabled=1
 
         # step 3: proceed with yum config and set up
         yconfig_path = os.path.join(yumdir, 'yum.conf-koji-%s' % arch)
-        f = open(yconfig_path, 'w')
-        f.write(yconfig)
-        f.close()
+        with open(yconfig_path, 'w') as f:
+            f.write(yconfig)
         self.session.uploadWrapper(yconfig_path, self.uploadpath,
             os.path.basename(yconfig_path))
         yumbase.doConfigSetup(fn=yconfig_path)
@@ -5491,12 +5480,11 @@ enabled=1
             raise koji.GenericError(errors)
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_multilib.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('The following multilib files were missing:\n')
-            for ml_path in fs_missing:
-                outfile.write(ml_path)
-                outfile.write('\n')
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('The following multilib files were missing:\n')
+                for ml_path in fs_missing:
+                    outfile.write(ml_path)
+                    outfile.write('\n')
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('multilib packages missing. '
                     'See missing_multilib.log')
@@ -5594,33 +5582,31 @@ enabled=1
         # report problems
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_files.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('Some rpm files were missing.\n'
-                'Most likely, you want to create these signed copies.\n\n'
-                'Missing files:\n')
-            for pkgpath in sorted(fs_missing):
-                outfile.write(pkgpath)
-                outfile.write('\n')
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('Some rpm files were missing.\n'
+                    'Most likely, you want to create these signed copies.\n\n'
+                    'Missing files:\n')
+                for pkgpath in sorted(fs_missing):
+                    outfile.write(pkgpath)
+                    outfile.write('\n')
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('Packages missing from the filesystem. '
                     'See missing_files.log.')
         if sig_missing:
             # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('Some rpms were missing requested signatures.\n')
-            if opts['skip_missing_signatures']:
-                outfile.write('The skip_missing_signatures option was specified, so '
-                        'these files were excluded.\n')
-            outfile.write('Acceptable keys: %r\n\n' % keys)
-            outfile.write('# RPM name: available keys\n')
-            fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
-            filenames = [[fmt % selected[r], r] for r in sig_missing]
-            for fname, rpm_id in sorted(filenames):
-                avail = to_list(rpm_idx.get(rpm_id, {}).keys())
-                outfile.write('%s: %r\n' % (fname, avail))
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('Some rpms were missing requested signatures.\n')
+                if opts['skip_missing_signatures']:
+                    outfile.write('The skip_missing_signatures option was specified, so '
+                            'these files were excluded.\n')
+                outfile.write('Acceptable keys: %r\n\n' % keys)
+                outfile.write('# RPM name: available keys\n')
+                fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
+                filenames = [[fmt % selected[r], r] for r in sig_missing]
+                for fname, rpm_id in sorted(filenames):
+                    avail = to_list(rpm_idx.get(rpm_id, {}).keys())
+                    outfile.write('%s: %r\n' % (fname, avail))
             self.session.uploadWrapper(missing_log, self.uploadpath)
             if (not opts['skip_missing_signatures']
                         and not opts['allow_missing_signatures']):
@@ -5669,11 +5655,8 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        datafile = open(filename, 'w')
-        try:
+        with open(filename, 'w') as datafile:
             json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
-        finally:
-            datafile.close()
 
 
 class WaitrepoTask(BaseTaskHandler):
