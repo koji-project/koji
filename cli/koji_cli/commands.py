@@ -5173,9 +5173,9 @@ def anon_handle_list_external_repos(goptions, session, args):
     #  2) Listing repo data for a tag (priority, name, url)
     #  3) Listing repo data for multiple tags (tag, priority, name, url)
     if format == "basic":
-        format = "%(name)-25s %(merge_mode)-10s %(url)s"
-        header1 = "%-25s %-10s URL" % ("External repo name", "Mode")
-        header2 = "%s %s %s" % ("-"*25, "-"*40, "-"*20)
+        format = "%(name)-25s %(url)s"
+        header1 = "%-25s %s" % ("External repo name", "URL")
+        header2 = "%s %s" % ("-"*25, "-"*40)
     elif format == "tag":
         format = "%(priority)-3i %(external_repo_name)-25s %(merge_mode)-10s %(url)s"
         header1 = "%-3s %-25s %-10s URL" % ("Pri", "External repo name", "Mode")
@@ -5183,7 +5183,7 @@ def anon_handle_list_external_repos(goptions, session, args):
     elif format == "multitag":
         format = "%(tag_name)-20s %(priority)-3i %(merge_mode)-10s %(external_repo_name)s"
         header1 = "%-20s %-3s %-10s %s" % ("Tag", "Pri", "Mode", "External repo name")
-        header2 = "%s %s %s" % ("-"*20, "-"*3, "-"*25)
+        header2 = "%s %s %s %s" % ("-"*20, "-"*3, "-"*10, "-"*25)
     if not options.quiet:
         print(header1)
         print(header2)
@@ -5235,6 +5235,8 @@ def handle_add_external_repo(goptions, session, args):
     if options.mode:
         if options.mode not in koji.REPO_MERGE_MODES:
             parser.error('Invalid mode: %s' % options.mode)
+        if not options.tag:
+            parser.error('The --mode option can only be used with --tag')
     if len(args) == 1:
         name = args[0]
         rinfo = session.getExternalRepo(name, strict=True)
@@ -5242,10 +5244,7 @@ def handle_add_external_repo(goptions, session, args):
             parser.error(_("A url is required to create an external repo entry"))
     elif len(args) == 2:
         name, url = args
-        callopts = {}
-        if options.mode:
-            callopts['merge_mode'] = options.mode
-        rinfo = session.createExternalRepo(name, url, **callopts)
+        rinfo = session.createExternalRepo(name, url)
         print("Created external repo %(id)i" % rinfo)
     else:
         parser.error(_("Incorrect number of arguments"))
@@ -5258,7 +5257,10 @@ def handle_add_external_repo(goptions, session, args):
                     priority = options.priority
                 else:
                     priority = _pick_external_repo_priority(session, tag)
-            session.addExternalRepoToTag(tag, rinfo['name'], priority)
+            callopts = {}
+            if options.mode:
+                callopts['merge_mode'] = options.mode
+            session.addExternalRepoToTag(tag, rinfo['name'], priority, **callopts)
             print("Added external repo %s to tag %s (priority %i)" \
                     % (rinfo['name'], tag, priority))
 

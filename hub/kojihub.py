@@ -3252,7 +3252,7 @@ def get_external_repo_id(info, strict=False, create=False):
     """Get the id for a build target"""
     return get_id('external_repo', info, strict, create)
 
-def create_external_repo(name, url, merge_mode='koji'):
+def create_external_repo(name, url):
     """Create a new external repo with the given name and url.
     Return a map containing the id, name, and url
     of the new repo."""
@@ -3262,16 +3262,13 @@ def create_external_repo(name, url, merge_mode='koji'):
     if get_external_repos(info=name):
         raise koji.GenericError('An external repo named "%s" already exists' % name)
 
-    if merge_mode not in koji.REPO_MERGE_MODES:
-        raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
-
     id = get_external_repo_id(name, create=True)
     if not url.endswith('/'):
         # Ensure the url always ends with /
         url += '/'
-    values = {'id': id, 'name': name, 'url': url, 'merge_mode': merge_mode}
+    values = {'id': id, 'name': name, 'url': url}
     insert = InsertProcessor('external_repo_config')
-    insert.set(external_repo_id=id, url=url, merge_mode=merge_mode)
+    insert.set(external_repo_id=id, url=url)
     insert.make_create()
     insert.execute()
     return values
@@ -3281,7 +3278,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     string (name) or an integer (id).
     If url is not None, filter the list of repos to those matching the
     given url."""
-    fields = ['id', 'name', 'url', 'merge_mode']
+    fields = ['id', 'name', 'url']
     tables = ['external_repo']
     joins = ['external_repo_config ON external_repo_id = id']
     clauses = [eventCondition(event)]
@@ -3315,7 +3312,7 @@ def get_external_repo(info, strict=False, event=None):
         else:
             return None
 
-def edit_external_repo(info, name=None, url=None, merge_mode=None):
+def edit_external_repo(info, name=None, url=None):
     """Edit an existing external repo"""
 
     context.session.assertPerm('admin')
@@ -3323,20 +3320,6 @@ def edit_external_repo(info, name=None, url=None, merge_mode=None):
     repo = get_external_repo(info, strict=True)
     repo_id = repo['id']
 
-    # check repo changes
-    changes = {}
-    if url and url != repo['url']:
-        if not url.endswith('/'):
-            # Ensure the url always ends with /
-            url += '/'
-        changes['url'] = url
-    if merge_mode is not None:
-        if merge_mode not in koji.REPO_MERGE_MODES:
-            raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
-        if merge_mode != repo['merge_mode']:
-            changes['merge_mode'] = merge_mode
-
-    # deal with renames
     if name and name != repo['name']:
         existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
                                    locals(), strict=False)
@@ -3346,17 +3329,17 @@ def edit_external_repo(info, name=None, url=None, merge_mode=None):
         rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
         _dml(rename, locals())
 
-    # apply changes
-    if changes:
+    if url and url != repo['url']:
+        if not url.endswith('/'):
+            # Ensure the url always ends with /
+            url += '/'
+
         update = UpdateProcessor('external_repo_config', values=locals(),
                     clauses=['external_repo_id = %(repo_id)i'])
         update.make_revoke()
 
-        data = dslice(repo, ['url', 'merge_mode'])
-        data['external_repo_id'] = repo['id']
-        data.update(changes)
         insert = InsertProcessor('external_repo_config')
-        insert.set(**data)
+        insert.set(external_repo_id=repo_id, url=url)
         insert.make_create()
 
         update.execute()
@@ -3379,10 +3362,13 @@ def delete_external_repo(info):
     update.make_revoke()
     update.execute()
 
-def add_external_repo_to_tag(tag_info, repo_info, priority):
+def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
     """Add an external repo to a tag"""
 
     context.session.assertPerm('admin')
+
+    if merge_mode not in koji.REPO_MERGE_MODES:
+        raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -3398,7 +3384,8 @@ def add_external_repo_to_tag(tag_info, repo_info, priority):
             (tag['name'], priority))
 
     insert = InsertProcessor('tag_external_repos')
-    insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority)
+    insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority,
+               merge_mode=merge_mode)
     insert.make_create()
     insert.execute()
 
@@ -6749,10 +6736,10 @@ def query_history(tables=None, **kwargs):
         'tag_config': ['tag_id', 'arches', 'perm_id', 'locked', 'maven_support', 'maven_include_all'],
         'tag_extra': ['tag_id', 'key', 'value'],
         'build_target_config': ['build_target_id', 'build_tag', 'dest_tag'],
-        'external_repo_config': ['external_repo_id', 'url', 'merge_mode'],
+        'external_repo_config': ['external_repo_id', 'url'],
         'host_config': ['host_id', 'arches', 'capacity', 'description', 'comment', 'enabled'],
         'host_channels': ['host_id', 'channel_id'],
-        'tag_external_repos': ['tag_id', 'external_repo_id', 'priority'],
+        'tag_external_repos': ['tag_id', 'external_repo_id', 'priority', 'merge_mode'],
         'tag_listing': ['build_id', 'tag_id'],
         'tag_packages': ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
         'group_config': ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
@@ -9202,10 +9189,11 @@ class RootExports(object):
     editExternalRepo = staticmethod(edit_external_repo)
     deleteExternalRepo = staticmethod(delete_external_repo)
 
-    def addExternalRepoToTag(self, tag_info, repo_info, priority):
+    def addExternalRepoToTag(self, tag_info, repo_info, priority,
+                merge_mode='koji'):
         """Add an external repo to a tag"""
         # wrap the local method so we don't expose the event parameter
-        add_external_repo_to_tag(tag_info, repo_info, priority)
+        add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode)
 
     def removeExternalRepoFromTag(self, tag_info, repo_info):
         """Remove an external repo from a tag"""
