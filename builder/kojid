@@ -5129,7 +5129,7 @@ class CreaterepoTask(BaseTaskHandler):
             # currently only supported by our own mergerepos script
             # (we need it to write pkgorigins)
             cmd = ['/usr/libexec/kojid/mergerepos',
-                   '--simple',
+                   '--mode', 'simple',
                    '--tempdir', self.workdir]
         elif self.options.use_createrepo_c:
             cmd = ['/usr/bin/mergerepo_c', '--koji']
