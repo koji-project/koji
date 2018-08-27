@@ -310,12 +310,13 @@ class RepoMerge(object):
                 if pkg_nvra in seen_rpms:
                     sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
                     # note: we warn, but do not omit it
-                seen_rpms[pkg_nvra] = 1
                 if srpm_name in self.blocked:
                     sys.stderr.write('Ignoring blocked package: %s\n\n' %
                                      pkg.sourcerpm)
                     repo.sack.delPackage(pkg)
-
+                if pkg_nvra not in seen_rpms:
+                    origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
+                seen_rpms[pkg_nvra] = 1
         origins.close()
         self.mdconf.additional_metadata['origin'] = pkgorigins
 
