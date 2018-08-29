@@ -5410,7 +5410,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
     rpminfo['build_id'] = buildinfo['id']
     rpminfo['size'] = os.path.getsize(fn)
-    rpminfo['payloadhash'] = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
+    rpminfo['payloadhash'] = koji.hex_string(koji.get_header_field(hdr, 'sigmd5'))
     rpminfo['buildroot_id'] = brootid
     rpminfo['external_repo_id'] = 0
 
@@ -6617,10 +6617,10 @@ def _scan_sighdr(sighdr, fn):
     #(we have no payload, so verifies would fail otherwise)
     hdr = ts.hdrFromFdno(outp.fileno())
     outp.close()
-    sig = hdr[rpm.RPMTAG_SIGGPG]
+    sig = koji.get_header_field(hdr, 'siggpg')
     if not sig:
-        sig = hdr[rpm.RPMTAG_SIGPGP]
-    return hdr[rpm.RPMTAG_SIGMD5], sig
+        sig = koji.get_header_field(hdr, 'sigpgp')
+    return koji.get_header_field(hdr, 'sigmd5'), sig
 
 def check_rpm_sig(an_rpm, sigkey, sighdr):
     #verify that the provided signature header matches the key and rpm
@@ -6646,9 +6646,9 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         except:
             pass
         raise
-    raw_key = hdr[rpm.RPMTAG_SIGGPG]
+    raw_key = koji.get_header_field(hdr, 'siggpg')
     if not raw_key:
-        raw_key = hdr[rpm.RPMTAG_SIGPGP]
+        raw_key = koji.get_header_field(hdr, 'sigpgp')
     if not raw_key:
         found_key = None
     else:
