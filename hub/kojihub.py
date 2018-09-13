@@ -10897,9 +10897,11 @@ class RootExports(object):
 
     listBuildroots = staticmethod(query_buildroots)
 
-    def hasPerm(self, perm):
+    def hasPerm(self, perm, strict=False):
         """Check if the logged-in user has the given permission.  Return False if
         they do not have the permission, or if they are not logged-in."""
+        if strict and not lookup_perm(perm):
+            raise koji.GenericError('No such permission %s defined' % perm)
         return context.session.hasPerm(perm)
 
     def getPerms(self):
