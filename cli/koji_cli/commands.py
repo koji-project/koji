@@ -6750,6 +6750,8 @@ def anon_handle_download_task(options, session, args):
     # get downloadable tasks
 
     base_task = session.getTaskInfo(base_task_id)
+    if not base_task:
+        error(_('No such task: #%i') % base_task_id)
 
     check_downloadable = lambda task: task["method"] == "buildArch"
     downloadable_tasks = []
