@@ -1,5 +1,10 @@
-Koji 1.16.0 Release notes
+Koji 1.16.0 Release Notes
 =========================
+
+Updates
+-------
+
+- :doc:`Koji 1.16.1 <release_notes_1.16.1>` is an update for Koji 1.16
 
 
 Migrating from Koji 1.15
