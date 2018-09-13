@@ -176,17 +176,21 @@ class SCM(object):
              'SVN': ('svn://', 'svn+http://', 'svn+https://'),
              'SVN+SSH': ('svn+ssh://',)}
 
-    def is_scm_url(url):
+    @classmethod
+    def is_scm_url(cls, url, strict=False):
         """
         Return True if the url appears to be a valid, accessible source location, False otherwise
         """
-        for schemes in SCM.types.values():
-            for scheme in schemes:
-                if url.startswith(scheme):
-                    return True
+        schemes = [s for t in cls.types for s in cls.types[t]]
+        for scheme in schemes:
+            if url.startswith(scheme):
+                return True
+        # otherwise not valid
+        if strict:
+            raise koji.GenericError('Invalid scheme in scm url. Valid schemes '
+                    'are: %s' % ' '.join(sorted(schemes)))
         else:
             return False
-    is_scm_url = staticmethod(is_scm_url)
 
     def __init__(self, url):
         """
@@ -212,7 +216,7 @@ class SCM(object):
         """
         self.logger = logging.getLogger('koji.build.SCM')
 
-        if not SCM.is_scm_url(url):
+        if not SCM.is_scm_url(url, strict=True):
             raise koji.GenericError('Invalid SCM URL: %s' % url)
 
         self.url = url
