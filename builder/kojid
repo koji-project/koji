@@ -5098,30 +5098,52 @@ class CreaterepoTask(BaseTaskHandler):
                     % parseStatus(status, ' '.join(cmd)))
 
     def merge_repos(self, external_repos, arch, groupdata):
-        repos = []
+        # group repos by merge type
+        repos_by_mode = {}
+        for repo in external_repos:
+            repos_by_mode.setdefault(
+                    repo.get('merge_mode', 'koji'), []).append(repo)
+
+        # figure out merge mode
+        if len(repos_by_mode) > 1:
+            # TODO: eventually support mixing merge modes
+            raise koji.GenericError('Found multiple merge modes for external '
+                    'repos: %s\n' % repos_by_mode.keys())
+        merge_mode = repos_by_mode.keys()[0]
+
+        # move current repo to the premerge location
         localdir = '%s/repo_%s_premerge' % (self.workdir, self.repo_id)
         os.rename(self.outdir, localdir)
         koji.ensuredir(self.outdir)
-        repos.append('file://' + localdir + '/')
 
+        # generate repo url list, starting with our local premerge repo
+        repos = ['file://' + localdir + '/']
         for repo in external_repos:
             ext_url = repo['url']
             # substitute $arch in the url with the arch of the repo we're generating
             ext_url = ext_url.replace('$arch', arch)
             repos.append(ext_url)
 
-        blocklist = self.repodir + '/blocklist'
-        if self.options.use_createrepo_c:
+        # construct command
+        if merge_mode == 'simple':
+            # currently only supported by our own mergerepos script
+            # (we need it to write pkgorigins)
+            cmd = ['/usr/libexec/kojid/mergerepos',
+                   '--mode', 'simple',
+                   '--tempdir', self.workdir]
+        elif self.options.use_createrepo_c:
             cmd = ['/usr/bin/mergerepo_c', '--koji']
         else:
             cmd = ['/usr/libexec/kojid/mergerepos']
             cmd.extend(['--tempdir', self.workdir])
+        blocklist = self.repodir + '/blocklist'
         cmd.extend(['-a', arch, '-b', blocklist, '-o', self.outdir])
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         for repo in repos:
             cmd.extend(['-r', repo])
 
+        # run command
         logfile = '%s/mergerepos.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):

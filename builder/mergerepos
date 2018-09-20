@@ -72,6 +72,7 @@ def parse_args(args):
                       help="List of arches to include in the repo")
     parser.add_option("-b", "--blocked", default=None,
                       help="A file containing a list of srpm names to exclude from the merged repo")
+    parser.add_option("--mode", default='koji', help="Select the merge mode")
     parser.add_option("-o", "--outputdir", default=None,
                       help="Location to create the repository")
     parser.add_option("--tempdir", default=None,
@@ -112,7 +113,8 @@ def make_const_func(value):
 
 
 class RepoMerge(object):
-    def __init__(self, repolist, arches, groupfile, blocked, outputdir, tempdir=None):
+    def __init__(self, repolist, arches, groupfile, blocked, outputdir,
+                 tempdir=None, mode='koji'):
         self.repolist = repolist
         self.outputdir = outputdir
         self.tempdir = tempdir
@@ -134,6 +136,7 @@ class RepoMerge(object):
         self.archlist = arches
         self.mdconf.groupfile = groupfile
         self.blocked = blocked
+        self.mode = mode
 
     def close(self):
         if self.yumbase is not None:
@@ -182,6 +185,10 @@ class RepoMerge(object):
         allows a package to be tracked back to its origin, even if the location field in the repodata does
         not match the original repo location.
         """
+
+        if self.mode == 'simple':
+            return self.do_simple_sort()
+
         # sort the repos by _merge_rank
         # lowest number is the highest rank (1st place, 2nd place, etc.)
         repos = self.yumbase.repos.listEnabled()
@@ -264,6 +271,55 @@ class RepoMerge(object):
         origins.close()
         self.mdconf.additional_metadata['origin'] = pkgorigins
 
+    def do_simple_sort(self):
+        """
+        Handle the 'sort_and_filter' case when mode=simple
+
+        As the name implies, this is a much simpler approach. Mainly, we need
+        to generate the pkgorigins file.
+        """
+
+        # sort the repos by _merge_rank
+        # lowest number is the highest rank (1st place, 2nd place, etc.)
+        repos = self.yumbase.repos.listEnabled()
+        repos.sort(key=lambda o: o._merge_rank)
+
+        # TODO: reduce duplication between this function and sort_and_filter()
+
+        # We lack the complex filtration of mode=koji, but we still need to:
+        # - fix urls for primary repo
+        # - enforce blocked list
+        for reponum, repo in enumerate(repos):
+            for pkg in repo.sack:
+                if reponum == 0 and not pkg.basepath:
+                    # this is the first repo (i.e. the koji repo) and appears
+                    # to be using relative urls
+                    #XXX - kind of a hack, but yum leaves us little choice
+                    #force the pkg object to report a relative location
+                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
+                    pkg._return_remote_location = make_const_func(loc)
+
+        pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
+        origins = open(pkgorigins, 'w')
+
+        seen_rpms = {}
+        for repo in repos:
+            for pkg in repo.sack:
+                srpm_name, ver, rel, epoch, arch = rpmUtils.miscutils.splitFilename(pkg.sourcerpm)
+                pkg_nvra = str(pkg)
+                if pkg_nvra in seen_rpms:
+                    sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
+                    # note: we warn, but do not omit it
+                if srpm_name in self.blocked:
+                    sys.stderr.write('Ignoring blocked package: %s\n\n' %
+                                     pkg.sourcerpm)
+                    repo.sack.delPackage(pkg)
+                if pkg_nvra not in seen_rpms:
+                    origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
+                seen_rpms[pkg_nvra] = 1
+        origins.close()
+        self.mdconf.additional_metadata['origin'] = pkgorigins
+
     def write_metadata(self):
         self.mdconf.pkglist = self.yumbase.pkgSack
         self.mdconf.directory = self.outputdir
@@ -292,7 +348,7 @@ def main(args):
         blocked = {}
 
     merge = RepoMerge(opts.repos, opts.arches, opts.groupfile, blocked,
-                      opts.outputdir, opts.tempdir)
+                      opts.outputdir, opts.tempdir, opts.mode)
 
     try:
         merge.merge_repos()
