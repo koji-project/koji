@@ -89,6 +89,32 @@ class TestDownloadTask(unittest.TestCase):
         self.assertListEqual(self.download_file.mock_calls, calls)
         self.assertIsNone(rv)
 
+    def test_handle_download_task_not_found(self):
+        task_id = 123333
+        args = [str(task_id)]
+        self.session.getTaskInfo.return_value = None
+
+        # Run it and check immediate output
+        # args: task_id
+        # expected: error
+        with self.assertRaises(SystemExit) as cm:
+            anon_handle_download_task(self.options, self.session, args)
+        actual = self.stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
+        actual = self.stderr.getvalue()
+        expected = 'No such task: #123333\n'
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.activate_session.assert_called_once_with(self.session,
+                                                      self.options)
+        self.session.getTaskInfo.assert_called_once_with(task_id)
+        self.session.getTaskChildren.assert_not_called()
+        if isinstance(cm.exception, int):
+            self.assertEqual(cm.exception, 1)
+        else:
+            self.assertEqual(cm.exception.code, 1)
+
     def test_handle_download_task_parent(self):
         task_id = 123333
         args = [str(task_id), '--arch=noarch,x86_64']
