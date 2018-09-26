@@ -10526,14 +10526,14 @@ class RootExports(object):
         task = Task(taskId)
         return task.getResult(raise_fault=raise_fault)
 
-    def getTaskInfo(self, task_id, request=False):
+    def getTaskInfo(self, task_id, request=False, strict=False):
         """Get information about a task"""
         single = True
         if isinstance(task_id, (list, tuple)):
             single = False
         else:
             task_id = [task_id]
-        ret = [Task(id).getInfo(False, request) for id in task_id]
+        ret = [Task(id).getInfo(strict, request) for id in task_id]
         if single:
             return ret[0]
         else:
