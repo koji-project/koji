@@ -40,7 +40,8 @@ from koji_cli.lib import _, activate_session, parse_arches, \
         _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, warn, greetings, _list_tasks, unique_path
+        error, warn, greetings, _list_tasks, unique_path, \
+        format_inheritance_flags
 
 
 def _printable_unicode(s):
@@ -4912,17 +4913,7 @@ def anon_handle_taginfo(goptions, session, args):
                 print("  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo)
         print("Inheritance:")
         for parent in session.getInheritanceData(info['id'], **event_opts):
-            flags = ''
-            for code,expr in (
-                    ('M',parent['maxdepth'] is not None),
-                    ('F',parent['pkg_filter']),
-                    ('I',parent['intransitive']),
-                    ('N',parent['noconfig']),):
-                if expr:
-                    flags += code
-                else:
-                    flags += '.'
-            parent['flags'] = flags
+            parent['flags'] = format_inheritance_flags(parent)
             print("  %(priority)-4d %(flags)s %(name)s [%(parent_id)s]" % parent)
             if parent['maxdepth'] is not None:
                 print("    maxdepth: %(maxdepth)s" % parent)
