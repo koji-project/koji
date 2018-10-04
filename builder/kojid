@@ -1279,7 +1279,7 @@ class BuildArchTask(BaseBuildTask):
         # peel E:N-V-R from package
         h = koji.get_rpm_header(fn)
         name = koji.get_header_field(h, 'name')
-        if koji.get_header_field('sourcepackage'):
+        if not koji.get_header_field(h, 'sourcepackage'):
             raise koji.BuildError("not a source package")
         # Disable checking for distribution in the initial SRPM because it
         # might have been built outside of the build system

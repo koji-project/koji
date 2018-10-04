@@ -802,14 +802,14 @@ class TaskManager(object):
             #about). This will happen after a daemon restart, for example.
             self.logger.info("freeing stale tasks: %r" % stale)
             self.session.host.freeTasks(stale)
-        for id, pid in self.pids.items():
+        for id, pid in list(self.pids.items()):
             if self._waitTask(id, pid):
                 # the subprocess handles most everything, we just need to clear things out
                 if self.cleanupTask(id, wait=False):
                     del self.pids[id]
                 if id in self.tasks:
                     del self.tasks[id]
-        for id, pid in self.pids.items():
+        for id, pid in list(self.pids.items()):
             if id not in tasks:
                 # expected to happen when:
                 #  - we are in the narrow gap between the time the task
