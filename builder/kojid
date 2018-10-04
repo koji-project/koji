@@ -724,7 +724,7 @@ class BuildRoot(object):
         opts['tempdir'] = self.options.workdir
 
         # prefer librepo
-        if not yum_available:
+        if librepo is not None:
             repo_url = os.path.join(repodir, self.br_arch)
             # repo_url can start with '/', don't use os.path.join
             if self.options.topurl:
@@ -742,7 +742,7 @@ class BuildRoot(object):
             h.perform(r)
             pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
             koji.util.rmtree(tmpdir)
-        else:
+        elif yum_available:
             #XXX - cheap hack to get relative paths
             repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
             with koji.openRemoteFile(repomdpath, **opts) as fo:
@@ -752,6 +752,9 @@ class BuildRoot(object):
                     raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
             data  = repodata.getData('origin')
             pkgorigins  = data.location[1]
+        else:
+            # shouldn't occur
+            raise koji.GenericError("install librepo or yum")
 
         relpath = os.path.join(repodir, self.br_arch, pkgorigins)
         with koji.openRemoteFile(relpath, **opts) as fo:
