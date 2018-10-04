@@ -54,6 +54,7 @@ from optparse import OptionParser, SUPPRESS_HELP
 
 from multilib import multilib
 import koji
+import koji.arch
 import koji.plugin
 import koji.rpmdiff
 import koji.util
@@ -80,7 +81,6 @@ except ImportError:
 
 try:
     # yum
-    import rpmUtils.arch
     from yum import repoMDObject
     import yum.packages
     import yum.Errors
@@ -376,7 +376,7 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        with open(self.rootdir() + destfile, 'w') as fo
+        with open(self.rootdir() + destfile, 'w') as fo:
             fo.write(settings)
 
     def mock(self, args):
@@ -5188,7 +5188,7 @@ class NewDistRepoTask(BaseTaskHandler):
             canonArches.add(koji.canonArch(arch))
         arch32s = set()
         for arch in canonArches:
-            if not rpmUtils.arch.isMultiLibArch(arch):
+            if not koji.arch.isMultiLibArch(arch):
                 arch32s.add(arch)
         for arch in arch32s:
             # we do 32-bit multilib arches first so the 64-bit ones can
@@ -5284,7 +5284,7 @@ class createDistRepoTask(BaseTaskHandler):
         # sort out our package list(s)
         self.uploadpath = self.getUploadDir()
         self.get_rpms(tag, arch, keys, opts)
-        if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
+        if opts['multilib'] and koji.arch.isMultiLibArch(arch):
             self.do_multilib(arch, self.archmap[arch], opts['multilib'])
         self.split_pkgs(opts)
         self.write_kojipkgs()
@@ -5418,12 +5418,12 @@ class createDistRepoTask(BaseTaskHandler):
         transaction_arch = arch
         archlist = archlist + self.compat[self.biarch[arch]]
         best_compat = self.compat[self.biarch[arch]][0]
-        if rpmUtils.arch.archDifference(best_compat, arch) > 0:
+        if koji.arch.archDifference(best_compat, arch) > 0:
             transaction_arch = best_compat
-        if hasattr(rpmUtils.arch, 'ArchStorage'):
+        if hasattr(koji.arch, 'ArchStorage'):
             yumbase.preconf.arch = transaction_arch
         else:
-            rpmUtils.arch.canonArch = transaction_arch
+            koji.arch.canonArch = transaction_arch
 
         yconfig = """
 [main]
