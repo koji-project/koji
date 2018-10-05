@@ -4003,10 +4003,11 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
     else:
         sys.stdout.write(_printable_unicode(u'\u2514'))
     sys.stdout.write(_printable_unicode(u'\u2500'))
+    currtag['flags'] = format_inheritance_flags(currtag)
     if reverse:
-        sys.stdout.write('%(name)s (%(tag_id)i)\n' % currtag)
+        sys.stdout.write('%(name)s (%(tag_id)i)  %(flags)s\n' % currtag)
     else:
-        sys.stdout.write('%(name)s (%(parent_id)i)\n' % currtag)
+        sys.stdout.write('%(name)s (%(parent_id)i)  %(flags)s\n' % currtag)
 
     if siblings:
         if len(sibdepths) == 0 or sibdepths[-1] != currtag['currdepth']:
