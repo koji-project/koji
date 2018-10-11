@@ -5276,7 +5276,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         #build_id was passed in - sanity check
         binfo = get_build(build_id, strict=True)
         st_complete = koji.BUILD_STATES['COMPLETE']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
+        st_old = binfo['state']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=binfo)
         for key in ('name', 'version', 'release', 'epoch', 'task_id'):
             if build[key] != binfo[key]:
                 raise koji.GenericError("Unable to complete build: %s mismatch (build: %s, rpm: %s)" % (key, binfo[key], build[key]))
@@ -5290,7 +5291,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         update.set(volume_id=build['volume_id'])
         update.execute()
         binfo = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_complete, info=binfo)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=binfo)
 
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
@@ -7239,7 +7240,8 @@ def _delete_build(binfo):
     #               buildroot_archives KEEP (but should ideally be empty anyway)
     #   files on disk: DELETE
     st_deleted = koji.BUILD_STATES['DELETED']
-    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=st_deleted, info=binfo)
+    st_old = binfo['state']
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_deleted, info=binfo)
     build_id = binfo['id']
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
     rpm_ids = _fetchMulti(q, locals())
@@ -7256,7 +7258,7 @@ def _delete_build(binfo):
     if os.path.exists(builddir):
         koji.util.rmtree(builddir)
     binfo = get_build(build_id, strict=True)
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=st_deleted, info=binfo)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_deleted, info=binfo)
 
 def reset_build(build):
     """Reset a build so that it can be reimported
@@ -7275,7 +7277,8 @@ def reset_build(build):
     if not binfo:
         #nothing to do
         return
-    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
+    st_old = binfo['state']
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=koji.BUILD_STATES['CANCELED'], info=binfo)
     q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
     ids = _fetchMulti(q, binfo)
     for (rpm_id,) in ids:
@@ -7324,7 +7327,7 @@ def reset_build(build):
     if os.path.exists(builddir):
         koji.util.rmtree(builddir)
     binfo = get_build(build, strict=True)
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=binfo['state'], new=koji.BUILD_STATES['CANCELED'], info=binfo)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=koji.BUILD_STATES['CANCELED'], info=binfo)
 
 def cancel_build(build_id, cancel_task=True):
     """Cancel a build
@@ -7343,7 +7346,8 @@ def cancel_build(build_id, cancel_task=True):
     build = get_build(build_id, strict=True)
     if build['state'] != st_building:
         return False
-    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build['state'], new=st_canceled, info=build)
+    st_old = build['state']
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_canceled, info=build)
     update = """UPDATE build
     SET state = %(st_canceled)i, completion_time = NOW()
     WHERE id = %(build_id)i AND state = %(st_building)i"""
@@ -7357,7 +7361,7 @@ def cancel_build(build_id, cancel_task=True):
         if cancel_task:
             Task(task_id).cancelFull(strict=False)
     build = get_build(build_id, strict=True)
-    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build['state'], new=st_canceled, info=build)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_canceled, info=build)
     return True
 
 def _get_build_target(task_id):
@@ -10939,11 +10943,12 @@ class RootExports(object):
         userinfo = get_user(user, strict=True)
         userid = userinfo['id']
         buildid = buildinfo['id']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='owner_id', old=buildinfo['owner_id'], new=userid, info=buildinfo)
+        owner_id_old = buildinfo['owner_id']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='owner_id', old=owner_id_old, new=userid, info=buildinfo)
         q = """UPDATE build SET owner=%(userid)i WHERE id=%(buildid)i"""
         _dml(q, locals())
         buildinfo = get_build(build, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='owner_id', old=buildinfo['owner_id'], new=userid, info=buildinfo)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='owner_id', old=owner_id_old, new=userid, info=buildinfo)
 
     def setBuildTimestamp(self, build, ts):
         """Set the completion time for a build
@@ -10962,14 +10967,15 @@ class RootExports(object):
                 raise koji.GenericError("Invalid time: %s" % ts)
         elif not isinstance(ts, NUMERIC_TYPES):
             raise koji.GenericError("Invalid type for timestamp")
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
+        ts_old = buildinfo['completion_ts']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
         buildid = buildinfo['id']
         q = """UPDATE build
         SET completion_time=TIMESTAMP 'epoch' AT TIME ZONE 'utc' + '%(ts)f seconds'::interval
         WHERE id=%%(buildid)i""" % locals()
         _dml(q, locals())
         buildinfo = get_build(build, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='completion_ts', old=buildinfo['completion_ts'], new=ts, info=buildinfo)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
 
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
@@ -12073,8 +12079,9 @@ class HostExports(object):
         self.importImage(task_id, build_id, results)
         ensure_volume_symlink(build_info)
 
+        st_old = build_info['state']
         st_complete = koji.BUILD_STATES['COMPLETE']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
 
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
@@ -12084,7 +12091,7 @@ class HostExports(object):
             update.set(volume_id=build_info['volume_id'])
         update.execute()
         build_info = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
 
         # send email
         build_notification(task_id, build_id)
@@ -12200,7 +12207,8 @@ class HostExports(object):
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        st_old = build_info['state']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
@@ -12209,7 +12217,7 @@ class HostExports(object):
         update.rawset(completion_time='now()')
         update.execute()
         build_info = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
 
         # send email
         build_notification(task_id, build_id)
@@ -12343,8 +12351,9 @@ class HostExports(object):
         ensure_volume_symlink(build_info)
 
         # update build state
+        st_old = build_info['state']
         st_complete = koji.BUILD_STATES['COMPLETE']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
         update = UpdateProcessor('build', clauses=['id=%(build_id)i'],
                                  values={'build_id': build_id})
         update.set(state=st_complete)
@@ -12353,7 +12362,7 @@ class HostExports(object):
         update.rawset(completion_time='now()')
         update.execute()
         build_info = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=build_info['state'], new=st_complete, info=build_info)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=build_info)
 
         # send email
         build_notification(task_id, build_id)
@@ -12369,7 +12378,8 @@ class HostExports(object):
 
         st_failed = koji.BUILD_STATES['FAILED']
         buildinfo = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=buildinfo['state'], new=st_failed, info=buildinfo)
+        st_old = buildinfo['state']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_failed, info=buildinfo)
 
         query = """SELECT state, completion_time
         FROM build
@@ -12390,7 +12400,7 @@ class HostExports(object):
         WHERE id = %(build_id)i"""
         _dml(update, locals())
         buildinfo = get_build(build_id, strict=True)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=buildinfo['state'], new=st_failed, info=buildinfo)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_failed, info=buildinfo)
         build_notification(task_id, build_id)
 
     def tagBuild(self, task_id, tag, build, force=False, fromtag=None):
