@@ -9729,9 +9729,8 @@ class RootExports(object):
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
         """List builds tagged with tag"""
-        if not isinstance(tag, six.integer_types):
-            #lookup tag id
-            tag = get_tag_id(tag, strict=True)
+        #lookup tag id
+        tag = get_tag(tag, strict=True, event=event)['id']
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package, owner=owner, type=type)
         if prefix:
             prefix = prefix.lower()
@@ -9740,15 +9739,14 @@ class RootExports(object):
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None, rpmsigs=False, owner=None, type=None):
         """List rpms and builds within tag"""
-        if not isinstance(tag, six.integer_types):
-            #lookup tag id
-            tag = get_tag_id(tag, strict=True)
+        #lookup tag id
+        tag = get_tag(tag, strict=True, event=event)['id']
         return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None, type=None):
         """List archives and builds within a tag"""
-        if not isinstance(tag, six.integer_types):
-            tag = get_tag_id(tag, strict=True)
+        # lookup tag id
+        tag = get_tag(tag, strict=True, event=event)['id']
         return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest, package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,

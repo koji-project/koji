@@ -2379,7 +2379,7 @@ def anon_handle_list_tagged(goptions, session, args):
     usage = _("usage: %prog list-tagged [options] tag [package]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--arch", help=_("List rpms for this arch"))
+    parser.add_option("--arch", action="append", default=[], help=_("List rpms for this arch"))
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
@@ -2406,7 +2406,7 @@ def anon_handle_list_tagged(goptions, session, args):
         package = args[1]
     tag = args[0]
     opts = {}
-    for key in ('latest','inherit'):
+    for key in ('latest', 'inherit'):
         opts[key] = getattr(options, key)
     if options.latest_n is not None:
         opts['latest'] = options.latest_n
@@ -2421,11 +2421,18 @@ def anon_handle_list_tagged(goptions, session, args):
     if options.type:
         opts['type'] = options.type
     event = koji.util.eventFromOpts(session, options)
+    event_id = None
     if event:
         opts['event'] = event['id']
+        event_id = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         if not options.quiet:
             print("Querying at event %(id)i (%(timestr)s)" % event)
+
+    # check if tag exist(s|ed)
+    taginfo = session.getTag(tag, event=event_id)
+    if not taginfo:
+        parser.error(_("No such tag: %s" % tag))
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)

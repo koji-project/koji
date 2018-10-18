@@ -8,6 +8,8 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+import time
+
 import koji
 import koji.util
 from .loadkojid import kojid
@@ -55,6 +57,7 @@ class TestBuildNotification(unittest.TestCase):
     def setUp(self):
         self.original_timezone = os.environ.get('TZ')
         os.environ['TZ'] = 'US/Eastern'
+        time.tzset()
         self.tempdir = tempfile.mkdtemp()
         self.SMTP = mock.patch('smtplib.SMTP').start()
         self.session = mock.MagicMock()
@@ -67,6 +70,7 @@ class TestBuildNotification(unittest.TestCase):
             del os.environ['TZ']
         else:
             os.environ['TZ'] = self.original_timezone
+        time.tzset()
         mock.patch.stopall()
 
     def test_build_notification(self):
