@@ -5616,7 +5616,7 @@ enabled=1
     def split_pkgs(self, opts):
         '''Direct rpms to subrepos if needed'''
         for rpminfo in self.kojipkgs.values():
-            if opts['split_debuginfo'] and koji.is_debuginfo(rpminfo['name']):
+            if opts.get('split_debuginfo') and koji.is_debuginfo(rpminfo['name']):
                 rpminfo['_subrepo'] = 'debug'
                 self.subrepos.add('debug')
 
