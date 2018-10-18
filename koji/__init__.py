@@ -1931,7 +1931,7 @@ def is_requests_cert_error(e):
     # Using str(e) is slightly ugly, but the error stacks in python-requests
     # are way more ugly.
     errstr = str(e)
-    if ('Permission denied' in errstr or # certificate not readable
+    if ('Permission denied' in errstr or  # certificate not readable
         'certificate revoked' in errstr or
         'certificate expired' in errstr or
         'certificate verify failed' in errstr):
