@@ -2584,7 +2584,9 @@ def anon_handle_list_groups(goptions, session, args):
     if len(args) < 1 or len(args) > 2:
         parser.error(_("Incorrect number of arguments"))
         assert False  # pragma: no cover
-    opts = {'incl_blocked': options.incl_blocked}
+    opts = {}
+    if options.incl_blocked:
+        opts['incl_blocked'] = True
     activate_session(session, goptions)
     event = koji.util.eventFromOpts(session, options)
     if event:
@@ -5107,7 +5109,10 @@ def anon_handle_show_groups(goptions, session, args):
         parser.error(_("--show-blocked doesn't make sense for comps/spec output"))
     activate_session(session, goptions)
     tag = args[0]
-    groups = session.getTagGroups(tag, incl_blocked=options.incl_blocked)
+    callopts = {}
+    if options.incl_blocked:
+        callopts['incl_blocked'] = True
+    groups = session.getTagGroups(tag, **callopts)
     if options.comps:
         print(koji.generate_comps(groups, expand_groups=options.expand))
     elif options.spec:
