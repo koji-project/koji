@@ -578,7 +578,7 @@ def activate_session(session, options):
         session.login()
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
-            if options.keytab and options.principal:
+            if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
                 session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=runas)
             else:
                 session.krb_login(proxyuser=runas)
@@ -592,7 +592,7 @@ def activate_session(session, options):
     if not noauth and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
-    if options.debug:
+    if getattr(options, 'debug', None):
         print("successfully connected to hub")
 
 
