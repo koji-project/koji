@@ -5388,6 +5388,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
 
     policy_data = {
             'package': build['name'],
+            'version': build['version'],
+            'release': build['release'],
             'buildroots': to_list(brmap.values()),
             'import': True,
             'import_type': 'rpm',
@@ -5651,6 +5653,8 @@ class CG_Importer(object):
         # we have to be careful and provide sufficient data
         policy_data = {
                 'package': self.buildinfo['name'],
+                'version': self.buildinfo['version'],
+                'release': self.buildinfo['release'],
                 'source': self.buildinfo['source'],
                 'cg_list': list(self.cgs),
                 'import': True,
@@ -8301,6 +8305,32 @@ def policy_get_pkg(data):
     raise koji.GenericError("policy requires package data")
 
 
+def policy_get_version(data):
+    """Determine version from policy data
+
+    returns version as string
+    """
+    if 'version' in data:
+        return data['version']
+    if 'build' in data:
+        return get_build(data['build'], strict=True)['version']
+    #else
+    raise koji.GenericError("policy requires version data")
+
+
+def policy_get_release(data):
+    """Determine release from policy data
+
+    returns release as string
+    """
+    if 'release' in data:
+        return data['release']
+    if 'build' in data:
+        return get_build(data['build'], strict=True)['release']
+    #else
+    raise koji.GenericError("policy requires release data")
+
+
 def policy_get_brs(data):
     """Determine content generators from policy data"""
 
@@ -8372,6 +8402,26 @@ class PackageTest(koji.policy.MatchTest):
         #we need to find the package name from the base data
         data[self.field] = policy_get_pkg(data)['name']
         return super(PackageTest, self).run(data)
+
+
+class VersionTest(koji.policy.MatchTest):
+    """Checks version against glob patterns"""
+    name = 'version'
+    field = '_version'
+    def run(self, data):
+        data[self.field] = policy_get_version(data)
+        return super(VersionTest, self).run(data)
+
+
+class ReleaseTest(koji.policy.MatchTest):
+    """Checks release against glob patterns"""
+    name = 'release'
+    field = '_release'
+    def run(self, data):
+        #we need to find the build NVR from the base data
+        data[self.field] = policy_get_release(data)
+        return super(ReleaseTest, self).run(data)
+
 
 class VolumeTest(koji.policy.MatchTest):
     """Checks storage volume against glob patterns"""
