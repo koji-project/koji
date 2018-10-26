@@ -374,15 +374,7 @@ Configuration Files
 Install PostgreSQL
 ------------------
 
-In Fedora 22 and Later versions use `dnf`_:
-
-::
-
-    # dnf install postgresql-server
-
-Or `yum`_ in Fedora 21 and earlier versions: 
-
-::
+Install the ``postgresql-server`` package::
 
     # yum install postgresql-server
 
@@ -601,17 +593,9 @@ Configuration Files
 Install koji-hub
 ----------------
 
-In Fedora 22 and later versions use `dnf`_: 
+Install the ``koji-hub`` package along with mod_ssl::
 
-::
-
-    # dnf install koji-hub httpd mod_ssl
-
-Or with `yum`_ in Fedora 21 and earlier versions:
-
-::
-
-    # yum install koji-hub httpd mod_ssl
+    # yum install koji-hub mod_ssl
 
 Required Configuration
 ----------------------
@@ -844,15 +828,7 @@ Configuration Files
 Install Koji-Web
 ----------------
 
-For Fedora 22 and later versions use `dnf`_:
-
-::
-
-    # dnf install koji-web mod_ssl
-
-Or with `yum`_ for Fedora 21 and earlier versions:
-
-::
+Install the ``koji-web`` package along with mod_ssl::
 
     # yum install koji-web mod_ssl
 
@@ -968,15 +944,7 @@ Configuration Files
 Install kojid
 -------------
 
-For Fedora 22 and later versions use `dnf`_:
-
-::
-
-    # dnf install koji-builder
-
-Or with `yum`_ in Fedora 21 and earlier versions:
-
-::
+Install the ``koji-builder`` package::
 
     # yum install koji-builder
 
@@ -1194,15 +1162,8 @@ Configuration Files
 
 Install kojira
 ---------------
-For Fedora 22 and later versions use `dnf`_:
 
-::
-
-    # dnf install koji-utils
-
-Or with `yum`_ in Fedora 21 and earlier versions:
-
-::
+Install the ``koji-utils`` package::
 
     # yum install koji-utils
 
