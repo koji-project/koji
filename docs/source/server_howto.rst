@@ -385,8 +385,7 @@ The following commands will initialize PostgreSQL and will start the database se
 ::
 
     root@localhost$ postgresql-setup initdb
-    root@localhost$ systemctl enable postgresql
-    root@localhost$ systemctl start postgresql
+    root@localhost$ systemctl enable postgresql --now
 
 Setup User Accounts:
 --------------------
