@@ -407,7 +407,7 @@ The following commands will:
 * create the koji database within PostgreSQL
 * set a password for the koji user
 * create the koji schema using the provided
-  ``/usr/share/doc/koji*/docs/schema.sql`` file
+  ``/usr/share/doc/koji*/docs/schema.sql`` file from the ``koji`` package.
 
 ::
 
@@ -416,6 +416,7 @@ The following commands will:
     postgres@localhost$ createdb -O koji koji
     postgres@localhost$ psql -c "alter user koji with encrypted password 'mypassword';"
     postgres@localhost$ logout
+    root@localhost$ yum -y install koji
     root@localhost$ su - koji
     koji@localhost$ psql koji koji < /usr/share/doc/koji*/docs/schema.sql
     koji@localhost$ exit
