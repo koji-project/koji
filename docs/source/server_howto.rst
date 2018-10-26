@@ -595,20 +595,15 @@ running.
 
 Set Database To Listen On All Addresses
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The koji-hub service will attempt to connect to the database server in the
+The ``koji-hub`` service will attempt to connect to the database server in the
 manner you configure.  If you use the system hostname, then the database will
 need to be available on that address.  To configure this please perform the
 following:
 
-#.  Edit /var/lib/pgsql/data/postgresql.conf
-#.  Set listen_address
-
-    ::
-
+#.  Edit ``/var/lib/pgsql/data/postgresql.conf``
+#.  Set ``listen_address`` so postgres will listen on all interfaces::
         listen_addresses = '*'
-#.  Reload the postgresql service
-
-    ::
+#.  Reload the postgresql service::
         systemctl restart postgresql
 
 Koji Hub
