@@ -7668,7 +7668,14 @@ def grant_cg_access(user, cg, create=False):
 
 
 def revoke_cg_access(user, cg):
-    """Revoke a user's access to act as the given content generator"""
+    """
+    Revoke a user's access to act as the given content generator
+
+    :param user: koji userid or username
+    :type user: int or str
+    :param cg: content generator id or name
+    :type cg: int or str
+    """
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
