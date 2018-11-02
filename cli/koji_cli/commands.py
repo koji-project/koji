@@ -4959,7 +4959,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
     (options, args) = parser.parse_args(args)
 
     if len(args) < 1:
-        parser.error(_("This command takes at lease one argument: a tag name or ID"))
+        parser.error(_("This command takes at least one argument: a tag name or ID"))
         assert False  # pragma: no cover
 
     if len(args) > 3:
@@ -5042,7 +5042,7 @@ def handle_remove_tag_inheritance(goptions, session, args):
     (options, args) = parser.parse_args(args)
 
     if len(args) < 1:
-        parser.error(_("This command takes at lease one argument: a tag name or ID"))
+        parser.error(_("This command takes at least one argument: a tag name or ID"))
         assert False  # pragma: no cover
 
     if len(args) > 3:
