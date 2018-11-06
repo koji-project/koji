@@ -733,13 +733,7 @@ def parse_maven_params(confs, chain=False, scratch=False):
 
     Return a map whose keys are package names and values are config parameters.
     """
-    if not isinstance(confs, (list, tuple)):
-        confs = [confs]
-    config = six.moves.configparser.ConfigParser()
-    for conf in confs:
-        conf_fd = open(conf)
-        config.readfp(conf_fd)
-        conf_fd.close()
+    config = koji.read_config_files(confs)
     builds = {}
     for package in config.sections():
         buildtype = 'maven'
@@ -753,10 +747,12 @@ def parse_maven_params(confs, chain=False, scratch=False):
                 raise ValueError("A wrapper-rpm must depend on exactly one package")
         else:
             raise ValueError("Unsupported build type: %s" % buildtype)
-        if not 'scmurl' in params:
+        if 'scmurl' not in params:
             raise ValueError("%s is missing the scmurl parameter" % package)
         builds[package] = params
     if not builds:
+        if not isinstance(confs, (list, tuple)):
+            confs = [confs]
         raise ValueError("No sections found in: %s" % ', '.join(confs))
     return builds
 

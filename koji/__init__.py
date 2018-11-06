@@ -1709,10 +1709,7 @@ def read_config(profile_name, user_config=None):
     # Load the configs in a particular order
     got_conf = False
     for configFile in configs:
-        f = open(configFile)
-        config = six.moves.configparser.ConfigParser()
-        config.readfp(f)
-        f.close()
+        config = read_config_files(configFile)
         if config.has_section(profile_name):
             got_conf = True
             for name, value in config.items(profile_name):
@@ -1804,6 +1801,21 @@ def get_profile_module(profile_name, config=None):
         imp.release_lock()
 
     return mod
+
+
+def read_config_files(config_files, parser=None):
+    if not isinstance(config_files, (list, tuple)):
+        config_files = [config_files]
+    if parser is None:
+        parser = six.moves.configparser.ConfigParser
+    config = parser()
+    for config_file in config_files:
+        with open(config_file, 'r') as f:
+            if six.PY2:
+                config.readfp(f)
+            else:
+                config.read_file(f)
+    return config
 
 
 class PathInfo(object):
