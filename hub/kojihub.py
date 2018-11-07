@@ -10874,7 +10874,14 @@ class RootExports(object):
         return make_task(taskInfo['method'], args, arch=taskInfo['arch'], channel=channel['name'], priority=taskInfo['priority'])
 
     def addHost(self, hostname, arches, krb_principal=None):
-        """Add a host to the database"""
+        """
+        Add a builder host to the database.
+
+        :param str hostname: fully-qualified hostname for this builder.
+        :param list arches: list of architectures this builder supports.
+        :param str krb_principal: (optional) a non-default kerberos principal
+                                  for the host.
+        """
         context.session.assertPerm('admin')
         if get_host(hostname):
             raise koji.GenericError('host already exists: %s' % hostname)
