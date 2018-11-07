@@ -4702,10 +4702,10 @@ def edit_host(hostInfo, **kw):
     hostInfo specifies the host to edit, either as an integer (id)
     or a string (name).
     fields to be changed are specified as keyword parameters:
-    - arches
-    - capacity
-    - description
-    - comment
+    - arches (a space-separated string)
+    - capacity (string)
+    - description (string)
+    - comment (string)
 
     Returns True if changes are made to the database, False otherwise.
     """
