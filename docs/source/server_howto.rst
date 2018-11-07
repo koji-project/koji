@@ -1152,7 +1152,7 @@ Once the builder has been added to the database you must start kojid
 
 ::
 
-    root@localhost$ service kojid start
+    root@localhost$ systemctl enable kojid --now
 
 Check ``/var/log/kojid.log`` to verify that kojid has started successfully. If
 the log does not show any errors then the koji builder should be up and ready.
