@@ -6476,9 +6476,9 @@ def anon_handle_watch_logs(goptions, session, args):
     watch_logs(session, tasks, options, goptions.poll_interval)
 
 
-def handle_make_task(opts, session, args):
+def handle_make_task(goptions, session, args):
     "[admin] Create an arbitrary task"
-    usage = _("usage: %prog make-task [options] <arg1> [<arg2>...]")
+    usage = _("usage: %prog make-task [options] <method> [<arg>...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--channel", help=_("set channel"))
@@ -6486,23 +6486,25 @@ def handle_make_task(opts, session, args):
     parser.add_option("--watch", action="store_true", help=_("watch the task"))
     parser.add_option("--arch", help=_("set arch"))
     (options, args) = parser.parse_args(args)
-    activate_session(session, opts)
+    if len(args) < 1:
+        parser.error(_("Please specify task method at least"))
 
+    activate_session(session, goptions)
     taskopts = {}
-    for key in ('channel','priority','arch'):
-        value = getattr(options,key,None)
+    for key in ('channel', 'priority', 'arch'):
+        value = getattr(options, key, None)
         if value is not None:
             taskopts[key] = value
     task_id = session.makeTask(method=args[0],
-                               arglist=list(map(arg_filter,args[1:])),
+                               arglist=list(map(arg_filter, args[1:])),
                                **taskopts)
     print("Created task id %d" % task_id)
     if _running_in_bg() or not options.watch:
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=opts.quiet,
-                poll_interval=opts.poll_interval)
+        return watch_tasks(session, [task_id], quiet=goptions.quiet,
+                poll_interval=goptions.poll_interval)
 
 
 def handle_tag_build(opts, session, args):
