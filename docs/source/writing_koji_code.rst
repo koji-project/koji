@@ -382,7 +382,7 @@ provides a means for certain operations, such as cancelling builds.
 
 The web pages are derived from Cheetah templates, the syntax of which
 you can read up on
-`here <http://cheetahtemplate.org/docs/users_guide_html/>`__. These
+`here <http://cheetahtemplate.org/users_guide/>`__. These
 templates are the ``chtml`` files sitting in ``www/kojiweb``. You'll
 notice quickly that these templates are referencing variables, but where
 do they come from?
