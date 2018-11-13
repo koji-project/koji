@@ -3096,13 +3096,15 @@ def edit_tag(tagInfo, **kwargs):
 
     tagInfo specifies the tag to edit
     fields changes are provided as keyword arguments:
-        name: rename the tag
-        arches: change the arch list
-        locked: lock or unlock the tag
+        name: rename the tag (str)
+        arches: change the arch list (str)
+        locked: lock or unlock the tag (bool)
         perm: change the permission requirement
         maven_support: whether Maven repos should be generated for the tag
+                       (bool)
         maven_include_all: include every build in this tag (including multiple
                            versions of the same package) in the Maven repo
+                           (bool)
         extra: add or update extra tag parameters (dictionary)
         remove_extra: remove extra tag parameters (list)
     """
