@@ -385,7 +385,7 @@ The following commands will initialize PostgreSQL and will start the database se
 
 ::
 
-    root@localhost$ su - postgres -c "PGDATA=/var/lib/pgsql/data initdb"
+    root@localhost$ postgresql-setup initdb
     root@localhost$ systemctl enable postgresql
     root@localhost$ systemctl start postgresql
 
