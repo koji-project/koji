@@ -8060,6 +8060,35 @@ def set_user_status(user, status):
         raise koji.GenericError('invalid user ID: %i' % user_id)
 
 
+def list_cgs():
+    """List all available content generators in the system
+
+    :returns: A map of content generators, like {"name": data}. The data map
+              for each content generator has an "id" key for the content
+              generator ID, and a "users" key for the a list usernames who
+              are permitted to import for this content generator.
+    """
+
+    fields = {'content_generator.id': 'id', 'content_generator.name': 'name',
+              'users.name': 'user_name'}
+    columns, aliases = zip(*fields.items())
+    tables = ['cg_users']
+    joins = ['content_generator ON content_generator.id = cg_users.cg_id',
+             'users ON users.id = cg_users.user_id']
+    clauses = ['cg_users.active = TRUE']
+    query = QueryProcessor(tables=tables, aliases=aliases, columns=columns,
+                           joins=joins, clauses=clauses)
+    cgs = {}
+    for result in query.iterate():
+        cg_id = result['id']
+        cg_name = result['name']
+        user_name = result['user_name']
+        if cg_name not in cgs:
+            cgs[cg_name] = {'id': cg_id, 'users': []}
+        cgs[cg_name]['users'].append(user_name)
+    return cgs
+
+
 def grant_cg_access(user, cg, create=False):
     """
     Grant user access to act as the given content generator
@@ -11068,6 +11097,7 @@ class RootExports(object):
             raise koji.GenericError('unknown user: %s' % username)
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
 
+    listCGs = staticmethod(list_cgs)
     grantCGAccess = staticmethod(grant_cg_access)
     revokeCGAccess = staticmethod(revoke_cg_access)
 
