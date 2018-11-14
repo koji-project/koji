@@ -33,8 +33,8 @@ Warning to the reader:
 = Highlights/Major changes =
 
 - python3 support
-  - the bulk of the code will target python 2.6 + python-six
-  - we'll create a basic client lib for older systems (e.g rhel5 clients/builders)
+  - RHEL 5 support is gone in main Koji releases. (It is available in the "legacy-py24" Git branch.)
+  - RHEL 6 is the oldest supported platform (so, Python 2.6 + python-six)
 - drop xmlrpc in favor a json based rpc
 - build namespaces
   - allow for use cases that require multiple builds of the same NVR (or NVRA)
