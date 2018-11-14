@@ -77,4 +77,8 @@ INSERT INTO user_krb_principals ( SELECT id, krb_principal FROM users WHERE user
 
 ALTER TABLE users DROP COLUMN krb_principal;
 
+-- Disallow duplicate content generator names
+ALTER TABLE content_generator ADD UNIQUE (name);
+ALTER TABLE content_generator ALTER COLUMN name SET NOT NULL;
+
 COMMIT;
