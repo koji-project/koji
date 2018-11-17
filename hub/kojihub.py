@@ -10221,14 +10221,20 @@ class RootExports(object):
     getTagID = staticmethod(get_tag_id)
     getTag = staticmethod(get_tag)
 
-    def getPackageID(self, name):
-        c = context.cnx.cursor()
-        q = """SELECT id FROM package WHERE name=%(name)s"""
-        c.execute(q, locals())
-        r = c.fetchone()
+    def getPackageID(self, name, strict=False):
+        """Get package ID by name.
+        If package doesn't exist, return None, unless strict is True in which
+        case an exception is raised."""
+        query = QueryProcessor(tables=['package'],
+                               columns=['id'],
+                               clauses=['name=%(name)s'],
+                               values=locals())
+        r = query.executeOne()
         if not r:
+            if strict:
+                raise koji.GenericError('Invalid package name: %s' % name)
             return None
-        return r[0]
+        return r['id']
 
     getPackage = staticmethod(lookup_package)
 
