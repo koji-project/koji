@@ -10044,7 +10044,7 @@ class RootExports(object):
 
     getRPM = staticmethod(get_rpm)
 
-    def getRPMDeps(self, rpmID, depType=None, queryOpts=None):
+    def getRPMDeps(self, rpmID, depType=None, queryOpts=None, strict=False):
         """Return dependency information about the RPM with the given ID.
         If depType is specified, restrict results to dependencies of the given type.
         Otherwise, return all dependency information.  A list of maps will be returned,
@@ -10054,17 +10054,27 @@ class RootExports(object):
         - flags
         - type
 
-        If there is no RPM with the given ID, or the RPM has no dependency information,
-        an empty list will be returned.
+        If there is no *internal* RPM with the given ID, or no RPM file found,
+        an empty list will be returned, unless strict is True in which case a
+        GenericError is raised.
+        If the RPM has no dependency information, an empty list will be returned.
         """
         if queryOpts is None:
             queryOpts = {}
-        rpm_info = get_rpm(rpmID)
-        if not rpm_info or not rpm_info['build_id']:
+        rpm_info = get_rpm(rpmID, strict=strict)
+        if not rpm_info:
+            return _applyQueryOpts([], queryOpts)
+        if rpm_info and not rpm_info['build_id']:
+            if strict:
+                raise koji.GenericError("Can not get dependencies,"
+                                        " because RPM: %s is not internal" % rpmID)
             return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
-        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        rpm_path = os.path.join(koji.pathinfo.build(build_info),
+                                koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
+            if strict:
+                raise koji.GenericError("RPM file of %s doesn't exist" % rpmID)
             return _applyQueryOpts([], queryOpts)
 
         results = []

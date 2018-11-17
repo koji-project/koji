@@ -10,6 +10,44 @@ import kojihub
 
 
 class TestGetRPMDeps(unittest.TestCase):
+
+    @mock.patch('kojihub.get_rpm')
+    def test_getRPMDeps_no_rpminfo(self, get_rpm):
+        def mock_get_rpm(rpmID, strict=False):
+            if strict:
+                raise koji.GenericError('msg')
+            else:
+                return None
+        get_rpm.side_effect = mock_get_rpm
+        re = kojihub.RootExports().getRPMDeps(1)
+        self.assertEquals(re, [])
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.RootExports().getRPMDeps(1, strict=True)
+        self.assertEquals(cm.exception.args[0], 'msg')
+
+    @mock.patch('kojihub.get_rpm', return_value={'id': 1, 'build_id': None})
+    def test_getRPMDeps_external_rpm(self, get_rpm):
+        re = kojihub.RootExports().getRPMDeps(1)
+        self.assertEquals(re, [])
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.RootExports().getRPMDeps(1, strict=True)
+        self.assertEquals(cm.exception.args[0],
+                          'Can not get dependencies,'
+                          ' because RPM: 1 is not internal')
+
+    @mock.patch('kojihub.get_rpm', return_value={'id': 1, 'build_id': 1})
+    @mock.patch('kojihub.get_build', return_value={'id': 1})
+    @mock.patch('koji.pathinfo.build', return_value='fakebuildpath')
+    @mock.patch('koji.pathinfo.rpm', return_value='fakerpmrelpath')
+    @mock.patch('os.path.exists', return_value=False)
+    def test_getRPMDeps_no_rpmfile(self, ope, pr, pb, get_build, get_rpm):
+        re = kojihub.RootExports().getRPMDeps(1)
+        self.assertEquals(re, [])
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.RootExports().getRPMDeps(1, strict=True)
+        self.assertEquals(cm.exception.args[0],
+                          "RPM file of 1 doesn't exist")
+
     @mock.patch('kojihub.get_rpm')
     @mock.patch('kojihub.get_build')
     @mock.patch('koji.pathinfo')
