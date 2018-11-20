@@ -40,7 +40,7 @@ from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, greetings, _list_tasks, unique_path
+        error, warn, greetings, _list_tasks, unique_path
 
 
 def _printable_unicode(s):
@@ -3088,7 +3088,7 @@ def anon_handle_buildinfo(goptions, session, args):
             build = int(build)
         info = session.getBuild(build)
         if info is None:
-            print("No such build: %s\n" % build)
+            warn("No such build: %s\n" % build)
             continue
         task = None
         if info['task_id']:
@@ -6701,14 +6701,14 @@ def anon_handle_download_logs(options, session, args):
                 write_fail_log(task_log_dir, task_id)
                 count += 1
         elif state not in ['CLOSED', 'CANCELED']:
-            sys.stderr.write(_("Warning: task %s is %s\n") % (task_id, state))
+            warn(_("Warning: task %s is %s\n") % (task_id, state))
 
         for log_filename, log_volume in logs:
             download_log(task_log_dir, task_id, log_filename, volume=log_volume)
             count += 1
 
         if count == 0 and not recurse:
-            sys.stderr.write(_("No logs found for task %i. Perhaps try --recurse?\n") % task_id)
+            warn(_("No logs found for task %i. Perhaps try --recurse?\n") % task_id)
 
         if recurse:
             child_tasks = session.getTaskChildren(task_id)
