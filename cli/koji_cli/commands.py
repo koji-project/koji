@@ -6016,7 +6016,8 @@ def handle_free_task(goptions, session, args):
             tlist.append(int(task_id))
         except ValueError:
             parser.error(_("task-id must be an integer"))
-            assert False  # pragma: no cover
+    else:
+        parser.error(_("please specify at least one task-id"))
     for task_id in tlist:
         session.freeTask(task_id)
 
