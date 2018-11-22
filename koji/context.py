@@ -25,7 +25,6 @@
 
 from __future__ import absolute_import
 import six.moves._thread
-from six.moves import range
 import six
 
 class _data(object):
@@ -79,36 +78,3 @@ class ThreadLocal(object):
 
 
 context = ThreadLocal()
-
-
-if __name__ == '__main__':
-
-    #testing
-
-    #context.foo = 1
-    #context.bar = 2
-    print(context)
-    #del context.bar
-    print(context)
-
-    import random
-    import time
-    def test():
-        context.foo = random.random()
-        time.sleep(1.5+random.random())
-        context._threadclear()
-        print(context)
-
-    for x in range(1, 10):
-        six.moves._thread.start_new_thread(test, ())
-
-    time.sleep(4)
-    print('')
-    print(context)
-
-    context.foo = 1
-    context.bar = 2
-    print(context.foo, context.bar)
-    print(context)
-    context._threadclear()
-    print(context)
