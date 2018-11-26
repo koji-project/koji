@@ -1648,6 +1648,7 @@ def read_config(profile_name, user_config=None):
         'offline_retry_interval' : None,
         'keepalive' : True,
         'timeout' : None,
+        'auth_timeout' : None,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
@@ -1719,7 +1720,8 @@ def read_config(profile_name, user_config=None):
                                 'debug', 'debug_xmlrpc', 'krb_canon_host'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
-                                  'offline_retry_interval', 'poll_interval', 'timeout',
+                                  'offline_retry_interval', 'poll_interval',
+                                  'timeout', 'auth_timeout',
                                   'upload_blocksize', 'pyver'):
                         try:
                             result[name] = int(value)
@@ -2037,6 +2039,7 @@ def grab_session_options(options):
         'anon_retry',
         'keepalive',
         'timeout',
+        'auth_timeout',
         'use_fast_upload',
         'upload_blocksize',
         'krb_rdns',
@@ -2239,7 +2242,7 @@ class ClientSession(object):
         old_opts = self.opts
         self.opts = old_opts.copy()
         try:
-            self.opts['timeout'] = 60
+            self.opts['timeout'] = self.opts.get('auth_timeout') or 60
             kwargs = {}
             if keytab:
                 old_env['KRB5_CLIENT_KTNAME'] = os.environ.get('KRB5_CLIENT_KTNAME')
@@ -2304,7 +2307,7 @@ class ClientSession(object):
         # 60 second timeout during login
         old_opts = self.opts
         self.opts = old_opts.copy()
-        self.opts['timeout'] = 60
+        self.opts['timeout'] = self.opts.get('auth_timeout') or 60
         self.opts['cert'] = cert
         self.opts['serverca'] = serverca
         try:
