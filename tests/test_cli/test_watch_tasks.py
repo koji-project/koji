@@ -129,8 +129,8 @@ Running Tasks:
         with open(cfile) as fp:
             cdata = json.load(fp)
         self.session.load_calls(cdata)
-        sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
-        
+        sleep.side_effect = [None] * 10 + [KeyboardInterrupt]
+
         def customized_handler(progname, tasks, quiet):
             print('some output')
 
@@ -146,6 +146,7 @@ Running Tasks:
 some output
 ''')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
