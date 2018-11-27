@@ -268,6 +268,10 @@ BASEDIR = '/mnt/koji'
 # default task priority
 PRIO_DEFAULT = 20
 
+# default timeouts
+DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
+DEFAULT_AUTH_TIMEOUT = 60
+
 ## BEGIN kojikamid dup
 
 #Exceptions
@@ -1647,8 +1651,8 @@ def read_config(profile_name, user_config=None):
         'offline_retry' : None,
         'offline_retry_interval' : None,
         'keepalive' : True,
-        'timeout' : None,
-        'auth_timeout' : None,
+        'timeout' : DEFAULT_REQUEST_TIMEOUT,
+        'auth_timeout' : DEFAULT_AUTH_TIMEOUT,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
@@ -2077,7 +2081,7 @@ class ClientSession(object):
         self.logger = logging.getLogger('koji')
         self.rsession = None
         self.new_session()
-        self.opts.setdefault('timeout',  60 * 60 * 12)
+        self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
 
 
     def new_session(self):
@@ -2236,13 +2240,14 @@ class ClientSession(object):
         # Force a new session
         self.new_session()
 
-        # 60 second timeout during login
         sinfo = None
         old_env = {}
         old_opts = self.opts
         self.opts = old_opts.copy()
         try:
-            self.opts['timeout'] = self.opts.get('auth_timeout') or 60
+            # temporary timeout value during login
+            self.opts['timeout'] = self.opts.get('auth_timeout',
+                                                 DEFAULT_AUTH_TIMEOUT)
             kwargs = {}
             if keytab:
                 old_env['KRB5_CLIENT_KTNAME'] = os.environ.get('KRB5_CLIENT_KTNAME')
@@ -2304,10 +2309,11 @@ class ClientSession(object):
         # Force a new session
         self.new_session()
 
-        # 60 second timeout during login
         old_opts = self.opts
         self.opts = old_opts.copy()
-        self.opts['timeout'] = self.opts.get('auth_timeout') or 60
+        # temporary timeout value during login
+        self.opts['timeout'] = self.opts.get('auth_timeout',
+                                             DEFAULT_AUTH_TIMEOUT)
         self.opts['cert'] = cert
         self.opts['serverca'] = serverca
         try:
