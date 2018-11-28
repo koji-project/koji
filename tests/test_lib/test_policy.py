@@ -59,6 +59,7 @@ class TestBasicTests(unittest.TestCase):
         obj = koji.policy.BoolTest('some thing')
         self.assertFalse(obj.run({'thing': None}))
         self.assertFalse(obj.run({'thing': []}))
+        self.assertFalse(obj.run({}))
         self.assertTrue(obj.run({'thing': 'yes'}))
 
     def test_match_test(self):
@@ -66,34 +67,41 @@ class TestBasicTests(unittest.TestCase):
         self.assertFalse(obj.run({'thing': 'elseplus'}))
         obj = koji.policy.MatchTest('some thing else*')
         self.assertTrue(obj.run({'thing': 'elseplus'}))
+        self.assertFalse(obj.run({}))
 
     def test_compare_test(self):
         obj = koji.policy.CompareTest('compare thing > 2')
         self.assertFalse(obj.run({'thing': 1}))
         self.assertFalse(obj.run({'thing': 2}))
         self.assertTrue(obj.run({'thing': 3}))
+        self.assertFalse(obj.run({}))
 
         obj = koji.policy.CompareTest('compare thing < 1.5')
         self.assertFalse(obj.run({'thing': 3.2}))
         self.assertTrue(obj.run({'thing': 1.0}))
+        self.assertFalse(obj.run({}))
 
         obj = koji.policy.CompareTest('compare thing = 42')
         self.assertFalse(obj.run({'thing': 54}))
         self.assertTrue(obj.run({'thing': 42}))
+        self.assertFalse(obj.run({}))
 
         obj = koji.policy.CompareTest('compare thing != 99')
         self.assertFalse(obj.run({'thing': 99}))
         self.assertTrue(obj.run({'thing': 100}))
+        self.assertFalse(obj.run({}))
 
         obj = koji.policy.CompareTest('compare thing >= 2')
         self.assertFalse(obj.run({'thing': 1}))
         self.assertTrue(obj.run({'thing': 2}))
         self.assertTrue(obj.run({'thing': 3}))
+        self.assertFalse(obj.run({}))
 
         obj = koji.policy.CompareTest('compare thing <= 5')
         self.assertFalse(obj.run({'thing': 23}))
         self.assertTrue(obj.run({'thing': 5}))
         self.assertTrue(obj.run({'thing': 0}))
+        self.assertFalse(obj.run({}))
 
     @raises(koji.GenericError)
     def test_invalid_compare_test(self):
@@ -298,5 +306,3 @@ has DEPTH :: {
 
         actions = set(obj.all_actions())
         self.assertEquals(actions, set(['1', '2', '3', '4', 'ERROR', 'END']))
-
-

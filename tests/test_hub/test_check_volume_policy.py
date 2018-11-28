@@ -49,7 +49,7 @@ class TestCheckVolumePolicy(unittest.TestCase):
         ret = kojihub.check_volume_policy({})
         self.assertEqual(ret, None)
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(koji.GenericError):
             kojihub.check_volume_policy({}, strict=True)
 
         self.lookup_name.assert_not_called()
