@@ -121,6 +121,32 @@ Running Tasks:
 ''' % (os.path.basename(sys.argv[0]) or 'koji'))
         self.assertMultiLineEqual(stdout.getvalue(), expected)
 
+    @mock.patch('time.sleep')
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_watch_tasks_with_keyboardinterrupt_handler(self, stdout, sleep):
+        """Raise KeyboardInterrupt inner watch_tasks with a ki_handler"""
+        cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
+        with open(cfile) as fp:
+            cdata = json.load(fp)
+        self.session.load_calls(cdata)
+        sleep.side_effect = [None] * 10 + [KeyboardInterrupt]
+
+        def customized_handler(progname, tasks, quiet):
+            print('some output')
+
+        with self.assertRaises(KeyboardInterrupt):
+            # watch_tasks catches and re-raises it to display a message
+            watch_tasks(self.session, [1208], quiet=False, poll_interval=5,
+                        ki_handler=customized_handler)
+        expected = ('''Watching tasks (this may be safely interrupted)...
+1208 build (f24, /users/mikem/fake.git:master): free
+1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free
+  1209 buildSRPMFromSCM (/users/mikem/fake.git:master): free -> open (builder-01)
+some output
+''')
+        self.assertMultiLineEqual(stdout.getvalue(), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
