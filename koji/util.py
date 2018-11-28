@@ -450,6 +450,16 @@ def safer_move(src, dst):
     shutil.move(src, dst)
 
 
+def move_and_symlink(src, dst, relative=True, create_dir=False):
+    """Move src to dest and create symlink instead of original file"""
+    if create_dir:
+        koji.ensuredir(os.path.dirname(dst))
+    safer_move(src, dst)
+    if relative:
+        dst = os.path.relpath(dst, os.path.dirname(src))
+    os.symlink(dst, src)
+
+
 def relpath(*args, **kwargs):
     deprecated("koji.util.relpath() is deprecated and will be removed in a "
         "future version. See: https://pagure.io/koji/issue/834")
