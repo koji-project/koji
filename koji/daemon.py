@@ -924,6 +924,8 @@ class TaskManager(object):
         if now - ts < delay:
             del self.skipped_tasks[task['id']]
             return True
+        # otherwise
+        return False
 
     def cleanDelayTimes(self):
         """Remove old entries from skipped_tasks"""
