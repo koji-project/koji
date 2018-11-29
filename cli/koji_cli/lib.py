@@ -141,8 +141,18 @@ def print_task_recurse(task,depth=0):
 
 
 def parse_arches(arches, to_list=False):
-    """Parse comma or space-separated list of arches and return
-       only space-separated one."""
+    """Normalize user input for a list of arches.
+
+    This method parses a single comma- or space-separated string of arches and
+    returns a space-separated string.
+
+    :param str arches: comma- or space-separated string of arches, eg.
+                       "x86_64,ppc64le", or "x86_64 ppc64le"
+    :param bool to_list: return a list of each arch, instead of a single
+                         string. This is False by default.
+    :returns: a space-separated string like "x86_64 ppc64le", or a list like
+              ['x86_64', 'ppc64le'].
+    """
     arches = arches.replace(',', ' ').split()
     if to_list:
         return arches
