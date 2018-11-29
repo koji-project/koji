@@ -15,7 +15,7 @@ def explode_ref(ref, dest):
 
 def checkout_run(cmd, ref='HEAD'):
     """Run command in a fresh checkout of ref and return output"""
-    tempdir = tempfile.mkdtemp()
+    tempdir = tempfile.mkdtemp(prefix='koji-runtests-')
     explode_ref(ref, tempdir)
     try:
         output = subprocess.check_output(cmd, cwd=tempdir,
