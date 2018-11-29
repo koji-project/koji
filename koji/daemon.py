@@ -893,11 +893,11 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail)-1)//2]
+                median = bin_avail[(len(bin_avail) - 1) // 2]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     if self.checkAvailDelay(task):
-                        #decline for now and give the upper half a chance
+                        # decline for now and give the upper half a chance
                         return False
                 #otherwise, we attempt to open the task
                 if self.takeTask(task):
