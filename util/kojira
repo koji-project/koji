@@ -536,7 +536,7 @@ class RepoManager(object):
 
         # prune recent tasks
         now = time.time()
-        for task_id in self.recent_tasks:
+        for task_id in list(self.recent_tasks):
             if now - self.recent_tasks[task_id] > 600:
                 del self.recent_tasks[task_id]
 
