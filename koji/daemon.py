@@ -934,7 +934,7 @@ class TaskManager(object):
         cutoff = now - delay * 10
         # After 10x the delay, we've had plenty of opportunity to take the
         # task, so either it has already been taken or we can't take it.
-        for task_id in self.skipped_tasks:
+        for task_id in list(self.skipped_tasks):
             ts = self.skipped_tasks[task_id]
             if ts < cutoff:
                 del self.skipped_tasks[task_id]

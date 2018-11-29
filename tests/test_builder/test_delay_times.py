@@ -34,3 +34,38 @@ class TestDelayTimes(unittest.TestCase):
         self.time.return_value = start + 200
         self.tm.skipped_tasks = {task['id']: start}
         self.assertEqual(self.tm.checkAvailDelay(task), False)
+
+        # and no entry
+        self.time.return_value = start
+        self.tm.skipped_tasks = {}
+        self.assertEqual(self.tm.checkAvailDelay(task), True)
+
+    def test_clean_delay_times(self):
+        self.options.task_avail_delay = 180  # same as default
+
+        # test no skipped entries
+        start = 10000
+        self.time.return_value = start + 100
+        self.tm.skipped_tasks = {}
+        self.tm.cleanDelayTimes()
+        self.assertEqual(self.tm.skipped_tasks, {})
+
+        # test all skipped entries
+        self.time.return_value = start + 5000
+        skipped = {}
+        for i in range(25):
+            skipped[i] = start + i
+            # all older than 180 in age
+        self.tm.skipped_tasks = skipped
+        self.tm.cleanDelayTimes()
+        self.assertEqual(self.tm.skipped_tasks, {})
+
+        # test mixed entries
+        skipped = {100: start + 5000}
+        expected = skipped.copy()
+        for i in range(25):
+            skipped[i] = start + i
+            # all older than 180 in age
+        self.tm.skipped_tasks = skipped
+        self.tm.cleanDelayTimes()
+        self.assertEqual(self.tm.skipped_tasks, expected)
