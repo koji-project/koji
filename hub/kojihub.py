@@ -5180,7 +5180,9 @@ def recycle_build(old, data):
 
     data['id'] = old['id']
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
-    update.set(**dslice(data, ['state', 'task_id', 'owner', 'start_time', 'completion_time', 'epoch', 'source']))
+    update.set(**dslice(data,
+        ['state', 'task_id', 'owner', 'start_time', 'completion_time',
+         'epoch', 'source', 'extra', 'volume_id']))
     update.rawset(create_event='get_event()')
     update.execute()
     builddir = koji.pathinfo.build(data)
