@@ -537,7 +537,7 @@ class RepoManager(object):
         # prune recent tasks
         now = time.time()
         for task_id in list(self.recent_tasks):
-            if now - self.recent_tasks[task_id] > 600:
+            if now - self.recent_tasks[task_id] > self.options.recent_tasks_lifetime:
                 del self.recent_tasks[task_id]
 
         # check on current tasks
@@ -862,6 +862,7 @@ def get_options():
                 'deleted_repo_lifetime': 7*24*3600,
                 #XXX should really be called expired_repo_lifetime
                 'dist_repo_lifetime': 7*24*3600,
+                'recent_tasks_lifetime': 600,
                 'sleeptime' : 15,
                 'cert': None,
                 'ca': '',  # FIXME: unused, remove in next major release
@@ -871,7 +872,8 @@ def get_options():
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'max_repo_tasks_maven',
-                    'delete_batch_size', 'dist_repo_lifetime', 'sleeptime')
+                    'delete_batch_size', 'dist_repo_lifetime', 'sleeptime',
+                    'recent_tasks_lifetime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags',
                     'source_tags', 'ignore_tags')  # FIXME: remove ca here
