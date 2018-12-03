@@ -41,6 +41,8 @@ class TestRecycleBuild():
            'package_name': 'GConf2',
            'release': '15.fc23',
            'version': '3.2.6',
+           'source': None,
+           'extra': None,
            'volume_id': 0,
            'volume_name': 'DEFAULT'}
     new = {'state': 0,
@@ -51,7 +53,10 @@ class TestRecycleBuild():
            'nvr': 'GConf2-3.2.6-15.fc23',
            'completion_time': '2016-09-16',
            'start_time': '2016-09-16',
-           'owner': 2}
+           'owner': 2,
+           'source': None,
+           'extra': None,
+           'volume_id': 0}
 
     def test_recycle_building(self):
         new = self.new.copy()
