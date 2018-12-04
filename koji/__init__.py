@@ -464,16 +464,6 @@ def decode_args2(args, names, strict=True):
     ret.update(opts)
     return ret
 
-## BEGIN kojikamid dup
-
-def encode_int(n):
-    """If n is too large for a 32bit signed, convert it to a string"""
-    if n <= 2147483647:
-        return n
-    #else
-    return str(n)
-## END kojikamid dup
-
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
     if isinstance(n, six.integer_types):
