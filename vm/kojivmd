@@ -38,6 +38,7 @@ import subprocess
 import libvirt
 import libxml2
 import random
+import rpm
 import socket
 import six.moves.xmlrpc_server
 import threading
