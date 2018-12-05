@@ -333,9 +333,10 @@ class WindowsBuild(object):
                 if 'checksum_type' in fileinfo:
                     checksum.update(data)
         # rpms don't have a md5sum in the fileinfo, but check it for everything else
-        if 'checksum' in fileinfo and fileinfo['checksum'] != checksum.hexdigest():
+        digest = checksum.hexdigest()
+        if 'checksum' in fileinfo and fileinfo['checksum'] != digest:
             raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (destpath, checksum.hexdigest(), fileinfo['checksum']))
+                  (destpath, digest, fileinfo['checksum']))
         self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
 
     def fetchBuildReqs(self):
