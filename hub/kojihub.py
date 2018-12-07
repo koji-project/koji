@@ -4713,7 +4713,18 @@ def edit_host(hostInfo, **kw):
     return True
 
 def get_channel(channelInfo, strict=False):
-    """Return information about a channel."""
+    """
+    Look up the ID number and name for a channel.
+
+    :param channelInfo: channel ID or name
+    :type channelInfo: int or str
+    :param bool strict: If True, raise an error if we found no matching
+                        channel. If False, simply return None if we found no
+                        matching channel. If unspecified, the default value is
+                        False.
+    :returns: dict of the channel ID and name, or None.
+              For example, {'id': 20, 'name': 'container'}
+    """
     fields = ('id', 'name')
     query = """SELECT %s FROM channels
     WHERE """ % ', '.join(fields)
