@@ -4207,8 +4207,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                     val = typeInfo[key]
                     if not isinstance(val, (list, tuple)):
                         val = [val]
-                    for v in val:
-                        clauses.append(r"""%s ~ E'\\m%s\\M'""" % (key, v))
+                    for i, v in enumerate(val):
+                        pkey = '%s_pattern_%i' % (key, i)
+                        values[pkey] = r'\m%s\M' % v
+                        clauses.append('%s ~ %%(%s)s' % (key, pkey))
     elif type == 'image':
         joins.append('image_archives ON archiveinfo.id = image_archives.archive_id')
         fields.append(['image_archives.arch', 'arch'])
