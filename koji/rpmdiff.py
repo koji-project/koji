@@ -25,6 +25,7 @@ import rpm
 import os
 import itertools
 import six
+from six.moves import zip
 
 class Rpmdiff:
 
@@ -179,8 +180,8 @@ class Rpmdiff:
         if not isinstance(oldflags, list): oldflags = [ oldflags ]
         if not isinstance(newflags, list): newflags = [ newflags ]
 
-        o = zip(old[name], oldflags, old[name[:-1]+'VERSION'])
-        n = zip(new[name], newflags, new[name[:-1]+'VERSION'])
+        o = list(zip(old[name], oldflags, old[name[:-1]+'VERSION']))
+        n = list(zip(new[name], newflags, new[name[:-1]+'VERSION']))
 
         if name == 'PROVIDES': # filter our self provide
             oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
