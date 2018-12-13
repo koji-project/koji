@@ -2139,7 +2139,7 @@ class ClientSession(object):
             ctx = krbV.default_context()
 
         if ccache != None:
-            ccache = krbV.CCache(name='FILE:' + ccache, context=ctx)
+            ccache = krbV.CCache(name=ccache, context=ctx)
         else:
             ccache = ctx.default_ccache()
 
