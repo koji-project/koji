@@ -3095,19 +3095,24 @@ def get_tag_extra(tagInfo, event=None):
 def edit_tag(tagInfo, **kwargs):
     """Edit information for an existing tag.
 
-    tagInfo specifies the tag to edit
-    fields changes are provided as keyword arguments:
-        name: rename the tag (str)
-        arches: change the arch list (str)
-        locked: lock or unlock the tag (bool)
-        perm: change the permission requirement
-        maven_support: whether Maven repos should be generated for the tag
-                       (bool)
-        maven_include_all: include every build in this tag (including multiple
-                           versions of the same package) in the Maven repo
-                           (bool)
-        extra: add or update extra tag parameters (dictionary)
-        remove_extra: remove extra tag parameters (list)
+    The tagInfo argument is the only required argument. After the tagInfo
+    argument, specify any tag changes with additional keyword arguments.
+
+    :param tagInfo: koji tag ID or name to edit (required).
+    :type tagInfo: int or str
+
+    :param str name: rename the tag.
+    :param str arches: a space-separated list of arches for this tag.
+    :param bool locked: whether this tag is locked or not.
+    :param perm: the permission ID or name for this tag.
+    :type perm: int, str, or None
+    :param bool maven_support: whether Maven repos should be generated for the
+                               tag.
+    :param bool maven_include_all: include every build in this tag (including
+                                   multiple versions of the same package) in
+                                   the Maven repo.
+    :param dict extra: add or update extra tag parameters.
+    :param list remove_extra: remove extra tag parameters.
     """
 
     context.session.assertPerm('admin')
