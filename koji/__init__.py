@@ -1978,11 +1978,13 @@ def is_cert_error(e):
 
 def is_conn_error(e):
     """Determine if an error seems to be from a dropped connection"""
-    if isinstance(e, socket.error):
-        if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
-            return True
-        # else
-        return False
+    # This is intended for the case where e is a socket error.
+    # as `socket.error` is just an alias for `OSError` in Python 3
+    # there is no value to an `isinstance` check here; let's just
+    # assume that if the exception has an 'errno' and it's one of
+    # these values, this is a connection error.
+    if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+        return True
     if isinstance(e, six.moves.http_client.BadStatusLine):
         return True
     try:
@@ -1994,10 +1996,9 @@ def is_conn_error(e):
                 e3 = getattr(e2, 'args', [None, None])[1]
                 if isinstance(e3, six.moves.http_client.BadStatusLine):
                     return True
-            if isinstance(e2, socket.error):
-                # same check as unwrapped socket error
-                if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
-                    return True
+            # same check as unwrapped socket error
+            if getattr(e2, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+                return True
     except (TypeError, AttributeError):
         pass
     # otherwise
