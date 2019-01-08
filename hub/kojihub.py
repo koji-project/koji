@@ -1751,7 +1751,7 @@ def _grplist_remove(taginfo, grpinfo, force=False):
     grp_id = group['id']
     clauses = ['group_id=%(grp_id)s', 'tag_id=%(tag_id)s']
     if not force:
-        query = QueryProcessor(columns=['id'],
+        query = QueryProcessor(columns=['group_id', 'tag_id', 'active'],
                                tables=['group_config'],
                                values=locals(),
                                clauses=clauses + [eventCondition(None)])

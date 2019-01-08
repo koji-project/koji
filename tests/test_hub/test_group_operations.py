@@ -188,7 +188,7 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(len(self.updates), 1)
         query = self.queries[0]
         self.assertEqual(' '.join(str(query).split()),
-                         'SELECT id FROM group_config'
+                         'SELECT group_id, tag_id, active FROM group_config'
                          ' WHERE (group_id=%(grp_id)s)'
                          ' AND (tag_id=%(tag_id)s)'
                          ' AND ((active = TRUE))')
