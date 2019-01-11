@@ -2982,6 +2982,12 @@ class MultiCallSession(object):
     # alias for compatibility with ClientSession
     multiCall = call_all
 
+    # more backwards compat
+    # multicall returns True but cannot be set
+    @property
+    def multicall():
+        return True
+
     # implement a context manager
     def __enter__(self):
         return self
