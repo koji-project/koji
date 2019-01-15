@@ -27,6 +27,7 @@ import koji.util
 from koji.daemon import SCM, TaskManager
 from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
 from koji.tasks import RestartTask, RestartVerifyTask
+import hashlib
 import sys
 import logging
 import os
@@ -37,6 +38,7 @@ import subprocess
 import libvirt
 import libxml2
 import random
+import rpm
 import socket
 import six.moves.xmlrpc_server
 import threading
@@ -680,15 +682,27 @@ class VMExecTask(BaseTaskHandler):
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
             with closing(requests.get(remote_url, stream=True)) as response:
-                f = open(localpath, 'wb')
-                length = response.headers.get('content-length')
-                if length is None:
-                    f.write(response.content)
-                else:
-                    for chunk in response.iter_content(chunk_size=65536):
-                        f.write(chunk)
-                f.close()
-
+                with open(localpath, 'wb') as f:
+                    length = response.headers.get('content-length')
+                    if length is None:
+                        f.write(response.content)
+                    else:
+                        for chunk in response.iter_content(chunk_size=65536):
+                            f.write(chunk)
+            if type == 'rpm':
+                # rpm, check sigmd5. It is enough, as if content is broken,
+                # rpm will fail later
+                hdr = koji.get_rpm_header(localpath)
+                payloadhash = koji.hex_string(hdr[rpm.RPMTAG_SIGMD5])
+                if fileinfo['payloadhash'] != payloadhash:
+                    raise koji.BuildError("Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" % (
+                        os.path.basename(fileinfo['localpath']),
+                        fileinfo['payloadhash'], payloadhash))
+                if not koji.util.check_sigmd5(localpath):
+                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" % \
+                        os.path.basename(fileinfo['localpath']))
+            else:
+                self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']], localpath)
 
         return open(localpath, 'r')
 
@@ -751,19 +765,20 @@ class VMExecTask(BaseTaskHandler):
             raise koji.BuildError('%s does not exist' % local_path)
 
         if algo == 'sha1':
-            sum = koji.util.sha1_constructor()
+            sum = hashlib.sha1()
         elif algo == 'md5':
-            sum = koji.util.md5_constructor()
+            sum = hashlib.md5()
+        elif algo == 'sha256':
+            sum == hashlib.sha256()
         else:
             raise koji.BuildError('unsupported checksum algorithm: %s' % algo)
 
-        fobj = open(local_path, 'r')
-        while True:
-            data = fobj.read(1048576)
-            if not data:
-                break
-            sum.update(data)
-        fobj.close()
+        with open(local_path, 'r') as f:
+            while True:
+                data = f.read(1048576)
+                if not data:
+                    break
+                sum.update(data)
         if sum.hexdigest() == checksum:
             return True
         else:
