@@ -2107,7 +2107,7 @@ class ClientSession(object):
         sinfo = self.callMethod('subsession')
         return type(self)(self.baseurl, self.opts, sinfo)
 
-    def krb_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
+    def krb_login(self, principal=None, keytab=None, ccache=None, proxyuser=None, ctx=None):
         """Log in using Kerberos.  If principal is not None and keytab is
         not None, then get credentials for the given principal from the given keytab.
         If both are None, authenticate using existing local credentials (as obtained
@@ -2115,7 +2115,8 @@ class ClientSession(object):
         not specified, the default ccache will be used.  If proxyuser is specified,
         log in the given user instead of the user associated with the Kerberos
         principal.  The principal must be in the "ProxyPrincipals" list on
-        the server side."""
+        the server side.  ctx is the Kerberos context to use, and should be unique
+        per thread.  If ctx is not specified, the default context is used."""
 
         try:
             # Silently try GSSAPI first
@@ -2134,10 +2135,11 @@ class ClientSession(object):
                 "Please install python-krbV to use kerberos."
             )
 
-        ctx = krbV.default_context()
+        if not ctx:
+            ctx = krbV.default_context()
 
         if ccache != None:
-            ccache = krbV.CCache(name='FILE:' + ccache, context=ctx)
+            ccache = krbV.CCache(name=ccache, context=ctx)
         else:
             ccache = ctx.default_ccache()
 
