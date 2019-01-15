@@ -34,6 +34,9 @@ import subprocess
 import sys
 import tempfile
 import time
+# urlparse is required by the SCM class which is substituted into this file
+# do not remove the import below
+import urlparse
 import six.moves.xmlrpc_client
 import base64
 import hashlib
