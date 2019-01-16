@@ -44,12 +44,6 @@ class TestEnsureDir(unittest.TestCase):
         ensuredir('path')
         mock_mkdir.assert_called_once_with('path')
 
-        mock_mkdir.reset_mock()
-        mock_mkdir.side_effect = OSError(errno.EEXIST + 1, 'ignored error')
-        mock_isdir.return_value = False
-        ensuredir('path')
-        mock_mkdir.assert_called_once_with('path')
-
     @mock.patch('os.mkdir')
     @mock.patch('os.path.exists')
     @mock.patch('os.path.isdir')

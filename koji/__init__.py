@@ -492,8 +492,8 @@ def ensuredir(directory):
 
     :returns: str: normalized directory path
 
-    :raises OSError: If directory is not a dir or it is root(/) or equivalent
-        but doesn't exist(should not happen).
+    :raises OSError: If argument already exists and is not a directory, or
+                     error occurs from underlying `os.mkdir`.
     """
     directory = os.path.normpath(directory)
     if os.path.exists(directory):
@@ -512,8 +512,8 @@ def ensuredir(directory):
             os.mkdir(directory)
         except OSError as e:
             # do not thrown when dir already exists (could happen in a race)
-            if e.errno == errno.EEXIST and not os.path.isdir(directory):
-                #something else must have gone wrong
+            if not os.path.isdir(directory):
+                # something else must have gone wrong
                 raise
     return directory
 
