@@ -3380,6 +3380,7 @@ def handle_clone_tag(goptions, session, args):
         dstbldsbypkg = defaultdict(OrderedDict)
         srcgroups = OrderedDict()
         dstgroups = OrderedDict()
+        # we use OrderedDict so that these indexes preserve the order given to us
         if options.pkgs:
             for pkg in session.listPackages(tagID=srctag['id'],
                                             inherited=True,
@@ -3437,19 +3438,23 @@ def handle_clone_tag(goptions, session, args):
             # secondly, add builds from src tag and adjust the order
             for (nvr, srcbld) in six.iteritems(srcblds):
                 found = False
-                dnvrs = []
+                out_of_order = []
                 for (dstnvr, dstbld) in six.iteritems(dstblds):
                     if nvr == dstnvr:
                         found = True
-                        dnvrs.append(dstnvr)
                         break
                     # if latest_only, remove older builds, else keep them
                     elif not options.latest_only:
-                        dnvrs.append(dstnvr)
+                        out_of_order.append(dstnvr)
                         dblds.append(dstbld)
-                for dnvr in dnvrs:
+                for dnvr in out_of_order:
                     del dstblds[dnvr]
-                if not found:
+                    # these will be re-added in the proper order later
+                if found:
+                    # remove it for next pass so we stay aligned with outer
+                    # loop
+                    del dstblds[nvr]
+                else:
                     ablds.append(srcbld)
             baddlist.extend(ablds)
             bdellist.extend(dblds)
