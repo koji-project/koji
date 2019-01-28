@@ -2,6 +2,10 @@ NAME=koji
 SPECFILE = $(firstword $(wildcard *.spec))
 SUBDIRS = hub builder koji cli util www plugins vm
 
+ifndef PYTHON
+export PYTHON=python2
+endif
+
 ifdef DIST
 DIST_DEFINES := --define "dist $(DIST)"
 endif
