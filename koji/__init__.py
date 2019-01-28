@@ -1804,6 +1804,15 @@ def get_profile_module(profile_name, config=None):
 
 
 def read_config_files(config_files, parser=None):
+    """Use parser to read config file(s)
+
+    :param config_files: config file(s) to read (required).
+    :type config_files: str or list
+    :param type parser: class/sub-class of `configparser.RawConfigParser`.
+                        If it's None or omitted, using
+                        `six.moves.configparser.ConfigParser` as default.
+    :return: object of parser which contains parsed content
+    """
     if not isinstance(config_files, (list, tuple)):
         config_files = [config_files]
     if parser is None:
