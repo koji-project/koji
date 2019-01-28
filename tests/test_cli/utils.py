@@ -11,6 +11,7 @@ except ImportError:
     import unittest
 
 
+PROGNAME = os.path.basename(sys.argv[0]) or 'koji'
 
 """
   Classes
@@ -40,7 +41,7 @@ class _dummy_(object):
 class CliTestCase(unittest.TestCase):
 
     # public attribute
-    progname = os.path.basename(sys.argv[0]) or 'koji'
+    progname = PROGNAME
     error_format = None
     STDOUT = sys.stdout
     STDERR = sys.stderr

@@ -41,6 +41,7 @@ from zlib import adler32
 from six.moves import range
 import six
 import warnings
+from six.moves import zip
 
 # imported from kojiweb and kojihub
 try:
@@ -79,6 +80,7 @@ def formatChangelog(entries):
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')
 TIME_RE = re.compile(r'(\d+):(\d+):(\d+)')
 
+
 def parseTime(val):
     """
     Parse a string time in either "YYYY-MM-DD HH24:MI:SS" or "YYYY-MM-DD"
@@ -100,6 +102,7 @@ def parseTime(val):
     return calendar.timegm(
             datetime.datetime(*(date + time)).timetuple())
 
+
 def checkForBuilds(session, tag, builds, event, latest=False):
     """Check that the builds existed in tag at the time of the event.
        If latest=True, check that the builds are the latest in tag."""
@@ -116,12 +119,14 @@ def checkForBuilds(session, tag, builds, event, latest=False):
 
     return True
 
+
 def duration(start):
     """Return the duration between start and now in MM:SS format"""
     elapsed = time.time() - start
     mins = int(elapsed // 60)
     secs = int(elapsed % 60)
     return '%s:%02i' % (mins, secs)
+
 
 def printList(l):
     """Print the contents of the list comma-separated"""
@@ -137,6 +142,7 @@ def printList(l):
         ret += l[-1]
         return ret
 
+
 def multi_fnmatch(s, patterns):
     """Returns true if s matches any pattern in the list
 
@@ -149,6 +155,7 @@ def multi_fnmatch(s, patterns):
             return True
     return False
 
+
 def dslice(dict, keys, strict=True):
     """Returns a new dictionary containing only the specified keys"""
     ret = {}
@@ -157,6 +164,7 @@ def dslice(dict, keys, strict=True):
             #for strict we skip the has_key check and let the dict generate the KeyError
             ret[key] = dict[key]
     return ret
+
 
 def dslice_ex(dict, keys, strict=True):
     """Returns a new dictionary with only the specified keys removed"""
@@ -490,6 +498,7 @@ def eventFromOpts(session, opts):
                     'ts' : rinfo['create_ts']}
     return None
 
+
 def filedigestAlgo(hdr):
     """
     Get the file digest algorithm used in hdr.
@@ -554,6 +563,7 @@ def parseStatus(rv, prefix):
     else:
         return '%s terminated for unknown reasons' % prefix
 
+
 def isSuccess(rv):
     """Return True if rv indicates successful completion
     (exited with status 0), False otherwise."""
@@ -561,6 +571,7 @@ def isSuccess(rv):
         return True
     else:
         return False
+
 
 def setup_rlimits(opts, logger=None):
     logger = logger or logging.getLogger("koji")
@@ -586,6 +597,7 @@ def setup_rlimits(opts, logger=None):
             resource.setrlimit(rcode, tuple(limits))
         except ValueError as e:
             logger.error("Unable to set %s: %s", key, e)
+
 
 class adler32_constructor(object):
 
@@ -616,6 +628,7 @@ class adler32_constructor(object):
     digest_size = 4
     block_size = 1      #I think
 
+
 def tsort(parts):
     """Given a partial ordering, return a totally ordered list.
 
@@ -636,6 +649,7 @@ def tsort(parts):
     if parts:
         raise ValueError('total ordering not possible')
     return result
+
 
 class MavenConfigOptAdapter(object):
     """
@@ -659,6 +673,7 @@ class MavenConfigOptAdapter(object):
                 value = value.splitlines()
             return value
         raise AttributeError(name)
+
 
 def maven_opts(values, chain=False, scratch=False):
     """
@@ -695,9 +710,11 @@ def maven_opts(values, chain=False, scratch=False):
         opts['scratch'] = True
     return opts
 
+
 def maven_params(config, package, chain=False, scratch=False):
     values = MavenConfigOptAdapter(config, package)
     return maven_opts(values, chain=chain, scratch=scratch)
+
 
 def wrapper_params(config, package, chain=False, scratch=False):
     params = {}
@@ -708,6 +725,7 @@ def wrapper_params(config, package, chain=False, scratch=False):
     if not scratch:
         params['create_build'] = True
     return params
+
 
 def parse_maven_params(confs, chain=False, scratch=False):
     """
@@ -742,6 +760,7 @@ def parse_maven_params(confs, chain=False, scratch=False):
         raise ValueError("No sections found in: %s" % ', '.join(confs))
     return builds
 
+
 def parse_maven_param(confs, chain=False, scratch=False, section=None):
     """
     Parse .ini files that contain parameters to launch a Maven build.
@@ -762,6 +781,7 @@ def parse_maven_param(confs, chain=False, scratch=False, section=None):
         raise ValueError("Multiple sections in: %s, you must specify the section" % ', '.join(confs))
     return builds
 
+
 def parse_maven_chain(confs, scratch=False):
     """
     Parse maven-chain config.
@@ -779,6 +799,7 @@ def parse_maven_chain(confs, scratch=False):
     except ValueError:
         raise ValueError('No possible build order, missing/circular dependencies')
     return builds
+
 
 def to_list(l):
     """

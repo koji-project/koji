@@ -134,8 +134,8 @@ monitor commands:
 search commands:
         search                    Search the system
 
-Try "koji --help" for help about global options
-Try "koji help" to get all available commands
-Try "koji <command> --help" for help about the options of a particular command
-Try "koji help <category>" to get commands under a particular category
+Try "{progname} --help" for help about global options
+Try "{progname} help" to get all available commands
+Try "{progname} <command> --help" for help about the options of a particular command
+Try "{progname} help <category>" to get commands under a particular category
 Available categories are: admin, all, bind, build, download, info, misc, monitor, search

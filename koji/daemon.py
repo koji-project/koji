@@ -31,7 +31,7 @@ from koji.util import md5_constructor, adler32_constructor, parseStatus, \
 import os
 import signal
 import logging
-import urlparse
+from six.moves import urllib
 from fnmatch import fnmatch
 import base64
 import time
@@ -258,7 +258,7 @@ class SCM(object):
 
         # replace the scheme with http:// so that the urlparse works in all cases
         dummyurl = self.url.replace(scheme, 'http://', 1)
-        dummyscheme, netloc, path, params, query, fragment = urlparse.urlparse(dummyurl)
+        dummyscheme, netloc, path, params, query, fragment = urllib.parse.urlparse(dummyurl)
 
         user = None
         userhost = netloc.split('@')
@@ -532,7 +532,7 @@ class SCM(object):
             netloc = self.host
             path = self.repository
             query = self.module
-            r['source'] = urlparse.urlunsplit([scheme, netloc, path, query, fragment])
+            r['source'] = urllib.parse.urlunsplit([scheme, netloc, path, query, fragment])
         else:
             # just use the same url
             r['source'] = self.url

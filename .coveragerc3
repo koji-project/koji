@@ -7,8 +7,6 @@ omit =
     tests/*
     hub/*
     util/*
-    koji/daemon.py
-    koji/tasks.py
 
 [report]
 exclude_lines =

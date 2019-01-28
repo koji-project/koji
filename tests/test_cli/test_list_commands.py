@@ -7,7 +7,7 @@ try:
 except ImportError:
     import unittest
 
-from . import loadcli
+from . import loadcli, utils
 cli = loadcli.cli
 
 
@@ -31,13 +31,9 @@ class TestListCommands(unittest.TestCase):
     def test_list_commands(self, stdout):
         cli.list_commands()
         actual = stdout.getvalue()
-        if six.PY2:
-            actual = actual.replace('nosetests', 'koji')
-        else:
-            actual = actual.replace('nosetests-3', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands.txt'
         with open(filename, 'rb') as f:
-            expected = f.read().decode('ascii')
+            expected = f.read().decode('ascii').format(progname=utils.PROGNAME)
         self.assertMultiLineEqual(actual, expected)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -47,11 +43,7 @@ class TestListCommands(unittest.TestCase):
         self.parser.parse_args.return_value = [options, arguments]
         cli.handle_help(self.options, self.session, self.args)
         actual = stdout.getvalue()
-        if six.PY2:
-            actual = actual.replace('nosetests', 'koji')
-        else:
-            actual = actual.replace('nosetests-3', 'koji')
         filename = os.path.dirname(__file__) + '/data/list-commands-admin.txt'
         with open(filename, 'rb') as f:
-            expected = f.read().decode('ascii')
+            expected = f.read().decode('ascii').format(progname=utils.PROGNAME)
         self.assertMultiLineEqual(actual, expected)

@@ -504,7 +504,8 @@ class BaseTaskHandler(object):
         #  c) is canonical
         host_arches = host['arches']
         if not host_arches:
-            raise koji.BuildError("No arch list for this host: %s" % host['name'])
+            raise koji.BuildError("No arch list for this host: %s" %
+                                  host['name'])
         tag_arches = tag['arches']
         if not tag_arches:
             raise koji.BuildError("No arch list for tag: %s" % tag['name'])
@@ -520,12 +521,17 @@ class BaseTaskHandler(object):
             # because we just forked from a common parent
             random.seed()
             arch = random.choice(common_arches)
-            self.logger.info('Valid arches: %s, using: %s' % (' '.join(common_arches), arch))
+            self.logger.info('Valid arches: %s, using: %s' %
+                             (' '.join(sorted(common_arches)), arch))
             return arch
         else:
             # no overlap
-            raise koji.BuildError("host %s (%s) does not support any arches of tag %s (%s)" % \
-                (host['name'], ', '.join(host_arches), tag['name'], ', '.join(tag_arches)))
+            raise koji.BuildError("host %s (%s) does not support any arches"
+                                  " of tag %s (%s)" %
+                                  (host['name'],
+                                   ', '.join(sorted(host_arches)),
+                                   tag['name'],
+                                   ', '.join(sorted(tag_arches))))
 
     def getRepo(self, tag):
         """
