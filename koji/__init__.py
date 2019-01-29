@@ -2428,12 +2428,15 @@ class ClientSession(object):
         request = dumps(args, name, allow_none=1)
         try:
             request.encode('latin-1')
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            # py2 string throws UnicodeDecodeError
-            # py3 string throws UnicodeEncodeError
+        except UnicodeEncodeError:
             # if string is not converted to UTF, requests will raise an error
             # on identical check before sending data
+            # py3 string throws UnicodeEncodeError
             request = request.encode('utf-8')
+        except UnicodeDecodeError:
+            # py2 string throws UnicodeDecodeError, but it is already meant
+            # to sent as-is
+            pass
         headers = [
             # connection class handles Host
             ('User-Agent', 'koji/1'),
