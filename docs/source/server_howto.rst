@@ -95,7 +95,6 @@ koji components.
 
 ::
 
-    <pre>
     HOME                    = .
     RANDFILE                = .rand
 
@@ -349,7 +348,7 @@ currently hard coded into the koji client.
     Used by the koji-web server during communications with the koji-hub. This
     is a user principal that will authenticate koji-web to Kerberos as
     "koji/kojiweb@EXAMPLE.COM". Koji-web will proxy the mod_auth_gssapi user
-    information to koji-hub (the <code>ProxyPrincipals</code> koji-hub config
+    information to koji-hub (the ``ProxyPrincipals`` koji-hub config
     option).
 
 ``koji/kojira@EXAMPLE.COM``
@@ -468,7 +467,7 @@ Authorize Koji-web and Koji-hub resources
         local   koji        koji                              trust
 
     .. note::
-        To enforce password based logins to the database, change <tt>trust</tt> to <tt>md5</tt>.
+        To enforce password based logins to the database, change ``trust`` to ``md5``.
 
     ::
 
