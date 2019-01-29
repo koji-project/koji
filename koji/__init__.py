@@ -2400,6 +2400,14 @@ class ClientSession(object):
         else:
             handler = self.baseurl
         request = dumps(args, name, allow_none=1)
+        try:
+            request.encode('latin-1')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            # py2 string throws UnicodeDecodeError
+            # py3 string throws UnicodeEncodeError
+            # if string is not converted to UTF, requests will raise an error
+            # on identical check before sending data
+            request = request.encode('utf-8')
         headers = [
             # connection class handles Host
             ('User-Agent', 'koji/1'),

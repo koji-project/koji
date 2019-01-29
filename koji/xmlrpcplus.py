@@ -75,7 +75,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
     if isinstance(params, Fault):
         methodresponse = 1
     elif not isinstance(params, tuple):
-        raise TypeError('params must be a tuple of Fault instance')
+        raise TypeError('params must be a tuple or Fault instance')
     elif methodresponse and len(params) != 1:
         raise ValueError('response tuple must be a singleton')
 
