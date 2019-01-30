@@ -3152,7 +3152,12 @@ class LiveCDTask(ImageTask):
         cmd = ['/usr/bin/livecd-creator', '-c', kskoji, '-d', '-v',
                '--logfile', livecd_log, '--cache', cachedir]
         isoname = '%s-%s-%s' % (name, version, release)
-        cmd.extend(['-f', self._shortenVolID(name, version, release)])
+        volid = opts.get('volid')
+        if not volid:
+            volid = self._shortenVolID(name, version, release)
+        else:
+            volid = volid[:32]
+        cmd.extend(['-f', volid])
 
         # Run livecd-creator
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
@@ -3337,11 +3342,18 @@ class LiveMediaTask(ImageTask):
                #'--tmp', '/tmp'
               ]
 
+
+        volid = opts.get('volid')
+        if not volid:
+            volid = self._shortenVolID(name, version, release)
+        else:
+            volid = volid[:32]
+
         # note: at the moment, we are only generating live isos. We may add support
         # for other types in the future
 
         cmd.extend(['--make-iso',
-                    '--volid', self._shortenVolID(name, version, release),
+                    '--volid', volid,
                     '--iso-only',
                    ])
 
