@@ -491,7 +491,7 @@ List of changes:
                                                        inherit=None,
                                                        latest=None),
                                        call.listTagged(2, inherit=False,
-                                                       latest=None),
+                                                       latest=False),
                                        call.getTagGroups('src-tag',
                                                          event=None),
                                        call.getTagGroups('dst-tag'),

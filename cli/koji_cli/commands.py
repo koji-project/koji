@@ -3395,10 +3395,12 @@ def handle_clone_tag(goptions, session, args):
                                                      inherit=options.inherit_builds,
                                                      latest=options.latest_only)):
                 srcbldsbypkg[build['package_name']][build['nvr']] = build
-            # get builds in dsttag without inheritance
+            # get builds in dsttag without inheritance.
+            # latest=False to get all builds even when latest_only = True,
+            # so that only the *latest* build per tag will live in.
             for build in reversed(session.listTagged(dsttag['id'],
                                                      inherit=False,
-                                                     latest=options.latest_only)):
+                                                     latest=False)):
                 dstbldsbypkg[build['package_name']][build['nvr']] = build
         if options.groups:
             for group in session.getTagGroups(srctag['name'],
@@ -3443,8 +3445,7 @@ def handle_clone_tag(goptions, session, args):
                     if nvr == dstnvr:
                         found = True
                         break
-                    # if latest_only, remove older builds, else keep them
-                    elif not options.latest_only:
+                    else:
                         out_of_order.append(dstnvr)
                         dblds.append(dstbld)
                 for dnvr in out_of_order:
