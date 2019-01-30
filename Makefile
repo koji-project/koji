@@ -112,7 +112,7 @@ pypi:
 	rm -rf dist
 	python setup.py sdist
 	# py2
-	virtualenv build_py2
+	virtualenv -p /usr/bin/python2 build_py2
 	build_py2/bin/pip install --upgrade pip setuptools wheel virtualenv
 	build_py2/bin/python setup.py bdist_wheel
 	rm -rf build_py2
