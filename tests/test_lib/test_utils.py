@@ -163,40 +163,47 @@ class ConfigFileTestCase(unittest.TestCase):
 
     @mock_open()
     @mock.patch("six.moves.configparser.ConfigParser", spec=True)
+    @mock.patch("six.moves.configparser.RawConfigParser", spec=True)
     @mock.patch("six.moves.configparser.SafeConfigParser", spec=True)
-    def test_read_config_files(self, scp_clz, cp_clz, open_mock):
+    def test_read_config_files(self, scp_clz, rcp_clz, cp_clz, open_mock):
         files = 'test1.conf'
         conf = koji.read_config_files(files)
-        self.assertTrue(isinstance(conf,
-                                   six.moves.configparser.ConfigParser.__class__))
-        cp_clz.assert_called_once()
         open_mock.assert_called_once_with(files, 'r')
         if six.PY2:
-            cp_clz.return_value.readfp.assert_called_once()
+            self.assertTrue(isinstance(conf,
+                                       six.moves.configparser.SafeConfigParser.__class__))
+            scp_clz.assert_called_once()
+            scp_clz.return_value.readfp.assert_called_once()
         else:
+            self.assertTrue(isinstance(conf,
+                                       six.moves.configparser.ConfigParser.__class__))
+            cp_clz.assert_called_once()
             cp_clz.return_value.read_file.assert_called_once()
 
         open_mock.reset_mock()
         cp_clz.reset_mock()
+        scp_clz.reset_mock()
         files = ['test1.conf', 'test2.conf']
         koji.read_config_files(files)
-        cp_clz.assert_called_once()
         open_mock.assert_has_calls([call('test1.conf', 'r'),
                                     call('test2.conf', 'r')],
                                    any_order=True)
         if six.PY2:
-            self.assertEqual(cp_clz.return_value.readfp.call_count, 2)
+            scp_clz.assert_called_once()
+            self.assertEqual(scp_clz.return_value.readfp.call_count, 2)
         else:
+            cp_clz.assert_called_once()
             self.assertEqual(cp_clz.return_value.read_file.call_count, 2)
 
         open_mock.reset_mock()
         cp_clz.reset_mock()
-        conf = koji.read_config_files(files,
-                                      six.moves.configparser.SafeConfigParser)
+        scp_clz.reset_mock()
+        conf = koji.read_config_files(files, raw=True)
         self.assertTrue(isinstance(conf,
-                                   six.moves.configparser.SafeConfigParser.__class__))
+                                   six.moves.configparser.RawConfigParser.__class__))
         cp_clz.assert_not_called()
-        scp_clz.assert_called_once()
+        scp_clz.assert_not_called()
+        rcp_clz.assert_called_once()
 
 
 class MavenUtilTestCase(unittest.TestCase):
@@ -532,12 +539,13 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertEqual(cm.exception.args[0], 'total ordering not possible')
 
     def _read_conf(self, cfile):
-        config = six.moves.configparser.ConfigParser()
         path = os.path.dirname(__file__)
         with open(path + cfile, 'r') as conf_file:
             if six.PY2:
+                config = six.moves.configparser.SafeConfigParser()
                 config.readfp(conf_file)
             else:
+                config = six.moves.configparser.ConfigParser()
                 config.read_file(conf_file)
         return config
 

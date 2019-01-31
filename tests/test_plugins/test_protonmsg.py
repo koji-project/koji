@@ -9,7 +9,7 @@ except ImportError:
 
 from mock import patch, MagicMock
 from koji.context import context
-from six.moves.configparser import SafeConfigParser
+from six.moves.configparser import ConfigParser, SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):
     def tearDown(self):
@@ -269,10 +269,11 @@ topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
 """)
-        conf = SafeConfigParser()
         if six.PY2:
+            conf = SafeConfigParser()
             conf.readfp(confdata)
         else:
+            conf = ConfigParser()
             conf.read_file(confdata)
         self.handler = protonmsg.TimeoutHandler('amqps://broker1.example.com:5671', [], conf)
 
@@ -293,10 +294,11 @@ topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
 """)
-        conf = SafeConfigParser()
         if six.PY2:
+            conf = SafeConfigParser()
             conf.readfp(confdata)
         else:
+            conf = ConfigParser()
             conf.read_file(confdata)
         handler = protonmsg.TimeoutHandler('amqp://broker1.example.com:5672', [], conf)
         event = MagicMock()
