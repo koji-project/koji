@@ -1803,19 +1803,24 @@ def get_profile_module(profile_name, config=None):
     return mod
 
 
-def read_config_files(config_files, parser=None):
+def read_config_files(config_files, raw=False):
     """Use parser to read config file(s)
 
     :param config_files: config file(s) to read (required).
     :type config_files: str or list
-    :param type parser: class/sub-class of `configparser.RawConfigParser`.
-                        If it's None or omitted, using
-                        `six.moves.configparser.ConfigParser` as default.
+    :param bool raw: enable 'raw' parsing (no interpolation). Default: False
+
     :return: object of parser which contains parsed content
     """
     if not isinstance(config_files, (list, tuple)):
         config_files = [config_files]
-    if parser is None:
+    if raw:
+        parser = six.moves.configparser.RawConfigParser
+    elif six.PY2:
+        parser = six.moves.configparser.SafeConfigParser
+    else:
+        # In python3, ConfigParser is "safe", and SafeConfigParser is a
+        # deprecated alias
         parser = six.moves.configparser.ConfigParser
     config = parser()
     for config_file in config_files:
