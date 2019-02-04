@@ -21,8 +21,6 @@ install:
 		exit 1; \
 	fi
 
-	mkdir -p $(DESTDIR)/usr/libexec/koji-hub
-
 	mkdir -p $(DESTDIR)/etc/httpd/conf.d
 	install -p -m 644 httpd.conf $(DESTDIR)/etc/httpd/conf.d/kojihub.conf
 

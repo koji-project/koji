@@ -436,7 +436,6 @@ rm -rf $RPM_BUILD_ROOT
 %files -n python2-%{name}-hub
 %defattr(-,root,root)
 %{_datadir}/koji-hub/*.py*
-%dir %{_libexecdir}/koji-hub
 %endif
 
 %if 0%{with python3}
@@ -444,7 +443,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_datadir}/koji-hub/*.py
 %{_datadir}/koji-hub/__pycache__
-%dir %{_libexecdir}/koji-hub
 %endif
 
 %files hub-plugins
