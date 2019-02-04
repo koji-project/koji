@@ -8,7 +8,7 @@
 %endif
 
 # don't build py2 packages for py3-only systems
-%if 0%{with python3} && (0%{?fedora} > 26 || 0%{?rhel} > 7)
+%if 0%{with python3} && (0%{?fedora} > 32 || 0%{?rhel} > 7)
     %define with_python2 0
 %else
     %define with_python2 1
@@ -334,9 +334,9 @@ Requires: python-krbV >= 1.0.13
 %endif
 Requires: python-psycopg2
 Requires: python-cheetah
-# we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
-Provides: koji-web
+Provides: koji-web = %{version}-%{release}
+Obsoletes: koji-web < 1.16.2
 
 %description -n python2-%{name}-web
 koji-web is a web UI to the Koji system.
@@ -353,11 +353,9 @@ Requires: python%{python3_pkgversion}-mod_wsgi
 Requires: mod_auth_gssapi
 Requires: python%{python3_pkgversion}-psycopg2
 Requires: python%{python3_pkgversion}-cheetah
-# we need the python3 lib here
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
-# for now it has to be in conflict with python2 hub (later change to python2-koji-hub)
-Conflicts: koji-hub
-Provides: koji-web
+Provides: koji-web = %{version}-%{release}
+Obsoletes: koji-web < 1.16.2
 
 %description -n python%{python3_pkgversion}-%{name}-web
 koji-web is a web UI to the Koji system.
