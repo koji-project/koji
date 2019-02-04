@@ -67,7 +67,7 @@ tests, negated tests, and nested tests. Consider the following example:
             operation move :: {
                 fromtag *-updates-candidate :: allow
                 fromtag *-updates-testing :: allow
-                all :: deny
+                all :: deny Tagging from some tags to *-updates is forbidden.
             }
             operation tag && hastag *-updates-candidate *-updates-testing :: deny
         }
@@ -83,6 +83,11 @@ For tags matching ``*-updates``, a particular work-flow is enforced. Moving is
 only allowed if the move is coming from a tag matching ``*-updates-candidate``
 or ``*-updates-testing``. Conversely, a basic tag operation (not a move) is
 denied if the build also has such a tag (the policy requires a move instead).
+
+For denied operations some clarifying message is sent to user. If there is no
+specific message (everything after action keyword), only generic 'policy
+violation (policy_name)' is sent, so it could be helpful to specify such
+messages in more complicated cases.
 
 General format
 ==============
