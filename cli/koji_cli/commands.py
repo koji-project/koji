@@ -5493,6 +5493,8 @@ def handle_spin_livecd(options, session, args):
                        " architecture, a build target, and a relative path to" +
                        " a kickstart file."))
         assert False  # pragma: no cover
+    if task_options.volid is not None and len(task_options.volid) > 32:
+        parser.error(_('Volume ID has a maximum length of 32 characters'))
     return _build_image(options, task_options, session, args, 'livecd')
 
 
@@ -5554,6 +5556,8 @@ def handle_spin_livemedia(options, session, args):
     if task_options.lorax_url is not None and task_options.lorax_dir is None:
         parser.error(_('The "--lorax_url" option requires that "--lorax_dir" '
                        'also be used.'))
+    if task_options.volid is not None and len(task_options.volid) > 32:
+        parser.error(_('Volume ID has a maximum length of 32 characters'))
     return _build_image(options, task_options, session, args, 'livemedia')
 
 
