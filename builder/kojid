@@ -5523,15 +5523,12 @@ enabled=1
         ml_pkgs = json.load(open(ml_pkgfile, 'r'))
 
         # step 1: figure out which packages are multilib (should already exist)
-        dnfbase = dnf.Base()
         mlm = multilib.DevelMultilibMethod(ml_conf)
         fs_missing = set()
         for bnp in self.kojipkgs:
                 rpminfo = self.kojipkgs[bnp]
                 ppath = rpminfo['_pkgpath']
-                #po = yum.packages.YumLocalPackage(filename=ppath)
-                dnfbase.fill_sack(load_system_repo=False, load_available_repos=False)
-                po = dnfbase.sack.add_cmdline_package(ppath)
+                po = yum.packages.YumLocalPackage(filename=ppath)
                 if mlm.select(po):
                     # we need a multilib package to be included
                     ml_bnp = bnp.replace(arch, self.archmap[arch])
