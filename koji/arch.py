@@ -1,5 +1,5 @@
-#!/usr/bin/python
-#
+# This code is from the rpmUtils.arch module of yum
+# yum is licensed as GPLv2+
 
 import os
 import rpm

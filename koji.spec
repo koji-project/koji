@@ -40,7 +40,8 @@
 Name: koji
 Version: 1.16.0
 Release: %{release}%{?dist}
-License: LGPLv2
+License: LGPLv2 and GPLv2+
+# the included arch lib from yum's rpmUtils is GPLv2+
 Summary: Build system tools
 Group: Applications/System
 URL: https://pagure.io/koji
