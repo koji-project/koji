@@ -2,7 +2,6 @@ from __future__ import absolute_import
 import json
 import mock
 import os
-import smtplib
 import tempfile
 try:
     import unittest2 as unittest
@@ -25,7 +24,7 @@ class MyClientSession(koji.ClientSession):
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', name,'calls.json')
         with open(fn) as fp:
             data = json.load(fp)
-            data = koji.fixEncodingRecurse(data)
+            #data = koji.fixEncodingRecurse(data)
         for call in data:
             key = self._munge([call['method'], call['args'], call['kwargs']])
             self._testcalls[key] = call
@@ -101,6 +100,6 @@ class TestBuildNotification(unittest.TestCase):
         self.assertEqual(from_addr, "koji@example.com")
         self.assertEqual(recipients, ["user@example.com"])
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'message.txt')
-        with open(fn) as fp:
+        with open(fn, 'rb') as fp:
             msg_expect = fp.read()
         self.assertEqual(message, msg_expect)
