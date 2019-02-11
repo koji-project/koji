@@ -949,6 +949,8 @@ Configuration Files
 * ``/etc/kojid/kojid.conf`` - Koji Daemon Configuration
 * ``/etc/sysconfig/kojid`` - Koji Daemon Switches
 
+All options for `kojid.conf` are described :doc:`here <kojid_conf>`.
+
 Install kojid
 -------------
 
