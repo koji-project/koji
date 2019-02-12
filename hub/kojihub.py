@@ -12972,6 +12972,8 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
+        pkg_id = get_build(build, strict=True)['package_id']
+        tag_id = get_tag(tag, strict=True)['id']
         user_id = task.getOwner()
         policy_data = {'tag' : tag, 'build' : build, 'fromtag' : fromtag}
         policy_data['user_id'] = user_id
@@ -12979,10 +12981,23 @@ class HostExports(object):
             policy_data['operation'] = 'tag'
         else:
             policy_data['operation'] = 'move'
-        #don't check policy for admins using force
+        # don't check policy for admins using force
         perms = koji.auth.get_user_perms(user_id)
         if not force or 'admin' not in perms:
             assert_policy('tag', policy_data)
+        # package list check
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkg_error = None
+        if pkg_id not in pkgs:
+            pkg_error = "Package %s not in list for %s" % (build, tag)
+        elif pkgs[pkg_id]['blocked']:
+            pkg_error = "Package %s blocked in %s" % (build, tag)
+        if pkg_error:
+            if force and context.session.hasPerm('admin'):
+                pkglist_add(tag_id, pkg_id, force=True, block=False)
+            else:
+                raise koji.TagError(pkg_error)
+        # do the actual work now
         if fromtag:
             _untag_build(fromtag, build, user_id=user_id, force=force, strict=True)
         _tag_build(tag, build, user_id=user_id, force=force)
