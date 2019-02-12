@@ -1,4 +1,4 @@
-#encoding utf-8
+#encoding UTF-8
 #import koji
 #from kojiweb import util
 #import random

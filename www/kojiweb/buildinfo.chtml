@@ -129,8 +129,7 @@
           #end for
           #end if
           #set $arches = $rpmsByArch.keys()
-          #silent $arches.sort()
-          #for $arch in $arches
+          #for $arch in sorted($arches)
           #if $arch == 'src'
           #silent continue
           #end if

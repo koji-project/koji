@@ -19,22 +19,24 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
-
 from __future__ import absolute_import
 from __future__ import division
+import cgi
 import Cheetah.Template
 import datetime
 import koji
 from koji.util import md5_constructor
 import os
+import six
+import ssl
 import stat
+
+from six.moves import range
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
-from socket import sslerror as socket_sslerror
 from six.moves.xmlrpc_client import ProtocolError
 from xml.parsers.expat import ExpatError
-import cgi
-from six.moves import range
+
 
 class NoSuchException(Exception):
     pass
@@ -97,7 +99,7 @@ class DecodeUTF8(Cheetah.Filters.Filter):
     def filter(self, *args, **kw):
         """Convert all strs to unicode objects"""
         result = super(DecodeUTF8, self).filter(*args, **kw)
-        if isinstance(result, unicode):
+        if isinstance(result, six.text_type):
             pass
         else:
             result = result.decode('utf-8', 'replace')
@@ -147,7 +149,10 @@ def _genHTML(environ, fileName):
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
     tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=XHTMLFilter)
-    return tmpl_inst.respond().encode('utf-8', 'replace')
+    if six.PY2:
+        return tmpl_inst.respond().encode('utf-8', 'replace')
+    else:
+        return tmpl_inst.respond()
 
 def _truncTime():
     now = datetime.datetime.now()
@@ -243,25 +248,15 @@ def passthrough_except(template, *exclude):
             passvars.append(var)
     return passthrough(template, *passvars)
 
-def sortByKeyFunc(key, noneGreatest=False):
+def sortByKeyFuncNoneGreatest(key):
     """Return a function to sort a list of maps by the given key.
-    If the key starts with '-', sort in reverse order.  If noneGreatest
-    is True, None will sort higher than all other values (instead of lower).
+    None will sort higher than all other values (instead of lower).
     """
-    if noneGreatest:
-        # Normally None evaluates to be less than every other value
-        # Invert the comparison so it always evaluates to greater
-        cmpFunc = lambda a, b: (a is None or b is None) and -(cmp(a, b)) or cmp(a, b)
-    else:
-        cmpFunc = cmp
-
-    if key.startswith('-'):
-        key = key[1:]
-        sortFunc = lambda a, b: cmpFunc(b[key], a[key])
-    else:
-        sortFunc = lambda a, b: cmpFunc(a[key], b[key])
-
-    return sortFunc
+    def internal_key(obj):
+        v = obj[key]
+        # Nones has priority, others are second
+        return (v is None, v)
+    return internal_key
 
 def paginateList(values, data, start, dataName, prefix=None, order=None, noneGreatest=False, pageSize=50):
     """
@@ -273,7 +268,12 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
     be added to the value map.
     """
     if order != None:
-        data.sort(sortByKeyFunc(order, noneGreatest))
+        if order.startswith('-'):
+            order = order[1:]
+            reverse = True
+        else:
+            reverse = False
+        data.sort(key=sortByKeyFuncNoneGreatest(order), reverse=reverse)
 
     totalRows = len(data)
 
@@ -359,7 +359,7 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     values[(prefix and prefix + 'Order' or 'order')] = order
     currentPage = start // pageSize
     values[(prefix and prefix + 'CurrentPage' or 'currentPage')] = currentPage
-    totalPages = totalRows // pageSize
+    totalPages = int(totalRows // pageSize)
     if totalRows % pageSize > 0:
         totalPages += 1
     pages = [page for page in range(0, totalPages) if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
@@ -531,6 +531,9 @@ def escapeHTML(value):
         return value
 
     value = koji.fixEncoding(value)
+    if six.PY3:
+        # it is bytes now, so decode to str
+        value = value.decode()
     return value.replace('&', '&amp;').\
            replace('<', '&lt;').\
            replace('>', '&gt;')
@@ -594,7 +597,7 @@ bug, a server configuration issue, or possibly something else."""
             str = """\
 An error has occurred in the web interface code. This could be due to \
 a bug or a configuration issue."""
-    elif isinstance(error, (socket_error, socket_sslerror)):
+    elif isinstance(error, (socket_error, ssl.SSLError)):
         str = """\
 The web interface is having difficulty communicating with the main \
 server. This most likely indicates a network issue."""
@@ -611,7 +614,7 @@ a network issue or load issues on the server."""
 
 class TaskResultFragment(object):
     """Represent an HTML fragment composed from texts and tags.
- 
+
     This class permits us to compose HTML fragment by the default
     composer method or self-defined composer function.
 
@@ -644,7 +647,6 @@ class TaskResultFragment(object):
             self.empty_str_placeholder = empty_str_placeholder
 
     def default_composer(self, length=None):
-        import cgi
         if length is None:
             text = self.text
         else:
@@ -691,7 +693,6 @@ class TaskResultLine(object):
         self.size=self._size()
 
     def default_composer(self, length=None, postscript=None):
-        import cgi
         line_text = ''
         size = 0
         if postscript is None:
