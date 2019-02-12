@@ -293,14 +293,14 @@ class TestMounts(unittest.TestCase):
     @mock_open()
     @mock.patch('runroot.scan_mounts')
     @mock.patch('os.unlink')
-    @mock.patch('commands.getstatusoutput')
+    @mock.patch('subprocess.Popen')
     @mock.patch('os.path.exists')
-    def test_undo_mounts(self, path_exists, getstatusoutput, os_unlink, scan_mounts, m_open):
+    def test_undo_mounts(self, path_exists, popen, os_unlink, scan_mounts, m_open):
         self.t.logger = mock.MagicMock()
         scan_mounts.return_value = ['mount_1', 'mount_2']
 
         # correct
-        getstatusoutput.return_value = (0, 'ok')
+        popen.return_value.wait.return_value = 0
         path_exists.return_value = True
         m_open.return_value.__enter__.return_value.readlines.return_value = ['mountpoint']
         self.t.undo_mounts('rootdir')
@@ -312,7 +312,9 @@ class TestMounts(unittest.TestCase):
 
         # fail
         os_unlink.reset_mock()
-        getstatusoutput.return_value = (1, 'error')
+        popen.return_value.wait.return_value = 1
+        popen.return_value.stdout.read.return_value = ''
+        popen.return_value.stderr.read.return_value = 'error'
         path_exists.return_value = True
         with self.assertRaises(koji.GenericError) as cm:
             self.t.undo_mounts('rootdir')

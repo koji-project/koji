@@ -31,7 +31,6 @@ from koji.util import md5_constructor, adler32_constructor, parseStatus, \
 import os
 import signal
 import logging
-from six.moves import urllib
 from fnmatch import fnmatch
 import base64
 import time
@@ -40,6 +39,7 @@ import sys
 import traceback
 import errno
 from six.moves import range
+from six.moves import urllib
 import six
 
 
@@ -122,7 +122,10 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             if logerror:
                 os.dup2(fd, 2)
             # echo the command we're running into the logfile
-            os.write(fd, '$ %s\n' % ' '.join(args))
+            msg = '$ %s\n' % ' '.join(args)
+            if six.PY3:
+                msg = msg.encode('utf-8')
+            os.write(fd, msg)
             environ = os.environ.copy()
             if env:
                 environ.update(env)
@@ -131,7 +134,10 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             msg = ''.join(traceback.format_exception(*sys.exc_info()))
             if fd:
                 try:
-                    os.write(fd, msg)
+                    if six.PY3:
+                        os.write(fs, msg.encode('utf-8'))
+                    else:
+                        os.write(fd, msg)
                     os.close(fd)
                 except:
                     pass
@@ -588,7 +594,7 @@ class TaskManager(object):
 
     def shutdown(self):
         """Attempt to shut down cleanly"""
-        for task_id in self.pids.keys():
+        for task_id in self.pids:
             self.cleanupTask(task_id)
         self.session.host.freeTasks(to_list(self.tasks.keys()))
         self.session.host.updateHost(task_load=0.0, ready=False)
@@ -628,7 +634,7 @@ class TaskManager(object):
             return
         local_br = self._scanLocalBuildroots()
         # get info on local_only buildroots (most likely expired)
-        local_only = [id for id in six.iterkeys(local_br) if id not in db_br]
+        local_only = [id for id in local_br if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
             #get all the task info in one call
@@ -796,14 +802,14 @@ class TaskManager(object):
             #about). This will happen after a daemon restart, for example.
             self.logger.info("freeing stale tasks: %r" % stale)
             self.session.host.freeTasks(stale)
-        for id, pid in self.pids.items():
+        for id, pid in list(self.pids.items()):
             if self._waitTask(id, pid):
                 # the subprocess handles most everything, we just need to clear things out
                 if self.cleanupTask(id, wait=False):
                     del self.pids[id]
                 if id in self.tasks:
                     del self.tasks[id]
-        for id, pid in self.pids.items():
+        for id, pid in list(self.pids.items()):
             if id not in tasks:
                 # expected to happen when:
                 #  - we are in the narrow gap between the time the task
@@ -860,7 +866,7 @@ class TaskManager(object):
             # Note: we may still take an assigned task below
         #sort available capacities for each of our bins
         avail = {}
-        for bin in six.iterkeys(bins):
+        for bin in bins:
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
             avail[bin].sort()
             avail[bin].reverse()
@@ -893,7 +899,7 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 self.logger.debug("available capacities for bin: %r" % bin_avail)
-                median = bin_avail[(len(bin_avail) - 1) // 2]
+                median = bin_avail[int((len(bin_avail) - 1) // 2)]
                 self.logger.debug("ours: %.2f, median: %.2f" % (our_avail, median))
                 if not self.checkRelAvail(bin_avail, our_avail):
                     if self.checkAvailDelay(task):
@@ -944,7 +950,7 @@ class TaskManager(object):
         Check our available capacity against the capacity of other hosts in this bin.
         Return True if we should take a task, False otherwise.
         """
-        median = bin_avail[(len(bin_avail)-1)//2]
+        median = bin_avail[int((len(bin_avail) - 1) // 2)]
         self.logger.debug("ours: %.2f, median: %.2f" % (avail, median))
         if avail >= median:
             return True

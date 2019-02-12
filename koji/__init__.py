@@ -921,6 +921,7 @@ def get_header_field(hdr, name, src_arch=False):
             return "nosrc"
         return "src"
 
+    # REMOVED?
     result = _get_header_field(hdr, name)
 
     if name in ("NOSOURCE", "NOPATCH"):
@@ -2399,6 +2400,14 @@ class ClientSession(object):
         else:
             handler = self.baseurl
         request = dumps(args, name, allow_none=1)
+        try:
+            request.encode('latin-1')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            # py2 string throws UnicodeDecodeError
+            # py3 string throws UnicodeEncodeError
+            # if string is not converted to UTF, requests will raise an error
+            # on identical check before sending data
+            request = request.encode('utf-8')
         headers = [
             # connection class handles Host
             ('User-Agent', 'koji/1'),
@@ -2692,6 +2701,11 @@ class ClientSession(object):
             ("Content-length", str(size)),
         ]
         request = chunk
+        if six.PY3 and isinstance(chunk, str):
+            request = chunk.encode('utf-8')
+        else:
+            # py2 or bytes
+            request = chunk
         return handler, headers, request
 
     def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True, volume=None):

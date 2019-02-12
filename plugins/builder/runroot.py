@@ -1,12 +1,12 @@
 # kojid plugin
 
 from __future__ import absolute_import
-import commands
 import koji
 import six.moves.configparser
 import os
 import platform
 import re
+import subprocess
 
 import koji.tasks
 from koji.tasks import scan_mounts
@@ -304,8 +304,10 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         failed = []
         self.logger.info("Unmounting (runroot): %s" % mounts)
         for dir in mounts:
-            (rv, output) = commands.getstatusoutput("umount -l '%s'" % dir)
-            if rv != 0:
+            proc = subprocess.Popen(["umount", "-l", dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if proc.wait() != 0:
+                output = proc.stdout.read()
+                output += proc.stderr.read()
                 failed.append("%s: %s" % (dir, output))
         if failed:
             msg = "Unable to unmount: %s" % ', '.join(failed)

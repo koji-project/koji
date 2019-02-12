@@ -23,64 +23,81 @@
 
 from __future__ import absolute_import
 from __future__ import division
-import six
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-import koji
-import koji.plugin
-import koji.rpmdiff
-import koji.util
-import koji.tasks
+
+import Cheetah.Template
+import copy
 import glob
+import grp
 import json
 import logging
 import logging.handlers
-from koji.daemon import incremental_upload, log_output, TaskManager, SCM
-from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
-from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
-import multilib.multilib as multilib
 import os
 import pwd
-import grp
 import random
 import re
 import rpm
-import rpmUtils.arch
 import shutil
 import signal
+import six
+import six.moves.xmlrpc_client
 import smtplib
 import socket
 import sys
 import time
 import traceback
 import xml.dom.minidom
-import six.moves.xmlrpc_client
 import zipfile
-import copy
-import Cheetah.Template
 from six.moves.configparser import ConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
-from yum import repoMDObject
-import yum.packages
-import yum.Errors
 
-#imports for LiveCD, LiveMedia, and Appliance handler
-image_enabled = False
+from multilib import multilib
+import koji
+import koji.arch
+import koji.plugin
+import koji.rpmdiff
+import koji.util
+import koji.tasks
+from koji.daemon import incremental_upload, log_output, TaskManager, SCM
+from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
+from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
+
+try:
+    import krbV
+except ImportError:  # pragma: no cover
+    krbV = None
+
+try:
+    import librepo
+    import io
+except ImportError:
+    librepo = None
+
+try:
+    import dnf
+except ImportError:
+    dnf = None
+
+try:
+    # yum
+    from yum import repoMDObject
+    import yum.packages
+    import yum.Errors
+    yum_available = True
+except ImportError:
+    yum_available = False
+
+# imports for LiveCD, LiveMedia, and Appliance handler
 try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
     import pykickstart.errors as kserrors
-    import hashlib
     import iso9660 # from pycdio
     image_enabled = True
 except ImportError:  # pragma: no cover
-    pass
+    image_enabled = False
 
-ozif_enabled = False
 try:
     from imgfac.BuildDispatcher import BuildDispatcher
     from imgfac.Builder import Builder
@@ -96,7 +113,7 @@ try:
     from imgfac.FactoryUtils import qemu_convert_cmd
     ozif_enabled = True
 except ImportError:  # pragma: no cover
-    pass
+    ozif_enabled = False
 
 def main(options, session):
     logger = logging.getLogger("koji.build")
@@ -260,9 +277,8 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         #write config
-        fo = open(configfile,'w')
-        fo.write(output)
-        fo.close()
+        with open(configfile,'w') as fo:
+            fo.write(output)
 
     def _repositoryEntries(self, pi, plugin=False):
         entries = []
@@ -360,9 +376,8 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        fo = open(self.rootdir() + destfile, 'w')
-        fo.write(settings)
-        fo.close()
+        with open(self.rootdir() + destfile, 'w') as fo:
+            fo.write(settings)
 
     def mock(self, args):
         """Run mock"""
@@ -605,7 +620,7 @@ class BuildRoot(object):
         try:
             ts = rpm.TransactionSet()
             for h in ts.dbMatch():
-                pkg = koji.get_header_fields(h,fields)
+                pkg = koji.get_header_fields(h, fields)
                 #skip our fake packages
                 if pkg['name'] in ['buildsys-build', 'gpg-pubkey']:
                     #XXX config
@@ -703,35 +718,59 @@ class BuildRoot(object):
             ext_url = erepo['url'].replace('$arch', self.br_arch)
             erepo_idx[ext_url] = erepo
         pathinfo = koji.PathInfo(topdir='')
-        #XXX - cheap hack to get relative paths
-        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
-        repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
 
+        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
         opts['tempdir'] = self.options.workdir
-        fo = koji.openRemoteFile(repomdpath, **opts)
-        try:
-            repodata = repoMDObject.RepoMD('ourrepo', fo)
-        except:
-            raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
-        data  = repodata.getData('origin')
-        pkgorigins  = data.location[1]
+
+        # prefer librepo
+        if librepo is not None:
+            repo_url = os.path.join(repodir, self.br_arch)
+            # repo_url can start with '/', don't use os.path.join
+            if self.options.topurl:
+                repo_url = '%s/%s' % (self.options.topurl, repo_url)
+            elif self.options.topdir:
+                repo_url = '%s/%s' % (self.options.topdir, repo_url)
+            logging.error(repo_url)
+            tmpdir = os.path.join(self.options.workdir, 'librepo-markExternalRPMs')
+            koji.ensuredir(tmpdir)
+            h = librepo.Handle()
+            r = librepo.Result()
+            h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
+            h.setopt(librepo.LRO_URLS, [repo_url])
+            h.setopt(librepo.LRO_DESTDIR, tmpdir)
+            h.perform(r)
+            pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
+            koji.util.rmtree(tmpdir)
+        elif yum_available:
+            #XXX - cheap hack to get relative paths
+            repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
+            with koji.openRemoteFile(repomdpath, **opts) as fo:
+                try:
+                    repodata = repoMDObject.RepoMD('ourrepo', fo)
+                except:
+                    raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
+            data  = repodata.getData('origin')
+            pkgorigins  = data.location[1]
+        else:
+            # shouldn't occur
+            raise koji.GenericError("install librepo or yum")
 
         relpath = os.path.join(repodir, self.br_arch, pkgorigins)
-        fo = koji.openRemoteFile(relpath, **opts)
-        #at this point we know there were external repos at the create event,
-        #so there should be an origins file.
-        origin_idx = {}
-        fo2 = GzipFile(fileobj=fo, mode='r')
-        for line in fo2:
-            parts=line.split(None, 2)
-            if len(parts) < 2:
-                continue
-            #first field is formated by yum as [e:]n-v-r.a
-            nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
-            origin_idx[nvra] = parts[1]
-        fo2.close()
-        fo.close()
+        with koji.openRemoteFile(relpath, **opts) as fo:
+            #at this point we know there were external repos at the create event,
+            #so there should be an origins file.
+            origin_idx = {}
+            with GzipFile(fileobj=fo, mode='r') as fo2:
+                if six.PY3:
+                    fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
+                for line in fo2:
+                    parts=line.split(None, 2)
+                    if len(parts) < 2:
+                        continue
+                    #first field is formated by yum as [e:]n-v-r.a
+                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
+                    origin_idx[nvra] = parts[1]
         # mergerepo starts from a local repo in the task workdir, so internal
         # rpms have an odd-looking origin that we need to look for
         localtail = '/repo_%s_premerge/' % self.repo_info['id']
@@ -922,7 +961,7 @@ class BuildTask(BaseTaskHandler):
             self.event_id = self.session.getLastEvent()['id']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
-        data = koji.get_header_fields(h,['name','version','release','epoch'])
+        data = koji.get_header_fields(h, ['name','version','release','epoch'])
         data['task_id'] = self.id
         if getattr(self, 'source', False):
             data['source'] = self.source['source']
@@ -1006,10 +1045,9 @@ class BuildTask(BaseTaskHandler):
         relpath = "work/%s" % srpm
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
         opts['tempdir'] = self.workdir
-        fo = koji.openRemoteFile(relpath, **opts)
-        h = koji.get_rpm_header(fo)
-        fo.close()
-        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+        with koji.openRemoteFile(relpath, **opts) as fo:
+            h = koji.get_rpm_header(fo)
+        if not koji.get_header_field(h, 'sourcepackage'):
             raise koji.BuildError("%s is not a source package" % srpm)
         return h
 
@@ -1028,9 +1066,9 @@ class BuildTask(BaseTaskHandler):
         archlist = arches.split()
         self.logger.debug('base archlist: %r' % archlist)
         # - adjust arch list based on srpm macros
-        buildarchs = h[rpm.RPMTAG_BUILDARCHS]
-        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
-        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+        buildarchs = koji.get_header_field(h, 'buildarchs')
+        exclusivearch = koji.get_header_field(h, 'exclusivearch')
+        excludearch = koji.get_header_field(h, 'excludearch')
         if buildarchs:
             archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
@@ -1071,8 +1109,8 @@ class BuildTask(BaseTaskHandler):
         # see https://pagure.io/koji/issue/19
 
         h = self.readSRPMHeader(srpm)
-        exclusivearch = h[rpm.RPMTAG_EXCLUSIVEARCH]
-        excludearch = h[rpm.RPMTAG_EXCLUDEARCH]
+        exclusivearch = koji.get_header_field(h, 'exclusivearch')
+        excludearch = koji.get_header_field(h, 'excludearch')
 
         if exclusivearch or excludearch:
             # if one of the tag arches is filtered out, then we can't use a
@@ -1216,13 +1254,13 @@ class BuildArchTask(BaseBuildTask):
         return self.checkHostArch(tag, hostdata)
 
     def srpm_sanity_checks(self, filename):
-        header = koji.get_rpm_header(filename)
+        h_fields = koji.get_header_fields(filename, ['packager', 'vendor', 'distribution'])
 
-        if not header[rpm.RPMTAG_PACKAGER]:
+        if not h_fields['packager']:
             raise koji.BuildError("The build system failed to set the packager tag")
-        if not header[rpm.RPMTAG_VENDOR]:
+        if not h_fields['vendor']:
             raise koji.BuildError("The build system failed to set the vendor tag")
-        if not header[rpm.RPMTAG_DISTRIBUTION]:
+        if not h_fields['distribution']:
             raise koji.BuildError("The build system failed to set the distribution tag")
 
     def handler(self, pkg, root, arch, keep_srpm, opts=None):
@@ -1243,15 +1281,12 @@ class BuildArchTask(BaseBuildTask):
             raise koji.BuildError("SRPM file missing: %s" % fn)
         # peel E:N-V-R from package
         h = koji.get_rpm_header(fn)
-        name = h[rpm.RPMTAG_NAME]
-        ver = h[rpm.RPMTAG_VERSION]
-        rel = h[rpm.RPMTAG_RELEASE]
-        epoch = h[rpm.RPMTAG_EPOCH]
-        if h[rpm.RPMTAG_SOURCEPACKAGE] != 1:
+        name = koji.get_header_field(h, 'name')
+        if not koji.get_header_field(h, 'sourcepackage'):
             raise koji.BuildError("not a source package")
         # Disable checking for distribution in the initial SRPM because it
         # might have been built outside of the build system
-        # if not h[rpm.RPMTAG_DISTRIBUTION]:
+        # if not koji.get_header_field(h, 'distribution'):
         #    raise koji.BuildError, "the distribution tag is not set in the original srpm"
 
         self.updateWeight(name)
@@ -1870,9 +1905,8 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        specfd = open(specfile, 'w')
-        specfd.write(contents)
-        specfd.close()
+        with open(specfile, 'w') as specfd:
+            specfd.write(contents)
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
         self.spec_sanity_checks(specfile)
@@ -1959,8 +1993,8 @@ class WrapperRPMTask(BaseBuildTask):
             raise koji.BuildError('no rpms found')
 
         try:
-            for rpm in [srpm] + rpms:
-                self.uploadFile(os.path.join(resultdir, rpm))
+            for rpm_fn in [srpm] + rpms:
+                self.uploadFile(os.path.join(resultdir, rpm_fn))
         except (SystemExit, ServerExit, KeyboardInterrupt):
             raise
         except:
@@ -2228,8 +2262,8 @@ class TagBuildTask(BaseTaskHandler):
         task = self.session.getTaskInfo(self.id)
         user_id = task['owner']
         try:
-            build = self.session.getBuild(build_id, strict=True)
-            tag = self.session.getTag(tag_id, strict=True)
+            self.session.getBuild(build_id, strict=True)
+            self.session.getTag(tag_id, strict=True)
 
             #several basic sanity checks have already been run (and will be run
             #again when we make the final call). Our job is to perform the more
@@ -2337,7 +2371,6 @@ class BuildBaseImageTask(BuildImageTask):
                         ignored_arches.add(arch)
 
             # wrap in an RPM if asked
-            rpm_results = None
             spec_url = opts.get('specfile')
             for arch in arches:
                 # get around an xmlrpc limitation, use arches for keys instead
@@ -2354,7 +2387,7 @@ class BuildBaseImageTask(BuildImageTask):
             # 1 results hash from the subtasks
             if 'kickstart' in opts:
                 saw_ks = False
-                for arch in results.keys():
+                for arch in results:
                     if arch in ignored_arches:
                         continue
                     ks = os.path.basename(opts.get('kickstart'))
@@ -2442,7 +2475,6 @@ class BuildApplianceTask(BuildImageTask):
             self.logger.info('results: %s' % results)
 
             # wrap in an RPM if asked
-            rpm_results = None
             spec_url = opts.get('specfile')
             if spec_url:
                 results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
@@ -2528,7 +2560,6 @@ class BuildLiveCDTask(BuildImageTask):
 
             # wrap in an RPM if needed
             spec_url = opts.get('specfile')
-            rpm_results = None
             if spec_url:
                 results[create_task_id]['rpmresults'] = self.buildWrapperRPM(
                     spec_url, create_task_id,
@@ -2860,9 +2891,8 @@ class ImageTask(BaseTaskHandler):
         kskoji = os.path.join(broot.tmpdir(), 'koji-image-%s-%i.ks' %
                               (target_info['build_tag_name'], self.id))
         koji.ensuredir(broot.tmpdir())
-        outfile = open(kskoji, 'w')
-        outfile.write(str(self.ks.handler))
-        outfile.close()
+        with open(kskoji, 'w') as outfile:
+            outfile.write(str(self.ks.handler))
 
         # put the new ksfile in the output directory
         if not os.path.exists(kskoji):
@@ -3444,11 +3474,10 @@ class OzImageTask(BaseTaskHandler):
         else:
             tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
             tops['tempdir'] = self.workdir
-            ks_src = koji.openRemoteFile(ksfile, **tops)
-            kspath = os.path.join(self.workdir, os.path.basename(ksfile))
-            ks_dest = open(kspath, 'w')
-            ks_dest.write(ks_src.read())
-            ks_dest.close()
+            with koji.openRemoteFile(ksfile, **tops) as ks_src:
+                kspath = os.path.join(self.workdir, os.path.basename(ksfile))
+                with open(kspath, 'w') as ks_dest:
+                    ks_dest.write(ks_src.read())
         self.logger.debug('uploading kickstart from here: %s' % kspath)
         self.uploadFile(kspath) # upload the original ks file
         return kspath # absolute path to the ks file
@@ -3534,9 +3563,8 @@ class OzImageTask(BaseTaskHandler):
             an absolute path to the kickstart file we wrote
         """
         kspath = os.path.join(self.workdir, ksname)
-        outfile = open(kspath, 'w')
-        outfile.write(str(ksobj.handler))
-        outfile.close()
+        with open(kspath, 'w') as outfile:
+            outfile.write(str(ksobj.handler))
 
         # put the new ksfile in the output directory
         if not os.path.exists(kspath):
@@ -3668,9 +3696,8 @@ class OzImageTask(BaseTaskHandler):
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
         xml_path = os.path.join(self.workdir, filename)
-        xmlfd = open(xml_path, 'w')
-        xmlfd.write(newxml.toprettyxml())
-        xmlfd.close()
+        with open(xml_path, 'w') as xmlfd:
+            xmlfd.write(newxml.toprettyxml())
         return xml_path
 
     def getScreenshot(self):
@@ -3719,7 +3746,7 @@ class BaseImageTask(OzImageTask):
         if len(formats) == 0:
             # we only want a raw disk image (no format option given)
             f_dict['raw'] = True
-        elif 'raw' not in f_dict.keys():
+        elif 'raw' not in f_dict:
             f_dict['raw'] = False
         self.logger.debug('Image delivery plan: %s' % f_dict)
         return f_dict
@@ -3785,7 +3812,7 @@ class BaseImageTask(OzImageTask):
             that points to the path of the XML file for that image
         """
         imginfo = {}
-        for fmt in images.keys():
+        for fmt in images:
             imginfo[fmt] = images[fmt]
             lxml = self.fixImageXML(fmt, 'libvirt-%s-%s.xml' % (fmt, self.arch),
                 self.base_img.base_image.parameters['libvirt_xml'])
@@ -4108,9 +4135,8 @@ class BaseImageTask(OzImageTask):
         ApplicationConfiguration(configuration=config)
 
         tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % self.arch)
-        tdl = open(tdl_path, 'w')
-        tdl.write(template)
-        tdl.close()
+        with open(tdl_path, 'w') as tdl:
+            tdl.write(template)
         self.uploadFile(tdl_path)
 
         # ImageFactory picks a port to the guest VM using a rolling integer.
@@ -4141,8 +4167,8 @@ class BaseImageTask(OzImageTask):
         }
         # record the RPMs that were installed
         if not opts.get('scratch'):
-            fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
-                'payloadhash', 'buildtime')
+            #fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
+            #    'payloadhash', 'buildtime')
             icicle = xml.dom.minidom.parseString(images['raw']['icicle'])
             self.logger.debug('ICICLE: %s' % images['raw']['icicle'])
             for p in icicle.getElementsByTagName('extra'):
@@ -4170,7 +4196,7 @@ class BaseImageTask(OzImageTask):
             br.markExternalRPMs(imgdata['rpmlist'])
 
         # upload the results
-        for format in (f for f in self.formats.keys() if self.formats[f]):
+        for format in (f for f in self.formats if self.formats[f]):
             newimg = images[format]['image']
             if ('ova' in format or format in ('raw-xz', 'liveimg-squashfs', 'tar-gz')):
                 newname = self.imgname + '.' + format.replace('-', '.')
@@ -4257,11 +4283,10 @@ class BuildIndirectionImageTask(OzImageTask):
         else:
             tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
             tops['tempdir'] = self.workdir
-            remote_fileobj = koji.openRemoteFile(filepath, **tops)
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
-            final_fileobj = open(final_path, 'w')
-            final_fileobj.write(remote_fileobj.read())
-            final_fileobj.close()
+            with koji.openRemoteFile(filepath, **tops) as remote_fileobj:
+                with open(final_path, 'w') as final_fileobj:
+                    shutil.copyfileobj(remote_fileobj, final_fileobj)
         self.logger.debug('uploading retrieved file from here: %s' % final_path)
         self.uploadFile(final_path) # upload the original ks file
         return final_path # absolute path to the ks file
@@ -4386,8 +4411,6 @@ class BuildIndirectionImageTask(OzImageTask):
 
         # TODO: Copy-paste from BaseImage - refactor
         target_info = self.session.getBuildTarget(opts['target'], strict=True)
-        build_tag = target_info['build_tag']
-        repo_info = self.getRepo(build_tag)
 
         name = opts['name']
         version = opts['version']
@@ -4471,8 +4494,8 @@ class BuildIndirectionImageTask(OzImageTask):
                     pim = PersistentImageManager.default_manager()
                     pim.add_image(target_image)
                     target.target_image = target_image
-                    open(target_image.data, "w").write("Mock build from task ID: %s" %
-                                                 (str(self.id)))
+                    with open(target_image.data, "w") as f:
+                        f.write("Mock build from task ID: %s" % self.id)
                     target_image.status='COMPLETE'
                 else:
                     target = bd.builder_for_target_image('indirection',
@@ -4641,9 +4664,9 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
 
         # check srpm name
         h = koji.get_rpm_header(srpm)
-        name = h[rpm.RPMTAG_NAME]
-        version = h[rpm.RPMTAG_VERSION]
-        release = h[rpm.RPMTAG_RELEASE]
+        name = koji.get_header_field(h, 'name')
+        version = koji.get_header_field(h, 'version')
+        release = koji.get_header_field(h, 'release')
         srpm_name = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
         if srpm_name != os.path.basename(srpm):
             raise koji.BuildError('srpm name mismatch: %s != %s' % (srpm_name, os.path.basename(srpm)))
@@ -5045,9 +5068,8 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            fo = open(os.path.join(self.datadir, "EMPTY_REPO"), 'w')
-            fo.write("This repo is empty because its tag has no content for this arch\n")
-            fo.close()
+            with open(os.path.join(self.datadir, "EMPTY_REPO"), 'w') as fo:
+                fo.write("This repo is empty because its tag has no content for this arch\n")
 
         uploadpath = self.getUploadDir()
         files = []
@@ -5169,7 +5191,7 @@ class NewDistRepoTask(BaseTaskHandler):
             canonArches.add(koji.canonArch(arch))
         arch32s = set()
         for arch in canonArches:
-            if not rpmUtils.arch.isMultiLibArch(arch):
+            if not koji.arch.isMultiLibArch(arch):
                 arch32s.add(arch)
         for arch in arch32s:
             # we do 32-bit multilib arches first so the 64-bit ones can
@@ -5265,8 +5287,11 @@ class createDistRepoTask(BaseTaskHandler):
         # sort out our package list(s)
         self.uploadpath = self.getUploadDir()
         self.get_rpms(tag, arch, keys, opts)
-        if opts['multilib'] and rpmUtils.arch.isMultiLibArch(arch):
-            self.do_multilib(arch, self.archmap[arch], opts['multilib'])
+        if opts['multilib'] and koji.arch.isMultiLibArch(arch):
+            if dnf is not None:
+                self.do_multilib_dnf(arch, self.archmap[arch], opts['multilib'])
+            else:
+                self.do_multilib_yum(arch, self.archmap[arch], opts['multilib'])
         self.split_pkgs(opts)
         self.write_kojipkgs()
         self.write_pkglist()
@@ -5359,7 +5384,135 @@ class createDistRepoTask(BaseTaskHandler):
             raise koji.GenericError('failed to create repo: %s' \
                     % parseStatus(status, ' '.join(cmd)))
 
-    def do_multilib(self, arch, ml_arch, conf):
+
+    def do_multilib_dnf(self, arch, ml_arch, conf):
+        repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
+        mldir = os.path.join(repodir, koji.canonArch(ml_arch))
+        ml_true = set()  # multilib packages we need to include before depsolve
+        ml_conf = os.path.join(koji.pathinfo.work(), conf)
+
+        # read pkgs data from multilib repo
+        ml_pkgfile = os.path.join(mldir, 'kojipkgs')
+        ml_pkgs = json.load(open(ml_pkgfile, 'r'))
+
+        # step 1: figure out which packages are multilib (should already exist)
+        dnfbase = dnf.Base()
+        mlm = multilib.DevelMultilibMethod(ml_conf)
+        fs_missing = set()
+        for bnp in self.kojipkgs:
+                rpminfo = self.kojipkgs[bnp]
+                ppath = rpminfo['_pkgpath']
+                dnfbase.fill_sack(load_system_repo=False, load_available_repos=False)
+                po = dnfbase.sack.add_cmdline_package(ppath)
+                if mlm.select(po):
+                    # we need a multilib package to be included
+                    ml_bnp = bnp.replace(arch, self.archmap[arch])
+                    ml_path = os.path.join(mldir, ml_bnp[0].lower(), ml_bnp)
+                    # ^ XXX - should actually generate this
+                    if ml_bnp not in ml_pkgs:
+                        # not in our multilib repo
+                        self.logger.error('%s (multilib) is not on the filesystem' % ml_path)
+                        fs_missing.add(ml_path)
+                        # we defer failure so can report all the missing deps
+                        continue
+                    ml_true.add(ml_path)
+
+        # step 2: set up architectures for dnf configuration
+        self.logger.info("Resolving multilib for %s using method devel" % arch)
+        dnfdir = os.path.join(self.workdir, 'dnf')
+        # TODO: unwind this arch mess
+        archlist = (arch, 'noarch')
+        transaction_arch = arch
+        archlist = archlist + self.compat[self.biarch[arch]]
+        best_compat = self.compat[self.biarch[arch]][0]
+        if koji.arch.archDifference(best_compat, arch) > 0:
+            transaction_arch = best_compat
+        dnfconfig = """
+[main]
+debuglevel=2
+#pkgpolicy=newest
+#exactarch=1
+gpgcheck=0
+#reposdir=/dev/null
+#cachedir=/dnfcache
+installroot=%s
+#logfile=/dnf.log
+
+[koji-%s]
+name=koji multilib task
+baseurl=file://%s
+enabled=1
+
+""" % (dnfdir, self.id, mldir)
+        os.makedirs(os.path.join(dnfdir, "dnfcache"))
+        os.makedirs(os.path.join(dnfdir, 'var/lib/rpm'))
+
+        # step 3: proceed with dnf config and set up
+        yconfig_path = os.path.join(dnfdir, 'dnf.conf-koji-%s' % arch)
+        with open(yconfig_path, 'w') as f:
+            f.write(dnfconfig)
+        self.session.uploadWrapper(yconfig_path, self.uploadpath,
+            os.path.basename(yconfig_path))
+        conf = dnf.conf.Conf()
+        conf.reposdir = [] # don't use system repos at all
+        conf.read(yconfig_path)
+        dnfbase = dnf.Base(conf)
+        if hasattr(koji.arch, 'ArchStorage'):
+            dnfbase.conf.arch = transaction_arch
+        else:
+            koji.arch.canonArch = transaction_arch
+        dnfbase.read_all_repos()
+        dnfbase.fill_sack(load_system_repo=False, load_available_repos=True)
+        for pkg in ml_true:
+            dnfbase.install(pkg)
+
+        # step 4: execute dnf transaction to get dependencies
+        self.logger.info("Resolving dependencies for arch %s" % arch)
+
+        ml_needed = {}
+        try:
+            dnfbase.resolve()
+            self.logger.info('dnf depsolve successfully finished')
+            for po in dnfbase.transaction.install_set:
+                bnp = os.path.basename(po.localPkg())
+                dep_path = os.path.join(mldir, bnp[0].lower(), bnp)
+                ml_needed[dep_path] = po
+                if not os.path.exists(dep_path):
+                    self.logger.error('%s (multilib dep) not on filesystem' % dep_path)
+                    fs_missing.add(dep_path)
+        except dnf.exceptions.DepsolveError:
+            self.logger.error('dnf depsolve was unsuccessful')
+            raise
+
+        if len(fs_missing) > 0:
+            missing_log = os.path.join(self.workdir, 'missing_multilib.log')
+            with open(missing_log, 'w') as outfile:
+                outfile.write('The following multilib files were missing:\n')
+                for ml_path in fs_missing:
+                    outfile.write(ml_path + '\n')
+            self.session.uploadWrapper(missing_log, self.uploadpath)
+            raise koji.GenericError('multilib packages missing. '
+                    'See missing_multilib.log')
+
+        # step 5: update kojipkgs
+        for dep_path in ml_needed:
+            tspkg = ml_needed[dep_path]
+            bnp = os.path.basename(dep_path)
+            if bnp in self.kojipkgs:
+                # we expect duplication with noarch, but not other arches
+                if tspkg.arch != 'noarch':
+                    self.logger.warning("Multilib duplicate: %s", bnp)
+                continue
+            rpminfo = ml_pkgs[bnp].copy()
+            # fix _pkgpath, which comes from another task and could be wrong
+            # for us
+            # TODO: would be better if we could use the proper path here
+            rpminfo['_pkgpath'] = dep_path
+            rpminfo['_multilib'] = True
+            self.kojipkgs[bnp] = rpminfo
+
+
+    def do_multilib_yum(self, arch, ml_arch, conf):
         repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
         ml_true = set()  # multilib packages we need to include before depsolve
@@ -5399,12 +5552,12 @@ class createDistRepoTask(BaseTaskHandler):
         transaction_arch = arch
         archlist = archlist + self.compat[self.biarch[arch]]
         best_compat = self.compat[self.biarch[arch]][0]
-        if rpmUtils.arch.archDifference(best_compat, arch) > 0:
+        if koji.arch.archDifference(best_compat, arch) > 0:
             transaction_arch = best_compat
-        if hasattr(rpmUtils.arch, 'ArchStorage'):
+        if hasattr(koji.arch, 'ArchStorage'):
             yumbase.preconf.arch = transaction_arch
         else:
-            rpmUtils.arch.canonArch = transaction_arch
+            koji.arch.canonArch = transaction_arch
 
         yconfig = """
 [main]
@@ -5428,9 +5581,8 @@ enabled=1
 
         # step 3: proceed with yum config and set up
         yconfig_path = os.path.join(yumdir, 'yum.conf-koji-%s' % arch)
-        f = open(yconfig_path, 'w')
-        f.write(yconfig)
-        f.close()
+        with open(yconfig_path, 'w') as f:
+            f.write(yconfig)
         self.session.uploadWrapper(yconfig_path, self.uploadpath,
             os.path.basename(yconfig_path))
         yumbase.doConfigSetup(fn=yconfig_path)
@@ -5467,12 +5619,11 @@ enabled=1
             raise koji.GenericError(errors)
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_multilib.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('The following multilib files were missing:\n')
-            for ml_path in fs_missing:
-                outfile.write(ml_path)
-                outfile.write('\n')
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('The following multilib files were missing:\n')
+                for ml_path in fs_missing:
+                    outfile.write(ml_path)
+                    outfile.write('\n')
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('multilib packages missing. '
                     'See missing_multilib.log')
@@ -5570,33 +5721,31 @@ enabled=1
         # report problems
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_files.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('Some rpm files were missing.\n'
-                'Most likely, you want to create these signed copies.\n\n'
-                'Missing files:\n')
-            for pkgpath in sorted(fs_missing):
-                outfile.write(pkgpath)
-                outfile.write('\n')
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('Some rpm files were missing.\n'
+                    'Most likely, you want to create these signed copies.\n\n'
+                    'Missing files:\n')
+                for pkgpath in sorted(fs_missing):
+                    outfile.write(pkgpath)
+                    outfile.write('\n')
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('Packages missing from the filesystem. '
                     'See missing_files.log.')
         if sig_missing:
             # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
-            outfile = open(missing_log, 'w')
-            outfile.write('Some rpms were missing requested signatures.\n')
-            if opts['skip_missing_signatures']:
-                outfile.write('The skip_missing_signatures option was specified, so '
-                        'these files were excluded.\n')
-            outfile.write('Acceptable keys: %r\n\n' % keys)
-            outfile.write('# RPM name: available keys\n')
-            fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
-            filenames = [[fmt % selected[r], r] for r in sig_missing]
-            for fname, rpm_id in sorted(filenames):
-                avail = to_list(rpm_idx.get(rpm_id, {}).keys())
-                outfile.write('%s: %r\n' % (fname, avail))
-            outfile.close()
+            with open(missing_log, 'w') as outfile:
+                outfile.write('Some rpms were missing requested signatures.\n')
+                if opts['skip_missing_signatures']:
+                    outfile.write('The skip_missing_signatures option was specified, so '
+                            'these files were excluded.\n')
+                outfile.write('Acceptable keys: %r\n\n' % keys)
+                outfile.write('# RPM name: available keys\n')
+                fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
+                filenames = [[fmt % selected[r], r] for r in sig_missing]
+                for fname, rpm_id in sorted(filenames):
+                    avail = to_list(rpm_idx.get(rpm_id, {}).keys())
+                    outfile.write('%s: %r\n' % (fname, avail))
             self.session.uploadWrapper(missing_log, self.uploadpath)
             if (not opts['skip_missing_signatures']
                         and not opts['allow_missing_signatures']):
@@ -5645,11 +5794,8 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        datafile = open(filename, 'w')
-        try:
+        with open(filename, 'w') as datafile:
             json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
-        finally:
-            datafile.close()
 
 
 class WaitrepoTask(BaseTaskHandler):
