@@ -42,12 +42,13 @@ import tarfile
 import tempfile
 import time
 import traceback
-import urlparse
 import six.moves.xmlrpc_client
 import zipfile
 
 import rpm
 import six
+
+from six.moves.urllib.parse import parse_qs
 
 import koji
 import koji.auth
@@ -2390,9 +2391,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
     comps = koji.generate_comps(groups, expand_groups=True)
-    fo = open("%s/comps.xml" % groupsdir, 'w')
-    fo.write(comps)
-    fo.close()
+    with open("%s/comps.xml" % groupsdir, 'w') as fo:
+        fo.write(comps)
 
     #get build dirs
     relpathinfo = koji.PathInfo(topdir='toplink')
@@ -2505,9 +2505,8 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    mdfile = open(os.path.join(destdir, 'maven-metadata.xml'), 'w')
-    mdfile.write(contents)
-    mdfile.close()
+    with open(os.path.join(destdir, 'maven-metadata.xml'), 'w') as mdfile:
+        mdfile.write(contents)
     _generate_maven_metadata(destdir)
 
 def dist_repo_init(tag, keys, task_opts):
@@ -4352,14 +4351,16 @@ def _get_zipfile_list(archive_id, zippath):
     result = []
     if not os.path.exists(zippath):
         return result
-    archive = zipfile.ZipFile(zippath, 'r')
-    for entry in archive.infolist():
-        filename = koji.fixEncoding(entry.filename)
-        result.append({'archive_id': archive_id,
-                       'name': filename,
-                       'size': entry.file_size,
-                       'mtime': int(time.mktime(entry.date_time + (0, 0, -1)))})
-    archive.close()
+    with zipfile.ZipFile(zippath, 'r') as archive:
+        for entry in archive.infolist():
+            if six.PY2:
+                filename = koji.fixEncoding(entry.filename)
+            else:
+                filename = entry.filename
+            result.append({'archive_id': archive_id,
+                           'name': filename,
+                           'size': entry.file_size,
+                           'mtime': int(time.mktime(entry.date_time + (0, 0, -1)))})
     return result
 
 def _get_tarball_list(archive_id, tarpath):
@@ -4378,17 +4379,19 @@ def _get_tarball_list(archive_id, tarpath):
     result = []
     if not os.path.exists(tarpath):
         return result
-    archive = tarfile.open(tarpath, 'r')
-    for entry in archive:
-        filename = koji.fixEncoding(entry.name)
-        result.append({'archive_id': archive_id,
-                       'name': filename,
-                       'size': entry.size,
-                       'mtime': entry.mtime,
-                       'mode': entry.mode,
-                       'user': entry.uname,
-                       'group': entry.gname})
-    archive.close()
+    with tarfile.open(tarpath, 'r') as archive:
+        for entry in archive:
+            if six.PY2:
+                filename = koji.fixEncoding(entry.name)
+            else:
+                filename = entry.name
+            result.append({'archive_id': archive_id,
+                           'name': filename,
+                           'size': entry.size,
+                           'mtime': entry.mtime,
+                           'mode': entry.mode,
+                           'user': entry.uname,
+                           'group': entry.gname})
     return result
 
 def list_archive_files(archive_id, queryOpts=None, strict=False):
@@ -5515,9 +5518,8 @@ class CG_Importer(object):
             path = os.path.join(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            fo = open(path, 'rb')
-            metadata = fo.read()
-            fo.close()
+            with open(path, 'rt') as fo:
+                metadata = fo.read()
         self.raw_metadata = metadata
         self.metadata = parse_json(metadata, desc='metadata')
         return self.metadata
@@ -5657,11 +5659,8 @@ class CG_Importer(object):
         builddir = koji.pathinfo.build(self.buildinfo)
         koji.ensuredir(builddir)
         path = os.path.join(builddir, 'metadata.json')
-        fo = open(path, 'w')
-        try:
+        with open(path, 'w') as fo:
             fo.write(self.raw_metadata)
-        finally:
-            fo.close()
 
 
     def prep_brs(self):
@@ -6156,16 +6155,16 @@ def merge_scratch(task_id):
         raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' % \
               (task_info['request'][0], build_task_info['request'][0]))
     build_arches = set()
-    for rpm in list_rpms(buildID=build['id']):
-        if rpm['arch'] == 'src':
-            build_srpm = '%s.src.rpm' % rpm['nvr']
+    for rpminfo in list_rpms(buildID=build['id']):
+        if rpminfo['arch'] == 'src':
+            build_srpm = '%s.src.rpm' % rpminfo['nvr']
             if srpm != build_srpm:
                 raise koji.ImportError('task and build srpm names do not match: %s, %s' % \
                       (srpm, build_srpm))
-        elif rpm['arch'] == 'noarch':
+        elif rpminfo['arch'] == 'noarch':
             continue
         else:
-            build_arches.add(rpm['arch'])
+            build_arches.add(rpminfo['arch'])
     if not build_arches:
         raise koji.ImportError('no arch-specific rpms found for %s' % build['nvr'])
     task_arches = set([t['arch'] for t in tasks.values()])
@@ -6359,7 +6358,10 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     archiveinfo = {'buildroot_id': buildroot_id}
     archiveinfo['build_id'] = buildinfo['id']
     if metadata_only:
-        filename = koji.fixEncoding(fileinfo['filename'])
+        if six.PY2:
+            filename = koji.fixEncoding(fileinfo['filename'])
+        else:
+            filename = fileinfo['filename']
         archiveinfo['filename'] = filename
         archiveinfo['size'] = fileinfo['filesize']
         archiveinfo['checksum'] = fileinfo['checksum']
@@ -6370,19 +6372,21 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
         archiveinfo['metadata_only'] = True
     else:
-        filename = koji.fixEncoding(os.path.basename(filepath))
+        if six.PY2:
+            filename = koji.fixEncoding(os.path.basename(filepath))
+        else:
+            filename = os.path.basename(filepath)
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
         if not fileinfo or not fileinfo.get('hub.checked_md5'):
-            archivefp = open(filepath)
-            m = md5_constructor()
-            while True:
-                contents = archivefp.read(8192)
-                if not contents:
-                    break
-                m.update(contents)
-            archivefp.close()
+            with open(filepath, 'rb') as archivefp:
+                m = md5_constructor()
+                while True:
+                    contents = archivefp.read(8192)
+                    if not contents:
+                        break
+                    m.update(contents)
             archiveinfo['checksum'] = m.hexdigest()
         else:
             archiveinfo['checksum'] = fileinfo['checksum']
@@ -6492,8 +6496,10 @@ def _import_archive_file(filepath, destdir):
     A symlink pointing from the old location to the new location will
     be created.
     """
-    final_path = "%s/%s" % (destdir,
-                            koji.fixEncoding(os.path.basename(filepath)))
+    fname = os.path.basename(filepath)
+    if six.PY2:
+        fname = koji.fixEncoding(fname)
+    final_path = "%s/%s" % (destdir, fname)
     if os.path.exists(final_path):
         raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
     if os.path.islink(filepath) or not os.path.isfile(filepath):
@@ -6515,16 +6521,14 @@ def _generate_maven_metadata(mavendir):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
                 sum = sum_constr()
-                fobj = open('%s/%s' % (mavendir, mavenfile))
-                while True:
-                    content = fobj.read(8192)
-                    if not content:
-                        break
-                    sum.update(content)
-                fobj.close()
-                sumobj = open('%s/%s' % (mavendir, sumfile), 'w')
-                sumobj.write(sum.hexdigest())
-                sumobj.close()
+                with open('%s/%s' % (mavendir, mavenfile), 'rb') as fobj:
+                    while True:
+                        content = fobj.read(8192)
+                        if not content:
+                            break
+                        sum.update(content)
+                with open('%s/%s' % (mavendir, sumfile), 'w') as sumobj:
+                    sumobj.write(sum.hexdigest())
 
 def add_rpm_sig(an_rpm, sighdr):
     """Store a signature header for an rpm"""
@@ -6578,9 +6582,8 @@ def add_rpm_sig(an_rpm, sighdr):
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
-    fo = open(sigpath, 'wb')
-    fo.write(sighdr)
-    fo.close()
+    with open(sigpath, 'wb') as fo:
+        fo.write(sighdr)
     koji.plugin.run_callbacks('postRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
 
 def _scan_sighdr(sighdr, fn):
@@ -6631,9 +6634,8 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         koji.splice_rpm_sighdr(sighdr, rpm_path, temp)
         ts = rpm.TransactionSet()
         ts.setVSFlags(0)  #full verify
-        fo = open(temp, 'rb')
-        hdr = ts.hdrFromFdno(fo.fileno())
-        fo.close()
+        with open(temp, 'rb') as fo:
+            hdr = ts.hdrFromFdno(fo.fileno())
     except:
         try:
             os.unlink(temp)
@@ -6694,9 +6696,8 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
         else:
             os.unlink(signedpath)
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
-    fo = open(sigpath, 'rb')
-    sighdr = fo.read()
-    fo.close()
+    with open(sigpath, 'rb') as fo:
+        sighdr = fo.read()
     koji.ensuredir(os.path.dirname(signedpath))
     koji.splice_rpm_sighdr(sighdr, rpm_path, signedpath)
 
@@ -7682,7 +7683,10 @@ def parse_json(value, desc=None, errstr=None):
     if value is None:
         return value
     try:
-        return koji.fixEncodingRecurse(json.loads(value))
+        if six.PY2:
+            return koji.fixEncodingRecurse(json.loads(value))
+        else:
+            return json.loads(value)
     except Exception:
         if errstr is None:
             if desc is None:
@@ -7720,8 +7724,7 @@ class InsertProcessor(object):
         if not self.data and not self.rawdata:
             return "-- incomplete update: no assigns"
         parts = ['INSERT INTO %s ' % self.table]
-        columns = to_list(self.data.keys())
-        columns.extend(to_list(self.rawdata.keys()))
+        columns = sorted(to_list(self.data.keys()) + to_list(self.rawdata.keys()))
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
@@ -7807,10 +7810,10 @@ class UpdateProcessor(object):
         parts = ['UPDATE %s SET ' % self.table]
         assigns = ["%s = %%(data.%s)s" % (key, key) for key in self.data]
         assigns.extend(["%s = (%s)" % (key, self.rawdata[key]) for key in self.rawdata])
-        parts.append(', '.join(assigns))
+        parts.append(', '.join(sorted(assigns)))
         if self.clauses:
             parts.append('\nWHERE ')
-            parts.append(' AND '.join(["( %s )" % c for c in self.clauses]))
+            parts.append(' AND '.join(["( %s )" % c for c in sorted(self.clauses)]))
         return ''.join(parts)
 
     def __repr__(self):
@@ -7883,12 +7886,23 @@ class QueryProcessor(object):
         if columns and aliases:
             if len(columns) != len(aliases):
                 raise Exception('column and alias lists must be the same length')
-            self.colsByAlias = dict(zip(aliases, columns))
+            # reorder
+            alias_table = sorted(zip(aliases, columns))
+            self.aliases = [x[0] for x in alias_table]
+            self.columns = [x[1] for x in alias_table]
+            self.colsByAlias = dict(alias_table)
         else:
             self.colsByAlias = {}
+            if columns:
+                self.columns = sorted(columns)
+            if aliases:
+                self.aliases = sorted(aliases)
         self.tables = tables
         self.joins = joins
-        self.clauses = clauses
+        if clauses:
+            self.clauses = sorted(clauses)
+        else:
+            self.clauses = clauses
         self.cursors = 0
         if values:
             self.values = values
@@ -7926,7 +7940,7 @@ SELECT %(col_str)s
                 col_str = 'count(*)'
         else:
             col_str = self._seqtostr(self.columns)
-        table_str = self._seqtostr(self.tables)
+        table_str = self._seqtostr(self.tables, sort=True)
         join_str = self._joinstr()
         clause_str = self._seqtostr(self.clauses, sep=')\n   AND (')
         if clause_str:
@@ -7947,8 +7961,10 @@ SELECT %(col_str)s
         return '<QueryProcessor: columns=%r, aliases=%r, tables=%r, joins=%r, clauses=%r, values=%r, opts=%r>' % \
                (self.columns, self.aliases, self.tables, self.joins, self.clauses, self.values, self.opts)
 
-    def _seqtostr(self, seq, sep=', '):
+    def _seqtostr(self, seq, sep=', ', sort=False):
         if seq:
+            if sort:
+                seq = sorted(seq)
             return sep.join(seq)
         else:
             return ''
@@ -9194,15 +9210,14 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        f = open(filePath, 'r')
-        if isinstance(offset, str):
-            offset = int(offset)
-        if offset != None and offset > 0:
-            f.seek(offset, 0)
-        elif offset != None and offset < 0:
-            f.seek(offset, 2)
-        contents = f.read(size)
-        f.close()
+        with open(filePath, 'r') as f:
+            if isinstance(offset, str):
+                offset = int(offset)
+            if offset != None and offset > 0:
+                f.seek(offset, 0)
+            elif offset != None and offset < 0:
+                f.seek(offset, 2)
+            contents = f.read(size)
         return base64.encodestring(contents)
 
     listTaskOutput = staticmethod(list_task_output)
@@ -9672,8 +9687,9 @@ class RootExports(object):
         for (cltime, clname, cltext) in zip(fields['changelogtime'], fields['changelogname'],
                                             fields['changelogtext']):
             cldate = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-            clname = koji.fixEncoding(clname)
-            cltext = koji.fixEncoding(cltext)
+            if six.PY2:
+                clname = koji.fixEncoding(clname)
+                cltext = koji.fixEncoding(cltext)
 
             if author and author != clname:
                 continue
@@ -9688,7 +9704,10 @@ class RootExports(object):
                 results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
 
         results = _applyQueryOpts(results, queryOpts)
-        return koji.fixEncodingRecurse(results, remove_nonprintable=True)
+        if six.PY2:
+            return koji.fixEncodingRecurse(results, remove_nonprintable=True)
+        else:
+            return results
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
@@ -11029,23 +11048,15 @@ class RootExports(object):
         else:
             return 1
 
-    def _sortByKeyFunc(self, key, noneGreatest=True):
+    def _sortByKeyFuncNoneGreatest(key):
         """Return a function to sort a list of maps by the given key.
-        If the key starts with '-', sort in reverse order.  If noneGreatest
-        is True, None will sort higher than all other values (instead of lower).
+        None will sort higher than all other values (instead of lower).
         """
-        if noneGreatest:
-            # Normally None evaluates to be less than every other value
-            # Invert the comparison so it always evaluates to greater
-            cmpFunc = lambda a, b: (a is None or b is None) and -(cmp(a, b)) or cmp(a, b)
-        else:
-            cmpFunc = cmp
-
-        if key.startswith('-'):
-            key = key[1:]
-            return lambda a, b: cmpFunc(b[key], a[key])
-        else:
-            return lambda a, b: cmpFunc(a[key], b[key])
+        def internal_key(obj):
+            v = obj[key]
+            # Nones has priority, others are second
+            return (v is None, v)
+        return internal_key
 
     def filterResults(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and filter the results
@@ -11100,7 +11111,15 @@ class RootExports(object):
 
         order = filterOpts.get('order')
         if order:
-            results.sort(self._sortByKeyFunc(order, filterOpts.get('noneGreatest', True)))
+            if order.startswith('-'):
+                reverse = True
+                order = order[1:]
+            else:
+                reverse = False
+            if filterOpts.get('noneGreatest', True):
+                results.sort(self._sortByKeyFuncNoneGreatest(order), reverse=reverse)
+            else:
+                results.sort(key=order, reverse=reverse)
 
         offset = filterOpts.get('offset')
         if offset is not None:
@@ -12950,9 +12969,8 @@ def get_upload_path(reldir, name, create=False, volume=None):
                 if context.session.user_id != user_id:
                     raise koji.GenericError("Invalid upload directory, not owner: %s" % orig_reldir)
             else:
-                fo = open(u_fn, 'w')
-                fo.write(str(context.session.user_id))
-                fo.close()
+                with open(u_fn, 'w') as fo:
+                    fo.write(str(context.session.user_id))
     return os.path.join(udir, name)
 
 def get_verify_class(verify):
@@ -12972,7 +12990,7 @@ def handle_upload(environ):
     start = time.time()
     if not context.session.logged_in:
         raise koji.ActionNotAllowed('you must be logged-in to upload a file')
-    args = urlparse.parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
+    args = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
     #XXX - already parsed by auth
     name = args['filename'][0]
     path = args.get('filepath', ('',))[0]

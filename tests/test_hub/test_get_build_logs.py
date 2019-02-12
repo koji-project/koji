@@ -18,6 +18,7 @@ class TestGetBuildLogs(unittest.TestCase):
         self.pathinfo = mock.patch('koji.pathinfo').start()
         self.tempdir = tempfile.mkdtemp()
         koji.pathinfo.build_logs.return_value = self.tempdir
+        koji.pathinfo.topdir = '/'
 
     def tearDown(self):
         mock.patch.stopall()

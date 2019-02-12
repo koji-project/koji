@@ -90,7 +90,7 @@ class TestRPMDiff(unittest.TestCase):
         rpm = os.path.join(data_path, 'test-pkg-1.0.0-1.el7.noarch.rpm')
 
         # dummy file info
-        defattr = [19L, 33188, 1531970408, 0, 0, 2, 1, -1, -1, 'root', 'root', '02d2c91b']
+        defattr = [19, 33188, 1531970408, 0, 0, 2, 1, -1, -1, 'root', 'root', '02d2c91b']
 
         rpm_dict_old = {'a_file': defattr }
 
@@ -113,7 +113,7 @@ class TestRPMDiff(unittest.TestCase):
                     self.assertEqual(diff.textdiff(), textdiff if token not in opt else '')
 
         # case 1 size diffrerent
-        check_diff_result('S', 0, 99L, "S.......... a_file")
+        check_diff_result('S', 0, 99, "S.......... a_file")
 
         # case 2 mode different
         check_diff_result('M', 1, 22188, ".M......... a_file")

@@ -72,13 +72,13 @@ class TestNotifications(unittest.TestCase):
         # only query to watchers
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
-        self.assertEqual(q.columns, ('email',))
+        self.assertEqual(q.columns, ['email'])
         self.assertEqual(q.tables, ['build_notifications'])
-        self.assertEqual(q.clauses, [ 'status = %(users_status)i',
-                                     'usertype IN %(users_usertypes)s',
-                                     'package_id IS NULL',
+        self.assertEqual(q.clauses, ['package_id IS NULL',
+                                     'status = %(users_status)i',
+                                     'success_only = FALSE',
                                      'tag_id IS NULL',
-                                     'success_only = FALSE'])
+                                     'usertype IN %(users_usertypes)s'])
         self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['state'], state)
         self.assertEqual(q.values['build'], build)
@@ -96,13 +96,13 @@ class TestNotifications(unittest.TestCase):
         # there should be only query to watchers
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
-        self.assertEqual(q.columns, ('email',))
+        self.assertEqual(q.columns, ['email'])
         self.assertEqual(q.tables, ['build_notifications'])
-        self.assertEqual(q.clauses, ['status = %(users_status)i',
-                                     'usertype IN %(users_usertypes)s',
-                                     'package_id = %(package_id)i OR package_id IS NULL',
+        self.assertEqual(q.clauses, ['package_id = %(package_id)i OR package_id IS NULL',
+                                     'status = %(users_status)i',
+                                     'success_only = FALSE',
                                      'tag_id IS NULL',
-                                     'success_only = FALSE'])
+                                     'usertype IN %(users_usertypes)s'])
         self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['package_id'], build['package_id'])
         self.assertEqual(q.values['state'], state)
@@ -134,19 +134,19 @@ class TestNotifications(unittest.TestCase):
         }
 
         emails = kojihub.get_notification_recipients(build, tag_id, state)
-        self.assertEqual(emails, ['owner_name@test.domain.com', 'pkg_owner_name@test.domain.com'])
+        self.assertEqual(sorted(emails), ['owner_name@test.domain.com', 'pkg_owner_name@test.domain.com'])
 
 
         # there should be only query to watchers
         self.assertEqual(len(self.queries), 1)
         q = self.queries[0]
-        self.assertEqual(q.columns, ('email',))
+        self.assertEqual(q.columns, ['email'])
         self.assertEqual(q.tables, ['build_notifications'])
-        self.assertEqual(q.clauses, ['status = %(users_status)i',
-                                     'usertype IN %(users_usertypes)s',
-                                     'package_id = %(package_id)i OR package_id IS NULL',
+        self.assertEqual(q.clauses, ['package_id = %(package_id)i OR package_id IS NULL',
+                                     'status = %(users_status)i',
+                                     'success_only = FALSE',
                                      'tag_id = %(tag_id)i OR tag_id IS NULL',
-                                     'success_only = FALSE'])
+                                     'usertype IN %(users_usertypes)s'])
         self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
         self.assertEqual(q.values['package_id'], build['package_id'])
         self.assertEqual(q.values['state'], state)

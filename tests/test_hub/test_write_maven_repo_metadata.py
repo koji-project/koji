@@ -7,7 +7,6 @@ try:
 except ImportError:
     import unittest
 
-import koji
 from kojihub import _write_maven_repo_metadata
 
 class TestWriteMavenRepoMetadata(unittest.TestCase):
@@ -39,7 +38,7 @@ class TestWriteMavenRepoMetadata(unittest.TestCase):
         openf_mock.assert_called_with(
             os.path.join(destdir, 'maven-metadata.xml'), 'w')
 
-        handle = openf_mock()
+        handle = openf_mock().__enter__()
         expected = """\
 <?xml version="1.0"?>
 <metadata>
