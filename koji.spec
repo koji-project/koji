@@ -1,5 +1,6 @@
 %bcond_without python3
 %bcond_without python2
+%global _python_bytecompile_extra 0
 
 # We can build varying amounts of Koji for python2 and python3 based on
 # the py[23]_support macro values. Valid values are:
@@ -157,7 +158,7 @@ desc
 Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name} = %{version}-%{release}
+Requires: python2-%{name} = %{version}-%{release}
 
 %description -n python2-%{name}-cli-plugins
 Plugins to the koji command-line interface
@@ -168,7 +169,7 @@ Plugins to the koji command-line interface
 Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name} = %{version}-%{release}
+Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-cli-plugins
 Plugins to the koji command-line interface
@@ -200,8 +201,6 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 # py2 xor py3
 Provides: %{name}-hub-code = %{version}-%{release}
@@ -222,8 +221,6 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 # py2 xor py3
 Provides: %{name}-hub-code = %{version}-%{release}
@@ -236,7 +233,7 @@ koji-hub is the XMLRPC interface to the koji database
 Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name}-hub-plugins-code
+Requires: %{name}-hub-plugins-code = %{version}-%{release}
 %if 0%{?fedora} || 0%{?rhel} > 7
 Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %endif
@@ -252,7 +249,7 @@ License: LGPLv2
 Requires: python2-%{name}-hub = %{version}-%{release}
 Requires: python2-qpid-proton
 Requires: cpio
-Provides: %{name}-hub-plugins-code
+Provides: %{name}-hub-plugins-code = %{version}-%{release}
 
 %description -n python2-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
@@ -266,7 +263,7 @@ License: LGPLv2
 Requires: python%{python3_pkgversion}-%{name}-hub = %{version}-%{release}
 Requires: python%{python3_pkgversion}-qpid-proton
 Requires: cpio
-Provides: %{name}-hub-plugins-code
+Provides: %{name}-hub-plugins-code = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
@@ -348,8 +345,6 @@ Summary: Koji Utilities
 Group: Applications/Internet
 License: LGPLv2
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
@@ -429,6 +424,7 @@ done
 %endif
 %endif
 
+
 # python3 build
 %if 0%{py3_support} > 1
 make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
@@ -448,8 +444,6 @@ for d in koji cli plugins ; do
 done
 # alter python interpreter in koji CLI
 sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
-# remove the hub plugins pycache
-rm -rf $RPM_BUILD_ROOT/usr/lib/koji-hub-plugins/__pycache__
 %endif
 %endif
 
