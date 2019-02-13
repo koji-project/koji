@@ -48,6 +48,11 @@
 %define py3_support 0
 %endif
 
+%if ! %{py2_support}
+# use python3
+%define __python %{__python3}
+%endif
+
 # Compatibility with RHEL. These macros have been added to EPEL but
 # not yet to RHEL proper.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1307190
