@@ -446,8 +446,8 @@ for d in koji cli plugins hub www builder ; do
     popd
 done
 # alter python interpreter in koji CLI
-sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
-sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/sbin/kojid
+sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
+sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/sbin/kojid
 %else
 %if 0%{py3_support}
 # minimal
@@ -457,7 +457,7 @@ for d in koji cli plugins ; do
     popd
 done
 # alter python interpreter in koji CLI
-sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
+sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
 # remove the hub plugins pycache
 rm -rf $RPM_BUILD_ROOT/usr/lib/koji-hub-plugins/__pycache__
 %endif
