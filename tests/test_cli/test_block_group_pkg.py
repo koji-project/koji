@@ -20,6 +20,7 @@ class TestBlockGroupPkg(utils.CliTestCase):
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
 
         self.error_format = """Usage: %s block-group-pkg [options] <tag> <group> <pkg> [<pkg>...]
+Note, that blocking is propagated through inheritance chain, so it is not exactly the same as package removal.
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -55,6 +56,7 @@ class TestBlockGroupPkg(utils.CliTestCase):
         self.assert_help(
             handle_block_group_pkg,
             """Usage: %s block-group-pkg [options] <tag> <group> <pkg> [<pkg>...]
+Note, that blocking is propagated through inheritance chain, so it is not exactly the same as package removal.
 (Specify the --help global option for a list of other help options)
 
 Options:
