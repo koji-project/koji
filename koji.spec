@@ -344,6 +344,8 @@ Requires: qemu-img
 koji-vm contains a supplemental build daemon that executes certain tasks in a
 virtual machine. This package is not required for most installations.
 
+%if 0%{py2_support} > 1
+# for now the utils subpackage is py2 only
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
@@ -360,6 +362,7 @@ Requires(postun): systemd
 
 %description utils
 Utilities for the Koji system
+%endif
 
 %if 0%{py2_support} > 1
 %package -n python2-%{name}-web
@@ -542,7 +545,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/lib/koji-builder-plugins/*.py*
 %endif
 
-%if 0%{py2_support}
+%if 0%{py2_support} > 1
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
