@@ -536,14 +536,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/lib/koji-hub-plugins/__pycache__
 %endif
 
-%if 0%{py2_support} > 1
 %files builder-plugins
 %defattr(-,root,root)
 %dir /etc/kojid/plugins
 %config(noreplace) /etc/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
 %{_prefix}/lib/koji-builder-plugins/*.py*
-%endif
 
 %if 0%{py2_support} > 1
 %files utils
