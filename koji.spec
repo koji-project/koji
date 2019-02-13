@@ -349,8 +349,6 @@ Requires: qemu-img
 koji-vm contains a supplemental build daemon that executes certain tasks in a
 virtual machine. This package is not required for most installations.
 
-%if 0%{py2_support} > 1
-# for now the utils subpackage is py2 only
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
@@ -367,7 +365,6 @@ Requires(postun): systemd
 
 %description utils
 Utilities for the Koji system
-%endif
 
 %if 0%{py2_support} > 1
 %package -n python2-%{name}-web
@@ -440,14 +437,13 @@ done
 
 # python3 build
 %if 0%{py3_support} > 1
-for d in koji cli plugins hub www builder ; do
-    pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
-    popd
-done
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
 # alter python interpreter in koji CLI
-sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
-sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/sbin/kojid
+scripts='/usr/bin/koji /usr/sbin/kojid /usr/sbin/kojira /usr/sbin/koji-shadow
+         /usr/sbin/koji-gc /usr/sbin/kojivmd'
+for fn in $scripts ; do
+    sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT$fn
+done
 %else
 %if 0%{py3_support}
 # minimal
@@ -551,7 +547,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/lib/koji-builder-plugins/__pycache__
 %endif
 
-%if 0%{py2_support} > 1
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
@@ -569,7 +564,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/koji-shadow
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
-%endif
 
 %if 0%{py2_support} > 1
 %files -n python2-%{name}-web
@@ -632,7 +626,6 @@ if [ $1 = 0 ]; then
 fi
 %endif
 
-%if 0%{py2_support} > 1
 %files vm
 %defattr(-,root,root)
 %{_sbindir}/kojivmd
@@ -668,7 +661,6 @@ if [ $1 = 0 ]; then
   /sbin/service kojivmd stop &> /dev/null
   /sbin/chkconfig --del kojivmd
 fi
-%endif
 
 %if %{use_systemd}
 
