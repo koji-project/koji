@@ -13,26 +13,30 @@
 %define py2_support 2
 %define py3_support 2
 
-# No python3 for older rhel
-%if 0%{?rhel} < 8
-%define py3_support 0
-%else
+%if 0%{?rhel} >= 8
 # and no python2 on rhel8+
 %define py2_support 0
+%else
+%if 0%{?rhel}
+# No python3 for older rhel
+%define py3_support 0
+%endif
 %endif
 
-%if 0%{?fedora} < 30
-# match what these Fedoras already have
-%define py2_support 2
-%define py3_support 1
-%else
-%if 0%{?fedora} < 33
-%define py2_support 1
-%define py3_support 2
-%else
+%if 0%{?fedora} >= 33
 # no py2 after F33
 %define py2_support 0
 %define py3_support 2
+%else
+%if 0%{?fedora} >= 30
+%define py2_support 1
+%define py3_support 2
+%else
+%if 0%{?fedora}
+# match what the older Fedoras already have
+%define py2_support 2
+%define py3_support 1
+%endif
 %endif
 %endif
 
