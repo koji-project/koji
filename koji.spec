@@ -547,6 +547,9 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
 %{_prefix}/lib/koji-builder-plugins/*.py*
+%if 0%{py3_support} > 1
+%{_prefix}/lib/koji-builder-plugins/__pycache__
+%endif
 
 %if 0%{py2_support} > 1
 %files utils
