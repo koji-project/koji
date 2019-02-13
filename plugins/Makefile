@@ -29,6 +29,7 @@ install:
 		echo "ERROR: A destdir is required"; \
 		exit 1; \
 	fi
+        ifndef KOJI_MINIMAL
 	mkdir -p $(DESTDIR)/$(HUBPLUGINDIR); \
 	install -p -m 644 $(HUBFILES) $(DESTDIR)/$(HUBPLUGINDIR); \
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(HUBPLUGINDIR)', 1, '$(HUBPLUGINDIR)', 1)"; \
@@ -40,6 +41,7 @@ install:
 	mkdir -p $(DESTDIR)/$(BUILDERCONFDIR); \
 	install -p -m 644 $(BUILDERCONFFILES) $(DESTDIR)/$(BUILDERCONFDIR); \
 
+        endif
 	mkdir -p $(DESTDIR)/$(CLIPLUGINDIR)
 	install -p -m 644 $(CLIFILES) $(DESTDIR)/$(CLIPLUGINDIR)
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(CLIPLUGINDIR)', 1, '$(CLIPLUGINDIR)', 1)"

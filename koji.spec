@@ -427,7 +427,7 @@ make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
 %if 0%{py2_support}
 for d in koji cli plugins ; do
     pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} %{?install_opt} install
     popd
 done
 %endif
@@ -448,7 +448,7 @@ sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/
 # minimal
 for d in koji cli plugins ; do
     pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} %{?install_opt} install
     popd
 done
 # alter python interpreter in koji CLI
