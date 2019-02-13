@@ -250,10 +250,7 @@ Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python2-%{name}-hub = %{version}-%{release}
-Requires: python-qpid >= 0.7
-%if 0%{?fedora} >= 27 || 0%{?rhel} >= 6
-Requires: python-qpid-proton
-%endif
+Requires: python2-qpid-proton
 Requires: cpio
 Provides: %{name}-hub-plugins-code
 
@@ -267,10 +264,7 @@ Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python%{python3_pkgversion}-%{name}-hub = %{version}-%{release}
-Requires: python-qpid >= 0.7
-%if 0%{?fedora} >= 27 ||  0%{?rhel} >= 6
 Requires: python%{python3_pkgversion}-qpid-proton
-%endif
 Requires: cpio
 Provides: %{name}-hub-plugins-code
 
