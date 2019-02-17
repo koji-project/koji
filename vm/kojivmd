@@ -46,7 +46,6 @@ import base64
 import pwd
 import requests
 import fnmatch
-from six.moves.configparser import ConfigParser
 from contextlib import closing
 from optparse import OptionParser
 try:
@@ -102,8 +101,7 @@ def get_options():
         assert False  # pragma: no cover
 
     # load local config
-    config = ConfigParser()
-    config.read(options.configFile)
+    config = koji.read_config_files(options.configFile)
     for x in config.sections():
         if x != 'kojivmd':
             quit('invalid section found in config file: %s' % x)

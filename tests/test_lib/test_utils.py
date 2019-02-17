@@ -184,49 +184,131 @@ class MiscFunctionTestCase(unittest.TestCase):
 class ConfigFileTestCase(unittest.TestCase):
     """Test config file reading functions"""
 
-    @mock_open()
-    @mock.patch("six.moves.configparser.ConfigParser", spec=True)
-    @mock.patch("six.moves.configparser.RawConfigParser", spec=True)
-    @mock.patch("six.moves.configparser.SafeConfigParser", spec=True)
-    def test_read_config_files(self, scp_clz, rcp_clz, cp_clz, open_mock):
+    def setUp(self):
+        self.manager = mock.MagicMock()
+        self.manager.logging = mock.patch('koji.logging').start()
+        self.manager.isdir = mock.patch("os.path.isdir").start()
+        self.manager.isfile = mock.patch("os.path.isfile").start()
+        self.manager.access = mock.patch("os.access", return_value=True).start()
+        self.manager.open = mock_open().start()
+        self.manager.cp_clz = mock.patch("six.moves.configparser.ConfigParser",
+                                         spec=True).start()
+        self.manager.scp_clz = mock.patch("six.moves.configparser.SafeConfigParser",
+                                         spec=True).start()
+        self.manager.rcp_clz = mock.patch("six.moves.configparser.RawConfigParser",
+                                         spec=True).start()
+        self.mocks = [self.manager.logging,
+                      self.manager.isdir,
+                      self.manager.isfile,
+                      self.manager.access,
+                      self.manager.open,
+                      self.manager.cp_clz,
+                      self.manager.scp_clz,
+                      self.manager.rcp_clz]
+
+    def reset_mock(self):
+        for m in self.mocks:
+            m.reset_mock()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_read_config_files(self):
         files = 'test1.conf'
-        conf = koji.read_config_files(files)
-        open_mock.assert_called_once_with(files, 'r')
+        default = 'default.conf'
+        self.manager.isdir.return_value = False
+        conf = koji.read_config_files(files, default=default)
+        self.manager.isdir.assert_called_once_with(files)
+        self.manager.open.assert_called_once_with(default, 'r')
         if six.PY2:
             self.assertTrue(isinstance(conf,
                                        six.moves.configparser.SafeConfigParser.__class__))
-            scp_clz.assert_called_once()
-            scp_clz.return_value.readfp.assert_called_once()
+            self.manager.scp_clz.assert_called_once()
+            self.manager.scp_clz.return_value.readfp.assert_called_once()
+            self.manager.scp_clz.return_value.read.assert_called_once_with([files])
         else:
             self.assertTrue(isinstance(conf,
                                        six.moves.configparser.ConfigParser.__class__))
-            cp_clz.assert_called_once()
-            cp_clz.return_value.read_file.assert_called_once()
+            self.manager.cp_clz.assert_called_once()
+            self.manager.cp_clz.return_value.read_file.assert_called_once()
+            self.manager.cp_clz.return_value.read.assert_called_once_with([files])
 
-        open_mock.reset_mock()
-        cp_clz.reset_mock()
-        scp_clz.reset_mock()
+        # no default
+        self.reset_mock()
+        koji.read_config_files(files)
+        self.manager.open.assert_not_called()
+
+        # list as config_files
+        self.reset_mock()
         files = ['test1.conf', 'test2.conf']
         koji.read_config_files(files)
-        open_mock.assert_has_calls([call('test1.conf', 'r'),
-                                    call('test2.conf', 'r')],
-                                   any_order=True)
-        if six.PY2:
-            scp_clz.assert_called_once()
-            self.assertEqual(scp_clz.return_value.readfp.call_count, 2)
-        else:
-            cp_clz.assert_called_once()
-            self.assertEqual(cp_clz.return_value.read_file.call_count, 2)
+        self.manager.open.assert_not_called()
 
-        open_mock.reset_mock()
-        cp_clz.reset_mock()
-        scp_clz.reset_mock()
+        if six.PY2:
+            parser_clz = self.manager.scp_clz
+        else:
+            parser_clz = self.manager.cp_clz
+        parser_clz.assert_called_once()
+        parser_clz.return_value.read.assert_called_once_with(files)
+
+        # raw
+        self.reset_mock()
         conf = koji.read_config_files(files, raw=True)
         self.assertTrue(isinstance(conf,
                                    six.moves.configparser.RawConfigParser.__class__))
-        cp_clz.assert_not_called()
-        scp_clz.assert_not_called()
-        rcp_clz.assert_called_once()
+        self.manager.cp_clz.assert_not_called()
+        self.manager.scp_clz.assert_not_called()
+        self.manager.rcp_clz.assert_called_once()
+
+        # strict
+        # case1, not a file
+        self.reset_mock()
+        self.manager.isfile.side_effect = [True, False]
+        with self.assertRaises(koji.ConfigurationError) as cm:
+            koji.read_config_files(files, strict=True)
+        self.assertEqual(cm.exception.args[0],
+                         "Config file test2.conf can't be opened.")
+        self.manager.open.assert_not_called()
+
+        # case2, inaccessible
+        self.reset_mock()
+        self.manager.isfile.side_effect = None
+        self.manager.isfile.return_value = True
+        self.manager.access.side_effect = [True, False]
+        with self.assertRaises(koji.ConfigurationError) as cm:
+            koji.read_config_files(files, strict=True)
+        self.assertEqual(cm.exception.args[0],
+                         "Config file test2.conf can't be opened.")
+        self.manager.open.assert_not_called()
+
+        # directories
+        self.reset_mock()
+        files = ['test1.conf', 'testdir1', 'test2.conf', 'testdir2']
+        self.manager.isdir.side_effect = [False, True, False, True]
+        self.manager.isfile.side_effect = lambda f: False \
+            if f == 'test1-4.dir.conf' else True
+        self.manager.access.side_effect = None
+        self.manager.access.return_value = True
+        with mock.patch("os.listdir", side_effect=[['test1-2.conf',
+                                                    'test1-1.conf',
+                                                    'test1-3.txt',
+                                                    'test1-4.dir.conf'],
+                                                   []]) as listdir_mock:
+            conf = koji.read_config_files(files)
+        listdir_mock.assert_has_calls([call('testdir1'), call('testdir2')])
+        if six.PY2:
+            parser_clz = self.manager.scp_clz
+        else:
+            parser_clz = self.manager.cp_clz
+        parser_clz.assert_called_once()
+        parser_clz.return_value.read.assert_called_once_with(
+            ['test1.conf',
+             'testdir1/test1-1.conf',
+             'testdir1/test1-2.conf',
+             'testdir1/test1-4.dir.conf',
+             'test2.conf'])
+        self.manager.logging.debug.assert_called_once_with(
+            "No config files found in directory: testdir2")
 
 
 class MavenUtilTestCase(unittest.TestCase):

@@ -28,7 +28,7 @@
 
 from __future__ import absolute_import
 from optparse import OptionParser
-from six.moves.configparser import ConfigParser
+from six.moves.configparser import ConfigParser, SafeConfigParser
 import os
 import subprocess
 import sys
@@ -212,7 +212,10 @@ class WindowsBuild(object):
         elif len(specfiles) > 1:
             raise BuildError('Multiple .ini files found')
 
-        conf = ConfigParser()
+        if six.PY2:
+            conf = SafeConfigParser()
+        else:
+            conf = ConfigParser()
         conf.read(os.path.join(self.spec_dir, specfiles[0]))
 
         # [naming] section

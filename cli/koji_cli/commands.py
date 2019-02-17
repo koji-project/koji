@@ -5944,10 +5944,8 @@ def handle_image_build(options, session, args):
     (task_options, args) = parser.parse_args(args)
 
     if task_options.config:
-        if not os.path.exists(task_options.config):
-            parser.error(_("%s not found!" % task_options.config))
         section = 'image-build'
-        config = koji.read_config_files(task_options.config)
+        config = koji.read_config_files(task_options.config, strict=True)
         if not config.has_section(section):
             parser.error(_("single section called [%s] is required" % section))
         # pluck out the positional arguments first

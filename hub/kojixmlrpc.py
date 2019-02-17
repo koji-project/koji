@@ -20,7 +20,6 @@
 
 from __future__ import absolute_import
 from __future__ import division
-from six.moves.configparser import RawConfigParser
 import datetime
 import inspect
 import logging
@@ -399,17 +398,8 @@ def load_config(environ):
     #get our config file(s)
     cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
     cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
-    if cfdir:
-        configs = koji.config_directory_contents(cfdir)
-    else:
-        configs = []
-    if cf and os.path.isfile(cf):
-        configs.append(cf)
-    if configs:
-        config = RawConfigParser()
-        config.read(configs)
-    else:
-        config = None
+    config = koji.read_config_files([cfdir, cf], raw=True, strict=True)
+
     cfgmap = [
         #option, type, default
         ['DBName', 'string', None],

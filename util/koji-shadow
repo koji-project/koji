@@ -31,7 +31,6 @@ except ImportError:  # pragma: no cover
     krbV = None
 import koji
 from koji.util import to_list
-import six.moves.configparser
 import fnmatch
 import optparse
 import os
@@ -156,56 +155,44 @@ def get_options():
     (options, args) = parser.parse_args()
 
     defaults = parser.get_default_values()
-    config = six.moves.configparser.ConfigParser()
-    cf = getattr(options, 'config_file', None)
-    if cf:
-        if not os.access(cf, os.F_OK):
-            parser.error(_("No such file: %s") % cf)
-            assert False  # pragma: no cover
-    else:
-        cf = '/etc/koji-shadow/koji-shadow.conf'
-        if not os.access(cf, os.F_OK):
-            cf = None
-    if not cf:
-        log("no config file")
-        config = None
-    else:
-        config.read(cf)
-        #allow config file to update defaults
-        for opt in parser.option_list:
-            if not opt.dest:
-                continue
-            name = opt.dest
-            alias = ('main', name)
-            if config.has_option(*alias):
-                log("Using option %s from config file" % (alias,))
-                if opt.action in ('store_true', 'store_false'):
-                    setattr(defaults, name, config.getboolean(*alias))
-                elif opt.action != 'store':
-                    pass
-                elif opt.type in ('int', 'long'):
-                    setattr(defaults, name, config.getint(*alias))
-                elif opt.type in ('float'):
-                    setattr(defaults, name, config.getfloat(*alias))
-                else:
-                    log(config.get(*alias))
-                    setattr(defaults, name, config.get(*alias))
-        #config file options without a cmdline equivalent
-        otheropts = [
-            #name, type, default
-            ['keytab', None, 'string'],
-            ['principal', None, 'string'],
-            ['runas', None, 'string'],
-            ['user', None, 'string'],
-            ['password', None, 'string'],
-            ['noauth', None, 'boolean'],
-            ['server', None, 'string'],
-            ['remote', None, 'string'],
-            ['max_jobs', None, 'int'],
-            ['serverca', None, 'string'],
-            ['auth_cert', None, 'string'],
-            ['arches', None, 'string'],
-            ]
+    cf = getattr(options, 'config_file', '/etc/koji-shadow/koji-shadow.conf')
+    config = koji.read_config_files(cf)
+
+    #allow config file to update defaults
+    for opt in parser.option_list:
+        if not opt.dest:
+            continue
+        name = opt.dest
+        alias = ('main', name)
+        if config.has_option(*alias):
+            log("Using option %s from config file" % (alias,))
+            if opt.action in ('store_true', 'store_false'):
+                setattr(defaults, name, config.getboolean(*alias))
+            elif opt.action != 'store':
+                pass
+            elif opt.type in ('int', 'long'):
+                setattr(defaults, name, config.getint(*alias))
+            elif opt.type in ('float'):
+                setattr(defaults, name, config.getfloat(*alias))
+            else:
+                log(config.get(*alias))
+                setattr(defaults, name, config.get(*alias))
+    #config file options without a cmdline equivalent
+    otheropts = [
+        #name, type, default
+        ['keytab', None, 'string'],
+        ['principal', None, 'string'],
+        ['runas', None, 'string'],
+        ['user', None, 'string'],
+        ['password', None, 'string'],
+        ['noauth', None, 'boolean'],
+        ['server', None, 'string'],
+        ['remote', None, 'string'],
+        ['max_jobs', None, 'int'],
+        ['serverca', None, 'string'],
+        ['auth_cert', None, 'string'],
+        ['arches', None, 'string'],
+        ]
 
 
     #parse again with updated defaults
