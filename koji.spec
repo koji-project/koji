@@ -1,17 +1,57 @@
-# Enable Python 3 builds for Fedora/RHEL8
-%if 0%{?fedora} || 0%{?rhel} >= 8
 %bcond_without python3
-# If the definition isn't available for python3_pkgversion, define it
-%{?!python3_pkgversion:%global python3_pkgversion 3}
+%bcond_without python2
+%global _python_bytecompile_extra 0
+
+# We can build varying amounts of Koji for python2 and python3 based on
+# the py[23]_support macro values. Valid values are:
+#   undefined or 0 -- do not build
+#   1 -- build just the cli and lib
+#   2 -- build everything we can
+# For executable scripts, py3 wins if we build it
+# The following rules tweak these settings based on options and environment
+
+# Default to building both fully
+%define py2_support 2
+%define py3_support 2
+
+%if 0%{?rhel} >= 8
+# and no python2 on rhel8+
+%define py2_support 0
 %else
-%bcond_with python3
+%if 0%{?rhel}
+# No python3 for older rhel
+%define py3_support 0
+%endif
 %endif
 
-# don't build py2 packages for py3-only systems
-%if 0%{with python3} && (0%{?fedora} > 32 || 0%{?rhel} > 7)
-    %define with_python2 0
+%if 0%{?fedora} >= 33
+# no py2 after F33
+%define py2_support 0
+%define py3_support 2
 %else
-    %define with_python2 1
+%if 0%{?fedora} >= 30
+%define py2_support 1
+%define py3_support 2
+%else
+%if 0%{?fedora}
+# match what the older Fedoras already have
+%define py2_support 2
+%define py3_support 1
+%endif
+%endif
+%endif
+
+# Lastly enforce the bcond parameters
+%if %{without python2}
+%define py2_support 0
+%endif
+%if %{without python3}
+%define py3_support 0
+%endif
+
+%if ! %{py2_support}
+# use python3
+%define __python %{__python3}
 %endif
 
 # Compatibility with RHEL. These macros have been added to EPEL but
@@ -22,6 +62,9 @@
 %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %{!?py2_build: %global py2_build %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} build --executable="%{__python2} -s"}}
 %{!?py2_install: %global py2_install %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} install -O1 --skip-build --root %{buildroot}}}
+
+# If the definition isn't available for python3_pkgversion, define it
+%{?!python3_pkgversion:%global python3_pkgversion 3}
 
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 %global use_systemd 1
@@ -48,7 +91,7 @@ URL: https://pagure.io/koji
 Source: https://releases.pagure.org/koji/koji-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-%if 0%{with python3}
+%if 0%{py3_support}
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 Requires: python%{python3_pkgversion}-libcomps
 %else
@@ -66,7 +109,7 @@ BuildRequires: pkgconfig
 Koji is a system for building and tracking RPMS.  The base package
 contains shared libraries and the command-line interface.
 
-%if 0%{with_python2}
+%if 0%{py2_support}
 %package -n python2-%{name}
 Summary: Build system tools python library
 %{?python_provide:%python_provide python2-%{name}}
@@ -90,7 +133,7 @@ Requires: python-six
 desc
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support}
 %package -n python%{python3_pkgversion}-%{name}
 Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
@@ -110,23 +153,23 @@ Requires: python%{python3_pkgversion}-six
 desc
 %endif
 
-%if 0%{with_python2}
+%if 0%{py2_support}
 %package -n python2-%{name}-cli-plugins
 Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name} = %{version}-%{release}
+Requires: python2-%{name} = %{version}-%{release}
 
 %description -n python2-%{name}-cli-plugins
 Plugins to the koji command-line interface
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support}
 %package -n python%{python3_pkgversion}-%{name}-cli-plugins
 Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name} = %{version}-%{release}
+Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-cli-plugins
 Plugins to the koji command-line interface
@@ -146,6 +189,7 @@ Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %description hub
 koji-hub is the XMLRPC interface to the koji database
 
+%if 0%{py2_support} > 1
 %package -n python2-%{name}-hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
@@ -157,16 +201,15 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 # py2 xor py3
 Provides: %{name}-hub-code = %{version}-%{release}
 
 %description -n python2-%{name}-hub
 koji-hub is the XMLRPC interface to the koji database
+%endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
@@ -178,8 +221,6 @@ Requires: mod_wsgi
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 # py2 xor py3
 Provides: %{name}-hub-code = %{version}-%{release}
@@ -192,7 +233,7 @@ koji-hub is the XMLRPC interface to the koji database
 Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
-Requires: %{name}-hub-plugins-code
+Requires: %{name}-hub-plugins-code = %{version}-%{release}
 %if 0%{?fedora} || 0%{?rhel} > 7
 Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %endif
@@ -200,33 +241,29 @@ Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %description hub-plugins
 Plugins to the koji XMLRPC interface
 
+%if 0%{py2_support} > 1
 %package -n python2-%{name}-hub-plugins
 Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python2-%{name}-hub = %{version}-%{release}
-Requires: python-qpid >= 0.7
-%if 0%{?fedora} >= 27 || 0%{?rhel} >= 6
-Requires: python-qpid-proton
-%endif
+Requires: python2-qpid-proton
 Requires: cpio
-Provides: %{name}-hub-plugins-code
+Provides: %{name}-hub-plugins-code = %{version}-%{release}
 
 %description -n python2-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
+%endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-hub-plugins
 Summary: Koji hub plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python%{python3_pkgversion}-%{name}-hub = %{version}-%{release}
-Requires: python-qpid >= 0.7
-%if 0%{?fedora} >= 27 ||  0%{?rhel} >= 6
 Requires: python%{python3_pkgversion}-qpid-proton
-%endif
 Requires: cpio
-Provides: %{name}-hub-plugins-code
+Provides: %{name}-hub-plugins-code = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
@@ -264,7 +301,7 @@ Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: createrepo >= 0.9.2
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 Requires: python%{python3_pkgversion}-multilib
 Requires: python%{python3_pkgversion}-cheetah
@@ -308,8 +345,6 @@ Summary: Koji Utilities
 Group: Applications/Internet
 License: LGPLv2
 Requires: python-psycopg2
-Requires: %{name} = %{version}-%{release}
-# we need the python2 lib here
 Requires: python2-%{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
@@ -320,7 +355,20 @@ Requires(postun): systemd
 %description utils
 Utilities for the Koji system
 
-%if 0%{with_python2}
+%package web
+Summary: Koji Web UI
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires: %{name}-web-code = %{version}-%{release}
+%if 0%{?fedora} || 0%{?rhel} > 7
+Suggests: python%{python3_pkgversion}-%{name}-web
+%endif
+
+%description web
+koji-web is a web UI to the Koji system.
+
+%if 0%{py2_support} > 1
 %package -n python2-%{name}-web
 Summary: Koji Web UI
 Group: Applications/Internet
@@ -337,14 +385,13 @@ Requires: python-krbV >= 1.0.13
 Requires: python-psycopg2
 Requires: python-cheetah
 Requires: python2-%{name} = %{version}-%{release}
-Provides: koji-web = %{version}-%{release}
-Obsoletes: koji-web < 1.16.2
+Provides: %{name}-web-code = %{version}-%{release}
 
 %description -n python2-%{name}-web
 koji-web is a web UI to the Koji system.
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-web
 Summary: Koji Web UI
 Group: Applications/Internet
@@ -356,8 +403,7 @@ Requires: mod_auth_gssapi
 Requires: python%{python3_pkgversion}-psycopg2
 Requires: python%{python3_pkgversion}-cheetah
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
-Provides: koji-web = %{version}-%{release}
-Obsoletes: koji-web < 1.16.2
+Provides: %{name}-web-code = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-web
 koji-web is a web UI to the Koji system.
@@ -370,18 +416,66 @@ koji-web is a web UI to the Koji system.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%if 0%{with_python2}
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
+
+%if 0%{py2_support} < 2  &&  0%{py3_support} < 2
+echo "At least one python must be built with full support"
+exit 1
 %endif
-%if 0%{with python3}
-for d in koji cli plugins hub www ; do
+
+# python2 build
+%if 0%{py2_support} > 1
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
+%else
+%if 0%{py2_support}
+for d in koji cli plugins ; do
     pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} %{?install_opt} install
+    popd
+done
+%endif
+%endif
+
+
+# python3 build
+%if 0%{py3_support} > 1
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
+# alter python interpreter in koji CLI
+scripts='%{_bindir}/koji %{_sbindir}/kojid %{_sbindir}/kojira %{_sbindir}/koji-shadow
+         %{_sbindir}/koji-gc %{_sbindir}/kojivmd'
+for fn in $scripts ; do
+    sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT$fn
+done
+%else
+%if 0%{py3_support}
+# minimal
+for d in koji cli plugins ; do
+    pushd $d
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} %{?install_opt} install
     popd
 done
 # alter python interpreter in koji CLI
-sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/bin/koji
-sed -i 's/\#\!\/usr\/bin\/python2/\#\!\/usr\/bin\/python3/' $RPM_BUILD_ROOT/usr/sbin/kojid
+sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
+%endif
+%endif
+
+%if 0%{?fedora} >= 28
+# handle extra byte compilation
+extra_dirs='
+    %{_prefix}/lib/koji-builder-plugins
+    %{_prefix}/koji-hub-plugins
+    %{_datadir}/koji-hub
+    %{_datadir}/koji-web/lib/kojiweb
+    %{_datadir}/koji-web/scripts'
+%if 0%{py2_support} > 1
+for fn in $extra_dirs ; do
+    %py_byte_compile %{__python2} %{buildroot}$fn
+done
+%endif
+%if 0%{py3_support} > 1
+for fn in $extra_dirs ; do
+    %py_byte_compile %{__python3} %{buildroot}$fn
+done
+%endif
 %endif
 
 %clean
@@ -394,20 +488,20 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
 
-%if 0%{with_python2}
+%if 0%{py2_support}
 %files -n python2-%{name}
 %defattr(-,root,root)
 %{python2_sitelib}/%{name}
 %{python2_sitelib}/koji_cli
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support}
 %files -n python%{python3_pkgversion}-koji
 %{python3_sitelib}/%{name}
 %{python3_sitelib}/koji_cli
 %endif
 
-%if 0%{with_python2}
+%if 0%{py2_support}
 %files -n python2-%{name}-cli-plugins
 %defattr(-,root,root)
 %{python2_sitelib}/koji_cli_plugins
@@ -416,7 +510,7 @@ rm -rf $RPM_BUILD_ROOT
 #%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support}
 %files -n python%{python3_pkgversion}-%{name}-cli-plugins
 %defattr(-,root,root)
 %{python3_sitelib}/koji_cli_plugins
@@ -432,13 +526,13 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/koji-hub/hub.conf
 %dir /etc/koji-hub/hub.conf.d
 
-%if 0%{with_python2}
+%if 0%{py2_support} > 1
 %files -n python2-%{name}-hub
 %defattr(-,root,root)
 %{_datadir}/koji-hub/*.py*
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub
 %defattr(-,root,root)
 %{_datadir}/koji-hub/*.py
@@ -449,29 +543,29 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji-hub/plugins
 %config(noreplace) /etc/koji-hub/plugins/*.conf
 
-%if 0%{with_python2}
+%if 0%{py2_support} > 1
 %files -n python2-%{name}-hub-plugins
 %defattr(-,root,root)
 %{_prefix}/lib/koji-hub-plugins/*.py*
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub-plugins
 %defattr(-,root,root)
 %{_prefix}/lib/koji-hub-plugins/*.py
 %{_prefix}/lib/koji-hub-plugins/__pycache__
 %endif
 
-%if 0%{with_python2}
 %files builder-plugins
 %defattr(-,root,root)
 %dir /etc/kojid/plugins
 %config(noreplace) /etc/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
 %{_prefix}/lib/koji-builder-plugins/*.py*
+%if 0%{py3_support} > 1
+%{_prefix}/lib/koji-builder-plugins/__pycache__
 %endif
 
-%if 0%{with_python2}
 %files utils
 %defattr(-,root,root)
 %{_sbindir}/kojira
@@ -489,29 +583,26 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/koji-shadow
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
-%endif
 
-%if 0%{with_python2}
+%files web
+%defattr(-,root,root)
+%dir /etc/kojiweb
+%config(noreplace) /etc/kojiweb/web.conf
+%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
+%dir /etc/kojiweb/web.conf.d
+
+%if 0%{py2_support} > 1
 %files -n python2-%{name}-web
 %defattr(-,root,root)
 %{_datadir}/koji-web
-%dir /etc/kojiweb
-%config(noreplace) /etc/kojiweb/web.conf
-%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
-%dir /etc/kojiweb/web.conf.d
 %endif
 
-%if 0%{with python3}
+%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-web
 %defattr(-,root,root)
 %{_datadir}/koji-web
-%dir /etc/kojiweb
-%config(noreplace) /etc/kojiweb/web.conf
-%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
-%dir /etc/kojiweb/web.conf.d
 %endif
 
-%if 0%{with_python2}
 %files builder
 %defattr(-,root,root)
 %{_sbindir}/kojid
@@ -552,9 +643,7 @@ if [ $1 = 0 ]; then
   /sbin/chkconfig --del kojid
 fi
 %endif
-%endif
 
-%if 0%{with_python2}
 %files vm
 %defattr(-,root,root)
 %{_sbindir}/kojivmd
@@ -590,7 +679,6 @@ if [ $1 = 0 ]; then
   /sbin/service kojivmd stop &> /dev/null
   /sbin/chkconfig --del kojivmd
 fi
-%endif
 
 %if %{use_systemd}
 
