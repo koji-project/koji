@@ -16,30 +16,36 @@ General
       noop - it is still alowed in config file for backward compatibility.
 
    log_level=None
-      Numeric setting of standard logging levels.
+      Set logging level to one of the standard level names in Python's logging
+      module. Valid values are: CRITICAL, ERROR, WARNING, INFO, and DEBUG.
+      The default log level is WARNING.
 
    maxjobs=10
       The maximum number of jobs that kojid will handle at a time. This
-      servers as a backup to the capacity check and prevents a tremendous
+      serves as a backup to the capacity check and prevents a tremendous
       number of low weight jobs from piling up.
 
    max_retries=120
-      If hub is inaccessible, try for this many times, before kojid will die.
+      Set the maximum number of times that an individual hub call can be
+      retried.
 
    minspace=8192
       The minimum amount of free space (in MBs) required for each build root.
-      If such amount of space is not available, new job will not be taken.
+      If this amount of space is not available, no new jobs will be taken.
 
    no_ssl_verify=False
       Turn off SSL verification for https calls. It is strongly advised to
       not turn off this verification.
 
    offline_retry=True
-      Should builder continue to work, if server returns offline message?
+      The hub returns a special error code when it is placed in offline
+      mode or when the database is unavailable. This setting controls
+      whether calls should be retried in these cases.
 
    offline_retry_interval=120
-      If server returned offline response (running upgrade, etc.), try after
-      this many seconds.
+      Controls the wait time for retrying hub calls when the hub reports
+      as offline. Such calls are only retried if the offline_retry setting
+      is set to True. The value is in seconds.
 
    pkgurl=None
       Obsoleted, use ``topurl`` instead.
@@ -56,7 +62,7 @@ General
       They are not used by default, use ``plugins`` to enable them
 
    retry_interval=60
-      If there is unsuccessful call to hub, this is how many seconds are
+      If there is an unsuccessful call to hub, this is how many seconds to
       waited before trying new call.
 
    server=http://hub.example.com/kojihub
@@ -82,12 +88,14 @@ Building
 ^^^^^^^^
 .. glossary::
    allowed_scms=scm.example.com:/cvs/example git.example.org:/example svn.example.org:/users/\*:no
-      A space-separated list of tuples from which kojid is allowed to checkout.
-      The format of those tuples is:
+      Controls which source control systems the builder will accept. It is a
+      space-separated list of entries in one of the following forms:
 
       .. code::
 
-          host:repository[:use_common[:source_cmd]]
+          hostname:path[:use_common[:source_cmd]]
+          !hostname:path
+
 
       Incorrectly-formatted tuples will be ignored.
 
@@ -99,6 +107,12 @@ Building
       to run before building the srpm. It is generally used to retrieve source
       files from a remote location.  If no ``source_cmd`` is specified, ``make sources``
       is run by default.
+
+      The second form (``!hostname:path``) is used to explicitly block a host:path
+      pattern. In particular, it provides the option to block specific subtrees of
+      a host, but allow from it otherwise. This explicit block syntax was added in
+      version 1.13.0.
+
 
    build_arch_can_fail=False
       If set to ``True``, failing subtask will not automatically cancel other siblings.
@@ -157,10 +171,11 @@ RPM Builds
       rpmbuild.
 
    support_rpm_source_layout=True
-      When building SRPM, directory ``SOURCES`` is expected in buildroot. If
-      it is not specified or directory does not exist, fallback is
-      buildroot's directory itself. Generally it is a ``--sources`` option to
-      ``rpmbuild``.
+      Originally, when building an SRPM from source control, Koji expected
+      the contents to be flattened (e.g. the spec and sources files directly
+      in the checkout directory). When this option is enabled (the default),
+      Koji will also accept these contents in separate ``SPECS`` and
+      ``SOURCES`` directories.
 
    vendor=Koji
       The vendor to use in rpm headers. Value is propagated via macros to
@@ -216,8 +231,8 @@ Kerberos Authentication
       Credentials cache used for krbV login.
 
    host_principal_format=compile/\%s\@EXAMPLE.COM
-      The format of the principal used by the build hosts
-      %s will be replaced by the FQDN of the host.
+      The format of the principal used by the build hosts.
+      The %s will be replaced by the FQDN of the host.
 
    keytab=/etc/kojid/kojid.keytab
       Location of the keytab.
