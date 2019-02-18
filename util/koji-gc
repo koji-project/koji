@@ -15,8 +15,6 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import LazyDict, LazyValue, to_list
 import koji.policy
-import six.moves.configparser
-from email.MIMEText import MIMEText
 import fnmatch
 import optparse
 import os
@@ -26,6 +24,8 @@ import socket   # for socket.error
 import sys
 import time
 import six.moves.xmlrpc_client  # for ProtocolError and Fault
+import six.moves.configparser
+from six.moves import email_mime_text as MIMEText
 
 
 OptionParser = optparse.OptionParser
