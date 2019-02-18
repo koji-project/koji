@@ -9,7 +9,6 @@ from __future__ import absolute_import
 import koji
 from koji.plugin import callback, ignore_error, convert_datetime
 from koji.context import context
-import six.moves.configparser
 import logging
 import json
 import random
@@ -270,10 +269,7 @@ def send_queued_msgs(cbtype, *args, **kws):
     log = logging.getLogger('koji.plugin.protonmsg')
     global CONFIG
     if not CONFIG:
-        conf = six.moves.configparser.SafeConfigParser()
-        with open(CONFIG_FILE) as conffile:
-            conf.readfp(conffile)
-        CONFIG = conf
+        CONFIG = koji.read_config_files(CONFIG_FILE)
     urls = CONFIG.get('broker', 'urls').split()
     test_mode = False
     if CONFIG.has_option('broker', 'test_mode'):
