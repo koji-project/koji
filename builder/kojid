@@ -732,7 +732,7 @@ class BuildRoot(object):
             elif self.options.topdir:
                 repo_url = '%s/%s' % (self.options.topdir, repo_url)
             logging.error(repo_url)
-            tmpdir = os.path.join(self.options.workdir, 'librepo-markExternalRPMs')
+            tmpdir = os.path.join(self.tmpdir(), 'librepo-markExternalRPMs')
             koji.ensuredir(tmpdir)
             h = librepo.Handle()
             r = librepo.Result()
