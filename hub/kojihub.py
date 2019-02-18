@@ -10731,10 +10731,13 @@ class RootExports(object):
         else:
             return ret
 
-    def getTaskChildren(self, task_id, request=False):
+    def getTaskChildren(self, task_id, request=False, strict=False):
         """Return a list of the children
         of the Task with the given ID."""
         task = Task(task_id)
+        if strict:
+            # check, that task_id is real
+            task.getInfo(strict=True)
         return task.getChildren(request=request)
 
     def getTaskDescendents(self, task_id, request=False):
