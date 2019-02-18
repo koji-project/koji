@@ -355,6 +355,19 @@ Requires(postun): systemd
 %description utils
 Utilities for the Koji system
 
+%package web
+Summary: Koji Web UI
+Group: Applications/Internet
+License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+Requires: %{name}-web-code = %{version}-%{release}
+%if 0%{?fedora} || 0%{?rhel} > 7
+Suggests: python%{python3_pkgversion}-%{name}-web
+%endif
+
+%description web
+koji-web is a web UI to the Koji system.
+
 %if 0%{py2_support} > 1
 %package -n python2-%{name}-web
 Summary: Koji Web UI
@@ -372,8 +385,7 @@ Requires: python-krbV >= 1.0.13
 Requires: python-psycopg2
 Requires: python-cheetah
 Requires: python2-%{name} = %{version}-%{release}
-Provides: koji-web = %{version}-%{release}
-Obsoletes: koji-web < 1.16.2
+Provides: %{name}-web-code = %{version}-%{release}
 
 %description -n python2-%{name}-web
 koji-web is a web UI to the Koji system.
@@ -391,8 +403,7 @@ Requires: mod_auth_gssapi
 Requires: python%{python3_pkgversion}-psycopg2
 Requires: python%{python3_pkgversion}-cheetah
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
-Provides: koji-web = %{version}-%{release}
-Obsoletes: koji-web < 1.16.2
+Provides: %{name}-web-code = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-web
 koji-web is a web UI to the Koji system.
@@ -573,24 +584,23 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
 
-%if 0%{py2_support} > 1
-%files -n python2-%{name}-web
+%files web
 %defattr(-,root,root)
-%{_datadir}/koji-web
 %dir /etc/kojiweb
 %config(noreplace) /etc/kojiweb/web.conf
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
 %dir /etc/kojiweb/web.conf.d
+
+%if 0%{py2_support} > 1
+%files -n python2-%{name}-web
+%defattr(-,root,root)
+%{_datadir}/koji-web
 %endif
 
 %if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-web
 %defattr(-,root,root)
 %{_datadir}/koji-web
-%dir /etc/kojiweb
-%config(noreplace) /etc/kojiweb/web.conf
-%config(noreplace) /etc/httpd/conf.d/kojiweb.conf
-%dir /etc/kojiweb/web.conf.d
 %endif
 
 %files builder
