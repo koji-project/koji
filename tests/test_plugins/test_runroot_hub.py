@@ -10,10 +10,12 @@ import runroot_hub
 
 
 class TestRunrootHub(unittest.TestCase):
+    @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.make_task')
     @mock.patch('runroot_hub.context')
-    def test_basic_invocation(self, context, make_task):
+    def test_basic_invocation(self, context, make_task, get_tag):
         context.session.assertPerm = mock.MagicMock()
+        get_tag.return_value = {'name': 'some_tag', 'arches': ''}
         runroot_hub.runroot(
             tagInfo='some_tag',
             arch='x86_64',
@@ -38,7 +40,7 @@ class TestRunrootHub(unittest.TestCase):
                 arch='noarch',
                 command='ls',
             )
-        get_tag.assert_called_once_with('some_tag')
+        get_tag.assert_called_once_with('some_tag', strict=True)
 
     @mock.patch('kojihub.make_task')
     @mock.patch('kojihub.get_all_arches')
@@ -84,7 +86,7 @@ class TestRunrootHub(unittest.TestCase):
         )
 
         # check results
-        get_tag.assert_called_once_with('some_tag')
+        get_tag.assert_called_once_with('some_tag', strict=True)
         context.handlers.call.assert_has_calls([
             mock.call('getChannel', 'runroot', strict=True),
             mock.call('listHosts', channelID=2, enabled=True),
@@ -142,7 +144,7 @@ class TestRunrootHub(unittest.TestCase):
             )
 
         # check results
-        get_tag.assert_called_once_with('some_tag')
+        get_tag.assert_called_once_with('some_tag', strict=True)
         context.handlers.call.assert_has_calls([
             mock.call('getChannel', 'runroot', strict=True),
             mock.call('listHosts', channelID=2, enabled=True),

@@ -37,9 +37,9 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
 
     taskopts['channel'] = channel or 'runroot'
 
+    tag = kojihub.get_tag(tagInfo, strict=True)
     if arch == 'noarch':
         #not all arches can generate a proper buildroot for all tags
-        tag = kojihub.get_tag(tagInfo)
         if not tag['arches']:
             raise koji.GenericError('no arches defined for tag %s' % tag['name'])
 
