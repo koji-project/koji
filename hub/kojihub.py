@@ -10175,9 +10175,8 @@ class RootExports(object):
                            apply the ones you submit here. If unspecified,
                            this defaults to False.
         """
-        if not isinstance(tag, six.integer_types):
-            #lookup tag id
-            tag = get_tag_id(tag, strict=True)
+        # verify existence of tag and/or convert name to id
+        tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
         return writeInheritanceData(tag, data, clear=clear)
 
