@@ -144,7 +144,7 @@
         #end if
       </td>
     </tr>
-    #if $optional_deps
+    #if $koji.SUPPORTED_OPT_DEP_HDRS['RECOMMENDNAME']
     <tr>
       <th>Recommends</th>
       <td class="container">
@@ -161,6 +161,8 @@
         #end if
       </td>
     </tr>
+    #end if
+    #if $koji.SUPPORTED_OPT_DEP_HDRS['SUGGESTNAME']
     <tr>
       <th>Suggests</th>
       <td class="container">
@@ -177,6 +179,8 @@
         #end if
       </td>
     </tr>
+    #end if
+    #if $koji.SUPPORTED_OPT_DEP_HDRS['SUPPLEMENTNAME']
     <tr>
       <th>Supplements</th>
       <td class="container">
@@ -193,6 +197,8 @@
         #end if
       </td>
     </tr>
+    #end if
+    #if $koji.SUPPORTED_OPT_DEP_HDRS['ENHANCENAME']
     <tr>
       <th>Enhances</th>
       <td class="container">

@@ -1372,18 +1372,18 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         values['conflicts'].sort(key=_sortbyname)
         values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
         values['requires'].sort(key=_sortbyname)
-        if koji.RPM_SUPPORTS_OPTIONAL_DEPS:
-            values['optional_deps'] = True
+        if koji.SUPPORTED_OPT_DEP_HDRS['RECOMMENDNAME']:
             values['recommends'] = server.getRPMDeps(rpm['id'], koji.DEP_RECOMMEND)
             values['recommends'].sort(key=_sortbyname)
+        if koji.SUPPORTED_OPT_DEP_HDRS['SUGGESTNAME']:
             values['suggests'] = server.getRPMDeps(rpm['id'], koji.DEP_SUGGEST)
             values['suggests'].sort(key=_sortbyname)
+        if koji.SUPPORTED_OPT_DEP_HDRS['SUPPLEMENTNAME']:
             values['supplements'] = server.getRPMDeps(rpm['id'], koji.DEP_SUPPLEMENT)
             values['supplements'].sort(key=_sortbyname)
+        if koji.SUPPORTED_OPT_DEP_HDRS['ENHANCENAME']:
             values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
             values['enhances'].sort(key=_sortbyname)
-        else:
-            values['optional_deps'] = False
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description', 'license'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
