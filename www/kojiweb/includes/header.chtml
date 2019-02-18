@@ -1,4 +1,5 @@
 #encoding UTF-8
+#import cgi
 #import koji
 #from kojiweb import util
 #from koji_cli.lib import greetings
@@ -49,7 +50,12 @@ $localnav
               <option value="win">Windows Artifacts</option>
               #end if
             </select>
-            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')"/>
+            #try
+                #set $old_terms = cgi.escape($terms)
+            #except
+                #set $old_terms = ""
+            #end try
+            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="$old_terms"/>
             <input type="submit" value="Search"/>
           </form>
         </div><!-- end header -->
