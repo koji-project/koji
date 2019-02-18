@@ -2639,7 +2639,7 @@ def handle_add_group_pkg(goptions, session, args):
 def handle_block_group_pkg(goptions, session, args):
     "[admin] Block a package from a group's package listing"
     usage = _("usage: %prog block-group-pkg [options] <tag> <group> <pkg> [<pkg>...]")
-    usage += '\n' + _("Note, that blocking is propagated through inheritance chain, so "
+    usage += '\n' + _("Note that blocking is propagated through the inheritance chain, so "
                       "it is not exactly the same as package removal.")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
