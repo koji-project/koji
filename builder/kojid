@@ -3157,7 +3157,7 @@ class LiveCDTask(ImageTask):
             volid = self._shortenVolID(name, version, release)
         else:
             if len(volid) > 32:
-                logger.warning("volume ID is longer than 32 characters, it will be truncated")
+                self.logger.warning("volume ID is longer than 32 characters, it will be truncated")
                 volid = volid[:32]
         cmd.extend(['-f', volid])
 
@@ -3350,7 +3350,7 @@ class LiveMediaTask(ImageTask):
             volid = self._shortenVolID(name, version, release)
         else:
             if len(volid) > 32:
-                logger.warning("volume ID is longer than 32 characters, it will be truncated")
+                self.logger.warning("volume ID is longer than 32 characters, it will be truncated")
                 volid = volid[:32]
 
         # note: at the moment, we are only generating live isos. We may add support
