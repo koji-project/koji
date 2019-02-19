@@ -78,7 +78,7 @@ test:
 
 test3:
 	coverage3 erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/. coverage3 run \
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage3 run \
 	    --rcfile .coveragerc3 --source . \
 	    /usr/bin/nosetests-3
 	coverage3 report --rcfile .coveragerc3
