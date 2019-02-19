@@ -5,7 +5,6 @@
 omit =
     /usr/*
     tests/*
-    util/*
 
 [report]
 exclude_lines =
