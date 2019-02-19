@@ -669,9 +669,6 @@ def taskinfo(environ, taskID):
             excClass, exc = sys.exc_info()[:2]
             values['result'] = exc
             values['excClass'] = excClass
-            # clear the exception, since we're just using
-            # it for display purposes
-            sys.exc_clear()
     else:
         values['result'] = None
         values['excClass'] = None
