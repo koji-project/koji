@@ -5131,7 +5131,7 @@ class CreaterepoTask(BaseTaskHandler):
             # TODO: eventually support mixing merge modes
             raise koji.GenericError('Found multiple merge modes for external '
                     'repos: %s\n' % repos_by_mode.keys())
-        merge_mode = repos_by_mode.keys()[0]
+        merge_mode = to_list(repos_by_mode.keys())[0]
 
         # move current repo to the premerge location
         localdir = '%s/repo_%s_premerge' % (self.workdir, self.repo_id)
