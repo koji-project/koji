@@ -78,12 +78,11 @@ test:
 
 test3:
 	coverage3 erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/. coverage3 run \
+	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage3 run \
 	    --rcfile .coveragerc3 --source . \
-	    /usr/bin/nosetests-3 \
-	        tests/test_lib tests/test_cli tests/test_hub
-	coverage report --rcfile .coveragerc3
-	coverage html --rcfile .coveragerc3
+	    /usr/bin/nosetests-3
+	coverage3 report --rcfile .coveragerc3
+	coverage3 html --rcfile .coveragerc3
 	@echo Full coverage report at file://${PWD}/htmlcov/index.html
 
 test-tarball:

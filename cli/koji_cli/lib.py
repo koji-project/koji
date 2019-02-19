@@ -343,6 +343,21 @@ Running Tasks:
     return rv
 
 
+def write_to_stdout(contents):
+    """Helper function to write str/bytes to stdout
+
+    https://docs.python.org/3/library/sys.html#sys.displayhook
+    """
+    try:
+        sys.stdout.write(contents)
+    except UnicodeEncodeError:
+        bytes = contents.encode(sys.stdout.encoding, 'backslashreplace')
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout.buffer.write(bytes)
+        else:
+            contents = bytes.decode(sys.stdout.encoding, 'strict')
+            sys.stdout.write(contents)
+
 def watch_logs(session, tasklist, opts, poll_interval):
     print("Watching logs (this may be safely interrupted)...")
 
@@ -391,10 +406,7 @@ def watch_logs(session, tasklist, opts, poll_interval):
                                 sys.stdout.write("\n")
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
-                        if six.PY3:
-                            sys.stdout.buffer.write(contents)
-                        else:
-                            sys.stdout.write(contents)
+                        write_to_stdout(contents)
 
 
             if opts.follow:

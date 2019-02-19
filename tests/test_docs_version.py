@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import os
+import six
 import subprocess
 try:
     import unittest2 as unittest
@@ -27,6 +28,8 @@ class TestDocsVersion(unittest.TestCase):
         output = popen.stdout.read()
         # rpm outputs a line for each subpackage
         version = output.splitlines()[0]
+        if six.PY3:
+            version = version.decode()
         return version
 
     def test_docs_version(self):

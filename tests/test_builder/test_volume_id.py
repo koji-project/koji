@@ -84,7 +84,7 @@ class TestVolumeID(unittest.TestCase):
 
     def test_volume_id_substitutions(self):
         """Check that volume ID is shorten corect by shortenVolID method."""
-        for test_name, values in self.test_cases.iteritems():
+        for test_name, values in self.test_cases.items():
             name = values['name']
             expected_vol_id = values['expected-id']
             result_vol_id = self.handler._shortenVolID(name, self.version, self.release)
