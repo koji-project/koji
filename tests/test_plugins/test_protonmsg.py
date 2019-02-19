@@ -187,14 +187,14 @@ class TestProtonMsg(unittest.TestCase):
     def test_send_queued_msgs_fail(self, getLogger, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         conf = tempfile.NamedTemporaryFile()
-        conf.write("""[broker]
+        conf.write(six.b("""[broker]
 urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
 cert = /etc/koji-hub/plugins/client.pem
 cacert = /etc/koji-hub/plugins/ca.pem
 topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
-""")
+"""))
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
         protonmsg.CONFIG = None
@@ -211,14 +211,14 @@ send_timeout = 60
     def test_send_queued_msgs_success(self, getLogger, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         conf = tempfile.NamedTemporaryFile()
-        conf.write("""[broker]
+        conf.write(six.b("""[broker]
 urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
 cert = /etc/koji-hub/plugins/client.pem
 cacert = /etc/koji-hub/plugins/ca.pem
 topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
-""")
+"""))
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
         protonmsg.CONFIG = None
@@ -236,7 +236,7 @@ send_timeout = 60
     def test_send_queued_msgs_test_mode(self, getLogger, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         conf = tempfile.NamedTemporaryFile()
-        conf.write("""[broker]
+        conf.write(six.b("""[broker]
 urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
 cert = /etc/koji-hub/plugins/client.pem
 cacert = /etc/koji-hub/plugins/ca.pem
@@ -244,7 +244,7 @@ topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
 test_mode = on
-""")
+"""))
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
         protonmsg.CONFIG = None

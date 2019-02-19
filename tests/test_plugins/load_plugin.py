@@ -19,10 +19,10 @@ def load_plugin(plugin_type, plugin_name):
         import importlib.machinery
         loader = importlib.machinery.SourceFileLoader(mod_name, CLI_FILENAME)
         spec = importlib.util.spec_from_loader(loader.name, loader)
-        kojid = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(kojid)
-        loader.exec_module(kojid)
-        sys.modules[mod_name] = kojid
+        plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plugin)
+        loader.exec_module(plugin)
+        sys.modules[mod_name] = plugin
     else:
         import imp
         plugin = imp.load_source(mod_name, CLI_FILENAME)
