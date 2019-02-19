@@ -24,7 +24,6 @@ class MyClientSession(koji.ClientSession):
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', name,'calls.json')
         with open(fn) as fp:
             data = json.load(fp)
-            #data = koji.fixEncodingRecurse(data)
         for call in data:
             key = self._munge([call['method'], call['args'], call['kwargs']])
             self._testcalls[key] = call
