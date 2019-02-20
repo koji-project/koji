@@ -883,10 +883,11 @@ def _pkglist_remove(tag_id, pkg_id):
 
 def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
     #revoke old entry (if present)
-    _pkglist_remove(tag_id, pkg_id)
     data = dslice(locals(), ('tag_id', 'owner', 'extra_arches'))
     data['package_id'] = pkg_id
     data['blocked'] = block
+    validate_arches_string(data['extra_arches'])
+    _pkglist_remove(tag_id, pkg_id)
     insert = InsertProcessor('tag_packages', data=data)
     insert.make_create()  #XXX user_id?
     insert.execute()
@@ -923,6 +924,8 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
             assert_policy('package_list', policy_data)
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
+    # validate arches before running callbacks
+    validate_arches_string(extra_arches)
     koji.plugin.run_callbacks('prePackageListChange', action=action, tag=tag, package=pkg, owner=owner,
                               block=block, extra_arches=extra_arches, force=force, update=update)
     # first check to see if package is:
@@ -3021,6 +3024,16 @@ def lookup_build_target(info, strict=False, create=False):
     return lookup_name('build_target', info, strict, create)
 
 
+def validate_arches_string(arches, strict=True):
+    """run checks against architectures space-separated strings"""
+    if re.match(r'^[a-zA-Z0-9_\- ]+$', arches):
+        return True
+    elif strict:
+        raise koji.GenericError("Architecture can be only [a-zA-Z0-9_-]")
+    else:
+        return False
+
+
 def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
     context.session.assertPerm('admin')
@@ -3034,6 +3047,9 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
     if len(name) > max_name_length:
         raise koji.GenericError("Tag name %s is too long. Max length is %s characters",
                                 name, max_name_length)
+
+    if arches is not None:
+        validate_arches_string(arches)
 
     if not context.opts.get('EnableMaven') and (maven_support or maven_include_all):
         raise koji.GenericError("Maven support not enabled")
@@ -3214,6 +3230,11 @@ def _edit_tag(tagInfo, **kwargs):
 SET name = %(name)s
 WHERE id = %(tagID)i"""
         _dml(update, values)
+
+    # sanitize architecture names (space-separated string)
+    arches = kwargs.get('arches')
+    if arches and tag['arches'] != arches:
+        validate_arches_string(arches)
 
     #check for changes
     data = tag.copy()
