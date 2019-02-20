@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import logging
 import mock
 import shutil
+import six
 import tempfile
 try:
     import unittest2 as unittest
@@ -385,7 +386,7 @@ class TestSCMCheckouts(unittest.TestCase):
     def test_get_source_git(self, popen):
         popen.return_value.wait.return_value = 0
         popen.return_value.communicate = mock.MagicMock()
-        popen.return_value.communicate.return_value = ('hash ', 'any')
+        popen.return_value.communicate.return_value = (six.b('hash '), six.b('any'))
 
         url = "git://default/koji.git#asdasd"
         scm = SCM(url)
