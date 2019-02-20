@@ -195,7 +195,7 @@ def handle_edit_host(options, session, args):
         if val is not None:
             vals[key] = val
     if 'arches' in vals:
-        vals['arches'] = parse_arches(vals['arches'])
+        vals['arches'] = koji.parse_arches(vals['arches'])
 
     session.multicall = True
     for host in args:
@@ -350,7 +350,7 @@ def handle_add_pkg(goptions, session, args):
             continue
         to_add.append(package)
     if options.extra_arches:
-        opts['extra_arches'] = parse_arches(options.extra_arches)
+        opts['extra_arches'] = koji.parse_arches(options.extra_arches)
 
     # add the packages
     print("Adding %i packages to tag %s" % (len(to_add), dsttag['name']))
@@ -477,7 +477,7 @@ def handle_build(options, session, args):
     source = args[1]
     opts = {}
     if build_opts.arch_override:
-        opts['arch_override'] = parse_arches(build_opts.arch_override)
+        opts['arch_override'] = koji.parse_arches(build_opts.arch_override)
     for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast'):
         val = getattr(build_opts, key)
         if val is not None:
@@ -4856,7 +4856,7 @@ def handle_add_tag(goptions, session, args):
     if options.parent:
         opts['parent'] = options.parent
     if options.arches:
-        opts['arches'] = parse_arches(options.arches)
+        opts['arches'] = koji.parse_arches(options.arches)
     if options.maven_support:
         opts['maven_support'] = True
     if options.include_all:
@@ -4898,7 +4898,7 @@ def handle_edit_tag(goptions, session, args):
     tag = args[0]
     opts = {}
     if options.arches:
-        opts['arches'] = parse_arches(options.arches)
+        opts['arches'] = koji.parse_arches(options.arches)
     if options.no_perm:
         opts['perm_id'] = None
     elif options.perm:
@@ -6270,7 +6270,7 @@ def handle_set_pkg_arches(goptions, session, args):
         parser.error(_("Please specify an archlist, a tag, and at least one package"))
         assert False  # pragma: no cover
     activate_session(session, goptions)
-    arches = parse_arches(args[0])
+    arches = koji.parse_arches(args[0])
     tag = args[1]
     for package in args[2:]:
         #really should implement multicall...
