@@ -200,7 +200,7 @@ LEGACY_SIGNATURES = {
         [['builds', 'target', 'opts'], None, None, (None,)],
     ],
     'newRepo' : [
-        [['tag', 'event', 'src', 'debuginfo'], None, None, (None, False, False)],
+        [['tag', 'event', 'src', 'debuginfo', 'separate_src'], None, None, (None, False, False, False)],
     ],
     'createImage' : [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'inst_tree', 'opts'], None, None, (None,)],

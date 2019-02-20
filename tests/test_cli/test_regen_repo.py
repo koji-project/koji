@@ -168,11 +168,13 @@ class TestRegenRepo(utils.CliTestCase):
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help       show this help message and exit
-  --target         Interpret the argument as a build target name
-  --nowait         Don't wait on for regen to finish
-  --debuginfo      Include debuginfo rpms in repo
-  --source, --src  Include source rpms in the repo
+  -h, --help            show this help message and exit
+  --target              Interpret the argument as a build target name
+  --nowait              Don't wait on for regen to finish
+  --debuginfo           Include debuginfo rpms in repo
+  --source, --src       Include source rpms in each of repos
+  --separate-source, --separate-src
+                        Include source rpms in separate src repo
 """ % self.progname)
 
 
