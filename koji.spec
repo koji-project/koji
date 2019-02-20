@@ -303,6 +303,7 @@ Requires: /usr/bin/git
 Requires: createrepo >= 0.9.2
 %if 0%{py3_support} > 1
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
+Requires: python%{python3_pkgversion}-librepo
 Requires: python%{python3_pkgversion}-multilib
 Requires: python%{python3_pkgversion}-cheetah
 %else
