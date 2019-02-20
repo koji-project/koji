@@ -534,6 +534,8 @@ class SCM(object):
             if status != 0:
                 raise koji.GenericError('Error getting commit hash for git')
             fragment = out.strip()
+            if six.PY3:
+                fragment = fragment.decode()
             scheme = self.scheme[:-3]
             netloc = self.host
             path = self.repository
