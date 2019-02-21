@@ -3155,10 +3155,8 @@ class LiveCDTask(ImageTask):
         volid = opts.get('volid')
         if not volid:
             volid = self._shortenVolID(name, version, release)
-        else:
-            if len(volid) > 32:
-                self.logger.warning("volume ID is longer than 32 characters, it will be truncated")
-                volid = volid[:32]
+        if len(volid) > 32:
+            raise koji.LiveCDError('volume ID is longer than 32 characters')
         cmd.extend(['-f', volid])
 
         # Run livecd-creator
@@ -3348,10 +3346,8 @@ class LiveMediaTask(ImageTask):
         volid = opts.get('volid')
         if not volid:
             volid = self._shortenVolID(name, version, release)
-        else:
-            if len(volid) > 32:
-                self.logger.warning("volume ID is longer than 32 characters, it will be truncated")
-                volid = volid[:32]
+        if len(volid) > 32:
+            raise koji.LiveMediaError('volume ID is longer than 32 characters')
 
         # note: at the moment, we are only generating live isos. We may add support
         # for other types in the future
