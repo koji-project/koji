@@ -4207,8 +4207,10 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
                     val = typeInfo[key]
                     if not isinstance(val, (list, tuple)):
                         val = [val]
-                    for v in val:
-                        clauses.append(r"""%s ~ E'\\m%s\\M'""" % (key, v))
+                    for i, v in enumerate(val):
+                        pkey = '%s_pattern_%i' % (key, i)
+                        values[pkey] = r'\m%s\M' % v
+                        clauses.append('%s ~ %%(%s)s' % (key, pkey))
     elif type == 'image':
         joins.append('image_archives ON archiveinfo.id = image_archives.archive_id')
         fields.append(['image_archives.arch', 'arch'])
@@ -6222,13 +6224,15 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
         raise koji.GenericError('one of filename, type_name, or type_id must be specified')
 
     parts = filename.split('.')
-
+    query = QueryProcessor(
+            tables=['archivetypes'],
+            columns=['id', 'name', 'description', 'extensions'],
+            clauses=['extensions ~* %(pattern)s'],
+            )
     for start in range(len(parts)-1, -1, -1):
         ext = '.'.join(parts[start:])
-
-        select = r"""SELECT id, name, description, extensions FROM archivetypes
-                      WHERE extensions ~* E'(\\s|^)%s(\\s|$)'""" % ext
-        results = _multiRow(select, locals(), ('id', 'name', 'description', 'extensions'))
+        query.values['pattern'] = r'(\s|^)%s(\s|$)' % ext
+        results = query.execute()
 
         if len(results) == 1:
             return results[0]
@@ -10887,8 +10891,8 @@ class RootExports(object):
             # matching 'ppc64'
             if not isinstance(arches, (list, tuple)):
                 arches = [arches]
-            archClause = [r"""arches ~ E'\\m%s\\M'""" % arch for arch in arches]
-            clauses.append('(' + ' OR '.join(archClause) + ')')
+            archPattern = r'\m(%s)\M' % '|'.join(arches)
+            clauses.append('arches ~ %(archPattern)s')
         if channelID is not None:
             channelID = get_channel_id(channelID, strict=True)
             joins.append('host_channels ON host.id = host_channels.host_id')
