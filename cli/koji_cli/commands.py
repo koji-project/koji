@@ -5479,6 +5479,7 @@ def handle_spin_livecd(options, session, args):
                "RPMs in the LiveCD. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
+    parser.add_option("--volid", help=_("Set the volume id"))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
@@ -5492,6 +5493,8 @@ def handle_spin_livecd(options, session, args):
                        " architecture, a build target, and a relative path to" +
                        " a kickstart file."))
         assert False  # pragma: no cover
+    if task_options.volid is not None and len(task_options.volid) > 32:
+        parser.error(_('Volume ID has a maximum length of 32 characters'))
     return _build_image(options, task_options, session, args, 'livecd')
 
 
@@ -5527,6 +5530,7 @@ def handle_spin_livemedia(options, session, args):
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--title", help=_("Set the image title (defaults to <name>)"))
+    parser.add_option("--volid", help=_("Set the volume id"))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--skip-tag", action="store_true",
@@ -5552,6 +5556,8 @@ def handle_spin_livemedia(options, session, args):
     if task_options.lorax_url is not None and task_options.lorax_dir is None:
         parser.error(_('The "--lorax_url" option requires that "--lorax_dir" '
                        'also be used.'))
+    if task_options.volid is not None and len(task_options.volid) > 32:
+        parser.error(_('Volume ID has a maximum length of 32 characters'))
     return _build_image(options, task_options, session, args, 'livemedia')
 
 
@@ -5927,7 +5933,7 @@ def _build_image(options, task_opts, session, args, img_type):
     passthru_opts = [
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
-        'specfile', 'title', 'vcpu', 'vmem', 'optional_arches',
+        'specfile', 'title', 'vcpu', 'vmem', 'volid', 'optional_arches',
         'lorax_dir', 'lorax_url',
         ]
     for opt in passthru_opts:
