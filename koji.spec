@@ -713,7 +713,7 @@ fi
 %endif
 
 %changelog
-* Thu Feb 28 2018 Mike McLean <mikem at redhat.com> - 1.17.0-1
+* Thu Feb 28 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
 - PR#1227: Added volume id as argument to livemedia and livecd tasks
 - PR#1070: consolidate access to rpm headers
 - PR#1274: cve-2018-1002161
