@@ -6005,7 +6005,7 @@ def get_options():
                 'timeout': None,
                 'no_ssl_verify': False,
                 'use_fast_upload': True,
-                'use_createrepo_c': False,
+                'use_createrepo_c': True,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
                 'pkgurl': None,
