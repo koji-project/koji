@@ -37,9 +37,7 @@
     #for $result in $results
     <tr class="$util.rowToggle($self)">
       <td>$result.id</td>
-      #set $quoted = $result.copy()
-      #silent $quoted['name'] = $quote($quoted['name'])
-      <td><a href="${infoURL % $quoted}">$result.name</a></td>
+      <td><a href="${infoURL % $result}">$result.name</a></td>
     </tr>
     #end for
     #else
