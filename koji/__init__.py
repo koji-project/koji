@@ -1651,7 +1651,6 @@ def read_config(profile_name, user_config=None):
         'anon_retry' : None,
         'offline_retry' : None,
         'offline_retry_interval' : None,
-        'keepalive' : True,
         'timeout' : DEFAULT_REQUEST_TIMEOUT,
         'auth_timeout' : DEFAULT_AUTH_TIMEOUT,
         'use_fast_upload': False,
@@ -1717,9 +1716,8 @@ def read_config(profile_name, user_config=None):
                 #options *can* be set via the config file. Such options should
                 #not have a default value set in the option parser.
                 if name in result:
-                    if name in ('anon_retry', 'offline_retry', 'keepalive',
-                                'use_fast_upload', 'krb_rdns', 'debug',
-                                'debug', 'debug_xmlrpc', 'krb_canon_host'):
+                    if name in ('anon_retry', 'offline_retry', 'use_fast_upload',
+                                'krb_rdns', 'debug', 'debug', 'debug_xmlrpc', 'krb_canon_host'):
                         result[name] = config.getboolean(profile_name, name)
                     elif name in ('max_retries', 'retry_interval',
                                   'offline_retry_interval', 'poll_interval',
@@ -2069,7 +2067,6 @@ def grab_session_options(options):
         'offline_retry',
         'offline_retry_interval',
         'anon_retry',
-        'keepalive',
         'timeout',
         'auth_timeout',
         'use_fast_upload',
