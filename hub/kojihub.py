@@ -10260,7 +10260,8 @@ class RootExports(object):
             raise koji.GenericError('either rpmID or taskID and filepath must be specified')
 
         headers = koji.get_header_fields(rpm_path, headers)
-        return koji.fixEncodingRecurse(headers, remove_nonprintable=True)
+        return koji.fixEncodingRecurse(headers, remove_nonprintable=True,
+                ignore_keys=True)
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
 

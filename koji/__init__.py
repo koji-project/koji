@@ -3110,7 +3110,7 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
         return s
 
 
-def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
+def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False, ignore_keys=False):
     """Recursively fix string encoding in an object
 
     Similar behavior to fixEncoding, but recursive
@@ -3123,7 +3123,9 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
         ret = {}
         for k in value:
             v = fixEncodingRecurse(value[k], fallback=fallback, remove_nonprintable=remove_nonprintable)
-            k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
+            # expect, that keys are never really binary
+            if not ignore_keys:
+                k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
     elif isinstance(value, six.text_type):
