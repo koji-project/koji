@@ -1,12 +1,12 @@
-#from kojiweb import util
-#import urllib
 #import datetime
+#from kojiweb import util
+#from six.moves.urllib.parse import quote
 
 #include "includes/header.chtml"
   #if $rpm
-  <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$urllib.quote($file.name)">$file.name</a></h4>
+  <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$file.name</a></h4>
   #elif $archive
-  <h4>Information for file <a href="fileinfo?archiveID=$archive.id&amp;filename=$urllib.quote($file.name)">$file.name</a></h4>
+  <h4>Information for file <a href="fileinfo?archiveID=$archive.id&amp;filename=$quote($file.name)">$file.name</a></h4>
   #end if
 
   <table>

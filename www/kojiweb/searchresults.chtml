@@ -1,5 +1,5 @@
 #from kojiweb import util
-#import urllib
+#from six.moves.urllib.parse import quote
 
 #include "includes/header.chtml"
 
@@ -38,7 +38,7 @@
     <tr class="$util.rowToggle($self)">
       <td>$result.id</td>
       #set $quoted = $result.copy()
-      #silent $quoted['name'] = $urllib.quote($quoted['name'])
+      #silent $quoted['name'] = $quote($quoted['name'])
       <td><a href="${infoURL % $quoted}">$result.name</a></td>
     </tr>
     #end for
