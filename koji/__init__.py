@@ -2827,6 +2827,8 @@ class ClientSession(object):
         if volume and volume != 'DEFAULT':
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
+        # py3 doesn't return encodable string
+        result = str(result)
         return base64.decodestring(result.encode('ascii'))
 
 

@@ -9214,7 +9214,7 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        with open(filePath, 'r') as f:
+        with open(filePath, 'rb') as f:
             if isinstance(offset, str):
                 offset = int(offset)
             if offset != None and offset > 0:
