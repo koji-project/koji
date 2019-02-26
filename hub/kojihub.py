@@ -11052,6 +11052,7 @@ class RootExports(object):
         else:
             return 1
 
+    @staticmethod
     def _sortByKeyFuncNoneGreatest(key):
         """Return a function to sort a list of maps by the given key.
         None will sort higher than all other values (instead of lower).
@@ -11121,7 +11122,7 @@ class RootExports(object):
             else:
                 reverse = False
             if filterOpts.get('noneGreatest', True):
-                results.sort(self._sortByKeyFuncNoneGreatest(order), reverse=reverse)
+                results.sort(key=self._sortByKeyFuncNoneGreatest(order), reverse=reverse)
             else:
                 results.sort(key=order, reverse=reverse)
 
