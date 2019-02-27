@@ -9222,7 +9222,10 @@ class RootExports(object):
             elif offset != None and offset < 0:
                 f.seek(offset, 2)
             contents = f.read(size)
-        return base64.encodestring(contents)
+        if six.PY2:
+            return base64.encodestring(contents)
+        else:
+            return base64.encodestring(contents).decode()
 
     listTaskOutput = staticmethod(list_task_output)
 
