@@ -3063,10 +3063,16 @@ def _taskLabel(taskInfo):
         return '%s (%s)' % (method, arch)
 
 CONTROL_CHARS = [chr(i) for i in range(32)]
-NONPRINTABLE_CHARS = six.b(''.join([c for c in CONTROL_CHARS if c not in '\r\n\t']))
+NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
+if six.PY3:
+    NONPRINTABLE_CHARS_TABLE = dict.fromkeys(map(ord, NONPRINTABLE_CHARS), None)
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
-    return value.translate(None, NONPRINTABLE_CHARS)
+    if six.PY2:
+        return value.translate(None, NONPRINTABLE_CHARS)
+    else:
+        return value.translate(NONPRINTABLE_CHARS_TABLE)
+
 
 
 def _fix_print(value):
@@ -3089,6 +3095,12 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     If value is not valid UTF-8 to begin with, assume it is
     encoded in the 'fallback' charset.
     """
+    if six.PY3:
+        if remove_nonprintable:
+            return removeNonprintable(value)
+        else:
+            return value
+
     if not value:
         return six.b('')
 
@@ -3110,11 +3122,15 @@ def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
         return s
 
 
-def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False, ignore_keys=False):
+def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
     Similar behavior to fixEncoding, but recursive
     """
+    if six.PY3:
+        # don't bother with fixing in py3
+        return value
+
     if isinstance(value, tuple):
         return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
     elif isinstance(value, list):
@@ -3123,9 +3139,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False, 
         ret = {}
         for k in value:
             v = fixEncodingRecurse(value[k], fallback=fallback, remove_nonprintable=remove_nonprintable)
-            # expect, that keys are never really binary
-            if not ignore_keys:
-                k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
+            k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
     elif isinstance(value, six.text_type):

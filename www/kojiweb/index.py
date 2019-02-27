@@ -1382,9 +1382,9 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
             values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
             values['enhances'].sort(key=_sortbyname)
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description', 'license'])
-        values['summary'] = koji.fixEncoding(str(headers.get('summary')))
-        values['description'] = koji.fixEncoding(str(headers.get('description')))
-        values['license'] = koji.fixEncoding(str(headers.get('license')))
+        values['summary'] = koji.fixEncoding(headers.get('summary'))
+        values['description'] = koji.fixEncoding(headers.get('description'))
+        values['license'] = koji.fixEncoding(headers.get('license'))
     buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'rpmID': rpm['id']},
                                              start=buildrootStart, dataName='buildroots', prefix='buildroot',
                                              order=buildrootOrder)

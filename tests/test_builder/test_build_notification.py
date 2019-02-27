@@ -100,5 +100,5 @@ class TestBuildNotification(unittest.TestCase):
         self.assertEqual(recipients, ["user@example.com"])
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'message.txt')
         with open(fn, 'rb') as fp:
-            msg_expect = fp.read()
+            msg_expect = fp.read().decode()
         self.assertEqual(message, msg_expect)

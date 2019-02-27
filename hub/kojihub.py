@@ -4361,10 +4361,7 @@ def _get_zipfile_list(archive_id, zippath):
         return result
     with zipfile.ZipFile(zippath, 'r') as archive:
         for entry in archive.infolist():
-            if six.PY2:
-                filename = koji.fixEncoding(entry.filename)
-            else:
-                filename = entry.filename
+            filename = koji.fixEncoding(entry.filename)
             result.append({'archive_id': archive_id,
                            'name': filename,
                            'size': entry.file_size,
@@ -4389,10 +4386,7 @@ def _get_tarball_list(archive_id, tarpath):
         return result
     with tarfile.open(tarpath, 'r') as archive:
         for entry in archive:
-            if six.PY2:
-                filename = koji.fixEncoding(entry.name)
-            else:
-                filename = entry.name
+            filename = koji.fixEncoding(entry.name)
             result.append({'archive_id': archive_id,
                            'name': filename,
                            'size': entry.size,
@@ -6368,10 +6362,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     archiveinfo = {'buildroot_id': buildroot_id}
     archiveinfo['build_id'] = buildinfo['id']
     if metadata_only:
-        if six.PY2:
-            filename = koji.fixEncoding(fileinfo['filename'])
-        else:
-            filename = fileinfo['filename']
+        filename = koji.fixEncoding(fileinfo['filename'])
         archiveinfo['filename'] = filename
         archiveinfo['size'] = fileinfo['filesize']
         archiveinfo['checksum'] = fileinfo['checksum']
@@ -6382,10 +6373,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
         archiveinfo['metadata_only'] = True
     else:
-        if six.PY2:
-            filename = koji.fixEncoding(os.path.basename(filepath))
-        else:
-            filename = os.path.basename(filepath)
+        filename = koji.fixEncoding(os.path.basename(filepath))
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
@@ -6507,8 +6495,7 @@ def _import_archive_file(filepath, destdir):
     be created.
     """
     fname = os.path.basename(filepath)
-    if six.PY2:
-        fname = koji.fixEncoding(fname)
+    fname = koji.fixEncoding(fname)
     final_path = "%s/%s" % (destdir, fname)
     if os.path.exists(final_path):
         raise koji.GenericError("Error importing archive file, %s already exists" % final_path)
@@ -7693,10 +7680,7 @@ def parse_json(value, desc=None, errstr=None):
     if value is None:
         return value
     try:
-        if six.PY2:
-            return koji.fixEncodingRecurse(json.loads(value))
-        else:
-            return json.loads(value)
+        return koji.fixEncodingRecurse(json.loads(value))
     except Exception:
         if errstr is None:
             if desc is None:
@@ -9698,9 +9682,8 @@ class RootExports(object):
         for (cltime, clname, cltext) in zip(fields['changelogtime'], fields['changelogname'],
                                             fields['changelogtext']):
             cldate = datetime.datetime.fromtimestamp(cltime).isoformat(' ')
-            if six.PY2:
-                clname = koji.fixEncoding(clname)
-                cltext = koji.fixEncoding(cltext)
+            clname = koji.fixEncoding(clname)
+            cltext = koji.fixEncoding(cltext)
 
             if author and author != clname:
                 continue
@@ -10260,8 +10243,7 @@ class RootExports(object):
             raise koji.GenericError('either rpmID or taskID and filepath must be specified')
 
         headers = koji.get_header_fields(rpm_path, headers)
-        return koji.fixEncodingRecurse(headers, remove_nonprintable=True,
-                ignore_keys=True)
+        return koji.fixEncodingRecurse(headers, remove_nonprintable=True)
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
 

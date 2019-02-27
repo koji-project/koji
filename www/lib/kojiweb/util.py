@@ -531,9 +531,6 @@ def escapeHTML(value):
         return value
 
     value = koji.fixEncoding(value)
-    if six.PY3:
-        # it is bytes now, so decode to str
-        value = value.decode()
     return value.replace('&', '&amp;').\
            replace('<', '&lt;').\
            replace('>', '&gt;')
