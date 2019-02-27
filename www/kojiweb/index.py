@@ -2215,7 +2215,7 @@ _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'win': 'archiveinfo?archiveID=%(id)i'}
 
 _VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
-_VALID_SEARCH_SYMS = r""" @.,_/\()%+-*?|[]^$"""
+_VALID_SEARCH_SYMS = r""" @.,_/\()%+-~*?|[]^$"""
 _VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
 _DEFAULT_SEARCH_ORDER = {
     # For searches against large tables, use '-id' to show most recent first
