@@ -134,7 +134,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             if fd:
                 try:
                     if six.PY3:
-                        os.write(fs, msg.encode('utf-8'))
+                        os.write(fd, msg.encode('utf-8'))
                     else:
                         os.write(fd, msg)
                     os.close(fd)
