@@ -220,7 +220,7 @@ Requires: python%{python3_pkgversion}-mod_wsgi
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %endif
-Requires: python-psycopg2
+Requires: python%{python3_pkgversion}-psycopg2
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 # py2 xor py3
 Provides: %{name}-hub-code = %{version}-%{release}
