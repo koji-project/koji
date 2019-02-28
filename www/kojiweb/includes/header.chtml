@@ -1,32 +1,12 @@
 #encoding UTF-8
 #import koji
 #from kojiweb import util
+#from koji_cli.lib import greetings
 #import random
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 #def greeting()
-#set $greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
-                   'bonjour',
-                   'hallo',
-                   'ciao',
-                   'hola',
-                  u'olá',
-                  u'dobrý den',
-                  u'zdravstvuite',
-                  u'góðan daginn',
-                   'hej',
-                   'tervehdys',
-                  u'grüezi',
-                  u'céad míle fáilte',
-                  u'hylô',
-                  u'bună ziua',
-                  u'jó napot',
-                   'dobre dan',
-                  u'你好',
-                  u'こんにちは',
-                  u'नमस्कार',
-                  u'안녕하세요')
 #echo $random.choice($greetings)##slurp
 #end def
 
