@@ -65,24 +65,40 @@ def register_plugin(plugin):
                 globals()[name] = v
 
 
-def load_plugins(options, paths):
-    """Load plugins specified by our configuration plus system plugins. Order
-    is that system plugins are first, so they can be overridden by
-    user-specified ones with same name."""
+def load_plugins(plugin_paths):
+    """Load plugins specified by input paths, ~/.koji/plugins, system plugins.
+    Loading order is descending, so they can be overridden by user-specified
+    ones.
+    Notice that:
+    - plugin file should end with .py extension
+    - non-directory is not acceptable by plugin_paths
+    - all plugin files and the exported handlers inside will be loaded, and
+      handler with the same name will override the one has already been loaded
+      before"""
+
     logger = logging.getLogger('koji.plugins')
-    tracker = koji.plugin.PluginTracker(path=paths)
-    names = set()
+    paths = []
+    # first, always load plugins from koji_cli_plugins module
+    paths.append(
+        '%s/lib/python%s.%s/site-packages/koji_cli_plugins' %
+        (sys.prefix, sys.version_info[0], sys.version_info[1]))
+    # second, always load plugins from ~/.koji/plugins
+    paths.append(os.path.expanduser('~/.koji/plugins'))
+    # finally, update plugin_paths to the list
+    if plugin_paths:
+        if not isinstance(plugin_paths, (list, tuple)):
+            plugin_paths = plugin_paths.split(':')
+        paths.extend([os.path.expanduser(p) for p in reversed(plugin_paths)])
+    tracker = koji.plugin.PluginTracker()
     for path in paths:
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.isdir(path):
             for name in sorted(os.listdir(path)):
-                if not name.endswith('.py'):
+                fullname = os.path.join(path, name)
+                if not (os.path.isfile(fullname) and name.endswith('.py')):
                     continue
                 name = name[:-3]
-                names.add(name)
-    for name in names:
-        logger.info('Loading plugin: %s', name)
-        tracker.load(name)
-        register_plugin(tracker.get(name))
+                logger.info('Loading plugin: %s', fullname)
+                register_plugin(tracker.load(name, path=path, reload=True))
 
 
 def get_options():
@@ -130,7 +146,8 @@ def get_options():
     parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--plugin-paths", metavar='PATHS',
                       help=_("specify plugin paths with format as the same as the shell's PATH, "
-                             "'~/.koji/plugins', koji_cli_plugins module are always appended"))
+                             "koji_cli_plugins module and '~/.koji/plugins' are always loaded in advance, "
+                             "and then overridden by this option."))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -170,21 +187,7 @@ def get_options():
             else:
                 warn("Warning: The pkgurl option is obsolete, please use topurl instead")
 
-    # update plugin_paths to list
-    plugin_paths = options.plugin_paths
-    if plugin_paths:
-        plugin_paths = [os.path.expanduser(p) for p in
-                        plugin_paths.split(':')]
-    else:
-        plugin_paths = []
-    # always load plugins from ~/.koji/plugins
-    plugin_paths.append(os.path.expanduser('~/.koji/plugins'))
-    # always load plugins from koji_cli_plugins module
-    plugin_paths.append(
-        '%s/lib/python%s.%s/site-packages/koji_cli_plugins' %
-        (sys.prefix, sys.version_info[0], sys.version_info[1]))
-    setattr(options, 'plugin_paths', plugin_paths)
-    load_plugins(options, plugin_paths)
+    load_plugins(options.plugin_paths)
 
     if not args:
         options.help_commands = True
