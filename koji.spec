@@ -713,7 +713,13 @@ fi
 %endif
 
 %changelog
-* Thu Feb 28 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+* Fri Mar  1 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+- PR#1290: downloadTaskOutput fix for py3
+- PR#1300: require correct mod_wsgi
+- PR#1301: use greetings list from lib
+- PR#1284: replace urrlib.quote with six.moves
+- PR#1286: correctly escape license in web ui
+- PR#1292: define _sortByKeyFuncNoneGreatest as staticmethod
 - PR#1227: Added volume id as argument to livemedia and livecd tasks
 - PR#1070: consolidate access to rpm headers
 - PR#1274: cve-2018-1002161
