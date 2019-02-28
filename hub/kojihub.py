@@ -9214,7 +9214,7 @@ class RootExports(object):
         if not os.path.isfile(filePath):
             raise koji.GenericError('no file "%s" output by task %i' % (fileName, taskID))
         # Let the caller handler any IO or permission errors
-        with open(filePath, 'r') as f:
+        with open(filePath, 'rb') as f:
             if isinstance(offset, str):
                 offset = int(offset)
             if offset != None and offset > 0:
@@ -9222,7 +9222,10 @@ class RootExports(object):
             elif offset != None and offset < 0:
                 f.seek(offset, 2)
             contents = f.read(size)
-        return base64.encodestring(contents)
+        if six.PY2:
+            return base64.encodestring(contents)
+        else:
+            return base64.encodestring(contents).decode()
 
     listTaskOutput = staticmethod(list_task_output)
 
