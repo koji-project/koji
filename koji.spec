@@ -216,7 +216,7 @@ Group: Applications/Internet
 License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
-Requires: mod_wsgi
+Requires: python%{python3_pkgversion}-mod_wsgi
 %if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %endif
