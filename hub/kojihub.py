@@ -10052,6 +10052,22 @@ class RootExports(object):
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
+        """
+        Set inheritance relationships for a tag.
+
+        This tag will be the "child" that inherits from a list of "parents".
+
+        :param tag: The koji tag that will inherit from parent tags.
+        :type tag: int or str
+        :param list data: Inheritance rules to set for this child tag. This is
+                          a list of rules (dicts) for parent tags and
+                          priorities. If any rule dict in the list has a
+                          special "remove link": True key and value, Koji will
+                          remove this inheritance rule instead of adding it.
+        :param bool clear: Wipe out all existing inheritance rules and only
+                           apply the ones you submit here. If unspecified,
+                           this defaults to False.
+        """
         if not isinstance(tag, six.integer_types):
             #lookup tag id
             tag = get_tag_id(tag, strict=True)
