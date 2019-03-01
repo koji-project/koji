@@ -90,6 +90,7 @@ def handle_runroot(options, session, args):
         print("User interrupt: canceling runroot task")
         session.cancelTask(task_id)
         raise
+    sys.stdout.flush()
     if not opts.quiet:
         output = list_task_output_all_volumes(session, task_id)
         if 'runroot.log' in output:
