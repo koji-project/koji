@@ -358,6 +358,15 @@ def write_to_stdout(contents):
             contents = bytes.decode(sys.stdout.encoding, 'strict')
             sys.stdout.write(contents)
 
+
+def bytes_to_stdout(contents):
+    """Helper function for writing bytes to stdout"""
+    if six.PY2:
+        sys.stdout.write(contents)
+    else:
+        sys.stdout.buffer.write(contents)
+
+
 def watch_logs(session, tasklist, opts, poll_interval):
     print("Watching logs (this may be safely interrupted)...")
 
@@ -406,7 +415,7 @@ def watch_logs(session, tasklist, opts, poll_interval):
                                 sys.stdout.write("\n")
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
-                        write_to_stdout(contents)
+                        bytes_to_stdout(contents)
 
 
             if opts.follow:

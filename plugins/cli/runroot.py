@@ -5,7 +5,7 @@ import time
 import koji
 from koji.plugin import export_cli
 from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
-                         list_task_output_all_volumes, write_to_stdout
+                         list_task_output_all_volumes, bytes_to_stdout
 import six
 
 
@@ -98,7 +98,7 @@ def handle_runroot(options, session, args):
                 log = session.downloadTaskOutput(task_id, 'runroot.log', volume=volume)
                 # runroot output, while normally text, can be *anything*, so
                 # treat it as binary
-                write_to_stdout(log)
+                bytes_to_stdout(log)
     info = session.getTaskInfo(task_id)
     if info is None:
         sys.exit(1)
