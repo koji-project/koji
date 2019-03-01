@@ -6,7 +6,6 @@ import koji
 from koji.plugin import export_cli
 from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
                          list_task_output_all_volumes, bytes_to_stdout
-import six
 
 
 @export_cli
