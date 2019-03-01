@@ -3088,45 +3088,28 @@ def _fix_print(value):
 
 def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
-    Convert value to a 'str' object encoded as UTF-8.
-    If value is not valid UTF-8 to begin with, assume it is
-    encoded in the 'fallback' charset.
-    """
-    if six.PY3:
-        if remove_nonprintable:
-            return removeNonprintable(value)
-        else:
-            return value
+    Compatibility wrapper for fix_encoding
 
+    Nontrue values are converted to the empty string, otherwise the result
+    is the same as fix_encoding.
+    """
     if not value:
-        return six.b('')
-
-    if isinstance(value, six.text_type):
-        # value is already unicode(py3: str), so just convert it
-        # to a utf8-encoded str(py3: bytes)
-        s = value.encode('utf8')
-    else:
-        # value is a str, but may be encoded in utf8 or some
-        # other non-ascii charset.  Try to verify it's utf8, and if not,
-        # decode it using the fallback encoding.
-        try:
-            s = value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError:
-            s = value.decode(fallback).encode('utf8')
-    if remove_nonprintable:
-        return removeNonprintable(s)
-    else:
-        return s
+        return ''
+    return fix_encoding(value, fallback, remove_nonprintable)
 
 
-def fix_encoding2(value, fallback='iso8859-15', remove_nonprintable=False):
+def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
-    Clean up a string
+    Adjust string to work around encoding issues
 
-    This is similar to the original fixEncoding, but does not convert any
-    non-string values to '', and is written to work with util.DataWalker
+    In python2, unicode strings are encoded as utf8. For normal
+    strings, we attempt to fix encoding issues. The fallback option
+    is the encoding to use if the string is not valid utf8.
 
-    Mostly a no-op in python3, but remove_nonprintable is still honored
+    If remove_nonprintable is True, then nonprintable characters are
+    filtered out.
+
+    In python3 this is mostly a no-op, but remove_nonprintable is still honored
     """
 
     # play encoding tricks for py2 strings
@@ -3160,7 +3143,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     This is simply fixEncoding2 recursively applied to an object
     """
     kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
-    walker = util.DataWalker(value, fix_encoding2, kwargs)
+    walker = util.DataWalker(value, fix_encoding, kwargs)
     return walker.walk()
 
 
