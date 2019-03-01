@@ -3127,7 +3127,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
 
     Similar behavior to fixEncoding, but recursive
     """
-    if six.PY3:
+    if six.PY3 and not remove_nonprintable:
         # don't bother with fixing in py3
         return value
 
@@ -3142,12 +3142,12 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
             k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
             ret[k] = v
         return ret
-    elif isinstance(value, six.text_type):
+    elif six.PY2 and isinstance(value, six.text_type):
         if remove_nonprintable:
             return removeNonprintable(value.encode('utf8'))
         else:
             return value.encode('utf8')
-    elif isinstance(value, str):
+    elif six.PY2 and isinstance(value, str):
         # value is a str, but may be encoded in utf8 or some
         # other non-ascii charset.  Try to verify it's utf8, and if not,
         # decode it using the fallback encoding.
@@ -3159,6 +3159,8 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
             return removeNonprintable(s)
         else:
             return s
+    elif six.PY3 and isinstance(value, str) and remove_nonprintable:
+        return removeNonprintable(value)
     else:
         return value
 
