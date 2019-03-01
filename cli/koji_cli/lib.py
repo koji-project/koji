@@ -343,22 +343,6 @@ Running Tasks:
     return rv
 
 
-def write_to_stdout(contents):
-    """Helper function to write str/bytes to stdout
-
-    https://docs.python.org/3/library/sys.html#sys.displayhook
-    """
-    try:
-        sys.stdout.write(contents)
-    except UnicodeEncodeError:
-        bytes = contents.encode(sys.stdout.encoding, 'backslashreplace')
-        if hasattr(sys.stdout, 'buffer'):
-            sys.stdout.buffer.write(bytes)
-        else:
-            contents = bytes.decode(sys.stdout.encoding, 'strict')
-            sys.stdout.write(contents)
-
-
 def bytes_to_stdout(contents):
     """Helper function for writing bytes to stdout"""
     if six.PY2:
