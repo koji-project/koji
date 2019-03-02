@@ -1,13 +1,12 @@
 # coding=utf-8
 from __future__ import absolute_import
-import mock
 import six
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
 
-from koji.util import base64encode, base64decode
+from koji.util import base64encode
 
 
 class Base64EncodeTestCase(unittest.TestCase):

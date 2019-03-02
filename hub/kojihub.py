@@ -59,6 +59,7 @@ import koji.xmlrpcplus
 import koji.tasks
 from koji.context import context
 from koji.util import base64encode
+from koji.util import decode_bytes
 from koji.util import dslice
 from koji.util import md5_constructor
 from koji.util import move_and_symlink
