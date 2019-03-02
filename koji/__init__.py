@@ -2775,7 +2775,7 @@ class ClientSession(object):
             contents = fo.read(blocksize)
             md5sum.update(contents)
             size = len(contents)
-            data = base64.encodestring(contents)
+            data = util.base64encode(contents)
             if size == 0:
                 # end of file, use offset = -1 to finalize upload
                 offset = -1

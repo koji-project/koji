@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover
         yumcomps = None
 
 import koji
-from koji.util import md5_constructor, to_list
+from koji.util import md5_constructor, to_list, base64encode
 from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
@@ -1471,7 +1471,7 @@ def handle_import_sig(goptions, session, args):
                 continue
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
-            session.addRPMSig(rinfo['id'], base64.encodestring(sighdr))
+            session.addRPMSig(rinfo['id'], base64encode(sighdr))
         print(_("Writing signed copy"))
         if not options.test:
             session.writeSignedRPM(rinfo['id'], sigkey)

@@ -58,6 +58,7 @@ import koji.policy
 import koji.xmlrpcplus
 import koji.tasks
 from koji.context import context
+from koji.util import base64encode
 from koji.util import dslice
 from koji.util import md5_constructor
 from koji.util import move_and_symlink
@@ -9222,10 +9223,8 @@ class RootExports(object):
             elif offset != None and offset < 0:
                 f.seek(offset, 2)
             contents = f.read(size)
-        if six.PY2:
-            return base64.encodestring(contents)
-        else:
-            return base64.encodestring(contents).decode()
+        return base64encode(contents)
+
 
     listTaskOutput = staticmethod(list_task_output)
 
