@@ -881,7 +881,7 @@ def get_rpm_header(f, ts=None):
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, six.string_types):
-        fo = open(f, "r")
+        fo = open(f, "rb")
     else:
         fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
@@ -2763,7 +2763,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = open(localfile, "r")  #specify bufsize?
+        fo = open(localfile, "rb")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = util.md5_constructor()

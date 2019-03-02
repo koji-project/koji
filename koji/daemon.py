@@ -153,7 +153,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 
             if not outfd:
                 try:
-                    outfd = open(outfile, 'r')
+                    outfd = open(outfile, 'rb')
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue
