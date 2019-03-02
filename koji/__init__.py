@@ -2215,11 +2215,11 @@ class ClientSession(object):
         ac.addrs = tuple((addrinfo[2], addrinfo[3], addrinfo[0], addrinfo[1]))
 
         # decode and read the reply from the server
-        rep = base64.decodestring(rep_enc)
+        rep = base64.b64decode(rep_enc)
         ctx.rd_rep(rep, auth_context=ac)
 
         # decode and decrypt the login info
-        sinfo_priv = base64.decodestring(sinfo_enc)
+        sinfo_priv = base64.b64decode(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
         sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
 
@@ -2827,7 +2827,7 @@ class ClientSession(object):
         if volume and volume != 'DEFAULT':
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
-        return base64.decodestring(result.encode('ascii'))
+        return base64.b64decode(result)
 
 
 class DBHandler(logging.Handler):

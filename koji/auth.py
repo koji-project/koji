@@ -323,7 +323,7 @@ class Session(object):
         ac.addrs = conninfo
 
         # decode and read the authentication request
-        req = base64.decodestring(krb_req)
+        req = base64.b64decode(krb_req)
         ac, opts, sprinc, ccreds = ctx.rd_req(req, server=srvprinc, keytab=srvkt,
                                               auth_context=ac,
                                               options=krbV.AP_OPTS_MUTUAL_REQUIRED)

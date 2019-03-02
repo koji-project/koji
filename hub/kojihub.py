@@ -214,8 +214,10 @@ class Task(object):
                             columns=[f[0] for f in fields], aliases=[f[1] for f in fields])
             ret = query.executeOne()
             if ret['request'].find('<?xml', 0, 10) == -1:
-                #handle older base64 encoded data
-                ret['request'] = base64.decodestring(ret['request'])
+                # handle older base64 encoded data
+                data = base64.b64decode(ret['request'])
+                # we can't return raw bytes and this /should/ be a valid string
+                ret['request'] = decode_bytes(data)
             return ret
         else:
             return None
@@ -402,8 +404,9 @@ class Task(object):
         query = """SELECT request FROM task WHERE id = %(id)i"""
         xml_request = _singleValue(query, locals())
         if xml_request.find('<?xml', 0, 10) == -1:
-            #handle older base64 encoded data
-            xml_request = base64.decodestring(xml_request)
+            # handle older base64 encoded data
+            xml_request = base64.b64decode(xml_request)
+        # note: loads accepts either bytes or string
         params, method = six.moves.xmlrpc_client.loads(xml_request)
         return params
 
@@ -418,8 +421,8 @@ class Task(object):
         elif koji.TASK_STATES[state] not in ['CLOSED', 'FAILED']:
             raise koji.GenericError("Task %i is not finished" % self.id)
         if xml_result.find('<?xml', 0, 10) == -1:
-            #handle older base64 encoded data
-            xml_result = base64.decodestring(xml_result)
+            # handle older base64 encoded data
+            xml_result = base64.b64decode(xml_result)
         try:
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
@@ -454,7 +457,8 @@ class Task(object):
             for task in results:
                 if task['request'].find('<?xml', 0, 10) == -1:
                     #handle older base64 encoded data
-                    task['request'] = base64.decodestring(task['request'])
+                    task['request'] = base64.b64decode(task['request'])
+                # note: loads accepts either bytes or string
                 task['request'] = six.moves.xmlrpc_client.loads(task['request'])[0]
         return results
 
@@ -9076,7 +9080,7 @@ class RootExports(object):
         # the chunk belongs
         # the special offset -1 is used to indicate the final chunk
         context.session.assertLogin()
-        contents = base64.decodestring(data)
+        contents = base64.b64decode(data)
         del data
         # we will accept offset and size as strings to work around xmlrpc limits
         offset = koji.decode_int(offset)
@@ -10271,7 +10275,7 @@ class RootExports(object):
         data: the signature header encoded as base64
         """
         context.session.assertPerm('sign')
-        return add_rpm_sig(an_rpm, base64.decodestring(data))
+        return add_rpm_sig(an_rpm, base64.b64decode(data))
 
     findBuildID = staticmethod(find_build_id)
     getTagID = staticmethod(get_tag_id)
@@ -10762,7 +10766,8 @@ class RootExports(object):
                     try:
                         if val.find('<?xml', 0, 10) == -1:
                             #handle older base64 encoded data
-                            val = base64.decodestring(val)
+                            val = base64.b64decode(val)
+                        # note: loads accepts either bytes or string
                         data, method = six.moves.xmlrpc_client.loads(val)
                     except six.moves.xmlrpc_client.Fault as fault:
                         data = fault
