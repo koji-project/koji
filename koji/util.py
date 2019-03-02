@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
+import base64
 import calendar
 import datetime
 import hashlib
@@ -140,6 +141,42 @@ def printList(l):
         ret += ', and '
         ret += l[-1]
         return ret
+
+
+def base64encode(s, as_bytes=False):
+    """Helper function to encode string or bytes as base64
+
+    This function returns a string unless as_bytes is True
+    """
+    if six.PY2:
+        return base64.b64encode(s)
+
+    if isinstance(s, str):
+        s = s.encode('utf8')
+    data = base64.b64encode(s)
+    if as_bytes:
+        return data
+    else:
+        # ascii is always good enough for base64 encoded data
+        return data.decode('ascii')
+
+
+# We don't need a decode wrapper, but we define this for naming consistency
+base64decode = base64.b64decode
+
+
+def decode_bytes(data, fallback='iso8859-15'):
+    """Decode a bytes-like object that is expected to be a valid string
+
+    First utf8 is tried, then the fallback (defaults to iso8859-15).
+    The fallback behavior can be disabled by setting the option to None.
+    """
+    try:
+        return data.decode('utf8')
+    except UnicodeDecodeError:
+        if fallback:
+            return data.decode(fallback)
+        raise
 
 
 def multi_fnmatch(s, patterns):
