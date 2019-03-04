@@ -320,8 +320,7 @@ tasks that come through the Koji system.
 Summary: Koji virtual machine management daemon
 Group: Applications/System
 License: LGPLv2
-# we need the python2 lib here
-Requires: python2-%{name} = %{version}-%{release}
+Requires: %{name} = %{version}-%{release}
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -332,8 +331,13 @@ Requires(post): /sbin/service
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
 %endif
+%if 0%{py3_support} > 1
+Requires: python%{python3_pkgversion}-libvirt
+Requires: python%{python3_pkgversion}-libxml2
+%else
 Requires: libvirt-python
 Requires: libxml2-python
+%endif
 Requires: /usr/bin/virt-clone
 Requires: qemu-img
 
@@ -345,8 +349,12 @@ virtual machine. This package is not required for most installations.
 Summary: Koji Utilities
 Group: Applications/Internet
 License: LGPLv2
+Requires: %{name} = %{version}-%{release}
+%if 0%{py3_support} > 1
+Requires: python%{python3_pkgversion}-psycopg2
+%else
 Requires: python-psycopg2
-Requires: python2-%{name} = %{version}-%{release}
+%endif
 %if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
