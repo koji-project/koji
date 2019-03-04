@@ -43,8 +43,19 @@ class DecodeBytesTestCase(unittest.TestCase):
               u'नमस्कार'],
              [b'\xec\x95\x88\xeb\x85\x95\xed\x95\x98\xec\x84\xb8\xec\x9a\x94', u'안녕하세요']]
 
+    BAD_DATA = [
+            # not valid utf8
+            b'k\xddGMps\x00^\x1f\x0e\x08c\xd2}\xdf}\xdb\xeb\xda\xf7',
+            b'\x8am\x8f}\\\xd6\xd1=[\xe9\\)\xd8j"\x81 (\xb6\xde',
+            b'\xf7\x0ey\x8c\xd9\xda\xdd\xbe\xf6^\xa0\xc8kG\xbbq\xa7w]\xd0',
+            b's&4\xee\xc3\xa3n\xe1\xafn\xefL7j:\xdc\xcbV\xec\xea'
+            ]
+
 
     def test_decode_bytes(self):
         for data, expected in self.DATA:
             result = decode_bytes(data)
             self.assertEqual(result, expected)
+        for data in self.BAD_DATA:
+            with self.assertRaises(UnicodeDecodeError):
+                decode_bytes(data, fallback=None)
