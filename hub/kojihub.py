@@ -9698,10 +9698,8 @@ class RootExports(object):
                 results.append({'date': cldate, 'date_ts': cltime, 'author': clname, 'text': cltext})
 
         results = _applyQueryOpts(results, queryOpts)
-        if six.PY2:
-            return koji.fixEncodingRecurse(results, remove_nonprintable=True)
-        else:
-            return results
+        return koji.fixEncodingRecurse(results, remove_nonprintable=True)
+
 
     def cancelBuild(self, buildID):
         """Cancel the build with the given buildID
