@@ -5843,7 +5843,7 @@ class CG_Importer(object):
                 # XXX
                 # until we change the way we handle checksums, we have to limit this to md5
                 raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
-            with open(path) as fp:
+            with open(path, 'rb') as fp:
                 m = md5_constructor()
                 while True:
                     contents = fp.read(8192)
