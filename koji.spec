@@ -713,7 +713,13 @@ fi
 %endif
 
 %changelog
-* Fri Mar  1 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+* Mon Mar  4 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+- PR#1293: fix dict encoding in py3
+- PR#1309: Fix binary output in cli in py3
+- PR#1317: fix deps for utils/vm subpackages on py3
+- PR#1315: fix checksum validation in CG_Importer
+- PR#1313: Fix encoding issues with base64 data
+- PR#1307: python3-koji-hub requires python3-psycopg2
 - PR#1290: downloadTaskOutput fix for py3
 - PR#1300: require correct mod_wsgi
 - PR#1301: use greetings list from lib

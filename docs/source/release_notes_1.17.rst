@@ -165,9 +165,8 @@ System Changes
 | PR: https://pagure.io/koji/pull-request/921
 | PR: https://pagure.io/koji/pull-request/1184
 | PR: https://pagure.io/koji/pull-request/1019
-| PR: https://pagure.io/koji/pull-request/1203
-| PR: https://pagure.io/koji/pull-request/969
 | PR: https://pagure.io/koji/pull-request/685
+| ...and many fixes
 
 Support for Python 3 has been extended to all components of Koji. Including:
 
