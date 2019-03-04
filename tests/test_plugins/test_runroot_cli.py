@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import io
 import mock
 import six
 try:
@@ -14,6 +15,23 @@ runroot = load_plugin.load_plugin('cli', 'runroot')
 
 class ParserError(Exception):
     pass
+
+
+def mock_stdout():
+    def get_mock():
+        if six.PY2:
+            return six.StringIO()
+        else:
+            return io.TextIOWrapper(six.BytesIO())
+    return mock.patch('sys.stdout', new_callable=get_mock)
+
+
+def get_stdout_value(stdout):
+    if six.PY2:
+        return stdout.getvalue()
+    else:
+        # we have to force the TextIOWrapper to stop buffering
+        return stdout.detach().getvalue()
 
 
 class TestListCommands(unittest.TestCase):
@@ -56,21 +74,21 @@ class TestListCommands(unittest.TestCase):
     maxDiff = None
 
     @mock.patch('time.sleep')
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock_stdout()
     def test_handle_runroot(self, stdout, sleep):
         # Mock out the xmlrpc server
         self.session.getTaskInfo.return_value = {'state': 1}
-        self.session.downloadTaskOutput.return_value = 'task output'
+        self.session.downloadTaskOutput.return_value = six.b('task output')
         self.session.listTaskOutput.return_value = {'runroot.log': ['DEFAULT']}
         self.session.runroot.return_value = 1
         self.session.taskFinished.side_effect = [False, True]
 
         # Run it and check immediate output
         runroot.handle_runroot(self.options, self.session, self.args)
-        actual = stdout.getvalue()
-        actual = actual.replace('nosetests', 'koji')
-        expected = '1\ntask output'
-        self.assertMultiLineEqual(actual, expected)
+        actual = get_stdout_value(stdout)
+        actual = actual.replace(b'nosetests', b'koji')
+        expected = b'1\ntask output'
+        self.assertEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.
         self.session.getTaskInfo.assert_called_once_with(1)
@@ -141,7 +159,7 @@ class TestListCommands(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             runroot.handle_runroot(self.options, self.session, args)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock_stdout()
     def test_missing_plugin(self, stdout):
         args = ['--nowait', 'TAG', 'ARCH', 'COMMAND']
 
@@ -151,7 +169,7 @@ class TestListCommands(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             runroot.handle_runroot(self.options, self.session, args)
 
-        actual = stdout.getvalue().strip()
+        actual = get_stdout_value(stdout).strip()
         self.assertEqual(actual,
-                         "* The runroot plugin appears to not be installed on the"
-                         " koji hub.  Please contact the administrator.")
+                         b"* The runroot plugin appears to not be installed on the"
+                         b" koji hub.  Please contact the administrator.")
