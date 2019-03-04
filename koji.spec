@@ -713,7 +713,8 @@ fi
 %endif
 
 %changelog
-* Mon Mar  4 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+* Tue Mar  5 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+- PR#1320: also remove nonprintable changelog chars in py3
 - PR#1293: fix dict encoding in py3
 - PR#1309: Fix binary output in cli in py3
 - PR#1317: fix deps for utils/vm subpackages on py3
