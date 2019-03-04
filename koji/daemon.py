@@ -27,12 +27,11 @@ import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
 from koji.util import md5_constructor, adler32_constructor, parseStatus, \
-                      dslice, to_list
+                      dslice, to_list, base64encode
 import os
 import signal
 import logging
 from fnmatch import fnmatch
-import base64
 import time
 import subprocess
 import sys
@@ -61,7 +60,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
         if size == 0:
             break
 
-        data = base64.encodestring(contents)
+        data = base64encode(contents)
         digest = md5_constructor(contents).hexdigest()
         del contents
 
@@ -154,7 +153,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
 
             if not outfd:
                 try:
-                    outfd = open(outfile, 'r')
+                    outfd = open(outfile, 'rb')
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue

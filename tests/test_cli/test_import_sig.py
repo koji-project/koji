@@ -12,6 +12,7 @@ except ImportError:
     import unittest
 
 from mock import call
+from koji.util import base64encode
 from koji_cli.commands import handle_import_sig
 from . import utils
 
@@ -227,7 +228,7 @@ class TestImportSIG(utils.CliTestCase):
 
         add_sig_calls, write_sig_calls = [], []
         for i in range(0, 3):
-            add_sig_calls.append(call(rinfo[i]['id'], base64.encodestring(sighdr[i])))
+            add_sig_calls.append(call(rinfo[i]['id'], base64encode(sighdr[i])))
             write_sig_calls.append(call(rinfo[i]['id'], fake_sigkey))
 
         # Run

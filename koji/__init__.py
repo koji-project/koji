@@ -881,7 +881,7 @@ def get_rpm_header(f, ts=None):
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
     if isinstance(f, six.string_types):
-        fo = open(f, "r")
+        fo = open(f, "rb")
     else:
         fo = f
     hdr = ts.hdrFromFdno(fo.fileno())
@@ -2215,11 +2215,11 @@ class ClientSession(object):
         ac.addrs = tuple((addrinfo[2], addrinfo[3], addrinfo[0], addrinfo[1]))
 
         # decode and read the reply from the server
-        rep = base64.decodestring(rep_enc)
+        rep = base64.b64decode(rep_enc)
         ctx.rd_rep(rep, auth_context=ac)
 
         # decode and decrypt the login info
-        sinfo_priv = base64.decodestring(sinfo_enc)
+        sinfo_priv = base64.b64decode(sinfo_enc)
         sinfo_str = ac.rd_priv(sinfo_priv)
         sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
 
@@ -2763,7 +2763,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = open(localfile, "r")  #specify bufsize?
+        fo = open(localfile, "rb")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = util.md5_constructor()
@@ -2775,7 +2775,7 @@ class ClientSession(object):
             contents = fo.read(blocksize)
             md5sum.update(contents)
             size = len(contents)
-            data = base64.encodestring(contents)
+            data = util.base64encode(contents)
             if size == 0:
                 # end of file, use offset = -1 to finalize upload
                 offset = -1
@@ -2827,7 +2827,7 @@ class ClientSession(object):
         if volume and volume != 'DEFAULT':
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
-        return base64.decodestring(result.encode('ascii'))
+        return base64.b64decode(result)
 
 
 class DBHandler(logging.Handler):

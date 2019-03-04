@@ -461,7 +461,7 @@ class BuildRoot(object):
                                 self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
                                                  (fpath, inode, stat_info.st_ino, size, stat_info.st_size))
                                 fd.close()
-                            fd = open(fpath, 'r')
+                            fd = open(fpath, 'rb')
                         logs[fname] = (fd, stat_info.st_ino, stat_info.st_size or size, fpath)
                     except:
                         self.logger.error("Error reading mock log: %s", fpath)
