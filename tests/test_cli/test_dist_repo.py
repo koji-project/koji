@@ -266,6 +266,7 @@ Options:
                         repo or the name of a tag that has a dist repo. May be
                         specified multiple times.
   --event=EVENT         Use tag content at event
+  --volume=VOLUME       Generate repo on given volume
   --non-latest          Include older builds, not just the latest
   --multilib=CONFIG     Include multilib packages in the repository using the
                         given config file
