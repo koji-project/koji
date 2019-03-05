@@ -3071,7 +3071,6 @@ def removeNonprintable(value):
         return value.translate(NONPRINTABLE_CHARS_TABLE)
 
 
-
 def _fix_print(value):
     """Fix a string so it is suitable to print
 
@@ -3114,11 +3113,10 @@ def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
 
     # play encoding tricks for py2 strings
     if six.PY2:
-        if isinstance(value, six.text_type):
-            # value is already unicode, so just convert it
-            # to a utf8-encoded str
+        if isinstance(value, unicode):
+            # just convert it to a utf8-encoded str
             value = value.encode('utf8')
-        elif isinstance(value, six.binary_type):
+        elif isinstance(value, str):
             # value is a str, but may be encoded in utf8 or some
             # other non-ascii charset.  Try to verify it's utf8, and if not,
             # decode it using the fallback encoding.
@@ -3140,7 +3138,7 @@ def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
 def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
-    This is simply fixEncoding2 recursively applied to an object
+    This is simply fixEncoding recursively applied to an object
     """
     kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
     walker = util.DataWalker(value, fix_encoding, kwargs)
