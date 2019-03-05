@@ -12933,6 +12933,8 @@ class HostExports(object):
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
         repodir = koji.pathinfo.distrepo(repo_id, rinfo['tag_name'])
+        # Note: if repo is on a different volume then repodir should be a
+        #   valid symlink and this function should still do the right thing
         archdir = "%s/%s" % (repodir, koji.canonArch(arch))
         if not os.path.isdir(archdir):
             raise koji.GenericError("Repo arch directory missing: %s" % archdir)
