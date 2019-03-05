@@ -97,7 +97,11 @@ Configuration
 
   # setup virtual environment
   rm -rf kojienv
-  virtualenv --system-site-packages kojienv
+  if [ -x /usr/bin/python3 ] ; then
+      python3 -m venv --system-site-packages kojienv
+  else
+      virtualenv --system-site-packages kojienv
+  fi
   source kojienv/bin/activate
 
   # install python requirements via pip, you can also specify exact versions
@@ -109,7 +113,12 @@ Configuration
       pip install setuptools --upgrade --ignore-installed
       pip install psycopg2 --upgrade --ignore-installed
   fi
-  pip install nose python-qpid-proton mock coverage python-multilib Cheetah --upgrade --ignore-installed
+  pip install nose python-qpid-proton mock coverage python-multilib --upgrade --ignore-installed
+  if [ -x /usr/bin/python3 ] ; then
+      pip install Cheetah3 nose-cover3 --upgrade --ignore-installed
+  else
+      pip install Cheetah --upgrade --ignore-installed
+  fi
   # rehash package to be sure updated versions are used
   hash -r
 
