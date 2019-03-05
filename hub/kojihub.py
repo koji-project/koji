@@ -2406,6 +2406,18 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     with open("%s/comps.xml" % groupsdir, 'w') as fo:
         fo.write(comps)
 
+    # write repo info to disk
+    repo_info = {
+            'id': repo_id,
+            'tag': tinfo['name'],
+            'tag_id': tinfo['id'],
+            'event_id': event_id,
+            'with_src': with_src,
+            'with_debuginfo': with_debuginfo,
+            }
+    with open('%s/repo.json' % repodir, 'w') as fp:
+        json.dump(repo_info, fp, indent=2)
+
     #get build dirs
     relpathinfo = koji.PathInfo(topdir='toplink')
     builddirs = {}
