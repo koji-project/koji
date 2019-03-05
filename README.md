@@ -51,7 +51,7 @@ Related Software
 
 * [Mock](https://fedoraproject.org/wiki/Projects/Mock): The tool Koji uses to generate buildroots
 * [Yum](http://yum.baseurl.org/)
-* [Mash](https://pagure.io/mash)
+* [Pungi](https://pagure.io/pungi): Use Pungi to "compose" Koji builds into highly customizable Yum repositories.
 * [Koji Tools](https://pagure.io/koji-tools): Various utilities for Koji
 * [Kojiji](https://github.com/release-engineering/kojiji): Koji Java Interface
 * [txkoji](https://github.com/ktdreyer/txkoji): Async interface to Koji, using Twisted
