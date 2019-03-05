@@ -2527,6 +2527,9 @@ def dist_repo_init(tag, keys, task_opts):
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
     event = task_opts.get('event')
+    volume = task_opts.get('volume')
+    if volume is not None:
+        volume = lookup_name('volume', volume, strict=True)['name']
     arches = list(set([koji.canonArch(a) for a in task_opts['arch']]))
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
@@ -2539,9 +2542,14 @@ def dist_repo_init(tag, keys, task_opts):
     insert.set(id=repo_id, create_event=event, tag_id=tag_id,
         state=state, dist=True)
     insert.execute()
-    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
+    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'], volume=volume)
     for arch in arches:
         koji.ensuredir(os.path.join(repodir, arch))
+    if volume and volume != 'DEFAULT':
+        # symlink from main volume to this one
+        basedir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
+        relpath = os.path.relpath(repodir, os.path.dirname(basedir))
+        os.symlink(relpath, basedir)
     # handle comps
     if task_opts.get('comps'):
         groupsdir = os.path.join(repodir, 'groups')
