@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.16.0
+Version: 1.17.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -713,6 +713,131 @@ fi
 %endif
 
 %changelog
+* Wed Mar  6 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
+- PR#1320: also remove nonprintable changelog chars in py3
+- PR#1293: fix dict encoding in py3
+- PR#1309: Fix binary output in cli in py3
+- PR#1317: fix deps for utils/vm subpackages on py3
+- PR#1315: fix checksum validation in CG_Importer
+- PR#1313: Fix encoding issues with base64 data
+- PR#1307: python3-koji-hub requires python3-psycopg2
+- PR#1290: downloadTaskOutput fix for py3
+- PR#1300: require correct mod_wsgi
+- PR#1301: use greetings list from lib
+- PR#1284: replace urrlib.quote with six.moves
+- PR#1286: correctly escape license in web ui
+- PR#1292: define _sortByKeyFuncNoneGreatest as staticmethod
+- PR#1227: Added volume id as argument to livemedia and livecd tasks
+- PR#1070: consolidate access to rpm headers
+- PR#1274: cve-2018-1002161
+- PR#1271: decode Popen.communicate result under py3
+- PR#1269: require librepo on python3
+- PR#1222: Include CLI plugins in setup.py
+- PR#1265: py3 tests + related fixes
+- PR#1220: Fix non-ascii strings in xmlrpc
+- PR#1229: document reason strings in policies
+- PR#1263: python 3 can't index dict.keys()
+- PR#1235: fix weak deps handling in rpminfo web page
+- PR#1251: fix race-condition with librepo temp directories
+- PR#1245: organize python 2/3 cases in spec file
+- PR#1231: remove unused directory
+- PR#1248: use six move for email.MIMEText
+- PR#1150: using ConfigParser.read_file for PY3
+- PR#1249: more detailed help for block-group-pkg
+- PR#1117: python3 kojid
+- PR#891: Web UI python3 changes
+- PR#921: Py3 hub
+- PR#1182: hub: document get_channel arguments
+- PR#1014: cli: preserve build order in clone-tag
+- PR#1218: docs: drop HTML tags from howto doc
+- PR#1211: Fix wrong error message
+- PR#1184: rest of python3 support for koji lib
+- PR#1062: fix pyOpenSSL dependency for py26 in setup.py
+- PR#1019: Use python2/3 instead of python in Makefile/spec
+- PR#1190: hub: document all edit_tag arguments
+- PR#1201: re-add urlparse import in kojikamid
+- PR#1203: Fix `is_conn_error()` for Python 3.3+ change to `socket.error`
+- PR#967: use correct fileinfo checksum field
+- PR#1187: Add ctx option to ClientSession.krb_login()
+- PR#1175: kojira: avoid race condition that causes "unknown task" errors
+- PR#964: few sort speedups
+- PR#852: drop encode_int helper
+- PR#1043: remove old messagebus plugin
+- PR#1176: kojid: implement task_avail_delay check
+- PR#1180: Update source when recycling build
+- PR#1178: cli: document parse_arches method parameters
+- PR#920: use relative symlinks for hub imports
+- PR#981: cli: add a param in watch_tasks to override KeyboardInterrupt output
+- PR#1042: don't fail on missing field in base policy tests
+- PR#1172: make timeout of authentication configurable
+- PR#1168: remove shebang in context module
+- PR#1045: cli: [free-task] raise error when no task-id specified
+- PR#1056: Print warning to stderr
+- PR#1057: raise error for non-existing task in list_task_output
+- PR#1061: hub: [getRPMDeps] add strict behavior
+- PR#1065: fix wrong message
+- PR#1081: hub: [getPackageID] add strict behavior
+- PR#1099: hub: [hasPerm] add strict behavior
+- PR#732: koji.next.md: drop RHEL 5 requirements
+- PR#1156: hub: unlimited NameWidth for kojifiles Apache location
+- PR#1154: docs: update cheetah template user guide link
+- PR#1148: docs: use "postgresql-setup initdb" to initialize database
+- PR#1141: hub: document edit_tag argument types
+- PR#1138: cli: fix "at least" typo in help text
+- PR#1137: docs: unify "dnf" and "yum" instructions in server howto
+- PR#1125: Ignore non-existing option when activate a session
+- PR#1111: Don't retry if certificate is not readable
+- PR#928: check tag existence in list-tagged cmd and listTagged* APIs
+- PR#1127: only pass new incl_blocked call opt if it is explicitly needed
+- PR#1124: tooltip for search field
+- PR#1115: Do not require split_debuginfo
+- PR#1123: fix wrong old value in postBuildStateChange callback
+- PR#1097: hub: [getTaskInfo] add strict behavior
+- PR#1098: cli: [download-task] readable error when no task found
+- PR#1096: cli: fix typos in *-notification error msg
+- PR#1072: Include WadersOS mention to 'koji runs here' doc
+- PR#1094: hub: [postBuildStateChange] passing the newest build info
+- PR#1066: Simple mode for mergerepos
+- PR#1091: more informative error for invalid scm schemes
+- PR#1003: update jenkins configuration
+- PR#947: exclude py compiled files under util/
+- PR#965: check rpm headers support directly
+- PR#978: get_next_release should check also running builds
+- PR#1041: fix utf-8 output in CLI
+- PR#1036: Add more test patterns for rpmdiff unit test.
+- PR#1023: Expand user directory from config
+- PR#1002: prioritize unittest2
+- PR#1000: Fix target handling in make_task
+- PR#997: Fix rpmdiff's ignoring of size
+- PR#1012: Fix isinstance with lists
+- PR#1030: Create symlinks for builds imported onto non-default volumes
+- PR#1021: Raise error for non-200 codes in download_file
+- PR#1005: Add unit tests for check volume id substitution list
+- PR#1027: [kojihub] add strict parameter in getBuildNotification
+- PR#1016: raise Error when user not found in getBuildNotifications
+- PR#1008: decode_args(): make a copy of the opts dict, rather than modifying it in-place
+- PR#989: additional info on builders in channelinfo page
+- PR#685: Rest of automated conversion from py3 changes
+- PR#962: put source target scratch into policy_data in make_task
+- PR#980: cli: rename _unique_path to unique_path, and deprecate the old one
+- PR#900: enable batch multiCall in clone-tag
+- PR#973: Check empty arches before spawning dist-repo
+- PR#959: fix wrong tagNotification in tagBuildBypass API
+- PR#969: Enable python3 on RHEL8 build
+- PR#970: Add RISC-V (riscv64) to distrepo task
+- PR#897: Fix use_host_resolv with new mock version (2017 Nov 22+)
+- PR#868: allow force for pkglist_add
+- PR#845: propagate exception correctly
+- PR#831: Use unittest2 for rhel6 compatibility
+- PR#873: Allow listing of blocked data in readTagGroups
+- PR#940: Add --enabled --ready filters for list-channels
+- PR#952: cli: [clone-tag] preserve build order
+- PR#919: remove deprecated BuildRoot.scrub()
+- PR#948: cli: don't show license for external RPM in rpminfo
+- PR#879: cli: change bad reference in clone-tag
+- PR#946: force using python2 to run script
+- PR#925: Allow longer Build Target names
+
 * Tue May 15 2018 Mike McLean <mikem at redhat.com> - 1.16.0-1
 - Fix CVE-2018-1002150 - distRepoMove missing access check
 - PR#884: Add option to configure DB port
