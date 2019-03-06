@@ -84,7 +84,7 @@ Library Changes
 
 This is a follow up to the large integer support that we added in version 1.14
 
-See also: :doc:`release_notes-1.14`
+See also: :doc:`release_notes_1.14`
 
 The ``encode_int`` function is no longer used
 and has been dropped from the library.
@@ -94,7 +94,7 @@ when returning large integers, rather than returning them as strings in some
 cases.
 
 
-**Use custom Kerberos contxt with krb_login**
+**Use custom Kerberos context with krb_login**
 
 | PR: https://pagure.io/koji/pull-request/1187
 
