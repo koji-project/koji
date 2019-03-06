@@ -97,6 +97,36 @@ class ManagedRepo(object):
         rinfo = self.session.repoInfo(self.repo_id)
         self._dist = rinfo['dist']
 
+    def get_info(self):
+        "Fetch data from repo.json"
+        path = self.get_path()
+        if not path:
+            # can this be an error yet?
+            return None
+        fn = '%s/repo.json' % path
+        if not os.path.exists(fn):
+            self.logger.warn('Repo info file missing: %s', fn)
+            return None
+        with open(fn, 'r') as fp:
+            return json.load(fp)
+
+    def get_path(self, volume=None):
+        """Return the path to the repo directory"""
+        tag_info = getTag(self.session, self.tag_id)
+        if not tag_info:
+            tag_info = getTag(self.session, self.tag_id, self.event_id)
+        if not tag_info:
+            self.logger.warn('Could not get info for tag %i, referenced by repo %i' %
+                             (self.tag_id, self.repo_id))
+            return None
+        tag_name = tag_info['name']
+        if self.dist:
+            path = pathinfo.distrepo(self.repo_id, tag_name, volume=volume)
+        else:
+            # currently only dist repos can be on another volume
+            path = pathinfo.repo(self.repo_id, tag_name)
+        return path
+
     def expire(self):
         """Mark the repo expired"""
         if self.state == koji.REPO_EXPIRED:
@@ -136,19 +166,14 @@ class ManagedRepo(object):
 
     def tryDelete(self):
         """Remove the repo from disk, if possible"""
-        tag_info = getTag(self.session, self.tag_id)
-        if not tag_info:
-            tag_info = getTag(self.session, self.tag_id, self.event_id)
-        if not tag_info:
-            self.logger.warn('Could not get info for tag %i, skipping delete of repo %i' %
-                             (self.tag_id, self.repo_id))
+        path = self.get_path()
+        if not path:
+            # get_path already warned
             return False
-        tag_name = tag_info['name']
+        info = self.get_info()
         if self.dist:
-            path = pathinfo.distrepo(self.repo_id, tag_name)
             lifetime = self.options.dist_repo_lifetime
         else:
-            path = pathinfo.repo(self.repo_id, tag_name)
             lifetime = self.options.deleted_repo_lifetime
             # (should really be called expired_repo_lifetime)
         try:
@@ -180,7 +205,30 @@ class ManagedRepo(object):
             return False
         self.logger.info("Deleted repo %s" % self.repo_id)
         self.state = koji.REPO_DELETED
-        self.manager.rmtree(path)
+        if os.path.islink(path):
+            # expected for repos on other volumes
+            if not os.path.exists(path):
+                self.logger.error('Repo volume link broken: %s', path)
+                return False
+            if not info or 'volume' not in info:
+                self.logger.error('Missing repo.json in %s', path)
+                return False
+            realpath = self.get_path(volume=info['volume'])
+            if not os.path.exists(realpath):
+                self.logger.error('Repo real path missing: %s', realpath)
+                return False
+            if not os.path.samefile(path, realpath):
+                self.logger.error('Incorrect volume link: %s', path)
+                return False
+            # ok, try to remove the symlink
+            try:
+                os.unlink(path)
+            except OSError:
+                self.logger.error('Unable to remove volume link: %s', path)
+            # and remove the real path
+            self.manager.rmtree(realpath)
+        else:
+            self.manager.rmtree(path)
         return True
 
     def ready(self):
