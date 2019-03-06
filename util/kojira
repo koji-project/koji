@@ -29,6 +29,7 @@ from koji.util import rmtree, parseStatus, to_list
 from optparse import OptionParser
 from six.moves.configparser import ConfigParser
 import errno
+import json
 import logging
 import logging.handlers
 import pprint
@@ -422,7 +423,15 @@ class RepoManager(object):
         finally:
             session.logout()
 
-    def pruneLocalRepos(self, topdir, timername):
+    def pruneLocalRepos(self):
+        for volinfo in self.session.listVolumes():
+            volumedir = pathinfo.volumedir(volinfo['name'])
+            repodir = "%s/repos" % volumedir
+            self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+            distrepodir = "%s/repos-dist" % volumedir
+            self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
+
+    def _pruneLocalRepos(self, topdir, max_age):
         """Scan filesystem for repos and remove any deleted ones
 
         Also, warn about any oddities"""
@@ -430,14 +439,13 @@ class RepoManager(object):
             #skip
             return
         if not os.path.exists(topdir):
-            self.logger.warn("%s doesn't exist, skipping", topdir)
+            self.logger.debug("%s doesn't exist, skipping", topdir)
             return
-        if os.path.isfile(topdir):
+        if not os.path.isdir(topdir):
             self.logger.warn("%s is not directory, skipping", topdir)
             return
         self.logger.debug("Scanning %s for repos", topdir)
-        self.logger.debug('max age allowed: %s seconds (from %s)',
-                getattr(self.options, timername), timername)
+        self.logger.debug('max age allowed: %s seconds', max_age)
         for tag in os.listdir(topdir):
             tagdir = "%s/%s" % (topdir, tag)
             if not os.path.isdir(tagdir):
@@ -464,14 +472,13 @@ class RepoManager(object):
                 except OSError:
                     #just in case something deletes the repo out from under us
                     self.logger.debug("%s deleted already?!", repodir)
-                    continue
                 rinfo = self.session.repoInfo(repo_id)
                 if rinfo is None:
                     if not self.options.ignore_stray_repos:
                         age = time.time() - dir_ts
                         self.logger.debug("did not expect %s; age: %s",
                                 repodir, age)
-                        if age > getattr(self.options, timername):
+                        if age > max_age:
                             self.logger.info("Removing unexpected directory (no such repo): %s", repodir)
                             self.rmtree(repodir)
                     continue
@@ -481,7 +488,7 @@ class RepoManager(object):
                 if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
                     self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
-                    if age > getattr(self.options, timername):
+                    if age > max_age:
                         logger.info("Removing stray repo (state=%s): %s" % (koji.REPO_STATES[rinfo['state']], repodir))
                         self.rmtree(repodir)
 
@@ -801,15 +808,12 @@ def main(options, session):
     regen_thread = start_regen_loop(session, repomgr)
     # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
-    repodir = "%s/repos" % pathinfo.topdir
-    distrepodir = "%s/repos-dist" % pathinfo.topdir
     while True:
         try:
             repomgr.updateRepos()
             repomgr.checkQueue()
             repomgr.printState()
-            repomgr.pruneLocalRepos(repodir, 'deleted_repo_lifetime')
-            repomgr.pruneLocalRepos(distrepodir, 'dist_repo_lifetime')
+            repomgr.pruneLocalRepos()
             if not curr_chk_thread.isAlive():
                 logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
