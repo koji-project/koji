@@ -84,6 +84,7 @@ Such a plugin would minimally look like this:
 ::
 
     def mymethod(arg1, arg2, kwarg1=None):
+        context.session.assertPerm('admin')
         # Here is where you actually do something
 
     mymethod.exported = True
@@ -94,7 +95,9 @@ A few explanations on what goes on here:
    arguments you need.
 -  You must export your method by setting its ``exported`` attribute to
    ``True``
--  The ``context.session.assertPerm()`` is how you ensure that the
+-  The ``context.session.assertPerm('admin')`` is how you ensure that only
+   the user with administrator privileges can use this call. Read-only
+   methods can be (in most cases) public, so such line is not needed.
 
 Save your plugin as e.g ``mymethod.py``, then install it in the Koji Hub
 plugins folder: ``/usr/lib/koji-hub-plugins/``
