@@ -2727,10 +2727,16 @@ def _validate_build_target_name(name):
         raise koji.GenericError("Build target name %s is too long. Max length "
                                 "is %s characters" % (name, max_name_length))
 
+
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
 
     context.session.assertPerm('admin')
+    return _create_build_target(name, build_tag, dest_tag)
+
+
+def _create_build_target(name, build_tag, dest_tag):
+    """Create a new build target(no access check)"""
     _validate_build_target_name(name)
 
     # Does a target with this name already exist?
@@ -2758,9 +2764,15 @@ def create_build_target(name, build_tag, dest_tag):
     insert.make_create()
     insert.execute()
 
+
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
     context.session.assertPerm('admin')
+    _edit_build_target(buildTargetInfo, name, build_tag, dest_tag)
+
+
+def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
+    """Edit build target parameters, w/ no access checks"""
     _validate_build_target_name(name)
 
     target = lookup_build_target(buildTargetInfo)
@@ -2803,23 +2815,29 @@ def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     update.execute()
     insert.execute()
 
+
 def delete_build_target(buildTargetInfo):
     """Delete the build target with the given name.  If no build target
     exists, raise a GenericError."""
     context.session.assertPerm('admin')
+    _delete_build_target(buildTargetInfo)
 
+
+def _delete_build_target(buildTargetInfo):
+    """Delete build target, no access checks"""
     target = lookup_build_target(buildTargetInfo)
     if not target:
         raise koji.GenericError('invalid build target: %s' % buildTargetInfo)
 
     targetID = target['id']
 
-    #build targets are versioned, so we do not delete them from the db
-    #instead we revoke the config entry
+    # build targets are versioned, so we do not delete them from the db
+    # instead we revoke the config entry
     update = UpdateProcessor('build_target_config', values=locals(),
                 clauses=["build_target_id = %(targetID)i"])
     update.make_revoke()
     update.execute()
+
 
 def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, queryOpts=None):
     """Return data on all the build targets
