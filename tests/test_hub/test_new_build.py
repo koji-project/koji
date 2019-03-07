@@ -38,10 +38,10 @@ class TestNewBuild(unittest.TestCase):
         return insert
 
     def test_valid(self):
-        self.context.session.user_id = 123456
         self.get_build.return_value = None
         self._singleValue.return_value = 65 # free build id
         self.new_package.return_value = 54
+        self.get_user.return_value = {'id': 123}
         data = {
             'name': 'test_name',
             'version': 'test_version',
@@ -61,7 +61,7 @@ class TestNewBuild(unittest.TestCase):
             'epoch': 'test_epoch',
             'extra': '{"extra_key": "extra_value"}',
             'id': 65,
-            'owner': 'test_owner',
+            'owner': 123,
             'pkg_id': 54,
             'release': 'test_release',
             'source': None,
