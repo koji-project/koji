@@ -3138,7 +3138,7 @@ def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
 def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
-    This is simply fixEncoding recursively applied to an object
+    This is simply fix_encoding recursively applied to an object
     """
     kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
     walker = util.DataWalker(value, fix_encoding, kwargs)
