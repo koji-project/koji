@@ -7132,8 +7132,11 @@ def build_references(build_id, limit=None, lazy=False):
     clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s',
                'build.state = %(st_complete)s']
     values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    qopts = {'asList': True}
+    if limit:
+        qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_rpm_components'],
-            clauses=clauses, joins=joins, values=values, opts={'asList': True})
+            clauses=clauses, joins=joins, values=values, opts=qopts)
     for (rpm_id,) in build_rpm_ids:
         query.values['rpm_id'] = rpm_id
         archive_ids = [i[0] for i in query.execute()]
@@ -7171,8 +7174,11 @@ def build_references(build_id, limit=None, lazy=False):
     clauses = ['archive_components.component_id = %(archive_id)s',
                'build.state = %(st_complete)s']
     values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    qopts = {'asList': True}
+    if limit:
+        qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_components'],
-            clauses=clauses, joins=joins, values=values, opts={'asList': True})
+            clauses=clauses, joins=joins, values=values, opts=qopts)
     for (archive_id,) in build_archive_ids:
         query.values['archive_id'] = archive_id
         archive_ids = [i[0] for i in query.execute()]
