@@ -7182,42 +7182,30 @@ def build_references(build_id, limit=None, lazy=False):
         return ret
 
     # find timestamp of most recent use in a buildroot
-    query = QueryProcessor(
-                columns=['standard_buildroot.create_event'],
-                tables=['buildroot_listing'],
-                joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
-                clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
-                opts={'order': '-standard_buildroot.create_event', 'limit': 1})
-    event_id = -1
-    for (rpm_id,) in build_rpm_ids:
-        query.values = {'rpm_id': rpm_id}
-        tmp_id = query.singleValue(strict=False)
-        if tmp_id is not None and tmp_id > event_id:
-            event_id = tmp_id
-    if event_id == -1:
-        ret['last_used'] = None
-    else:
+    event_id = 0
+    if build_rpm_ids:
+        query = QueryProcessor(
+                    columns=['max(standard_buildroot.create_event)'],
+                    tables=['buildroot_listing'],
+                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
+                    clauses=['buildroot_listing.rpm_id IN %(rpm_ids)s'],
+                    values={'rpm_ids': build_rpm_ids})
+        event_id = query.singleValue(strict=False) or 0
+
+    if build_archive_ids:
+        query = QueryProcessor(
+                    columns=['max(standard_buildroot.create_event)'],
+                    tables=['buildroot_archives'],
+                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
+                    clauses=['buildroot_listing.archive_id IN %(archive_ids)s'],
+                    values={'archive_ids': build_archive_ids})
+        event_id2 = query.singleValue(strict=False) or 0
+        event_id = max(event_id, event_id2)
+    if event_id:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
-
-    q = """SELECT standard_buildroot.create_event
-    FROM buildroot_archives
-        JOIN standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id
-    WHERE buildroot_archives.archive_id = %(archive_id)i
-    ORDER BY standard_buildroot.create_event DESC
-    LIMIT 1"""
-    event_id = -1
-    for (archive_id,) in build_archive_ids:
-        tmp_id = _singleValue(q, locals(), strict=False)
-        if tmp_id is not None and tmp_id > event_id:
-            event_id = tmp_id
-    if event_id == -1:
-        pass
     else:
-        q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
-        last_archive_use = _singleValue(q, locals())
-        if ret['last_used'] is None or last_archive_use > ret['last_used']:
-            ret['last_used'] = last_archive_use
+        ret['last_used'] = None
 
     # set 'images' field for backwards compat
     ret['images'] = ret['component_of']
