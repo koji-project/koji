@@ -7073,12 +7073,17 @@ def build_map():
     WHERE built.state = %(st_complete)i AND used.state =%(st_complete)i"""
     return _multiRow(q, locals(), fields)
 
-def build_references(build_id, limit=None):
+
+def build_references(build_id, limit=None, lazy=False):
     """Returns references to a build
 
     This call is used to determine whether a build can be deleted
-    The optional limit arg is used to limit the size of the buildroot
-    references.
+
+    :param int build_id: numeric build id
+    :param int limit: If given, only return up to N results of each ref type
+    :param bool lazy: If true, stop when any reference is found
+
+    :returns: dict of reference results for each reference type
     """
 
     ret = {}
@@ -7087,6 +7092,9 @@ def build_references(build_id, limit=None):
     q = """SELECT tag_id, tag.name FROM tag_listing JOIN tag on tag_id = tag.id
     WHERE build_id = %(build_id)i AND active = TRUE"""
     ret['tags'] = _multiRow(q, locals(), ('id', 'name'))
+
+    if lazy and ret['tags']:
+        return ret
 
     #we'll need the component rpm and archive ids for the rest
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
@@ -7113,6 +7121,9 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = to_list(idx.values())
 
+    if lazy and ret['rpms']:
+        return ret
+
     ret['component_of'] = []
     # find images/archives that contain the build rpms
     fields = ['archive_id']
@@ -7124,6 +7135,9 @@ def build_references(build_id, limit=None):
         query.values = {'rpm_id': rpm_id}
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
+
+    if lazy and ret['component_of']:
+        return ret
 
     # find archives whose buildroots we were in
     fields = ('id', 'type_id', 'type_name', 'build_id', 'filename')
@@ -7144,6 +7158,9 @@ def build_references(build_id, limit=None):
             break
     ret['archives'] = to_list(idx.values())
 
+    if lazy and ret['archives']:
+        return ret
+
     # find images/archives that contain the build archives
     fields = ['archive_id']
     clauses = ['archive_components.component_id = %(archive_id)s']
@@ -7154,6 +7171,9 @@ def build_references(build_id, limit=None):
         query.values = {'archive_id': archive_id}
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
+
+    if lazy and ret['component_of']:
+        return ret
 
     # find timestamp of most recent use in a buildroot
     query = QueryProcessor(
@@ -7197,6 +7217,7 @@ def build_references(build_id, limit=None):
     ret['images'] = ret['component_of']
 
     return ret
+
 
 def delete_build(build, strict=True, min_ref_age=604800):
     """delete a build, if possible
@@ -9280,8 +9301,8 @@ class RootExports(object):
 
     buildMap = staticmethod(build_map)
     deleteBuild = staticmethod(delete_build)
-    def buildReferences(self, build, limit=None):
-        return build_references(get_build(build, strict=True)['id'], limit)
+    def buildReferences(self, build, limit=None, lazy=False):
+        return build_references(get_build(build, strict=True)['id'], limit, lazy)
 
     addVolume = staticmethod(add_volume)
     removeVolume = staticmethod(remove_volume)
