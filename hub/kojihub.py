@@ -7127,12 +7127,15 @@ def build_references(build_id, limit=None, lazy=False):
     ret['component_of'] = []
     # find images/archives that contain the build rpms
     fields = ['archive_id']
-    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s']
-    # TODO: join in other tables to provide something more than archive id
-    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'], clauses=clauses,
-                           opts={'asList': True})
+    joins = ['archiveinfo on archiveinfo.id = archive_id',
+             'build on archiveinfo.build_id = build.id']
+    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s',
+               'build.state = %(st_complete)s']
+    values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'],
+            clauses=clauses, joins=joins, values=values, opts={'asList': True})
     for (rpm_id,) in build_rpm_ids:
-        query.values = {'rpm_id': rpm_id}
+        query.values['rpm_id'] = rpm_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
 
@@ -7163,12 +7166,15 @@ def build_references(build_id, limit=None, lazy=False):
 
     # find images/archives that contain the build archives
     fields = ['archive_id']
-    clauses = ['archive_components.component_id = %(archive_id)s']
-    # TODO: join in other tables to provide something more than archive id
-    query = QueryProcessor(columns=fields, tables=['archive_components'], clauses=clauses,
-                           opts={'asList': True})
+    joins = ['archiveinfo on archiveinfo.id = archive_id',
+             'build on archiveinfo.build_id = build.id']
+    clauses = ['archive_components.component_id = %(archive_id)s',
+               'build.state = %(st_complete)s']
+    values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    query = QueryProcessor(columns=fields, tables=['archive_components'],
+            clauses=clauses, joins=joins, values=values, opts={'asList': True})
     for (archive_id,) in build_archive_ids:
-        query.values = {'archive_id': archive_id}
+        query.values['archive_id'] = archive_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
 
