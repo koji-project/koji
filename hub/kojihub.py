@@ -7238,7 +7238,7 @@ def delete_build(build, strict=True, min_ref_age=604800):
     """
     context.session.assertPerm('admin')
     binfo = get_build(build, strict=True)
-    refs = build_references(binfo['id'], limit=10)
+    refs = build_references(binfo['id'], limit=10, lazy=True)
     if refs['tags']:
         if strict:
             raise koji.GenericError("Cannot delete build, tagged: %s" % refs['tags'])
