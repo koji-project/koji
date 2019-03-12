@@ -7647,10 +7647,10 @@ def grant_cg_access(user, cg, create=False):
     :type user: int or str
     :param cg: content generator id or name
     :type cg: int or str
-    :param bool create: If True, Koji will create an entirely different
-                        content generator in the database. If False (default),
-                        Koji will add the user to an existing content
-                        generator.
+    :param bool create: If True, and the requested cg name entry does not
+                        already exist, then Koji will create the content
+                        generator entry. In such a case, the cg parameter
+                        must be a string. The default is False.
     """
 
     context.session.assertPerm('admin')
