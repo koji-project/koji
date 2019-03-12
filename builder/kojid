@@ -5970,7 +5970,6 @@ def get_options():
                 'max_retries': 120,
                 'offline_retry': True,
                 'offline_retry_interval': 120,
-                'keepalive': True,
                 'log_timestamps': False,
                 'timeout': None,
                 'no_ssl_verify': False,
@@ -6002,9 +6001,9 @@ def get_options():
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
             elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
-                          'createrepo_update', 'keepalive', 'use_fast_upload',
-                          'support_rpm_source_layout', 'krb_rdns', 'krb_canon_host',
-                          'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps']:
+                          'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
+                          'krb_rdns', 'krb_canon_host', 'build_arch_can_fail', 'no_ssl_verify',
+                          'log_timestamps']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
