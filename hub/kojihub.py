@@ -412,7 +412,7 @@ class Task(object):
     def getRequest(self):
         query = QueryProcessor(columns=['request'], tables=['task'],
                                clauses=['id = %(id)i'], values={'id': self.id})
-        xml_request = query.executeOne()
+        xml_request = query.singleValue()
         if xml_request.find('<?xml', 0, 10) == -1:
             # handle older base64 encoded data
             xml_request = base64.b64decode(xml_request)
@@ -453,7 +453,7 @@ class Task(object):
         query = QueryProcessor(columns=columns, aliases=aliases,
                                tables=['task'], clauses=['id = %(id)i'],
                                values={'id': self.id})
-        result = query.singleValue(strict=strict)
+        result = query.executeOne(strict=strict)
         if result and request:
             result['request'] = self.getRequest()
         return result
@@ -8206,11 +8206,15 @@ SELECT %(col_str)s
         c.execute("CLOSE %s" % cname)
         c.close()
 
-    def executeOne(self):
+    def executeOne(self, strict=False):
         results = self.execute()
         if isinstance(results, list):
             if len(results) > 0:
+                if strict and len(results) > 1:
+                    raise koji.GenericError('multiple rows returned for a single row query')
                 return results[0]
+            elif strict:
+                raise koji.GenericError('query returned no rows')
             else:
                 return None
         return results
