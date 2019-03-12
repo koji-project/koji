@@ -4703,7 +4703,7 @@ def edit_host(hostInfo, **kw):
     or a string (name).
     fields to be changed are specified as keyword parameters:
     - arches (a space-separated string)
-    - capacity (string)
+    - capacity (float or int)
     - description (string)
     - comment (string)
 
@@ -10877,10 +10877,14 @@ class RootExports(object):
         """
         Add a builder host to the database.
 
-        :param str hostname: fully-qualified hostname for this builder.
+        :param str hostname: name for the host entry (fqdn recommended).
         :param list arches: list of architectures this builder supports.
         :param str krb_principal: (optional) a non-default kerberos principal
                                   for the host.
+        :returns: new host id
+
+        If krb_principal is not given then that field will be generated
+        from the HostPrincipalFormat setting (if available).
         """
         context.session.assertPerm('admin')
         if get_host(hostname):
