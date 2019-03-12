@@ -221,6 +221,7 @@ development authentication mode, than for real-world setting.
 .. glossary::
    user=None
        Username for authentication
+
    password=None
        Clear-text password (I've told you.)
 
