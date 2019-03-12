@@ -455,7 +455,7 @@ def handle_trash():
                 print("[%i/%i] Skipping package: %s" % (i, N, nvr))
             continue
         try:
-            refs = session.buildReferences(binfo['id'], limit=10)
+            refs = session.buildReferences(binfo['id'], limit=10, lazy=True)
         except six.moves.xmlrpc_client.Fault:
             print("[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr))
             continue
@@ -474,6 +474,10 @@ def handle_trash():
             if options.debug:
                 print("[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr))
                 #pprint.pprint(refs['archives'])
+            continue
+        if refs['component_of']:
+            if options.debug:
+                print("[%i/%i] Build is a component of archives: %s" % (i, N, nvr))
             continue
         ts = refs['last_used']
         if ts:

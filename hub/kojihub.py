@@ -7073,12 +7073,17 @@ def build_map():
     WHERE built.state = %(st_complete)i AND used.state =%(st_complete)i"""
     return _multiRow(q, locals(), fields)
 
-def build_references(build_id, limit=None):
+
+def build_references(build_id, limit=None, lazy=False):
     """Returns references to a build
 
     This call is used to determine whether a build can be deleted
-    The optional limit arg is used to limit the size of the buildroot
-    references.
+
+    :param int build_id: numeric build id
+    :param int limit: If given, only return up to N results of each ref type
+    :param bool lazy: If true, stop when any reference is found
+
+    :returns: dict of reference results for each reference type
     """
 
     ret = {}
@@ -7087,6 +7092,9 @@ def build_references(build_id, limit=None):
     q = """SELECT tag_id, tag.name FROM tag_listing JOIN tag on tag_id = tag.id
     WHERE build_id = %(build_id)i AND active = TRUE"""
     ret['tags'] = _multiRow(q, locals(), ('id', 'name'))
+
+    if lazy and ret['tags']:
+        return ret
 
     #we'll need the component rpm and archive ids for the rest
     q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
@@ -7113,17 +7121,29 @@ def build_references(build_id, limit=None):
             break
     ret['rpms'] = to_list(idx.values())
 
+    if lazy and ret['rpms']:
+        return ret
+
     ret['component_of'] = []
     # find images/archives that contain the build rpms
     fields = ['archive_id']
-    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s']
-    # TODO: join in other tables to provide something more than archive id
-    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'], clauses=clauses,
-                           opts={'asList': True})
+    joins = ['archiveinfo on archiveinfo.id = archive_id',
+             'build on archiveinfo.build_id = build.id']
+    clauses = ['archive_rpm_components.rpm_id = %(rpm_id)s',
+               'build.state = %(st_complete)s']
+    values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    qopts = {'asList': True}
+    if limit:
+        qopts['limit'] = limit
+    query = QueryProcessor(columns=fields, tables=['archive_rpm_components'],
+            clauses=clauses, joins=joins, values=values, opts=qopts)
     for (rpm_id,) in build_rpm_ids:
-        query.values = {'rpm_id': rpm_id}
+        query.values['rpm_id'] = rpm_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
+
+    if lazy and ret['component_of']:
+        return ret
 
     # find archives whose buildroots we were in
     fields = ('id', 'type_id', 'type_name', 'build_id', 'filename')
@@ -7144,59 +7164,60 @@ def build_references(build_id, limit=None):
             break
     ret['archives'] = to_list(idx.values())
 
+    if lazy and ret['archives']:
+        return ret
+
     # find images/archives that contain the build archives
     fields = ['archive_id']
-    clauses = ['archive_components.component_id = %(archive_id)s']
-    # TODO: join in other tables to provide something more than archive id
-    query = QueryProcessor(columns=fields, tables=['archive_components'], clauses=clauses,
-                           opts={'asList': True})
+    joins = ['archiveinfo on archiveinfo.id = archive_id',
+             'build on archiveinfo.build_id = build.id']
+    clauses = ['archive_components.component_id = %(archive_id)s',
+               'build.state = %(st_complete)s']
+    values = {'st_complete': koji.BUILD_STATES['COMPLETE']}
+    qopts = {'asList': True}
+    if limit:
+        qopts['limit'] = limit
+    query = QueryProcessor(columns=fields, tables=['archive_components'],
+            clauses=clauses, joins=joins, values=values, opts=qopts)
     for (archive_id,) in build_archive_ids:
-        query.values = {'archive_id': archive_id}
+        query.values['archive_id'] = archive_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
 
+    if lazy and ret['component_of']:
+        return ret
+
     # find timestamp of most recent use in a buildroot
-    query = QueryProcessor(
-                columns=['standard_buildroot.create_event'],
-                tables=['buildroot_listing'],
-                joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
-                clauses=['buildroot_listing.rpm_id = %(rpm_id)s'],
-                opts={'order': '-standard_buildroot.create_event', 'limit': 1})
-    event_id = -1
-    for (rpm_id,) in build_rpm_ids:
-        query.values = {'rpm_id': rpm_id}
-        tmp_id = query.singleValue(strict=False)
-        if tmp_id is not None and tmp_id > event_id:
-            event_id = tmp_id
-    if event_id == -1:
-        ret['last_used'] = None
-    else:
+    event_id = 0
+    if build_rpm_ids:
+        query = QueryProcessor(
+                    columns=['max(standard_buildroot.create_event)'],
+                    tables=['buildroot_listing'],
+                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
+                    clauses=['buildroot_listing.rpm_id IN %(rpm_ids)s'],
+                    values={'rpm_ids': build_rpm_ids})
+        event_id = query.singleValue(strict=False) or 0
+
+    if build_archive_ids:
+        query = QueryProcessor(
+                    columns=['max(standard_buildroot.create_event)'],
+                    tables=['buildroot_archives'],
+                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
+                    clauses=['buildroot_listing.archive_id IN %(archive_ids)s'],
+                    values={'archive_ids': build_archive_ids})
+        event_id2 = query.singleValue(strict=False) or 0
+        event_id = max(event_id, event_id2)
+    if event_id:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
-
-    q = """SELECT standard_buildroot.create_event
-    FROM buildroot_archives
-        JOIN standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id
-    WHERE buildroot_archives.archive_id = %(archive_id)i
-    ORDER BY standard_buildroot.create_event DESC
-    LIMIT 1"""
-    event_id = -1
-    for (archive_id,) in build_archive_ids:
-        tmp_id = _singleValue(q, locals(), strict=False)
-        if tmp_id is not None and tmp_id > event_id:
-            event_id = tmp_id
-    if event_id == -1:
-        pass
     else:
-        q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
-        last_archive_use = _singleValue(q, locals())
-        if ret['last_used'] is None or last_archive_use > ret['last_used']:
-            ret['last_used'] = last_archive_use
+        ret['last_used'] = None
 
     # set 'images' field for backwards compat
     ret['images'] = ret['component_of']
 
     return ret
+
 
 def delete_build(build, strict=True, min_ref_age=604800):
     """delete a build, if possible
@@ -7217,7 +7238,7 @@ def delete_build(build, strict=True, min_ref_age=604800):
     """
     context.session.assertPerm('admin')
     binfo = get_build(build, strict=True)
-    refs = build_references(binfo['id'], limit=10)
+    refs = build_references(binfo['id'], limit=10, lazy=True)
     if refs['tags']:
         if strict:
             raise koji.GenericError("Cannot delete build, tagged: %s" % refs['tags'])
@@ -9280,8 +9301,8 @@ class RootExports(object):
 
     buildMap = staticmethod(build_map)
     deleteBuild = staticmethod(delete_build)
-    def buildReferences(self, build, limit=None):
-        return build_references(get_build(build, strict=True)['id'], limit)
+    def buildReferences(self, build, limit=None, lazy=False):
+        return build_references(get_build(build, strict=True)['id'], limit, lazy)
 
     addVolume = staticmethod(add_volume)
     removeVolume = staticmethod(remove_volume)
