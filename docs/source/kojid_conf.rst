@@ -13,7 +13,7 @@ General
       during the build process.
 
    keepalive=True
-      noop - it is still alowed in config file for backward compatibility.
+      noop - it is still allowed in config file for backward compatibility.
 
    log_level=None
       Set logging level to one of the standard level names in Python's logging
@@ -58,12 +58,12 @@ General
       in config, but don't mix them as order is not binding.
 
    pluginpath=/usr/lib/koji-builder-plugins
-      Double-colon-separated list of directories, where builder plugins are.
-      They are not used by default, use ``plugins`` to enable them
+      Colon-separated list of directories to check for builder plugins.
+      They are not used by default, use ``plugins`` to enable them.
 
    retry_interval=60
       If there is an unsuccessful call to hub, this is how many seconds to
-      waited before trying new call.
+      wait before trying new call.
 
    server=http://hub.example.com/kojihub
       The URL for the koji xmlrpc server.
@@ -71,14 +71,16 @@ General
    sleeptime=15
       The number of seconds to sleep between checking for new tasks.
 
-   topdir=/mnt/koji
-      The directory root where work data can be found from the koji hub.
-
    topurl=http://hub.example.com/kojifiles
-      The URL for the file access.
+      The URL where the main Koji volume can be accessed. The builder uses
+      this url for most file access.
+
+   topdir=/mnt/koji
+      The location where the main Koji volume is mounted. This mount is
+      mainly used during createrepo tasks, and should be read-only.
 
    use_fast_upload=True
-      Enables faster uploading (bypassing XMLRPC overload). Changing it makes
+      Enables faster uploading (bypassing XMLRPC overhead). Changing it makes
       sense only in weird combination of very old hub and newer builders.
 
    workdir=/tmp/koji
@@ -125,7 +127,8 @@ Building
 
    failed_buildroot_lifetime=14400
       Failed tasks leave buildroot content on disk for debugging purposes.
-      They are removed after 4 hours by default.
+      They are removed after 4 hours by default. This value is specified
+      in seconds.
 
    literal_task_arches=''
       Space-separated list of globs (``fnmatch``) for architectures which
@@ -142,7 +145,7 @@ Building
 
    oz_install_timeout=7200
       Install timeout in seconds for image build. Default value is 0, which
-      means using the number in ``/etc/oz/oz.cfg``, supported since oz-0.16.0.
+      means using the number in ``/etc/oz/oz.cfg``. Supported since oz-0.16.0.
 
    use_createrepo_c=False
       Use ``createrepo_c`` rather than ``createrepo`` command. There is
@@ -151,9 +154,17 @@ Building
       would change in future.
 
    task_avail_delay=300
-      If there is more builders in same bin (combination of channel and
-      arch), wait for this time before taking the task. It allows to better
-      spread workload.
+      [Added in 1.17.0]
+
+      This delay works around a deficiency in task scheduling. The default
+      delay is 300 seconds. It is unlikely that admins will need to adjust
+      this setting.
+
+      Despite the name, this does not introduce any new delay compared to the
+      old behavior. The setting controls how long a host will wait before
+      taking a task in a given channel-arch “bin” when that host has an
+      available capacity lower than the median for that bin. Previously, such
+      hosts could wait forever.
 
    timeout=None
       This value is used for waiting on all xmlrpc calls to hub. By default
@@ -191,8 +202,8 @@ Mock
       The _host string to use in mock.
 
    mockuser=kojibuilder
-      The user to run as when doing builds. Note, that user must exist on
-      builder.
+      The user to run as when performing builds. Note, that user must exist on
+      the build host and must have permission to use mock.
 
    rpmbuild_timeout=86400
       Timeout for build duration (24 hours). Propagated to mock, not
@@ -213,22 +224,10 @@ Notifications
    smtphost=example.com
       The mail host to use for sending email notifications.
 
-User Authentication
-^^^^^^^^^^^^^^^^^^^
-Please use Kerberos or SSL authentication instead. It is more meant as a
-development authentication mode, than for real-world setting.
-
-.. glossary::
-   user=None
-       Username for authentication
-
-   password=None
-       Clear-text password (I've told you.)
-
 Kerberos Authentication
 ^^^^^^^^^^^^^^^^^^^^^^^
 .. glossary::
-   ccache=/var/tmp/kojid.ccache'
+   ccache=/var/tmp/kojid.ccache
       Credentials cache used for krbV login.
 
    host_principal_format=compile/\%s\@EXAMPLE.COM
@@ -238,20 +237,22 @@ Kerberos Authentication
    keytab=/etc/kojid/kojid.keytab
       Location of the keytab.
 
-   krb_canon_host=False
-      Kerberos authentication needs correct hostname. If this option is
-      specified, dnf resolver is used to get correct hostname. Note, that in
-      such case you need additional package ``python-dns`` installed.
-
    krb_principal=None
       Explicit principal used for login. If it is not specified, it is
       created via ``host_principal_format``.
+
+   krb_canon_host=False
+      Kerberos authentication requires correct hostnames. If this option is
+      specified, dns is used to get the correct hostname for the
+      server (i.e. resolve any CNAMEs). Note, this option will not function
+      unless ``python-dns`` is installed.
 
    krb_rdns=True
       Kerberos authentication needs correct hostname. If this option is
       specified, ``socket.getfqdn(host)`` is used to determine reverse DNS
       records. Otherwise, ``host`` is used directly. Playing with this option
-      can help you in some firewalled setups.
+      can help you in some firewalled setups. ``krb_canon_host`` takes
+      precedence over this option.
 
    krbservice=host
       The service name of the principal being used by the hub.
@@ -267,4 +268,22 @@ SSL Authentication
       Client certificate.
 
    serverca=/etc/kojid/serverca.crt
-      Certificate of the CA that issued the HTTP server certificate
+      This specifies the CA (or CA bundle) that the builder should use to
+      verify the ssl connection to the hub. If the default value of
+      ``/etc/kojid/serverca.crt`` exists, then that file is used.
+      Otherwise the default system bundle is used.
+
+
+Insecure Authentication Options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These options are only intended for simple development environments
+and should never be used in production.
+Please use Kerberos or SSL authentication instead.
+
+.. glossary::
+   user=None
+       Username for authentication
+
+   password=None
+       Clear-text password (I've told you.)
