@@ -20,6 +20,7 @@ class TestGetTaskChildren(unittest.TestCase):
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()
+        query.executeOne = mock.MagicMock()
         query.singleValue = mock.MagicMock()
         self.queries.append(query)
         return query
@@ -39,7 +40,7 @@ class TestGetTaskChildren(unittest.TestCase):
     def test_get_task_children_non_existing_strict(self):
         # get task info
         q = self.getQuery()
-        q.singleValue.side_effect = koji.GenericError
+        q.executeOne.side_effect = koji.GenericError
         self.QueryProcessor.side_effect = [q]
 
         with self.assertRaises(koji.GenericError):
