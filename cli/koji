@@ -27,12 +27,12 @@
 from __future__ import absolute_import
 from __future__ import division
 import logging
-import optparse
 import os
 import re
 import six
 import sys
-import types
+
+from optparse import OptionParser, SUPPRESS_HELP
 
 import six.moves.configparser
 import six.moves.xmlrpc_client
@@ -41,7 +41,7 @@ import koji
 import koji.util
 import koji.plugin
 
-from koji_cli.lib import _, OptionParser, get_epilog_str, greetings, \
+from koji_cli.lib import _, get_epilog_str, greetings, \
         warn, categories
 from koji_cli.commands import *
 
@@ -123,7 +123,7 @@ def get_options():
     parser.add_option("--topdir", help=_("specify topdir"))
     parser.add_option("--weburl", help=_("url of the Koji web interface"))
     parser.add_option("--topurl", help=_("url for Koji file access"))
-    parser.add_option("--pkgurl", help=optparse.SUPPRESS_HELP)
+    parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
@@ -212,7 +212,7 @@ def handle_help(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     # the --admin opt is for backwards compatibility. It is equivalent to: koji help admin
-    parser.add_option("--admin", action="store_true", help=optparse.SUPPRESS_HELP)
+    parser.add_option("--admin", action="store_true", help=SUPPRESS_HELP)
 
     (options, args) = parser.parse_args(args)
 

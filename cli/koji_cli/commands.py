@@ -7,7 +7,6 @@ from collections import defaultdict, OrderedDict
 import fnmatch
 import json
 import logging
-import optparse
 import os
 import pprint
 import random
@@ -16,6 +15,7 @@ import stat
 import sys
 import time
 import traceback
+from optparse import OptionParser, SUPPRESS_HELP
 
 import dateutil.parser
 import six
@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover
 
 import koji
 from koji.util import md5_constructor, to_list, base64encode
-from koji_cli.lib import _, OptionParser, activate_session, parse_arches, \
+from koji_cli.lib import _, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
@@ -225,7 +225,7 @@ def handle_add_host_to_channel(goptions, session, args):
     usage = _("usage: %prog add-host-to-channel [options] hostname channel")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--list", action="store_true", help=optparse.SUPPRESS_HELP)
+    parser.add_option("--list", action="store_true", help=SUPPRESS_HELP)
     parser.add_option("--new", action="store_true", help=_("Create channel if needed"))
     (options, args) = parser.parse_args(args)
     if not options.list and len(args) != 2:
