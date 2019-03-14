@@ -760,7 +760,7 @@ CREATE TABLE archivetypes (
 insert into archivetypes (name, description, extensions) values ('jar', 'Jar file', 'jar war rar ear sar jdocbook jdocbook-style');
 insert into archivetypes (name, description, extensions) values ('zip', 'Zip file', 'zip');
 insert into archivetypes (name, description, extensions) values ('pom', 'Maven Project Object Management file', 'pom');
-insert into archivetypes (name, description, extensions) values ('tar', 'Tar file', 'tar tar.gz tar.bz2 tar.xz');
+insert into archivetypes (name, description, extensions) values ('tar', 'Tar file', 'tar tar.gz tar.bz2 tar.xz tgz');
 insert into archivetypes (name, description, extensions) values ('xml', 'XML file', 'xml');
 insert into archivetypes (name, description, extensions) values ('xmlcompressed', 'Compressed XML file', 'xml.gz xml.bz2 xml.xz');
 insert into archivetypes (name, description, extensions) values ('xsd', 'XML Schema Definition', 'xsd');
