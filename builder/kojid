@@ -4122,6 +4122,9 @@ class BaseImageTask(OzImageTask):
         return {'image': newimg}
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, inst_tree, opts=None):
+        if not ozif_enabled:
+            self.logger.error("ImageFactory features require the following dependencies: pykickstart, imagefactory, oz and possibly python-hashlib")
+            raise koji.ApplianceError('ImageFactory functions not available')
 
         if opts == None:
             opts = {}
