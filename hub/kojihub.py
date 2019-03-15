@@ -7562,17 +7562,19 @@ def get_notification_recipients(build, tag_id, state):
     if state != koji.BUILD_STATES['COMPLETE']:
         clauses.append('success_only = FALSE')
 
-    query = QueryProcessor(columns=('email',), tables=['build_notifications'],
-                           joins=joins, clauses=clauses, values=locals(),
-                           opts={'asList':True})
-    emails = [result[0] for result in query.execute()]
+    query = QueryProcessor(columns=('user_id', 'email'), tables=['build_notifications'],
+                           joins=joins, clauses=clauses, values=locals())
+    recipients = query.execute()
 
     email_domain = context.opts['EmailDomain']
     notify_on_success = context.opts['NotifyOnSuccess']
 
     if build and (notify_on_success is True or state != koji.BUILD_STATES['COMPLETE']):
         # user who submitted the build
-        emails.append('%s@%s' % (build['owner_name'], email_domain))
+        recipients.append({
+            'user_id': build['owner_id'],
+            'email': '%s@%s' % (build['owner_name'], email_domain)
+            })
 
         if tag_id:
             packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
@@ -7584,11 +7586,36 @@ def get_notification_recipients(build, tag_id, state):
                 owner = get_user(pkgdata['owner_id'], strict=True)
                 if owner['status'] == koji.USER_STATUS['NORMAL'] and \
                    owner['usertype'] == koji.USERTYPES['NORMAL']:
-                    emails.append('%s@%s' % (owner['name'], email_domain))
+                    recipients.append({
+                        'user_id': owner['id'],
+                        'email': '%s@%s' % (owner['name'], email_domain)
+                        })
         #FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
+    if not recipients:
+        return None
+
+    # apply the out outs
+    user_ids = [r['user_id'] for r in recipients]
+    clauses = ['user_id in %(user_ids)s']
+    if build:
+        package_id = build['package_id']
+        query.clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+    else:
+        query.clauses.append('package_id IS NULL')
+    if tag_id:
+        query.clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
+    else:
+        query.clauses.append('tag_id IS NULL')
+    query = QueryProcessor(columns=['user_id'], clauses=clauses,
+            tables=['build_notifications_block'], values=locals())
+    optouts = [r['user_id'] for r in query.execute()]
+    optouts = set(optouts)
+
+    emails = [r['email'] for r in recipients if r['user_id'] not in optouts]
     return list(set(emails))
+
 
 def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
     if context.opts.get('DisableNotifications'):
