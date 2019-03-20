@@ -27,6 +27,7 @@ import logging
 import os
 import sys
 import time
+import threading
 import traceback
 import pprint
 import resource
@@ -691,12 +692,16 @@ def server_setup(environ):
 #
 
 firstcall = True
+firstcall_lock = threading.Lock()
 
 def application(environ, start_response):
     global firstcall
     if firstcall:
-        server_setup(environ)
-        firstcall = False
+        with firstcall_lock:
+            # check again, another thread may be ahead of us
+            if firstcall:
+                server_setup(environ)
+                firstcall = False
     # XMLRPC uses POST only. Reject anything else
     if environ['REQUEST_METHOD'] != 'POST':
         headers = [
