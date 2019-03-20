@@ -21,17 +21,9 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import to_list
 
-# fix OptionParser for python 2.3 (optparse verion 1.4.1+)
-# code taken from optparse version 1.5a2
+# for compatibility with plugins based on older version of lib
+# Use optparse imports directly in new code.
 OptionParser = optparse.OptionParser
-if optparse.__version__ == "1.4.1+":  # pragma: no cover
-    def _op_error(self, msg):
-        self.print_usage(sys.stderr)
-        msg = "%s: error: %s\n" % (self._get_prog_name(), msg)
-        if msg:
-            sys.stderr.write(msg)
-        sys.exit(2)
-    OptionParser.error = _op_error
 
 greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
              'bonjour',

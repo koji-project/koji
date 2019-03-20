@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 import sys
 import time
+from optparse import OptionParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import _, activate_session, OptionParser, watch_tasks, \
+from koji_cli.lib import _, activate_session, watch_tasks, \
                          list_task_output_all_volumes, bytes_to_stdout
 
 

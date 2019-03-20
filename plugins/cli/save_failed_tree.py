@@ -1,7 +1,10 @@
 from __future__ import absolute_import
+
+from optparse import OptionParser
+
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import _, activate_session, OptionParser, watch_tasks
+from koji_cli.lib import _, activate_session, watch_tasks
 
 @export_cli
 def handle_save_failed_tree(options, session, args):
