@@ -61,14 +61,12 @@ The web site utilizes Kerberos authentication. In order to log in you
 will need a valid Kerberos ticket and your web browser will need to be
 configured to send the Kerberos information to the server.
 
-In Firefox or Mozilla, you will need to use the about:config page to set
-a few parameters. Use the search term 'negotiate' to filter the list.
+In Firefox, you will need to use the about:config page to set
+a Kerberos parameter. Use the search term 'negotiate' to filter the list.
 Change network.negotiate-auth.trusted-uris to the domain you want to
 authenticate against, e.g .example.com. You can leave
 network.negotiate-auth.delegation-uris blank, as it enables Kerberos
-ticket passing, which is not required. If you do not see those two
-config options listed, your version of Firefox or Mozilla may be too old
-to support Negotiate authentication, and you should consider upgrading.
+ticket passing, which is not required.
 
 In order to obtain a Kerberos ticket, use the kinit command.
 
