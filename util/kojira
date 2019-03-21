@@ -34,6 +34,7 @@ import logging
 import logging.handlers
 import pprint
 import signal
+import stat
 import time
 import threading
 import traceback
@@ -460,18 +461,24 @@ class RepoManager(object):
                 except ValueError:
                     self.logger.debug("%s/%s not an int, skipping", tagdir, repo_id)
                     continue
-                repodir = "%s/%s" % (tagdir, repo_id)
-                if not os.path.isdir(repodir):
-                    self.logger.debug("%s not a directory, skipping", repodir)
-                    continue
                 if repo_id in self.repos:
                     #we're already managing it, no need to deal with it here
                     continue
+                repodir = "%s/%s" % (tagdir, repo_id)
                 try:
-                    dir_ts = os.stat(repodir).st_mtime
+                    # lstat because it could be link to another volume
+                    dirstat = os.lstat(repodir)
                 except OSError:
                     #just in case something deletes the repo out from under us
                     self.logger.debug("%s deleted already?!", repodir)
+                    continue
+                symlink = False
+                if stat.S_ISLNK(dirstat.st_mode):
+                    symlink = True
+                elif stat.S_ISDIR(dirstat.st_mode):
+                    self.logger.debug("%s not a directory, skipping", repodir)
+                    continue
+                dir_ts = dirstat.st_mtime
                 rinfo = self.session.repoInfo(repo_id)
                 if rinfo is None:
                     if not self.options.ignore_stray_repos:
@@ -480,7 +487,10 @@ class RepoManager(object):
                                 repodir, age)
                         if age > max_age:
                             self.logger.info("Removing unexpected directory (no such repo): %s", repodir)
-                            self.rmtree(repodir)
+                            if symlink:
+                                os.unlink(repodir)
+                            else:
+                                self.rmtree(repodir)
                     continue
                 if rinfo['tag_name'] != tag:
                     self.logger.warn("Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
@@ -490,7 +500,10 @@ class RepoManager(object):
                     self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
                     if age > max_age:
                         logger.info("Removing stray repo (state=%s): %s" % (koji.REPO_STATES[rinfo['state']], repodir))
-                        self.rmtree(repodir)
+                        if symlink:
+                            os.unlink(repodir)
+                        else:
+                            self.rmtree(repodir)
 
     def tagUseStats(self, tag_id):
         stats = self.tag_use_stats.get(tag_id)
