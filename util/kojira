@@ -171,7 +171,6 @@ class ManagedRepo(object):
         if not path:
             # get_path already warned
             return False
-        info = self.get_info()
         if self.dist:
             lifetime = self.options.dist_repo_lifetime
         else:
@@ -208,6 +207,7 @@ class ManagedRepo(object):
         self.state = koji.REPO_DELETED
         if os.path.islink(path):
             # expected for repos on other volumes
+            info = self.get_info()
             if not os.path.exists(path):
                 self.logger.error('Repo volume link broken: %s', path)
                 return False
