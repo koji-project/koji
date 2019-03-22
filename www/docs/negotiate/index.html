@@ -1,11 +1,11 @@
 <html>
   <head>
-    <title>Configuring Firefox (and Mozilla) for Negotiate Authentication</title>
+    <title>Configuring Firefox for Negotiate Authentication</title>
   </head>
   <body>
-    <h3>Configuring Firefox (and Mozilla) for Negotiate Authentication</h3>
+    <h3>Configuring Firefox for Negotiate Authentication</h3>
     <p>
-      Before Firefox and Mozilla can authenticate to a server using "Negotiate"
+      Before Firefox can authenticate to a server using "Negotiate"
       authentication, a couple of configuration changes must be made.
     </p>
     <p>
@@ -15,16 +15,7 @@
       <br/>
       Change <strong>network.negotiate-auth.trusted-uris</strong> to the domain you want to authenticate against,
       e.g. <code>.example.com</code>.  You can leave <strong>network.negotiate-auth.delegation-uris</strong>
-      blank, as it enables Kerberos ticket passing, which is not required.  If you do not see those two config 
-      options listed, your version of Firefox or Mozilla may be too old to support Negotiate authentication, and 
-      you should consider upgrading.
-      <br/>
-      <strong>FC5 Update:</strong> Firefox and Mozilla on FC5 are attempting to load a library by its unversioned name, which is
-      not installed by default.  A fix has been checked-in upstream, but in the meantime, the workaround is to set
-      <strong>network.negotiate-auth.gsslib</strong> to <code>libgssapi_krb5.so.2</code>.
-      <br/>
-      <strong>FC5 Update Update:</strong> If you are using the most recent Firefox or Mozilla, this workaround is
-      no longer necessary.
+      blank, as it enables Kerberos ticket passing, which is not required.
     </p>
     <p>
       Now, make sure you have Kerberos tickets.  Typing <em>kinit</em> in a shell should allow you to
@@ -39,12 +30,12 @@
       <h4>Troubleshooting</h4>
       If you have followed the configuration steps and Negotiate authentication is not working, you can
       turn on verbose logging of the authentication process, and potentially find the cause of the problem.
-      Exit Firefox or Mozilla.  In a shell, type the following commands:
+      Exit Firefox.  In a shell, type the following commands:
       <pre>
 export NSPR_LOG_MODULES=negotiateauth:5
 export NSPR_LOG_FILE=/tmp/moz.log
       </pre>
-      Then restart Firefox or Mozilla from that shell, and visit the website you were unable to authenticate
+      Then restart Firefox from that shell, and visit the website you were unable to authenticate
       to earlier.  Information will be logged to <em>/tmp/moz.log</em>, which may give a clue to the problem.
       For example:
       <pre>
