@@ -308,7 +308,7 @@ class RepoManager(object):
             # This shouldn't normally happen, but might if someone else calls
             # repoDelete or similar
             active = set([r['id'] for r in repodata])
-            for repo_id in self.repos.keys():
+            for repo_id in to_list(self.repos.keys()):
                 if repo_id not in active:
                     self.logger.info('Dropping entry for inactive repo: %s', repo_id)
                     del self.repos[repo_id]
@@ -506,7 +506,7 @@ class RepoManager(object):
         self.readCurrentRepos()
 
         # check for stale repos
-        for repo in self.repos.values():
+        for repo in to_list(self.repos.values()):
             if repo.stale():
                 repo.expire()
 
@@ -517,7 +517,7 @@ class RepoManager(object):
 
         # trigger deletes
         n_deletes = 0
-        for repo in self.repos.values():
+        for repo in to_list(self.repos.values()):
             if n_deletes >= self.options.delete_batch_size:
                 break
             if repo.expired():
@@ -582,7 +582,7 @@ class RepoManager(object):
             ])
         #index repos by tag
         tag_repos = {}
-        for repo in self.repos.values():
+        for repo in to_list(self.repos.values()):
             tag_repos.setdefault(repo.tag_id, []).append(repo)
 
         for tag_id in self.build_tags:
