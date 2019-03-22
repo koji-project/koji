@@ -329,11 +329,14 @@ class ModXMLRPCRequestHandler(object):
         results and errors, and return those as a list."""
         results = []
         for call in calls:
+            savepoint = kojihub.Savepoint('multiCall_loop')
             try:
                 result = self._dispatch(call['methodName'], call['params'])
             except Fault as fault:
+                savepoint.rollback()
                 results.append({'faultCode': fault.faultCode, 'faultString': fault.faultString})
-            except:
+            except Exception:
+                savepoint.rollback()
                 # transform unknown exceptions into XML-RPC Faults
                 # don't create a reference to full traceback since this creates
                 # a circular reference.
