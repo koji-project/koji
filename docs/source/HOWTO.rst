@@ -212,7 +212,7 @@ Koji is comprised of several components:
 -  **koji** is a CLI written in Python that provides many hooks into Koji.
    It allows the user to query much of the data as well as perform
    actions such as build initiation.
--  **kojirepod** is a daemon that keeps the build root repodata updated.
+-  **kojira** is a daemon that keeps the build root repodata updated.
 
 Package Organization
 --------------------
