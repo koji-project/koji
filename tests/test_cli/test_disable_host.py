@@ -16,6 +16,14 @@ class TestDisableHost(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
+    def setUp(self):
+        self.error_format = """Usage: %s disable-host [options] hostname ...
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
+
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_disable_host(
@@ -84,7 +92,7 @@ class TestDisableHost(utils.CliTestCase):
              call('host2', comment='disable host test')])
         self.assert_console_message(stdout, '')
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_disable_host_no_argument(self, activate_session_mock, stdout):
         """Test %s function without arguments""" % handle_disable_host.__name__
@@ -96,13 +104,20 @@ class TestDisableHost(utils.CliTestCase):
         session.disableHost.return_value = True
         session.editHost.return_value = True
 
-        handle_disable_host(options, session, [])
-        activate_session_mock.assert_called_once()
+        expected = self.format_error_message("At least one host must be specified")
+        self.assert_system_exit(
+            handle_disable_host,
+            options,
+            session,
+            [],
+            stderr=expected,
+            activate_session=None)
+
+        activate_session_mock.assert_not_called()
         session.getHost.assert_not_called()
-        session.multiCall.assert_called()
+        session.multiCall.assert_not_called()
         session.disableHost.assert_not_called()
         session.editHost.assert_not_called()
-        self.assert_console_message(stdout, '')
 
     def test_handle_disable_host_help(self):
         """Test %s help message""" % handle_disable_host.__name__

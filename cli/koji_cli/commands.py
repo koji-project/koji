@@ -1016,6 +1016,9 @@ def handle_disable_host(goptions, session, args):
     parser.add_option("--comment", help=_("Comment indicating why the host(s) are being disabled"))
     (options, args) = parser.parse_args(args)
 
+    if not args:
+        parser.error(_("At least one host must be specified"))
+
     activate_session(session, goptions)
     session.multicall = True
     for host in args:
@@ -1043,6 +1046,9 @@ def handle_enable_host(goptions, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--comment", help=_("Comment indicating why the host(s) are being enabled"))
     (options, args) = parser.parse_args(args)
+
+    if not args:
+        parser.error(_("At least one host must be specified"))
 
     activate_session(session, goptions)
     session.multicall = True
