@@ -53,7 +53,7 @@ class TestCreateTag(unittest.TestCase):
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'tag_config')
         values = {
-            'arches': None,
+            'arches': '',
             'create_event': 42,
             'creator_id': 23,
             'locked': False,
