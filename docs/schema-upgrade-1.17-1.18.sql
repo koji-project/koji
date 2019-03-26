@@ -6,5 +6,7 @@ BEGIN;
 
 -- add tgz to list of tar's extensions
 UPDATE archivetypes SET extensions = 'tar tar.gz tar.bz2 tar.xz tgz' WHERE name = 'tar';
+INSERT INTO archivetypes (name, description, extensions) VALUES ('vhdx', 'Hyper-V Virtual Hard Disk v2 image', 'vhdx');
+
 
 COMMIT;
