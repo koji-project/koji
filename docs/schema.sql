@@ -798,6 +798,7 @@ insert into archivetypes (name, description, extensions) values ('sig', 'Signatu
 insert into archivetypes (name, description, extensions) values ('so', 'Shared library', 'so');
 insert into archivetypes (name, description, extensions) values ('txt', 'Text file', 'txt');
 insert into archivetypes (name, description, extensions) values ('vhd', 'Hyper-V image', 'vhd');
+insert into archivetypes (name, description, extensions) values ('vhdx', 'Hyper-V Virtual Hard Disk v2 image', 'vhdx');
 insert into archivetypes (name, description, extensions) values ('wsf', 'Windows script file', 'wsf');
 insert into archivetypes (name, description, extensions) values ('box', 'Vagrant Box Image', 'box');
 insert into archivetypes (name, description, extensions) values ('raw-xz', 'xz compressed raw disk image', 'raw.xz');
