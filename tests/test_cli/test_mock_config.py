@@ -210,7 +210,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.assert_console_message(stdout, expected)
 
         # return build config
-        session.getBuildConfig.return_value = {'id': 301}
+        session.getBuildConfig.return_value = {'id': 301, 'extra': {}}
         expected = "Could not get a repo for tag: %(name)s\n" % tag
         self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
         self.assert_console_message(stdout, expected)
