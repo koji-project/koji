@@ -79,6 +79,10 @@ RPM
 Koji Components
 ===============
 
+.. figure:: koji_structure1.svg
+   :scale: 50 %
+   :alt: Koji component structure diagram
+
 Koji is comprised of several components:
 
 Koji-Hub
