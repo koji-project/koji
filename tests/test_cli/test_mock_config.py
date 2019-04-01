@@ -241,8 +241,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
     @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.open')
     def test_handle_mock_config_target_option(
-            self, activate_session_mock, gen_config_mock, stdout, stderr):
+            self, openf, activate_session_mock, gen_config_mock, stdout, stderr):
         """Test anon_handle_mock_config with target option"""
         arguments = []
         arch = "x86_64"
@@ -299,11 +300,11 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         # --latest and -o (output) test
         opts['repoid'] = 'latest'
         arguments.extend(['--latest', '-o', '/tmp/mock.out'])
-        with mock.patch('koji_cli.commands.open', create=True) as openf_mock:
-            anon_handle_mock_config(options, session, arguments)
-        openf_mock.assert_called_with('/tmp/mock.out', 'w')
-        handle = openf_mock()
-        handle.write.assert_called_once_with(self.mock_output)
+        fobj = mock.MagicMock()
+        openf.return_value.__enter__.return_value = fobj
+        anon_handle_mock_config(options, session, arguments)
+        openf.assert_called_with('/tmp/mock.out', 'w')
+        fobj.write.assert_called_once_with(self.mock_output)
         gen_config_mock.assert_called_with(
             self.progname, arch, **opts)
 
