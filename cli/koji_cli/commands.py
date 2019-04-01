@@ -997,9 +997,8 @@ def anon_handle_mock_config(goptions, session, args):
 
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
-        fo = open(options.ofile, 'w')
-        fo.write(output)
-        fo.close()
+        with open(options.ofile, 'w') as fo:
+            fo.write(output)
     else:
         print(output)
 
@@ -1561,13 +1560,11 @@ def handle_prune_signed_copies(options, session, args):
     #(with the modification that we check to see if the build was latest within
     #the last N days)
     if options.ignore_tag_file:
-        fo = open(options.ignore_tag_file)
-        options.ignore_tag.extend([line.strip() for line in fo.readlines()])
-        fo.close()
+        with open(options.ignore_tag_file) as fo:
+            options.ignore_tag.extend([line.strip() for line in fo.readlines()])
     if options.protect_tag_file:
-        fo = open(options.protect_tag_file)
-        options.protect_tag.extend([line.strip() for line in fo.readlines()])
-        fo.close()
+        with open(options.protect_tag_file) as fo:
+            options.protect_tag.extend([line.strip() for line in fo.readlines()])
     if options.debug:
         options.verbose = True
     cutoff_ts = time.time() - options.days * 24 * 3600
@@ -6764,7 +6761,8 @@ def anon_handle_download_logs(options, session, args):
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
         koji.ensuredir(os.path.dirname(full_filename))
         sys.stdout.write("Writing: %s\n" % full_filename)
-        open(full_filename, 'w').write(content)
+        with open(full_filename, 'w') as fo:
+            fo.write(content)
 
     def download_log(task_log_dir, task_id, filename, blocksize=102400, volume=None):
         # Create directories only if there is any log file to write to
