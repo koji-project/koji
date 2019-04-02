@@ -30,6 +30,7 @@ import os
 import six
 import ssl
 import stat
+import time
 
 from six.moves import range
 #a bunch of exception classes that explainError needs
@@ -414,6 +415,15 @@ def taskState(stateID):
 formatTime = koji.formatTime
 formatTimeRSS = koji.formatTimeLong
 formatTimeLong = koji.formatTimeLong
+
+def formatTimestampDifference(start_ts, end_ts):
+    diff = end_ts - start_ts
+    seconds = diff % 60
+    diff = diff // 60
+    minutes = diff % 60
+    diff = diff // 60
+    hours = diff
+    return "%d:%02d:%02d" % (hours, minutes, seconds)
 
 def formatDep(name, version, flags):
     """Format dependency information into

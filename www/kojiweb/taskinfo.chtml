@@ -2,15 +2,16 @@
 #from kojiweb import util
 #from six.moves.urllib.parse import quote
 #import cgi
+#from datetime import datetime
 
 #def printValue($key, $value, $sep=', ')
   #if $key in ('brootid', 'buildroot_id')
 <a href="buildrootinfo?buildrootID=$value">$value</a>
-  #elif $isinstance($value, list) 
-$sep.join([$str($val) for $val in $value]) 
+  #elif $isinstance($value, list)
+$sep.join([$str($val) for $val in $value])
   #elif $isinstance($value, dict)
 $sep.join(['%s=%s' % (($n == '' and "''" or $n), $v) for $n, $v in $value.items()])
-  #else 
+  #else
 $value
   #end if
 #end def
@@ -26,7 +27,7 @@ $value
   #elif $key != '__starstar'
   $prefix$key&nbsp;=&nbsp;$printValue($key, $value)<br/>
   #end if
-  #end for  
+  #end for
 #end def
 
 #def printOpts($opts)
@@ -130,26 +131,26 @@ $value
         <strong>SCM URL:</strong> $params[0]<br/>
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
-	#elif $task.method == 'buildMaven'
-	<strong>SCM URL:</strong> $params[0]<br/>
-	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
-	#if $len($params) > 2
+        #elif $task.method == 'buildMaven'
+        <strong>SCM URL:</strong> $params[0]<br/>
+        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+        #if $len($params) > 2
         $printOpts($params[2])
         #end if
-	#elif $task.method == 'wrapperRPM'
-	<strong>Spec File URL:</strong> $params[0]<br/>
-	#if 'locked' in $buildTarget
-	#set $buildTag = $buildTarget
-	<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
-	#else
-	<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
-	#end if
-	#if $params[2]
-	<strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
-	#end if
-	#if $params[3]
-	<strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a><br/>
-	#end if
+        #elif $task.method == 'wrapperRPM'
+        <strong>Spec File URL:</strong> $params[0]<br/>
+        #if 'locked' in $buildTarget
+        #set $buildTag = $buildTarget
+        <strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+        #else
+        <strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
+        #end if
+        #if $params[2]
+        <strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
+        #end if
+        #if $params[3]
+        <strong>Task:</strong> <a href="taskinfo?taskID=$wrapTask.id">$koji.taskLabel($wrapTask)</a><br/>
+        #end if
         #if $len($params) > 4
         $printOpts($params[4])
         #end if
@@ -320,15 +321,31 @@ $value
     <tr>
       <th>Started</th><td>$util.formatTimeLong($task.start_time)</td>
     #end if
+    #set $end_ts = None
     #if $task.state == $koji.TASK_STATES.OPEN
     #if $estCompletion
     <tr>
-      <th>Est. Completion</th><td>$util.formatTimeLong($estCompletion)</td>
+      <th title="Estimation based on previous builds of same package">Est. Completion</th>
+      <td>$util.formatTimeLong($estCompletion)</td>
     </tr>
     #end if
     #elif $task.completion_time
     <tr>
       <th>Completed</th><td>$util.formatTimeLong($task.completion_time)</td>
+    </tr>
+    #set $end_ts = $task.completion_ts
+    #end if
+    #if not $end_ts
+    #set $end_ts = datetime.now().timestamp()
+    #end if
+    <tr>
+      <th title="From task's creation">Total time</th>
+      <td>$util.formatTimestampDifference($task.create_ts, $end_ts)</td>
+    </tr>
+    #if $task.start_time
+    <tr>
+      <th title="From task's start">Task time</th>
+      <td>$util.formatTimestampDifference($task.start_ts, $end_ts)</td>
     </tr>
     #end if
     <tr>
