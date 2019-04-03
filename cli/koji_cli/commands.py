@@ -3377,6 +3377,11 @@ def handle_clone_tag(goptions, session, args):
                              "the dest tag"))
     parser.add_option('--ts', type='int', metavar="TIMESTAMP",
                       help=_('Clone tag at last event before specific timestamp'))
+    parser.add_option('--no-delete', action='store_false', dest="delete",
+            default=True,
+            help=_("Don't delete any existing content in dest tag. "
+                   "Note, that you can end with older latest builds in dest "
+                   "than in src, if they are already tagged."))
     parser.add_option('--event', type='int',
                       help=_('Clone tag at a specific event'))
     parser.add_option('--repo', type='int',
@@ -3644,27 +3649,28 @@ def handle_clone_tag(goptions, session, args):
         if not options.test:
             session.multiCall(batch=options.batch)
         # DEL builds. To keep the order we should untag builds at first
-        if not options.test:
-            session.multicall = True
-        for build in bdellist:
-            # don't delete an inherited build.
-            if build['tag_name'] == dsttag['name']:
-                # add missing 'name' field
-                build['name'] = build['package_name']
-                chgbldlist.append(('[del]',
-                                   build['package_name'],
-                                   build['nvr'],
-                                   koji.BUILD_STATES[build['state']],
-                                   build['owner_name'],
-                                   build['tag_name']))
-                # go on del builds from new tag.
-                if not options.test:
-                    session.untagBuildBypass(dsttag['name'],
-                                             build,
-                                             force=options.force,
-                                             notify=options.notify)
-        if not options.test:
-            session.multiCall(batch=options.batch)
+        if options.delete:
+            if not options.test:
+                session.multicall = True
+            for build in bdellist:
+                # don't delete an inherited build.
+                if build['tag_name'] == dsttag['name']:
+                    # add missing 'name' field
+                    build['name'] = build['package_name']
+                    chgbldlist.append(('[del]',
+                                       build['package_name'],
+                                       build['nvr'],
+                                       koji.BUILD_STATES[build['state']],
+                                       build['owner_name'],
+                                       build['tag_name']))
+                    # go on del builds from new tag.
+                    if not options.test:
+                        session.untagBuildBypass(dsttag['name'],
+                                                 build,
+                                                 force=options.force,
+                                                 notify=options.notify)
+            if not options.test:
+                session.multiCall(batch=options.batch)
         # ADD builds.
         if not options.test:
             session.multicall = True
@@ -3715,103 +3721,104 @@ def handle_clone_tag(goptions, session, args):
                                                 force=options.force)
         if not options.test:
             session.multiCall(batch=options.batch)
-        # DEL packages.
-        ninhrtpdellist = []
-        inhrtpdellist = []
-        for pkg in pdellist:
-            if pkg['tag_name'] == dsttag['name']:
-                ninhrtpdellist.append(pkg)
-            else:
-                inhrtpdellist.append(pkg)
-        session.multicall = True
-        # delete only non-inherited packages.
-        for pkg in ninhrtpdellist:
-            # check if package have owned builds inside.
-            session.listTagged(dsttag['name'],
-                               package=pkg['package_name'],
-                               inherit=False)
-        bump_builds = session.multiCall(batch=options.batch)
-        if not options.test:
-            session.multicall = True
-        for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
-            # remove all its builds first if there are any.
-            for build in builds:
-                # add missing 'name' field.
-                build['name'] = build['package_name']
-                chgbldlist.append(('[del]',
-                                   build['package_name'],
-                                   build['nvr'],
-                                   koji.BUILD_STATES[build['state']],
-                                   build['owner_name'],
-                                   build['tag_name']))
-                # so delete latest build(s) from new tag.
-                if not options.test:
-                    session.untagBuildBypass(dsttag['name'],
-                                             build,
-                                             force=options.force,
-                                             notify=options.notify)
-            # now safe to remove package itself since we resolved its builds.
-            chgpkglist.append(('[del]',
-                               pkg['package_name'],
-                               pkg['blocked'],
-                               pkg['owner_name'],
-                               pkg['tag_name']))
-            if not options.test:
-                session.packageListRemove(dsttag['name'],
-                                          pkg['package_name'],
-                                          force=False)
-        # mark as blocked inherited packages.
-        for pkg in inhrtpdellist:
-            chgpkglist.append(('[blk]',
-                               pkg['package_name'],
-                               pkg['blocked'],
-                               pkg['owner_name'],
-                               pkg['tag_name']))
-            if not options.test:
-                session.packageListBlock(dsttag['name'], pkg['package_name'])
-        if not options.test:
-            session.multiCall(batch=options.batch)
-        # DEL groups.
-        if not options.test:
-            session.multicall = True
-        for group in gdellist:
-            # Only delete a group that isn't inherited
-            if group['tag_id'] == dsttag['id']:
-                if not options.test:
-                    session.groupListRemove(dsttag['name'],
-                                            group['name'],
-                                            force=options.force)
-                for pkg in group['packagelist']:
-                    chggrplist.append(('[del]', pkg['package'], group['name']))
-            # mark as blocked inherited groups.
-            else:
-                if not options.test:
-                    session.groupListBlock(dsttag['name'], group['name'])
-                for pkg in group['packagelist']:
-                    chggrplist.append(('[blk]', pkg['package'], group['name']))
-        if not options.test:
-            session.multiCall(batch=options.batch)
-        # DEL group pkgs.
-        if not options.test:
-            session.multicall = True
-        for group in grpchanges:
-            for pkg in grpchanges[group]['dels']:
-                # Only delete a group that isn't inherited
-                if not grpchanges[group]['inherited']:
-                    chggrplist.append(('[del]', pkg, group))
-                    if not options.test:
-                        session.groupPackageListRemove(dsttag['name'],
-                                                       group,
-                                                       pkg,
-                                                       force=options.force)
+        if options.delete:
+            # DEL packages
+            ninhrtpdellist = []
+            inhrtpdellist = []
+            for pkg in pdellist:
+                if pkg['tag_name'] == dsttag['name']:
+                    ninhrtpdellist.append(pkg)
                 else:
-                    chggrplist.append(('[blk]', pkg, group))
+                    inhrtpdellist.append(pkg)
+            session.multicall = True
+            # delete only non-inherited packages.
+            for pkg in ninhrtpdellist:
+                # check if package have owned builds inside.
+                session.listTagged(dsttag['name'],
+                                   package=pkg['package_name'],
+                                   inherit=False)
+            bump_builds = session.multiCall(batch=options.batch)
+            if not options.test:
+                session.multicall = True
+            for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
+                # remove all its builds first if there are any.
+                for build in builds:
+                    # add missing 'name' field.
+                    build['name'] = build['package_name']
+                    chgbldlist.append(('[del]',
+                                       build['package_name'],
+                                       build['nvr'],
+                                       koji.BUILD_STATES[build['state']],
+                                       build['owner_name'],
+                                       build['tag_name']))
+                    # so delete latest build(s) from new tag.
                     if not options.test:
-                        session.groupPackageListBlock(dsttag['name'],
-                                                      group,
-                                                      pkg)
-        if not options.test:
-            session.multiCall(batch=options.batch)
+                        session.untagBuildBypass(dsttag['name'],
+                                                 build,
+                                                 force=options.force,
+                                                 notify=options.notify)
+                # now safe to remove package itself since we resolved its builds.
+                chgpkglist.append(('[del]',
+                                   pkg['package_name'],
+                                   pkg['blocked'],
+                                   pkg['owner_name'],
+                                   pkg['tag_name']))
+                if not options.test:
+                    session.packageListRemove(dsttag['name'],
+                                              pkg['package_name'],
+                                              force=False)
+            # mark as blocked inherited packages.
+            for pkg in inhrtpdellist:
+                chgpkglist.append(('[blk]',
+                                   pkg['package_name'],
+                                   pkg['blocked'],
+                                   pkg['owner_name'],
+                                   pkg['tag_name']))
+                if not options.test:
+                    session.packageListBlock(dsttag['name'], pkg['package_name'])
+            if not options.test:
+                session.multiCall(batch=options.batch)
+            # DEL groups.
+            if not options.test:
+                session.multicall = True
+            for group in gdellist:
+                # Only delete a group that isn't inherited
+                if group['tag_id'] == dsttag['id']:
+                    if not options.test:
+                        session.groupListRemove(dsttag['name'],
+                                                group['name'],
+                                                force=options.force)
+                    for pkg in group['packagelist']:
+                        chggrplist.append(('[del]', pkg['package'], group['name']))
+                # mark as blocked inherited groups.
+                else:
+                    if not options.test:
+                        session.groupListBlock(dsttag['name'], group['name'])
+                    for pkg in group['packagelist']:
+                        chggrplist.append(('[blk]', pkg['package'], group['name']))
+            if not options.test:
+                session.multiCall(batch=options.batch)
+            # DEL group pkgs.
+            if not options.test:
+                session.multicall = True
+            for group in grpchanges:
+                for pkg in grpchanges[group]['dels']:
+                    # Only delete a group that isn't inherited
+                    if not grpchanges[group]['inherited']:
+                        chggrplist.append(('[del]', pkg, group))
+                        if not options.test:
+                            session.groupPackageListRemove(dsttag['name'],
+                                                           group,
+                                                           pkg,
+                                                           force=options.force)
+                    else:
+                        chggrplist.append(('[blk]', pkg, group))
+                        if not options.test:
+                            session.groupPackageListBlock(dsttag['name'],
+                                                          group,
+                                                          pkg)
+            if not options.test:
+                session.multiCall(batch=options.batch)
     # print final list of actions.
     if options.verbose:
         pfmt = '    %-7s %-28s %-10s %-10s %-10s\n'
