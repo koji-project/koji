@@ -32,6 +32,7 @@ Contents
     runs_here
     server_bootstrap
     server_howto
+    kojid_conf
     using_the_koji_build_system
     profiles
     plugins
@@ -40,6 +41,7 @@ Contents
     writing_koji_code
     content_generators
     content_generator_metadata
+    configuring_jenkins
 
 HowTos
 ======
