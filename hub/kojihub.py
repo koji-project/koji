@@ -4702,10 +4702,10 @@ def edit_host(hostInfo, **kw):
     hostInfo specifies the host to edit, either as an integer (id)
     or a string (name).
     fields to be changed are specified as keyword parameters:
-    - arches
-    - capacity
-    - description
-    - comment
+    - arches (a space-separated string)
+    - capacity (float or int)
+    - description (string)
+    - comment (string)
 
     Returns True if changes are made to the database, False otherwise.
     """
@@ -10874,7 +10874,18 @@ class RootExports(object):
         return make_task(taskInfo['method'], args, arch=taskInfo['arch'], channel=channel['name'], priority=taskInfo['priority'])
 
     def addHost(self, hostname, arches, krb_principal=None):
-        """Add a host to the database"""
+        """
+        Add a builder host to the database.
+
+        :param str hostname: name for the host entry (fqdn recommended).
+        :param list arches: list of architectures this builder supports.
+        :param str krb_principal: (optional) a non-default kerberos principal
+                                  for the host.
+        :returns: new host id
+
+        If krb_principal is not given then that field will be generated
+        from the HostPrincipalFormat setting (if available).
+        """
         context.session.assertPerm('admin')
         if get_host(hostname):
             raise koji.GenericError('host already exists: %s' % hostname)
