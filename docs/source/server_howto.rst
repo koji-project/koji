@@ -622,6 +622,10 @@ respawning).
     ...
     MaxRequestsPerChild  100
     </IfModule>
+    <IfModule event.c>
+    ...
+    MaxRequestsPerChild  100
+    </IfModule>
 
 /etc/httpd/conf.d/kojihub.conf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -644,6 +648,10 @@ options should point to where the certificates are located on the hub.
     SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
     SSLVerifyClient require
     SSLVerifyDepth  10
+    # Python is currently not fully TLSv1.3 compatible and
+    #  older TLS versions are no longer advised
+    #  https://bugs.python.org/issue34670
+    SSLProtocol TLSv1.2
 
 /etc/koji-hub/hub.conf
 ^^^^^^^^^^^^^^^^^^^^^^
