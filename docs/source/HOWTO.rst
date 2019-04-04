@@ -76,8 +76,6 @@ Installing the Koji cli
 There is a single point of entry for most operations. The command is
 called 'koji' and is included in the main koji package.
 
-Repos/webpage TBD
-
 The koji tool authenticates to the central server using Kerberos, so you
 will need to have a valid Kerberos ticket to use many features. However,
 many of the read-only commands will work without authentication.
@@ -154,11 +152,6 @@ there is a build.log, start there. Otherwise, look at init.log
           <topdir>/work/tasks/420066/mockconfig.log
           <topdir>/work/tasks/420066/root.log
 
-
-Filing Bugs
------------
-
-bug tracking TBD
 
 Koji Architecture
 =================
@@ -331,10 +324,3 @@ line tool will print a list of valid commands and each command supports
       --scratch             Perform a scratch build
       --nowait              Don't wait on build
     ...
-
-Getting Involved
-================
-
-If you would like to be more involved with the Koji project...
-
-Project data TBD
