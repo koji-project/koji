@@ -190,7 +190,7 @@ Koji Components
 Koji is comprised of several components:
 
 -  **koji-hub** is the center of all Koji operations. It is an XML-RPC
-   server running under mod\_python in Apache. koji-hub is passive in
+   server running under mod\_wsgi in Apache. koji-hub is passive in
    that it only receives XML-RPC calls and relies upon the build daemons
    and other components to initiate communication. koji-hub is the only
    component that has direct access to the database and is one of the
@@ -205,7 +205,7 @@ Koji is comprised of several components:
    every build. kojid is written in Python and communicates with
    koji-hub via XML-RPC.
 
--  **koji-web** is a set of scripts that run in mod\_python and use the
+-  **koji-web** is a set of scripts that run in mod\_wsgi and use the
    Cheetah templating engine to provide an web interface to Koji.
    koji-web exposes a lot of information and also provides a means for
    certain operations, such as cancelling builds.
