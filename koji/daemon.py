@@ -926,7 +926,10 @@ class TaskManager(object):
         for pos, cap in enumerate(bin_avail):
             if our_avail >= cap:
                 break
-        rank = float(pos) / len(bin_avail)
+        if len(bin_avail) > 1:
+            rank = float(pos) / (len(bin_avail) - 1)
+        else:
+            rank = 0.0
         # so, 0.0 for highest available capacity, 1.0 for lowest
 
         delay = getattr(self.options, 'task_avail_delay', 180)
