@@ -1581,9 +1581,7 @@ def _untag_build(tag, build, user_id=None, strict=True, force=False):
     else:
         # use the user associated with the current session
         user = get_user(context.session.user_id, strict=True)
-    tag_id = tag['id']
-    build_id = build['id']
-    assert_tag_access(tag_id, user_id=user_id, force=force)
+    assert_tag_access(tag['id'], user_id=user_id, force=force)
     return _direct_untag_build(tag, build, user, strict, force)
 
 
