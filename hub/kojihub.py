@@ -7640,7 +7640,18 @@ def set_user_status(user, status):
 
 
 def grant_cg_access(user, cg, create=False):
-    """Grant user access to act as the given content generator"""
+    """
+    Grant user access to act as the given content generator
+
+    :param user: koji userid or username
+    :type user: int or str
+    :param cg: content generator id or name
+    :type cg: int or str
+    :param bool create: If True, and the requested cg name entry does not
+                        already exist, then Koji will create the content
+                        generator entry. In such a case, the cg parameter
+                        must be a string. The default is False.
+    """
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
@@ -7657,7 +7668,14 @@ def grant_cg_access(user, cg, create=False):
 
 
 def revoke_cg_access(user, cg):
-    """Revoke a user's access to act as the given content generator"""
+    """
+    Revoke a user's access to act as the given content generator
+
+    :param user: koji userid or username
+    :type user: int or str
+    :param cg: content generator id or name
+    :type cg: int or str
+    """
 
     context.session.assertPerm('admin')
     user = get_user(user, strict=True)
