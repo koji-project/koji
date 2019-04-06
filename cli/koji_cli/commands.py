@@ -987,6 +987,14 @@ def anon_handle_mock_config(goptions, session, args):
         name = options.name
     else:
         name = "%(tag_name)s-repo_%(repoid)s" % opts
+
+    event = None
+    if opts['repoid'] != 'latest':
+        event = session.repoInfo(opts['repoid'])['create_event']
+    buildcfg = session.getBuildConfig(opts['tag_name'], event=event)
+    if 'mock.package_manager' in buildcfg['extra']:
+        opts['package_manager'] = buildcfg['extra']['mock.package_manager']
+
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
         fo = open(options.ofile, 'w')
