@@ -2738,6 +2738,7 @@ def anon_handle_list_channels(goptions, session, args):
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     channels = session.listChannels()
+    channels = sorted(channels, key=lambda x: x['name'])
     session.multicall = True
     for channel in channels:
         session.listHosts(channelID=channel['id'])
