@@ -2135,7 +2135,7 @@ class ChainMavenTask(MultiPlatformTask):
                 del todo[package]
             try:
                 results = self.wait(to_list(running.keys()))
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+            except (six.moves.xmlrpc_client.Fault, koji.GenericError):
                 # One task has failed, wait for the rest to complete before the
                 # chainmaven task fails.  self.wait(all=True) should thrown an exception.
                 self.wait(all=True)
@@ -5026,9 +5026,21 @@ class NewRepoTask(BaseTaskHandler):
         #only shadowbuild tags should start with SHADOWBUILD, their repos are auto
         #expired.  so lets get the most recent expired tag for newRepo shadowbuild tasks.
         if tinfo['name'].startswith('SHADOWBUILD'):
-            oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_EXPIRED)
+            oldrepo_state = koji.REPO_EXPIRED
         else:
-            oldrepo = self.session.getRepo(tinfo['id'], state=koji.REPO_READY)
+            oldrepo_state = koji.REPO_READY
+        oldrepo = self.session.getRepo(tinfo['id'], state=oldrepo_state)
+        # If there is no old repo, try to find first usable repo in
+        # inheritance chain and use it as a source. oldrepo is not used if
+        # createrepo_update is not set, so don't waste call in such case.
+        if not oldrepo and self.options.createrepo_update:
+            tags = self.session.getFullInheritance(tinfo['id'])
+            # we care about best candidate which should be (not necessarily)
+            # something on higher levels. Sort tags according to depth.
+            for tag in sorted(tags, key=lambda x: x['currdepth']):
+                oldrepo = self.session.getRepo(tag['parent_id'], state=oldrepo_state)
+                if oldrepo:
+                    break
         subtasks = {}
         for arch in arches:
             arglist = [repo_id, arch, oldrepo]
@@ -5106,7 +5118,10 @@ class CreaterepoTask(BaseTaskHandler):
             cmd.extend(['-g', groupdata])
         #attempt to recycle repodata from last repo
         if pkglist and oldrepo and self.options.createrepo_update:
-            oldpath = self.pathinfo.repo(oldrepo['id'], rinfo['tag_name'])
+            # old repo could be from inherited tag, so path needs to be
+            # composed from that tag, not rinfo['tag_name']
+            oldrepo = self.session.repoInfo(oldrepo['id'], strict=True)
+            oldpath = self.pathinfo.repo(oldrepo['id'], oldrepo['tag_name'])
             olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
                 self.logger.warn("old repodata is missing: %s" % olddatadir)
