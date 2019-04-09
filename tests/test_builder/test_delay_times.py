@@ -23,22 +23,63 @@ class TestDelayTimes(unittest.TestCase):
     def test_check_avail_delay(self):
         self.options.task_avail_delay = 180  # same as default
 
-        # test skipped entry less than delay
+        # highest capacity, no skip entry
         start = 10000
         task = {'id': 100}
-        self.tm.skipped_tasks = {task['id']: start}
-        self.time.return_value = start + 100
-        self.assertEqual(self.tm.checkAvailDelay(task), True)
-
-        # and greater than delay
-        self.time.return_value = start + 200
-        self.tm.skipped_tasks = {task['id']: start}
-        self.assertEqual(self.tm.checkAvailDelay(task), False)
-
-        # and no entry
-        self.time.return_value = start
         self.tm.skipped_tasks = {}
-        self.assertEqual(self.tm.checkAvailDelay(task), True)
+        self.time.return_value = start
+        bin_avail = [10.0, 9.0, 8.0, 7.0]
+        our_avail = 10.0
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, False)
+
+        # not highest, no skip entry
+        our_avail = 9.0
+        self.tm.skipped_tasks = {}
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, True)
+
+        # last, but past full delay
+        self.tm.skipped_tasks = {task['id']: start}
+        our_avail = 7.0
+        self.options.task_avail_delay = 500
+        self.time.return_value = start + 500
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, False)
+
+        # last, but less than delay
+        self.tm.skipped_tasks = {task['id']: start}
+        our_avail = 7.0
+        self.time.return_value = start + 499
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, True)
+
+        # median, but less than scaled delay
+        self.tm.skipped_tasks = {task['id']: start}
+        bin_avail = [10.0, 9.0, 8.0, 7.0, 6.0]
+        our_avail = 8.0
+        # rank = 2/4 = 0.5, so adjusted delay is 250
+        self.time.return_value = start + 249
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, True)
+
+        # median, but past scaled delay
+        self.tm.skipped_tasks = {task['id']: start}
+        bin_avail = [10.0, 9.0, 8.0, 7.0, 6.0]
+        our_avail = 8.0
+        # rank = 2/4 = 0.5, so adjusted delay is 250
+        self.time.return_value = start + 251
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, False)
+
+        # only one in bin
+        self.tm.skipped_tasks = {}
+        bin_avail = [5.0]
+        our_avail = 5.0
+        self.time.return_value = start
+        chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
+        self.assertEqual(chk, False)
+
 
     def test_clean_delay_times(self):
         self.options.task_avail_delay = 180  # same as default
