@@ -382,8 +382,7 @@ line tool will print a list of valid commands and each command supports
     build                Build a package from source
     cancel-task          Cancel a task
     help                 List available commands
-    latest-build         Print the latest rpms for a tag
-    latest-pkg           Print the latest builds for a tag
+    latest-build         Print the latest builds for a tag
     [...] 
 
 ::
@@ -602,11 +601,11 @@ the owner of the package.
 Latest Builds
 '''''''''''''
 
-To see the latest builds for a tag, use the latest-pkg command:
+To see the latest builds for a tag, use the latest-build command:
 
 ::
 
-    $ koji latest-pkg --all dist-f14
+    $ koji latest-build --all dist-f14
 
 The output gives you not only the latest builds, but which tag they have
 been inherited from and who built them.

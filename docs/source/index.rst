@@ -191,11 +191,11 @@ package.
 Latest Builds
 -------------
 
-To see the latest builds for a tag, use the latest-pkg command:
+To see the latest builds for a tag, use the latest-build command:
 
 ::
 
-    $ koji latest-pkg --all dist-fc7
+    $ koji latest-build --all dist-fc7
 
     Build                                     Tag                   Built by
     ----------------------------------------  --------------------  ----------------
@@ -227,8 +227,7 @@ For example:
     build                Build a package from source
     cancel-task          Cancel a task
     help                 List available commands
-    latest-build         Print the latest rpms for a tag
-    latest-pkg           Print the latest builds for a tag
+    latest-build         Print the latest builds for a tag
     [...]
 
 ::

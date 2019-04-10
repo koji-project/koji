@@ -85,7 +85,7 @@ def get_options():
     """process options from command line and config file"""
 
     common_commands = ['build', 'help', 'download-build',
-                       'latest-pkg', 'search', 'list-targets']
+                       'latest-build', 'search', 'list-targets']
     usage = _("%%prog [global-options] command [command-options-and-arguments]"
                 "\n\nCommon commands: %s" % ', '.join(sorted(common_commands)))
     parser = OptionParser(usage=usage)
