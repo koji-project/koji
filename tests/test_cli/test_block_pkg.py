@@ -82,9 +82,9 @@ class TestBlockPkg(unittest.TestCase):
             session.mock_calls, [
                 call.getTag(tag),
                 call.listPackages(tagID=dsttag['id'], inherited=True),
-                call.packageListBlock(tag, packages[0], force=False),
-                call.packageListBlock(tag, packages[1], force=False),
-                call.packageListBlock(tag, packages[2], force=False),
+                call.packageListBlock(tag, packages[0]),
+                call.packageListBlock(tag, packages[1]),
+                call.packageListBlock(tag, packages[2]),
                 call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 

@@ -388,7 +388,12 @@ def handle_block_pkg(goptions, session, args):
         return ret
     session.multicall = True
     for package in args[1:]:
-        session.packageListBlock(tag, package, force=options.force)
+        # force is not supported on older hub, so use it only explicitly
+        # https://pagure.io/koji/issue/1388
+        if options.force:
+            session.packageListBlock(tag, package, force=options.force)
+        else:
+            session.packageListBlock(tag, package)
     session.multiCall(strict=True)
 
 
