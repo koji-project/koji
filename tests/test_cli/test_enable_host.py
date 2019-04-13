@@ -16,6 +16,13 @@ class TestEnableHost(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
+    def setUp(self):
+        self.error_format = """Usage: %s enable-host [options] hostname ...
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_enable_host(
@@ -96,13 +103,20 @@ class TestEnableHost(utils.CliTestCase):
         session.enableHost.return_value = True
         session.editHost.return_value = True
 
-        handle_enable_host(options, session, [])
-        activate_session_mock.assert_called_once()
+        expected = self.format_error_message("At least one host must be specified")
+        self.assert_system_exit(
+            handle_enable_host,
+            options,
+            session,
+            [],
+            stderr=expected,
+            activate_session=None)
+
+        activate_session_mock.assert_not_called()
         session.getHost.assert_not_called()
-        session.multiCall.assert_called()
+        session.multiCall.assert_not_called()
         session.enableHost.assert_not_called()
         session.editHost.assert_not_called()
-        self.assert_console_message(stdout, '')
 
     def test_handle_enable_host_help(self):
         """Test %s help message""" % handle_enable_host.__name__
