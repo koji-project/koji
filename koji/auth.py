@@ -398,8 +398,21 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError("Already logged in")
 
-        if context.environ.get('REMOTE_USER'):
-            username = context.environ.get('REMOTE_USER')
+        # we use GSS_NAME(krb_principal) to identify user
+        if context.environ.get('GSS_NAME'):
+            # it is kerberos principal rather than user's name.
+            username = context.environ.get('GSS_NAME')
+            # to support multipal realms, replace realm part with the default one.
+            atidx = username.find('@')
+            if atidx == -1:
+                raise koji.AuthError(
+                    'invalid Kerberos principal: %s' % username)
+            default_realm = context.opts.get('DefaultRealm')
+            if not default_realm:
+                raise koji.ConfigurationError(
+                    'DefaultRealm is not specified. Please contact the'
+                    ' administrator.')
+            username = username[:atidx] + '@' + default_realm
             client_dn = username
             authtype = koji.AUTHTYPE_GSSAPI
         else:
@@ -414,17 +427,29 @@ class Session(object):
             authtype = koji.AUTHTYPE_SSL
 
         if proxyuser:
-            proxy_dns = [dn.strip() for dn in context.opts.get('ProxyDNs', '').split('|')]
+            if authtype == koji.AUTHTYPE_GSSAPI:
+                delimiter = ','
+                proxy_opt = 'ProxyPrincipals'
+            else:
+                delimiter = '|'
+                proxy_opt = 'ProxyDNs'
+            proxy_dns = [dn.strip() for dn in context.opts.get(proxy_opt, '').split(delimiter)]
             if client_dn in proxy_dns:
-                # the SSL-authenticated user authorized to login other users
+                # the user authorized to login other users
                 username = proxyuser
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
 
-        user_id = self.getUserId(username)
+        if authtype == koji.AUTHTYPE_GSSAPI:
+            user_id = self.getUserIdFromKerberos(username)
+        else:
+            user_id = self.getUserId(username)
         if not user_id:
             if context.opts.get('LoginCreatesUser'):
-                user_id = self.createUser(username)
+                if authtype == koji.AUTHTYPE_GSSAPI:
+                    user_id = self.createUserFromKerberos(username)
+                else:
+                    user_id = self.createUser(username)
             else:
                 raise koji.AuthError('Unknown user: %s' % username)
 
