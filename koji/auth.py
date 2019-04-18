@@ -398,7 +398,7 @@ class Session(object):
         if self.logged_in:
             raise koji.AuthError("Already logged in")
 
-        # we use GSS_NAME(krb_principal) to identify user
+        # we use REMOTE_USER to identify user
         if context.environ.get('REMOTE_USER'):
             # it is kerberos principal rather than user's name.
             username = context.environ.get('REMOTE_USER')
