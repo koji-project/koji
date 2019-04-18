@@ -429,13 +429,13 @@ class Session(object):
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
 
-        if authtype == koji.AUTHTYPE_GSSAPI:
+        if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
             user_id = self.getUserIdFromKerberos(username)
         else:
             user_id = self.getUserId(username)
         if not user_id:
             if context.opts.get('LoginCreatesUser'):
-                if authtype == koji.AUTHTYPE_GSSAPI:
+                if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
                     user_id = self.createUserFromKerberos(username)
                 else:
                     user_id = self.createUser(username)
