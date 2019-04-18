@@ -399,20 +399,9 @@ class Session(object):
             raise koji.AuthError("Already logged in")
 
         # we use GSS_NAME(krb_principal) to identify user
-        if context.environ.get('GSS_NAME'):
+        if context.environ.get('REMOTE_USER'):
             # it is kerberos principal rather than user's name.
-            username = context.environ.get('GSS_NAME')
-            # to support multipal realms, replace realm part with the default one.
-            atidx = username.find('@')
-            if atidx == -1:
-                raise koji.AuthError(
-                    'invalid Kerberos principal: %s' % username)
-            default_realm = context.opts.get('DefaultRealm')
-            if not default_realm:
-                raise koji.ConfigurationError(
-                    'DefaultRealm is not specified. Please contact the'
-                    ' administrator.')
-            username = username[:atidx] + '@' + default_realm
+            username = context.environ.get('REMOTE_USER')
             client_dn = username
             authtype = koji.AUTHTYPE_GSSAPI
         else:

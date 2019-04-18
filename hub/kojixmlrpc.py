@@ -422,7 +422,6 @@ def load_config(environ):
         ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
         ['AllowedKrbRealms', 'string', '*'],
-        ['DefaultRealm', 'string', None],
 
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],
