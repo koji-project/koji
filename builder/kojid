@@ -739,6 +739,9 @@ class BuildRoot(object):
             h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
             h.setopt(librepo.LRO_URLS, [repo_url])
             h.setopt(librepo.LRO_DESTDIR, tmpdir)
+            # We are using this just to find out location of 'origin',
+            # we don't even need to download it since we use openRemoteFile
+            h.setopt(librepo.LRO_YUMDLIST, [])
             h.perform(r)
             pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
             koji.util.rmtree(tmpdir)
