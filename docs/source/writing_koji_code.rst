@@ -174,6 +174,62 @@ can fix this behavior in ``koji/__init__.py`` in the \_taskLabel
 function. Here you can define the string(s) to display when Koji
 receives status on a task. That is the return value.
 
+Using multiCall
+~~~~~~~~~~~~~~~
+
+Koji supports a multicall feature where many calls are passed to the
+server wrapped as a single call. This can reduce the overhead when a
+large number of related calls need to be made.
+
+The ``ClientSession`` class provides support for this and there are several
+examples in the existing client code. Some examples in the cli include:
+``edit-host``, ``add-pkg``, ``disable-host``, and ``list-hosts``.
+
+To use the feature, you first set the ``multicall`` attribute of the session
+to ``True``. Once this is done, the session will not immediately process
+further calls but will instead store their parameters for later. To tell the
+session to process them, use the ``multiCall()`` method (note the
+capitalization).
+
+The ``multiCall()`` method returns a list of results, one for each call
+in the multicall. Each result with either be:
+
+1. the result of the call wrapped in a singleton list
+2. a dictionary representing the error raised by the call
+
+Here is a simple example from the koji-tools package:
+
+::
+
+    session.multicall = True
+    for host in hosts:
+        session.listChannels(hostID=host['id'])
+    for host, [channels] in zip(hosts, session.multiCall(strict=True)):
+        host['channels'] = channels
+
+Note that when using multicall for informational calls, it is important
+to keep track of which result is which. Here we use the existing hosts
+list as a unifying index. Python's ``zip`` function is useful here.
+Also note the unpacking of the singletons.
+
+The ``multiCall()`` method supports a few options. Here is its signature:
+
+::
+
+    multiCall(strict=False, batch=None):
+
+If the strict option is set to True, then this method will raise the
+first error it encounters, if any.
+
+If the batch option is set to a number greater than zero, the calls
+will be spread across multiple multicall batches of at most this
+number.
+
+The hub processes multicalls in a *single database transaction*. Note that if
+the ``batch`` option is used, then each batch is a separate multicall in the
+api and therefore a separate transaction.
+
+
 Koji-Hub
 --------
 
