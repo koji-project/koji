@@ -5121,6 +5121,9 @@ def new_build(data):
         if not name:
             raise koji.GenericError("No name or package id provided for build")
         data['pkg_id'] = new_package(name, strict=False)
+    if data.get('owner'):
+        # check, that user exists (and convert name to id)
+        data['owner'] = get_user(data['owner'], strict=True)['id']
     for f in ('version', 'release', 'epoch'):
         if f not in data:
             raise koji.GenericError("No %s value for build" % f)
