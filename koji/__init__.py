@@ -236,7 +236,7 @@ REPO_EXPIRED = REPO_STATES['EXPIRED']
 REPO_DELETED = REPO_STATES['DELETED']
 REPO_PROBLEM = REPO_STATES['PROBLEM']
 
-REPO_MERGE_MODES = set(['koji', 'simple'])
+REPO_MERGE_MODES = set(['koji', 'simple', 'dumb'])
 
 # buildroot states
 BR_STATES = Enum((
