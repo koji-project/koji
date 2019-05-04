@@ -2951,12 +2951,12 @@ class MultiCallSession(object):
         return self._callMethod(name, args, opts)
 
     def call_all(self, strict=None, batch=None):
-        """Perform all calls in a single multicall
+        """Perform all calls in one or more multiCall batches
 
-        Returns a the hub's multiCall result, which is a list of results for
-        each call. For successful calls, the entry will be a singleton list.
-        For calls that raised a fault, the entry will be a dictionary with
-        keys "faultCode", "faultString", and "traceback".
+        Returns a list of results for each call. For successful calls, the
+        entry will be a singleton list. For calls that raised a fault, the
+        entry will be a dictionary with keys "faultCode", "faultString",
+        and "traceback".
         """
 
         if strict is None:
