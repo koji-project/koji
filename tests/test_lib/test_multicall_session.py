@@ -23,4 +23,11 @@ class TestNewMultiCall(unittest.TestCase):
                 ret[i] = m.echo(i)
         self._callMethod.assert_called_once()
         self.assertEqual(self._callMethod.call_args[0][0], 'multiCall')
-        print self._callMethod.call_args
+        self.assertEqual(self._callMethod.call_args[0][2], {})
+        _calls = self._callMethod.call_args[0][1]
+        if not isinstance(_calls, tuple) or len(_calls) != 1:
+            raise Exception('multiCall args not wrapped in singleton')
+        calls = _calls[0]
+        for i in range(10):
+            self.assertEqual(calls[i]['methodName'], "echo")
+            self.assertEqual(calls[i]['params'], (i,))
