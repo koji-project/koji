@@ -48,10 +48,13 @@ class TestUnblockPkg(utils.CliTestCase):
         activate_session_mock.assert_not_called()
 
         # Case 2. run unlock
+        multicall = mock.MagicMock()
+        multicall.__enter__.return_value = multicall
+        session.multicall.return_value = multicall
         calls = [mock.call('tag', pkg) for pkg in arguments[1:]]
         handle_unblock_pkg(options, session, arguments)
         activate_session_mock.assert_called_with(session, options)
-        session.packageListUnblock.assert_has_calls(calls)
+        multicall.packageListUnblock.assert_has_calls(calls)
         self.assert_console_message(stdout, '')
 
     def test_handle_unblock_pkg_help(self):

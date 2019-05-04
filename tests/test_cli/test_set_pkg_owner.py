@@ -47,10 +47,13 @@ class TestSetPkgOwner(utils.CliTestCase):
         activate_session_mock.assert_not_called()
 
         # Case 2. run set owner
+        multicall = mock.MagicMock()
+        multicall.__enter__.return_value = multicall
+        session.multicall.return_value = multicall
         calls = [mock.call('tag', pkg, 'owner', force=True) for pkg in arguments[3:]]
         handle_set_pkg_owner(options, session, arguments)
         activate_session_mock.assert_called_with(session, options)
-        session.packageListSetOwner.assert_has_calls(calls)
+        multicall.packageListSetOwner.assert_has_calls(calls)
         self.assert_console_message(stdout, '')
 
     def test_handle_set_pkg_owner_help(self):
