@@ -2928,9 +2928,10 @@ class MultiCallSession(object):
 
     """Manages a single multicall, acts like a session"""
 
-    def __init__(self, session, strict=False):
+    def __init__(self, session, strict=False, batch=None):
         self._session = session
-        self.strict = strict
+        self._strict = strict
+        self._batch = batch
         self._calls = []
 
     def __getattr__(self, name):
@@ -2949,7 +2950,7 @@ class MultiCallSession(object):
         """compatibility wrapper for _callMethod"""
         return self._callMethod(name, args, opts)
 
-    def call_all(self, strict=None):
+    def call_all(self, strict=None, batch=None):
         """Perform all calls in a single multicall
 
         Returns a the hub's multiCall result, which is a list of results for
@@ -2959,17 +2960,26 @@ class MultiCallSession(object):
         """
 
         if strict is None:
-            strict = self.strict
+            strict = self._strict
+        if batch is None:
+            batch = self._batch
 
         if len(self._calls) == 0:
             return []
 
         calls = self._calls
         self._calls = []
-        args = ([c.format() for c in calls],)
-        results = self._session._callMethod('multiCall', args, {})
-        for call, result in zip(calls, results):
-            call._result = result
+        if batch:
+            batches = [calls[i:i+batch] for i in range(0, len(calls), batch)]
+        else:
+            batches = [calls]
+        results = []
+        for calls in batches:
+            args = ([c.format() for c in calls],)
+            _results = self._session._callMethod('multiCall', args, {})
+            for call, result in zip(calls, _results):
+                call._result = result
+            results.extend(_results)
         if strict:
             # check for faults and raise first one
             for entry in results:
