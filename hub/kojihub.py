@@ -11898,7 +11898,7 @@ class Host(object):
 
     def isEnabled(self):
         """Return whether this host is enabled or not."""
-        query = """SELECT enabled FROM host_config WHERE id = %(id)i AND active IS TRUE"""
+        query = """SELECT enabled FROM host_config WHERE host_id = %(id)i AND active IS TRUE"""
         return _singleValue(query, {'id': self.id}, strict=True)
 
 class HostExports(object):
