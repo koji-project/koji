@@ -74,7 +74,7 @@ test:
 	    --source . /usr/bin/nosetests
 	coverage2 report
 	coverage2 html
-	@echo Full coverage report in htmlcov/index.html
+	@echo Full coverage report at file://$(CURDIR)/htmlcov/index.html
 
 test3:
 	coverage3 erase
@@ -83,7 +83,7 @@ test3:
 	    /usr/bin/nosetests-3
 	coverage3 report --rcfile .coveragerc3
 	coverage3 html --rcfile .coveragerc3
-	@echo Full coverage report at file://${PWD}/htmlcov/index.html
+	@echo Full coverage report at file://$(CURDIR)/htmlcov/index.html
 
 test-tarball:
 	@rm -rf .koji-$(VERSION)
