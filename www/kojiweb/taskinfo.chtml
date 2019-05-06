@@ -2,7 +2,6 @@
 #from kojiweb import util
 #from six.moves.urllib.parse import quote
 #import cgi
-#from datetime import datetime
 #import time
 
 #def printValue($key, $value, $sep=', ')
