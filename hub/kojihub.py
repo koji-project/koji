@@ -2561,6 +2561,7 @@ def dist_repo_init(tag, keys, task_opts):
         # symlink from main volume to this one
         basedir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
         relpath = os.path.relpath(repodir, os.path.dirname(basedir))
+        koji.ensuredir(os.path.dirname(basedir))
         os.symlink(relpath, basedir)
     # handle comps
     if task_opts.get('comps'):
