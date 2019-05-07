@@ -8349,6 +8349,15 @@ def policy_get_build_tags(data):
     return tags
 
 
+def policy_get_build_types(data):
+    if 'btypes' in data:
+        # btypes can be already populated by caller
+        return set(data['btypes'])
+    if 'build' in data:
+        binfo = get_build(data['build'], strict=True)
+        return set(get_build_type(binfo).keys())
+    return set()
+
 class NewPackageTest(koji.policy.BaseSimpleTest):
     """Checks to see if a package exists yet"""
     name = 'is_new_package'
@@ -8501,6 +8510,18 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
             if multi_fnmatch(tagname, args):
                 return True
         #otherwise...
+        return False
+
+
+class BuildTypeTest(koji.policy.BaseSimpleTest):
+    """Check the build type(s) of the build"""
+
+    name = 'buildtype'
+    def run(self, data):
+        args = self.str.split()[1:]
+        for btype in policy_get_build_types(data):
+            if multi_fnmatch(btype, args):
+                return True
         return False
 
 
