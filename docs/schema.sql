@@ -728,7 +728,6 @@ CREATE TABLE build_notifications_block (
     tag_id INTEGER REFERENCES tag (id)
 ) WITHOUT OIDS;
 
-
 GRANT SELECT ON build, package, task, tag,
 tag_listing, tag_config, tag_inheritance, tag_packages,
 rpminfo TO PUBLIC;
