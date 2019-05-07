@@ -8,8 +8,6 @@ import kojihub
 
 
 class TestGetBuildNotifications(unittest.TestCase):
-
-
     @mock.patch('kojihub.get_user', return_value={'id': 1})
     @mock.patch('kojihub.get_build_notifications')
     def test_loggedin_user(self, get_build_notifications, get_user):

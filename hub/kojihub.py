@@ -7597,21 +7597,24 @@ def get_notification_recipients(build, tag_id, state):
         return None
 
     # apply the out outs
-    user_ids = [r['user_id'] for r in recipients]
-    clauses = ['user_id in %(user_ids)s']
-    if build:
-        package_id = build['package_id']
-        query.clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+    user_ids = set([r['user_id'] for r in recipients])
+    if user_ids:
+        clauses = ['user_id IN %(user_ids)s']
+        if build:
+            package_id = build['package_id']
+            clauses.append('package_id = %(package_id)i OR package_id IS NULL')
+        else:
+            clauses.append('package_id IS NULL')
+        if tag_id:
+            clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
+        else:
+            clauses.append('tag_id IS NULL')
+        query = QueryProcessor(columns=['user_id'], clauses=clauses,
+                tables=['build_notifications_block'], values=locals())
+        optouts = [r['user_id'] for r in query.execute()]
+        optouts = set(optouts)
     else:
-        query.clauses.append('package_id IS NULL')
-    if tag_id:
-        query.clauses.append('tag_id = %(tag_id)i OR tag_id IS NULL')
-    else:
-        query.clauses.append('tag_id IS NULL')
-    query = QueryProcessor(columns=['user_id'], clauses=clauses,
-            tables=['build_notifications_block'], values=locals())
-    optouts = [r['user_id'] for r in query.execute()]
-    optouts = set(optouts)
+        optouts = set()
 
     emails = [r['email'] for r in recipients if r['user_id'] not in optouts]
     return list(set(emails))
