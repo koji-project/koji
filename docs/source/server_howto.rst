@@ -588,6 +588,7 @@ Configuration Files
 * ``/etc/httpd/conf/httpd.conf``
 * ``/etc/httpd/conf.d/kojihub.conf``
 * ``/etc/httpd/conf.d/ssl.conf`` (when using ssl auth)
+* ``/etc/krb5.conf`` (when using GSSAPI auth)
 
 Install koji-hub
 ----------------
@@ -651,6 +652,24 @@ options should point to where the certificates are located on the hub.
     #  older TLS versions are no longer advised
     #  https://bugs.python.org/issue34670
     SSLProtocol TLSv1.2
+
+/etc/krb5.conf
+^^^^^^^^^^^^^^
+
+If Apache's mod_auth_gssapi is enabled on hub, ``auth_to_local`` rules should
+be configured as below.
+
+::
+
+    [realms]
+      EXAMPLE.COM = {
+        ...
+        auth_to_local = RULE:[1:$1@$0](.*@OTHER\.COM)s/@.*/@EXAMPLE.COM/
+        auth_to_local = RULE:[1:$1@$0](.*@EXAMPLE\.COM)
+        auth_to_local = RULE:[2:$1/$2@$0](.*@OTHER\.COM)s/@.*/@EXAMPLE.COM/
+        auth_to_local = RULE:[2:$1/$2@$0](.*@EXAMPLE\.COM)
+        ...
+      }
 
 /etc/koji-hub/hub.conf
 ^^^^^^^^^^^^^^^^^^^^^^
