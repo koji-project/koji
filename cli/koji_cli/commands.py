@@ -2771,6 +2771,7 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print header information"))
+    parser.add_option("--show-channels", action="store_true", help=_("Show host's channels"))
     (options, args) = parser.parse_args(args)
     opts = {}
     activate_session(session, goptions)
@@ -2809,10 +2810,25 @@ def anon_handle_list_hosts(goptions, session, args):
         host['ready'] = yesno(host['ready'])
         host['arches'] = ','.join(host['arches'].split())
 
+    # pull hosts' channels
+    if options.show_channels:
+        session.multicall = True
+        for host in hosts:
+            session.listChannels(host['id'])
+        for host, [channels] in zip(hosts, session.multiCall()):
+            host['channels'] = ', '.join(sorted([c['name'] for c in channels]))
+
+    longest_host = max([len(h['name']) for h in hosts])
     if not options.quiet:
-        print("Hostname                     Enb Rdy Load/Cap  Arches           Last Update")
+        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(longest_host=longest_host, hostname='Hostname')
+        if options.show_channels:
+            hdr += "         Channels"
+        print(hdr)
+    mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f %%(arches)-16s %%(update)s" % longest_host
+    if options.show_channels:
+        mask += " %(channels)s"
     for host in hosts:
-        print("%(name)-28s %(enabled)-3s %(ready)-3s %(task_load)4.1f/%(capacity)-4.1f %(arches)-16s %(update)s" % host)
+        print(mask % host)
 
 
 def anon_handle_list_pkgs(goptions, session, args):
