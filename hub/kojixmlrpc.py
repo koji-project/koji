@@ -422,6 +422,8 @@ def load_config(environ):
         ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
         ['AllowedKrbRealms', 'string', '*'],
+        # TODO: this option should be removed in future release
+        ['DisableGSSAPIProxyDNFallback', 'boolean', False],
 
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],

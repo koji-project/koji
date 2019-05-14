@@ -423,6 +423,15 @@ class Session(object):
                 delimiter = '|'
                 proxy_opt = 'ProxyDNs'
             proxy_dns = [dn.strip() for dn in context.opts.get(proxy_opt, '').split(delimiter)]
+
+            # backwards compatible for GSSAPI.
+            # in old way, proxy user whitelist is ProxyDNs.
+            # TODO: this should be removed in future release
+            if authtype == koji.AUTHTYPE_GSSAPI and not context.opts.get(
+                    'DisableGSSAPIProxyDNFallback', False):
+                proxy_dns += [dn.strip() for dn in
+                              context.opts.get('ProxyDNs', '').split('|')]
+
             if client_dn in proxy_dns:
                 # the user authorized to login other users
                 username = proxyuser
