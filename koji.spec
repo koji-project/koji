@@ -589,6 +589,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/koji-gc
 %dir /etc/koji-gc
 %config(noreplace) /etc/koji-gc/koji-gc.conf
+%config(noreplace) /etc/koji-gc/email.tpl
 %{_sbindir}/koji-shadow
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf

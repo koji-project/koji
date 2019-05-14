@@ -22,6 +22,7 @@ _install:
 
 	mkdir -p $(DESTDIR)/etc/koji-gc
 	install -p -m 644 koji-gc.conf $(DESTDIR)/etc/koji-gc/koji-gc.conf
+	install -p -m 644 email.tpl $(DESTDIR)/etc/koji-gc/email.tpl
 
 	mkdir -p $(DESTDIR)/etc/koji-shadow
 	install -p -m 644 koji-shadow.conf $(DESTDIR)/etc/koji-shadow/koji-shadow.conf

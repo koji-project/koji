@@ -26,6 +26,7 @@ import time
 import six.moves.xmlrpc_client  # for ProtocolError and Fault
 import six.moves.configparser
 from six.moves import email_mime_text as MIMEText
+from string import Template
 
 
 def _(args):
@@ -75,6 +76,8 @@ def get_options():
                       help=_("Email domain appended to Koji username for notifications"))
     parser.add_option("--from-addr", default="Koji Build System <buildsys@example.com>",
                       help=_("From address for notifications"))
+    parser.add_option("--email-template", default="/etc/koji-gc/email.tpl",
+                      help=_("notification template"))
     parser.add_option("--action", help=_("action(s) to take"))
     parser.add_option("--delay", metavar="INTERVAL", default = '5 days',
                       help="time before eligible builds are placed in trashcan")
@@ -139,6 +142,7 @@ def get_options():
             ['weburl', None, 'string'],
             ['smtp_host', None, 'string'],
             ['from_addr', None, 'string'],
+            ['email_template', None, 'string'],
             ['email_domain', None, 'string'],
             ['mail', None, 'boolean'],
             ['delay', None, 'string'],
@@ -214,6 +218,10 @@ def get_options():
             fn = cert_defaults[name]
             if os.path.exists(fn):
                 setattr(options, name, fn)
+
+    template = getattr(options, 'email_template', None)
+    if not template or not os.access(template, os.F_OK):
+        parser.error(_("No such file: %s") % template)
 
     return options, args
 
@@ -380,23 +388,20 @@ def send_warning_notice(owner_name, builds):
     if not builds:
         print("Warning: empty build list. No notice sent")
         return
-    head = """\
-The following build(s) are unreferenced and have been marked for
-deletion. They will be held in the trashcan tag for a grace period.
-At the end of that period they will be deleted permanently. This
-garbage collection is a normal part of build system operation.
-Please see the following url for more information:
 
-    https://fedoraproject.org/wiki/Koji/GarbageCollection"""
+    with open(options.email_template, 'r') as f:
+        tpl = Template(f.read())
+
     fmt="""\
 Build: %%(name)s-%%(version)s-%%(release)s
 %s/buildinfo?buildID=%%(id)i""" % options.weburl
     middle = '\n\n'.join([fmt % b for b in builds])
-    tail = """\
-If you would like to protect any of these builds from deletion, please
-refer to the document linked above for instructions."""
 
-    msg = MIMEText.MIMEText('\n\n'.join([head, middle, tail]))
+    msg = MIMEText.MIMEText(tpl.safe_substitute(
+        owner = owner_name,
+        builds = middle,
+    ))
+
     if len(builds) == 1:
         msg['Subject'] = "1 build marked for deletion"
     else:
