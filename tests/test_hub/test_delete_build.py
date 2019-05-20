@@ -59,3 +59,18 @@ class TestDeleteBuild(unittest.TestCase):
                     retval[ref] = time.time()+100
                     refs.return_value = retval
                     self.assertFalse(kojihub.delete_build(build='', strict=False))
+
+    @mock.patch('kojihub._delete_build')
+    @mock.patch('kojihub.build_references')
+    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.get_build')
+    def test_delete_build_lazy_refs(self, build, context, buildrefs, _delete):
+        '''Test that we can handle lazy return from build_references'''
+        context.session.assertPerm = mock.MagicMock()
+        buildrefs.return_value = {'tags': []}
+        binfo = {'id': 'BUILD ID'}
+        build.return_value = binfo
+        kojihub.delete_build(build=binfo, strict=True)
+
+        # no build refs, so we should have called _delete_build
+        _delete.assert_called_with(binfo)
