@@ -11856,7 +11856,7 @@ class Host(object):
         id = self.id
         #get arch and channel info for host
         q = """
-        SELECT arches FROM host_config WHERE id = %(id)s AND active IS TRUE
+        SELECT arches FROM host_config WHERE host_id = %(id)s AND active IS TRUE
         """
         c.execute(q, locals())
         arches = c.fetchone()[0].split()
