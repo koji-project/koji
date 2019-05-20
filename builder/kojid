@@ -765,7 +765,7 @@ class BuildRoot(object):
             #at this point we know there were external repos at the create event,
             #so there should be an origins file.
             origin_idx = {}
-            # dont' use 'with GzipFile' as it is not supported on py2.6
+            # don't use 'with GzipFile' as it is not supported on py2.6
             fo2 = GzipFile(fileobj=fo, mode='r')
             if six.PY3:
                 fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
