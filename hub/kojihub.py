@@ -7221,8 +7221,8 @@ def build_references(build_id, limit=None, lazy=False):
         query = QueryProcessor(
                     columns=['max(standard_buildroot.create_event)'],
                     tables=['buildroot_archives'],
-                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
-                    clauses=['buildroot_listing.archive_id IN %(archive_ids)s'],
+                    joins=['standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id'],
+                    clauses=['buildroot_archives.archive_id IN %(archive_ids)s'],
                     values={'archive_ids': build_archive_ids})
         event_id2 = query.singleValue(strict=False) or 0
         event_id = max(event_id, event_id2)
