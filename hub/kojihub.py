@@ -7266,31 +7266,32 @@ def delete_build(build, strict=True, min_ref_age=604800):
     context.session.assertPerm('admin')
     binfo = get_build(build, strict=True)
     refs = build_references(binfo['id'], limit=10, lazy=True)
-    if refs['tags']:
+    if refs.get('tags'):
         if strict:
             raise koji.GenericError("Cannot delete build, tagged: %s" % refs['tags'])
         return False
-    if refs['rpms']:
+    if refs.get('rpms'):
         if strict:
             raise koji.GenericError("Cannot delete build, used in buildroots: %s" % refs['rpms'])
         return False
-    if refs['archives']:
+    if refs.get('archives'):
         if strict:
             raise koji.GenericError("Cannot delete build, used in archive buildroots: %s" % refs['archives'])
         return False
-    if refs['images']:
+    if refs.get('component_of'):
         if strict:
-            raise koji.GenericError("Cannot delete build, used in images: %r" % refs['images'])
+            raise koji.GenericError("Cannot delete build, used as component of: %r" % refs['component_of'])
         return False
-    if refs['last_used']:
+    if refs.get('last_used'):
         age = time.time() - refs['last_used']
         if age < min_ref_age:
             if strict:
                 raise koji.GenericError("Cannot delete build, used in recent buildroot")
             return False
-    #otherwise we can delete it
+    # otherwise we can delete it
     _delete_build(binfo)
     return True
+
 
 def _delete_build(binfo):
     """Delete a build (no reference checks)
