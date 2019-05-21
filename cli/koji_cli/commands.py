@@ -2824,7 +2824,7 @@ def anon_handle_list_hosts(goptions, session, args):
         if options.show_channels:
             hdr += "         Channels"
         print(hdr)
-    mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f %%(arches)-16s %%(update)s" % longest_host
+    mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f %%(arches)-16s %%(update)-19s" % longest_host
     if options.show_channels:
         mask += " %(channels)s"
     for host in hosts:
