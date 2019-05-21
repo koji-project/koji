@@ -1,3 +1,4 @@
+# coding: utf-8
 from __future__ import absolute_import
 import mock
 try:
@@ -197,3 +198,40 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         self.get_perm_id.assert_called_once()
         self._singleValue.assert_called_once()
         self.assertEqual(cm.exception.args[0], 'Name newtag already taken by tag 2')
+
+    def test_invalid_archs(self):
+        self.get_tag.return_value = {
+            'create_event': 42,
+            'creator_id': 23,
+            'arches': 'arch1 arch2',
+            'locked': True,
+            'maven_include_all': True,
+            'maven_support': True,
+            'perm_id': None,
+            'tag_id': 333,
+            'name': 'newtag',
+            'id': 345,
+        }
+
+        # valid
+        kwargs = {
+            'name': 'newtag',
+            'arches': 'valid_arch',
+        }
+        kojihub._edit_tag('tag', **kwargs)
+
+        # invalid 1
+        kwargs['arches'] = u'ěšč'
+        with self.assertRaises(koji.GenericError):
+            kojihub._edit_tag('tag', **kwargs)
+
+        # invalid 2
+        kwargs['arches'] = u'arch1;arch2'
+        with self.assertRaises(koji.GenericError):
+            kojihub._edit_tag('tag', **kwargs)
+
+        # invalid 2
+        kwargs['arches'] = u'arch1,arch2'
+        with self.assertRaises(koji.GenericError):
+            kojihub._edit_tag('tag', **kwargs)
+

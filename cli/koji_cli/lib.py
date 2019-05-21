@@ -20,6 +20,8 @@ except ImportError:  # pragma: no cover
 
 import koji
 from koji.util import to_list
+# import parse_arches to current namespace for backward compatibility
+from koji import parse_arches
 
 # for compatibility with plugins based on older version of lib
 # Use optparse imports directly in new code.
@@ -130,26 +132,6 @@ def print_task_recurse(task,depth=0):
     print_task(task,depth)
     for child in task.get('children',()):
         print_task_recurse(child,depth+1)
-
-
-def parse_arches(arches, to_list=False):
-    """Normalize user input for a list of arches.
-
-    This method parses a single comma- or space-separated string of arches and
-    returns a space-separated string.
-
-    :param str arches: comma- or space-separated string of arches, eg.
-                       "x86_64,ppc64le", or "x86_64 ppc64le"
-    :param bool to_list: return a list of each arch, instead of a single
-                         string. This is False by default.
-    :returns: a space-separated string like "x86_64 ppc64le", or a list like
-              ['x86_64', 'ppc64le'].
-    """
-    arches = arches.replace(',', ' ').split()
-    if to_list:
-        return arches
-    else:
-        return ' '.join(arches)
 
 
 class TaskWatcher(object):

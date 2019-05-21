@@ -1,8 +1,6 @@
+# coding: utf-8
 from __future__ import absolute_import
-import copy
 import mock
-import shutil
-import tempfile
 try:
     import unittest2 as unittest
 except ImportError:
@@ -55,7 +53,7 @@ class TestCreateTag(unittest.TestCase):
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'tag_config')
         values = {
-            'arches': None,
+            'arches': '',
             'create_event': 42,
             'creator_id': 23,
             'locked': False,
@@ -67,3 +65,20 @@ class TestCreateTag(unittest.TestCase):
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
         insert = self.inserts[0]
+
+    def test_invalid_archs(self):
+        self.get_tag.return_value = None
+        self.get_tag_id.return_value = 99
+        self.context.event_id = 42
+        self.context.session.user_id = 23
+
+        with self.assertRaises(koji.GenericError):
+            kojihub.create_tag('newtag', arches=u'ěšč')
+
+        with self.assertRaises(koji.GenericError):
+            kojihub.create_tag('newtag', arches=u'arch1;arch2')
+
+        with self.assertRaises(koji.GenericError):
+            kojihub.create_tag('newtag', arches=u'arch1,arch2')
+
+        self.assertEqual(len(self.inserts), 0)
