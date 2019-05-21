@@ -7123,6 +7123,7 @@ def handle_dist_repo(options, session, args):
             'multiple times.'))
     parser.add_option('--event', type='int',
         help=_('Use tag content at event'))
+    parser.add_option("--volume", help=_("Generate repo on given volume"))
     parser.add_option('--non-latest', dest='latest', default=True,
         action='store_false', help='Include older builds, not just the latest')
     parser.add_option('--multilib', default=None, metavar="CONFIG",
@@ -7207,6 +7208,7 @@ def handle_dist_repo(options, session, args):
         'comps': task_opts.comps,
         'delta': old_repos,
         'event': task_opts.event,
+        'volume': task_opts.volume,
         'inherit': not task_opts.noinherit,
         'latest': task_opts.latest,
         'multilib': task_opts.multilib,

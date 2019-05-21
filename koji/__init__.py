@@ -1919,9 +1919,9 @@ class PathInfo(object):
         """Return the directory where a repo belongs"""
         return self.topdir + ("/repos/%(tag_str)s/%(repo_id)s" % locals())
 
-    def distrepo(self, repo_id, tag):
+    def distrepo(self, repo_id, tag, volume=None):
         """Return the directory with a dist repo lives"""
-        return os.path.join(self.topdir, 'repos-dist', tag, str(repo_id))
+        return self.volumedir(volume) + '/repos-dist/%s/%s' % (tag, repo_id)
 
     def repocache(self, tag_str):
         """Return the directory where a repo belongs"""

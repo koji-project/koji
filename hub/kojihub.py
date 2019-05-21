@@ -2406,6 +2406,18 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     with open("%s/comps.xml" % groupsdir, 'w') as fo:
         fo.write(comps)
 
+    # write repo info to disk
+    repo_info = {
+            'id': repo_id,
+            'tag': tinfo['name'],
+            'tag_id': tinfo['id'],
+            'event_id': event_id,
+            'with_src': with_src,
+            'with_debuginfo': with_debuginfo,
+            }
+    with open('%s/repo.json' % repodir, 'w') as fp:
+        json.dump(repo_info, fp, indent=2)
+
     #get build dirs
     relpathinfo = koji.PathInfo(topdir='toplink')
     builddirs = {}
@@ -2527,6 +2539,9 @@ def dist_repo_init(tag, keys, task_opts):
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
     event = task_opts.get('event')
+    volume = task_opts.get('volume')
+    if volume is not None:
+        volume = lookup_name('volume', volume, strict=True)['name']
     arches = list(set([koji.canonArch(a) for a in task_opts['arch']]))
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
@@ -2539,15 +2554,32 @@ def dist_repo_init(tag, keys, task_opts):
     insert.set(id=repo_id, create_event=event, tag_id=tag_id,
         state=state, dist=True)
     insert.execute()
-    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
+    repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'], volume=volume)
     for arch in arches:
         koji.ensuredir(os.path.join(repodir, arch))
+    if volume and volume != 'DEFAULT':
+        # symlink from main volume to this one
+        basedir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
+        relpath = os.path.relpath(repodir, os.path.dirname(basedir))
+        koji.ensuredir(os.path.dirname(basedir))
+        os.symlink(relpath, basedir)
     # handle comps
     if task_opts.get('comps'):
         groupsdir = os.path.join(repodir, 'groups')
         koji.ensuredir(groupsdir)
         shutil.copyfile(os.path.join(koji.pathinfo.work(),
             task_opts['comps']), groupsdir + '/comps.xml')
+    # write repo info to disk
+    repo_info = {
+            'id': repo_id,
+            'tag': tinfo['name'],
+            'tag_id': tinfo['id'],
+            'keys': keys,
+            'volume': volume,
+            'task_opts': task_opts,
+            }
+    with open('%s/repo.json' % repodir, 'w') as fp:
+        json.dump(repo_info, fp, indent=2)
     # note: we need to match args from the other postRepoInit callback
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
             with_debuginfo=False, event=event, repo_id=repo_id,
@@ -12925,6 +12957,8 @@ class HostExports(object):
         workdir = koji.pathinfo.work()
         rinfo = repo_info(repo_id, strict=True)
         repodir = koji.pathinfo.distrepo(repo_id, rinfo['tag_name'])
+        # Note: if repo is on a different volume then repodir should be a
+        #   valid symlink and this function should still do the right thing
         archdir = "%s/%s" % (repodir, koji.canonArch(arch))
         if not os.path.isdir(archdir):
             raise koji.GenericError("Repo arch directory missing: %s" % archdir)

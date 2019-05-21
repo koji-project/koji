@@ -27,6 +27,10 @@ class TestDistRepoInit(unittest.TestCase):
 
 
     def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+        self.pathinfo = koji.PathInfo(self.tempdir)
+        mock.patch('koji.pathinfo', new=self.pathinfo).start()
+
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                 side_effect=self.getInsert).start()
         self.inserts = []
@@ -34,7 +38,6 @@ class TestDistRepoInit(unittest.TestCase):
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_event = mock.patch('kojihub.get_event').start()
         self.nextval = mock.patch('kojihub.nextval').start()
-        self.ensuredir = mock.patch('koji.ensuredir').start()
         self.copyfile = mock.patch('shutil.copyfile').start()
 
         self.get_tag.return_value = {'id': 42, 'name': 'tag'}
@@ -77,7 +80,6 @@ class TestDistRepoInit(unittest.TestCase):
         self.assertEquals(ip.data, data)
         self.assertEquals(ip.rawdata, {})
 
-        # no comps option
         self.copyfile.assert_called_once()
 
 
