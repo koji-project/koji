@@ -341,6 +341,7 @@ class RepoManager(object):
         self.logger.debug("Reading current repo data")
         repodata = self.session.getActiveRepos()
         self.logger.debug("Repo data: %r" % repodata)
+
         for data in repodata:
             repo_id = data['id']
             repo = self.repos.get(repo_id)
@@ -354,6 +355,9 @@ class RepoManager(object):
                 self.logger.info('Found repo %s, state=%s'
                                    %(repo_id, koji.REPO_STATES[data['state']]))
                 self.repos[repo_id] = ManagedRepo(self, data)
+            if not getTag(repo.tag_id) and not repo.expired():
+                self.logger.info('Tag %d for repo %d disappeared, expiring.' % (repo.tag_id, repo_id))
+                repo.expire()
         if len(self.repos) > len(repodata):
             # This shouldn't normally happen, but might if someone else calls
             # repoDelete or similar
