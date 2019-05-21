@@ -3071,7 +3071,6 @@ def removeNonprintable(value):
         return value.translate(NONPRINTABLE_CHARS_TABLE)
 
 
-
 def _fix_print(value):
     """Fix a string so it is suitable to print
 
@@ -3088,78 +3087,62 @@ def _fix_print(value):
 
 def fixEncoding(value, fallback='iso8859-15', remove_nonprintable=False):
     """
-    Convert value to a 'str' object encoded as UTF-8.
-    If value is not valid UTF-8 to begin with, assume it is
-    encoded in the 'fallback' charset.
+    Compatibility wrapper for fix_encoding
+
+    Nontrue values are converted to the empty string, otherwise the result
+    is the same as fix_encoding.
     """
-    if six.PY3:
-        if remove_nonprintable:
-            return removeNonprintable(value)
-        else:
-            return value
-
     if not value:
-        return six.b('')
+        return ''
+    return fix_encoding(value, fallback, remove_nonprintable)
 
-    if isinstance(value, six.text_type):
-        # value is already unicode(py3: str), so just convert it
-        # to a utf8-encoded str(py3: bytes)
-        s = value.encode('utf8')
-    else:
-        # value is a str, but may be encoded in utf8 or some
-        # other non-ascii charset.  Try to verify it's utf8, and if not,
-        # decode it using the fallback encoding.
-        try:
-            s = value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError:
-            s = value.decode(fallback).encode('utf8')
-    if remove_nonprintable:
-        return removeNonprintable(s)
-    else:
-        return s
+
+def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
+    """
+    Adjust string to work around encoding issues
+
+    In python2, unicode strings are encoded as utf8. For normal
+    strings, we attempt to fix encoding issues. The fallback option
+    is the encoding to use if the string is not valid utf8.
+
+    If remove_nonprintable is True, then nonprintable characters are
+    filtered out.
+
+    In python3 this is mostly a no-op, but remove_nonprintable is still honored
+    """
+
+    # play encoding tricks for py2 strings
+    if six.PY2:
+        if isinstance(value, unicode):
+            # just convert it to a utf8-encoded str
+            value = value.encode('utf8')
+        elif isinstance(value, str):
+            # value is a str, but may be encoded in utf8 or some
+            # other non-ascii charset.  Try to verify it's utf8, and if not,
+            # decode it using the fallback encoding.
+            try:
+                value = value.decode('utf8').encode('utf8')
+            except UnicodeDecodeError:
+                value = value.decode(fallback).encode('utf8')
+
+    # remove nonprintable characters, if requested
+    if remove_nonprintable and isinstance(value, str):
+        # NOTE: we test for str instead of six.text_type deliberately
+        #  - on py3, we're leaving bytes alone
+        #  - on py2, we've just decoded any unicode
+        value = removeNonprintable(value)
+
+    return value
 
 
 def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     """Recursively fix string encoding in an object
 
-    Similar behavior to fixEncoding, but recursive
+    This is simply fix_encoding recursively applied to an object
     """
-    if six.PY3 and not remove_nonprintable:
-        # don't bother with fixing in py3
-        return value
-
-    if isinstance(value, tuple):
-        return tuple([fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value])
-    elif isinstance(value, list):
-        return [fixEncodingRecurse(x, fallback=fallback, remove_nonprintable=remove_nonprintable) for x in value]
-    elif isinstance(value, dict):
-        ret = {}
-        for k in value:
-            v = fixEncodingRecurse(value[k], fallback=fallback, remove_nonprintable=remove_nonprintable)
-            k = fixEncodingRecurse(k, fallback=fallback, remove_nonprintable=remove_nonprintable)
-            ret[k] = v
-        return ret
-    elif six.PY2 and isinstance(value, six.text_type):
-        if remove_nonprintable:
-            return removeNonprintable(value.encode('utf8'))
-        else:
-            return value.encode('utf8')
-    elif six.PY2 and isinstance(value, str):
-        # value is a str, but may be encoded in utf8 or some
-        # other non-ascii charset.  Try to verify it's utf8, and if not,
-        # decode it using the fallback encoding.
-        try:
-            s = value.decode('utf8').encode('utf8')
-        except UnicodeDecodeError:
-            s = value.decode(fallback).encode('utf8')
-        if remove_nonprintable:
-            return removeNonprintable(s)
-        else:
-            return s
-    elif six.PY3 and isinstance(value, str) and remove_nonprintable:
-        return removeNonprintable(value)
-    else:
-        return value
+    kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
+    walker = util.DataWalker(value, fix_encoding, kwargs)
+    return walker.walk()
 
 
 def add_file_logger(logger, fn):

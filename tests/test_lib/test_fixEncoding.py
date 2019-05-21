@@ -17,7 +17,7 @@ class FixEncodingTestCase(unittest.TestCase):
     """Main test case container"""
 
     simple_values = [
-        # [ value, fixed ]
+        # [ unicode value, utf-8 encoded string ]
         ['', ''],
         [u'', ''],
         [u'góðan daginn', 'g\xc3\xb3\xc3\xb0an daginn'],
@@ -51,6 +51,8 @@ class FixEncodingTestCase(unittest.TestCase):
                 self.assertEqual(koji.fixEncoding(d, remove_nonprintable=True), b)
             else:
                 self.assertEqual(koji.fixEncoding(a), a)
+                d = a[:-3] + u'\x00\x01' + a[-3:]
+                self.assertEqual(koji.fixEncoding(d, remove_nonprintable=True), a)
 
     def test_fix_print(self):
         """Test the _fix_print function"""
