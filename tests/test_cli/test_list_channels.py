@@ -27,20 +27,24 @@ class TestListChannels(unittest.TestCase):
         ]
         self.session.multiCall.return_value = [
             [[
-                {'enabled': True, 'ready': True},
-                {'enabled': True, 'ready': False},
-                {'enabled': True, 'ready': False},
+                {'enabled': True, 'ready': True, 'capacity': 2.0, 'task_load': 1.34},
+                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
+                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
             ]],
             [[
-                {'enabled': True, 'ready': True},
-                {'enabled': False, 'ready': True},
-                {'enabled': True, 'ready': False},
+                {'enabled': True, 'ready': True, 'capacity': 2.0, 'task_load': 1.34},
+                {'enabled': False, 'ready': True, 'capacity': 2.0, 'task_load': 0.34},
+                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
             ]],
         ]
 
         anon_handle_list_channels(self.options, self.session, self.args)
 
         actual = stdout.getvalue()
-        expected = 'default             3     1     0\ntest                2     2     1\n'
+        print(actual)
+        expected = """\
+default             3     1     0   1/  6/ 22%
+test                2     2     1   1/  6/ 28%
+"""
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)

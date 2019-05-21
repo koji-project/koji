@@ -2739,7 +2739,7 @@ def anon_handle_list_channels(goptions, session, args):
     usage = _("usage: %prog list-channels")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
-    parser.add_option("--simple", action="store_true", default=goptions.quiet,
+    parser.add_option("--simple", action="store_true", default=False,
                 help=_("Print just list of channels without additional info"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print header information"))
