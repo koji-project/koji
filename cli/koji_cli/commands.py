@@ -2739,6 +2739,8 @@ def anon_handle_list_channels(goptions, session, args):
     usage = _("usage: %prog list-channels")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
+    parser.add_option("--simple", action="store_true", default=goptions.quiet,
+                help=_("Print just list of channels without additional info"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print header information"))
     (options, args) = parser.parse_args(args)
@@ -2752,10 +2754,22 @@ def anon_handle_list_channels(goptions, session, args):
         channel['enabled'] = len([x for x in hosts if x['enabled']])
         channel['disabled'] = len(hosts) - channel['enabled']
         channel['ready'] = len([x for x in hosts if x['ready']])
-    if not options.quiet:
-        print('Channel           Enb   Rdy   Dis')
-    for channel in channels:
-        print("%(name)-15s %(enabled)5d %(ready)5d %(disabled)5d" % channel)
+        channel['capacity'] = sum([x['capacity'] for x in hosts])
+        channel['load'] = sum([x['task_load'] for x in hosts])
+        if channel['capacity']:
+            channel['perc_load'] = channel['load'] / channel['capacity'] * 100.0
+        else:
+            channel['perc_load'] = 0.0
+    if options.simple:
+        if not options.quiet:
+            print('Channel')
+        for channel in channels:
+            print(channel['name'])
+    else:
+        if not options.quiet:
+            print('Channel           Enb   Rdy   Dis Loa/Cap/Perc')
+        for channel in channels:
+            print("%(name)-15s %(enabled)5d %(ready)5d %(disabled)5d %(load)3d/%(capacity)3d/%(perc_load)3d%%" % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
