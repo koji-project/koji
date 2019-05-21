@@ -2816,7 +2816,7 @@ def anon_handle_list_hosts(goptions, session, args):
         for host in hosts:
             session.listChannels(host['id'])
         for host, [channels] in zip(hosts, session.multiCall()):
-            host['channels'] = ', '.join(sorted([c['name'] for c in channels]))
+            host['channels'] = ','.join(sorted([c['name'] for c in channels]))
 
     longest_host = max([len(h['name']) for h in hosts])
     if not options.quiet:
