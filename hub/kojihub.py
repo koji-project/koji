@@ -2435,6 +2435,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
             'tag_id': tinfo['id'],
             'event_id': event_id,
             'with_src': with_src,
+            'with_separate_src': with_separate_src,
             'with_debuginfo': with_debuginfo,
             }
     with open('%s/repo.json' % repodir, 'w') as fp:
@@ -2470,6 +2471,8 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
                 pkglist[arch].write(relpath)
         elif arch == 'noarch':
             for repoarch in repo_arches:
+                if repoarch == 'src':
+                    continue
                 pkglist[repoarch].write(relpath)
         else:
             repoarch = koji.canonArch(arch)
