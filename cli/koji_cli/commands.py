@@ -7306,7 +7306,7 @@ def handle_moshimoshi(options, session, args):
 
 
 def anon_handle_list_notifications(goptions, session, args):
-    "[monitor] List user's notifications"
+    "[monitor] List user's notifications and blocks"
     usage = _("usage: %prog list-notifications [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
@@ -7330,21 +7330,49 @@ def anon_handle_list_notifications(goptions, session, args):
     else:
         user_id = None
 
-    mask = "%(id)6s %(tag)-25s %(package)-25s %(email)-20s %(success)s"
-    head = mask % {'id': 'ID', 'tag': 'Tag', 'package': 'Package', 'email': 'E-mail', 'success': 'Success-only'}
-    print(head)
-    print('-' * len(head))
-    for notification in session.getBuildNotifications(user_id):
-        if notification['tag_id']:
-            notification['tag'] = session.getTag(notification['tag_id'])['name']
-        else:
-            notification['tag'] = '*'
-        if notification['package_id']:
-            notification['package'] = session.getPackage(notification['package_id'])['name']
-        else:
-            notification['package'] = '*'
-        notification['success'] = ['no', 'yes'][notification['success_only']]
-        print(mask % notification)
+    mask = "%(id)6s %(tag)-25s %(package)-25s %(email)-20s %(success)-12s"
+    headers = {'id': 'ID', 'tag': 'Tag', 'package': 'Package', 'email': 'E-mail', 'success': 'Success-only'}
+    head = mask % headers
+    notifications = session.getBuildNotifications(user_id)
+    if notifications:
+        print('Notifications')
+        print(head)
+        print('-' * len(head))
+        for notification in notifications:
+            if notification['tag_id']:
+                notification['tag'] = session.getTag(notification['tag_id'])['name']
+            else:
+                notification['tag'] = '*'
+            if notification['package_id']:
+                notification['package'] = session.getPackage(notification['package_id'])['name']
+            else:
+                notification['package'] = '*'
+            notification['success'] = ['no', 'yes'][notification['success_only']]
+            print(mask % notification)
+    else:
+        print('No notifications')
+
+    print('')
+
+    mask = "%(id)6s %(tag)-25s %(package)-25s"
+    head = mask % headers
+    blocks = session.getBuildNotificationBlocks(user_id)
+    if blocks:
+        print('Notification blocks')
+        print(head)
+        print('-' * len(head))
+        for notification in blocks:
+            if notification['tag_id']:
+                notification['tag'] = session.getTag(notification['tag_id'])['name']
+            else:
+                notification['tag'] = '*'
+            if notification['package_id']:
+                notification['package'] = session.getPackage(notification['package_id'])['name']
+            else:
+                notification['package'] = '*'
+            print(mask % notification)
+    else:
+        print('No notification blocks')
 
 
 def handle_add_notification(goptions, session, args):
@@ -7412,7 +7440,7 @@ def handle_remove_notification(goptions, session, args):
     for n_id in n_ids:
         session.deleteNotification(n_id)
         if not goptions.quiet:
-            print(_("Notification %s successfully removed.") % n_id)
+            print(_("Notification %d successfully removed.") % n_id)
 
 
 def handle_edit_notification(goptions, session, args):
@@ -7470,3 +7498,75 @@ def handle_edit_notification(goptions, session, args):
         success_only = old['success_only']
 
     session.updateNotification(n_id, package_id, tag_id, success_only)
+
+
+def handle_block_notification(goptions, session, args):
+    "[monitor] Block user's notifications"
+    usage = _("usage: %prog block-notification [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--user", help=_("Block notifications for this user (admin-only)"))
+    parser.add_option("--package", help=_("Block notifications for this package"))
+    parser.add_option("--tag", help=_("Block notifications for this tag"))
+    parser.add_option("--all", action="store_true", help=_("Block all notification for this user"))
+    (options, args) = parser.parse_args(args)
+
+    if len(args) != 0:
+        parser.error(_("This command takes no arguments"))
+
+    if not options.package and not options.tag and not options.all:
+        parser.error(_("One of --tag, --package or --all must be specified."))
+
+    activate_session(session, goptions)
+
+    if options.user and not session.hasPerm('admin'):
+        parser.error("--user requires admin permission")
+
+    if options.user:
+        user_id = session.getUser(options.user)['id']
+    else:
+        user_id = session.getLoggedInUser()['id']
+
+    if options.package:
+        package_id = session.getPackageID(options.package)
+        if package_id is None:
+            parser.error("Unknown package: %s" % options.package)
+    else:
+        package_id = None
+
+    if options.tag:
+        try:
+            tag_id = session.getTagID(options.tag, strict=True)
+        except koji.GenericError:
+            parser.error("Unknown tag: %s" % options.tag)
+    else:
+        tag_id = None
+
+    for block in session.getBuildNotificationBlocks(user_id):
+        if (block['package_id'] == package_id and block['tag_id'] == tag_id):
+            parser.error('Notification already exists.')
+
+    session.createNotificationBlock(user_id, package_id, tag_id)
+
+
+def handle_unblock_notification(goptions, session, args):
+    "[monitor] Unblock user's notification"
+    usage = _("usage: %prog unblock-notification [options] ID [ID2, ...]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    (options, args) = parser.parse_args(args)
+
+    activate_session(session, goptions)
+
+    if len(args) < 1:
+        parser.error(_("At least one notification block id has to be specified"))
+
+    try:
+        n_ids = [int(x) for x in args]
+    except ValueError:
+        parser.error(_("All notification block ids has to be integers"))
+
+    for n_id in n_ids:
+        session.deleteNotificationBlock(n_id)
+        if not goptions.quiet:
+            print(_("Notification block %d successfully removed.") % n_id)

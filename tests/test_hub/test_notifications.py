@@ -53,6 +53,7 @@ class TestNotifications(unittest.TestCase):
         self.exports.getUser = mock.MagicMock()
         self.exports.hasPerm = mock.MagicMock()
         self.exports.getBuildNotification = mock.MagicMock()
+        self.exports.getBuildNotificationBlock = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -441,34 +442,36 @@ class TestNotifications(unittest.TestCase):
 
         self.exports.deleteNotification(n_id)
 
-        self.exports.getBuildNotification.assert_called_once_with(n_id)
+        self.exports.getBuildNotification.assert_called_once_with(n_id, strict=True)
         self.exports.getLoggedInUser.assert_called_once_with()
         _dml.assert_called_once()
 
-    @mock.patch('kojihub._dml')
-    def test_deleteNotification_missing(self, _dml):
+    def test_deleteNotification_missing(self):
         user_id = 752
         n_id = 543
-        self.exports.getBuildNotification.return_value = None
+        self.exports.getBuildNotification.side_effect = koji.GenericError
 
         with self.assertRaises(koji.GenericError):
             self.exports.deleteNotification(n_id)
 
-        self.exports.getBuildNotification.assert_called_once_with(n_id)
-        _dml.assert_not_called()
+        self.exports.getBuildNotification.assert_called_once_with(n_id, strict=True)
 
-    @mock.patch('kojihub._dml')
-    def test_deleteNotification_not_logged(self, _dml):
+    def test_deleteNotification_not_logged(self):
         user_id = 752
         n_id = 543
         self.exports.getBuildNotification.return_value = {'user_id': user_id}
         self.exports.getLoggedInUser.return_value = None
+        #self.set_queries = ([
+        #    [{'user_id': 5, 'email': 'owner_name@%s' % self.context.opts['EmailDomain']}],
+        #])
 
         with self.assertRaises(koji.GenericError):
             self.exports.deleteNotification(n_id)
 
-        self.exports.getBuildNotification.assert_called_once_with(n_id)
-        _dml.assert_not_called()
+        self.exports.getBuildNotification.assert_called_once_with(n_id, strict=True)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+        self.assertEqual(len(self.queries), 0)
 
     @mock.patch('kojihub._dml')
     def test_deleteNotification_no_perm(self, _dml):
@@ -481,7 +484,7 @@ class TestNotifications(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             self.exports.deleteNotification(n_id)
 
-        self.exports.getBuildNotification.assert_called_once_with(n_id)
+        self.exports.getBuildNotification.assert_called_once_with(n_id, strict=True)
         _dml.assert_not_called()
 
 
@@ -549,7 +552,7 @@ class TestNotifications(unittest.TestCase):
         tag_id = 345
         success_only = True
         self.exports.getLoggedInUser.return_value = {'id': 1}
-        self.exports.getBuildNotification.return_value = None
+        self.exports.getBuildNotification.side_effect = koji.GenericError
 
         with self.assertRaises(koji.GenericError):
             self.exports.updateNotification(n_id, package_id, tag_id, success_only)
@@ -627,3 +630,200 @@ class TestNotifications(unittest.TestCase):
 
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
+
+    ###########################
+    # Create notification block
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 1
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 1}
+        self.exports.getUser.return_value = {'id': 2, 'name': 'username'}
+        self.exports.hasPerm.return_value = True
+        get_package_id.return_value = package_id
+        get_tag_id.return_value = tag_id
+        get_build_notification_blocks.return_value = []
+
+        r = self.exports.createNotificationBlock(user_id, package_id, tag_id)
+        self.assertEqual(r, None)
+
+        self.exports.getLoggedInUser.assert_called_once()
+        self.exports.getUser.asssert_called_once_with(user_id)
+        self.exports.hasPerm.asssert_called_once_with('admin')
+        get_package_id.assert_called_once_with(package_id, strict=True)
+        get_tag_id.assert_called_once_with(tag_id, strict=True)
+        get_build_notification_blocks.assert_called_once_with(2)
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'build_notifications_block')
+        self.assertEqual(insert.data, {
+            'package_id': package_id,
+            'user_id': 2,
+            'tag_id': tag_id,
+        })
+        self.assertEqual(insert.rawdata, {})
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_unauthentized(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 1
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = None
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_invalid_user(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 2
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 1}
+        self.exports.getUser.return_value = None
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_no_perm(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 2
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 1, 'name': 'a'}
+        self.exports.getUser.return_value = {'id': 2, 'name': 'b'}
+        self.exports.hasPerm.return_value = False
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_invalid_pkg(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 2
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 2, 'name': 'a'}
+        self.exports.getUser.return_value = {'id': 2, 'name': 'a'}
+        get_package_id.side_effect = ValueError
+
+        with self.assertRaises(ValueError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_invalid_tag(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 2
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 2, 'name': 'a'}
+        self.exports.getUser.return_value = {'id': 2, 'name': 'a'}
+        get_package_id.return_value = package_id
+        get_tag_id.side_effect = ValueError
+
+        with self.assertRaises(ValueError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.get_build_notification_blocks')
+    @mock.patch('kojihub.get_tag_id')
+    @mock.patch('kojihub.get_package_id')
+    def test_createNotificationBlock_exists(self, get_package_id, get_tag_id,
+            get_build_notification_blocks):
+        user_id = 2
+        package_id = 234
+        tag_id = 345
+        self.exports.getLoggedInUser.return_value = {'id': 2, 'name': 'a'}
+        self.exports.getUser.return_value = {'id': 2, 'name': 'a'}
+        get_package_id.return_value = package_id
+        get_tag_id.return_value = tag_id
+        get_build_notification_blocks.return_value = [{
+            'package_id': package_id,
+            'tag_id': tag_id,
+        }]
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.createNotificationBlock(user_id, package_id, tag_id)
+
+        self.assertEqual(len(self.inserts), 0)
+
+    #####################
+    # Delete notification
+    @mock.patch('kojihub._dml')
+    def test_deleteNotificationBlock(self, _dml):
+        user_id = 752
+        n_id = 543
+        self.exports.getBuildNotificationBlock.return_value = {'user_id': user_id}
+
+        self.exports.deleteNotificationBlock(n_id)
+
+        self.exports.getBuildNotificationBlock.assert_called_once_with(n_id, strict=True)
+        self.exports.getLoggedInUser.assert_called_once_with()
+        _dml.assert_called_once()
+
+    def test_deleteNotification_missing(self):
+        user_id = 752
+        n_id = 543
+        self.exports.getBuildNotificationBlock.side_effect = koji.GenericError
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.deleteNotificationBlock(n_id)
+
+        self.exports.getBuildNotificationBlock.assert_called_once_with(n_id, strict=True)
+
+    def test_deleteNotification_not_logged(self):
+        user_id = 752
+        n_id = 543
+        self.exports.getBuildNotificationBlock.return_value = {'user_id': user_id}
+        self.exports.getLoggedInUser.return_value = None
+        #self.set_queries = ([
+        #    [{'user_id': 5, 'email': 'owner_name@%s' % self.context.opts['EmailDomain']}],
+        #])
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.deleteNotificationBlock(n_id)
+
+        self.exports.getBuildNotificationBlock.assert_called_once_with(n_id, strict=True)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+        self.assertEqual(len(self.queries), 0)
+
+    @mock.patch('kojihub._dml')
+    def test_deleteNotification_no_perm(self, _dml):
+        user_id = 752
+        n_id = 543
+        self.exports.getBuildNotificationBlock.return_value = {'user_id': user_id}
+        self.exports.getLoggedInUser.return_value = {'id': 1}
+        self.exports.hasPerm.return_value = False
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.deleteNotificationBlock(n_id)
+
+        self.exports.getBuildNotificationBlock.assert_called_once_with(n_id, strict=True)
+        _dml.assert_not_called()

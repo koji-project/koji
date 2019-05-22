@@ -7666,12 +7666,20 @@ def build_notification(task_id, build_id):
         make_task('buildNotification', [recipients, build, target, web_url])
 
 def get_build_notifications(user_id):
-    fields = ('id', 'user_id', 'package_id', 'tag_id', 'success_only', 'email')
-    query = """SELECT %s
-    FROM build_notifications
-    WHERE user_id = %%(user_id)i
-    """ % ', '.join(fields)
-    return _multiRow(query, locals(), fields)
+    query = QueryProcessor(tables=['build_notifications'],
+                           columns=('id', 'user_id', 'package_id', 'tag_id',
+                                    'success_only', 'email'),
+                           clauses=['user_id = %(user_id)i'],
+                           values=locals())
+    return query.execute()
+
+def get_build_notification_blocks(user_id):
+    query = QueryProcessor(tables=['build_notifications_block'],
+                           columns=['id', 'user_id', 'package_id', 'tag_id'],
+                           clauses=['user_id = %(user_id)i'],
+                           values=locals())
+    return query.execute()
+
 
 def new_group(name):
     """Add a user group to the database"""
@@ -11409,12 +11417,37 @@ class RootExports(object):
         If there is no notification with the given ID, when strict is True,
         raise GenericError, else return None.
         """
-        fields = ('id', 'user_id', 'package_id', 'tag_id', 'success_only', 'email')
-        query = """SELECT %s
-        FROM build_notifications
-        WHERE id = %%(id)i
-        """ % ', '.join(fields)
-        return _singleRow(query, locals(), fields, strict=strict)
+        query = QueryProcessor(tables=['build_notifications'],
+                               columns = ('id', 'user_id', 'package_id', 'tag_id',
+                                          'success_only', 'email'),
+                               clauses = ['id = %(id)i'],
+                               values = locals())
+        result = query.executeOne()
+        if strict and not result:
+            raise koji.GenericError("No notification with ID %i found" % id)
+        return result
+
+    def getBuildNotificationBlocks(self, userID=None):
+        """Get build notifications for the user with the given ID, name or
+        Kerberos principal. If no user is specified, get the notifications for
+        the currently logged-in user. If there is no currently logged-in user,
+        raise a GenericError."""
+        userID = get_user(userID, strict=True)['id']
+        return get_build_notification_blocks(userID)
+
+    def getBuildNotificationBlock(self, id, strict=False):
+        """Get the build notification with the given ID.
+        If there is no notification with the given ID, when strict is True,
+        raise GenericError, else return None.
+        """
+        query = QueryProcessor(tables=['build_notifications_block'],
+                               columns = ('id', 'user_id', 'package_id', 'tag_id'),
+                               clauses = ['id = %(id)i'],
+                               values = locals())
+        result = query.executeOne()
+        if strict and not result:
+            raise koji.GenericError("No notification block with ID %i found" % id)
+        return result
 
     def updateNotification(self, id, package_id, tag_id, success_only):
         """Update an existing build notification with new data.  If the notification
@@ -11424,11 +11457,8 @@ class RootExports(object):
         if not currentUser:
             raise koji.GenericError('not logged-in')
 
-        orig_notif = self.getBuildNotification(id)
-        if not orig_notif:
-            raise koji.GenericError('no notification with ID: %i' % id)
-        elif not (orig_notif['user_id'] == currentUser['id'] or
-                  self.hasPerm('admin')):
+        orig_notif = self.getBuildNotification(id, strict=True)
+        if not (orig_notif['user_id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot update notifications for user %i' % \
                   (currentUser['id'], orig_notif['user_id']))
 
@@ -11491,9 +11521,7 @@ class RootExports(object):
     def deleteNotification(self, id):
         """Delete the notification with the given ID.  If the currently logged-in
         user is not the owner of the notification or an admin, raise a GenericError."""
-        notification = self.getBuildNotification(id)
-        if not notification:
-            raise koji.GenericError('no notification with ID: %i' % id)
+        notification = self.getBuildNotification(id, strict=True)
         currentUser = self.getLoggedInUser()
         if not currentUser:
             raise koji.GenericError('not logged-in')
@@ -11503,6 +11531,53 @@ class RootExports(object):
             raise koji.GenericError('user %i cannot delete notifications for user %i' % \
                   (currentUser['id'], notification['user_id']))
         delete = """DELETE FROM build_notifications WHERE id = %(id)i"""
+        _dml(delete, locals())
+
+    def createNotificationBlock(self, user_id, package_id=None, tag_id=None):
+        """Create notification block. If the user_id does not match the
+        currently logged-in user and the currently logged-in user is not an
+        admin, raise a GenericError."""
+        currentUser = self.getLoggedInUser()
+        if not currentUser:
+            raise koji.GenericError('not logged in')
+
+        notificationUser = self.getUser(user_id)
+        if not notificationUser:
+            raise koji.GenericError('invalid user ID: %s' % user_id)
+
+        if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
+            raise koji.GenericError('user %s cannot create notification blocks for user %s' % \
+                  (currentUser['name'], notificationUser['name']))
+
+        # sanitize input
+        user_id = notificationUser['id']
+        if package_id is not None:
+            package_id = get_package_id(package_id, strict=True)
+        if tag_id is not None:
+            tag_id = get_tag_id(tag_id, strict=True)
+
+        # check existing notifications to not have same twice
+        for block in get_build_notification_blocks(user_id):
+            if (block['package_id'] == package_id and block['tag_id'] == tag_id):
+                raise koji.GenericError('notification already exists')
+
+        insert = InsertProcessor('build_notifications_block')
+        insert.set(user_id=user_id, package_id=package_id, tag_id=tag_id)
+        insert.execute()
+
+    def deleteNotificationBlock(self, id):
+        """Delete the notification block with the given ID.  If the currently logged-in
+        user is not the owner of the notification or an admin, raise a GenericError."""
+        block = self.getBuildNotificationBlock(id, strict=True)
+        currentUser = self.getLoggedInUser()
+        if not currentUser:
+            raise koji.GenericError('not logged-in')
+
+        if not (block['user_id'] == currentUser['id'] or
+                self.hasPerm('admin')):
+            raise koji.GenericError('user %i cannot delete notification blocks for user %i' % \
+                  (currentUser['id'], block['user_id']))
+        delete = """DELETE FROM build_notifications_block WHERE id = %(id)i"""
         _dml(delete, locals())
 
     def _prepareSearchTerms(self, terms, matchType):
