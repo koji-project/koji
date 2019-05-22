@@ -105,6 +105,15 @@ class Task(object):
         self.id = id
         self.logger = logging.getLogger("koji.hub.Task")
 
+    def _split_fields(self, fields=None):
+        """Helper function for split fields to QueryProcessor's
+       columns/aliases options"""
+        if fields is None:
+            fields = self.fields
+        columns = [f[0] for f in fields]
+        aliases = [f[1] for f in fields]
+        return columns, aliases
+
     def verifyHost(self, host_id=None):
         """Verify that host owns task"""
         if host_id is None:
@@ -401,9 +410,9 @@ class Task(object):
                 tasklist.append(child_id)
 
     def getRequest(self):
-        id = self.id
-        query = """SELECT request FROM task WHERE id = %(id)i"""
-        xml_request = _singleValue(query, locals())
+        query = QueryProcessor(columns=['request'], tables=['task'],
+                               clauses=['id = %(id)i'], values={'id': self.id})
+        xml_request = query.singleValue()
         if xml_request.find('<?xml', 0, 10) == -1:
             # handle older base64 encoded data
             xml_request = base64.b64decode(xml_request)
@@ -440,8 +449,11 @@ class Task(object):
     def getInfo(self, strict=True, request=False):
         """Return information about the task in a dictionary.  If "request" is True,
         the request will be decoded and included in the dictionary."""
-        q = """SELECT %s FROM task WHERE id = %%(id)i""" % ','.join([f[0] for f in self.fields])
-        result = _singleRow(q, vars(self), [f[1] for f in self.fields], strict)
+        columns, aliases = self._split_fields()
+        query = QueryProcessor(columns=columns, aliases=aliases,
+                               tables=['task'], clauses=['id = %(id)i'],
+                               values={'id': self.id})
+        result = query.executeOne(strict=strict)
         if result and request:
             result['request'] = self.getRequest()
         return result
@@ -452,12 +464,15 @@ class Task(object):
         fields = self.fields
         if request:
             fields = fields + (('request', 'request'),)
-        query = """SELECT %s FROM task WHERE parent = %%(id)i""" % ', '.join([f[0] for f in fields])
-        results = _multiRow(query, vars(self), [f[1] for f in fields])
+        columns, aliases = self._split_fields(fields)
+        query = QueryProcessor(columns=columns, aliases=aliases,
+                               tables=['task'], clauses=['parent = %(id)i'],
+                               values={'id': self.id})
+        results = query.execute()
         if request:
             for task in results:
                 if task['request'].find('<?xml', 0, 10) == -1:
-                    #handle older base64 encoded data
+                    # handle older base64 encoded data
                     task['request'] = base64.b64decode(task['request'])
                 # note: loads accepts either bytes or string
                 task['request'] = six.moves.xmlrpc_client.loads(task['request'])[0]
@@ -8191,11 +8206,15 @@ SELECT %(col_str)s
         c.execute("CLOSE %s" % cname)
         c.close()
 
-    def executeOne(self):
+    def executeOne(self, strict=False):
         results = self.execute()
         if isinstance(results, list):
             if len(results) > 0:
+                if strict and len(results) > 1:
+                    raise koji.GenericError('multiple rows returned for a single row query')
                 return results[0]
+            elif strict:
+                raise koji.GenericError('query returned no rows')
             else:
                 return None
         return results
@@ -10716,10 +10735,13 @@ class RootExports(object):
         else:
             return ret
 
-    def getTaskChildren(self, task_id, request=False):
+    def getTaskChildren(self, task_id, request=False, strict=False):
         """Return a list of the children
         of the Task with the given ID."""
         task = Task(task_id)
+        if strict:
+            # check, that task_id is real
+            task.getInfo(strict=True)
         return task.getChildren(request=request)
 
     def getTaskDescendents(self, task_id, request=False):
