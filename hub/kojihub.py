@@ -712,6 +712,8 @@ def _writeInheritanceData(tag_id, changes, clear=False):
                                     " parent_id(%i)" % parent_id)
         else:
             parent_ids.add(parent_id)
+        # check existence of parent
+        get_tag(parent_id, strict=True)
     # read current data and index
     data = dict([[link['parent_id'], link] for link in readInheritanceData(tag_id)])
     for link in changes:
@@ -10175,9 +10177,8 @@ class RootExports(object):
                            apply the ones you submit here. If unspecified,
                            this defaults to False.
         """
-        if not isinstance(tag, six.integer_types):
-            #lookup tag id
-            tag = get_tag_id(tag, strict=True)
+        # verify existence of tag and/or convert name to id
+        tag = get_tag_id(tag, strict=True)
         context.session.assertPerm('admin')
         return writeInheritanceData(tag, data, clear=clear)
 
