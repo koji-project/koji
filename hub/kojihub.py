@@ -2108,7 +2108,7 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True,
         return [x for x in groups if not x['blocked']]
 
 def set_host_enabled(hostname, enabled=True):
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if not host:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -2128,7 +2128,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
 
     Channel must already exist unless create option is specified
     """
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if host == None:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -2146,7 +2146,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
     insert.execute()
 
 def remove_host_from_channel(hostname, channel_name):
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if host == None:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -4782,7 +4782,7 @@ def edit_host(hostInfo, **kw):
 
     Returns True if changes are made to the database, False otherwise.
     """
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
 
     host = get_host(hostInfo, strict=True)
 
@@ -8848,7 +8848,7 @@ class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
     def restartHosts(self, priority=5, options=None):
-        context.session.assertPerm('admin')
+        context.session.assertPerm('host')
         if options is None:
             args = []
         else:
@@ -10987,7 +10987,7 @@ class RootExports(object):
         If krb_principal is not given then that field will be generated
         from the HostPrincipalFormat setting (if available).
         """
-        context.session.assertPerm('admin')
+        context.session.assertPerm('host')
         # validate arches
         arches = " ".join(arches)
         arches = koji.parse_arches(arches, strict=True)

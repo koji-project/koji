@@ -65,7 +65,7 @@ class TestAddHost(unittest.TestCase):
         r = self.exports.addHost('hostname', ['i386', 'x86_64'])
         self.assertEqual(r, 12)
 
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('host')
         kojihub.get_host.assert_called_once_with('hostname')
         self.context.session.createUser.assert_called_once_with('hostname',
                 usertype=koji.USERTYPES['HOST'], krb_principal='-hostname-')
