@@ -1,9 +1,9 @@
+#import cgi
 #from kojiweb import util
 
 #include "includes/header.chtml"
 
   <h4>Search</h4>
-
   <form action="search">
     <table>
       <tr>
@@ -11,21 +11,26 @@
         <tr><td colspan="3" class="error">$error</td></tr>
         #end if
         <th>Search</th>
-        <td><input type="text" name="terms"/></td>
+        #try
+            #set $old_terms = cgi.escape($terms)
+        #except
+            #set $old_terms = ""
+        #end try
+        <td><input type="text" name="terms" value="$old_terms"/></td>
         <td>
           <select name="type">
-            <option value="package">Packages</option>
-            <option value="build">Builds</option>
-            <option value="tag">Tags</option>
-            <option value="target">Build Targets</option>
-            <option value="user">Users</option>
-            <option value="host">Hosts</option>
-            <option value="rpm">RPMs</option>
+            <option $util.toggleSelected($self, $type, "package") value="package">Packages</option>
+            <option $util.toggleSelected($self, $type, "build") value="build">Builds</option>
+            <option $util.toggleSelected($self, $type, "tag") value="tag">Tags</option>
+            <option $util.toggleSelected($self, $type, "target") value="target">Build Targets</option>
+            <option $util.toggleSelected($self, $type, "user") value="user">Users</option>
+            <option $util.toggleSelected($self, $type, "host") value="host">Hosts</option>
+            <option $util.toggleSelected($self, $type, "rpm") value="rpm">RPMs</option>
             #if $mavenEnabled
-            <option value="maven">Maven Artifacts</option>
+            <option $util.toggleSelected($self, $type, "maven") value="maven">Maven Artifacts</option>
             #end if
             #if $winEnabled
-            <option value="win">Windows Artifacts</option>
+            <option $util.toggleSelected($self, $type, "win") value="win">Windows Artifacts</option>
             #end if
           </select>
         </td>
@@ -33,9 +38,12 @@
       <tr>
         <th>&nbsp;</th>
         <td colspan="2">
-          <input type="radio" name="match" value="glob" id="radioglob" checked="checked"/><abbr title="? will match any single character, * will match any sequence of zero or more characters" id="abbrglob">glob</abbr>
-          <input type="radio" name="match" value="regexp" id="radioregexp"/><abbr title="full POSIX regular expressions" id="abbrregexp">regexp</abbr>
-          <input type="radio" name="match" value="exact" id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
+          #if not $varExists('match')
+             #set $match='glob'
+          #end if
+          <input type="radio" name="match" value="glob" $util.toggleSelected($self, $match, "glob", True) id="radioglob"/><abbr title="? will match any single character, * will match any sequence of zero or more characters" id="abbrglob">glob</abbr>
+          <input type="radio" name="match" value="regexp" $util.toggleSelected($self, $match, "regexp", True) id="radioregexp"/><abbr title="full POSIX regular expressions" id="abbrregexp">regexp</abbr>
+          <input type="radio" name="match" value="exact" $util.toggleSelected($self, $match, "exact", True) id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
         </td>
       </tr>
       <tr>
