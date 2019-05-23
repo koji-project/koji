@@ -36,18 +36,18 @@ $localnav
           <form action="search" id="headerSearch">
             <input type="hidden" name="match" value="glob"/>
             <select name="type">
-              <option value="package">Packages</option>
-              <option value="build">Builds</option>
-              <option value="tag">Tags</option>
-              <option value="target">Build Targets</option>
-              <option value="user">Users</option>
-              <option value="host">Hosts</option>
-              <option value="rpm">RPMs</option>
+              <option $util.toggleSelected($self, $type, "package") value="package">Packages</option>
+              <option $util.toggleSelected($self, $type, "build") value="build">Builds</option>
+              <option $util.toggleSelected($self, $type, "tag") value="tag">Tags</option>
+              <option $util.toggleSelected($self, $type, "target") value="target">Build Targets</option>
+              <option $util.toggleSelected($self, $type, "user") value="user">Users</option>
+              <option $util.toggleSelected($self, $type, "host") value="host">Hosts</option>
+              <option $util.toggleSelected($self, $type, "rpm") value="rpm">RPMs</option>
               #if $mavenEnabled
-              <option value="maven">Maven Artifacts</option>
+              <option $util.toggleSelected($self, $type, "maven") value="maven">Maven Artifacts</option>
               #end if
               #if $winEnabled
-              <option value="win">Windows Artifacts</option>
+              <option $util.toggleSelected($self, $type, "win") value="win">Windows Artifacts</option>
               #end if
             </select>
             #try
