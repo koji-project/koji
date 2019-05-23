@@ -7051,7 +7051,8 @@ def handle_regen_repo(options, session, args):
     parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on for regen to finish"))
     parser.add_option("--debuginfo", action="store_true", help=_("Include debuginfo rpms in repo"))
-    parser.add_option("--source", "--src", action="store_true", help=_("Include source rpms in the repo"))
+    parser.add_option("--source", "--src", action="store_true", help=_("Include source rpms in each of repos"))
+    parser.add_option("--separate-source", "--separate-src", action="store_true", help=_("Include source rpms in separate src repo"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -7087,6 +7088,8 @@ def handle_regen_repo(options, session, args):
         repo_opts['debuginfo'] = True
     if suboptions.source:
         repo_opts['src'] = True
+    if suboptions.separate_source:
+        repo_opts['separate_src'] = True
     task_id = session.newRepo(tag, **repo_opts)
     print("Regenerating repo for tag: %s" % tag)
     print("Created task: %d" % task_id)

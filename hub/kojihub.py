@@ -2377,7 +2377,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
                     yield archive
     return _iter_archives()
 
-def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
+def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separate_src=False):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -2387,9 +2387,11 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True, event=event)
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
-                              event=event, repo_id=None)
+                              event=event, repo_id=None, with_separate_src=with_separate_src)
     tag_id = tinfo['id']
     repo_arches = {}
+    if with_separate_src:
+        repo_arches['src'] = 1
     if tinfo['arches']:
         for arch in tinfo['arches'].split():
             arch = koji.canonArch(arch)
@@ -2433,6 +2435,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             'tag_id': tinfo['id'],
             'event_id': event_id,
             'with_src': with_src,
+            'with_separate_src': with_separate_src,
             'with_debuginfo': with_debuginfo,
             }
     with open('%s/repo.json' % repodir, 'w') as fp:
@@ -2464,8 +2467,12 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             if with_src:
                 for repoarch in repo_arches:
                     pkglist[repoarch].write(relpath)
+            if with_separate_src:
+                pkglist[arch].write(relpath)
         elif arch == 'noarch':
             for repoarch in repo_arches:
+                if repoarch == 'src':
+                    continue
                 pkglist[repoarch].write(relpath)
         else:
             repoarch = koji.canonArch(arch)
@@ -2518,7 +2525,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None):
             _write_maven_repo_metadata(artifact_dir, artifacts)
 
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src, with_debuginfo=with_debuginfo,
-                              event=event, repo_id=repo_id)
+                              event=event, repo_id=repo_id, with_separate_src=with_separate_src)
     return [repo_id, event_id]
 
 def _write_maven_repo_metadata(destdir, artifacts):
@@ -2566,7 +2573,8 @@ def dist_repo_init(tag, keys, task_opts):
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
             with_debuginfo=False, event=event, repo_id=None,
-            dist=True, keys=keys, arches=arches, task_opts=task_opts)
+            dist=True, keys=keys, arches=arches, task_opts=task_opts,
+            with_separate_src=False)
     if not event:
         event = get_event()
     repo_id = nextval('repo_id_seq')
@@ -2604,7 +2612,7 @@ def dist_repo_init(tag, keys, task_opts):
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
             with_debuginfo=False, event=event, repo_id=repo_id,
             dist=True, keys=keys, arches=arches, task_opts=task_opts,
-            repodir=repodir)
+            repodir=repodir, with_reparate_src=False)
     return repo_id, event
 
 
@@ -10658,7 +10666,7 @@ class RootExports(object):
         task_opts['event'] = event_id
         return make_task('distRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
 
-    def newRepo(self, tag, event=None, src=False, debuginfo=False):
+    def newRepo(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
         """Create a newRepo task. returns task id"""
         if context.session.hasPerm('regen-repo'):
             pass
@@ -10669,6 +10677,8 @@ class RootExports(object):
             opts['event'] = event
         if src:
             opts['src'] = True
+        if separate_src:
+            opts['separate_src'] = True
         if debuginfo:
             opts['debuginfo'] = True
         args = koji.encode_args(tag, **opts)
@@ -12855,11 +12865,11 @@ class HostExports(object):
 
         return br.updateArchiveList(archives, project)
 
-    def repoInit(self, tag, with_src=False, with_debuginfo=False, event=None):
+    def repoInit(self, tag, with_src=False, with_debuginfo=False, event=None, with_separate_src=False):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event)
+        return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event, with_separate_src=with_separate_src)
 
     def repoAddRPM(self, repo_id, path):
         """Add an uploaded rpm to a repo"""

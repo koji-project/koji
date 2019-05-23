@@ -5011,13 +5011,15 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def handler(self, tag, event=None, src=False, debuginfo=False):
+    def handler(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
         tinfo = self.session.getTag(tag, strict=True, event=event)
         kwargs = {}
         if event is not None:
             kwargs['event'] = event
         if src:
             kwargs['with_src'] = True
+        if separate_src:
+            kwargs['with_separate_src'] = True
         if debuginfo:
             kwargs['with_debuginfo'] = True
         repo_id, event_id = self.session.host.repoInit(tinfo['id'], **kwargs)
