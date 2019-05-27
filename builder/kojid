@@ -554,6 +554,39 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return parseStatus(rv, 'mock') + msg
 
+    def rebuild_srpm(self, source_srpm):
+        self.session.host.setBuildRootState(self.id,'BUILDING')
+
+        # unpack SRPM to tempdir
+        srpm_dir = os.path.join(self.tmpdir(), 'srpm_unpacked')
+        koji.ensuredir(srpm_dir)
+        top_dir = self.path_without_to_within(srpm_dir)
+        args = ['--no-clean', '--target', 'noarch', '--chroot', '--',
+                'rpm', '--define', '_topdir %s' % top_dir, '-iv', source_srpm]
+        rv = self.mock(args)
+
+        # find specfile
+        spec_files = glob.glob("%s/SPECS/*.spec" % srpm_dir)
+        if len(spec_files) == 0:
+            raise koji.BuildError("No spec file found")
+        elif len(spec_files) > 1:
+            raise koji.BuildError("Multiple spec files found: %s" % spec_files)
+        spec_file = os.path.join(top_dir, "SPECS", os.path.basename(spec_files[0]))
+
+        # rebuild SRPM from spec + sources
+        args = ['--no-clean', '--target', 'noarch', '--chroot', '--',
+                'rpmbuild', '--define', '_topdir %s' % top_dir, '-bs', '--nodeps', spec_file]
+        rv = self.mock(args)
+
+        result_dir = os.path.join(srpm_dir, 'SRPMS')
+        for fn in glob.glob('%s/*.src.rpm' % result_dir):
+            shutil.move(os.path.join(result_dir, fn), self.resultdir())
+
+        if rv:
+            self.expire()
+            raise koji.BuildError("error building srpm, %s" % self._mockResult(rv))
+
+
     def build_srpm(self, specfile, sourcedir, source_cmd):
         self.session.host.setBuildRootState(self.id,'BUILDING')
         if source_cmd:
@@ -1025,11 +1058,30 @@ class BuildTask(BaseTaskHandler):
             if SCM.is_scm_url(src):
                 return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
-                #assume this is a path under uploads
-                return src
+                taginfo = self.session.getTag(build_tag)
+                if taginfo['extra'].get('rebuild_srpm', True):
+                    # default is to always rebuild
+                    return self.getSRPMFromSRPM(src, build_tag, repo_id)
+                else:
+                    return src
         else:
             raise koji.BuildError('Invalid source specification: %s' % src)
             #XXX - other methods?
+
+    def getSRPMFromSRPM(self, src, build_tag, repo_id):
+        # rebuild srpm in mock, so it gets correct disttag, rpm version, etc.
+        task_id = self.session.host.subtask(method='rebuildSRPM',
+                                            arglist=[src, build_tag, {'repo_id': repo_id, 'scratch': self.opts.get('scratch')}],
+                                            label='srpm',
+                                            parent=self.id)
+        # wait for subtask to finish
+        result = self.wait(task_id)[task_id]
+        if 'source' in result:
+            self.source = result['source']
+        else:
+            self.logger.warning('subtask did not provide source data')
+        srpm = result['srpm']
+        return srpm
 
     def getSRPMFromSCM(self, url, build_tag, repo_id):
         #TODO - allow different ways to get the srpm
@@ -4580,6 +4632,98 @@ class BuildIndirectionImageTask(OzImageTask):
             respath = koji.pathinfo.imagebuild(bld_info)
         report += 'image build results in: %s' % respath
         return report
+
+
+class RebuildSRPM(BaseBuildTask):
+
+    Methods = ['rebuildSRPM']
+    _taskWeight = 1.0
+
+    def checkHost(self, hostdata):
+        tag = self.params[1]
+        return self.checkHostArch(tag, hostdata)
+
+    def handler(self, source_srpm, build_tag, opts=None):
+        if opts is None:
+            opts = {}
+        repo_id = opts.get('repo_id')
+        if not repo_id:
+            raise koji.BuildError("A repo id must be provided")
+
+        repo_info = self.session.repoInfo(repo_id, strict=True)
+        event_id = repo_info['create_event']
+        build_tag = self.session.getTag(build_tag, strict=True, event=event_id)
+
+        rootopts = {'install_group': 'srpm-build', 'repo_id': repo_id}
+        br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
+        broot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, **rootopts)
+        broot.workdir = self.workdir
+
+        self.logger.debug("Initializing buildroot")
+        broot.init()
+
+        # Setup files and directories for SRPM rebuild
+        # We can't put this under the mock homedir because that directory
+        # is completely blown away and recreated on every mock invocation
+        srpmdir = broot.tmpdir() + '/srpm'
+        koji.ensuredir(srpmdir)
+        uploadpath = self.getUploadDir()
+
+        # Check out spec file, etc. from SCM
+        # TODO: download srpm
+        fn = self.localPath("work/%s" % source_srpm)
+        if not os.path.exists(fn):
+            raise koji.BuildError("Input SRPM file missing: %s" % fn)
+        shutil.copy(fn, srpmdir)
+
+        # chown the sourcedir and everything under it to the mockuser
+        # so we can build the srpm as non-root
+        uid = pwd.getpwnam(self.options.mockuser)[2]
+        # rpmbuild seems to complain if it's running in the "mock" group but
+        # files are in a different group
+        gid = grp.getgrnam('mock')[2]
+        self.chownTree(srpmdir, uid, gid)
+
+        # rebuild srpm
+        self.logger.debug("Running srpm rebuild")
+        br_srpm_path = os.path.join(broot.path_without_to_within(srpmdir), os.path.basename(source_srpm))
+        broot.rebuild_srpm(br_srpm_path)
+
+        srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
+        if len(srpms) == 0:
+            raise koji.BuildError("No srpms found in %s" % srpmdir)
+        elif len(srpms) > 1:
+            raise koji.BuildError("Multiple srpms found in %s: %s" % (srpmdir, ", ".join(srpms)))
+        else:
+            srpm = srpms[0]
+
+        # check srpm name
+        h = koji.get_rpm_header(srpm)
+        name = koji.get_header_field(h, 'name')
+        version = koji.get_header_field(h, 'version')
+        release = koji.get_header_field(h, 'release')
+        srpm_name = "%(name)s-%(version)s-%(release)s.src.rpm" % locals()
+        if srpm_name != os.path.basename(srpm):
+            raise koji.BuildError('srpm name mismatch: %s != %s' % (srpm_name, os.path.basename(srpm)))
+
+        # upload srpm and return
+        self.uploadFile(srpm)
+
+        brootid = broot.id
+        log_files = glob.glob('%s/*.log' % broot.resultdir())
+
+        broot.expire()
+
+        return {
+            'srpm': "%s/%s" % (uploadpath, srpm_name),
+            'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
+                     for f in log_files],
+            'brootid': brootid,
+            'source': {
+                'source': os.path.basename(source_srpm),
+                'url': os.path.basename(source_srpm),
+            }
+        }
 
 
 class BuildSRPMFromSCMTask(BaseBuildTask):

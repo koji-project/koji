@@ -430,6 +430,7 @@ def notificationdelete(environ, notificationID):
 # All Tasks
 _TASKS = ['build',
           'buildSRPMFromSCM',
+          'rebuildSRPM',
           'buildArch',
           'chainbuild',
           'maven',
