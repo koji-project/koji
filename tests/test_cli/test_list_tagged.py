@@ -3,6 +3,7 @@ import os
 import time
 
 import mock
+import six
 
 from koji_cli.commands import anon_handle_list_tagged
 from . import utils
@@ -60,11 +61,12 @@ class TestCliListTagged(utils.CliTestCase):
             os.environ['TZ'] = self.original_timezone
         time.tzset()
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value={'id': 1000,
                                                          'ts': 1000000.11})
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_builds(self, activate_session_mock,
-                                event_from_opts_mock):
+                                event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest', '--inherit', '--event=1000']
 
         anon_handle_list_tagged(self.options, self.session, args)
@@ -77,28 +79,30 @@ class TestCliListTagged(utils.CliTestCase):
                                                         latest=True,
                                                         package='pkg')
         self.session.listTaggedRPMS.assert_not_called()
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     'Querying at event 1000 (Mon Jan 12 08:46:40 1970)\n'
                                     'Build                                     Tag                   Built by\n'
                                     '----------------------------------------  --------------------  ----------------\n'
                                     'n-v-r                                     tag                   owner\n')
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_builds_paths(self, activate_session_mock,
-                                      event_from_opts_mock):
+                                      event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest', '--inherit', '--paths']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     'Build                                     Tag                   Built by\n'
                                     '----------------------------------------  --------------------  ----------------\n'
                                     '/mnt/koji/packages/packagename/version/1.el6  tag                   owner\n')
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_rpms(self, activate_session_mock,
-                              event_from_opts_mock):
+                              event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--arch=noarch']
 
@@ -114,37 +118,39 @@ class TestCliListTagged(utils.CliTestCase):
                                                             arch=['x86_64',
                                                                   'noarch'])
         self.session.listTagged.assert_not_called()
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     'sigkey rpmA-0.0.1-1.el6.noarch\n'
                                     'sigkey rpmA-0.0.1-1.el6.x86_64\n')
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_rpms_paths(self, activate_session_mock,
-                                    event_from_opts_mock):
+                                    event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms',
                 '--arch=x86_64', '--paths']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     '/mnt/koji/packages/packagename/version/1.el6/noarch/rpmA-0.0.1-1.el6.noarch.rpm\n'
                                     '/mnt/koji/packages/packagename/version/1.el6/x86_64/rpmA-0.0.1-1.el6.x86_64.rpm\n')
 
-
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_sigs_paths(self, activate_session_mock,
-                                    event_from_opts_mock):
+                                    event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--paths']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        self.assert_console_message(sys.stdout, '')
+        self.assert_console_message(stdout, '')
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_type(self, activate_session_mock,
-                              event_from_opts_mock):
+                              event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--type=maven']
         self.session.listTagged.return_value = [{'id': 1,
                                                  'name': 'packagename',
@@ -166,16 +172,16 @@ class TestCliListTagged(utils.CliTestCase):
                                                         latest=3,
                                                         type='maven')
         self.session.listTaggedRPMS.assert_not_called()
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     'Build                                     Tag                   Group Id              Artifact Id           Built by\n'
                                     '----------------------------------------  --------------------  --------------------  --------------------  ----------------\n'
                                     'n-v-r                                     tag                   group                 artifact              owner\n')
 
-
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_tagged_type_paths(self, activate_session_mock,
-                              event_from_opts_mock):
+                              event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--type=maven', '--paths']
         self.session.listTagged.return_value = [{'id': 1,
                                                  'name': 'packagename',
@@ -188,7 +194,7 @@ class TestCliListTagged(utils.CliTestCase):
                                                  'maven_artifact_id': 'artifact'}]
 
         anon_handle_list_tagged(self.options, self.session, args)
-        self.assert_console_message(sys.stdout,
+        self.assert_console_message(stdout,
                                     'Build                                     Tag                   Group Id              Artifact Id           Built by\n'
                                     '----------------------------------------  --------------------  --------------------  --------------------  ----------------\n'
                                     '/mnt/koji/packages/packagename/version/1.el6/maven  tag                   group                 artifact              owner\n')
