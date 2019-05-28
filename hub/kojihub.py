@@ -5246,11 +5246,10 @@ def recycle_build(old, data):
     st_desc = koji.BUILD_STATES[old['state']]
     if st_desc == 'BUILDING':
         # check to see if this is the controlling task
-        if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
+        if data['state'] == old['state'] and data.get('task_id', '') == old.get('task_id', ''):
             #the controlling task must have restarted (and called initBuild again)
             return
-        raise koji.GenericError("Build already in progress (task %(task_id)d)"
-                                    % old)
+        raise koji.GenericError("Build already in progress (task %(task_id)d)" % old)
         # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
 
     if st_desc not in ('FAILED', 'CANCELED'):
@@ -5534,6 +5533,10 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     return rpminfo
 
 
+def cg_init_build(cg, data):
+    importer = CG_Importer()
+    return importer.init_build(cg, data)
+
 def cg_import(metadata, directory):
     """Import build from a content generator
 
@@ -5553,8 +5556,16 @@ class CG_Importer(object):
         self.buildinfo = None
         self.metadata_only = False
 
-    def do_import(self, metadata, directory):
+    def init_build(self, cg, data):
+        assert_cg(cg)
+        data['owner'] = context.session.user_id
+        data['state'] = koji.BUILD_STATES['BUILDING']
+        data['completion_time'] = None
+        data['extra'] = {'reserved_by_cg': True}
+        build_id = new_build(data)
+        return build_id
 
+    def do_import(self, metadata, directory):
         metadata = self.get_metadata(metadata, directory)
         self.directory = directory
 
@@ -5679,24 +5690,37 @@ class CG_Importer(object):
 
     def prep_build(self):
         metadata = self.metadata
-        buildinfo = get_build(metadata['build'], strict=False)
-        if buildinfo:
-            # TODO : allow in some cases
-            raise koji.GenericError("Build already exists: %r" % buildinfo)
+        if metadata['build'].get('build_id'):
+            build_id = metadata['build']['build_id']
+            buildinfo = get_build(build_id, strict=True)
+            if not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg') or \
+               buildinfo['owner_id'] != context.session.user_id:
+                raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
+            if buildinfo['name'] != metadata['build']['name'] or \
+               buildinfo['version'] != metadata['build']['version'] or \
+               buildinfo['release'] != metadata['build']['release'] or \
+               buildinfo['epoch'] != metadata['build']['epoch']:
+                raise koji.GenericError("Build (%i) NVR is different" % build_id)
         else:
-            # gather needed data
-            buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
-            # epoch is not in the metadata spec, but we allow it to be specified
-            buildinfo['epoch'] = metadata['build'].get('epoch', None)
-            buildinfo['start_time'] = \
-                datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
-            buildinfo['completion_time'] = \
-                datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
-            owner = metadata['build'].get('owner', None)
-            if owner:
-                if not isinstance(owner, six.string_types):
-                    raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
-                buildinfo['owner'] = get_user(owner, strict=True)['id']
+            buildinfo = get_build(metadata['build'], strict=False)
+            if buildinfo and not metadata['build'].get('build_id'):
+                # TODO : allow in some cases
+                raise koji.GenericError("Build already exists: %r" % buildinfo)
+        # gather needed data
+        buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
+        if 'build_id' in metadata['build']:
+            buildinfo['build_id'] = metadata['build']['build_id']
+        # epoch is not in the metadata spec, but we allow it to be specified
+        buildinfo['epoch'] = metadata['build'].get('epoch', None)
+        buildinfo['start_time'] = \
+            datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
+        buildinfo['completion_time'] = \
+            datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
+        owner = metadata['build'].get('owner', None)
+        if owner:
+            if not isinstance(owner, six.string_types):
+                raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
+            buildinfo['owner'] = get_user(owner, strict=True)['id']
         self.buildinfo = buildinfo
 
         koji.check_NVR(buildinfo, strict=True)
@@ -5723,9 +5747,22 @@ class CG_Importer(object):
 
 
     def get_build(self):
-        build_id = new_build(self.buildinfo)
-        buildinfo = get_build(build_id, strict=True)
-
+        try:
+            binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
+            buildinfo = get_build(binfo, strict=True)
+            if buildinfo.get('task_id') or \
+               buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
+               buildinfo['owner_id'] != context.session.user_id or \
+               not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg'):
+                raise koji.GenericError("Build is not reserved")
+            del buildinfo['extra']['reserved_by_cg']
+            build_id = buildinfo['build_id']
+        except Exception as ex:
+            build_id = new_build(self.buildinfo)
+            buildinfo = get_build(build_id, strict=True)
+        #if not self.buildinfo.get('build_id'):
+        #else:
+        #    buildinfo = get_build(self.buildinfo['build_id'], strict=True)
         # handle special build types
         for btype in self.typeinfo:
             tinfo = self.typeinfo[btype]
@@ -5744,6 +5781,26 @@ class CG_Importer(object):
             # if the build contains rpms then it has the rpm type
             if [o for o in self.prepped_outputs if o['type'] == 'rpm']:
                 new_typed_build(buildinfo, 'rpm')
+
+        # update build state, delete 'reserved_by_cg' placeholder
+        print(buildinfo)
+        print(self.buildinfo)
+        if buildinfo.get('extra'):
+            extra = json.dumps(buildinfo['extra'])
+        else:
+            extra = None
+        owner = get_user(self.buildinfo['owner'], strict=True)['id']
+        source = self.buildinfo.get('source')
+        st_complete = koji.BUILD_STATES['COMPLETE']
+        st_old = buildinfo['state']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
+        update = UpdateProcessor('build', clauses=['id=%(id)s'], values=buildinfo)
+        update.set(state=st_complete, extra=extra, owner=owner, source=source)
+        update.rawset(completion_time='NOW()')
+        print(update)
+        update.execute()
+        buildinfo = get_build(build_id, strict=True)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
 
         self.buildinfo = buildinfo
         return buildinfo
@@ -9519,6 +9576,7 @@ class RootExports(object):
         fullpath = '%s/%s' % (koji.pathinfo.work(), filepath)
         import_archive(fullpath, buildinfo, type, typeInfo)
 
+    CGInitBuild = staticmethod(cg_init_build)
     CGImport = staticmethod(cg_import)
 
     untaggedBuilds = staticmethod(untagged_builds)
