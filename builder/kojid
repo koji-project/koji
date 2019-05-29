@@ -69,6 +69,11 @@ except ImportError:  # pragma: no cover
     krbV = None
 
 try:
+    import requests_kerberos
+except ImportError:  # pragma: no cover
+    requests_kerberos = None
+
+try:
     import librepo
     import io
 except ImportError:
@@ -6264,7 +6269,7 @@ if __name__ == "__main__":
             quit("Error: Unable to log in. Bad credentials?")
         except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
-    elif krbV:
+    elif krbV or requests_kerberos:
         krb_principal = options.krb_principal
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()
