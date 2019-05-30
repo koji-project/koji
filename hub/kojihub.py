@@ -903,16 +903,32 @@ def _pkglist_remove(tag_id, pkg_id):
     update.make_revoke()  #XXX user_id?
     update.execute()
 
+def _pkglist_owner_remove(tag_id, pkg_id):
+    clauses = ('package_id=%(pkg_id)i', 'tag_id=%(tag_id)i')
+    update = UpdateProcessor('tag_package_owners', values=locals(), clauses=clauses)
+    update.make_revoke()  #XXX user_id?
+    update.execute()
+
+def _pkglist_owner_add(tag_id, pkg_id, owner):
+    _pkglist_owner_remove(tag_id, pkg_id)
+    data = {'tag_id': tag_id, 'package_id': pkg_id, 'owner': owner}
+    insert = InsertProcessor('tag_package_owners', data=data)
+    insert.make_create()  #XXX user_id?
+    insert.execute()
+
 def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
-    #revoke old entry (if present)
-    data = dslice(locals(), ('tag_id', 'owner', 'extra_arches'))
-    data['package_id'] = pkg_id
-    data['blocked'] = block
-    data['extra_arches'] = koji.parse_arches(data['extra_arches'], strict=True, allow_none=True)
+    # revoke old entry (if present)
     _pkglist_remove(tag_id, pkg_id)
+    data = {
+        'tag_id': tag_id,
+        'package_id': pkg_id,
+        'blocked': block,
+        'extra_arches': koji.parse_arches(extra_arches, strict=True, allow_none=True)
+    }
     insert = InsertProcessor('tag_packages', data=data)
     insert.make_create()  #XXX user_id?
     insert.execute()
+    _pkglist_owner_add(tag_id, pkg_id, owner)
 
 def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, force=False, update=False):
     """Add to (or update) package list for tag"""
@@ -955,6 +971,8 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     #   blocked
     pkglist = readPackageList(tag_id, pkgID=pkg['id'], inherit=True)
     previous = pkglist.get(pkg['id'], None)
+    changed = False
+    changed_owner = False
     if previous is None:
         block = bool(block)
         if update and not force:
@@ -965,6 +983,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         #already there (possibly via inheritance)
         if owner is None:
             owner = previous['owner_id']
+        changed_owner = previous['owner_id'] != owner
         if block is None:
             block = previous['blocked']
         else:
@@ -972,14 +991,12 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         if extra_arches is None:
             extra_arches = previous['extra_arches']
         #see if the data is the same
-        changed = False
-        for key, value in (('owner_id', owner),
-                          ('blocked', block),
-                          ('extra_arches', extra_arches)):
+        for key, value in (('blocked', block),
+                           ('extra_arches', extra_arches)):
             if previous[key] != value:
                 changed = True
                 break
-        if not changed and not force:
+        if not changed and not changed_owner and not force:
             #no point in adding it again with the same data
             return
         if previous['blocked'] and not block and not force:
@@ -989,7 +1006,10 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
             owner = context.session.user_id
         else:
             raise koji.GenericError("owner not specified")
-    _pkglist_add(tag_id, pkg['id'], owner, block, extra_arches)
+    if not previous or changed:
+        _pkglist_add(tag_id, pkg['id'], owner, block, extra_arches)
+    elif changed_owner:
+        _pkglist_owner_add(tag_id, pkg['id'], owner)
     koji.plugin.run_callbacks('postPackageListChange', action=action, tag=tag, package=pkg, owner=owner,
                               block=block, extra_arches=extra_arches, force=force, update=update)
 
@@ -1083,14 +1103,18 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
               ('extra_arches', 'extra_arches'),
               ('tag_packages.blocked', 'blocked'))
     flist = ', '.join([pair[0] for pair in fields])
-    cond = eventCondition(event)
+    cond1 = eventCondition(event, table='tag_packages')
+    cond2 = eventCondition(event, table='tag_package_owners')
     q = """
     SELECT %(flist)s
     FROM tag_packages
     JOIN tag on tag.id = tag_packages.tag_id
     JOIN package ON package.id = tag_packages.package_id
-    JOIN users ON users.id = tag_packages.owner
-    WHERE %(cond)s"""
+    JOIN tag_package_owners ON
+        tag_packages.tag_id = tag_package_owners.tag_id AND
+        tag_packages.package_id = tag_packages.package_id
+    JOIN users ON users.id = tag_package_owners.owner
+    WHERE %(cond1)s AND %(cond2)s"""
     if tagID != None:
         q += """
         AND tag.id = %%(tagID)i"""
@@ -1205,7 +1229,11 @@ def list_tags(build=None, package=None, queryOpts=None):
         joins.append('tag_packages ON tag.id = tag_packages.tag_id')
         clauses.append('tag_packages.active = true')
         clauses.append('tag_packages.package_id = %(packageID)i')
-        joins.append('users ON tag_packages.owner = users.id')
+        joins.append("tag_package_owners ON\n"
+                     "   tag_packages.tag_id = tag_package_owners.tag_id AND\n"
+                     "   tag_packages.package_id = tag_package_owners.package_id AND\n"
+                     "   tag_package_owners.active IS TRUE")
+        joins.append('users ON tag_package_owners.owner = users.id')
         packageID = packageinfo['id']
 
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
@@ -3349,6 +3377,7 @@ def _delete_tag(tagInfo):
     _tagDelete('build_target_config', tagID, 'dest_tag')
     _tagDelete('tag_listing', tagID)
     _tagDelete('tag_packages', tagID)
+    _tagDelete('tag_package_owners', tagID)
     _tagDelete('tag_external_repos', tagID)
     _tagDelete('group_config', tagID)
     _tagDelete('group_req_listing', tagID)
@@ -6938,8 +6967,8 @@ def query_history(tables=None, **kwargs):
     tables: list of versioned tables to search, no value implies all tables
             valid entries: user_perms, user_groups, tag_inheritance, tag_config,
                 build_target_config, external_repo_config, tag_external_repos,
-                tag_listing, tag_packages, group_config, group_req_listing,
-                group_package_listing
+                tag_listing, tag_packages, tag_package_owners, group_config,
+                group_req_listing, group_package_listing
 
     - Time options -
     times are specified as an integer event or a string timestamp
@@ -6998,7 +7027,8 @@ def query_history(tables=None, **kwargs):
         'host_channels': ['host_id', 'channel_id'],
         'tag_external_repos': ['tag_id', 'external_repo_id', 'priority', 'merge_mode'],
         'tag_listing': ['build_id', 'tag_id'],
-        'tag_packages': ['package_id', 'tag_id', 'owner', 'blocked', 'extra_arches'],
+        'tag_packages': ['package_id', 'tag_id', 'blocked', 'extra_arches'],
+        'tag_package_owners': ['package_id', 'tag_id', 'owner'],
         'group_config': ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
                             'description', 'langonly', 'biarchonly'],
         'group_req_listing': ['group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg'],
