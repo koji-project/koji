@@ -5182,8 +5182,11 @@ def apply_volume_policy(build, strict=False):
     _set_build_volume(build, volume, strict=True)
 
 
-def new_build(data):
-    """insert a new build entry"""
+def new_build(data, strict=False):
+    """insert a new build entry
+
+    If strict is specified, raise an exception, if build already exists.
+    """
 
     data = data.copy()
 
@@ -5220,7 +5223,7 @@ def new_build(data):
     data.setdefault('volume_id', 0)
 
     #check for existing build
-    old_binfo = get_build(data)
+    old_binfo = get_build(data, strict=strict)
     if old_binfo:
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
@@ -5557,12 +5560,16 @@ class CG_Importer(object):
         self.metadata_only = False
 
     def init_build(self, cg, data):
+        """Create (reserve) a build_id for given data.
+
+        If build already exists, init_build will raise GenericError
+        """
         assert_cg(cg)
         data['owner'] = context.session.user_id
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
         data['extra'] = {'reserved_by_cg': True}
-        build_id = new_build(data)
+        build_id = new_build(data, strict=True)
         return build_id
 
     def do_import(self, metadata, directory):
