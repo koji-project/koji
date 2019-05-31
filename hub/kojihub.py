@@ -10163,9 +10163,7 @@ class RootExports(object):
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
-        if not isinstance(tag, six.integer_types):
-            #lookup tag id
-            tag = get_tag_id(tag, strict=True)
+        tag = get_tag_id(tag, strict=True)
         return readInheritanceData(tag, event)
 
     def setInheritanceData(self, tag, data, clear=False):
