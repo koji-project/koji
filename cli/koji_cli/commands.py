@@ -2818,7 +2818,10 @@ def anon_handle_list_hosts(goptions, session, args):
         for host, [channels] in zip(hosts, session.multiCall()):
             host['channels'] = ','.join(sorted([c['name'] for c in channels]))
 
-    longest_host = max([len(h['name']) for h in hosts])
+    if hosts:
+        longest_host = max([len(h['name']) for h in hosts])
+    else:
+        longest_host = 8
     if not options.quiet:
         hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(longest_host=longest_host, hostname='Hostname')
         if options.show_channels:
