@@ -11,8 +11,6 @@ try:
 except ImportError:
     import unittest
 
-# XXX remove skip when Fedora bug is fixed
-@unittest.skipIf(six.PY3, "coverage bug Fedora, see rhbz#1452339")
 class ProfilesTestCase(unittest.TestCase):
 
     def test_profile_threading(self):
