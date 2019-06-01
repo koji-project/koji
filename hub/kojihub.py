@@ -702,7 +702,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
     for link in changes:
         check_fields = fields
         if link.get('delete link'):
-            check_fields = ('parent_id')
+            check_fields = ('parent_id',)
         for f in check_fields:
             if f not in link:
                 raise koji.GenericError("No value for %s" % f)
