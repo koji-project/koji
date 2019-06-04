@@ -43,8 +43,8 @@ class TestListChannels(unittest.TestCase):
         actual = stdout.getvalue()
         print(actual)
         expected = """\
-default             3     1     0   1/  6/ 22%
-test                2     2     1   1/  6/ 28%
+default              3      1      0      1      6     22%
+test                 2      2      1      1      6     28%
 """
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
