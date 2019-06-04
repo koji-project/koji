@@ -66,7 +66,7 @@ class TestGrouplist(unittest.TestCase):
         kojihub.grplist_add(tag, group)
 
         # what was called
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.get_tag.assert_called_once_with(tag, strict=True)
         self.lookup_group.assert_called_once_with(group, create=True)
         self.get_tag_groups.assert_called_with('tag_id', inherit=True,
@@ -100,7 +100,7 @@ class TestGrouplist(unittest.TestCase):
         self.context.session.assertPerm.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             kojihub.grplist_add('tag', 'group')
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
@@ -108,7 +108,7 @@ class TestGrouplist(unittest.TestCase):
         self.get_tag.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             kojihub.grplist_add('tag', 'group')
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
@@ -125,7 +125,7 @@ class TestGrouplist(unittest.TestCase):
         kojihub.grplist_block(tag, group)
 
         # what was called
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.get_tag.assert_called_once_with(tag, strict=True)
         self.lookup_group.assert_called_once_with(group, create=True)
         self.get_tag_groups.assert_called_with('tag_id', inherit=True,
@@ -166,7 +166,7 @@ class TestGrouplist(unittest.TestCase):
         kojihub.grplist_remove(tag, group)
 
         # what was called
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.get_tag.assert_called_once_with(tag, strict=True)
         self.lookup_group.assert_called_once_with(group, strict=True)
 
@@ -192,7 +192,7 @@ class TestGrouplist(unittest.TestCase):
             kojihub.grplist_unblock(tag, group)
 
         # what was called
-        self.context.session.assertPerm.assert_called_once_with('admin')
+        self.context.session.assertPerm.assert_called_once_with('tag')
         self.lookup_tag.assert_called_once_with(tag, strict=True)
         self.lookup_group.assert_called_once_with(group, strict=True)
 

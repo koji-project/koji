@@ -34,6 +34,9 @@ Administration
 ``host``
   Restricted permission for handling host-related management tasks.
 
+``tag``
+  Permission for adding/deleting/editing tags
+
 Tasks
 -----
 

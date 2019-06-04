@@ -688,7 +688,7 @@ def readDescendantsData(tag_id, event=None):
 
 def writeInheritanceData(tag_id, changes, clear=False):
     """Add or change inheritance data for a tag"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _writeInheritanceData(tag_id, changes, clear)
 
 
@@ -1638,7 +1638,7 @@ def _direct_untag_build(tag, build, user, strict=True, force=False):
 def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     """Add to (or update) group list for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_add(taginfo, grpinfo, block, force, **opts)
 
 
@@ -1696,7 +1696,7 @@ def grplist_remove(taginfo, grpinfo, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_remove(taginfo, grpinfo, force)
 
 
@@ -1724,7 +1724,7 @@ def grplist_unblock(taginfo, grpinfo):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_unblock(taginfo, grpinfo)
 
 
@@ -1758,7 +1758,7 @@ def _grplist_unblock(taginfo, grpinfo):
 def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     """Add package to group for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts)
 
 
@@ -1822,7 +1822,7 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_remove(taginfo, grpinfo, pkg_name, force)
 
 
@@ -1848,7 +1848,7 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_unblock(taginfo, grpinfo, pkg_name)
 
 
@@ -1881,7 +1881,7 @@ def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
 def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     """Add group requirement to group for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts)
 
 
@@ -1946,7 +1946,7 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_remove(taginfo, grpinfo, reqinfo, force)
 
 
@@ -1973,7 +1973,7 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_unblock(taginfo, grpinfo, reqinfo)
 
 
@@ -3051,7 +3051,7 @@ def lookup_build_target(info, strict=False, create=False):
 
 def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     return _create_tag(name, parent, arches, perm, locked, maven_support, maven_include_all, extra)
 
 
@@ -3206,7 +3206,7 @@ def edit_tag(tagInfo, **kwargs):
     :param list remove_extra: remove extra tag parameters.
     """
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _edit_tag(tagInfo, **kwargs)
 
 
@@ -3316,7 +3316,7 @@ def old_edit_tag(tagInfo, name, arches, locked, permissionID, extra=None):
 
 def delete_tag(tagInfo):
     """Delete the specified tag."""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _delete_tag(tagInfo)
 
 
@@ -3469,7 +3469,7 @@ def delete_external_repo(info):
 def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
     """Add an external repo to a tag"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     if merge_mode not in koji.REPO_MERGE_MODES:
         raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
@@ -3496,7 +3496,7 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
 def remove_external_repo_from_tag(tag_info, repo_info):
     """Remove an external repo from a tag"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -3516,7 +3516,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
     """Edit a tag<->external repo association
     This allows you to update the priority without removing/adding the repo."""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -10185,7 +10185,7 @@ class RootExports(object):
         """
         # verify existence of tag and/or convert name to id
         tag = get_tag_id(tag, strict=True)
-        context.session.assertPerm('admin')
+        context.session.assertPerm('tag')
         return writeInheritanceData(tag, data, clear=clear)
 
     def getFullInheritance(self, tag, event=None, reverse=False, stops=None, jumps=None):
