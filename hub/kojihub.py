@@ -2797,7 +2797,7 @@ def _validate_build_target_name(name):
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     return _create_build_target(name, build_tag, dest_tag)
 
 
@@ -2833,7 +2833,7 @@ def _create_build_target(name, build_tag, dest_tag):
 
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     _edit_build_target(buildTargetInfo, name, build_tag, dest_tag)
 
 
@@ -2885,7 +2885,7 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 def delete_build_target(buildTargetInfo):
     """Delete the build target with the given name.  If no build target
     exists, raise a GenericError."""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     _delete_build_target(buildTargetInfo)
 
 

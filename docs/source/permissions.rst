@@ -37,6 +37,9 @@ Administration
 ``tag``
   Permission for adding/deleting/editing tags
 
+``target``
+  Permission for adding/deleting/editing targets
+
 Tasks
 -----
 
@@ -61,8 +64,8 @@ Tasks
 ``regen-repo``
   same as ``repo`` for now
 
-Data
-----
+Data Import
+-----------
 ``image-import``
   used for importing external maven artifacts
   (``koji import-archive --type maven``)
