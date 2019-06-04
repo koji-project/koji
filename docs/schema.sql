@@ -118,6 +118,7 @@ CREATE TABLE sessions (
 ) WITHOUT OIDS;
 CREATE INDEX sessions_master ON sessions(master);
 CREATE INDEX sessions_active_and_recent ON sessions(expired, master, update_time) WHERE (expired IS NOT TRUE AND master IS NULL);
+CREATE INDEX sessions_expired ON sessions(expired);
 
 -- Channels are used to limit which tasks are run on which machines.
 -- Each task is assigned to a channel and each host 'listens' on one
