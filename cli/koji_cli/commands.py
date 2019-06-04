@@ -2767,9 +2767,9 @@ def anon_handle_list_channels(goptions, session, args):
             print(channel['name'])
     else:
         if not options.quiet:
-            print('Channel           Enb   Rdy   Dis Loa/Cap/Perc')
+            print('Channel        Enabled  Ready Disbld   Load    Cap    Perc')
         for channel in channels:
-            print("%(name)-15s %(enabled)5d %(ready)5d %(disabled)5d %(load)3d/%(capacity)3d/%(perc_load)3d%%" % channel)
+            print("%(name)-15s %(enabled)6d %(ready)6d %(disabled)6d %(load)6d %(capacity)6d %(perc_load)6d%%" % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
