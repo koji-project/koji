@@ -817,7 +817,8 @@ insert into archivetypes (name, description, extensions) values ('tlb', 'OLE typ
 insert into archivetypes (name, description, extensions) values ('jnilib', 'Java Native Interface library', 'jnilib');
 insert into archivetypes (name, description, extensions) values ('yaml', 'YAML Ain''t Markup Language', 'yaml yml');
 insert into archivetypes (name, description, extensions) values ('xjb', 'JAXB(Java Architecture for XML Binding) Binding Customization File', 'xjb');
-
+insert into archivetypes (name, description, extensions) values ('raw-gz', 'GZIP compressed raw disk image', 'raw.gz');
+insert into archivetypes (name, description, extensions) values ('qcow2-compressed', 'Compressed QCOW2 image', 'qcow2.gz qcow2.xz');
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
