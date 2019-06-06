@@ -4135,7 +4135,7 @@ def _print_histline(entry, **kwargs):
         del x['.related']
         bad_edit = None
         if len(edit) != 1:
-            bad_edit = "%i elements" % len(edit)+1
+            bad_edit = "%i elements" % (len(edit)+1)
         other = edit[0]
         #check edit for sanity
         if create or not other[2]:
@@ -4342,7 +4342,7 @@ _table_keys = {
     'build_target_config' : ['build_target_id'],
     'external_repo_config' : ['external_repo_id'],
     'host_config': ['host_id'],
-    'host_channels': ['host_id'],
+    'host_channels': ['host_id', 'channel_id'],
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
     'tag_listing' : ['build_id', 'tag_id'],
     'tag_packages' : ['package_id', 'tag_id'],
