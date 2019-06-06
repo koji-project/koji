@@ -4762,8 +4762,13 @@ def anon_handle_taginfo(goptions, session, args):
     for tag in args:
         info = session.getTag(tag, **event_opts)
         if info is None:
-            print("No such tag: %s" % tag)
-            sys.exit(1)
+            try:
+                info = session.getTag(int(tag), **event_opts)
+            except ValueError:
+                info = None
+            if info is None:
+                print("No such tag: %s" % tag)
+                sys.exit(1)
         tags.append(info)
 
     for n, info in enumerate(tags):
@@ -4817,7 +4822,7 @@ def anon_handle_taginfo(goptions, session, args):
             for rinfo in external_repos:
                 print("  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo)
         print("Inheritance:")
-        for parent in session.getInheritanceData(tag, **event_opts):
+        for parent in session.getInheritanceData(info['id'], **event_opts):
             flags = ''
             for code,expr in (
                     ('M',parent['maxdepth'] is not None),
