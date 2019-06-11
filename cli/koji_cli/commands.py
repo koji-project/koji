@@ -2,9 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 
 import ast
-import base64
 from collections import defaultdict, OrderedDict
 import fnmatch
+import hashlib
 import json
 import logging
 import os
@@ -35,7 +35,7 @@ except ImportError:  # pragma: no cover
         yumcomps = None
 
 import koji
-from koji.util import md5_constructor, to_list, base64encode
+from koji.util import to_list, base64encode
 from koji_cli.lib import _, activate_session, parse_arches, \
         _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
@@ -1481,7 +1481,7 @@ def handle_import_sig(goptions, session, args):
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
         assert len(previous) <= 1
         if previous:
-            sighash = md5_constructor(sighdr).hexdigest()
+            sighash = hashlib.md5(sighdr).hexdigest()
             if previous[0]['sighash'] == sighash:
                 print(_("Signature already imported: %s") % path)
                 continue

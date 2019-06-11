@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import hashlib
 try:
     import unittest2 as unittest
 except ImportError:
@@ -6,7 +7,7 @@ except ImportError:
 
 import kojihub
 from koji import GenericError
-from koji.util import md5_constructor, adler32_constructor
+from koji.util import adler32_constructor
 
 
 class TestGetVerifyClass(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestGetVerifyClass(unittest.TestCase):
         kojihub.get_verify_class(None) is None
 
     def test_get_verify_class_is_md5(self):
-        kojihub.get_verify_class('md5') is md5_constructor
+        kojihub.get_verify_class('md5') is hashlib.md5
 
     def test_get_verify_class_is_adler32(self):
         kojihub.get_verify_class('adler32') is adler32_constructor

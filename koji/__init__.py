@@ -43,6 +43,7 @@ except ImportError:  # pragma: no cover
 import six.moves.configparser
 import errno
 from fnmatch import fnmatch
+import hashlib
 import six.moves.http_client
 import imp
 import logging
@@ -2814,7 +2815,7 @@ class ClientSession(object):
         fo = open(localfile, "rb")  #specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        md5sum = util.md5_constructor()
+        md5sum = hashlib.md5()
         debug = self.opts.get('debug', False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
@@ -2831,7 +2832,7 @@ class ClientSession(object):
                 sz = ofs
             else:
                 offset = ofs
-                digest = util.md5_constructor(contents).hexdigest()
+                digest = hashlib.md5(contents).hexdigest()
                 sz = size
             del contents
             tries = 0
