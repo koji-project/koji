@@ -454,7 +454,7 @@ done
 make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
 # alter python interpreter in koji CLI
 scripts='%{_bindir}/koji %{_sbindir}/kojid %{_sbindir}/kojira %{_sbindir}/koji-shadow
-         %{_sbindir}/koji-gc %{_sbindir}/kojivmd'
+         %{_sbindir}/koji-gc %{_sbindir}/kojivmd %{_sbindir}/koji-sweep-db'
 for fn in $scripts ; do
     sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT$fn
 done
@@ -538,6 +538,11 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji-hub
 %config(noreplace) /etc/koji-hub/hub.conf
 %dir /etc/koji-hub/hub.conf.d
+%{_sbindir}/koji-sweep-db
+%if %{use_systemd}
+%{_unitdir}/koji-sweep-db.service
+%{_unitdir}/koji-sweep-db.timer
+%endif
 
 %if 0%{py2_support} > 1
 %files -n python2-%{name}-hub

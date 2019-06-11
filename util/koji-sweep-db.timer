@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily maintenance script for koji db
+Documentation=https://pagure.io/docs/koji/
+
+[Timer]
+OnCalendar=daily
+Accuracy=1h
+Persistent=true
+Unit
+
+[Install]
+WantedBy=timers.target

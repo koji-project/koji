@@ -1,0 +1,70 @@
+#!/usr/bin/python2
+
+import os
+
+from optparse import OptionParser
+from six.moves.configparser import RawConfigParser
+
+import koji.db
+
+def clean_sessions(cursor):
+    q = " FROM sessions WHERE update_time < now() - '1 day'::interval"
+    if options.verbose:
+        cursor.execute("SELECT COUNT(*) " + q)
+        rows = cursor.fetchall()[0][0]
+        print("Deleting %d sessions" % rows)
+
+    cursor.execute("DELETE " + q)
+
+
+if __name__ == "__main__":
+    global options
+    parser = OptionParser("%prog cleans koji database")
+    parser.add_option('-v', '--verbose', action="store_true", help="Be verbose")
+    parser.add_option('-c', '--conf', default='/etc/koji-hub/hub.conf',
+                      action='store', help="Path to koji's hub.conf")
+    options, args = parser.parse_args()
+
+    if not os.path.exists(options.conf):
+        parser.error("Config file doesn't exist")
+
+    config = RawConfigParser()
+    config.read(options.conf)
+
+    cfgmap = [
+        #option, type, default
+        ['DBName', 'string', None],
+        ['DBUser', 'string', None],
+        ['DBHost', 'string', None],
+        ['DBhost', 'string', None],   # alias for backwards compatibility
+        ['DBPort', 'integer', None],
+        ['DBPass', 'string', None],
+    ]
+
+    opts = {}
+    for name, dtype, default in cfgmap:
+        key = ('hub', name)
+        if config and config.has_option(*key):
+            if dtype == 'integer':
+                opts[name] = config.getint(*key)
+            elif dtype == 'boolean':
+                opts[name] = config.getboolean(*key)
+            else:
+                opts[name] = config.get(*key)
+            continue
+        opts[name] = default
+    if opts['DBHost'] is None:
+        opts['DBHost'] = opts['DBhost']
+
+
+    koji.db.provideDBopts(database=opts["DBName"],
+                          user=opts["DBUser"],
+                          password=opts.get("DBPass", None),
+                          host=opts.get("DBHost", None),
+                          port=opts.get("DBPort", None))
+
+    conn = koji.db.connect()
+    cursor = conn.cursor()
+
+    clean_sessions(cursor)
+    conn.commit()

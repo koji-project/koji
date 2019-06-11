@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily maintenance script for koji db
+Documentation=https://pagure.io/docs/koji/
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/koji-sweep-db
+
+[Install]
+WantedBy=multi-user.target
