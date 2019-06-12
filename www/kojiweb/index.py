@@ -2273,7 +2273,7 @@ def search(environ, start=None, order=None):
             else:
                 typeLabel = '%ss' % type
             values['typeLabel'] = typeLabel
-            return _genHTML(environ, 'searchresults.chtml')
+            return _genHTML(environ, 'search.chtml')
     else:
         return _genHTML(environ, 'search.chtml')
 
