@@ -1361,26 +1361,20 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     if rpm['buildroot_id'] != None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
     if rpm['external_repo_id'] == 0:
-        values['provides'] = server.getRPMDeps(rpm['id'], koji.DEP_PROVIDE)
-        values['provides'].sort(key=_sortbyname)
-        values['obsoletes'] = server.getRPMDeps(rpm['id'], koji.DEP_OBSOLETE)
-        values['obsoletes'].sort(key=_sortbyname)
-        values['conflicts'] = server.getRPMDeps(rpm['id'], koji.DEP_CONFLICT)
-        values['conflicts'].sort(key=_sortbyname)
-        values['requires'] = server.getRPMDeps(rpm['id'], koji.DEP_REQUIRE)
-        values['requires'].sort(key=_sortbyname)
-        if koji.SUPPORTED_OPT_DEP_HDRS['RECOMMENDNAME']:
-            values['recommends'] = server.getRPMDeps(rpm['id'], koji.DEP_RECOMMEND)
-            values['recommends'].sort(key=_sortbyname)
-        if koji.SUPPORTED_OPT_DEP_HDRS['SUGGESTNAME']:
-            values['suggests'] = server.getRPMDeps(rpm['id'], koji.DEP_SUGGEST)
-            values['suggests'].sort(key=_sortbyname)
-        if koji.SUPPORTED_OPT_DEP_HDRS['SUPPLEMENTNAME']:
-            values['supplements'] = server.getRPMDeps(rpm['id'], koji.DEP_SUPPLEMENT)
-            values['supplements'].sort(key=_sortbyname)
-        if koji.SUPPORTED_OPT_DEP_HDRS['ENHANCENAME']:
-            values['enhances'] = server.getRPMDeps(rpm['id'], koji.DEP_ENHANCE)
-            values['enhances'].sort(key=_sortbyname)
+        dep_names = {
+            koji.DEP_REQUIRE: 'requires',
+            koji.DEP_PROVIDE: 'provides',
+            koji.DEP_OBSOLETE: 'obsoletes',
+            koji.DEP_CONFLICT: 'conflicts',
+            koji.DEP_SUGGEST: 'suggests',
+            koji.DEP_ENHANCE: 'enhances',
+            koji.DEP_SUPPLEMENT: 'supplements',
+            koji.DEP_RECOMMEND: 'recommends',
+        }
+        deps = server.getRPMDeps(rpm['id'])
+        for dep_type in dep_names:
+            values[dep_names[dep_type]] = [d for d in deps if d['type'] == dep_type]
+            values[dep_names[dep_type]].sort(key=_sortbyname)
         headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description', 'license'])
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
