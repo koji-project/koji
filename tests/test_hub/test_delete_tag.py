@@ -37,7 +37,7 @@ class TestDeleteTag(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.delete_tag('badtag')
         self.assertEqual(self.updates, [])
-        self.context.session.assertPerm.assert_called_with('admin')
+        self.context.session.assertPerm.assert_called_with('tag')
 
     def test_good_tag(self):
         self.get_tag.return_value = {'id': 'TAGID'}
@@ -50,4 +50,4 @@ class TestDeleteTag(unittest.TestCase):
             self.assertEqual(u.values, {'value': 'TAGID'})
             self.assertEqual(u.rawdata, {'active': 'NULL'})
             self.assertEqual(u.data, data)
-        self.context.session.assertPerm.assert_called_with('admin')
+        self.context.session.assertPerm.assert_called_with('tag')

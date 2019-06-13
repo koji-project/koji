@@ -688,7 +688,7 @@ def readDescendantsData(tag_id, event=None):
 
 def writeInheritanceData(tag_id, changes, clear=False):
     """Add or change inheritance data for a tag"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _writeInheritanceData(tag_id, changes, clear)
 
 
@@ -1638,7 +1638,7 @@ def _direct_untag_build(tag, build, user, strict=True, force=False):
 def grplist_add(taginfo, grpinfo, block=False, force=False, **opts):
     """Add to (or update) group list for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_add(taginfo, grpinfo, block, force, **opts)
 
 
@@ -1696,7 +1696,7 @@ def grplist_remove(taginfo, grpinfo, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_remove(taginfo, grpinfo, force)
 
 
@@ -1724,7 +1724,7 @@ def grplist_unblock(taginfo, grpinfo):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grplist_unblock(taginfo, grpinfo)
 
 
@@ -1758,7 +1758,7 @@ def _grplist_unblock(taginfo, grpinfo):
 def grp_pkg_add(taginfo, grpinfo, pkg_name, block=False, force=False, **opts):
     """Add package to group for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts)
 
 
@@ -1822,7 +1822,7 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_remove(taginfo, grpinfo, pkg_name, force)
 
 
@@ -1848,7 +1848,7 @@ def grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_pkg_unblock(taginfo, grpinfo, pkg_name)
 
 
@@ -1881,7 +1881,7 @@ def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
 def grp_req_add(taginfo, grpinfo, reqinfo, block=False, force=False, **opts):
     """Add group requirement to group for tag"""
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts)
 
 
@@ -1946,7 +1946,7 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
     Most of the time you really want to use the block or unblock functions
     """
     #only admins....
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_remove(taginfo, grpinfo, reqinfo, force)
 
 
@@ -1973,7 +1973,7 @@ def grp_req_unblock(taginfo, grpinfo, reqinfo):
     Otherwise, raise an error
     """
     # only admins...
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _grp_req_unblock(taginfo, grpinfo, reqinfo)
 
 
@@ -2108,7 +2108,7 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True,
         return [x for x in groups if not x['blocked']]
 
 def set_host_enabled(hostname, enabled=True):
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if not host:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -2128,7 +2128,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
 
     Channel must already exist unless create option is specified
     """
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if host == None:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -2146,7 +2146,7 @@ def add_host_to_channel(hostname, channel_name, create=False):
     insert.execute()
 
 def remove_host_from_channel(hostname, channel_name):
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
     host = get_host(hostname)
     if host == None:
         raise koji.GenericError('host does not exist: %s' % hostname)
@@ -2797,7 +2797,7 @@ def _validate_build_target_name(name):
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     return _create_build_target(name, build_tag, dest_tag)
 
 
@@ -2833,7 +2833,7 @@ def _create_build_target(name, build_tag, dest_tag):
 
 def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Set the build_tag and dest_tag of an existing build_target to new values"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     _edit_build_target(buildTargetInfo, name, build_tag, dest_tag)
 
 
@@ -2885,7 +2885,7 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 def delete_build_target(buildTargetInfo):
     """Delete the build target with the given name.  If no build target
     exists, raise a GenericError."""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('target')
     _delete_build_target(buildTargetInfo)
 
 
@@ -3051,7 +3051,7 @@ def lookup_build_target(info, strict=False, create=False):
 
 def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False, maven_include_all=False, extra=None):
     """Create a new tag"""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     return _create_tag(name, parent, arches, perm, locked, maven_support, maven_include_all, extra)
 
 
@@ -3206,7 +3206,7 @@ def edit_tag(tagInfo, **kwargs):
     :param list remove_extra: remove extra tag parameters.
     """
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _edit_tag(tagInfo, **kwargs)
 
 
@@ -3316,7 +3316,7 @@ def old_edit_tag(tagInfo, name, arches, locked, permissionID, extra=None):
 
 def delete_tag(tagInfo):
     """Delete the specified tag."""
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
     _delete_tag(tagInfo)
 
 
@@ -3469,7 +3469,7 @@ def delete_external_repo(info):
 def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
     """Add an external repo to a tag"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     if merge_mode not in koji.REPO_MERGE_MODES:
         raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
@@ -3496,7 +3496,7 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
 def remove_external_repo_from_tag(tag_info, repo_info):
     """Remove an external repo from a tag"""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -3516,7 +3516,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
     """Edit a tag<->external repo association
     This allows you to update the priority without removing/adding the repo."""
 
-    context.session.assertPerm('admin')
+    context.session.assertPerm('tag')
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -4782,7 +4782,7 @@ def edit_host(hostInfo, **kw):
 
     Returns True if changes are made to the database, False otherwise.
     """
-    context.session.assertPerm('admin')
+    context.session.assertPerm('host')
 
     host = get_host(hostInfo, strict=True)
 
@@ -8848,7 +8848,7 @@ class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
     def restartHosts(self, priority=5, options=None):
-        context.session.assertPerm('admin')
+        context.session.assertPerm('host')
         if options is None:
             args = []
         else:
@@ -10185,7 +10185,7 @@ class RootExports(object):
         """
         # verify existence of tag and/or convert name to id
         tag = get_tag_id(tag, strict=True)
-        context.session.assertPerm('admin')
+        context.session.assertPerm('tag')
         return writeInheritanceData(tag, data, clear=clear)
 
     def getFullInheritance(self, tag, event=None, reverse=False, stops=None, jumps=None):
@@ -10987,7 +10987,7 @@ class RootExports(object):
         If krb_principal is not given then that field will be generated
         from the HostPrincipalFormat setting (if available).
         """
-        context.session.assertPerm('admin')
+        context.session.assertPerm('host')
         # validate arches
         arches = " ".join(arches)
         arches = koji.parse_arches(arches, strict=True)
