@@ -10,7 +10,7 @@
     <table>
       <tr>
         #if $error
-        <tr><td colspan="3" class="error">$error</td></tr>
+        <tr><td colspan="5" class="error">$error</td></tr>
         #end if
         <th>Search</th>
         #try
@@ -36,10 +36,7 @@
             #end if
           </select>
         </td>
-      </tr>
-      <tr>
-        <th>&nbsp;</th>
-        <td colspan="2">
+        <td>
           #if not $varExists('match')
              #set $match='glob'
           #end if
@@ -47,10 +44,10 @@
           <input type="radio" name="match" value="regexp" $util.toggleSelected($self, $match, "regexp", True) id="radioregexp"/><abbr title="full POSIX regular expressions" id="abbrregexp">regexp</abbr>
           <input type="radio" name="match" value="exact" $util.toggleSelected($self, $match, "exact", True) id="radioexact"/><abbr title="exact matches only" id="abbrexact">exact</abbr>
         </td>
+        <td colspan="2"><input type="submit" value="Search"/></td>
       </tr>
       <tr>
-        <th>&nbsp;</th>
-        <td colspan="2"><input type="submit" value="Search"/></td>
+        <td>&nbsp;</td>
       </tr>
     </table>
   </form>
