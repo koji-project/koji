@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import json
+import locale
 import mock
 import os
 import tempfile
@@ -72,6 +73,8 @@ class TestBuildNotification(unittest.TestCase):
         mock.patch.stopall()
 
     def test_build_notification(self):
+        # force locale to compare 'message' value
+        locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
         # task_info['id'], method, params, self.session, self.options
         task_id = 999
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'params.json')
@@ -102,3 +105,5 @@ class TestBuildNotification(unittest.TestCase):
         with open(fn, 'rb') as fp:
             msg_expect = fp.read().decode()
         self.assertEqual(message, msg_expect)
+
+        locale.resetlocale()

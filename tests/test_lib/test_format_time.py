@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import datetime
+import locale
 try:
     import unittest2 as unittest
 except ImportError:
@@ -30,6 +31,9 @@ class TestFormatTime(unittest.TestCase):
         self.assertEqual(formatTime(desired + '.123'), desired)
 
     def test_format_time_long(self):
+        # force locale to compare 'desired' value
+        locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
+
         self.assertEqual(formatTimeLong(None), '')
         self.assertEqual(formatTimeLong(''), '')
 
@@ -57,3 +61,5 @@ class TestFormatTime(unittest.TestCase):
         r = formatTimeLong(d2 + '.123')
         r = r[:r.rfind(' ')]
         self.assertEqual(r, desired)
+
+        locale.resetlocale()
