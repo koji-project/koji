@@ -5226,7 +5226,7 @@ def new_build(data, strict=False):
     old_binfo = get_build(data)
     if old_binfo:
         if strict:
-            raise koji.GenericError('No matching build found: %s' % data)
+            raise koji.GenericError('Existing build found: %s' % data)
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
         return old_binfo['id']
@@ -5250,10 +5250,11 @@ def recycle_build(old, data):
     st_desc = koji.BUILD_STATES[old['state']]
     if st_desc == 'BUILDING':
         # check to see if this is the controlling task
-        if data['state'] == old['state'] and data.get('task_id', '') == old.get('task_id', ''):
+        if data['state'] == old['state'] and data.get('task_id', '') == old['task_id']:
             #the controlling task must have restarted (and called initBuild again)
             return
-        raise koji.GenericError("Build already in progress (task %(task_id)d)" % old)
+        raise koji.GenericError("Build already in progress (task %(task_id)d)"
+                                    % old)
         # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
 
     if st_desc not in ('FAILED', 'CANCELED'):
@@ -5698,7 +5699,8 @@ class CG_Importer(object):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             if not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg') or \
-               buildinfo['owner_id'] != context.session.user_id:
+               buildinfo['owner_id'] != context.session.user_id or \
+               buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
                buildinfo['version'] != metadata['build']['version'] or \
@@ -5759,14 +5761,11 @@ class CG_Importer(object):
                buildinfo['owner_id'] != context.session.user_id or \
                not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg'):
                 raise koji.GenericError("Build is not reserved")
-            del buildinfo['extra']['reserved_by_cg']
+            buildinfo['extra'] = self.buildinfo['extra']
             build_id = buildinfo['build_id']
         except Exception:
             build_id = new_build(self.buildinfo)
             buildinfo = get_build(build_id, strict=True)
-        #if not self.buildinfo.get('build_id'):
-        #else:
-        #    buildinfo = get_build(self.buildinfo['build_id'], strict=True)
         # handle special build types
         for btype in self.typeinfo:
             tinfo = self.typeinfo[btype]
@@ -5787,8 +5786,6 @@ class CG_Importer(object):
                 new_typed_build(buildinfo, 'rpm')
 
         # update build state, delete 'reserved_by_cg' placeholder
-        print(buildinfo)
-        print(self.buildinfo)
         if buildinfo.get('extra'):
             extra = json.dumps(buildinfo['extra'])
         else:
