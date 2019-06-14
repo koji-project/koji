@@ -5538,8 +5538,17 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
 
 
 def cg_init_build(cg, data):
-    importer = CG_Importer()
-    return importer.init_build(cg, data)
+    """Create (reserve) a build_id for given data.
+
+    If build already exists, init_build will raise GenericError
+    """
+    assert_cg(cg)
+    data['owner'] = context.session.user_id
+    data['state'] = koji.BUILD_STATES['BUILDING']
+    data['completion_time'] = None
+    data['extra'] = {'reserved_by_cg': True}
+    build_id = new_build(data, strict=True)
+    return build_id
 
 def cg_import(metadata, directory):
     """Import build from a content generator
@@ -5559,19 +5568,6 @@ class CG_Importer(object):
     def __init__(self):
         self.buildinfo = None
         self.metadata_only = False
-
-    def init_build(self, cg, data):
-        """Create (reserve) a build_id for given data.
-
-        If build already exists, init_build will raise GenericError
-        """
-        assert_cg(cg)
-        data['owner'] = context.session.user_id
-        data['state'] = koji.BUILD_STATES['BUILDING']
-        data['completion_time'] = None
-        data['extra'] = {'reserved_by_cg': True}
-        build_id = new_build(data, strict=True)
-        return build_id
 
     def do_import(self, metadata, directory):
         metadata = self.get_metadata(metadata, directory)
