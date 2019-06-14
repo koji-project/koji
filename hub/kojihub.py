@@ -5798,7 +5798,6 @@ class CG_Importer(object):
         update = UpdateProcessor('build', clauses=['id=%(id)s'], values=buildinfo)
         update.set(state=st_complete, extra=extra, owner=owner, source=source)
         update.rawset(completion_time='NOW()')
-        print(update)
         update.execute()
         buildinfo = get_build(build_id, strict=True)
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
