@@ -189,14 +189,18 @@ def toggleOrder(template, sortKey, orderVar='order'):
     else:
         return sortKey
 
-def toggleSelected(template, var, option):
+def toggleSelected(template, var, option, checked=False):
     """
     If the passed in variable var equals the literal value in option,
-    return 'selected="selected"', otherwise return ''.
-    Used for setting the selected option in select boxes.
+    return 'selected="selected"', otherwise return ''. If checked is True,
+    '"checked="checked"' string is returned
+    Used for setting the selected option in select and radio boxes.
     """
     if var == option:
-        return 'selected="selected"'
+        if checked:
+            return 'checked="checked"'
+        else:
+            return 'selected="selected"'
     else:
         return ''
 
