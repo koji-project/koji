@@ -245,3 +245,38 @@ class TestHasTagTest(unittest.TestCase):
         # check no match case
         self.list_tags.return_value = []
         self.assertFalse(obj.run(data))
+
+
+class TestBuildTypeTest(unittest.TestCase):
+    def setUp(self):
+        self.get_build_type = mock.patch('kojihub.get_build_type').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_invalid(self):
+        binfo = {'id': 1, 'name': 'nvr-1-2'}
+        self.get_build.return_value = binfo
+        self.get_build_type.return_value = {'rpm': None}
+        obj = kojihub.BuildTypeTest('buildtype foo-*')
+        data = {'build': 'nvr-1-2'}
+        self.assertFalse(obj.run(data))
+        self.get_build_type.assert_called_once_with(binfo)
+
+    def test_valid(self):
+        binfo = {'id': 1, 'name': 'nvr-1-2'}
+        self.get_build.return_value = binfo
+        self.get_build_type.return_value = {'rpm': None}
+        obj = kojihub.BuildTypeTest('buildtype rpm')
+        data = {'build': 'nvr-1-2'}
+        self.assertTrue(obj.run(data))
+        self.get_build_type.assert_called_once_with(binfo)
+
+    def test_prepopulated(self):
+        #self.get_build.return_value = {'id': 1, 'name': 'nvr-1-2'}
+        self.get_build_type.return_value = {'rpm': None}
+        obj = kojihub.BuildTypeTest('buildtype rpm')
+        data = {'build': 123, 'btypes': set(['rpm'])}
+        self.assertTrue(obj.run(data))
+        self.get_build_type.assert_not_called()

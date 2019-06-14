@@ -209,6 +209,9 @@ Available tests
     * for the tag policies, determines the build tag from the build data,
       which will by null for imported builds
 
+``buildtype``
+    * checks the build type(s) against the arguments
+
 ``skip_tag``
     * checks to see if the --skip-tag option was used
     * only applicable to the build_from_* policies
