@@ -185,6 +185,73 @@ The ``ClientSession`` class provides support for this and there are several
 examples in the existing client code. Some examples in the cli include:
 ``edit-host``, ``add-pkg``, ``disable-host``, and ``list-hosts``.
 
+There are two ways to use multicall.
+The original modal method works within the ``ClientSession`` object and
+prevents making other normal calls until the multicall is completed.
+The newer method uses a separate ``MultiCallSession`` object and is much
+more flexible.
+
+**Using MultiCallSession**
+
+Note: this feature was added in Koji version 1.18.
+
+A ``MultiCallSession`` object is used to track an individual multicall attached
+to a session.
+To create one, you can simply call your session's ``multicall`` method.
+Once created, the object can be used like a session, but calls are stored
+rather can sent immediately.
+The stored calls are executed by calling the ``call_all()`` method.
+
+::
+
+    m = session.multicall()
+    for task_id in mylist:
+        m.cancelTask(task_id)
+    m.call_all()
+
+This object can also be used as a context manager, so the following is
+equivalent:
+
+::
+
+    with session.multicall() as m:
+        for task_id in mylist:
+            m.cancelTask(task_id)
+
+Method calls to a ``MultiCallSession`` object return a ``VirtualCall`` object
+that stands in for the result.
+Once the multicall is executed, the result of each call can be accessed via
+the ``result`` property of the ``VirtualCall`` object.
+Accessing the ``result`` property before the call is executed will result in
+an error.
+
+::
+
+    with session.multicall() as m:
+        tags = [m.getTag(tag_id) for tag_id in mylist]
+    for tag in tags:
+        print(tag.result['name'])
+
+There are two parameters affecting the behavior of the multicall.
+If the ``strict`` parameter is set to True, the multicall will raise the first
+error it encounters, if any.
+If the ``batch`` parameter is set to a number greater than zero, the multicall
+will spread the calls across multiple multicall batches of at most that number.
+These parameters may be passed when the ``MultiCallSession`` is initialized,
+or they may be passed to the ``call_all`` method.
+
+::
+
+    with session.multicall(strict=True, batch=500):
+        builds = [m.getBuild(build_id) for build_id in mylist]
+
+
+**Using ClientSession.multiCall**
+
+Note: this approach is still supported, but we highly recommend using
+``MultiCallSession`` as described above, unless you need to support Koji
+versions prior to 1.18.
+
 To use the feature, you first set the ``multicall`` attribute of the session
 to ``True``. Once this is done, the session will not immediately process
 further calls but will instead store their parameters for later. To tell the
