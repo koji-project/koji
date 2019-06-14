@@ -5223,12 +5223,13 @@ def new_build(data, strict=False):
     data.setdefault('volume_id', 0)
 
     #check for existing build
-    old_binfo = get_build(data, strict=strict)
+    old_binfo = get_build(data)
     if old_binfo:
+        if strict:
+            raise koji.GenericError('No matching build found: %s' % data)
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
         return old_binfo['id']
-    #else
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=None, new=data['state'], info=data)
 
     #insert the new data
@@ -5764,7 +5765,7 @@ class CG_Importer(object):
                 raise koji.GenericError("Build is not reserved")
             del buildinfo['extra']['reserved_by_cg']
             build_id = buildinfo['build_id']
-        except Exception as ex:
+        except Exception:
             build_id = new_build(self.buildinfo)
             buildinfo = get_build(build_id, strict=True)
         #if not self.buildinfo.get('build_id'):
