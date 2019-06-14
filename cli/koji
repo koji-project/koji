@@ -167,12 +167,11 @@ def get_options():
                    (sys.prefix, sys.version_info[0], sys.version_info[1])
     load_plugins(options, plugins_path)
 
-    if options.help_commands:
-        list_commands()
-        sys.exit(0)
     if not args:
-        list_commands()
-        sys.exit(0)
+        options.help_commands = True
+    if options.help_commands:
+        # hijack args to [return_code, message]
+        return options, '_list_commands', [0, '']
 
     aliases = {
         'cancel-task' : 'cancel',
@@ -199,9 +198,8 @@ def get_options():
     elif ('handle_' + cmd) in globals():
         cmd = 'handle_' + cmd
     else:
-        list_commands()
-        parser.error('Unknown command: %s' % args[0])
-        assert False  # pragma: no cover
+        # hijack args to [return_code, message]
+        return options, '_list_commands', [1, 'Unknown command: %s' % args[0]]
 
     return options, cmd, args[1:]
 
@@ -305,6 +303,12 @@ if __name__ == "__main__":
 
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
+    if command == '_list_commands':
+        list_commands()
+        if args[0] != 0:
+            logger.error(args[1])
+        sys.exit(args[0])
+    # run handler
     rv = 0
     try:
         rv = locals()[command].__call__(options, session, args)
