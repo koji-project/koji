@@ -115,7 +115,8 @@ def get_options():
     parser.add_option("--weburl", default="http://localhost/koji", metavar="URL",
                       help=_("url of koji web server (for use in notifications)"))
     parser.add_option("-s", "--server", help=_("url of koji XMLRPC server"))
-    parser.add_option("--lock-file", help=_("koji-gc will wait while specified file exists"))
+    parser.add_option("--lock-file", help=_("koji-gc will wait while specified file exists. "
+                                            "Default path is /run/user/<uid>/koji-gc.lock"))
     parser.add_option("--exit-on-lock", action="store_true",
                       help=_("quit if --lock-file exists, don't wait"))
     #parse once to get the config file
@@ -971,26 +972,27 @@ if __name__ == "__main__":
     rv = 0
     try:
         lock_fd = None
-        if options.lock_file:
-            # acquire lock file
-            while not lock_fd:
-                # fail, if it is completely inaccessible
-                lock_fd = os.open(options.lock_file, os.O_CREAT | os.O_RDWR)
-                try:
-                    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except (IOError, OSError):
-                    if options.exit_on_lock:
-                        try:
-                            session.logout()
-                        except:
-                            pass
-                        sys.exit(1)
-                os.close(lock_fd)
-                lock_fd = None
-                if options.debug:
-                    print("Waiting on lock: %s" % options.lock_file)
-                time.sleep(10)
+        if not options.lock_file:
+            options.lock_file = '/run/user/%d/koji-gc.lock' % os.getuid()
+        # acquire lock file
+        while not lock_fd:
+            # fail, if it is completely inaccessible
+            lock_fd = os.open(options.lock_file, os.O_CREAT | os.O_RDWR)
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except (IOError, OSError):
+                if options.exit_on_lock:
+                    try:
+                        session.logout()
+                    except:
+                        pass
+                    sys.exit(1)
+            os.close(lock_fd)
+            lock_fd = None
+            if options.debug:
+                print("Waiting on lock: %s" % options.lock_file)
+            time.sleep(10)
 
         if not options.skip_main:
             rv = main(args)
