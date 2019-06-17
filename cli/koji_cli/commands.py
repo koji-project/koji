@@ -6294,9 +6294,9 @@ def handle_set_pkg_arches(goptions, session, args):
     activate_session(session, goptions)
     arches = koji.parse_arches(args[0])
     tag = args[1]
-    for package in args[2:]:
-        #really should implement multicall...
-        session.packageListSetArches(tag,package,arches,force=options.force)
+    with session.multicall(strict=True) as m:
+        for package in args[2:]:
+            m.packageListSetArches(tag,package,arches,force=options.force)
 
 
 def handle_set_pkg_owner(goptions, session, args):
@@ -6312,9 +6312,9 @@ def handle_set_pkg_owner(goptions, session, args):
     activate_session(session, goptions)
     owner = args[0]
     tag = args[1]
-    for package in args[2:]:
-        #really should implement multicall...
-        session.packageListSetOwner(tag,package,owner,force=options.force)
+    with session.multicall(strict=True) as m:
+        for package in args[2:]:
+            m.packageListSetOwner(tag,package,owner,force=options.force)
 
 
 def handle_set_pkg_owner_global(goptions, session, args):
@@ -6638,9 +6638,9 @@ def handle_unblock_pkg(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
     tag = args[0]
-    for package in args[1:]:
-        #really should implement multicall...
-        session.packageListUnblock(tag,package)
+    with session.multicall(strict=True) as m:
+        for package in args[1:]:
+            m.packageListUnblock(tag,package)
 
 
 def anon_handle_download_build(options, session, args):

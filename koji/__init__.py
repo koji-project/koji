@@ -2132,13 +2132,27 @@ class ClientSession(object):
         self.opts = opts
         self.authtype = None
         self.setSession(sinfo)
-        self.multicall = False
+        self._multicall = MultiCallHack(self)
         self._calls = []
         self.logger = logging.getLogger('koji')
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
 
+    @property
+    def multicall(self):
+        """The multicall property acts as a settable boolean or a callable
+
+        This setup allows preserving the original multicall interface
+        alongside the new one without adding yet another similar sounding
+        attribute to the session (we already have both multicall and
+        multiCall).
+        """
+        return self._multicall
+
+    @multicall.setter
+    def multicall(self, value):
+        self._multicall.value = value
 
     def new_session(self):
         self.logger.debug("Opening new requests session")
@@ -2856,6 +2870,143 @@ class ClientSession(object):
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.b64decode(result)
+
+
+class MultiCallHack(object):
+    """Workaround of a terribly overloaded namespace
+
+    This allows session.multicall to act as a boolean value or a callable
+    """
+
+    def __init__(self, session):
+        self.value = False
+        self.session = session
+
+    def __nonzero__(self):
+        return self.value
+
+    def __bool__(self):
+        return self.value
+
+    def __call__(self, **kw):
+        return MultiCallSession(self.session, **kw)
+
+
+class MultiCallNotReady(Exception):
+    """Raised when a multicall result is accessed before the multicall"""
+    pass
+
+
+class VirtualCall(object):
+    """Represents a call within a multicall"""
+
+    def __init__(self, method, args, kwargs):
+        self.method = method
+        self.args = args
+        self.kwargs = kwargs
+        self._result = MultiCallInProgress()
+
+    def format(self):
+        '''return the call in the format needed for multiCall'''
+        return {'methodName': self.method,
+                'params': encode_args(*self.args, **self.kwargs)}
+
+    @property
+    def result(self):
+        result = self._result
+        if isinstance(result, MultiCallInProgress):
+            raise MultiCallNotReady()
+        if isinstance(result, dict):
+            fault = Fault(result['faultCode'], result['faultString'])
+            err = convertFault(fault)
+            raise err
+        # otherwise should be a singleton
+        return result[0]
+
+
+class MultiCallSession(object):
+
+    """Manages a single multicall, acts like a session"""
+
+    def __init__(self, session, strict=False, batch=None):
+        self._session = session
+        self._strict = strict
+        self._batch = batch
+        self._calls = []
+
+    def __getattr__(self, name):
+        return VirtualMethod(self._callMethod, name)
+
+    def _callMethod(self, name, args, kwargs=None, retry=True):
+        """Add a new call to the multicall"""
+
+        if kwargs is None:
+            kwargs = {}
+        ret = VirtualCall(name, args, kwargs)
+        self._calls.append(ret)
+        return ret
+
+    def callMethod(self, name, *args, **opts):
+        """compatibility wrapper for _callMethod"""
+        return self._callMethod(name, args, opts)
+
+    def call_all(self, strict=None, batch=None):
+        """Perform all calls in one or more multiCall batches
+
+        Returns a list of results for each call. For successful calls, the
+        entry will be a singleton list. For calls that raised a fault, the
+        entry will be a dictionary with keys "faultCode", "faultString",
+        and "traceback".
+        """
+
+        if strict is None:
+            strict = self._strict
+        if batch is None:
+            batch = self._batch
+
+        if len(self._calls) == 0:
+            return []
+
+        calls = self._calls
+        self._calls = []
+        if batch:
+            batches = [calls[i:i+batch] for i in range(0, len(calls), batch)]
+        else:
+            batches = [calls]
+        results = []
+        for calls in batches:
+            args = ([c.format() for c in calls],)
+            _results = self._session._callMethod('multiCall', args, {})
+            for call, result in zip(calls, _results):
+                call._result = result
+            results.extend(_results)
+        if strict:
+            # check for faults and raise first one
+            for entry in results:
+                if isinstance(entry, dict):
+                    fault = Fault(entry['faultCode'], entry['faultString'])
+                    err = convertFault(fault)
+                    raise err
+        return results
+
+    # alias for compatibility with ClientSession
+    multiCall = call_all
+
+    # more backwards compat
+    # multicall returns True but cannot be set
+    @property
+    def multicall():
+        return True
+
+    # implement a context manager
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _type, value, traceback):
+        if _type is None:
+            self.call_all()
+        # don't eat exceptions
+        return False
 
 
 class DBHandler(logging.Handler):

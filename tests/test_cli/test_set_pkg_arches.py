@@ -47,10 +47,13 @@ class TestSetPkgArches(utils.CliTestCase):
         activate_session_mock.assert_not_called()
 
         # Case 2. run set arch to x86_64
+        multicall = mock.MagicMock()
+        multicall.__enter__.return_value = multicall
+        session.multicall.return_value = multicall
         calls = [mock.call('tag', pkg, 'x86_64', force=True) for pkg in arguments[3:]]
         handle_set_pkg_arches(options, session, arguments)
         activate_session_mock.assert_called_with(session, options)
-        session.packageListSetArches.assert_has_calls(calls)
+        multicall.packageListSetArches.assert_has_calls(calls)
         self.assert_console_message(stdout, '')
 
     def test_handle_set_pkg_arches_help(self):
