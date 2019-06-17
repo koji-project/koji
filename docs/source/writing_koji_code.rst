@@ -174,7 +174,7 @@ can fix this behavior in ``koji/__init__.py`` in the \_taskLabel
 function. Here you can define the string(s) to display when Koji
 receives status on a task. That is the return value.
 
-Using multiCall
+Using multicall
 ~~~~~~~~~~~~~~~
 
 Koji supports a multicall feature where many calls are passed to the
@@ -199,7 +199,7 @@ A ``MultiCallSession`` object is used to track an individual multicall attached
 to a session.
 To create one, you can simply call your session's ``multicall`` method.
 Once created, the object can be used like a session, but calls are stored
-rather can sent immediately.
+rather than sent immediately.
 The stored calls are executed by calling the ``call_all()`` method.
 
 ::
