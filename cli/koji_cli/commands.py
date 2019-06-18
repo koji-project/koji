@@ -5442,7 +5442,6 @@ def handle_edit_external_repo(goptions, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--url",  help=_("Change the url"))
     parser.add_option("--name",  help=_("Change the name"))
-    parser.add_option("-m", "--mode", help=_("Set merge mode"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
@@ -5453,10 +5452,6 @@ def handle_edit_external_repo(goptions, session, args):
         opts['url'] = options.url
     if options.name:
         opts['name'] = options.name
-    if options.mode:
-        if options.mode not in koji.REPO_MERGE_MODES:
-            parser.error('Invalid mode: %s' % options.mode)
-        opts['merge_mode'] = options.mode
     if not opts:
         parser.error(_("No changes specified"))
     activate_session(session, goptions)
