@@ -299,6 +299,13 @@ CREATE TABLE build_types (
 ) WITHOUT OIDS;
 
 
+CREATE TABLE build_reservations (
+	build_id INTEGER NOT NULL REFERENCES build(id),
+	user_id INTEGER NOT NULL REFERENCES users(id),
+	token VARCHAR(64),
+	PRIMARY KEY (build_id)
+) WITHOUT OIDS;
+
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
 

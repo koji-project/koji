@@ -44,6 +44,12 @@ import time
 import traceback
 import six.moves.xmlrpc_client
 import zipfile
+try:
+    # py 3.6+
+    import secrets
+except ImportError:
+    import binascii
+    import random
 
 import rpm
 import six
@@ -5538,6 +5544,17 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     return rpminfo
 
 
+def generate_token(nbytes=32):
+    """
+    Generate random hex-string token of length 2 * nbytes
+    """
+    if secrets:
+        return secrets.token_hex(nbytes=nbytes)
+    else:
+        values = ['%02x' % random.randint(0, 256) for x in range(nbytes)]
+        return ''.join(values)
+
+
 def cg_init_build(cg, data):
     """Create (reserve) a build_id for given data.
 
@@ -5547,9 +5564,17 @@ def cg_init_build(cg, data):
     data['owner'] = context.session.user_id
     data['state'] = koji.BUILD_STATES['BUILDING']
     data['completion_time'] = None
-    data['extra'] = {'reserved_by_cg': True}
     build_id = new_build(data, strict=True)
-    return build_id
+    # store token
+    token = generate_token()
+    insert = InsertProcessor(table='build_reservations')
+    insert.set(build_id=build_id)
+    insert.set(user_id = context.session.user_id)
+    insert.set(token = token)
+    insert.execute()
+
+    return {'build_id': build_id, 'token': token}
+
 
 def cg_import(metadata, directory):
     """Import build from a content generator
@@ -5693,13 +5718,24 @@ class CG_Importer(object):
                 raise koji.GenericError("Destination directory already exists: %s" % path)
 
 
+    def get_reserve_token(self, build_id):
+        query = QueryProcessor(
+            tables=['build_reservations'],
+            columns=['build_id', 'user_id', 'token'],
+            clauses=['build_id = %(build_id)d'],
+            values=locals(),
+        )
+        return query.executeOne()
+
+
     def prep_build(self):
         metadata = self.metadata
         if metadata['build'].get('build_id'):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
-            if not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg') or \
-               buildinfo['owner_id'] != context.session.user_id or \
+            token = self.get_reserve_token(build_id)
+            if not token or token['token'] != metadata['build']['token'] or \
+               token['user_id'] != context.session.user_id or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
@@ -5756,10 +5792,12 @@ class CG_Importer(object):
         try:
             binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
             buildinfo = get_build(binfo, strict=True)
+            token = self.get_reserve_token(buildinfo['build_id'])
             if buildinfo.get('task_id') or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
-               buildinfo['owner_id'] != context.session.user_id or \
-               not buildinfo['extra'] or not buildinfo['extra'].get('reserved_by_cg'):
+               not token or \
+               token['user_id'] != context.session.user_id or \
+               token['token'] != self.metadata['build']['token']:
                 raise koji.GenericError("Build is not reserved")
             buildinfo['extra'] = self.buildinfo['extra']
             build_id = buildinfo['build_id']
@@ -5785,7 +5823,7 @@ class CG_Importer(object):
             if [o for o in self.prepped_outputs if o['type'] == 'rpm']:
                 new_typed_build(buildinfo, 'rpm')
 
-        # update build state, delete 'reserved_by_cg' placeholder
+        # update build state
         if buildinfo.get('extra'):
             extra = json.dumps(buildinfo['extra'])
         else:
