@@ -5201,8 +5201,10 @@ class CreaterepoTask(BaseTaskHandler):
         else:
             cmd = ['/usr/libexec/kojid/mergerepos']
             cmd.extend(['--tempdir', self.workdir])
-        blocklist = self.repodir + '/blocklist'
-        cmd.extend(['-a', arch, '-b', blocklist, '-o', self.outdir])
+        if merge_mode != 'bare':
+            blocklist = self.repodir + '/blocklist'
+            cmd.extend(['-b', blocklist])
+        cmd.extend(['-a', arch, '-o', self.outdir])
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         for repo in repos:
