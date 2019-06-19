@@ -1292,6 +1292,7 @@ def handle_import_cg(goptions, session, args):
                       help=_("Do not display progress of the upload"))
     parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
+    parser.add_option("--token", action="store", default=None, help=_("Build reservarion token"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify metadata files directory"))
@@ -1336,7 +1337,7 @@ def handle_import_cg(goptions, session, args):
             if callback:
                 print('')
 
-    session.CGImport(metadata, serverdir)
+    session.CGImport(metadata, serverdir, options.token)
 
 
 def handle_import_comps(goptions, session, args):

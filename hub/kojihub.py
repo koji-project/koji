@@ -48,7 +48,6 @@ try:
     # py 3.6+
     import secrets
 except ImportError:
-    import binascii
     import random
 
 import rpm
@@ -5569,14 +5568,14 @@ def cg_init_build(cg, data):
     token = generate_token()
     insert = InsertProcessor(table='build_reservations')
     insert.set(build_id=build_id)
-    insert.set(user_id = context.session.user_id)
-    insert.set(token = token)
+    insert.set(user_id=context.session.user_id)
+    insert.set(token=token)
     insert.execute()
 
     return {'build_id': build_id, 'token': token}
 
 
-def cg_import(metadata, directory):
+def cg_import(metadata, directory, token=None):
     """Import build from a content generator
 
     metadata can be one of the following
@@ -5586,7 +5585,7 @@ def cg_import(metadata, directory):
     """
 
     importer = CG_Importer()
-    return importer.do_import(metadata, directory)
+    return importer.do_import(metadata, directory, token)
 
 
 class CG_Importer(object):
@@ -5595,7 +5594,7 @@ class CG_Importer(object):
         self.buildinfo = None
         self.metadata_only = False
 
-    def do_import(self, metadata, directory):
+    def do_import(self, metadata, directory, token=None):
         metadata = self.get_metadata(metadata, directory)
         self.directory = directory
 
@@ -5608,7 +5607,7 @@ class CG_Importer(object):
         self.assert_cg_access()
 
         # prepare data for import
-        self.prep_build()
+        self.prep_build(token)
         self.prep_brs()
         self.prep_outputs()
 
@@ -5620,7 +5619,7 @@ class CG_Importer(object):
                 directory=directory)
 
         # finalize import
-        self.get_build()
+        self.get_build(token)
         self.import_brs()
         try:
             self.import_outputs()
@@ -5728,15 +5727,17 @@ class CG_Importer(object):
         return query.executeOne()
 
 
-    def prep_build(self):
+    def prep_build(self, token=None):
         metadata = self.metadata
         if metadata['build'].get('build_id'):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
-            token = self.get_reserve_token(build_id)
-            if not token or token['token'] != metadata['build']['token'] or \
-               token['user_id'] != context.session.user_id or \
+            build_token = self.get_reserve_token(build_id)
+            if not build_token or build_token['token'] != token or \
+               build_token['user_id'] != context.session.user_id or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
+                print(build_token)
+                print(token)
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
                buildinfo['version'] != metadata['build']['version'] or \
@@ -5788,16 +5789,16 @@ class CG_Importer(object):
         return buildinfo
 
 
-    def get_build(self):
+    def get_build(self, token=None):
         try:
             binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
             buildinfo = get_build(binfo, strict=True)
-            token = self.get_reserve_token(buildinfo['build_id'])
+            build_token = self.get_reserve_token(buildinfo['build_id'])
             if buildinfo.get('task_id') or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
-               not token or \
-               token['user_id'] != context.session.user_id or \
-               token['token'] != self.metadata['build']['token']:
+               not build_token or \
+               build_token['user_id'] != context.session.user_id or \
+               build_token['token'] != token:
                 raise koji.GenericError("Build is not reserved")
             buildinfo['extra'] = self.buildinfo['extra']
             build_id = buildinfo['build_id']
