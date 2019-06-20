@@ -5566,10 +5566,12 @@ def cg_init_build(cg, data):
     build_id = new_build(data, strict=True)
     # store token
     token = generate_token()
+    cg_id = lookup_name('content_generator', cg, strict=True)['id']
     insert = InsertProcessor(table='build_reservations')
-    insert.set(build_id=build_id)
-    insert.set(user_id=context.session.user_id)
-    insert.set(token=token)
+    insert.set(build_id=build_id,
+               cg_id=cg_id,
+               token=token)
+    insert.rawset(created='NOW()')
     insert.execute()
 
     return {'build_id': build_id, 'token': token}
@@ -5720,7 +5722,7 @@ class CG_Importer(object):
     def get_reserve_token(self, build_id):
         query = QueryProcessor(
             tables=['build_reservations'],
-            columns=['build_id', 'user_id', 'token'],
+            columns=['build_id', 'cg_id', 'token'],
             clauses=['build_id = %(build_id)d'],
             values=locals(),
         )
@@ -5730,11 +5732,14 @@ class CG_Importer(object):
     def prep_build(self, token=None):
         metadata = self.metadata
         if metadata['build'].get('build_id'):
+            if len(self.cgs) != 1:
+                raise koji.GenericError("Reserved builds can handle only single content generator.")
+            cg_id = list(self.cgs)[0]
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = self.get_reserve_token(build_id)
             if not build_token or build_token['token'] != token or \
-               build_token['user_id'] != context.session.user_id or \
+               build_token['cg_id'] != cg_id or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
@@ -5792,10 +5797,13 @@ class CG_Importer(object):
             binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
             buildinfo = get_build(binfo, strict=True)
             build_token = self.get_reserve_token(buildinfo['build_id'])
+            if len(self.cgs) != 1:
+                raise koji.GenericError("Reserved builds can handle only single content generator.")
+            cg_id = list(self.cgs)[0]
             if buildinfo.get('task_id') or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
                not build_token or \
-               build_token['user_id'] != context.session.user_id or \
+               build_token['cg_id'] != cg_id or \
                build_token['token'] != token:
                 raise koji.GenericError("Build is not reserved")
             buildinfo['extra'] = self.buildinfo['extra']

@@ -299,13 +299,6 @@ CREATE TABLE build_types (
 ) WITHOUT OIDS;
 
 
-CREATE TABLE build_reservations (
-	build_id INTEGER NOT NULL REFERENCES build(id),
-	user_id INTEGER NOT NULL REFERENCES users(id),
-	token VARCHAR(64),
-	PRIMARY KEY (build_id)
-) WITHOUT OIDS;
-
 -- Note: some of these CREATEs may seem a little out of order. This is done to keep
 -- the references sane.
 
@@ -514,6 +507,14 @@ CREATE TABLE cg_users (
 	UNIQUE (cg_id, user_id, active)
 ) WITHOUT OIDS;
 
+CREATE TABLE build_reservations (
+	build_id INTEGER NOT NULL REFERENCES build(id),
+	cg_id INTEGER NOT NULL REFERENCES content_generator(id),
+	token VARCHAR(64),
+        created TIMESTAMP NOT NULL,
+	PRIMARY KEY (build_id)
+) WITHOUT OIDS;
+CREATE INDEX build_reservations_created ON build_reservations(created);
 
 -- here we track the buildroots on the machines
 CREATE TABLE buildroot (

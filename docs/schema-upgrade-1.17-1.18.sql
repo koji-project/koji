@@ -26,10 +26,11 @@ CREATE INDEX sessions_expired ON sessions(expired);
 -- table for content generator build reservations
 CREATE TABLE build_reservations (
 	build_id INTEGER NOT NULL REFERENCES build(id),
-	user_id INTEGER NOT NULL REFERENCES users(id),
+	cg_id INTEGER NOT NULL REFERENCES content_generator(id),
 	token VARCHAR(64),
+        created TIMESTAMP NOT NULL,
 	PRIMARY KEY (build_id)
 ) WITHOUT OIDS;
-
+CREATE INDEX build_reservations_created ON build_reservations(created);
 
 COMMIT;
