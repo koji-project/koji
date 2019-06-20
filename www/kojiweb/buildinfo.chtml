@@ -82,6 +82,11 @@
       <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
     </tr>
     #end if
+    #if $build.reserved_by_name
+    <tr>
+      <th>Reserved by</th><td>$build.reserved_by_name</td>
+    </tr>
+    #end if
     #if $task
     <tr>
       <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>

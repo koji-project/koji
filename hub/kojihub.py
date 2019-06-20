@@ -3708,6 +3708,8 @@ def get_build(buildInfo, strict=False):
       completion_ts: time the build was completed (epoch, may be null)
       source: the SCM URL of the sources used in the build
       extra: dictionary with extra data about the build
+      reserved_id: ID of CG which reserved this build (only in BUILDING state)
+      reserved_name: name of CG which reserved this build (only in BUILDING state)
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -3751,6 +3753,13 @@ def get_build(buildInfo, strict=False):
         else:
             return None
     else:
+        result['reserved_by'] = None
+        if result['state'] == koji.BUILD_STATES['BUILDING']:
+            token = get_reservation_token(result['id'])
+            if token:
+                cg = lookup_name('content_generator', token['cg_id'], strict=True)
+                result['reserved_by_id'] = cg['id']
+                result['reserved_by_name'] = cg['name']
         return result
 
 
