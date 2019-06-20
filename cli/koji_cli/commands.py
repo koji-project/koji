@@ -3155,6 +3155,8 @@ def anon_handle_buildinfo(goptions, session, args):
         info['state'] = koji.BUILD_STATES[info['state']]
         print("BUILD: %(name)s-%(version)s-%(release)s [%(id)d]" % info)
         print("State: %(state)s" % info)
+        if info['state'] == 'BUILDING':
+            print("Reserved by: %(reserved_by_name)s" % info)
         print("Built by: %(owner_name)s" % info)
         source = info.get('source')
         if source is not None:
