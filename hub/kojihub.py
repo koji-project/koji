@@ -5554,6 +5554,16 @@ def generate_token(nbytes=32):
         return ''.join(values)
 
 
+def get_reservation_token(build_id):
+    query = QueryProcessor(
+        tables=['build_reservations'],
+        columns=['build_id', 'cg_id', 'token'],
+        clauses=['build_id = %(build_id)d'],
+        values=locals(),
+    )
+    return query.executeOne()
+
+
 def cg_init_build(cg, data):
     """Create (reserve) a build_id for given data.
 
@@ -5719,15 +5729,6 @@ class CG_Importer(object):
                 raise koji.GenericError("Destination directory already exists: %s" % path)
 
 
-    def get_reserve_token(self, build_id):
-        query = QueryProcessor(
-            tables=['build_reservations'],
-            columns=['build_id', 'cg_id', 'token'],
-            clauses=['build_id = %(build_id)d'],
-            values=locals(),
-        )
-        return query.executeOne()
-
 
     def prep_build(self, token=None):
         metadata = self.metadata
@@ -5737,7 +5738,7 @@ class CG_Importer(object):
             cg_id = list(self.cgs)[0]
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
-            build_token = self.get_reserve_token(build_id)
+            build_token = get_reservation_token(build_id)
             if not build_token or build_token['token'] != token or \
                build_token['cg_id'] != cg_id or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
@@ -5796,7 +5797,7 @@ class CG_Importer(object):
         try:
             binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
             buildinfo = get_build(binfo, strict=True)
-            build_token = self.get_reserve_token(buildinfo['build_id'])
+            build_token = get_reservation_token(buildinfo['build_id'])
             if len(self.cgs) != 1:
                 raise koji.GenericError("Reserved builds can handle only single content generator.")
             cg_id = list(self.cgs)[0]
@@ -7606,6 +7607,11 @@ def cancel_build(build_id, cancel_task=True):
         build_notification(task_id, build_id)
         if cancel_task:
             Task(task_id).cancelFull(strict=False)
+
+    # remove possible CG reservations
+    delete = "DELETE FROM build_reservations WHERE build_id = %(build_id)i"
+    _dml(delete, {'build_id': build_id})
+
     build = get_build(build_id, strict=True)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_canceled, info=build)
     return True
