@@ -5736,8 +5736,6 @@ class CG_Importer(object):
             if not build_token or build_token['token'] != token or \
                build_token['user_id'] != context.session.user_id or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
-                print(build_token)
-                print(token)
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
                buildinfo['version'] != metadata['build']['version'] or \
