@@ -507,12 +507,14 @@ tower, etc.)
 
 Script is by default installed on hub as `/usr/sbin/koji-sweepd-db`. On systemd
 systems it also has corresponding `koji-sweep-db` service and timer. Note, that
-timer is not enabled by default, so you need to run usual `systemctl` commands.
-Cron files are not distributed, but are pretty easy to set up, if you prefer
-one.
+timer is not enabled by default, so you need to run usual `systemctl` commands:
+
+::
+
+   systemctl enable --now koji-sweep-db.timer
 
 If you don't want to use this script, be sure to run following SQL with
-appropriate age setting. Default value of one day should be ok for normal
+appropriate age setting. Default value of one day should be ok for most
 deployments.
 
 ::
