@@ -4498,6 +4498,7 @@ def _get_tarball_list(archive_id, tarpath):
                            'group': entry.gname})
     return result
 
+
 def list_archive_files(archive_id, queryOpts=None, strict=False):
     """
     Get information about the files contained in the archive with the given ID.
@@ -4507,9 +4508,8 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
     name: name of the file (string)
     size: uncompressed size of the file (integer)
 
-    If strict is True, raise GenericError if:
-      - the btype of this archive is not maven, win or image
-      - archive_type is not one that we are able to expand
+    If strict is True, raise GenericError if archive_type is not one that we
+    are able to expand
 
     Regardless of strict, an error will be raised if the archive_id is invalid
     """
@@ -4517,30 +4517,30 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
 
     archive_type = get_archive_type(type_id=archive_info['type_id'], strict=True)
     build_info = get_build(archive_info['build_id'], strict=True)
-    maven_info = get_maven_build(build_info['id'])
-    win_info = get_win_build(build_info['id'])
-    image_info = get_image_build(archive_info['build_id'])
+    btype = archive_info['btype']
 
-    if maven_info:
+    if btype == 'maven':
         maven_archive = get_maven_archive(archive_info['id'], strict=True)
         archive_info.update(maven_archive)
         file_path = os.path.join(koji.pathinfo.mavenbuild(build_info),
                                  koji.pathinfo.mavenfile(archive_info))
-    elif win_info:
+    elif btype == 'win':
         win_archive = get_win_archive(archive_info['id'], strict=True)
         archive_info.update(win_archive)
         file_path = os.path.join(koji.pathinfo.winbuild(build_info),
                                  koji.pathinfo.winfile(archive_info))
-    elif image_info:
+    elif btype == 'image':
         image_archive = get_image_archive(archive_info['id'], strict=True)
         archive_info.update(image_archive)
         file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
                                  archive_info['filename'])
+    elif btype:
+        # for non-legacy types, btype info is in the 'extra' field
+        file_path = os.path.join(koji.pathinfo.typedir(build_info, btype),
+                                 archive_info['filename'])
     else:
-        # TODO: support other build types
-        if strict:
-            raise koji.GenericError("Unsupported build type")
-        return _applyQueryOpts([], queryOpts)
+        # should not happen
+        raise koji.GenericError("Missing build type info for archive %s" % archive_id)
 
     if archive_type['name'] in ('zip', 'jar'):
         filelist = _get_zipfile_list(archive_id, file_path)
