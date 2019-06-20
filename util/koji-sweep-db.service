@@ -5,6 +5,3 @@ Documentation=https://pagure.io/docs/koji/
 [Service]
 Type=simple
 ExecStart=/usr/sbin/koji-sweep-db
-
-[Install]
-WantedBy=multi-user.target
