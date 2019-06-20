@@ -167,7 +167,10 @@ def _genToken(environ, tstamp=None):
         return ''
     if tstamp == None:
         tstamp = _truncTime()
-    return md5_constructor((user + str(tstamp) + environ['koji.options']['Secret'].value).encode('utf-8')).hexdigest()[-8:]
+    value = user + str(tstamp) + environ['koji.options']['Secret'].value
+    if six.PY3:
+        value = value.encode('utf-8')
+    return md5_constructor(value).hexdigest()[-8:]
 
 def _getValidTokens(environ):
     tokens = []
