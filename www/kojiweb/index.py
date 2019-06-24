@@ -55,8 +55,10 @@ def _setUserCookie(environ, user):
     value = user + ':' + str(int(time.time()))
     if not options['Secret'].value:
         raise koji.AuthError('Unable to authenticate, server secret not configured')
-    shasum = sha1_constructor(value.encode('utf-8'))
-    shasum.update(options['Secret'].value.encode('utf-8'))
+    digest_string = value + options['Secret'].value
+    if six.PY3:
+        digest_string = digest_string.encode('utf-8')
+    shasum = sha1_constructor(digest_string)
     value = "%s:%s" % (shasum.hexdigest(), value)
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
@@ -92,8 +94,10 @@ def _getUserCookie(environ):
     sig, value = parts
     if not options['Secret'].value:
         raise koji.AuthError('Unable to authenticate, server secret not configured')
-    shasum = sha1_constructor(value.encode('utf-8'))
-    shasum.update(options['Secret'].value.encode('utf-8'))
+    digest_string = value + options['Secret'].value
+    if six.PY3:
+        digest_string = digest_string.encode('utf-8')
+    shasum = sha1_constructor(digest_string)
     if shasum.hexdigest() != sig:
         authlogger.warn('invalid user cookie: %s:%s', sig, value)
         return None
