@@ -792,6 +792,7 @@ class RepoManager(object):
                     "expired for %s sec", task_id, tag['taginfo']['id'],
                     tag['taginfo']['name'], time_expired)
             self.tasks[task_id] = {
+                    'id': task_id,
                     'taskinfo': self.session.getTaskInfo(task_id),
                     'tag_id': tag['taginfo']['id'],
                     'maven': maven,
