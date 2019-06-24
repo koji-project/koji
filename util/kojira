@@ -356,7 +356,7 @@ class RepoManager(object):
                                    %(repo_id, koji.REPO_STATES[data['state']]))
                 repo = ManagedRepo(self, data)
                 self.repos[repo_id] = ManagedRepo(self, data)
-            if not getTag(repo.tag_id) and not repo.expired():
+            if not getTag(self.session, repo.tag_id) and not repo.expired():
                 self.logger.info('Tag %d for repo %d disappeared, expiring.' % (repo.tag_id, repo_id))
                 repo.expire()
         if len(self.repos) > len(repodata):
