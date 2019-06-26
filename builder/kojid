@@ -1058,8 +1058,8 @@ class BuildTask(BaseTaskHandler):
             if SCM.is_scm_url(src):
                 return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
-                taginfo = self.session.getTag(build_tag)
-                if taginfo['extra'].get('rebuild_srpm', True):
+                buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
+                if buildconfig['extra'].get('rebuild_srpm', True):
                     # default is to always rebuild
                     return self.getSRPMFromSRPM(src, build_tag, repo_id)
                 else:
