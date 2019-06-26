@@ -554,7 +554,7 @@ class BuildRoot(object):
         msg = '; see %s for more information' % logfile
         return parseStatus(rv, 'mock') + msg
 
-    def rebuild_srpm(self, source_srpm):
+    def rebuild_srpm(self, srpm):
         self.session.host.setBuildRootState(self.id,'BUILDING')
 
         # unpack SRPM to tempdir
@@ -562,7 +562,7 @@ class BuildRoot(object):
         koji.ensuredir(srpm_dir)
         top_dir = self.path_without_to_within(srpm_dir)
         args = ['--no-clean', '--target', 'noarch', '--chroot', '--',
-                'rpm', '--define', '_topdir %s' % top_dir, '-iv', source_srpm]
+                'rpm', '--define', '_topdir %s' % top_dir, '-iv', srpm]
         rv = self.mock(args)
 
         # find specfile
@@ -4643,7 +4643,7 @@ class RebuildSRPM(BaseBuildTask):
         tag = self.params[1]
         return self.checkHostArch(tag, hostdata)
 
-    def handler(self, source_srpm, build_tag, opts=None):
+    def handler(self, srpm, build_tag, opts=None):
         if opts is None:
             opts = {}
         repo_id = opts.get('repo_id')
@@ -4669,9 +4669,7 @@ class RebuildSRPM(BaseBuildTask):
         koji.ensuredir(srpmdir)
         uploadpath = self.getUploadDir()
 
-        # Check out spec file, etc. from SCM
-        # TODO: download srpm
-        fn = self.localPath("work/%s" % source_srpm)
+        fn = self.localPath("work/%s" % srpm)
         if not os.path.exists(fn):
             raise koji.BuildError("Input SRPM file missing: %s" % fn)
         shutil.copy(fn, srpmdir)
@@ -4686,7 +4684,7 @@ class RebuildSRPM(BaseBuildTask):
 
         # rebuild srpm
         self.logger.debug("Running srpm rebuild")
-        br_srpm_path = os.path.join(broot.path_without_to_within(srpmdir), os.path.basename(source_srpm))
+        br_srpm_path = os.path.join(broot.path_without_to_within(srpmdir), os.path.basename(srpm))
         broot.rebuild_srpm(br_srpm_path)
 
         srpms = glob.glob('%s/*.src.rpm' % broot.resultdir())
@@ -4720,8 +4718,8 @@ class RebuildSRPM(BaseBuildTask):
                      for f in log_files],
             'brootid': brootid,
             'source': {
-                'source': os.path.basename(source_srpm),
-                'url': os.path.basename(source_srpm),
+                'source': os.path.basename(srpm),
+                'url': os.path.basename(srpm),
             }
         }
 
