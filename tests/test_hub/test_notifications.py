@@ -137,7 +137,7 @@ class TestNotifications(unittest.TestCase):
                                      'user_id IN %(user_ids)s',
                                     ])
         self.assertEqual(q.joins, None)
-        self.assertEqual(q.values['user_ids'], set([5]))
+        self.assertEqual(q.values['user_ids'], [5])
 
         readPackageList.assert_not_called()
 
@@ -175,7 +175,7 @@ class TestNotifications(unittest.TestCase):
         state = koji.BUILD_STATES['CANCELED']
         readPackageList.return_value = {12345: {'blocked': False, 'owner_id': 'owner_id'}}
         get_user.return_value = {
-            'id': 'owner_id',
+            'id': 342,
             'name': 'pkg_owner_name',
             'status': koji.USER_STATUS['NORMAL'],
             'usertype': koji.USERTYPES['NORMAL']
@@ -215,9 +215,9 @@ class TestNotifications(unittest.TestCase):
                                      'user_id IN %(user_ids)s',
                                     ])
         self.assertEqual(q.joins, None)
-        self.assertEqual(q.values['user_ids'], set([5, 'owner_id']))
+        self.assertEqual(sorted(q.values['user_ids']), [5, 342])
         readPackageList.assert_called_once_with(pkgID=build['package_id'], tagID=tag_id, inherit=True)
-        get_user.asssert_called_once_with('owner_id', strict=True)
+        get_user.asssert_called_once_with(342, strict=True)
 
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.readPackageList')
@@ -227,7 +227,7 @@ class TestNotifications(unittest.TestCase):
         tag_id = 123
         state = koji.BUILD_STATES['CANCELED']
         get_user.return_value = {
-            'id': 'owner_id',
+            'id': 342,
             'name': 'pkg_owner_name',
             'status': koji.USER_STATUS['BLOCKED'],
             'usertype': koji.USERTYPES['NORMAL']
@@ -247,7 +247,7 @@ class TestNotifications(unittest.TestCase):
         tag_id = 123
         state = koji.BUILD_STATES['CANCELED']
         get_user.return_value = {
-            'id': 'owner_id',
+            'id': 342,
             'name': 'pkg_owner_name',
             'status': koji.USER_STATUS['NORMAL'],
             'usertype': koji.USERTYPES['NORMAL']
@@ -268,7 +268,7 @@ class TestNotifications(unittest.TestCase):
         tag_id = 123
         state = koji.BUILD_STATES['CANCELED']
         get_user.return_value = {
-            'id': 'owner_id',
+            'id': 342,
             'name': 'pkg_owner_name',
             'status': koji.USER_STATUS['NORMAL'],
             'usertype': koji.USERTYPES['HOST']
