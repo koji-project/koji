@@ -773,8 +773,8 @@ class TestNotifications(unittest.TestCase):
 
         self.assertEqual(len(self.inserts), 0)
 
-    #####################
-    # Delete notification
+    ###########################
+    # Delete notification block
     @mock.patch('kojihub._dml')
     def test_deleteNotificationBlock(self, _dml):
         user_id = 752
@@ -787,7 +787,7 @@ class TestNotifications(unittest.TestCase):
         self.exports.getLoggedInUser.assert_called_once_with()
         _dml.assert_called_once()
 
-    def test_deleteNotification_missing(self):
+    def test_deleteNotificationBlock_missing(self):
         user_id = 752
         n_id = 543
         self.exports.getBuildNotificationBlock.side_effect = koji.GenericError
@@ -797,7 +797,7 @@ class TestNotifications(unittest.TestCase):
 
         self.exports.getBuildNotificationBlock.assert_called_once_with(n_id, strict=True)
 
-    def test_deleteNotification_not_logged(self):
+    def test_deleteNotificationBlock_not_logged(self):
         user_id = 752
         n_id = 543
         self.exports.getBuildNotificationBlock.return_value = {'user_id': user_id}
@@ -815,7 +815,7 @@ class TestNotifications(unittest.TestCase):
         self.assertEqual(len(self.queries), 0)
 
     @mock.patch('kojihub._dml')
-    def test_deleteNotification_no_perm(self, _dml):
+    def test_deleteNotificationBlock_no_perm2(self, _dml):
         user_id = 752
         n_id = 543
         self.exports.getBuildNotificationBlock.return_value = {'user_id': user_id}
