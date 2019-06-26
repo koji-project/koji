@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
+import locale
 import mock
 import os
 import six
@@ -198,6 +199,9 @@ class CliTestCase(unittest.TestCase):
 
     @mock.patch('koji_cli.commands.activate_session')
     def assert_help(self, callableObj, message, activate_session_mock):
+        # optarse uses gettext directly and it is driven by LANGUAGE
+        # we need engligsh to get comparable strings
+        os.environ['LANGUAGE'] = 'en_GB'
         self.assert_system_exit(
             callableObj,
             mock.MagicMock(),

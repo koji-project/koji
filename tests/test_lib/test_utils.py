@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 import calendar
+import locale
 import mock
 import optparse
 import os
@@ -551,6 +552,8 @@ class MavenUtilTestCase(unittest.TestCase):
 
     def test_formatChangelog(self):
         """Test formatChangelog function"""
+        # force locale to compare 'expect' value
+        locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
         data = [
                 {
                     'author': 'Happy Koji User <user1@example.com> - 1.1-1',
@@ -584,6 +587,8 @@ class MavenUtilTestCase(unittest.TestCase):
 ''')
         result = koji.util.formatChangelog(data)
         self.assertMultiLineEqual(expect, result)
+
+        locale.resetlocale()
 
     def test_parseTime(self):
         """Test parseTime function"""
