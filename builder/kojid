@@ -4674,14 +4674,6 @@ class RebuildSRPM(BaseBuildTask):
             raise koji.BuildError("Input SRPM file missing: %s" % fn)
         shutil.copy(fn, srpmdir)
 
-        # chown the sourcedir and everything under it to the mockuser
-        # so we can build the srpm as non-root
-        uid = pwd.getpwnam(self.options.mockuser)[2]
-        # rpmbuild seems to complain if it's running in the "mock" group but
-        # files are in a different group
-        gid = grp.getgrnam('mock')[2]
-        self.chownTree(srpmdir, uid, gid)
-
         # rebuild srpm
         self.logger.debug("Running srpm rebuild")
         br_srpm_path = os.path.join(broot.path_without_to_within(srpmdir), os.path.basename(srpm))
