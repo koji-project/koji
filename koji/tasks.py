@@ -172,6 +172,9 @@ LEGACY_SIGNATURES = {
     'buildSRPMFromSCM' : [
         [['url', 'build_tag', 'opts'], None, None, (None,)],
     ],
+    'rebuildSRPM' : [
+        [['srpm', 'build_tag', 'opts'], None, None, (None,)],
+    ],
     'createrepo' : [
         [['repo_id', 'arch', 'oldrepo'], None, None, None],
     ],
