@@ -24,6 +24,22 @@ class TestBasicTests(unittest.TestCase):
         policy_get_pkg.return_value = {'name': 'foobar'}
         self.assertTrue(obj.run({}))
 
+    @mock.patch('kojihub.policy_get_version')
+    def test_version_test(self, policy_get_version):
+        obj = kojihub.VersionTest('version 1.2.*')
+        policy_get_version.return_value = '0.0.1'
+        self.assertFalse(obj.run({}))
+        policy_get_version.return_value = '1.2.1'
+        self.assertTrue(obj.run({}))
+
+    @mock.patch('kojihub.policy_get_release')
+    def test_release_test(self, policy_get_release):
+        obj = kojihub.ReleaseTest('release 1.2.*')
+        policy_get_release.return_value = '0.0.1'
+        self.assertFalse(obj.run({}))
+        policy_get_release.return_value = '1.2.1'
+        self.assertTrue(obj.run({}))
+
     @mock.patch('kojihub.policy_get_pkg')
     def test_new_package_test(self, policy_get_pkg):
         obj = kojihub.NewPackageTest('is_new_package')
