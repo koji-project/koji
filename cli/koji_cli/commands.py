@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import to_list, base64encode
 from koji_cli.lib import _, activate_session, parse_arches, \
-        _unique_path, _running_in_bg, _progress_callback, watch_tasks, \
+        _running_in_bg, _progress_callback, watch_tasks, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
         error, warn, greetings, _list_tasks, unique_path
