@@ -447,7 +447,6 @@ class TestNotifications(unittest.TestCase):
         _dml.assert_called_once()
 
     def test_deleteNotification_missing(self):
-        user_id = 752
         n_id = 543
         self.exports.getBuildNotification.side_effect = koji.GenericError
 
@@ -529,7 +528,6 @@ class TestNotifications(unittest.TestCase):
     def test_updateNotification_not_logged(self, get_package_id, get_tag_id,
             get_build_notifications):
         n_id = 5432
-        user_id = 1
         package_id = 234
         tag_id = 345
         success_only = True
@@ -547,7 +545,6 @@ class TestNotifications(unittest.TestCase):
     def test_updateNotification_missing(self, get_package_id, get_tag_id,
             get_build_notifications):
         n_id = 5432
-        user_id = 1
         package_id = 234
         tag_id = 345
         success_only = True
@@ -788,7 +785,6 @@ class TestNotifications(unittest.TestCase):
         _dml.assert_called_once()
 
     def test_deleteNotificationBlock_missing(self):
-        user_id = 752
         n_id = 543
         self.exports.getBuildNotificationBlock.side_effect = koji.GenericError
 
