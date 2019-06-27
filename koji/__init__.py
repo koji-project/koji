@@ -2970,6 +2970,9 @@ class MultiCallSession(object):
         calls = self._calls
         self._calls = []
         if batch:
+            self._session.logger.debug(
+                    "MultiCall with batch size %i, calls/groups(%i/%i)",
+                    batch, len(calls), round(len(calls) // batch))
             batches = [calls[i:i+batch] for i in range(0, len(calls), batch)]
         else:
             batches = [calls]
