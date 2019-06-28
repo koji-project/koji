@@ -5331,7 +5331,7 @@ class CreaterepoTask(BaseTaskHandler):
         elif merge_mode == 'bare':
             # "bare" merge mode for repos with modular metadata
             # forces use of mergerepo_c
-            cmd = ['/usr/bin/mergerepo_c', '--pkgorigins']
+            cmd = ['/usr/bin/mergerepo_c', '--pkgorigins', '--all']
         elif self.options.use_createrepo_c:
             cmd = ['/usr/bin/mergerepo_c', '--koji']
         else:
