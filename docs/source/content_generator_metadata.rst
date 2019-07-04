@@ -44,6 +44,7 @@ The build map contains the following entries:
    epoch.
 -  owner: The owner of the build task in username format. This field
    is optional.
+-  build_id: Reserved build ID. This field is optional.
 -  extra: A map of extra metadata associated with the build, which
    must include one of:
 
