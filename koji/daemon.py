@@ -1145,7 +1145,7 @@ class TaskManager(object):
         availableMB = available // 1024 // 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < self.options.minspace:
-            self.status = "Insufficient disk space: %i MB, %i MB required" % (availableMB, self.options.minspace)
+            self.status = "Insufficient disk space at %s: %i MB, %i MB required" % (br_path, availableMB, self.options.minspace)
             self.logger.warn(self.status)
             return False
         return True
