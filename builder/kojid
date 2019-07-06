@@ -272,6 +272,8 @@ class BuildRoot(object):
         opts['target_arch'] = self.target_arch
         if 'mock.package_manager' in self.config['extra']:
             opts['package_manager'] = self.config['extra']['mock.package_manager']
+        if 'mock.yum.module_hotfixes' in self.config['extra']:
+            opts['module_hotfixes'] = self.config['extra']['mock.yum.module_hotfixes']
         if self.internal_dev_setup is not None:
             opts['internal_dev_setup'] = bool(self.internal_dev_setup)
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
