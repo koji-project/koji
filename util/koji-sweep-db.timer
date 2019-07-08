@@ -6,7 +6,6 @@ Documentation=https://pagure.io/docs/koji/
 OnCalendar=daily
 Accuracy=1h
 Persistent=true
-Unit
 
 [Install]
 WantedBy=timers.target
