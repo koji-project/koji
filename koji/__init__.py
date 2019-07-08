@@ -1666,14 +1666,8 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     This is done either via a mounted filesystem (nfs) or http, depending
     on options"""
     if topurl:
-        if requests is None:
-            import koji.compatrequests
-            rsession = koji.compatrequests.Session()
-        else:
-            rsession = requests.Session()
-
         url = "%s/%s" % (topurl, relpath)
-        resp = rsession.get(url)
+        resp = requests.get(url)
         fo = tempfile.TemporaryFile(dir=tempdir)
         for chunk in resp.iter_content(chunk_size=8192):
             if chunk:
