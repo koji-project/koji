@@ -62,6 +62,7 @@ class TestFastUpload(unittest.TestCase):
 
     def setUp(self):
         self.ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        self.ksession.logout = mock.MagicMock()
         self.do_fake_login()
         # mocks
         self.ksession._callMethod = mock.MagicMock()
@@ -89,7 +90,6 @@ class TestFastUpload(unittest.TestCase):
             self.ksession.fastUpload('nonexistent_file', 'target')
 
     def test_fastUpload_nofile(self):
-
         # fail with nonexistent file (IOError)
         self.file_mock.side_effect = IOError('mocked exception')
         with self.assertRaises(IOError):
@@ -180,6 +180,7 @@ class TestMultiCall(unittest.TestCase):
         self.ksession = koji.ClientSession('http://koji.example.com/kojihub')
         # mocks
         self.ksession._sendCall = mock.MagicMock()
+        self.ksession.logout = mock.MagicMock()
 
     def tearDown(self):
         del self.ksession

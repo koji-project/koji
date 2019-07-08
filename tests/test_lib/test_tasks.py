@@ -11,6 +11,7 @@ except ImportError:
 from os import path, makedirs
 from tempfile import gettempdir
 from mock import patch, MagicMock, Mock, call
+import requests_mock
 
 import koji
 from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, \
@@ -452,8 +453,8 @@ class TasksTestCase(unittest.TestCase):
         obj = TestTask(123, 'some_method', ['random_arg'], None, options, temp_path)
         self.assertEquals(obj.localPath('test.txt'), dummy_file)
 
-    @patch('six.moves.urllib.request.urlopen', return_value=six.BytesIO(six.b('Important things\nSome more important things\n')))
-    def test_BaseTaskHandler_localPath_no_file(self, mock_urlopen):
+    @requests_mock.Mocker()
+    def test_BaseTaskHandler_localPath_no_file(self, m_requests):
         """
         """
         temp_path = get_tmp_dir_path('TestTask')
@@ -466,10 +467,13 @@ class TasksTestCase(unittest.TestCase):
 
         options = Mock()
         options.topurl = 'https://www.domain.local'
+        url = options.topurl + '/test.txt'
+        m_requests.register_uri('GET', url, text='Important things\nSome more important things\n')
         obj = TestTask(123, 'some_method', ['random_arg'], None, options, temp_path)
 
         self.assertEquals(obj.localPath('test.txt'), target_file_path)
-        mock_urlopen.assert_called_once_with('https://www.domain.local/test.txt')
+        self.assertEquals(m_requests.call_count, 1)
+        self.assertEquals(m_requests.request_history[0].url, url)
 
     def test_BaseTaskHandler_localPath_no_topurl(self):
         """ Tests that the localPath function returns a path when options.topurl is not defined.

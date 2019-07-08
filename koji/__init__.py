@@ -1667,12 +1667,10 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     on options"""
     if topurl:
         url = "%s/%s" % (topurl, relpath)
-        resp = requests.get(url)
         fo = tempfile.TemporaryFile(dir=tempdir)
-        for chunk in resp.iter_content(chunk_size=8192):
-            if chunk:
+        with requests.get(url) as resp:
+            for chunk in resp.iter_content(chunk_size=8192):
                 fo.write(chunk)
-        resp.close()
         fo.seek(0)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
