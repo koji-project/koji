@@ -145,9 +145,7 @@ def get_options():
     parser.add_option("--topurl", help=_("url for Koji file access"))
     parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--plugin-paths", metavar='PATHS',
-                      help=_("specify plugin paths with format as the same as the shell's PATH, "
-                             "koji_cli_plugins module and '~/.koji/plugins' are always loaded in advance, "
-                             "and then overridden by this option."))
+            help=_("specify additional plugin paths (colon separated)"))
     parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
     (options, args) = parser.parse_args()
 
