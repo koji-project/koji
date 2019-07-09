@@ -47,7 +47,7 @@ import time
 import traceback
 import xml.dom.minidom
 import zipfile
-from six.moves.configparser import ConfigParser
+from six.moves.configparser import RawConfigParser
 from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import OptionParser, SUPPRESS_HELP
@@ -6101,7 +6101,7 @@ def get_options():
         assert False  # pragma: no cover
 
     # load local config
-    config = ConfigParser()
+    config = RawConfigParser()
     config.read(options.configFile)
     for x in config.sections():
         if x != 'kojid':
