@@ -999,6 +999,8 @@ def anon_handle_mock_config(goptions, session, args):
     buildcfg = session.getBuildConfig(opts['tag_name'], event=event)
     if 'mock.package_manager' in buildcfg['extra']:
         opts['package_manager'] = buildcfg['extra']['mock.package_manager']
+    if 'mock.yum.module_hotfixes' in buildcfg['extra']:
+        opts['module_hotfixes'] = self.config['extra']['mock.yum.module_hotfixes']
 
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
