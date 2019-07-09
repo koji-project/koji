@@ -6108,7 +6108,7 @@ def get_options():
         assert False  # pragma: no cover
 
     # load local config
-    config = koji.read_config_files(options.configFile)
+    config = koji.read_config_files(options.configFile, raw=True)
     for x in config.sections():
         if x != 'kojid':
             quit('invalid section found in config file: %s' % x)
