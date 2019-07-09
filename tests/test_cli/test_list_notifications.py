@@ -25,17 +25,22 @@ class TestListNotifications(unittest.TestCase):
             {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com', 'success_only': False},
             {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com', 'success_only': True},
         ]
+        self.session.getBuildNotificationBlocks.return_value = []
         self.session.getTag.return_value = {'id': 1, 'name': 'tag'}
         self.session.getPackage.return_value = {'id': 11, 'name': 'package'}
 
         anon_handle_list_notifications(self.options, self.session, ['--mine'])
 
         actual = stdout.getvalue()
-        expected =  '''    ID Tag                       Package                   E-mail               Success-only
+        expected =  '''\
+Notifications
+    ID Tag                       Package                   E-mail               Success-only
 --------------------------------------------------------------------------------------------
-     1 tag                       package                   email@test.com       yes
-     2 *                         package                   email@test.com       no
-     3 tag                       *                         email@test.com       yes
+     1 tag                       package                   email@test.com       yes         
+     2 *                         package                   email@test.com       no          
+     3 tag                       *                         email@test.com       yes         
+
+No notification blocks
 '''
 
         self.maxDiff=None
@@ -54,18 +59,37 @@ class TestListNotifications(unittest.TestCase):
             {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com', 'success_only': False},
             {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com', 'success_only': True},
         ]
-        self.session.getTag.return_value = {'id': 1, 'name': 'tag'}
-        self.session.getPackage.return_value = {'id': 11, 'name': 'package'}
+        self.session.getBuildNotificationBlocks.return_value = [
+            {'id': 11, 'tag_id': None, 'package_id': 22},
+            {'id': 12, 'tag_id': None, 'package_id': None},
+        ]
+        self.session.getTag.side_effect = [
+            {'id': 1, 'name': 'tag'},
+            {'id': 3, 'name': 'tag3'},
+        ]
+        self.session.getPackage.side_effect = [
+            {'id': 11, 'name': 'package'},
+            {'id': 11, 'name': 'package'},
+            {'id': 22, 'name': 'package'},
+        ]
         self.session.getUser.return_value = {'id': 321}
 
         anon_handle_list_notifications(self.options, self.session, ['--user', 'random_name'])
 
         actual = stdout.getvalue()
-        expected =  '''    ID Tag                       Package                   E-mail               Success-only
+        expected =  '''\
+Notifications
+    ID Tag                       Package                   E-mail               Success-only
 --------------------------------------------------------------------------------------------
-     1 tag                       package                   email@test.com       yes
-     2 *                         package                   email@test.com       no
-     3 tag                       *                         email@test.com       yes
+     1 tag                       package                   email@test.com       yes         
+     2 *                         package                   email@test.com       no          
+     3 tag3                      *                         email@test.com       yes         
+
+Notification blocks
+    ID Tag                       Package                  
+----------------------------------------------------------
+    11 *                         package                  
+    12 *                         *                        
 '''
 
         self.maxDiff=None
