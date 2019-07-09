@@ -22,4 +22,3 @@ foo4 = 'foo4'
 
 class bar():
     pass
-

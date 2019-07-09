@@ -5,4 +5,3 @@ from koji.plugin import export_cli, export_as
 @export_cli
 def foo():
     pass
-
