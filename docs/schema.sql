@@ -593,6 +593,10 @@ CREATE TABLE tag_packages (
 	PRIMARY KEY (create_event, package_id, tag_id),
 	UNIQUE (package_id,tag_id,active)
 ) WITHOUT OIDS;
+CREATE INDEX tag_packages_active_tag_id ON tag_packages(active, tag_id);
+CREATE INDEX tag_packages_create_event ON tag_packages(create_event);
+CREATE INDEX tag_packages_revoke_event ON tag_packages(revoke_event);
+CREATE INDEX tag_packages_owner ON tag_packages(owner);
 
 -- package groups (per tag). used for generating comps for the tag repos
 CREATE TABLE groups (
