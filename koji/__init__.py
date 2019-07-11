@@ -1701,7 +1701,8 @@ def read_config(profile_name, user_config=None):
         'authtype': None,
         'debug': False,
         'debug_xmlrpc': False,
-        'pyver' : None,
+        'pyver': None,
+        'plugin_paths': None,
     }
 
     result = config_defaults.copy()
