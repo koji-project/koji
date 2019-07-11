@@ -5748,10 +5748,12 @@ class CG_Importer(object):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = get_reservation_token(build_id)
-            if not build_token or build_token['token'] != token or \
-               build_token['cg_id'] != cg_id or \
-               buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
+            if not build_token or build_token['token'] != token:
+                raise koji.GenericError("Token doesn't match build ID %s" % build_id)
+            if build_token['cg_id'] != cg_id:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
+            if buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
+                raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
                buildinfo['version'] != metadata['build']['version'] or \
                buildinfo['release'] != metadata['build']['release'] or \
