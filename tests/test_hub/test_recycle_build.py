@@ -43,6 +43,7 @@ class TestRecycleBuild():
            'version': '3.2.6',
            'source': None,
            'extra': None,
+           'cg_id': None,
            'volume_id': 0,
            'volume_name': 'DEFAULT'}
     new = {'state': 0,
@@ -56,6 +57,7 @@ class TestRecycleBuild():
            'owner': 2,
            'source': None,
            'extra': None,
+           'cg_id': None,
            'volume_id': 0}
 
     def test_recycle_building(self):
@@ -90,7 +92,10 @@ class TestRecycleBuild():
         old['task_id'] = 99
         new['task_id'] = 137
         query = self.QueryProcessor.return_value
+        # for all checks
         query.execute.return_value = []
+        # for getBuild
+        query.executeOne.return_value = old
         self.run_pass(old, new)
 
     def run_pass(self, old, new):

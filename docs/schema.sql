@@ -249,6 +249,12 @@ CREATE TABLE volume (
 
 INSERT INTO volume (id, name) VALUES (0, 'DEFAULT');
 
+-- data for content generators
+CREATE TABLE content_generator (
+	id SERIAL PRIMARY KEY,
+	name TEXT
+) WITHOUT OIDS;
+
 -- here we track the built packages
 -- this is at the srpm level, since builds are by srpm
 -- see rpminfo for isolated packages
@@ -269,6 +275,7 @@ CREATE TABLE build (
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),
 	owner INTEGER NOT NULL REFERENCES users (id),
+	cg_id INTEGER REFERENCES content_generator(id),
 	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
@@ -483,14 +490,6 @@ create table tag_external_repos (
 	UNIQUE (tag_id, external_repo_id, active)
 );
 
-
--- data for content generators
-CREATE TABLE content_generator (
-	id SERIAL PRIMARY KEY,
-	name TEXT
-) WITHOUT OIDS;
-
-
 CREATE TABLE cg_users (
 	cg_id INTEGER NOT NULL REFERENCES content_generator (id),
 	user_id INTEGER NOT NULL REFERENCES users (id),
@@ -509,7 +508,6 @@ CREATE TABLE cg_users (
 
 CREATE TABLE build_reservations (
 	build_id INTEGER NOT NULL REFERENCES build(id),
-	cg_id INTEGER NOT NULL REFERENCES content_generator(id),
 	token VARCHAR(64),
         created TIMESTAMP NOT NULL,
 	PRIMARY KEY (build_id)

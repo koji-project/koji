@@ -82,9 +82,9 @@
       <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
     </tr>
     #end if
-    #if $build.reserved_by_name
+    #if $build.cg_id
     <tr>
-      <th>Reserved by</th><td>$build.reserved_by_name</td>
+      <th>Content generator</th><td>$build.cg_name</td>
     </tr>
     #end if
     #if $task

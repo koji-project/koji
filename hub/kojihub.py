@@ -3708,8 +3708,8 @@ def get_build(buildInfo, strict=False):
       completion_ts: time the build was completed (epoch, may be null)
       source: the SCM URL of the sources used in the build
       extra: dictionary with extra data about the build
-      reserved_id: ID of CG which reserved this build (only in BUILDING state)
-      reserved_name: name of CG which reserved this build (only in BUILDING state)
+      cg_id: ID of CG which reserved or imported this build
+      cg_name: name of CG which reserved or imported this build
 
     If there is no build matching the buildInfo given, and strict is specified,
     raise an error.  Otherwise return None.
@@ -3733,6 +3733,7 @@ def get_build(buildInfo, strict=False):
               ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
               ('EXTRACT(EPOCH FROM build.completion_time)', 'completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('build.cg_id', 'cg_id'),
               ('build.source', 'source'),
               ('build.extra', 'extra'))
     fields, aliases = zip(*fields)
@@ -3752,15 +3753,11 @@ def get_build(buildInfo, strict=False):
             raise koji.GenericError('No matching build found: %s' % buildInfo)
         else:
             return None
+    if result['cg_id']:
+        result['cg_name'] = lookup_name('content_generator', result['cg_id'], strict=True)['name']
     else:
-        result['reserved_by'] = None
-        if result['state'] == koji.BUILD_STATES['BUILDING']:
-            token = get_reservation_token(result['id'])
-            if token:
-                cg = lookup_name('content_generator', token['cg_id'], strict=True)
-                result['reserved_by_id'] = cg['id']
-                result['reserved_by_name'] = cg['name']
-        return result
+        result['cg_name'] = None
+    return result
 
 
 def get_build_logs(build):
@@ -5249,6 +5246,8 @@ def new_build(data, strict=False):
     #insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
                          'task_id', 'owner', 'start_time', 'completion_time', 'source', 'extra'])
+    if 'cg_id' in data:
+        insert_data['cg_id'] = data['cg_id']
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
@@ -5313,7 +5312,7 @@ def recycle_build(old, data):
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
     update.set(**dslice(data,
         ['state', 'task_id', 'owner', 'start_time', 'completion_time',
-         'epoch', 'source', 'extra', 'volume_id']))
+         'epoch', 'source', 'extra', 'volume_id', 'cg_id']))
     update.rawset(create_event='get_event()')
     update.execute()
     builddir = koji.pathinfo.build(data)
@@ -5566,7 +5565,7 @@ def generate_token(nbytes=32):
 def get_reservation_token(build_id):
     query = QueryProcessor(
         tables=['build_reservations'],
-        columns=['build_id', 'cg_id', 'token'],
+        columns=['build_id', 'token'],
         clauses=['build_id = %(build_id)d'],
         values=locals(),
     )
@@ -5579,17 +5578,16 @@ def cg_init_build(cg, data):
     If build already exists, init_build will raise GenericError
     """
     assert_cg(cg)
+    cg_id = lookup_name('content_generator', cg, strict=True)['id']
     data['owner'] = context.session.user_id
     data['state'] = koji.BUILD_STATES['BUILDING']
     data['completion_time'] = None
+    data['cg_id'] = cg_id
     build_id = new_build(data, strict=True)
     # store token
     token = generate_token()
-    cg_id = lookup_name('content_generator', cg, strict=True)['id']
     insert = InsertProcessor(table='build_reservations')
-    insert.set(build_id=build_id,
-               cg_id=cg_id,
-               token=token)
+    insert.set(build_id=build_id, token=token)
     insert.rawset(created='NOW()')
     insert.execute()
 
@@ -5748,9 +5746,10 @@ class CG_Importer(object):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = get_reservation_token(build_id)
+            print(build_token)
             if not build_token or build_token['token'] != token:
                 raise koji.GenericError("Token doesn't match build ID %s" % build_id)
-            if build_token['cg_id'] != cg_id:
+            if buildinfo['cg_id'] != cg_id:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
             if buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
@@ -5815,7 +5814,7 @@ class CG_Importer(object):
             if buildinfo.get('task_id') or \
                buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
                not build_token or \
-               build_token['cg_id'] != cg_id or \
+               buildinfo['cg_id'] != cg_id or \
                build_token['token'] != token:
                 raise koji.GenericError("Build is not reserved")
             buildinfo['extra'] = self.buildinfo['extra']
