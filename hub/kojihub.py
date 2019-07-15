@@ -5572,6 +5572,12 @@ def get_reservation_token(build_id):
     return query.executeOne()
 
 
+def clear_reservation(build_id):
+    '''Remove reservation entry for build'''
+    delete = "DELETE FROM build_reservations WHERE build_id = %(build_id)i"
+    _dml(delete, {'build_id': build_id})
+
+
 def cg_init_build(cg, data):
     """Create (reserve) a build_id for given data.
 
@@ -5746,7 +5752,6 @@ class CG_Importer(object):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = get_reservation_token(build_id)
-            print(build_token)
             if not build_token or build_token['token'] != token:
                 raise koji.GenericError("Token doesn't match build ID %s" % build_id)
             if buildinfo['cg_id'] != cg_id:
@@ -5856,6 +5861,7 @@ class CG_Importer(object):
         update.rawset(completion_time='NOW()')
         update.execute()
         buildinfo = get_build(build_id, strict=True)
+        clear_reservation(build_id)
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
 
         self.buildinfo = buildinfo
