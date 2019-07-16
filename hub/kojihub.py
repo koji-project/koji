@@ -5762,9 +5762,13 @@ class CG_Importer(object):
                 raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
                buildinfo['version'] != metadata['build']['version'] or \
-               buildinfo['release'] != metadata['build']['release'] or \
-               buildinfo['epoch'] != metadata['build']['epoch']:
+               buildinfo['release'] != metadata['build']['release']:
                 raise koji.GenericError("Build (%i) NVR is different" % build_id)
+            if ('epoch' in metadata['build'] and
+                    buildinfo['epoch'] != metadata['build']['epoch']):
+                raise koji.GenericError("Build (%i) epoch is different"
+                                        % build_id)
+
         elif token is not None:
             raise koji.GenericError('Reservation token given, but no build_id '
                                     'in metadata')
