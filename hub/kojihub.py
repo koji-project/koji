@@ -5589,6 +5589,8 @@ def cg_init_build(cg, data):
     data['state'] = koji.BUILD_STATES['BUILDING']
     data['completion_time'] = None
     data['cg_id'] = cg_id
+    # CGs shouldn't have to worry about epoch
+    data.setdefault('epoch', None)
     build_id = new_build(data, strict=True)
     # store token
     token = generate_token()
