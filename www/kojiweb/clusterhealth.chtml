@@ -1,0 +1,82 @@
+#from kojiweb import util
+
+#def printOption(value, label=None)
+#if not $label
+#set $label = $value
+#end if
+<option value="$value"#if $value == $arch then ' selected="selected"' else ''#>$label</option>
+#end def
+
+#include "includes/header.chtml"
+<style>
+  span {
+    display: inline-block;
+    box-sizing: border-box;
+    height: 100%;
+    float: left;
+    padding: 0px;
+    text-overflow: ellipsis;
+  }
+  .graph {
+      height: 15px;
+  }
+
+  .free {
+    background: #00ff00;
+                text-align: right;
+  }
+
+  .busy {
+    background: #ff0000;
+  }
+
+  .count {
+    background: #0000ff;
+    color: #ffffff;
+  }
+</style>
+
+  <h4>Cluster health</h4>
+  <table class="data-list">
+    <tr style="text-align: left">
+      <td colspan="3">
+        <form action="">
+          Architecture:
+          <select onchange="javascript: window.location = 'clusterhealth?arch=' + this.value + '$util.passthrough($self, 'order')';">
+            $printOption('__all__', 'all')
+            #for $arch in $arches
+            $printOption($arch)
+            #end for
+          </select>
+        </form>
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th>Channel</th>
+      <th>Load/Capacity</th>
+      <th>Builder readiness</th>
+    </tr>
+    #for $channel in $channels
+    <tr>
+      <th>
+          <a href="channelinfo?channelID=$channel['id']">$channel['name']</a>
+      </th>
+      <td width="$graphWidth" class="graph">
+        #if $channel['capacityPerc']
+        <span style="width: $channel['capacityPerc']%">
+          <span style="width: #echo $channel['perc_load']#%" class="busy" title="Load: #echo int($channel['load'])#"></span>
+          <span style="width: #echo 100 - $channel['perc_load']#%" class="free" title="Free capacity: #echo int($channel['capacity'] - $channel['load'])#">#echo int(100 - $channel['perc_load'])#%&nbsp;</span>
+        </span>
+        #end if
+      </td>
+      <td width="$graphWidth" class="graph">
+        <span style="width: #echo $channel['enabledPerc']#%">
+          <span style="width: #echo 100 - $channel['perc_ready']#%" class="busy" title="Busy builders: #echo $channel['enabled'] - $channel['ready']#"></span>
+          <span style="width: #echo $channel['perc_ready']#%" class="free" title="Ready builders: $channel['ready']"">#echo int($channel['ready'])#&nbsp;</span>
+        </span>
+      </td>
+    </tr>
+    #end for
+  </table>
+
+#include "includes/footer.chtml"
