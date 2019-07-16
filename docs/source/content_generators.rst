@@ -114,3 +114,30 @@ Metadata
 Metadata will be provided by the Content Generator as a JSON file. There
 is a proposal of the :doc:`Content Generator
 Metadata <content_generator_metadata>` format available for review.
+
+API
+===
+
+Relevant API calls for Content Generator are:
+
+- ``CGImport(metadata, directory, token=None)``: This is basic integration point
+  of Content Generator with koji. It is supplied with metadata as json encoded
+  string or dict or filename of metadata described in previous chapter and
+  directory with all uploaded content referenced from metadata. These files
+  needs to be uploaded before ``CGImport`` is called.
+
+  Optionally, ``token`` can be specified in case, that build ID reservation was
+  done before.
+
+- ``CGInitBuild(cg, data)``: It can be helpful in many cases to reserve NVR for
+  future build before Content Generator evend starts building.  Especially, if
+  there is some CI or other workflow competing for same NVRs.  This call creates
+  special ``token`` which can be used to claim specific build (ID + NVR). Such
+  claimed build will be displayed as BUILDING and can be used by ``CGImport``
+  call later.
+
+  As an input are here Content Generator name and `data` which is basically
+  dictionary with name/version/release/epoch keys. Call will return a dict
+  containing ``token`` and ``build_id``. ``token`` would be used in subsequent
+  call of ``CGImport`` while ``build_id`` needs to be part of metadata (as item
+  in ``build`` key).

@@ -23,4 +23,15 @@ insert into archivetypes (name, description, extensions) values ('qcow2-compress
 -- add better index for sessions
 CREATE INDEX sessions_expired ON sessions(expired);
 
+-- table for content generator build reservations
+CREATE TABLE build_reservations (
+	build_id INTEGER NOT NULL REFERENCES build(id),
+	token VARCHAR(64),
+        created TIMESTAMP NOT NULL,
+	PRIMARY KEY (build_id)
+) WITHOUT OIDS;
+CREATE INDEX build_reservations_created ON build_reservations(created);
+
+ALTER TABLE build ADD COLUMN cg_id INTEGER REFERENCES content_generator(id);
+
 COMMIT;

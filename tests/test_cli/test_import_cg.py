@@ -95,7 +95,7 @@ class TestImportCG(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         linked_upload_mock.assert_not_called()
         session.uploadWrapper.assert_has_calls(calls)
-        session.CGImport.assert_called_with(metadata, fake_srv_path)
+        session.CGImport.assert_called_with(metadata, fake_srv_path, None)
 
         # Case 2, running in fg, progress off
         with mock.patch(utils.get_builtin_open()):
@@ -105,7 +105,7 @@ class TestImportCG(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         linked_upload_mock.assert_not_called()
         session.uploadWrapper.assert_has_calls(calls)
-        session.CGImport.assert_called_with(metadata, fake_srv_path)
+        session.CGImport.assert_called_with(metadata, fake_srv_path, None)
 
         # reset mocks
         linked_upload_mock.reset_mock()
@@ -129,7 +129,7 @@ class TestImportCG(utils.CliTestCase):
 
         linked_upload_mock.assert_has_calls(calls)
         session.uploadWrapper.assert_not_called()
-        session.CGImport.assert_called_with(metadata, fake_srv_path)
+        session.CGImport.assert_called_with(metadata, fake_srv_path, None)
 
         # make sure there is no message on output
         self.assert_console_message(stdout, '')
@@ -213,10 +213,11 @@ class TestImportCG(utils.CliTestCase):
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help    show this help message and exit
-  --noprogress  Do not display progress of the upload
-  --link        Attempt to hardlink instead of uploading
-  --test        Don't actually import
+  -h, --help     show this help message and exit
+  --noprogress   Do not display progress of the upload
+  --link         Attempt to hardlink instead of uploading
+  --test         Don't actually import
+  --token=TOKEN  Build reservation token
 """ % self.progname)
 
 
