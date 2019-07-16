@@ -5763,6 +5763,9 @@ class CG_Importer(object):
                buildinfo['release'] != metadata['build']['release'] or \
                buildinfo['epoch'] != metadata['build']['epoch']:
                 raise koji.GenericError("Build (%i) NVR is different" % build_id)
+        elif token is not None:
+            raise koji.GenericError('Reservation token given, but no build_id '
+                                    'in metadata')
         else:
             buildinfo = get_build(metadata['build'], strict=False)
             if buildinfo and not metadata['build'].get('build_id'):
