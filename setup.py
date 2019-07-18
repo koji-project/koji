@@ -32,7 +32,7 @@ def get_install_requires():
 
 setup(
     name="koji",
-    version="1.17.0",
+    version="1.18.0",
     description=("Koji is a system for building and tracking RPMS. The base"
                  " package contains shared libraries and the command-line"
                  " interface."),
