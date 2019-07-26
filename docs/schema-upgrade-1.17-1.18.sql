@@ -34,4 +34,12 @@ CREATE INDEX build_reservations_created ON build_reservations(created);
 
 ALTER TABLE build ADD COLUMN cg_id INTEGER REFERENCES content_generator(id);
 
+
+-- new indexes added in 1.18
+CREATE INDEX tag_packages_active_tag_id ON tag_packages(active, tag_id);
+CREATE INDEX tag_packages_create_event ON tag_packages(create_event);
+CREATE INDEX tag_packages_revoke_event ON tag_packages(revoke_event);
+CREATE INDEX tag_packages_owner ON tag_packages(owner);
+
+
 COMMIT;
