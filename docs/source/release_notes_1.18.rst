@@ -21,7 +21,7 @@ Client Changes
 
 | PR: https://pagure.io/koji/pull-request/1253
 
-The CLI no has an option for setting a custom SSL certificate, similar to the
+The CLI now has an option for setting a custom SSL certificate, similar to the
 options for Kerberos authentication.
 
 
@@ -42,13 +42,6 @@ The ``list-channels`` display has been expanded to show overall totals for load
 and capacity.
 
 
-**Sorted output for list-channels**
-
-| PR: https://pagure.io/koji/pull-request/1390
-
-The channel list is now sorted
-
-
 **Allow taginfo cli to use tag IDs**
 
 | PR: https://pagure.io/koji/pull-request/1476
@@ -56,11 +49,12 @@ The channel list is now sorted
 The ``taginfo`` command can now accept a numeric tag id on the command line.
 
 
-**Add --show-channels option to list-hosts**
+**Add option to show channels in list-hosts**
 
 | PR: https://pagure.io/koji/pull-request/1425
 
-The ``list-hosts`` command can now display channel subscriptions.
+The ``list-hosts`` command will now display channel subscriptions if the
+``--show-channels`` option is given.
 
 
 **Remove merge option from edit-external-repo**
@@ -101,7 +95,7 @@ With this new implementation:
 * method calls return a `VirtualCall` instance that can later be used to access the result
 * `MultiCallSession` can be used as a context manager, ensuring that the calls are executed
 
-Usage examples are availble in the :doc:`Writing Koji Code <writing_koji_code>`
+Usage examples can be found in the :doc:`Writing Koji Code <writing_koji_code>`
 document.
 
 
@@ -144,20 +138,6 @@ The old behavior can be requested by setting ``rebuild_srpm=False`` in the tag
 extra data for the build tag in question.
 
 
-**Handle bare merge mode**
-
-| PR: https://pagure.io/koji/pull-request/1411
-| PR: https://pagure.io/koji/pull-request/1516
-| PR: https://pagure.io/koji/pull-request/1502
-
-
-This feature adds a new merge mode for external repos named ``bare``.
-This mode is intended for use with modularity.
-
-Use of this mode requires createrepo_c version 0.14.0 or later on the builders
-that handle the createrepo tasks.
-
-
 **User createrepo_c by default**
 
 | PR: https://pagure.io/koji/pull-request/1278
@@ -166,7 +146,7 @@ that handle the createrepo tasks.
 The ``use_createrepo_c`` configuration option for ``kojid`` now defaults to True.
 
 
-**Use createrepo --update option even for first repo run**
+**Use createrepo update option even for first repo run**
 
 | PR: https://pagure.io/koji/pull-request/1363
 
@@ -189,10 +169,10 @@ Within a channel-arch bin, the hosts with highest capacity will take the task
 immediately, while hosts lower down will have a delay proportional to their
 rank.
 The "rank" here is a float between 0.0 and 1.0 used as a multiplier.
-So ``task_avail_delay`` is the maximum time that the any host will wait to
+So ``task_avail_delay`` is the maximum time that any host will wait to
 take a task.
 
-This means hosts with higher available capacity will be more likely to claim a
+Hosts with higher available capacity will be more likely to claim a
 task, resulting in better utilization of the highest capacity hosts.
 
 
@@ -204,6 +184,20 @@ The use of percent signs is common in ``kojid.conf`` because of the
 ``host_principal_format`` setting.
 This causes an error in python3 if ``SafeConfigParser`` is used, so we use
 ``RawConfigParser`` instead.
+
+
+**Handle bare merge mode**
+
+| PR: https://pagure.io/koji/pull-request/1411
+| PR: https://pagure.io/koji/pull-request/1516
+| PR: https://pagure.io/koji/pull-request/1502
+
+
+This feature adds a new merge mode for external repos named ``bare``.
+This mode is intended for use with modularity.
+
+Use of this mode requires createrepo_c version 0.14.0 or later on the builders
+that handle the createrepo tasks.
 
 
 
@@ -270,7 +264,7 @@ This feature adds new policy tests to match ``version`` and ``release``.
 This tests are glob pattern matches.
 
 
-**New 'buildtype' test for policies**
+**Allow hub policy to match build type**
 
 | PR: https://pagure.io/koji/pull-request/1415
 
@@ -299,6 +293,8 @@ separate permissions:
     ``target``
         This permission governs adding, editing, and deleting targets.
 
+Koji administrators may want to consider reducing the number of users with
+full ``admin`` permission.
 
 
 **Option to generate separate source repo**
