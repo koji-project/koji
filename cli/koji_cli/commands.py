@@ -7529,9 +7529,13 @@ def handle_block_notification(goptions, session, args):
         parser.error("--user requires admin permission")
 
     if options.user:
-        user_id = session.getUser(options.user)['id']
+        user_id = session.getUser(options.user, strict=True)['id']
     else:
-        user_id = session.getLoggedInUser()['id']
+        logged_in_user = session.getLoggedInUser()
+        if logged_in_user:
+            user_id = logged_in_user['id']
+        else:
+            parser.error("Please login with authentication or specify --user")
 
     if options.package:
         package_id = session.getPackageID(options.package)
