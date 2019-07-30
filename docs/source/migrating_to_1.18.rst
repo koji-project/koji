@@ -25,6 +25,15 @@ database.
     # psql koji koji  </usr/share/doc/koji/docs/schema-upgrade-1.17-1.18.sql
 
 
+More granular permissions
+-------------------------
+
+The new ``host``, ``tag``, ``target`` permissions allow access to a number of
+actions that were previously admin-only.
+Koji administrators should consider using these to reduce the number of users
+with full ``admin`` permission.
+
+
 Other changes
 -------------
 
