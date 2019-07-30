@@ -1587,11 +1587,24 @@ def handle_prune_signed_copies(options, session, args):
     if not options.build:
         if options.verbose:
             print("Getting builds...")
-        qopts = {'state' : koji.BUILD_STATES['COMPLETE']}
+        qopts = {
+            'state' : koji.BUILD_STATES['COMPLETE'],
+            'queryOpts': {
+                'limit': 50000,
+                'offset': 0,
+                'order': 'build_id',
+            }
+        }
         if options.package:
             pkginfo = session.getPackage(options.package)
             qopts['packageID'] = pkginfo['id']
-        builds = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
+        builds = []
+        while True:
+            chunk = [(b['nvr'], b) for b in session.listBuilds(**qopts)]
+            if not chunk:
+                break
+            builds.extend(chunk)
+            qopts['queryOpts']['offset'] += qopts['queryOpts']['limit']
         if options.verbose:
             print("...got %i builds" % len(builds))
         builds.sort()
