@@ -126,7 +126,7 @@ timestamps.
 Builder Changes
 ---------------
 
-**Rebuild SPMS before building**
+**Rebuild SRPMS before building**
 
 | PR: https://pagure.io/koji/pull-request/1462
 
