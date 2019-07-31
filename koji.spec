@@ -714,6 +714,9 @@ fi
 
 %changelog
 * Fri Aug  2 2019 Mike McLean <mikem at redhat.com> - 1.18.0-1
+- PR#1555: use _writeInheritanceData in _create_tag
+- PR#1580: cli: verify user in block-notification command
+- PR#1578: cli:fix typo in mock-config
 - PR#1464: API for reserving NVRs for content generators
 - PR#898: Add support for tag/target macros for Mageia
 - PR#1544: use RawConfigParser for kojid
