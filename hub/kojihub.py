@@ -3114,7 +3114,7 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
                 'intransitive': False,
                 'noconfig': False,
                 'pkg_filter': ''}
-        writeInheritanceData(tag_id, data)
+        _writeInheritanceData(tag_id, data)
 
     return tag_id
 
