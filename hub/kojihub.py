@@ -49,6 +49,7 @@ try:
     import secrets
 except ImportError:
     import random
+    secrets = None
 
 import rpm
 import six
