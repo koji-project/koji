@@ -714,6 +714,7 @@ fi
 
 %changelog
 * Fri Aug  2 2019 Mike McLean <mikem at redhat.com> - 1.18.0-1
+- PR#1591: secrets import is missing 'else' variant
 - PR#1555: use _writeInheritanceData in _create_tag
 - PR#1580: cli: verify user in block-notification command
 - PR#1578: cli:fix typo in mock-config
