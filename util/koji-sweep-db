@@ -7,7 +7,7 @@ from six.moves.configparser import RawConfigParser
 
 import koji.db
 
-def clean_sessions(cursor):
+def clean_sessions(cursor, vacuum):
     q = " FROM sessions WHERE update_time < now() - '1 day'::interval"
     if options.verbose:
         cursor.execute("SELECT COUNT(*) " + q)
@@ -15,6 +15,8 @@ def clean_sessions(cursor):
         print("Deleting %d sessions" % rows)
 
     cursor.execute("DELETE " + q)
+    if vacuum:
+        cursor.execute("VACUUM ANALYZE sessions")
 
 
 if __name__ == "__main__":
@@ -23,6 +25,9 @@ if __name__ == "__main__":
     parser.add_option('-v', '--verbose', action="store_true", help="Be verbose")
     parser.add_option('-c', '--conf', default='/etc/koji-hub/hub.conf',
                       action='store', help="Path to koji's hub.conf")
+    parser.add_option('--no-vacuum', action="store_false", dest="vacuum",
+                      default=True,
+                      help="Don't run vacuum on affected tables")
     options, args = parser.parse_args()
 
     if not os.path.exists(options.conf):
@@ -66,5 +71,5 @@ if __name__ == "__main__":
     conn = koji.db.connect()
     cursor = conn.cursor()
 
-    clean_sessions(cursor)
+    clean_sessions(cursor, options.vacuum)
     conn.commit()

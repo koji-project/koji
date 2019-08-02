@@ -515,11 +515,13 @@ timer is not enabled by default, so you need to run usual `systemctl` commands:
 
 If you don't want to use this script, be sure to run following SQL with
 appropriate age setting. Default value of one day should be ok for most
-deployments.
+deployments. As there will be tons of freed records, additional VACUUM can be
+handy.
 
 ::
 
    DELETE FROM sessions WHERE update_time < now() - '1 day'::interval;
+   VACUUM ANALYZE sessions;
 
 Set User/Password Authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
