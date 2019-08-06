@@ -5873,6 +5873,9 @@ class CG_Importer(object):
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
         update = UpdateProcessor('build', clauses=['id=%(id)s'], values=buildinfo)
         update.set(state=st_complete, extra=extra, owner=owner, source=source)
+        if self.buildinfo.get('volume_id'):
+            # reserved builds have reapplied volume policy now
+            update.set(volume_id=self.buildinfo['volume_id'])
         update.rawset(completion_time='NOW()')
         update.execute()
         buildinfo = get_build(build_id, strict=True)
