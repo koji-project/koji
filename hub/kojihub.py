@@ -5863,10 +5863,7 @@ class CG_Importer(object):
             extra = json.dumps(buildinfo['extra'])
         else:
             extra = None
-        if buildinfo.get('owner'):
-            owner = get_user(self.buildinfo['owner'], strict=True)['id']
-        else:
-            owner = context.session.user_id
+        owner = self.buildinfo.get('owner', context.session.user_id)
         source = self.buildinfo.get('source')
         st_complete = koji.BUILD_STATES['COMPLETE']
         st_old = buildinfo['state']
