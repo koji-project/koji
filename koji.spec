@@ -714,6 +714,10 @@ fi
 
 %changelog
 * Fri Aug  2 2019 Mike McLean <mikem at redhat.com> - 1.18.0-1
+- PR#1606: pull owner from correct place
+- PR#1602: copy updated policy for reserved cg builds
+- PR#1601: fix recycling build due to cg
+- PR#1597: Backward-compatible fix for CG import
 - PR#1591: secrets import is missing 'else' variant
 - PR#1555: use _writeInheritanceData in _create_tag
 - PR#1580: cli: verify user in block-notification command
