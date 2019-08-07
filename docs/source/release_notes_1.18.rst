@@ -209,6 +209,10 @@ System Changes
 **API for reserving NVRs for content generators**
 
 | PR: https://pagure.io/koji/pull-request/1464
+| PR: https://pagure.io/koji/pull-request/1597
+| PR: https://pagure.io/koji/pull-request/1601
+| PR: https://pagure.io/koji/pull-request/1602
+| PR: https://pagure.io/koji/pull-request/1606
 
 This feature allows content generators to reserve NVRs earlier in the build
 process similar to builds performed by ``kojid``. The NVR is reserved by
@@ -235,6 +239,7 @@ For example, to set the dist tag for a given tag, you could use a command like:
 **Per-tag configuration for module_hotfixes setting**
 
 | PR: https://pagure.io/koji/pull-request/1524
+| PR: https://pagure.io/koji/pull-request/1578
 
 Koji now handles the field ``mock.yum.module_hotfixes`` in the tag extra.
 When set, kojid will set ``module_hotfixes=0/1`` in the yum portion of the
@@ -244,6 +249,7 @@ mock configuration for a buildroot.
 **Allow users to opt out of notifications**
 
 | PR: https://pagure.io/koji/pull-request/1417
+| PR: https://pagure.io/koji/pull-request/1580
 
 This feature lets users opt out of notifications that they would otherwise
 automatically recieve, such as build and tag notifications for:
