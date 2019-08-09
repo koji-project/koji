@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.17.0
+Version: 1.18.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -713,6 +713,116 @@ fi
 %endif
 
 %changelog
+* Fri Aug  9 2019 Mike McLean <mikem at redhat.com> - 1.18.0-1
+- PR#1606: pull owner from correct place
+- PR#1602: copy updated policy for reserved cg builds
+- PR#1601: fix recycling build due to cg
+- PR#1597: Backward-compatible fix for CG import
+- PR#1591: secrets import is missing 'else' variant
+- PR#1555: use _writeInheritanceData in _create_tag
+- PR#1580: cli: verify user in block-notification command
+- PR#1578: cli:fix typo in mock-config
+- PR#1464: API for reserving NVRs for content generators
+- PR#898: Add support for tag/target macros for Mageia
+- PR#1544: use RawConfigParser for kojid
+- PR#863: cli: change --force to real bool arg for add-tag-inheritance
+- PR#1253: cli: add option for custom cert location
+- PR#1353: Create db index for listTagged
+- PR#1375: docs: add architecture diagram
+- PR#892: cli: also load plugins from ~/.koji/plugins
+- PR#1516: kojibuilder: Pass mergerepo_c --all for bare mode as well.
+- PR#1524: set module_hotfixes=1 in yum.conf via tag config
+- PR#1417: notification's optouts
+- PR#1515: add debug message to new multicall to match original
+- PR#1480: Add raw-gz and compressed QCOW2 archive types.
+- PR#1260: use LANG=C for running all tests
+- PR#1447: handle deleted tags in kojira
+- PR#1513: Allow hub policy to match version and release
+- PR#1462: rebuildSRPM task
+- PR#1498: Pass bytes to md5_constructor
+- PR#1502: Don't pass block list in bare merge mode
+- PR#1489: pass bytes to sha1 constructor
+- PR#1499: remove merge option from edit-external-repo
+- PR#1427: Fix typo in getArchiveTypes docstring
+- PR#957: New multicall interface
+- PR#1280: put fix_pyver before printing command help
+- PR#1415: New 'buildtype' test for policies
+- PR#1258: retain old search pattern in web ui
+- PR#1479: use better index for sessions
+- PR#1279: let hub decide, what headers are supported
+- PR#1454: introduce host-admin permission + docs
+- PR#1303: fix history display for parallel host_channels updates
+- PR#1278: createrepo_c is used by default now
+- PR#1449: show load/capacity in list-channels
+- PR#1476: Allow taginfo cli to use tag IDs; fixed Inheritance printing bug
+- PR#1445: turn back on test skipped due to coverage bug
+- PR#1452: fix parentheses for tuple in _writeInheritanceData
+- PR#1456: deprecate BuildRoot.uploadDir method
+- PR#1461: check existence of tag_id in getInheritanceData
+- PR#1471: list-hosts shouldn't error on empty list
+- PR#1273: Allow generating separate src repo for build repos
+- PR#1255: always check existence of tag in setInheritanceData
+- PR#1256: add strict option to getTaskChildren
+- PR#1257: fail runroot task on non-existing tag
+- PR#1272: check architecture names for mistakes
+- PR#1322: Reduce duplicate "fixEncoding" code
+- PR#1327: volume option for dist-repo
+- PR#1442: delete_build: handle results of lazy build_references call
+- PR#1425: add --show-channels listing to list-hosts
+- PR#1432: py2.6 compatibility fix
+- PR#1434: hub: fix check_fields and duplicated parent_id in _writeInheritanceData
+- PR#1439: user correct column in sql (getTask)
+- PR#1437: fix table name in build_references query
+- PR#1414: Fix jenkins config for new python mock
+- PR#1411: handle bare merge mode
+- PR#1410: build_srpm: Wait until after running the sources command to check for alt_sources_dir
+- PR#1383: display task durations in webui
+- PR#1358: rollback errors in multiCall
+- PR#1413: Makefile: print correct urls for test coverage
+- PR#1409: Fix SQL after introduction of host_config
+- PR#1324: createEmptyBuild errors for non-existent user
+- PR#1406: fix mapping iteration in getFullInheritance
+- PR#1398: kojid: Download only 'origin'
+- PR#1365: Check CLI arguments for enable/disable host
+- PR#1390: CLI list-channels sorted output
+- PR#1389: block_pkglist compatibility fix
+- PR#1376: use context manager for open in CLI
+- PR#1392: Replace references to latest-pkg with latest-build
+- PR#1386: scale task_avail_delay based on bin rank
+- PR#1363: Use createrepo_update even for first repo run
+- PR#1368: update test requirements in jenkins
+- PR#1374: honor mock.package_manager tag setting in mock-config cli
+- PR#1387: remove unused variable
+- PR#1143: hub: document CG access method arguments
+- PR#1169: docs: use systemctl enable --now for postgres and kojid
+- PR#1155: hub: document addHost and editHost arguments
+- PR#1242: kojid.conf documentation
+- PR#1340: Update server doc for newer TLS and event worker
+- PR#1359: docs: remove "TBD" sections
+- PR#1360: docs: remove mod_python references
+- PR#1361: docs: kojirepod -> kojira
+- PR#1370: add vhdx archivetype
+- PR#1331: provide lower level versions of build_target functions
+- PR#1348: rm old references to Mozilla
+- PR#1297: Support tilde in search
+- PR#1356: kojira: fix iteration over repos in py3
+- PR#1342: Remove python2.4 OptionParse fix
+- PR#1347: Fix hub startup handling
+- PR#1346: Rely on ozif_enabled switch in BaseImageTask
+- PR#1344: add .tgz to list of tar's possible extensions
+- PR#1086: hub: unittest for get_external_repos
+- PR#1170: docs: koji package provides schema.sql file
+- PR#1281: remove urlescape from package name
+- PR#1304: hub: document setInheritanceData arguments
+- PR#1277: Remove 'keepalive' option
+- PR#1330: fix docs typos
+- PR#1339: fix typo in usage of six's import of MIMEText
+- PR#1337: minor gc optimizations
+- PR#1254: doc: Include AnyStor mention to 'koji runs here' doc
+- PR#1325: run py3 tests in CI by default
+- PR#1326: README: link to Pungi project instead of mash
+- PR#1329: Update plugin doc (confusing sentence)
+
 * Wed Mar  6 2019 Mike McLean <mikem at redhat.com> - 1.17.0-1
 - PR#1320: also remove nonprintable changelog chars in py3
 - PR#1293: fix dict encoding in py3
