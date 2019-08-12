@@ -26,8 +26,9 @@ import koji
 import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
-from koji.util import md5_constructor, adler32_constructor, parseStatus, \
+from koji.util import adler32_constructor, parseStatus, \
                       dslice, to_list, base64encode
+import hashlib
 import os
 import signal
 import logging
@@ -61,7 +62,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
             break
 
         data = base64encode(contents)
-        digest = md5_constructor(contents).hexdigest()
+        digest = hashlib.md5(contents).hexdigest()
         del contents
 
         tries = 0

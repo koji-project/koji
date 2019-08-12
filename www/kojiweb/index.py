@@ -22,6 +22,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
+import hashlib
 import os
 import os.path
 import re
@@ -38,7 +39,6 @@ from koji.server import ServerRedirect
 from kojiweb.util import _initValues
 from kojiweb.util import _genHTML
 from kojiweb.util import _getValidTokens
-from koji.util import sha1_constructor
 from six.moves import range
 import six
 
@@ -58,7 +58,7 @@ def _setUserCookie(environ, user):
     digest_string = value + options['Secret'].value
     if six.PY3:
         digest_string = digest_string.encode('utf-8')
-    shasum = sha1_constructor(digest_string)
+    shasum = hashlib.sha1(digest_string)
     value = "%s:%s" % (shasum.hexdigest(), value)
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
@@ -97,7 +97,7 @@ def _getUserCookie(environ):
     digest_string = value + options['Secret'].value
     if six.PY3:
         digest_string = digest_string.encode('utf-8')
-    shasum = sha1_constructor(digest_string)
+    shasum = hashlib.sha1(digest_string)
     if shasum.hexdigest() != sig:
         authlogger.warn('invalid user cookie: %s:%s', sig, value)
         return None

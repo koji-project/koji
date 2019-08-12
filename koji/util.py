@@ -44,15 +44,13 @@ import warnings
 from six.moves import zip
 
 # imported from kojiweb and kojihub
-try:
-    from hashlib import md5 as md5_constructor
-except ImportError:  # pragma: no cover
-    from md5 import new as md5_constructor
-try:
-    from hashlib import sha1 as sha1_constructor
-except ImportError:  # pragma: no cover
-    from sha import new as sha1_constructor
+def md5_constructor(*args, **kwargs):
+    deprecated("md5_constructor is deprecated in favour of hashlib.md5 and will be removed in 1.21")
+    return hashlib.md5(*args, **kwargs)
 
+def sha1_constructor(*args, **kwargs):
+    deprecated("sha1_constructor is deprecated in favour of hashlib.md5 and will be removed in 1.21")
+    return hashlib.sha1(*args, **kwargs)
 
 def deprecated(message):
     """Print deprecation warning"""

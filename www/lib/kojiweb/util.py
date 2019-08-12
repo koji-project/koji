@@ -24,8 +24,8 @@ from __future__ import division
 import cgi
 import Cheetah.Template
 import datetime
+import hashlib
 import koji
-from koji.util import md5_constructor
 import os
 import six
 import ssl
@@ -170,7 +170,7 @@ def _genToken(environ, tstamp=None):
     value = user + str(tstamp) + environ['koji.options']['Secret'].value
     if six.PY3:
         value = value.encode('utf-8')
-    return md5_constructor(value).hexdigest()[-8:]
+    return hashlib.md5(value).hexdigest()[-8:]
 
 def _getValidTokens(environ):
     tokens = []
