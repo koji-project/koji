@@ -504,12 +504,6 @@ def move_and_symlink(src, dst, relative=True, create_dir=False):
     os.symlink(dst, src)
 
 
-def relpath(*args, **kwargs):
-    deprecated("koji.util.relpath() is deprecated and will be removed in a "
-        "future version. See: https://pagure.io/koji/issue/834")
-    return os.path.relpath(*args, **kwargs)
-
-
 def eventFromOpts(session, opts):
     """Determine event id from standard cli options
 
