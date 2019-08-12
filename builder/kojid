@@ -526,23 +526,6 @@ class BuildRoot(object):
         the hub."""
         return koji.pathinfo.taskrelpath(self.task_id)
 
-    def uploadDir(self, dirpath, suffix=None):
-        """Upload the contents of the given directory to the
-        task output directory on the hub.  If suffix is provided,
-        append '.' + suffix to the filenames, so that successive uploads
-        of the same directory won't overwrite each other, if the files have
-        the same name but different contents."""
-        koji.util.deprecated('BuildRoot.uploadDir method is deprecated and will be removed in 1.19')
-        if not os.path.isdir(dirpath):
-            return
-        uploadpath = self.getUploadPath()
-        for filename in os.listdir(dirpath):
-            filepath = os.path.join(dirpath, filename)
-            if os.stat(filepath).st_size > 0:
-                if suffix:
-                    filename = '%s.%s' % (filename, suffix)
-                self.session.uploadWrapper(filepath, uploadpath, filename)
-
     def init(self):
         rv = self.mock(['--init'])
 
