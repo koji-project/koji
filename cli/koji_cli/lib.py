@@ -412,12 +412,6 @@ def unique_path(prefix):
                       ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
 
-def _unique_path(prefix):
-    koji.util.deprecated('_unique_path is deprecated, use unique_path instead.'
-                         ' See: https://pagure.io/koji/issue/975')
-    return unique_path(prefix)
-
-
 def _format_size(size):
     if (size / 1073741824 >= 1):
         return "%0.2f GiB" % (size / 1073741824.0)
