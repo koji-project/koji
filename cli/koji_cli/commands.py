@@ -3997,17 +3997,17 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
             sys.stdout.write(_printable_unicode(u'\u2502'))
             outdepth = depth
 
+    sys.stdout.write(format_inheritance_flags(currtag))
     sys.stdout.write(' ' * ((currtag['currdepth'] - outdepth) * 3 - 1))
     if siblings:
         sys.stdout.write(_printable_unicode(u'\u251c'))
     else:
         sys.stdout.write(_printable_unicode(u'\u2514'))
     sys.stdout.write(_printable_unicode(u'\u2500'))
-    currtag['flags'] = format_inheritance_flags(currtag)
     if reverse:
-        sys.stdout.write('%(name)s (%(tag_id)i)  %(flags)s\n' % currtag)
+        sys.stdout.write('%(name)s (%(tag_id)i)\n' % currtag)
     else:
-        sys.stdout.write('%(name)s (%(parent_id)i)  %(flags)s\n' % currtag)
+        sys.stdout.write('%(name)s (%(parent_id)i)\n' % currtag)
 
     if siblings:
         if len(sibdepths) == 0 or sibdepths[-1] != currtag['currdepth']:
@@ -4070,7 +4070,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
             parser.error(_("Unknown tag: %s" % options.stop))
         opts['stops'] = {str(tag1): 1}
 
-    sys.stdout.write('%s (%i)\n' % (tag['name'], tag['id']))
+    sys.stdout.write('     %s (%i)\n' % (tag['name'], tag['id']))
     data = session.getFullInheritance(tag['id'], **opts)
     _printInheritance(data, None, opts['reverse'])
 
