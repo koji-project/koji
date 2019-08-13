@@ -65,11 +65,13 @@ from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
 
 try:
     import krbV
+    Krb5Error = krbV.Krb5Error
 except ImportError:  # pragma: no cover
     krbV = None
 
 try:
     import requests_kerberos
+    Krb5Error = requests_kerberos.exceptions.RequestException
 except ImportError:  # pragma: no cover
     requests_kerberos = None
 
@@ -6277,8 +6279,8 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error as e:
-            quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
+        except Krb5Error as e:
+            quit("Kerberos authentication failed: %s" % e.args)
         except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
