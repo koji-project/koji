@@ -518,10 +518,18 @@ appropriate age setting. Default value of one day should be ok for most
 deployments. As there will be tons of freed records, additional VACUUM can be
 handy.
 
-::
+.. code-block:: sql
 
-   DELETE FROM sessions WHERE update_time < now() - '1 day'::interval;
+   DELETE FROM sessions WHERE update_time < NOW() - '1 day'::interval;
    VACUUM ANALYZE sessions;
+
+Optionally (if you're using :ref:`reservation API <cg_api>` for
+content generators), you could want to run also reservation cleanup:
+
+.. code-block:: sql
+
+   DELETE FROM build_reservations WHERE update_time < NOW() - '1 day'::interval;
+   VACUUM ANALYZE build_reservations;
 
 Set User/Password Authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -19,6 +19,18 @@ def clean_sessions(cursor, vacuum):
         cursor.execute("VACUUM ANALYZE sessions")
 
 
+def clean_reservations(cursor, vacuum):
+    q = " FROM build_reservations WHERE create_time < now() - '1 day'::interval"
+    if options.verbose:
+        cursor.execute("SELECT COUNT(*) " + q)
+        rows = cursor.fetchall()[0][0]
+        print("Deleting %d build reservations" % rows)
+
+    cursor.execute("DELETE " + q)
+    if vacuum:
+        cursor.execute("VACUUM ANALYZE build_reservations")
+
+
 if __name__ == "__main__":
     global options
     parser = OptionParser("%prog cleans koji database")
@@ -72,4 +84,5 @@ if __name__ == "__main__":
     cursor = conn.cursor()
 
     clean_sessions(cursor, options.vacuum)
+    clean_reservations(cursor, options.vacuum)
     conn.commit()
