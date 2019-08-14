@@ -799,6 +799,7 @@ You will need to install the following packages to actually run the tests.
  * ``python-mock``
  * ``python-psycopg2``
  * ``python-requests``
+ * ``python-requests-mock``
  * ``python-qpid-proton``
 
 Please note that it is currently not supported to use *virtualenv* when hacking

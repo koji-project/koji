@@ -3,6 +3,9 @@ import mock
 import six
 import shutil
 import tempfile
+import os
+import requests_mock
+import requests
 try:
     import unittest2 as unittest
 except ImportError:
@@ -152,6 +155,32 @@ class TestDownloadProgress(unittest.TestCase):
                    '[====================================] 100% 311.45 KiB\r'
         self.assertMultiLineEqual(actual, expected)
 
+
+class TestDownloadFileError(unittest.TestCase):
+    """Check error status code and text in download_file."""
+    filename = '/tmp/tmp-download'
+
+    @requests_mock.Mocker()
+    def test_handle_download_file_error_404(self, m):
+        m.get("http://url", text='Not Found\n', status_code=404)
+        with self.assertRaises(requests.HTTPError):
+            download_file("http://url", self.filename)
+        try:
+            self.assertFalse(os.path.exists(self.filename))
+        except AssertionError:
+            os.unlink(self.filename)
+            raise
+
+    @requests_mock.Mocker()
+    def test_handle_download_file_error_500(self, m):
+        m.get("http://url", text='Internal Server Error\n', status_code=500)
+        with self.assertRaises(requests.HTTPError):
+            download_file("http://url", self.filename)
+        try:
+            self.assertFalse(os.path.exists(self.filename))
+        except AssertionError:
+            os.unlink(self.filename)
+            raise
 
 if __name__ == '__main__':
     unittest.main()
