@@ -65,8 +65,15 @@ from koji.util import parseStatus, isSuccess, dslice, dslice_ex, to_list
 
 try:
     import krbV
+    Krb5Error = krbV.Krb5Error
 except ImportError:  # pragma: no cover
     krbV = None
+
+try:
+    import requests_kerberos
+    Krb5Error = requests_kerberos.exceptions.RequestException
+except ImportError:  # pragma: no cover
+    requests_kerberos = None
 
 try:
     import librepo
@@ -6264,7 +6271,7 @@ if __name__ == "__main__":
             quit("Error: Unable to log in. Bad credentials?")
         except six.moves.xmlrpc_client.ProtocolError:
             quit("Error: Unable to connect to server %s" % (options.server))
-    elif krbV:
+    elif krbV or requests_kerberos:
         krb_principal = options.krb_principal
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()
@@ -6272,8 +6279,8 @@ if __name__ == "__main__":
             session.krb_login(principal=krb_principal,
                               keytab=options.keytab,
                               ccache=options.ccache)
-        except krbV.Krb5Error as e:
-            quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
+        except Krb5Error as e:
+            quit("Kerberos authentication failed: %s" % e.args)
         except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
