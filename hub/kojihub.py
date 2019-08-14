@@ -5560,7 +5560,7 @@ def generate_token(nbytes=32):
     if secrets:
         return secrets.token_hex(nbytes=nbytes)
     else:
-        values = ['%02x' % random.randint(0, 256) for x in range(nbytes)]
+        values = ['%02x' % random.randint(0, 255) for x in range(nbytes)]
         return ''.join(values)
 
 
