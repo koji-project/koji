@@ -3544,7 +3544,7 @@ class OzImageTask(BaseTaskHandler):
             tops['tempdir'] = self.workdir
             with koji.openRemoteFile(ksfile, **tops) as ks_src:
                 kspath = os.path.join(self.workdir, os.path.basename(ksfile))
-                with open(kspath, 'w') as ks_dest:
+                with open(kspath, 'wb') as ks_dest:
                     ks_dest.write(ks_src.read())
         self.logger.debug('uploading kickstart from here: %s' % kspath)
         self.uploadFile(kspath) # upload the original ks file
