@@ -8,7 +8,7 @@ except ImportError:
 import koji
 import kojihub
 
-GET_ARCHIVE_RV = {'id': 1, 'build_id': 2, 'type_id': 3,
+GET_ARCHIVE_RV = {'id': 1, 'build_id': 2, 'type_id': 3, 'btype': 'btype',
                   'filename': 'somearchive.zip'}
 GET_ARCHIVE_TYPE_RV = {'id': 3, 'name': 'zip'}
 GET_BUILD_RV = {'id': 2, 'name': 'somebuild', 'version': '1.2.3',
@@ -18,18 +18,14 @@ GET_BUILD_RV = {'id': 2, 'name': 'somebuild', 'version': '1.2.3',
 class TestListArchiveFiles(unittest.TestCase):
     def setUp(self):
         self.mm = mock.MagicMock()
-        self.mm.get_image_build = mock.patch('kojihub.get_image_build',
-                                             return_value=None).start()
-        self.mm.get_win_build = mock.patch('kojihub.get_win_build',
-                                           return_value=None).start()
-        self.mm.get_maven_build = mock.patch('kojihub.get_maven_build',
-                                             return_value=None).start()
+        # Note: the following mocks copy() the return value dict because some
+        # of the tests modify it
         self.mm.get_build = mock.patch('kojihub.get_build',
-                                       return_value=GET_BUILD_RV).start()
+                                       return_value=GET_BUILD_RV.copy()).start()
         self.mm.get_archive_type = mock.patch('kojihub.get_archive_type',
-                                              return_value=GET_ARCHIVE_TYPE_RV).start()
+                                              return_value=GET_ARCHIVE_TYPE_RV.copy()).start()
         self.mm.get_archive = mock.patch('kojihub.get_archive',
-                                         return_value=GET_ARCHIVE_RV).start()
+                                         return_value=GET_ARCHIVE_RV.copy()).start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -40,9 +36,6 @@ class TestListArchiveFiles(unittest.TestCase):
         self.mm.get_archive_type.assert_called_once_with(type_id=3,
                                                          strict=True)
         self.mm.get_build.assert_called_once_with(2, strict=True)
-        self.mm.get_maven_build.assert_called_once_with(2)
-        self.mm.get_win_build.assert_called_once_with(2)
-        self.mm.get_image_build.assert_called_once_with(2)
         self.assertListEqual(rv, [])
 
     @mock.patch('kojihub.get_maven_archive',
@@ -52,17 +45,14 @@ class TestListArchiveFiles(unittest.TestCase):
                               'version': '1.0.0'})
     @mock.patch('kojihub._get_zipfile_list', return_value=[])
     def test_simple_strict_empty(self, get_zipfile_list, get_maven_archive):
-        self.mm.get_maven_build.return_value = {'build_id': 2,
-                                                'group_id': 'gid',
-                                                'artifact_id': 'aid',
-                                                'version': '1.0.0'}
         rv = kojihub.list_archive_files(1, strict=True)
         self.assertListEqual(rv, [])
 
-    def test_simple_strict_bad_btype(self):
+    def test_simple_strict_missing_btype(self):
+        self.mm.get_archive.return_value['btype'] = None
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.list_archive_files(1, strict=True)
-        self.assertEqual(cm.exception.args[0], "Unsupported build type")
+        self.assertEqual(cm.exception.args[0][:18], "Missing build type")
 
     @mock.patch('kojihub.get_maven_archive',
                 return_value={'archive_id': 1,
@@ -71,10 +61,6 @@ class TestListArchiveFiles(unittest.TestCase):
                               'version': '1.0.0'})
     def test_simple_strict_bad_archive_type(self, get_maven_archive):
         self.mm.get_archive_type.return_value = {'id': 9, 'name': 'txt'}
-        self.mm.get_maven_build.return_value = {'build_id': 2,
-                                                'group_id': 'gid',
-                                                'artifact_id': 'aid',
-                                                'version': '1.0.0'}
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.list_archive_files(1, strict=True)
         self.assertEqual(cm.exception.args[0], "Unsupported archive type: txt")
@@ -94,10 +80,7 @@ class TestListArchiveFiles(unittest.TestCase):
                                                             'mtime': 103420},
                                                            ])
     def test_maven_archive(self, get_zipfile_list, get_maven_archive):
-        self.mm.get_maven_build.return_value = {'build_id': 2,
-                                                'group_id': 'gid',
-                                                'artifact_id': 'aid',
-                                                'version': '1.0.0'}
+        self.mm.get_archive.return_value['btype'] = 'maven'
         rv = kojihub.list_archive_files(1)
         get_maven_archive.assert_called_once_with(1, strict=True)
         get_zipfile_list.assert_called_once_with(1,
@@ -122,8 +105,7 @@ class TestListArchiveFiles(unittest.TestCase):
                                                             'mtime': 103420},
                                                            ])
     def test_win_archive(self, get_zipfile_list, get_win_archive):
-        self.mm.get_win_build.return_value = {'build_id': 2,
-                                              'platform': 'all'}
+        self.mm.get_archive.return_value['btype'] = 'win'
         rv = kojihub.list_archive_files(1)
         get_win_archive.assert_called_once_with(1, strict=True)
         get_zipfile_list.assert_called_once_with(1,
@@ -153,7 +135,7 @@ class TestListArchiveFiles(unittest.TestCase):
                                                            ])
     def test_image_archive(self, get_tarball_list, get_image_archive):
         self.mm.get_archive_type.return_value = {'id': 3, 'name': 'tar'}
-        self.mm.get_image_build.return_value = {'build_id': 2}
+        self.mm.get_archive.return_value['btype'] = 'image'
         rv = kojihub.list_archive_files(1, queryOpts={'countOnly': True})
         get_image_archive.assert_called_once_with(1, strict=True)
         get_tarball_list.assert_called_once_with(1,
