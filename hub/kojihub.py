@@ -5867,7 +5867,7 @@ class CG_Importer(object):
         source = self.buildinfo.get('source')
         st_complete = koji.BUILD_STATES['COMPLETE']
         st_old = old_info['state']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=self.buildinfo)
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=old_info)
         update = UpdateProcessor('build', clauses=['id=%(build_id)s'], values=self.buildinfo)
         update.set(state=st_complete, extra=extra, owner=owner, source=source)
         if self.buildinfo.get('volume_id'):
@@ -5875,10 +5875,11 @@ class CG_Importer(object):
             update.set(volume_id=self.buildinfo['volume_id'])
         update.rawset(completion_time='NOW()')
         update.execute()
+        buildinfo = get_build(build_id, strict=True)
         clear_reservation(build_id)
-        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=self.buildinfo)
+        koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
 
-        return get_build(build_id, strict=True)
+        return buildinfo
 
 
     def import_metadata(self):
