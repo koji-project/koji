@@ -5760,6 +5760,8 @@ class CG_Importer(object):
                 raise koji.GenericError("Token doesn't match build ID %s" % build_id)
             if buildinfo['cg_id'] != cg_id:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
+            if buildinfo.get('task_id'):
+                raise koji.GenericError('Build is owned by task %(task_id)s' % buildinfo)
             if buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
             if buildinfo['name'] != metadata['build']['name'] or \
@@ -5820,24 +5822,15 @@ class CG_Importer(object):
 
 
     def get_build(self, token=None):
-        try:
-            binfo = dslice(self.buildinfo, ('name', 'version', 'release'))
-            buildinfo = get_build(binfo, strict=True)
-            build_token = get_reservation_token(buildinfo['build_id'])
-            if len(self.cgs) != 1:
-                raise koji.GenericError("Reserved builds can handle only single content generator.")
-            cg_id = list(self.cgs)[0]
-            if buildinfo.get('task_id') or \
-               buildinfo['state'] != koji.BUILD_STATES['BUILDING'] or \
-               not build_token or \
-               buildinfo['cg_id'] != cg_id or \
-               build_token['token'] != token:
-                raise koji.GenericError("Build is not reserved")
-            buildinfo['extra'] = self.buildinfo['extra']
+        if token:
+            # token and reservation were already checked in prep_build
+            buildinfo = self.update_build()
             build_id = buildinfo['build_id']
-        except Exception:
+        else:
+            # no reservation, we need create a new build entry
             build_id = new_build(self.buildinfo)
             buildinfo = get_build(build_id, strict=True)
+
         # handle special build types
         for btype in self.typeinfo:
             tinfo = self.typeinfo[btype]
@@ -5857,17 +5850,25 @@ class CG_Importer(object):
             if [o for o in self.prepped_outputs if o['type'] == 'rpm']:
                 new_typed_build(buildinfo, 'rpm')
 
-        # update build state
-        if buildinfo.get('extra'):
-            extra = json.dumps(buildinfo['extra'])
+        self.buildinfo = buildinfo
+        return buildinfo
+
+
+    def update_build(self):
+        """Update a reserved build"""
+        # sanity checks performed by prep_build
+        build_id = self.buildinfo['build_id']
+        old_info = get_build(build_id, strict=True)
+        if self.buildinfo.get('extra'):
+            extra = json.dumps(self.buildinfo['extra'])
         else:
             extra = None
         owner = self.buildinfo.get('owner', context.session.user_id)
         source = self.buildinfo.get('source')
         st_complete = koji.BUILD_STATES['COMPLETE']
-        st_old = buildinfo['state']
-        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
-        update = UpdateProcessor('build', clauses=['id=%(id)s'], values=buildinfo)
+        st_old = old_info['state']
+        koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old, new=st_complete, info=old_info)
+        update = UpdateProcessor('build', clauses=['id=%(build_id)s'], values=self.buildinfo)
         update.set(state=st_complete, extra=extra, owner=owner, source=source)
         if self.buildinfo.get('volume_id'):
             # reserved builds have reapplied volume policy now
@@ -5878,7 +5879,6 @@ class CG_Importer(object):
         clear_reservation(build_id)
         koji.plugin.run_callbacks('postBuildStateChange', attribute='state', old=st_old, new=st_complete, info=buildinfo)
 
-        self.buildinfo = buildinfo
         return buildinfo
 
 
