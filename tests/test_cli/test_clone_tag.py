@@ -29,6 +29,7 @@ class TestCloneTag(utils.CliTestCase):
             'koji_cli.commands.activate_session').start()
 
         self.error_format = """Usage: %s clone-tag [options] <src-tag> <dst-tag>
+clone-tag will create the destination tag if it does not already exist
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -615,6 +616,7 @@ List of changes:
         self.assert_help(
             handle_clone_tag,
             """Usage: %s clone-tag [options] <src-tag> <dst-tag>
+clone-tag will create the destination tag if it does not already exist
 (Specify the --help global option for a list of other help options)
 
 Options:
