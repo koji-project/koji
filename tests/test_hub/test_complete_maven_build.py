@@ -73,7 +73,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
 
     def my_lookup_name(self, table, info, **kw):
         if table == 'btype':
-            return mock.MagicMock()
+            return {'name': 'maven', 'id': 1234}
         else:
             raise Exception("Cannot fake call")
 
@@ -121,6 +121,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
         buildinfo['state'] = koji.BUILD_STATES['BUILDING']
         buildinfo['volume_id'] = 0
         buildinfo['volume_name'] = 'DEFAULT'
+        buildinfo['extra'] = {}
         maven_info = self.maven_data['maven_info'].copy()
         maven_info['build_id'] = buildinfo['id']
         self.get_build.return_value = buildinfo
