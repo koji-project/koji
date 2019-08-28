@@ -6636,7 +6636,9 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     archiveinfo['type_id'] = archivetype['id']
     btype = lookup_name('btype', type, strict=False)
     if btype is None:
-        raise koji.BuildError('unsupported archive type: %s' % type)
+        raise koji.BuildError('unsupported build type: %s' % type)
+    if btype not in get_build_type(buildinfo, strict=True):
+        raise koji.ImportError('Build does not have type %s', btype)
     archiveinfo['btype_id'] = btype['id']
 
     # cg extra data
