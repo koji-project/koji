@@ -2040,6 +2040,8 @@ def handle_list_signed(goptions, session, args):
     parser.add_option("--rpm", help=_("Only list signed copies for this RPM"))
     parser.add_option("--tag", help=_("Only list RPMs within this tag"))
     (options, args) = parser.parse_args(args)
+    if not options.build and not options.tag and not options.rpm:
+        parser.error(_("At least one from --build, --rpm, --tag needs to be specified."))
     activate_session(session, goptions)
     qopts = {}
     build_idx = {}
