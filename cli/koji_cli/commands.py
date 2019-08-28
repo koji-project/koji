@@ -3282,6 +3282,7 @@ def anon_handle_hostinfo(goptions, session, args):
 def handle_clone_tag(goptions, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
     usage = _("usage: %prog clone-tag [options] <src-tag> <dst-tag>")
+    usage += _("\nclone-tag will create the destination tag if it does not already exist")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option('--config', action='store_true',
