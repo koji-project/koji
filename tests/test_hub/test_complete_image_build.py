@@ -131,7 +131,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         if table == 'btype':
             return {
                     'id': 'BTYPEID:%s' % info,
-                    'name': 'BTYPE:%s' % info,
+                    'name': info,
                     }
         else:
             raise Exception("Cannot fake call")
@@ -189,6 +189,7 @@ class TestCompleteImageBuild(unittest.TestCase):
                 'source': None,
                 'state': koji.BUILD_STATES['BUILDING'],
                 'volume_id': 0,
+                'extra': {},
                 }
         image_info = {'build_id': buildinfo['id']}
         self.get_build.return_value = buildinfo
