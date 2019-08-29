@@ -4200,6 +4200,13 @@ def _print_histline(entry, **kwargs):
             fmt = "package list entry created: %(package.name)s in %(tag.name)s"
         else:
             fmt = "package list entry revoked: %(package.name)s in %(tag.name)s"
+    elif table == 'tag_package_owners':
+        if edit:
+            fmt = "package owner changed for %(package.name)s in %(tag.name)s"
+        elif create:
+            fmt = "package owner %(owner.name)s set for %(package.name)s in %(tag.name)s"
+        else:
+            fmt = "package owner %(owner.name)s revoked for %(package.name)s in %(tag.name)s"
     elif table == 'tag_inheritance':
         if edit:
             fmt = "inheritance line %(tag.name)s->%(parent.name)s updated"
@@ -4352,6 +4359,7 @@ _table_keys = {
     'tag_external_repos' : ['tag_id', 'external_repo_id'],
     'tag_listing' : ['build_id', 'tag_id'],
     'tag_packages' : ['package_id', 'tag_id'],
+    'tag_package_owners' : ['package_id', 'tag_id'],
     'group_config' : ['group_id', 'tag_id'],
     'group_req_listing' : ['group_id', 'tag_id', 'req_id'],
     'group_package_listing' : ['group_id', 'tag_id', 'package'],

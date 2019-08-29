@@ -604,6 +604,23 @@ CREATE INDEX tag_packages_create_event ON tag_packages(create_event);
 CREATE INDEX tag_packages_revoke_event ON tag_packages(revoke_event);
 CREATE INDEX tag_packages_owner ON tag_packages(owner);
 
+CREATE TABLE tag_package_owners (
+	package_id INTEGER NOT NULL REFERENCES package(id),
+	tag_id INTEGER NOT NULL REFERENCES tag (id),
+	owner INTEGER NOT NULL REFERENCES users(id),
+-- versioned - see earlier description of versioning
+	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+	revoke_event INTEGER REFERENCES events(id),
+	creator_id INTEGER NOT NULL REFERENCES users(id),
+	revoker_id INTEGER REFERENCES users(id),
+	active BOOLEAN DEFAULT 'true' CHECK (active),
+	CONSTRAINT active_revoke_sane CHECK (
+		(active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+		OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+	PRIMARY KEY (create_event, package_id, tag_id),
+	UNIQUE (package_id,tag_id,active)
+) WITHOUT OIDS;
+
 -- package groups (per tag). used for generating comps for the tag repos
 CREATE TABLE groups (
 	id SERIAL NOT NULL PRIMARY KEY,
