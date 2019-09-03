@@ -65,4 +65,16 @@ insert into archivetypes (name, description, extensions) values ('vmdk-compresse
 -- add kernel-image and imitramfs
 insert into archivetypes (name, description, extensions) values ('kernel-image', 'Kernel BZ2 Image', 'vmlinuz vmlinuz.gz vmlinuz.xz');
 insert into archivetypes (name, description, extensions) values ('initramfs', 'Compressed Initramfs Image', 'img');
+
+-- schema update for https://pagure.io/koji/issue/1629
+CREATE TABLE user_krb_principals (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    krb_principal VARCHAR(255) NOT NULL UNIQUE,
+    PRIMARY KEY (user_id, krb_principal)
+) WITHOUT OIDS;
+
+INSERT INTO user_krb_principals ( SELECT id, krb_principal FROM users WHERE users.krb_principal IS NOT NULL);
+
+ALTER TABLE users DROP COLUMN krb_principal;
+
 COMMIT;
