@@ -23,6 +23,7 @@ from __future__ import absolute_import
 import socket
 import string
 import random
+import re
 import base64
 try:
     import krbV
@@ -339,16 +340,22 @@ class Session(object):
                       'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
         else:
             login_principal = cprinc.name
-        user_id = self.getUserIdFromKerberos(login_principal)
-        if not user_id:
+
+        if '@' in login_principal:
+            user_id = self.getUserIdFromKerberos(login_principal)
+        else:
+            # backward compatible
+            # it's only possible when proxyuser is username, but we shouldn't
+            # allow this.
             user_id = self.getUserId(login_principal)
-            if not user_id:
-                # Only do autocreate if we also couldn't find by username AND the proxyuser
-                # looks like a krb5 principal
-                if context.opts.get('LoginCreatesUser') and '@' in login_principal:
-                    user_id = self.createUserFromKerberos(login_principal)
-                else:
-                    raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
+
+        if not user_id:
+            # Only do autocreate if we also couldn't find by username AND the proxyuser
+            # looks like a krb5 principal
+            if context.opts.get('LoginCreatesUser') and '@' in login_principal:
+                user_id = self.createUserFromKerberos(login_principal)
+            else:
+                raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
 
         self.checkLoginAllowed(user_id)
 
@@ -602,6 +609,7 @@ class Session(object):
     def getUserIdFromKerberos(self, krb_principal):
         """Return the user ID associated with a particular Kerberos principal.
         If no user with the given princpal if found, return None."""
+        self.checkKrbPrincipal(krb_principal)
         c = context.cnx.cursor()
         q = """SELECT id FROM users
                JOIN users_krb_principals
@@ -615,7 +623,8 @@ class Session(object):
         else:
             return None
 
-    def createUser(self, name, usertype=None, status=None, krb_principal=None):
+    def createUser(self, name, usertype=None, status=None, krb_principal=None,
+                   krb_princ_check=True):
         """
         Create a new user, using the provided values.
         Return the user_id of the newly-created user.
@@ -633,6 +642,10 @@ class Session(object):
         elif not koji.USER_STATUS.get(status):
             raise koji.GenericError('invalid status: %s' % status)
 
+        # check if krb_principal is allowed
+        if krb_princ_check:
+            self.checkKrbPrincipal(krb_principal)
+
         cursor = context.cnx.cursor()
         select = """SELECT nextval('users_id_seq')"""
         cursor.execute(select, locals())
@@ -649,7 +662,9 @@ class Session(object):
 
         return user_id
 
-    def setKrbPrincipal(self, name, krb_principal):
+    def setKrbPrincipal(self, name, krb_principal, krb_princ_check=True):
+        if krb_princ_check:
+            self.checkKrbPrincipal(krb_principal)
         select = """SELECT id FROM users WHERE name = %(name)s"""
         cursor = context.cnx.cursor()
         cursor.execute(select, locals())
@@ -705,13 +720,33 @@ class Session(object):
         c.execute(q, locals())
         r = c.fetchall()
         if not r:
-            return self.createUser(user_name, krb_principal=krb_principal)
+            return self.createUser(user_name, krb_principal=krb_principal,
+                                   krb_princ_check=False)
         else:
             existing_user_krb_princs = [row[1] for row in r]
             if krb_principal in existing_user_krb_princs:
                 # do not set Kerberos principal if it already exists
                 return r[0][0]
-            return self.setKrbPrincipal(user_name, krb_principal)
+            return self.setKrbPrincipal(user_name, krb_principal,
+                                        krb_princ_check=False)
+
+    def checkKrbPrincipal(self, krb_principal):
+        """Check if the Kerberos principal is allowed"""
+        if krb_principal is None:
+            return
+        allowed_realms = context.opts.get('AllowedKrbRealms', '*')
+        if allowed_realms == '*':
+            return
+        allowed_realms = re.split('\s*,\s*', allowed_realms)
+        atidx = krb_principal.find('@')
+        if atidx == -1 or atidx == len(krb_principal) - 1:
+            raise koji.AuthError(
+                'invalid Kerberos principal: %s' % krb_principal)
+        realm = krb_principal[atidx + 1:]
+        if realm not in allowed_realms:
+            raise koji.AuthError(
+                "Kerberos principal's realm : %s is not allowed" % realm)
+
 
 def get_user_groups(user_id):
     """Get user groups

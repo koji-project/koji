@@ -421,6 +421,7 @@ def load_config(environ):
         ['AuthKeytab', 'string', None],
         ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
+        ['AllowedKrbRealms', 'string', '*'],
 
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],

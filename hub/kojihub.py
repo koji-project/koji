@@ -10976,9 +10976,33 @@ class RootExports(object):
         if get_user(username):
             raise koji.GenericError('user already exists: %s' % username)
         if krb_principal and get_user_by_krb_principal(krb_principal):
-            raise koji.GenericError('user with this Kerberos principal already exists: %s' % krb_principal)
+            raise koji.GenericError(
+                'user with this Kerberos principal already exists: %s'
+                % krb_principal)
 
-        return context.session.createUser(username, status=status, krb_principal=krb_principal)
+        return context.session.createUser(username, status=status,
+                                          krb_principal=krb_principal)
+
+    def addUserKrbPrincipal(self, user, krb_principal):
+        """Add a Kerberos principal for user"""
+        context.session.assertPerm('admin')
+        userinfo = get_user(user, strict=True)
+        if not krb_principal:
+            raise koji.GenericError('krb_principal must be specified')
+        if get_user_by_krb_principal(krb_principal):
+            raise koji.GenericError(
+                'user with this Kerberos principal already exists: %s'
+                % krb_principal)
+        return context.session.setKrbPrincipal(userinfo['name'], krb_principal)
+
+    def removeUserKrbPrincipal(self, user, krb_principal):
+        """remove a Kerberos principal for user"""
+        context.session.assertPerm('admin')
+        userinfo = get_user(user, strict=True)
+        if not krb_principal:
+            raise koji.GenericError('krb_principal must be specified')
+        return context.session.removeKrbPrincipal(userinfo['name'],
+                                                  krb_principal)
 
     def enableUser(self, username):
         """Enable logins by the specified user"""
