@@ -3727,8 +3727,7 @@ def list_user_krb_principals(user_info=None):
     query = QueryProcessor(tables=['user_krb_principals'],
                            columns=fields, joins=joins,
                            clauses=clauses, values=data,
-                           transform=lambda row: row['krb_principal'],
-                           opts={'asList': True})
+                           transform=lambda row: row['krb_principal'])
     return query.execute() or []
 
 
