@@ -4982,7 +4982,11 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
             result = result.strip()
             # clear the exception, since we're just using
             # it for display purposes
-            sys.exc_clear()
+            try:
+                sys.exc_clear()
+            except AttributeError:
+                # sys.exc_clear() is obsolete in Python 3
+                pass
         if not result:
             result = 'Unknown'
 
