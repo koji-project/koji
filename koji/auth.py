@@ -612,8 +612,8 @@ class Session(object):
         self.checkKrbPrincipal(krb_principal)
         c = context.cnx.cursor()
         q = """SELECT id FROM users
-               JOIN users_krb_principals
-               ON users.id = users_krb_principals.user_id
+               JOIN user_krb_principals
+               ON users.id = user_krb_principals.user_id
                WHERE krb_principal = %(krb_principal)s"""
         c.execute(q, locals())
         r = c.fetchone()
