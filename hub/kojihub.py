@@ -3663,38 +3663,103 @@ def get_external_repo_list(tag_info, event=None):
     return repos
 
 
-def get_user(userInfo=None, strict=False):
+def get_user(userInfo=None, strict=False, krb_princs=False):
     """Return information about a user.
 
-    userInfo may be either a str (Kerberos principal or name) or an int (user id).
-
-    A map will be returned with the following keys:
-      id: user id
-      name: user name
-      status: user status (int), may be null
-      usertype: user type (int), 0 person, 1 for host, may be null
-      krb_principal: the user's Kerberos principal
+    :param userInfo: either a str (Kerberos principal or name) or an int (user id)
+    :param strict: whether raising Error when no user found
+    :param krb_princs: whether show krb_principals in result
+    :return: a dict as user's information:
+        id: user id
+        name: user name
+        status: user status (int), may be null
+        usertype: user type (int), 0 person, 1 for host, may be null
+        krb_principals: the user's Kerberos principals (list)
     """
     if userInfo is None:
         userInfo = context.session.user_id
         if userInfo is None:
             # not logged in
             raise koji.GenericError("No user provided")
-    fields = ['id', 'name', 'status', 'usertype', 'krb_principal']
-    #fields, aliases = zip(*fields.items())
-    data = {'info' : userInfo}
+    fields = ['id', 'name', 'status', 'usertype']
+    data = {'info': userInfo}
     if isinstance(userInfo, six.integer_types):
         clauses = ['id = %(info)i']
     elif isinstance(userInfo, str):
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
-        raise koji.GenericError('invalid type for userInfo: %s' % type(userInfo))
+        raise koji.GenericError('invalid type for userInfo: %s'
+                                % type(userInfo))
     query = QueryProcessor(tables=['users'], columns=fields,
+                           joins=['LEFT JOIN user_krb_principals'
+                                  ' ON users.id = user_krb_principals.user_id'],
                            clauses=clauses, values=data)
     user = query.executeOne()
-    if not user and strict:
+    if user and krb_princs:
+        user['krb_principals'] = list_user_krb_principals(user['id'])
+    elif strict:
         raise koji.GenericError("No such user: %r" % userInfo)
     return user
+
+
+def list_user_krb_principals(user_info=None):
+    """Return kerberos principal list of a user.
+
+    :param user_info: either a str (username) or an int (user id)
+    :return: user's kerberos principals (list)
+    """
+    if user_info is None:
+        user_info = context.session.user_id
+        if user_info is None:
+            # not logged in
+            raise koji.GenericError("No user provided")
+    fields = ['krb_principal']
+    data = {'info': user_info}
+    if isinstance(user_info, six.integer_types):
+        joins = []
+        clauses = ['user_id = %(info)i']
+    elif isinstance(user_info, str):
+        joins = ['users ON users.id = user_krb_principals.user_id']
+        clauses = ['name = %(info)s']
+    else:
+        raise koji.GenericError('invalid type for user_info: %s'
+                                % type(user_info))
+    query = QueryProcessor(tables=['user_krb_principals'],
+                           columns=fields, joins=joins,
+                           clauses=clauses, values=data,
+                           transform=lambda row: row['krb_principal'],
+                           opts={'asList': True})
+    return query.execute() or []
+
+
+def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=False):
+    """get information about a user by kerberos principal.
+
+    :param krb_principal: full user kerberos principals
+    :param strict: whether raising Error when no user found
+    :param krb_princs: whether show krb_principals in result
+    :return: a dict as user's information:
+        id: user id
+        name: user name
+        status: user status (int), may be null
+        usertype: user type (int), 0 person, 1 for host, may be null
+        krb_principals: the user's Kerberos principals (list)
+    """
+    if krb_principal is None:
+        raise koji.GenericError("No kerberos principal provided")
+    if not isinstance(krb_principal, str):
+        raise koji.GenericError("invalid type for krb_principal: %s"
+                                % type(krb_principal))
+    fields = ['user_id']
+    data = {'krb_principal': krb_principal}
+    clauses = ['krb_principal = %(krb_principal)s']
+    query = QueryProcessor(tables=['users_krb_principals'], columns=fields,
+                           clauses=clauses, values=data)
+    princ_item = query.executeOne()
+    if not princ_item and strict:
+        raise koji.GenericError("Cannot find user with kerberos principal: %s"
+                                % krb_principal)
+    return get_user(data, strict=strict, krb_princ=krb_princs)
 
 
 def find_build_id(X, strict=False):
@@ -7936,10 +8001,13 @@ def get_group_members(group):
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("Not a group: %s" % group)
     group_id = ginfo['id']
-    fields = ('id', 'name', 'usertype', 'krb_principal')
+    fields = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
+                                        ', NULL) AS krb_principals')
     q = """SELECT %s FROM user_groups
-    JOIN users ON user_id = users.id
-    WHERE active = TRUE AND group_id = %%(group_id)i""" % ','.join(fields)
+    JOIN users ON user_groups.user_id = users.id
+    LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id
+    WHERE active = TRUE AND group_id = %%(group_id)i
+    GROUP BY users.id""" % ','.join(fields)
     return _multiRow(q, locals(), fields)
 
 def set_user_status(user, status):
@@ -8243,13 +8311,16 @@ class QueryProcessor(object):
         asList: if True, return results as a list of lists, where each list contains the
                 column values in query order, rather than the usual list of maps
         rowlock: if True, use "FOR UPDATE" to lock the queried rows
+        group: a column or alias name to use in the 'GROUP BY' clause
+               (controlled by enable_group)
+    - enable_group: if True, opts.group will be enabled
     """
 
     iterchunksize = 1000
 
     def __init__(self, columns=None, aliases=None, tables=None,
                  joins=None, clauses=None, values=None, transform=None,
-                 opts=None):
+                 opts=None, enable_group=False):
         self.columns = columns
         self.aliases = aliases
         if columns and aliases:
@@ -8282,6 +8353,7 @@ class QueryProcessor(object):
             self.opts = opts
         else:
             self.opts = {}
+        self.enable_group = enable_group
 
     def countOnly(self, count):
         self.opts['countOnly'] = count
@@ -8293,6 +8365,7 @@ SELECT %(col_str)s
   FROM %(table_str)s
 %(join_str)s
 %(clause_str)s
+ %(group_str)s
  %(order_str)s
 %(offset_str)s
  %(limit_str)s
@@ -8314,6 +8387,10 @@ SELECT %(col_str)s
         clause_str = self._seqtostr(self.clauses, sep=')\n   AND (')
         if clause_str:
             clause_str = ' WHERE (' + clause_str + ')'
+        if self.enable_group:
+            group_str = self._group()
+        else:
+            group_str = ''
         order_str = self._order()
         offset_str = self._optstr('offset')
         limit_str = self._optstr('limit')
@@ -8376,6 +8453,17 @@ SELECT %(col_str)s
                     raise Exception('invalid order: ' + order)
                 order_exprs.append(orderCol + direction)
             return 'ORDER BY ' + ', '.join(order_exprs)
+        else:
+            return ''
+
+    def _group(self):
+        group_opt = self.opts.get('group')
+        if group_opt:
+            group_exprs = []
+            for group in group_opt.split(','):
+                if group:
+                    group_exprs.append(group)
+            return 'GROUP BY ' + ', '.join(group_exprs)
         else:
             return ''
 
@@ -8480,9 +8568,11 @@ def _applyQueryOpts(results, queryOpts):
       offset
       limit
 
-    Note: asList is supported by QueryProcessor but not by this method.
+    Note:
+    - asList is supported by QueryProcessor but not by this method.
     We don't know the original query order, and so don't have a way to
     return a useful list.  asList should be handled by the caller.
+    - group is supported by QueryProcessor but not by this method as well.
     """
     if queryOpts is None:
         queryOpts = {}
@@ -10885,7 +10975,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         if get_user(username):
             raise koji.GenericError('user already exists: %s' % username)
-        if krb_principal and get_user(krb_principal):
+        if krb_principal and get_user_by_krb_principal(krb_principal):
             raise koji.GenericError('user with this Kerberos principal already exists: %s' % krb_principal)
 
         return context.session.createUser(username, status=status, krb_principal=krb_principal)
@@ -10922,16 +11012,28 @@ class RootExports(object):
         - name
         - status
         - usertype
-        - krb_principal
+        - krb_principals
 
         If no users of the specified
         type exist, return an empty list."""
-        fields = ('id', 'name', 'status', 'usertype', 'krb_principal')
+        fields = ('id', 'name', 'status', 'usertype',
+                  'array_remove(array_agg(krb_principal), NULL)')
+        aliases = ('id', 'name', 'status', 'usertype', 'krb_principals')
+        joins = ('LEFT JOIN user_krb_principals'
+                 ' ON users.id = user_krb_principals.user_id',)
         clauses = ['usertype = %(userType)i']
         if prefix:
             clauses.append("name ilike %(prefix)s || '%%'")
-        query = QueryProcessor(columns=fields, tables=('users',), clauses=clauses,
-                               values=locals(), opts=queryOpts)
+        if queryOpts is None:
+            queryOpts = {}
+        if not queryOpts.get('group'):
+            queryOpts['group'] = 'users.id'
+        else:
+            raise koji.GenericError('queryOpts.group is not available for this API')
+        query = QueryProcessor(columns=fields, aliases=aliases,
+                               tables=('users',), joins=joins, clauses=clauses,
+                               values=locals(), opts=queryOpts,
+                               enable_group=True)
         return query.execute()
 
     def getBuildConfig(self, tag, event=None):

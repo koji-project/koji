@@ -603,7 +603,10 @@ class Session(object):
         """Return the user ID associated with a particular Kerberos principal.
         If no user with the given princpal if found, return None."""
         c = context.cnx.cursor()
-        q = """SELECT id FROM users WHERE krb_principal = %(krb_principal)s"""
+        q = """SELECT id FROM users
+               JOIN users_krb_principals
+               ON users.id = users_krb_principals.user_id
+               WHERE krb_principal = %(krb_principal)s"""
         c.execute(q, locals())
         r = c.fetchone()
         c.close()
@@ -620,12 +623,12 @@ class Session(object):
         if not name:
             raise koji.GenericError('a user must have a non-empty name')
 
-        if usertype == None:
+        if usertype is None:
             usertype = koji.USERTYPES['NORMAL']
         elif not koji.USERTYPES.get(usertype):
             raise koji.GenericError('invalid user type: %s' % usertype)
 
-        if status == None:
+        if status is None:
             status = koji.USER_STATUS['NORMAL']
         elif not koji.USER_STATUS.get(status):
             raise koji.GenericError('invalid status: %s' % status)
@@ -635,26 +638,54 @@ class Session(object):
         cursor.execute(select, locals())
         user_id = cursor.fetchone()[0]
 
-        insert = """INSERT INTO users (id, name, usertype, status, krb_principal)
-        VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i, %(krb_principal)s)"""
+        insert = """INSERT INTO users (id, name, usertype, status)
+                    VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i"""
         cursor.execute(insert, locals())
+        if krb_principal:
+            insert = """INSERT INTO user_krb_principals (user_id, krb_principal)
+                        VALUES (%(user_id)i, %(krb_principal)s)"""
+            cursor.execute(insert, locals())
         context.cnx.commit()
 
         return user_id
 
     def setKrbPrincipal(self, name, krb_principal):
-        usertype = koji.USERTYPES['NORMAL']
-        status = koji.USER_STATUS['NORMAL']
-        update = """UPDATE users SET krb_principal = %(krb_principal)s WHERE name = %(name)s AND usertype = %(usertype)i AND status = %(status)i RETURNING users.id"""
+        select = """SELECT id FROM users WHERE name = %(name)s"""
         cursor = context.cnx.cursor()
-        cursor.execute(update, locals())
-        r = cursor.fetchall()
-        if len(r) != 1:
+        cursor.execute(select, locals())
+        r = cursor.fetchone()
+        if not r:
             context.cnx.rollback()
-            raise koji.AuthError('could not automatically associate Kerberos Principal with existing user %s' % name)
+            raise koji.AuthError('No such user: %s' % name)
         else:
-            context.cnx.commit()
-            return r[0][0]
+            user_id = r[0]
+        insert = """INSERT INTO user_krb_principals (user_id, krb_principal)
+                    VALUES (%(user_id)i, %(krb_principal)s)"""
+        cursor.execute(insert, locals())
+        context.cnx.commit()
+        return user_id
+
+    def removeKrbPrincipal(self, name, krb_principal):
+        select = """SELECT id FROM users
+                    JOIN user_krb_principals
+                    WHERE name = %(name)s
+                    AND krb_principal = %(krb_principal)s"""
+        cursor = context.cnx.cursor()
+        cursor.execute(select, locals())
+        r = cursor.fetchone()
+        if not r:
+            context.cnx.rollback()
+            raise koji.AuthError(
+                'could not automatically remove Kerberos Principal:'
+                ' %(krb_principal)s with user %(name)s' % locals())
+        else:
+            user_id = r[0]
+        delete = """DELETE FROM user_krb_principals
+                    WHERE user_id = (%(user_id)i
+                    AND krb_principal = %(krb_principal)s"""
+        cursor.execute(delete, locals())
+        context.cnx.commit()
+        return user_id
 
     def createUserFromKerberos(self, krb_principal):
         """Create a new user, based on the Kerberos principal.  Their
@@ -667,16 +698,19 @@ class Session(object):
 
         # check if user already exists
         c = context.cnx.cursor()
-        q = """SELECT krb_principal FROM users
-        WHERE name = %(user_name)s"""
+        q = """SELECT id, krb_principal FROM users
+               LEFT JOIN user_krb_principals
+               ON users.id = user_krb_principals.user_id
+               WHERE name = %(user_name)s"""
         c.execute(q, locals())
-        r = c.fetchone()
+        r = c.fetchall()
         if not r:
             return self.createUser(user_name, krb_principal=krb_principal)
         else:
-            existing_user_krb = r[0]
-            if existing_user_krb is not None:
-                raise koji.AuthError('user %s already associated with other Kerberos principal: %s' % (user_name, existing_user_krb))
+            existing_user_krb_princs = [row[1] for row in r]
+            if krb_principal in existing_user_krb_princs:
+                # do not set Kerberos principal if it already exists
+                return r[0][0]
             return self.setKrbPrincipal(user_name, krb_principal)
 
 def get_user_groups(user_id):
