@@ -2293,6 +2293,7 @@ class ClientSession(object):
             return False
         self.setSession(sinfo)
 
+        self.krb_principal = cprinc.name
         self.authtype = AUTHTYPE_KERB
         return True
 
