@@ -11602,8 +11602,13 @@ class RootExports(object):
         in the same format as getUser(), plus the authtype.  If there is no
         currently logged-in user, return None."""
         if context.session.logged_in:
-            me = self.getUser(context.session.user_id)
+            me = self.getUser(context.session.user_id, krb_princs=True)
             me['authtype'] = context.session.authtype
+            # backward compatible for cli moshimoshi, but it's not real
+            if me.get('krb_principals'):
+                me['krb_principal'] = me['krb_principals'][0]
+            else:
+                me['krb_principal'] = None
             return me
         else:
             return None
