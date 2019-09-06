@@ -51,7 +51,8 @@ END
 $BODY$
 LANGUAGE plpgsql;
 
-INSERT INTO tag_package_owners (SELECT package_id, tag_id, owner create_event revoke_event creator_id revoker_id active FROM convert_owners());
+INSERT INTO tag_package_owners (SELECT package_id, tag_id, owner, create_event, revoke_event, creator_id, revoker_id, active FROM convert_owners());
+DROP INDEX IF EXISTS tag_packages_owner;
 ALTER TABLE tag_packages DROP COLUMN owner;
 DROP FUNCTION convert_owners();
 

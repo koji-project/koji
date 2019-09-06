@@ -584,7 +584,6 @@ CREATE INDEX tag_listing_tag_id_key ON tag_listing(tag_id);
 CREATE TABLE tag_packages (
 	package_id INTEGER NOT NULL REFERENCES package (id),
 	tag_id INTEGER NOT NULL REFERENCES tag (id),
-	owner INTEGER NOT NULL REFERENCES users(id),
 	blocked BOOLEAN NOT NULL DEFAULT FALSE,
 	extra_arches TEXT,
 -- versioned - see earlier description of versioning
@@ -602,7 +601,6 @@ CREATE TABLE tag_packages (
 CREATE INDEX tag_packages_active_tag_id ON tag_packages(active, tag_id);
 CREATE INDEX tag_packages_create_event ON tag_packages(create_event);
 CREATE INDEX tag_packages_revoke_event ON tag_packages(revoke_event);
-CREATE INDEX tag_packages_owner ON tag_packages(owner);
 
 CREATE TABLE tag_package_owners (
 	package_id INTEGER NOT NULL REFERENCES package(id),
