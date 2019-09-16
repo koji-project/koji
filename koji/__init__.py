@@ -1709,6 +1709,7 @@ def read_config(profile_name, user_config=None):
         'krbservice': 'host',
         'krb_rdns': True,
         'krb_canon_host': False,
+        'krb_server_realm': None,
         'principal': None,
         'keytab': None,
         'cert': None,
@@ -2124,6 +2125,7 @@ def grab_session_options(options):
         'upload_blocksize',
         'krb_rdns',
         'krb_canon_host',
+        'krb_server_realm',
         'no_ssl_verify',
         'serverca',
     )
@@ -2303,7 +2305,9 @@ class ClientSession(object):
 
         host = six.moves.urllib.parse.urlparse(self.baseurl).hostname
         servername = self._fix_krb_host(host)
-        realm = cprinc.realm
+        realm = self.opts.get('krb_server_realm')
+        if not realm:
+            realm = cprinc.realm
         service = self.opts.get('krbservice', 'host')
 
         ret = '%s/%s@%s' % (service, servername, realm)

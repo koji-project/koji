@@ -170,6 +170,7 @@ def _getServer(environ):
     s_opts = {'krbservice': opts['KrbService'],
               'krb_rdns': opts['KrbRDNS'],
               'krb_canon_host': opts['KrbCanonHost'],
+              'krb_server_realm': opts['KrbServerRealm']
               }
     session = koji.ClientSession(opts['KojiHubURL'], opts=s_opts)
 
