@@ -3695,10 +3695,10 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
                                   ' ON users.id = user_krb_principals.user_id'],
                            clauses=clauses, values=data)
     user = query.executeOne()
+    if not user and strict:
+        raise koji.GenericError("No such user: %r" % userInfo)
     if user and krb_princs:
         user['krb_principals'] = list_user_krb_principals(user['id'])
-    elif strict:
-        raise koji.GenericError("No such user: %r" % userInfo)
     return user
 
 
