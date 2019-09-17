@@ -209,16 +209,64 @@ class TestAuthSession(unittest.TestCase):
                 self.assertEqual(cm.exception.args[0],
                                  'Unknown Kerberos principal:'
                                  ' proxyuser@realm.com')
+                # case: create user by kerberos
                 context.opts['LoginCreatesUser'] = True
                 context.cnx.cursor.return_value. \
                     fetchone.side_effect = [None,
-                                            None,
-                                            None,
                                             (1,),
                                             ('name', 'type',
                                              koji.USER_STATUS['NORMAL']),
                                             ('session-id',)]
+                context.cnx.cursor.return_value.fetchall.return_value = None
                 s.krbLogin('krb_req', 'proxyuser@realm.com')
+                self.assertEqual(context.cnx.cursor.return_value.execute.
+                                 call_count, 14)
+                # case: create user by username, proxyuser is username
+                context.cnx.cursor.return_value. \
+                    fetchone.side_effect = [None]
+                context.cnx.cursor.return_value.fetchall.return_value = None
+                with self.assertRaises(koji.AuthError) as cm:
+                    s.krbLogin('krb_req', 'proxyuser')
+                self.assertEqual(cm.exception.args[0],
+                                 'Unknown Kerberos principal: proxyuser')
+                # case: create user by kerberos - set krb princ
+                context.opts['LoginCreatesUser'] = True
+                context.cnx.cursor.return_value. \
+                    fetchone.side_effect = [None,
+                                            (1,),
+                                            ('name', 'type',
+                                             koji.USER_STATUS['NORMAL']),
+                                            ('session-id',)]
+                context.cnx.cursor.return_value.fetchall. \
+                    return_value = [('proxyuser', 'proxyuser@otherrealm.com')]
+                s.krbLogin('krb_req', 'proxyuser@realm.com')
+                self.assertEqual(context.cnx.cursor.return_value.execute.
+                                 call_count, 22)
+
+    @mock.patch('koji.auth.context')
+    def test_checkKrbPrincipal(self, context):
+        s, cntext, cursor = self.get_session()
+        self.assertIsNone(s.checkKrbPrincipal(None))
+        context.opts = {'AllowedKrbRealms': '*'}
+        self.assertIsNone(s.checkKrbPrincipal('any'))
+        context.opts = {'AllowedKrbRealms': 'example.com'}
+        with self.assertRaises(koji.AuthError) as cm:
+            s.checkKrbPrincipal('any')
+        self.assertEqual(cm.exception.args[0],
+                         'invalid Kerberos principal: any')
+        with self.assertRaises(koji.AuthError) as cm:
+            s.checkKrbPrincipal('any@')
+        self.assertEqual(cm.exception.args[0],
+                         'invalid Kerberos principal: any@')
+        with self.assertRaises(koji.AuthError) as cm:
+            s.checkKrbPrincipal('any@bannedrealm')
+        self.assertEqual(cm.exception.args[0],
+                         "Kerberos principal's realm:"
+                         " bannedrealm is not allowed")
+        self.assertIsNone(s.checkKrbPrincipal('user@example.com'))
+        context.opts = {'AllowedKrbRealms': 'example.com,example.net'
+                                            ' , example.org'}
+        self.assertIsNone(s.checkKrbPrincipal('user@example.net'))
 
     # functions outside Session object
 
